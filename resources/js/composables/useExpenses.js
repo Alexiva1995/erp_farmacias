@@ -511,37 +511,23 @@ export function useExpenses() {
       return false;
     }
   }
-  
-  async function uploadInvoiceFile(expenseId, file) {
+
+  async function cambiarEstadoGasto(id, status) {
     try {
-      const formData = new FormData();
-      formData.append("id", expenseId);
-      formData.append("file_invoice", file);
-
-      const response = await axios.post(
-        "/finances/expenses/upload-file-invoice",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Factura subida correctamente");
-        return true;
-      } else {
-        throw new Error(response.data.message || "Error al subir la factura");
+      statuModule.loadingApp = true;
+      const response = await axios.post("/finances/expenses/change-status", {
+        data: { id, status }
+      });
+      if (response.status === 200) {
+        toast.success("Estado actualizado con éxito");
+        await actualizarTabla();
+        await consultarStats();
       }
     } catch (error) {
-      console.error("Error uploading file:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Error al subir el archivo. Intente nuevamente.";
-      toast.error(errorMessage);
-      return false;
+      toast.error("Error al actualizar el estado");
+      console.error(error);
+    } finally {
+      statuModule.loadingApp = false;
     }
   }
 
@@ -586,6 +572,7 @@ export function useExpenses() {
     generaPdf,
     exportarExcel,
     enviar,
+    cambiarEstadoGasto,
     initialize,
   };
 }

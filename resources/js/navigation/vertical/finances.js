@@ -69,12 +69,12 @@ export default [
             action: 'manage',
             subject: 'admin',
           },
-      {
-        title: 'Gastos',
-        to: 'finances-expense-expenses',
-        action: 'manage',
-        subject: 'gastos-expenses',
-      },
+          {
+            title: 'Gastos',
+            to: 'finances-expense-expenses',
+            action: 'manage',
+            subject: 'admin',
+          },
       {
         title: 'Balance General',
         to: 'balance-general',

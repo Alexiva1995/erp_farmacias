@@ -12,7 +12,7 @@ const props= defineProps({
   // search: { type: String, required: true },
 })
 
-const emit= defineEmits(["edit",'delete','update:options'])
+const emit = defineEmits(['update:options', 'approve']);
 
 function verImagne(item){
   window.open(item.url_file, "_blank");
@@ -147,22 +147,30 @@ const headers = [
 
       <!-- Acciones -->
       <template #item.acciones="{ item }">
-        <div class="d-flex align-center justify-center">
+        <div class="d-flex align-center justify-center gap-1">
+          <!-- OJITO: Color info si tiene archivo (url_file), sino gris -->
           <IconBtn
             title="Ver comprobante"
             @click="() => verImagne(item)"
             :disabled="!item.url_file"
             size="small"
           >
-            <VIcon icon="tabler-eye" :color="item.url_file ? 'primary' : 'grey'" />
+            <VIcon 
+              icon="tabler-eye" 
+              :color="item.url_file ? 'info' : 'grey-lighten-1'" 
+              size="20"
+            />
           </IconBtn>
           
-          <!-- Botón de detalles (Drawer - Futura implementación) -->
+          <!-- BOTÓN APROBAR (Solo si está pendiente) -->
           <IconBtn
-            title="Ver detalles"
+            v-if="item.status === 'Pending' || item.status === 'Pendiente'"
+            title="Aprobar Gasto"
+            color="success"
             size="small"
+            @click="() => emit('approve', item.id)"
           >
-            <VIcon icon="tabler-info-circle" color="secondary" />
+            <VIcon icon="tabler-check" size="20" />
           </IconBtn>
         </div>
       </template>
