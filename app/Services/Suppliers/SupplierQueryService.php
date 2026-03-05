@@ -402,8 +402,29 @@ class SupplierQueryService
                     $exchangeRate = floatval($header['exchange_rate'] ?? 1);
                     $isVitaclinics = $supplier->id === 15;
 
-                    $details = collect($lines)->map(function ($line) use ($invoiceModel, $exchangeRate, $isVitaclinics) {
+                    $details = [];
+                    foreach ($lines as $line) {
                         $lineData = Arr::only($line, InvoiceDetail::FILLABLEDETAILS);
+
+                        // 🔍 Vincular producto por barcode si no tiene product_id
+                        if (empty($lineData['product_id']) && !empty($line['barcode'])) {
+                            $product = Product::where('barcode', $line['barcode'])->first();
+                            
+                            if (!$product && !empty($line['name'])) {
+                                // 🆕 Crear producto si no existe
+                                $product = Product::create([
+                                    'name' => $line['name'],
+                                    'barcode' => $line['barcode'],
+                                    'is_active' => true,
+                                    'supplier_id' => $supplier->id,
+                                    // Podríamos heredar categoría u otros campos si los tuviéramos
+                                ]);
+                            }
+
+                            if ($product) {
+                                $lineData['product_id'] = $product->id;
+                            }
+                        }
 
                         // ✅ Si es Vitaclinics y tiene exchange_rate, multiplicar unit_cost
                         if ($isVitaclinics && $exchangeRate > 1) {
@@ -415,17 +436,18 @@ class SupplierQueryService
                             $lineData['total_cost'] = number_format($lineData['unit_cost'] * $quantity, 2, '.', '');
                         }
 
-                        return [
+                        $details[] = [
                             ...$lineData,
                             'invoice_id' => $invoiceModel->id,
                         ];
-                    })->toArray();
+                    }
 
                     $invoiceModel->details()->createMany($details);
                 }
             });
             return true;
         } catch (\Throwable $e) {
+            Log::error("Error in storeSupplierConnectionData: " . $e->getMessage());
             report($e);
             return false;
         }

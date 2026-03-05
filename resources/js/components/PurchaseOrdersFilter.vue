@@ -9,7 +9,7 @@ const emit = defineEmits(["update:selectedSupplier", "clear"]);
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border">
+  <VCard class="mb-6 rounded-lg border">
     <VCardText class="pa-5">
       <VRow>
         <VCol cols="12" md="4" lg="3">

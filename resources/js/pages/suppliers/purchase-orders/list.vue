@@ -118,29 +118,6 @@ const handleClearFilters = () => {
 
 <template>
   <VContainer fluid class="pa-6">
-    <!-- Encabezado con Estilo -->
-    <div class="d-flex align-center justify-space-between mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-black d-flex align-center gap-2 mb-1">
-          <VAvatar color="primary" variant="tonal" size="48" rounded>
-            <VIcon icon="tabler-shopping-cart" size="28" />
-          </VAvatar>
-          Órdenes de Compra
-        </h1>
-        <p class="text-body-2 text-disabled mb-0">Gestión y seguimiento de pedidos a proveedores</p>
-      </div>
-      
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-plus"
-        variant="elevated"
-        class="rounded-lg shadow-sm"
-        to="/suppliers/generar-pedido"
-      >
-        Nuevo Pedido
-      </VBtn>
-    </div>
-
     <!-- KPIs Premium (Estilo CashAverage) -->
     <VRow class="mb-6">
       <!-- Órdenes Totales -->
@@ -225,7 +202,7 @@ const handleClearFilters = () => {
     />
 
     <!-- Tabla con Contenedor Premium -->
-    <VCard elevation="0" class="rounded-xl border overflow-hidden">
+    <VCard elevation="0" class="rounded-lg border overflow-hidden">
       <VCardItem class="pa-4 pb-2 bg-var-theme-background">
         <template #prepend>
           <VAvatar color="primary" variant="tonal" size="38" rounded>
@@ -263,7 +240,7 @@ const handleClearFilters = () => {
 <style scoped>
 .kpi-card {
   border: 1px solid rgba(var(--v-border-color), 0.1);
-  border-radius: 16px !important;
+  border-radius: 8px !important;
   transition: all 0.2s ease;
 }
 

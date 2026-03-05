@@ -57,9 +57,23 @@ class AutoOrderDetailsRepository
     public function updateDetailStatus($autoOrderDetail, $data): bool
     {
         try {
-            $autoOrderDetail->update(['received' => $data['status']]);
+            DB::beginTransaction();
+            
+            $status = $data['status'] ? \App\AutoOrderDetailStatus::ARRIVED : \App\AutoOrderDetailStatus::NOT_ARRIVED;
+            
+            $autoOrderDetail->update([
+                'received' => $data['status'],
+                'status'   => $status->value
+            ]);
+
+            // Disparar verificación de completado de la orden
+            $repo = new AutoOrdersRepository();
+            $repo->checkAndCompleteOrder($autoOrderDetail->order);
+
+            DB::commit();
             return true;
         } catch (\Exception $e) {
+            DB::rollBack();
             return false;
         }
     }

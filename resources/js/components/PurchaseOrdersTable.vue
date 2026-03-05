@@ -21,11 +21,34 @@ const headers = [
   { title: "Monto Total", key: "total_amount", sortable: false },
   { title: "Estado", key: "status", sortable: false, align: "center" },
   { title: "Fecha Solicitud", key: "order_date", sortable: false },
+  { title: "Entrega Est.", key: "tentative_delivery_date", sortable: false },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
+const getStatusLabel = (status) => {
+  const labels = {
+    0: "PENDIENTE",
+    1: "ENVIADO",
+    2: "COMPLETADO",
+  };
+  if (status === true || status === 2) return "COMPLETADO";
+  if (status === 1) return "ENVIADO";
+  return labels[status] || "PENDIENTE";
+};
+
+const getStatusColor = (status) => {
+  const colors = {
+    0: "warning",
+    1: "info",
+    2: "success",
+  };
+  if (status === true || status === 2) return "success";
+  if (status === 1) return "info";
+  return colors[status] || "warning";
+};
+
 const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
+  if (!dateString) return "No def.";
   const date = new Date(dateString);
   return date.toLocaleDateString("es-ES", {
     day: "2-digit",
@@ -35,7 +58,7 @@ const formatDate = (dateString) => {
 };
 
 const formatTime = (dateString) => {
-  if (!dateString) return "";
+  if (!dateString || dateString.length < 11) return "";
   const date = new Date(dateString);
   return date.toLocaleTimeString("es-ES", {
     hour: "2-digit",
@@ -102,13 +125,13 @@ const formatTime = (dateString) => {
     <!-- Estado -->
     <template #item.status="{ item }">
       <VChip
-        :color="item.status ? 'success' : 'warning'"
+        :color="getStatusColor(item.status)"
         size="x-small"
         label
         variant="tonal"
         class="font-weight-bold"
       >
-        {{ item.status ? "COMPLETADO" : "PENDIENTE" }}
+        {{ getStatusLabel(item.status) }}
       </VChip>
     </template>
 
@@ -118,10 +141,23 @@ const formatTime = (dateString) => {
         <span class="text-body-2 font-medium">
           {{ formatDate(item.order_date) }}
         </span>
-        <span class="text-xxs text-medium-emphasis">
+        <span v-if="formatTime(item.order_date)" class="text-xxs text-medium-emphasis">
           {{ formatTime(item.order_date) }}
         </span>
       </div>
+    </template>
+
+    <!-- Fecha Entrega -->
+    <template #item.tentative_delivery_date="{ item }">
+       <div class="d-flex align-center gap-1">
+          <VIcon 
+            v-if="item.tentative_delivery_date" 
+            icon="tabler-truck" 
+            size="16" 
+            color="success" 
+          />
+          <span class="text-body-2">{{ formatDate(item.tentative_delivery_date) }}</span>
+       </div>
     </template>
 
     <!-- Acciones -->

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+use App\Enums\AutoOrderStatus;
+
 class AutoOrder extends Model
 {
     use HasFactory, SoftDeletes;
@@ -13,7 +15,7 @@ class AutoOrder extends Model
     protected $fillable = ["supplier_id", "order_date", "total_items", "total_quantity", "total_amount", "status", "sent_at", "tentative_delivery_date"];
 
     protected $casts = [
-        "status" => "boolean",
+        "status" => AutoOrderStatus::class,
         "sent_at" => "datetime",
         "tentative_delivery_date" => "date",
     ];
