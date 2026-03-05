@@ -498,9 +498,21 @@ class ProductRepository
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                // Con la nueva fórmula: demanda - stock - AO > 0 = necesita pedir
-                // También incluir productos sin ventas ni stock (falla por definición)
-                $consulta->havingRaw("(solicitar > 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
+                // Para evitar el error "Unknown column in having clause" en la consulta count(*) de la paginación de Laravel,
+                // debemos usar las subconsultas enteras o aliadas correctamente, no las variables que desaparecen en count.
+                // afortunadamente Laravel permite usar los alias si la versión de BD lo soporta, o debemos inyectarlas enteras.
+                // Como 'solicitar' es un alias válido solo en el bloque principal, y en la de count() puede romperse el de 'total_sold_completed',
+                // lo expandimos: 'solicitar > 0' O que ventas sean 0 y stock sea 0
+                $consulta->havingRaw("(
+                    solicitar > 0 OR 
+                    ( 
+                      (SELECT COALESCE(SUM(order_details.quantity), 0)
+                       FROM order_details JOIN orders ON orders.id = order_details.order_id
+                       WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '" . $filtros["previousDate"] . "' AND '" . $filtros["dateToday"] . "' AND orders.status = 'Completed') = 0 
+                      AND 
+                      (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
+                    )
+                )");
             }
         }
 
@@ -743,8 +755,16 @@ class ProductRepository
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                // Con la nueva fórmula: demanda - stock - AO > 0 = necesita pedir
-                $consulta->havingRaw("(solicitar > 0 OR (total_sold_completed = 0 AND lote_quantity = 0))");
+                $consulta->havingRaw("(
+                    solicitar > 0 OR 
+                    ( 
+                      (SELECT COALESCE(SUM(order_details.quantity), 0)
+                       FROM order_details JOIN orders ON orders.id = order_details.order_id
+                       WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '" . $filtros["previousDate"] . "' AND '" . $filtros["dateToday"] . "' AND orders.status = 'Completed') = 0 
+                      AND 
+                      (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
+                    )
+                )");
             }
         }
 
