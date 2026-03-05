@@ -668,6 +668,7 @@ const handleMarkScarce = async (item) => {
 const updateProductsWithoutSupplierOptions = (options) => {
   pageProductsWithoutSupplier.value = options.page;
   itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
     sortByProductsWithoutSupplier.value = options.sortBy[0].key;
     orderByProductsWithoutSupplier.value = options.sortBy[0].order;
   }
