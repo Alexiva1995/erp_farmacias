@@ -80,9 +80,9 @@ const con_descuento = ref(true); // Fallas , Execeso o All
 const selectedLaboratory = ref();
 const selectedGroup = ref();
 const tipo_de_vista = ref(false); // grupo o individual
-const tipo_de_filtracion = ref("sales"); // promedio o ventas
-const lapso_de_tiempo = ref("3 month"); // tiempo
-const stock = ref(route.query.stock || "fallas"); // Fallas , Execeso o All
+const tipo_de_filtracion = ref("combinado"); // mismos defaults que el Asistente IA
+const lapso_de_tiempo = ref("1 month"); // mismos defaults que el Asistente IA
+const stock = ref("fallas"); // Mostrar siempre fallas (lo que hay que pedir)
 const laboratoriesProductsWithoutSupplier = ref([]);
 
 const handleClearFilters = () => {
@@ -340,22 +340,23 @@ const fetchProductsWithoutSupplier = async () => {
   try {
     loadingProductsWithoutSupplier.value = true;
 
-    const params = {
+    // Usamos el mismo endpoint POST que el Asistente IA
+    const payload = {
       laboratoryId: selectedLaboratory.value,
       groups: selectedGroup.value,
-      //"tipo_vista": tipo_de_vista.value,
+      tipo_vista: tipo_de_vista.value,
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
-      stock: stock.value,
+      stock: stock.value, // siempre 'fallas'
       page: pageProductsWithoutSupplier.value,
       itemsPerPage: itemsPerPageProductsWithoutSupplier.value,
       sortBy: sortByProductsWithoutSupplier.value,
       orderBy: orderByProductsWithoutSupplier.value,
     };
 
-    const { data } = await axios.get(
-      "/suppliers-ia-order-assistant/products-without-supplier",
-      { params },
+    const { data } = await axios.post(
+      `/suppliers-ia-order-assistant/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
+      payload,
     );
 
     if (data && data.data && data.data.paginate) {
@@ -367,7 +368,7 @@ const fetchProductsWithoutSupplier = async () => {
       "Hubo un error al obtener los productos sin proveedor:",
       error,
     );
-    toast.error("Error al obtener la lista de productos marcados.");
+    toast.error("Error al obtener los productos sin proveedor.");
   } finally {
     loadingProductsWithoutSupplier.value = false;
   }
@@ -553,7 +554,9 @@ const handleAddItemToAutoOrder = async (product) => {
     if (message && message.warning) {
       toast.warning(message.warning, { timeout: 8000 });
     }
+    // Limpiar selección activa y refrescar ambas tablas
     selectedProductFromTop.value = null;
+    filterSearchQuery.value = "";
     fetchProductsWithoutSupplier();
     fetchProducts();
   } catch (error) {
@@ -621,8 +624,14 @@ const handleSaveAnalysis = async ({ item, newValue }) => {
 
     if (response.data.status === "success") {
       toast.success(response.data.message || "Pedido añadido correctamente.");
+      // Refrescar tabla de faltas (el producto puede ya no aparecer si se pidió completo)
       fetchProductsWithoutSupplier();
       fetchProducts();
+      // Limpiar selección si era el mismo producto
+      if (selectedProductFromTop.value?.id === item.id) {
+        selectedProductFromTop.value = null;
+        filterSearchQuery.value = "";
+      }
     }
   } catch (error) {
     console.error(error);
@@ -640,11 +649,8 @@ const handleMarkScarce = async (item) => {
 
     if (response.data.status === "success") {
       toast.success(response.data.message);
-      // Actualizar el estado local para reflejar el cambio sin recargar todo si es posible
-      const found = listProductsWithoutSupplier.value.find(
-        (p) => p.id === item.id,
-      );
-      if (found) found.is_scarce = response.data.data.is_scarce;
+      // Refrescar la tabla para que el producto escaso desaparezca si el filtro aplica
+      fetchProductsWithoutSupplier();
     }
   } catch (error) {
     console.error(error);
