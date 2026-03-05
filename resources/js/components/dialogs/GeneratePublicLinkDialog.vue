@@ -22,16 +22,11 @@ const publicUrl = computed(() => {
 const generateToken = async () => {
   loading.value = true
   try {
-    // Reutilizamos el endpoint de actualización de proveedores si es necesario o uno específico
-    // Pero como no creé uno específico aún, lo haré directamente aquí o asumiré que se gestionará via un PATCH general
-    const response = await axios.patch(`/suppliers/${props.selectedSupplier.id}/toggle-order`, {
-      generate_public_token: true
-    })
+    const response = await axios.post(`/suppliers/${props.selectedSupplier.id}/generate-public-token`)
     
-    // Si el backend no tiene esa lógica, podemos añadirla al SupplierController
+    publicToken.value = response.data.data
     toast.success('Token generado con éxito')
     emit('refresh')
-    // Nota: El backend debe devolver el token o refrescamos la lista
   } catch (error) {
     toast.error('Error al generar el token')
   } finally {
@@ -83,7 +78,7 @@ const closeDialog = () => {
         <div v-else class="text-center py-4">
           <VAlert type="info" variant="tonal" class="mb-4">
             Este proveedor aún no tiene un enlace público generado.
-          </Alert>
+          </VAlert>
           <VBtn color="primary" :loading="loading" @click="generateToken">
             Generar Nuevo Enlace
           </VBtn>
