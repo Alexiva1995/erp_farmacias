@@ -83,9 +83,19 @@ export default function pdfProductsAssistantReportGenerator(data) {
             styles: { halign: 'center', fontSize: 6.5 }
         },
         {
-            content: product.product_suppliers?.length > 0 
-                ? `$${parseFloat(product.product_suppliers[0].unit_cost_usd_with_discount).toFixed(2)}\n(${product.product_suppliers[0].supplier.name})`
-                : '---',
+            content: (() => {
+                if (!product.product_suppliers?.length) return '---';
+                const offer = parseFloat(product.product_suppliers[0].unit_cost_usd_with_discount);
+                const current = parseFloat(product.unit_cost || 0);
+                let diffStr = '';
+                if (current > 0) {
+                    const diff = ((current - offer) / current) * 100;
+                    const absDiff = Math.abs(diff).toFixed(0);
+                    // Si diff > 0 es ahorro (oferta menor), si diff < 0 es sobrecosto
+                    diffStr = diff > 0 ? `\n(Ahorro: ${absDiff}%)` : (diff < 0 ? `\n(Sobrep.: ${absDiff}%)` : '');
+                }
+                return `$${offer.toFixed(2)}\n${product.product_suppliers[0].supplier.name}${diffStr}`;
+            })(),
             styles: { halign: 'center', fontSize: 6.5 }
         },
         { 
