@@ -123,6 +123,82 @@ const handleClearFilters = () => {
 
 <template>
   <VContainer fluid class="pa-6">
+    <!-- KPIs Premium (Estilo CashAverage) -->
+    <VRow class="mb-6">
+      <!-- Órdenes Totales -->
+      <VCol cols="12" sm="6" lg="3">
+        <VCard class="kpi-card" elevation="0">
+          <VCardText class="pa-5">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="primary" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-clipboard-list" size="22" />
+              </VAvatar>
+              <VChip color="primary" size="small" variant="tonal" label>
+                Total
+              </VChip>
+            </div>
+            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Totales</div>
+            <div class="text-h4 font-weight-black text-primary">{{ stats.total_orders }}</div>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <!-- Monto Total -->
+      <VCol cols="12" sm="6" lg="3">
+        <VCard class="kpi-card" elevation="0">
+          <VCardText class="pa-5">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="success" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-currency-dollar" size="22" />
+              </VAvatar>
+              <VChip color="success" size="small" variant="tonal" label>
+                Inversión
+              </VChip>
+            </div>
+            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Monto Total (USD)</div>
+            <div class="text-h4 font-weight-black">
+              {{ Number(stats.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <!-- Pendientes -->
+      <VCol cols="12" sm="6" lg="3">
+        <VCard class="kpi-card" elevation="0">
+          <VCardText class="pa-5">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="warning" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-alert-circle" size="22" />
+              </VAvatar>
+              <VChip color="warning" size="small" variant="tonal" label>
+                Por Recibir
+              </VChip>
+            </div>
+            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Pendientes</div>
+            <div class="text-h4 font-weight-black text-warning">{{ stats.pending_orders }}</div>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <!-- Estado General -->
+      <VCol cols="12" sm="6" lg="3">
+        <VCard class="kpi-card" color="info" variant="tonal" elevation="0">
+          <VCardText class="pa-5">
+            <div class="d-flex align-center mb-3">
+              <VAvatar color="info" variant="elevated" size="44" rounded>
+                <VIcon icon="tabler-checkup-list" size="22" class="text-white" />
+              </VAvatar>
+            </div>
+            <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Estatus Operativo</div>
+            <div class="text-h6 font-weight-black text-info">
+              {{ stats.pending_orders > 0 ? '📦 Pedidos en camino' : '✅ Todo al día' }}
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
+
     <!-- Filtros -->
     <PurchaseOrdersFilter
       v-model:selectedSupplier="selectedSupplier"
@@ -131,7 +207,7 @@ const handleClearFilters = () => {
     />
 
     <!-- Tabla con TABS (Estilo Gastos) -->
-    <VCard elevation="0" class="rounded-lg border overflow-hidden mt-6">
+    <VCard variant="outlined" class="rounded-lg bg-surface mt-4">
       <VTabs
         v-model="activeTab"
         color="primary"
