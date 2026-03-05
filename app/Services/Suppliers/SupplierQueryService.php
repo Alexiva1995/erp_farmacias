@@ -429,7 +429,6 @@ class SupplierQueryService
                                     'barcode' => $line['barcode'],
                                     'is_active' => true,
                                     'is_deleted' => true,
-                                    'supplier_id' => $supplier->id,
                                 ]);
                             }
 
