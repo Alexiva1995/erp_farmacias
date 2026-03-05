@@ -23,7 +23,7 @@ const headers = [
   { title: "Nombre", key: "name", sortable: true },
   { title: "Teléfono", key: "sales_phone", sortable: true },
   { title: "Deuda", key: "debt", sortable: true },
-  { title: "Calificación", key: "latestScore.score", sortable: true },
+  { title: "Calificación", key: "latest_score_value", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
 </script>
@@ -138,14 +138,31 @@ const headers = [
         </VChip>
       </template>
 
-      <template #item.latestScore.score="{ item }">
-        <VRating
-          :model-value="(item.latestScore?.score ?? 0) / 20"
-          length="5"
-          readonly
-          size="18"
-          color="primary"
-        />
+      <template #item.latest_score_value="{ item }">
+        <VTooltip location="top" v-if="item.latest_score_value">
+          <template #activator="{ props }">
+            <div v-bind="props" class="d-inline-flex">
+              <VRating
+                :model-value="Number(item.latest_score_value) / 20"
+                length="5"
+                readonly
+                size="18"
+                color="primary"
+              />
+            </div>
+          </template>
+          <!-- Contenido del tooltip con desglose del score -->
+          <div class="px-2 py-1" v-if="item.score_breakdown">
+            <div class="font-weight-bold mb-1">Puntaje total: {{ Number(item.latest_score_value).toFixed(2) }} / 100</div>
+            <div class="d-flex justify-space-between gap-4"><span class="text-caption">Recepción:</span> <span class="text-caption font-weight-bold">{{ Number(item.score_breakdown.product_arrival).toFixed(2) }}</span></div>
+            <div class="d-flex justify-space-between gap-4"><span class="text-caption">Devoluciones:</span> <span class="text-caption font-weight-bold">{{ Number(item.score_breakdown.returns_ratio).toFixed(2) }}</span></div>
+            <div class="d-flex justify-space-between gap-4"><span class="text-caption">Volumen:</span> <span class="text-caption font-weight-bold">{{ Number(item.score_breakdown.volume).toFixed(2) }}</span></div>
+            <div class="d-flex justify-space-between gap-4"><span class="text-caption">Frecuencia:</span> <span class="text-caption font-weight-bold">{{ Number(item.score_breakdown.frequency).toFixed(2) }}</span></div>
+            <div class="d-flex justify-space-between gap-4"><span class="text-caption">Consistencia:</span> <span class="text-caption font-weight-bold">{{ Number(item.score_breakdown.consistency).toFixed(2) }}</span></div>
+          </div>
+        </VTooltip>
+        
+        <span v-else class="text-caption text-disabled text-center">Sin evaluar</span>
       </template>
 
       <template #item.actions="{ item }">

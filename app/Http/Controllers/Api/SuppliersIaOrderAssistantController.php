@@ -128,9 +128,11 @@ class SuppliersIaOrderAssistantController extends Controller
                 }
 
                 if (($filtros['stock'] ?? '') === 'fallas') {
-                    $items->solicitar = $stock - $baseCalculation;
+                    // En modo fallas: cuánto falta vs lo que demanda el mercado
+                    $items->solicitar = $baseCalculation - $stock;
                 } else {
-                    $items->solicitar = $stock - $baseCalculation - $aoActual;
+                    // Normal: demanda - (stock actual + lo que ya está pedido)
+                    $items->solicitar = $baseCalculation - $stock - $aoActual;
                 }
             }
 
@@ -564,11 +566,10 @@ class SuppliersIaOrderAssistantController extends Controller
 
                     $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
                 } else {
-                    $solicitarCalculado = $items->solicitar;
-                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
                     $stock = $items->lote_quantity ?? 0;
                     $ventas = $items->total_sold_completed ?? 0;
-                    $items->solicitar = $stock - $ventas - $aoActual;
+                    // demanda - stock - AO (positivo = necesita pedir, negativo = exceso)
+                    $items->solicitar = $ventas - $stock - $aoActual;
                 }
                 if ($esProductoSinVentasNiStock) {
                     $aoActual = $items->totalQuantityInAutoOrder ?? 0;
