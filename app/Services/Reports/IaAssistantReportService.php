@@ -2,6 +2,10 @@
 
 namespace App\Services\Reports;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+
 class IaAssistantReportService
 {
     public function __construct(protected \App\Contracts\Product $productRepository)
@@ -9,27 +13,82 @@ class IaAssistantReportService
     }
 
     /**
-     * Orquesta el reporte filtrado con paginación
+     * Orquesta el reporte filtrado con paginación USANDO CACHÉ DE IDs (Estilo IA Assistant)
      */
     public function getFilteredReportWithPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        
         $tipo = $filtros['tipo_filtracion'] ?? 'average';
+        $page = $filtros['page'] ?? 1;
+        $perPage = $filtros['itemsPerPage'] ?? 10;
+
+        // 1. Obtener todos los IDs que coinciden con los filtros (Cacheado)
+        $allIds = $this->getFilteredProductIds($filtros);
+        $total = count($allIds);
+
+        // 2. Paginar los IDs en memoria
+        $offset = ($page - 1) * $perPage;
+        $currentPageIds = array_slice($allIds, $offset, $perPage);
+
+        if (empty($currentPageIds)) {
+            return new LengthAwarePaginator([], $total, $perPage, $page);
+        }
+
+        // 3. Hidratar los modelos solo para los IDs de la página actual
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $currentPageIds;
         
+        // Ejecutamos la consulta base según el tipo
         if ($tipo === 'sales') {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithPaginate($filtros);
-            return $this->processRegularReport($resultado, $tipo);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
+        } else {
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
         }
 
-        // Para "average" y "combinado" llamamos primero al repositorio por Averages
-        $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros);
-
+        // 4. Procesar cálculos adicionales (AO, Combinado, etc.)
         if ($tipo === 'combinado') {
-            return $this->processCombinedReport($resultado, $filtros);
+            $procesado = $this->processCombinedReport($resultado, $filtros);
+        } else {
+            $procesado = $this->processRegularReport($resultado, $tipo);
         }
 
-        return $this->processRegularReport($resultado, $tipo);
+        // 5. Devolver paginador manual
+        return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]);
+    }
+
+    /**
+     * Obtiene y cachea los IDs de productos que coinciden con los filtros
+     */
+    private function getFilteredProductIds(array $filtros): array
+    {
+        $cacheKey = 'ia_report_ids_' . md5(json_encode([
+            'lapso' => $filtros['lapso_de_tiempo'] ?? '',
+            'lab' => $filtros['laboratoryId'] ?? [],
+            'groups' => $filtros['groups'] ?? [],
+            'is_col' => $filtros['is_colombia'] ?? null,
+            'q' => $filtros['q'] ?? '',
+        ]));
+
+        return Cache::remember($cacheKey, 600, function () use ($filtros) {
+            // Usamos una consulta ligera que solo traiga IDs
+            // Para esto, usamos el builder de averages pero solo pidiendo ID
+            $filtrosLigero = $filtros;
+            unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
+            
+            // Obtenemos todos sin paginar para tener el set completo de IDs
+            $tipo = $filtros['tipo_filtracion'] ?? 'average';
+            
+            if ($tipo === 'sales') {
+                $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
+            } else {
+                $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosLigero);
+            }
+
+            return $collection->pluck('id')->toArray();
+        });
     }
 
     /**

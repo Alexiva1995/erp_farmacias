@@ -87,9 +87,13 @@ class ProductRepository
             DB::raw('(
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
                 AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
         ];
 
@@ -153,7 +157,9 @@ class ProductRepository
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
                 AND ao.status IN (0, 1)
-                AND aod.status = 0)';
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL)';
         $stockQuery = $this->subConsultaParaCalcularStockPorLotes;
         $stockEfectivo = '(COALESCE((' . $stockQuery . '), 0) + COALESCE((' . $subqueryAutoOrder . '), 0))';
 
@@ -354,9 +360,13 @@ class ProductRepository
             DB::raw('(
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
                 AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
             DB::raw('(
                 SELECT ps.barcode_match
@@ -428,9 +438,13 @@ class ProductRepository
         // Sub-consulta del AO (unidades ya en pedido activo) para incluirla en el cálculo SQL
         $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 WHERE ps.product_id = products.id
-                AND aod.status = 0)';
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL)';
 
         // calcular solicitar: demanda - stock - AO  (positivo = falta, negativo = exceso)
         // Para fallas no se resta AO (nos interesa saber si el producto en sí tiene deficit)
@@ -514,7 +528,7 @@ class ProductRepository
                       AND 
                       (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
                       AND
-                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0) = 0
+                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL) = 0
                     )
                 )");
             }
@@ -643,6 +657,8 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto .
                 (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
@@ -778,7 +794,7 @@ class ProductRepository
                       AND 
                       (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
                       AND
-                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND aod.status = 0) = 0
+                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL) = 0
                     )
                 )");
             }
@@ -901,6 +917,17 @@ class ProductRepository
                 AND product_lots.quantity > 0
                 AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
             ) AS cost_max'),
+            DB::raw('(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+            ) AS totalQuantityInAutoOrder'),
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
@@ -940,8 +967,19 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 24';
         }
 
-        // calcular solicitar
-        $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
+        // Subconsulta del AO (unidades ya en pedido activo)
+        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL)';
+
+        // calcular solicitar: demanda - stock - AO
+        $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
 
 
         $consulta = Product::select($columnas)->where('is_deleted', false)->with([
@@ -984,16 +1022,12 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("ids_in", $filtros)) {
-            if (count($filtros["ids_in"]) > 0) {
-                $consulta->whereIn("id", $filtros["ids_in"]);
-            }
+        if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
+            $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
 
-        if (array_key_exists("laboratoryId", $filtros)) {
-            if (count($filtros["laboratoryId"]) > 0) {
-                $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
-            }
+        if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
+            $consulta->whereIn("id", $filtros["ids_in"]);
         }
 
         if (array_key_exists("stock", $filtros)) {
@@ -1103,8 +1137,20 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto . '  AS solicitar'),
+            DB::raw('((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+            )) AS solicitar'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
