@@ -1,5 +1,6 @@
 script
 <script setup>
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -51,7 +52,7 @@ const headers = [
     align: 'end',
     value: (item) =>
       item.solicitar != "" && item.solicitar != null
-        ? parseFloat(item.solicitar).toFixed(1)
+        ? roundIaAnalysis(item.solicitar)
         : 0,
   },
 ];
@@ -226,9 +227,9 @@ const getPriceDiff = (current, offer) => {
             <span
               v-bind="tp"
               class="font-weight-black text-h6"
-              :style="parseFloat(item.solicitar) > 0 ? 'color:#28c76f' : parseFloat(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
+              :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
             >
-              {{ parseFloat(item.solicitar) > 0 ? '+' : '' }}{{ item.solicitar || 0 }}
+              {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }}
             </span>
           </template>
         </VTooltip>

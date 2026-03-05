@@ -144,6 +144,7 @@ declare global {
   const resolveUnref: typeof import('@vueuse/core')['resolveUnref']
   const resolveVuetifyTheme: typeof import('./resources/js/@core/utils/vuetify.js')['resolveVuetifyTheme']
   const rgbaToHex: typeof import('./resources/js/@core/utils/colorConverter.js')['rgbaToHex']
+  const roundIaAnalysis: typeof import('./resources/js/utils/iaAnalysisRounding.js')['roundIaAnalysis']
   const roundUpToNearestHundred: typeof import('./resources/js/utils/roundUpToNearesHundred.js')['roundUpToNearestHundred']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
@@ -523,6 +524,7 @@ declare module 'vue' {
     readonly resolveUnref: UnwrapRef<typeof import('@vueuse/core')['resolveUnref']>
     readonly resolveVuetifyTheme: UnwrapRef<typeof import('./resources/js/@core/utils/vuetify.js')['resolveVuetifyTheme']>
     readonly rgbaToHex: UnwrapRef<typeof import('./resources/js/@core/utils/colorConverter.js')['rgbaToHex']>
+    readonly roundIaAnalysis: UnwrapRef<typeof import('./resources/js/utils/iaAnalysisRounding.js')['roundIaAnalysis']>
     readonly roundUpToNearestHundred: UnwrapRef<typeof import('./resources/js/utils/roundUpToNearesHundred.js')['roundUpToNearestHundred']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>

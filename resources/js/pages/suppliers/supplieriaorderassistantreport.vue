@@ -3,7 +3,8 @@ import SupplierAssistantReportTable from '@/components/SupplierAssistantReportTa
 import SupplierIaOrderAssistantReportFilter from '@/components/SupplierIaOrderAssistantReportFilter.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, reactive } from 'vue';
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
 const router= useRouter()
 
@@ -53,10 +54,10 @@ async function consultarKpisGlobales() {
       stock: stock.value,
     };
     const resp = await axios.post('/suppliers-ia-assistant-report/filtrar-paginate?page=1', data);
-    const items = resp.data?.data?.data || [];
-    kpiGlobal.necesitan = items.filter(p => parseFloat(p.solicitar) > 0).length;
-    kpiGlobal.exceso    = items.filter(p => parseFloat(p.solicitar) < 0).length;
-    kpiGlobal.ok        = items.filter(p => parseFloat(p.solicitar) == 0).length;
+    const items = resp.data?.data?.paginate?.data || [];
+    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0).length;
+    kpiGlobal.exceso    = items.filter(p => roundIaAnalysis(p.solicitar) < 0).length;
+    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) == 0).length;
   } catch (e) {
     console.error('Error al cargar KPIs globales:', e);
   } finally {

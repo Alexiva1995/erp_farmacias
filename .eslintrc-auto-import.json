@@ -381,6 +381,7 @@
     "useExpenses": true,
     "capitalizeFirstAndLastName": true,
     "formatAmountOnly": true,
-    "useBalance": true
+    "useBalance": true,
+    "roundIaAnalysis": true
   }
 }

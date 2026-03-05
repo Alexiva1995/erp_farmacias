@@ -1,5 +1,6 @@
 <script setup>
 
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -120,9 +121,9 @@ function rowClass(item) {
             <span
               v-bind="tp"
               class="font-weight-black"
-              :style="parseFloat(item.solicitar) > 0 ? 'color:#28c76f' : parseFloat(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
+              :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
             >
-              {{ parseFloat(item.solicitar) > 0 ? '+' : '' }}{{ item.solicitar || 0 }} u.
+              {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
             </span>
           </template>
         </VTooltip>

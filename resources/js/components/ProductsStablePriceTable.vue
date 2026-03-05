@@ -1,22 +1,29 @@
 <script setup lang="js">
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { computed } from 'vue';
 
 const props = defineProps({
   list: { type: Array, required: true },
 })
 
+// Función para calcular la diferencia de precio (%)
+function getPriceDiff(oldPrice, newPrice) {
+  if (!oldPrice || oldPrice == 0) return 0;
+  return ((newPrice - oldPrice) / oldPrice) * 100;
+}
+
 const productosTable = computed(() => {
   const filtered = props.list?.filter(pro => pro.increase === null) || [];
   
   // Ordenar por relevancia de pedido (los que más faltan primero)
   return [...filtered].sort((a, b) => {
-    return parseFloat(b.product.solicitar) - parseFloat(a.product.solicitar);
+    return roundIaAnalysis(b.product.solicitar) - roundIaAnalysis(a.product.solicitar);
   });
 });
 
 // Determinar clase de fila según el análisis
 function rowClass(item) {
-  const val = parseFloat(item.product.solicitar);
+  const val = roundIaAnalysis(item.product.solicitar);
   if (val > 0) return 'row-needs';
   if (val < 0) return 'row-excess';
   return '';
@@ -37,7 +44,8 @@ function rowClass(item) {
           <th style="min-inline-size: 250px;">Producto</th>
           <th class="text-end">Ventas</th>
           <th class="text-end">Promedio</th>
-          <th class="text-center">Costo</th>
+          <th class="text-end text-primary">Demanda</th>
+          <th class="text-center">Diferencia</th>
           <th class="text-end">Stock</th>
           <th class="text-end">Análisis</th>
           <th style="inline-size: 140px;" class="text-center pe-4">Sugerencia</th>
@@ -49,7 +57,7 @@ function rowClass(item) {
           <td class="ps-4 py-2">
             <div class="d-flex flex-column" style="max-inline-size: 150px;">
               <span class="text-body-2 font-weight-bold text-truncate">{{ item.supplier.name }}</span>
-              <span class="text-caption text-disabled">Precio Estable</span>
+              <span class="text-caption text-disabled text-truncate">Precio Estable (Margen)</span>
             </div>
           </td>
           <td>
@@ -88,12 +96,28 @@ function rowClass(item) {
             </VTooltip>
           </td>
 
+          <td class="text-end">
+            <VTooltip text="Demanda proyectada (antes de stock)">
+              <template #activator="{ props: tp }">
+                <span v-bind="tp" class="text-body-2 font-weight-bold text-primary">
+                  {{ Number(item.product.demanda_ponderada || 0).toFixed(1) }}
+                </span>
+              </template>
+            </VTooltip>
+          </td>
+
           <td class="text-center">
-            <div class="d-flex align-center justify-center gap-1">
-              <span class="text-body-2 font-weight-bold text-primary">${{ Number(item.precio_final_supplier || 0).toFixed(2) }}</span>
-              <VIcon icon="tabler-minus" size="12" class="text-disabled" />
-              <VChip size="x-small" color="secondary" variant="tonal" label class="px-1">
-                0%
+            <div class="d-flex flex-column align-center gap-1 py-1">
+              <div class="d-flex align-center gap-1">
+                <span class="text-caption text-disabled line-through">${{ Number(item.product.unit_cost || 0).toFixed(2) }}</span>
+                <VIcon icon="tabler-arrow-right" size="12" class="text-disabled" />
+                <span class="text-body-2 font-weight-bold" :class="getPriceDiff(item.product.unit_cost, item.precio_final_supplier) >= 0 ? 'text-error' : 'text-success'">
+                  ${{ Number(item.precio_final_supplier || 0).toFixed(2) }}
+                </span>
+              </div>
+              <VChip size="x-small" :color="Math.abs(getPriceDiff(item.product.unit_cost, item.precio_final_supplier)) < 0.1 ? 'secondary' : (getPriceDiff(item.product.unit_cost, item.precio_final_supplier) > 0 ? 'error' : 'success')" variant="tonal" label class="px-1">
+                <VIcon start size="10" :icon="getPriceDiff(item.product.unit_cost, item.precio_final_supplier) >= 0 ? 'tabler-trending-up' : 'tabler-trending-down'" class="me-0" />
+                {{ Math.abs(getPriceDiff(item.product.unit_cost, item.precio_final_supplier)).toFixed(1) }}%
               </VChip>
             </div>
           </td>
@@ -108,14 +132,14 @@ function rowClass(item) {
           </td>
 
           <td class="text-end">
-            <VTooltip :text="parseFloat(item.product.solicitar) > 0 ? 'Sugerencia de compra' : 'Stock suficiente'">
+            <VTooltip :text="roundIaAnalysis(item.product.solicitar) > 0 ? 'Sugerencia de compra' : 'Stock suficiente'">
               <template #activator="{ props: tp }">
                 <span
                   v-bind="tp"
                   class="text-body-2 font-weight-black"
-                  :style="parseFloat(item.product.solicitar) > 0 ? 'color:#28c76f' : 'color:#ea5455'"
+                  :style="roundIaAnalysis(item.product.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.product.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
                 >
-                  {{ parseFloat(item.product.solicitar) > 0 ? '+' : '' }}{{ item.product.solicitar || 0 }}
+                  {{ roundIaAnalysis(item.product.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.product.solicitar) }}
                 </span>
               </template>
             </VTooltip>

@@ -449,6 +449,47 @@ function eliminarItemOrden(payload){
       :index-navegacion="indexNavegacion"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
+
+    <!-- KPIs Orientativos -->
+    <VRow class="mb-6 mt-1">
+      <VCol cols="12" sm="6">
+        <VCard variant="outlined" class="rounded-lg border-opacity-100" style="border-color: rgba(var(--v-theme-success), 0.3) !important;">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="success" variant="tonal" size="48" rounded>
+              <VIcon icon="tabler-truck-delivery" size="26" />
+            </VAvatar>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Productos con Oferta</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-success">
+                  {{ module.productoFallas?.length || 0 }}
+                </span>
+                <span class="text-caption text-disabled">listos para pedir</span>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="6">
+        <VCard variant="outlined" class="rounded-lg border-opacity-100" style="border-color: rgba(var(--v-theme-warning), 0.3) !important;">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="warning" variant="tonal" size="48" rounded>
+              <VIcon icon="tabler-shopping-cart-off" size="26" />
+            </VAvatar>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Sin Proveedor Asignado</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-warning">
+                  {{ module.productosSinReponer?.length || 0 }}
+                </span>
+                <span class="text-caption text-disabled">requieren atención</span>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
     <VCard class="mb-6" v-if="indexNavegacion == 1">
       <template #title>
         Productos con Costo Elevado

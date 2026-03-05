@@ -4,10 +4,12 @@ import SupplierIaOrderAssistantGrupoTable from '@/components/SupplierIaOrderAssi
 import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
 
-const route = useRouter();
+const router = useRouter();
+
 
 const statuModule = reactive({ total: 0, items: [] });
 const groups = ref([]);
@@ -64,9 +66,9 @@ async function consultarKpisGlobales() {
     };
     const resp = await axios.post('/suppliers-ia-order-assistant/filtrar-paginate?page=1', data);
     const items = resp.data?.data?.paginate?.data || [];
-    kpiGlobal.necesitan = items.filter(p => parseFloat(p.solicitar) > 0).length;
-    kpiGlobal.exceso    = items.filter(p => parseFloat(p.solicitar) < 0).length;
-    kpiGlobal.ok        = items.filter(p => parseFloat(p.solicitar) == 0).length;
+    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0).length;
+    kpiGlobal.exceso    = items.filter(p => roundIaAnalysis(p.solicitar) < 0).length;
+    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) == 0).length;
   } catch (e) {
     console.error('Error al cargar KPIs globales:', e);
   } finally {
@@ -133,7 +135,9 @@ watch([page, itemsPerPage, orderBy, sortBy], () => {
 });
 
 function generarPedido() {
-  route.push({
+  toast.info('Navegando a generar pedido...');
+  console.log('[DEBUG] Iniciando generarPedido desde el asistente');
+  router.push({
     path: "/suppliers/generar-pedido",
     query: {
       con_descuento: con_descuento.value,

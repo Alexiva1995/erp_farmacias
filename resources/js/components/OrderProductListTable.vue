@@ -1,14 +1,31 @@
 <script setup lang="js">
 
+import { computed } from 'vue';
+
 const props = defineProps({
   list: { type: Array, required: true },
 })
 
 const emit = defineEmits(["eliminarItemOrden"])
 
+const sortedList = computed(() => {
+  return [...props.list].sort((a, b) => {
+    const subtotalA = (Number(a.reponer) || 0) * (Number(a.precio_final_supplier) || 0);
+    const subtotalB = (Number(b.reponer) || 0) * (Number(b.precio_final_supplier) || 0);
+    
+    if (subtotalB !== subtotalA) {
+      return subtotalB - subtotalA;
+    }
+    
+    // Si el subtotal es igual, ordenar por precio unitario
+    return (Number(b.precio_final_supplier) || 0) - (Number(a.precio_final_supplier) || 0);
+  });
+});
+
 const headers = [
   { title: 'Producto', key: 'product.name', minWidth: '250px' },
-  { title: 'Cantidad', key: 'reponer', align: 'center', width: '150px' },
+  { title: 'Demanda', key: 'product.demanda_ponderada', align: 'end', width: '100px' },
+  { title: 'Cantidad', key: 'reponer', align: 'center', width: '120px' },
   { title: 'Costo Unit.', key: 'precio_final_supplier', align: 'end', width: '120px' },
   { title: 'Subtotal', key: 'totalPorveedor', align: 'end', width: '140px', sortable: false },
   { title: 'Acción', key: "action", align: 'center', width: '80px', sortable: false },
@@ -21,7 +38,7 @@ const groupBy = [{ key: 'supplier.name' }]
   <VCard variant="outlined" class="rounded-lg">
     <VDataTableVirtual
       :headers="headers"
-      :items="list"
+      :items="sortedList"
       height="500"
       item-value="uuid"
       :group-by="groupBy"
@@ -42,7 +59,7 @@ const groupBy = [{ key: 'supplier.name' }]
               <VIcon icon="tabler-building-store" size="20" class="text-primary" />
               <span class="text-subtitle-2 font-weight-black text-uppercase">{{ item.value }}</span>
               <VChip size="x-small" color="primary" variant="tonal" class="ms-2">
-                {{ list.filter(i => i.supplier.name === item.value).length }} productos
+                {{ sortedList.filter(i => i.supplier.name === item.value).length }} productos
               </VChip>
             </div>
           </td>
@@ -59,6 +76,13 @@ const groupBy = [{ key: 'supplier.name' }]
             ID: #{{ item.product.id }}
           </span>
         </div>
+      </template>
+
+      <!-- Demanda -->
+      <template #item.product.demanda_ponderada="{ item }">
+        <span class="text-body-2 font-weight-bold text-primary">
+          {{ Number(item.product.demanda_ponderada || 0).toFixed(1) }}
+        </span>
       </template>
 
       <!-- Cantidad Editable -->
