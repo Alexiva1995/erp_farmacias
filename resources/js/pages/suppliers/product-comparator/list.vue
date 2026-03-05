@@ -1,6 +1,7 @@
 <script setup>
 import ApplyDiscountDialog from "@/components/dialogs/ApplyDiscountDialog.vue";
 import DeleteOldProductsDialog from "@/components/dialogs/DeleteOldProductsDialog.vue";
+import GeneratePublicLinkDialog from "@/components/dialogs/GeneratePublicLinkDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
@@ -42,6 +43,8 @@ const isShowImportFileDialogActive = ref(false);
 
 const isApplyDiscountDialogActive = ref(false);
 const supplierForDiscount = ref(null);
+const isGeneratePublicLinkDialogActive = ref(false);
+const supplierForPublicLink = ref(null);
 
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
@@ -665,10 +668,14 @@ const handleMarkScarce = async (item) => {
 const updateProductsWithoutSupplierOptions = (options) => {
   pageProductsWithoutSupplier.value = options.page;
   itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
-  if (options.sortBy && options.sortBy.length > 0) {
     sortByProductsWithoutSupplier.value = options.sortBy[0].key;
     orderByProductsWithoutSupplier.value = options.sortBy[0].order;
   }
+};
+
+const handleOpenPublicLink = (supplier) => {
+  supplierForPublicLink.value = supplier;
+  isGeneratePublicLinkDialogActive.value = true;
 };
 </script>
 
@@ -688,6 +695,11 @@ const updateProductsWithoutSupplierOptions = (options) => {
       v-model:isDialogVisible="isApplyDiscountDialogActive"
       :selected-supplier="supplierForDiscount"
       @submit="handleApplyDiscount"
+    />
+    <GeneratePublicLinkDialog
+      v-model:isDialogVisible="isGeneratePublicLinkDialogActive"
+      :selected-supplier="supplierForPublicLink"
+      @refresh="fetchSupplierConnections"
     />
     <DeleteOldProductsDialog
       v-model:isDialogVisible="isDeleteDialogVisible"
@@ -739,6 +751,7 @@ const updateProductsWithoutSupplierOptions = (options) => {
           @load-products="handleShowImportProductsDialog"
           @delete-products="handleDeleteSupplierProducts"
           @open-discount-dialog="handleShowDiscountDialog"
+          @open-public-link="handleOpenPublicLink"
         />
       </VTabsWindowItem>
 

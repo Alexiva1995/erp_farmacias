@@ -491,6 +491,15 @@ class SupplierController extends Controller
     return ApiResponse::success("Producto eliminado de la lista");
 }
 
+    public function generatePublicToken(Supplier $supplier)
+    {
+        $supplier->update([
+            'public_token' => \Illuminate\Support\Str::random(40),
+        ]);
+
+        return ApiResponse::success($supplier->public_token, "Token generado correctamente");
+    }
+
     public function stats()
     {
         $stats = $this->supplierQueryService->getSupplierSummaryStats();

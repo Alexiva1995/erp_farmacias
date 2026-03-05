@@ -17,6 +17,7 @@ const emit = defineEmits([
   "delete-products",
   "open-discount-dialog",
   "update:searchQuery",
+  "open-public-link",
 ]);
 
 const headers = [
@@ -135,6 +136,14 @@ const headers = [
                 "
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"
               />
+            </IconBtn>
+          </template>
+        </VTooltip>
+
+        <VTooltip text="Link Público de Carga" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" color="secondary" @click="emit('open-public-link', item)">
+              <VIcon icon="tabler-link" />
             </IconBtn>
           </template>
         </VTooltip>

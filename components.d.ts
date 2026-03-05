@@ -149,6 +149,7 @@ declare module 'vue' {
     FurnitureEditDialog: typeof import('./resources/js/components/dialogs/FurnitureEditDialog.vue')['default']
     FurnitureFilters: typeof import('./resources/js/components/FurnitureFilters.vue')['default']
     FurnitureTable: typeof import('./resources/js/components/FurnitureTable.vue')['default']
+    GeneratePublicLinkDialog: typeof import('./resources/js/components/dialogs/GeneratePublicLinkDialog.vue')['default']
     GroupEditDialog: typeof import('./resources/js/components/dialogs/GroupEditDialog.vue')['default']
     GroupFilters: typeof import('./resources/js/components/GroupFilters.vue')['default']
     GroupTable: typeof import('./resources/js/components/GroupTable.vue')['default']

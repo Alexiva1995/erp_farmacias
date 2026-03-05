@@ -62,6 +62,7 @@ use App\Http\Controllers\Api\FinancialStatementController;
 use App\Http\Controllers\Api\GeneralSettingController;
 use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Public\SupplierPublicUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +76,8 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
+Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
+Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
 
 // TEMPORAL: Estado de Resultados público para debugging
 Route::prefix("finances")->group(function () {
@@ -482,6 +485,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
         Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
         Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
+        Route::post("/{supplier}/generate-public-token", [SupplierController::class, "generatePublicToken"]);
         // Rutas de configuración FTP/API autoadministrable
         Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
         Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);

@@ -23,7 +23,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/login']
+    const publicRoutes = ['/login', '/p/suppliers/upload/:token']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -48,6 +48,12 @@ const router = createRouter({
         name: 'rrhh-resignations',
         component: () => import('@/pages/rrhh/resignations/index.vue'),
         meta: { requiresAuth: true }
+      },
+      {
+        path: '/p/suppliers/upload/:token',
+        name: 'public-supplier-upload',
+        component: () => import('@/pages/public/SupplierUpload.vue'),
+        meta: { requiresAuth: false }
       }
     ]
     
