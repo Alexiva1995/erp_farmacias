@@ -154,6 +154,9 @@ class SuppliersIaOrderAssistantController extends Controller
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
+        // Guardar total de fallas ANTES de remover las cubiertas por AO
+        $totalFallas = $productosFallas->count();
+
         $productosFallas = $this->product->calcularAOProducts($productosFallas);
         $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
         $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
@@ -192,6 +195,7 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $respuesta["productos_a_reponer"] = $this->orderByDiscount($tempReponer);
         $respuesta["productosFallas"] = $productosFallas;
+        $respuesta["totalFallas"] = $totalFallas;
 
         // $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
         $respuesta["productos_oportunidad_unica"] = [];

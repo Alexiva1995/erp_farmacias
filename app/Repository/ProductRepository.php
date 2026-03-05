@@ -664,7 +664,7 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes .
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $ventasIndividualDelProducto .
                 (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
@@ -787,12 +787,14 @@ class ProductRepository
         if (array_key_exists("stock", $filtros) && $filtros["stock"] !== 'all') {
 
             if ($filtros["stock"] == "exceso") {
-                // Con la nueva fórmula: demanda - stock - AO < 0 = exceso de cobertura
-                $consulta->having("solicitar", "<", 0);
+                // En Sales: solicitar = stock - ventas, positivo = exceso (stock > ventas)
+                $consulta->having("solicitar", ">", 0);
             }
             if ($filtros["stock"] == "fallas") {
+                // En Sales: solicitar = stock - ventas, negativo = falla (ventas > stock)
+                // También incluir productos con ventas=0, stock=0, AO=0 (sin historial)
                 $consulta->havingRaw("(
-                    solicitar > 0 OR 
+                    solicitar < 0 OR 
                     ( 
                       (SELECT COALESCE(SUM(order_details.quantity), 0)
                        FROM order_details JOIN orders ON orders.id = order_details.order_id
