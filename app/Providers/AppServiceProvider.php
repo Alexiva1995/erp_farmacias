@@ -62,6 +62,9 @@ use App\Services\RoleServices;
 use App\Services\PayslipServices;
 use App\Services\SocialBenefitServices;
 use App\Services\TransactionServices;
+use App\Contracts\Accounting\BalanceRepositoryInterface;
+use App\Repositories\Accounting\BalanceRepository;
+use App\Http\Controllers\Api\Accounting\BalanceController;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -131,6 +134,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Product::class)
             ->give(ProductServices::class);
 
+        $this->app->when(\App\Services\Reports\IaAssistantReportService::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
+
         $this->app->when(ExpensesController::class)
             ->needs(Expenses::class)
             ->give(ExpensesServices::class);
@@ -170,6 +177,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(SocialBenefitController::class)
             ->needs(SocialBenefit::class)
             ->give(SocialBenefitServices::class);
+
+        $this->app->bind(Transaction::class, TransactionServices::class);
+
+        $this->app->bind(
+            BalanceRepositoryInterface::class,
+            BalanceRepository::class
+        );
     }
 
     /**

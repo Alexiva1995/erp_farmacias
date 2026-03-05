@@ -1,72 +1,102 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { roundIaAnalysis } from './iaAnalysisRounding';
 
 export default function pdfProductsAssistantReportGenerator(data) {
-    // Cambiar a orientación horizontal ('landscape')
     const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
-        format: [350, 297] // [ancho, alto] - 400mm de ancho (casi el doble de A4)
+        format: [350, 215.9] // Formato Oficio/Letter extendido landscape
     });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const today = new Date();
+    const dateStr = `${today.getDate()}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
     
-    // 1. Logo (opcional - elimina si no necesitas)
+    // --- 0. ORDENAMIENTO POR ANÁLISIS DESCENDENTE ---
+    const sortedData = [...data].sort((a, b) => {
+        const valA = roundIaAnalysis(a.solicitar || 0);
+        const valB = roundIaAnalysis(b.solicitar || 0);
+        return valB - valA; // Lo más necesario primero
+    });
+
+    // --- 1. MEMBRETE OFICIAL ---
     try {
-        const logoSrc = '/images/logoEmpresa.png'; // Ajusta la ruta
-        const logoWidth = 80;
-        const logoHeight = 30;
-        doc.addImage(logoSrc, 'PNG', (pageWidth - logoWidth) / 2, 15, logoWidth, logoHeight);
+        const logoSrc = '/images/logoDonative.png';
+        const logoWidth = 50;
+        const logoHeight = 20;
+        doc.addImage(logoSrc, 'PNG', (pageWidth - logoWidth) / 2, 8, logoWidth, logoHeight);
     } catch (error) {
         console.warn("No se pudo cargar el logo", error);
     }
     
-    // 2. Encabezado
-    const headerY = 50;
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('REPORTE DE PRODUCTOS', pageWidth / 2, headerY, { align: 'center' });
-    
-    // 3. Fecha y detalles
     doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const today = new Date();
-    const dateStr = `Generado el: ${today.getDate()}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-    doc.text(dateStr, pageWidth - 15, headerY + 10, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('FARMACIA BARRIO SUCRE 2024, C.A.', pageWidth / 2, 34, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text('R.I.F. Nº J-50540695-7', pageWidth / 2, 38, { align: 'center' });
     
-    // 4. Configuración de la tabla
+    // --- 2. TÍTULO PRINCIPAL CON BORDES ---
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.4);
+    doc.line(10, 42, pageWidth - 10, 42);
+    
+    doc.setFontSize(11);
+    doc.text('REPORTE ASISTENTE DE PEDIDO IA', pageWidth / 2, 47, { align: 'center' });
+    
+    doc.line(10, 50, pageWidth - 10, 50);
+    
+    // --- 3. CUADRO DE INFORMACIÓN ---
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ciudad: LA FRIA', 12, 56);
+    doc.text(`Fecha de Emisión: ${dateStr}`, 12, 60);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Nº Reporte: IA-' + today.getTime().toString().slice(-6), pageWidth - 12, 56, { align: 'right' });
+    doc.text('Tipo: Análisis de Demanda y Costos', pageWidth - 12, 60, { align: 'right' });
+
+    // --- 4. CONFIGURACIÓN DE TABLA ---
     const headers = [
         [
-            { content: '#', styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: 'ID', styles: { fontStyle: 'bold' } },
-            { content: 'Producto', styles: { fontStyle: 'bold' } },
-            { content: 'Laboratorio', styles: { fontStyle: 'bold' } },
-            { content: 'Costo Min', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Costo Max', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Costo', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Ventas', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Stock', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Promedio Ventas', styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: 'Análisis', styles: { fontStyle: 'bold', halign: 'center' } }
+            { content: '#', styles: { halign: 'center' } },
+            { content: 'ID', styles: { halign: 'center' } },
+            { content: 'PRODUCTO' },
+            { content: 'LABORATORIO' },
+            { content: 'COSTO ACTUAL\n(Ficha / Min-Max)', styles: { halign: 'center' } },
+            { content: 'MEJOR OFERTA', styles: { halign: 'center' } },
+            { content: 'VTAS', styles: { halign: 'center' } },
+            { content: 'STOCK', styles: { halign: 'center' } },
+            { content: 'PROM.', styles: { halign: 'center' } },
+            { content: 'DEMANDA', styles: { halign: 'center' } },
+            { content: 'ANÁLISIS', styles: { halign: 'center' } }
         ]
     ];
     
-    const rows = data.map((product, index) => [
+    const rows = sortedData.map((product, index) => [
         { content: index + 1, styles: { halign: 'center' } },
-        product.id,
+        { content: product.id, styles: { halign: 'center' } },
         product.name,
         product.laboratory?.name || 'N/A',
         { 
-            content: product.cost_min ? parseFloat(product.cost_min).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
+            content: `$${parseFloat(product.unit_cost || 0).toFixed(2)}\n$${parseFloat(product.cost_min || 0).toFixed(2)} / $${parseFloat(product.cost_max || 0).toFixed(2)}`,
+            styles: { halign: 'center', fontSize: 6.5 }
         },
-        { 
-            content: product.cost_max ? parseFloat(product.cost_max).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
-        },
-        { 
-            content: product.unit_cost ? parseFloat(product.unit_cost).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
+        {
+            content: (() => {
+                if (!product.product_suppliers?.length) return '---';
+                const offer = parseFloat(product.product_suppliers[0].unit_cost_usd_with_discount);
+                const current = parseFloat(product.unit_cost || 0);
+                let diffStr = '';
+                if (current > 0) {
+                    const diff = ((current - offer) / current) * 100;
+                    const absDiff = Math.abs(diff).toFixed(0);
+                    // Si diff > 0 es ahorro (oferta menor), si diff < 0 es sobrecosto
+                    diffStr = diff > 0 ? `\n(Ahorro: ${absDiff}%)` : (diff < 0 ? `\n(Sobrep.: ${absDiff}%)` : '');
+                }
+                return `$${offer.toFixed(2)}\n${product.product_suppliers[0].supplier.name}${diffStr}`;
+            })(),
+            styles: { halign: 'center', fontSize: 6.5 }
         },
         { 
             content: product.total_sold_completed ? parseInt(product.total_sold_completed) : 0,
@@ -77,67 +107,69 @@ export default function pdfProductsAssistantReportGenerator(data) {
             styles: { halign: 'center' }
         },
         { 
-            content: product.promedio_calculado ? parseFloat(product.promedio_calculado).toFixed(2) : '0.00',
+            content: product.promedio_calculado ? parseFloat(product.promedio_calculado).toFixed(1) : '0.0',
             styles: { halign: 'right' }
         },
         { 
-            content: product.solicitar ? parseFloat(product.solicitar).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
+            content: product.demanda_ponderada ? parseFloat(product.demanda_ponderada).toFixed(1) : '0.0',
+            styles: { halign: 'right', fontStyle: 'bold' }
+        },
+        { 
+            content: product.solicitar ? roundIaAnalysis(product.solicitar) : '0',
+            styles: { halign: 'right', fontStyle: 'bold', fontSize: 8.5 }
         }
     ]);
     
-    // 5. Generar tabla - Ajustar para orientación horizontal
     autoTable(doc, {
-        startY: headerY + 20,
+        startY: 65,
         head: headers,
         body: rows,
         theme: 'grid',
         headStyles: { 
-            fillColor: [41, 128, 185], // Azul corporativo
-            textColor: 255,
-            halign: 'center'
-        },
-        alternateRowStyles: {
-            fillColor: [245, 245, 245] // Gris claro para filas alternas
+            fillColor: [245, 245, 245], 
+            textColor: 0,
+            halign: 'center',
+            fontSize: 7.5,
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0]
         },
         styles: {
-            fontSize: 9, // Puedes aumentar un poco el tamaño ya que hay más espacio
-            cellPadding: 3,
-            overflow: 'linebreak'
+            fontSize: 7.5,
+            cellPadding: 1.5,
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0],
+            textColor: 0,
+            valign: 'middle'
         },
-        // Ajustar anchos de columna para aprovechar el espacio horizontal
         columnStyles: {
-            0: { cellWidth: 15, halign: 'center' },  // #
-            1: { cellWidth: 20, halign: 'center' },  // ID
-            2: { cellWidth: 60 },                    // Producto (más ancho)
-            3: { cellWidth: 40 },                    // Laboratorio (más ancho)
-            4: { cellWidth: 25, halign: 'right' },   // Costo Min
-            5: { cellWidth: 25, halign: 'right' },   // Costo Max
-            6: { cellWidth: 25, halign: 'right' },   // Costo
-            7: { cellWidth: 20, halign: 'center' },  // Ventas
-            8: { cellWidth: 20, halign: 'center' },  // Stock
-            9: { cellWidth: 30, halign: 'right' },   // Promedio Ventas
-            10: { cellWidth: 25, halign: 'right' }   // Análisis
+            0: { cellWidth: 8 },  // #
+            1: { cellWidth: 12 }, // ID
+            2: { cellWidth: 65 }, // Producto
+            3: { cellWidth: 40 }, // Laboratorio
+            4: { cellWidth: 35 }, // Costo actual vertical
+            5: { cellWidth: 45 }, // Mejor oferta
+            6: { cellWidth: 12 }, // Ventas
+            7: { cellWidth: 12 }, // Stock
+            8: { cellWidth: 15 }, // Prom
+            9: { cellWidth: 15 }, // Demanda
+            10: { cellWidth: 18 } // Análisis
         },
-        margin: { left: 14, right: 14 },
-        pageBreak: 'auto',
-        tableWidth: 'auto'
+        margin: { left: 10, right: 10 },
+        pageBreak: 'auto'
     });
     
-    // 6. Pie de página
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.text(
             `Página ${i} de ${pageCount}`,
             pageWidth / 2,
-            pageHeight - 10, // Usar pageHeight en lugar del valor fijo
+            pageHeight - 8,
             { align: 'center' }
         );
     }
     
-    // 7. Guardar PDF
-    const fileName = `Productos_${today.toISOString().slice(0, 10)}.pdf`;
-    doc.save(fileName);
+    doc.save(`Reporte_IA_${today.toISOString().slice(0, 10)}.pdf`);
 }

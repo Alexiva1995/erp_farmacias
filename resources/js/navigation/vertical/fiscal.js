@@ -25,6 +25,12 @@ export default [
         action: 'manage',
         subject: 'admin',
       },
+      {
+        title: 'Retenciones',
+        to: 'fiscal-retenciones',
+        action: 'manage',
+        subject: 'admin',
+      },
     ],
   },
 ]

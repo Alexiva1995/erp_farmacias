@@ -18,7 +18,15 @@ class PayslipRepository
 {
   public function index(array $data)
   {
+    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
+
     $query = Payslip::with('details.salary.concept')
+      ->select('payslips.*')
+      ->addSelect(DB::raw("(
+          SELECT ROUND(SUM(((employees.total_package_usd - 40) / 2 + 40) * {$cop_rate}), 2)
+          FROM employees
+          WHERE employees.is_active = 1
+      ) as total_full_cop"))
       ->orderByDesc('id');
 
     if (isset($data['startDate']) && $data['startDate']) {
@@ -68,24 +76,111 @@ class PayslipRepository
       ]);
     }
 
-    $payslip->update(['total' => $payslip->details()->sum('amount')]);
+    $payslip->update(['total' => $payslip->details()->where('amount', '>', 0)->sum('amount')]);
 
     return true;
   }
 
-  public function getEligibleSalaryDetails(bool $payFoodVoucher = false)
+  public function getEligibleSalaryDetails(Carbon $date): Collection
   {
-    $query = UsersSalaryDetails::query()
-      ->join('salary_concepts as c', 'c.id', '=', 'users_salary_details.salary_concept_id')
-      ->join('employees as e', 'e.user_id', '=', 'users_salary_details.user_id')
-      ->where('e.is_active', true)
-      ->select('users_salary_details.id', 'users_salary_details.amount');
+    $startOfMonth = $date->copy()->startOfMonth()->format('Y-m-d');
+    $endOfMonth   = $date->copy()->endOfMonth()->format('Y-m-d');
 
-    if (!$payFoodVoucher) {
-      $query->where('c.name', '!=', 'Bono de alimentación');
+    // Si ya existe nómina este mes → es la 2da (paga conceptos variables)
+    $hasPreviousInMonth = Payslip::whereBetween('payslip_date', [$startOfMonth, $endOfMonth])->exists();
+    $isSecondNomina     = $hasPreviousInMonth || $date->day > 15;
+
+    $employees = Employee::where('is_active', true)->with('user.salaries.concept')->get();
+    $details   = collect();
+
+    foreach ($employees as $employee) {
+      if (!$employee->user) continue;
+
+      $salaries     = $employee->user->salaries;
+      $baseSalary   = (float)($salaries->where('concept.name', 'Salario Básico Mensual')->first()?->amount ?? 40.00);
+      $foodVoucher  = (float)($salaries->where('concept.name', 'Bono de Alimentación')->first()?->amount ?? 40.00);
+      $package      = (float)($employee->total_package_usd ?? 0);
+
+      // ── 1. Salario Base (50% por quincena) ──────────────────────────────────
+      $salarioQuincena = round($baseSalary / 2, 2);
+      $details->push($this->createTempDetail($employee, 'Salario Básico Mensual', $salarioQuincena));
+
+      if ($isSecondNomina) {
+        // ── 2. Deducciones Legales (solo en 2da nómina, sobre salario base completo) ─
+        $details->push($this->createTempDetail($employee, 'IVSS (4%)',                  -round($baseSalary * 0.04,  2)));
+        $details->push($this->createTempDetail($employee, 'RPE - Paro Forzoso (0.5%)', -round($baseSalary * 0.005, 2)));
+        $details->push($this->createTempDetail($employee, 'FAOV (1%)',                  -round($baseSalary * 0.01,  2)));
+
+        // ── 3. Bono de Alimentación ─────────────────────────────────────────
+        $details->push($this->createTempDetail($employee, 'Bono de Alimentación', round($foodVoucher, 2)));
+
+        // ── 4. Asistencia Social de Salud (basada en consumo real de farmacia) ─
+        $consumoFarmacia    = $this->getTotalConsumoFarmacia($employee, $date->month, $date->year);
+        $saldoDeudaAnterior = (float)($employee->saldo_deuda ?? 0);
+        $consumoTotal       = $consumoFarmacia + $saldoDeudaAnterior;
+
+        // Espacio disponible dentro del paquete (después de base + alimentación)
+        $disponibleParaVariable = max(0, $package - $baseSalary - $foodVoucher);
+
+        // Salud: lo que efectivamente se puede pagar sin exceder el paquete
+        $saludPagado = round(min($consumoTotal, $disponibleParaVariable), 2);
+        $details->push($this->createTempDetail($employee, 'Asistencia Social de Salud (Art. 105 LOTTT)', $saludPagado));
+
+        // ── 5. Bono Extraordinario (sobrante del paquete tras salud) ───────────
+        $restanteParaBono    = $disponibleParaVariable - $saludPagado;
+        $bonusExtraordinario = max(0, round($restanteParaBono, 2));
+        $details->push($this->createTempDetail($employee, 'Bono Extraordinario de Rendimiento', $bonusExtraordinario));
+
+        // ── 6. Actualizar remanente (saldo_deuda) del empleado ─────────────────
+        $nuevoSaldoDeuda = ($restanteParaBono >= 0)
+          ? 0.0
+          : round(abs($consumoTotal - $disponibleParaVariable), 2);
+
+        $employee->update(['saldo_deuda' => $nuevoSaldoDeuda]);
+      }
     }
 
-    return $query->get();
+    return $details;
+  }
+
+  /**
+   * Calcular consumo total del empleado en la farmacia como cliente (por cédula) en el mes dado.
+   */
+  private function getTotalConsumoFarmacia(Employee $employee, int $month, int $year): float
+  {
+    $identification = $employee->identification;
+    if (!$identification) return 0.0;
+
+    $client = \App\Models\Client::where('identification', $identification)->first();
+    if (!$client) return 0.0;
+
+    return (float) \App\Models\Order::where('client_id', $client->id)
+      ->whereMonth('order_date', $month)
+      ->whereYear('order_date', $year)
+      ->where(function ($q) {
+        $q->where('status', 'Completed')->orWhereNotNull('completed_at');
+      })
+      ->sum('total_amount_usd');
+  }
+
+  private function createTempDetail(Employee $employee, string $conceptName, float $amount): object
+  {
+    $concept = \App\Models\SalaryConcept::where('name', $conceptName)->first();
+    
+    if (!$concept) {
+        throw new \Exception("Concepto de nómina no encontrado: {$conceptName}");
+    }
+
+    $salaryDetail = $employee->user->salaries()->firstOrCreate(
+      ['salary_concept_id' => $concept->id],
+      ['amount' => 0]
+    );
+
+    return (object)[
+      'id' => $salaryDetail->id,
+      'amount' => $amount,
+      'name' => $conceptName
+    ];
   }
 
   public function updateDetails(Payslip $payslip, array $details): bool
@@ -116,7 +211,7 @@ class PayslipRepository
     DB::statement(
       'UPDATE payslips
          SET total = (
-               SELECT COALESCE(SUM(amount), 0)
+               SELECT COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0)
                FROM payslip_details
                WHERE payslip_id = payslips.id
              ),
@@ -189,7 +284,8 @@ class PayslipRepository
 
   public function exportableData(Payslip $payslip, string $type)
   {
-    $currency = $type === 'full' ? 1 : $payslip->exchange_rate;
+    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
+    $currency = $type === 'full' ? $cop_rate : $payslip->exchange_rate;
     $now = now();
     $month = (int) $now->format('n');
     $isDec = $month === 12;
@@ -197,12 +293,13 @@ class PayslipRepository
     $select = [
       DB::raw('@row := @row + 1 as id'),
       'employees.id          as employee_id',
-      'employees.name',
+      DB::raw('COALESCE(employees.name, users.username) as name'),
       'employees.last_name',
       'employees.identification',
       'roles.name            as role',
+      'employees.total_package_usd',
       DB::raw((int) $isDec . '  as is_december'),
-      DB::raw('MAX(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE())) AS active_years'),
+      DB::raw("MAX(TIMESTAMPDIFF(YEAR, employees.created_at, '{$payslip->payslip_date}')) AS active_years"),
     ];
 
     $add = function (array $cols) use (&$select) {
@@ -229,34 +326,36 @@ class PayslipRepository
     }
 
     $add([
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Alimentación'        THEN pd.amount * {$currency} ELSE 0 END), 2) AS food_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Transporte'           THEN pd.amount * {$currency} ELSE 0 END), 2) AS transportation_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Rendimiento'          THEN pd.amount * {$currency} ELSE 0 END), 2) AS performance_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Salario Base'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS base_salary_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Facturas'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS invoice_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Ventas'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS sales_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Ayuda familiar'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS family_support_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Productos Asignados'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS assigned_products_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Bono de Crecimiento de Ventas'                 THEN pd.amount * {$currency} ELSE 0 END), 2) AS sales_growth_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Salario Base'                 THEN ROUND((pd.amount * {$currency}) / 2, 2) ELSE 0 END), 2) AS salary_to_pay_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Seguro Social'                THEN pd.amount * {$currency} ELSE 0 END), 2) AS social_security_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Prestamos'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS loans_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Dias no trabajados'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS days_not_worked_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Liquidacion'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS settlement_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Prestacional de Empleo'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS employment_voucher"),
-      DB::raw("ROUND(MAX(CASE WHEN sc.name = 'Prestación Vivienda y Hacienda'                    THEN pd.amount * {$currency} ELSE 0 END), 2) AS housing_property_benefits_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Alimentación'        THEN pd.amount * {$currency} ELSE 0 END) AS food_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Transporte'           THEN pd.amount * {$currency} ELSE 0 END) AS transportation_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono Extraordinario de Rendimiento' THEN pd.amount * {$currency} ELSE 0 END) AS performance_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Asistencia Social de Salud (Art. 105 LOTTT)' THEN pd.amount * {$currency} ELSE 0 END) AS health_support_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Salario Básico Mensual'       THEN usd.amount * {$currency} ELSE 0 END) AS base_salary_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Facturas'             THEN pd.amount * {$currency} ELSE 0 END) AS invoice_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Ventas'               THEN pd.amount * {$currency} ELSE 0 END) AS sales_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Ayuda familiar'       THEN pd.amount * {$currency} ELSE 0 END) AS family_support_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Productos Asignados'  THEN pd.amount * {$currency} ELSE 0 END) AS assigned_products_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Crecimiento de Ventas' THEN pd.amount * {$currency} ELSE 0 END) AS sales_growth_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Salario Básico Mensual'       THEN pd.amount * {$currency} ELSE 0 END) AS salary_to_pay_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'IVSS (4%)'                    THEN pd.amount * {$currency} ELSE 0 END) AS social_security_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Prestamos'                    THEN pd.amount * {$currency} ELSE 0 END) AS loans_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Dias no trabajados'           THEN pd.amount * {$currency} ELSE 0 END) AS days_not_worked_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Liquidacion'                  THEN pd.amount * {$currency} ELSE 0 END) AS settlement_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'RPE - Paro Forzoso (0.5%)'     THEN pd.amount * {$currency} ELSE 0 END) AS employment_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'FAOV (1%)'                    THEN pd.amount * {$currency} ELSE 0 END) AS housing_property_benefits_voucher"),
     ]);
     DB::statement('SET @row := 0');
 
-    return Payslip::query()
+    return Employee::query()
       ->select($select)
-      ->leftJoin('payslip_details AS pd', 'pd.payslip_id', '=', 'payslips.id')
-      ->leftJoin('users_salary_details AS usd', 'usd.id', '=', 'pd.users_salary_details_id')
-      ->leftJoin('salary_concepts AS sc', 'sc.id', '=', 'usd.salary_concept_id')
-      ->leftJoin('users', 'users.id', '=', 'usd.user_id')
+      ->join('users', 'users.id', '=', 'employees.user_id')
       ->leftJoin('roles', 'roles.id', '=', 'users.role_id')
-      ->leftJoin('employees', 'employees.user_id', '=', 'users.id')
-      ->where('payslips.id', $payslip->id)
+      ->leftJoin('users_salary_details AS usd', 'usd.user_id', '=', 'users.id')
+      ->leftJoin('salary_concepts AS sc', 'sc.id', '=', 'usd.salary_concept_id')
+      ->leftJoin('payslip_details AS pd', function($join) use ($payslip) {
+          $join->on('pd.users_salary_details_id', '=', 'usd.id')
+               ->where('pd.payslip_id', '=', $payslip->id);
+      })
       ->where('employees.is_active', 1)
       ->groupBy(
         'employees.id',
@@ -265,22 +364,24 @@ class PayslipRepository
         'employees.identification',
         'roles.name',
       )
-      ->orderBy('id');
+      ->orderBy('employees.name');
   }
 
   public function getData(Payslip $payslip, string $type): array
   {
-    $end_period = Carbon::createFromFormat('Y-m-d', $payslip->payslip_date);
-    $start_period = $end_period->subWeeks(2)->format('d/m/Y');
-    $end_period = $end_period->addWeeks(2)->format('d/m/Y');
-    $period = "{$start_period} hasta el {$end_period}";
+    $date = Carbon::parse($payslip->payslip_date);
+    $period = $date->day <= 15 
+        ? "01/{$date->format('m/Y')} hasta el 15/{$date->format('m/Y')}"
+        : "16/{$date->format('m/Y')} hasta el {$date->endOfMonth()->format('d/m/Y')}";
 
     return [
       'items' => $this->exportableData($payslip, $type)->get()->toArray(),
       'name' => $payslip->name,
       'date' => $payslip->payslip_date,
       'status' => $payslip->status,
-      'period' => $period
+      'period' => $period,
+      'exchange_rate' => $type === 'full' ? (\App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0) : $payslip->exchange_rate,
+      'currency_code' => $type === 'full' ? 'COP' : 'Bs.'
     ];
   }
 
@@ -305,7 +406,15 @@ class PayslipRepository
       ->leftJoin('employees', 'employees.user_id', '=', 'users.id')
       ->where('payslips.id', $payslip->id)
       ->where('employees.id', $employee->id)
-      ->whereIn('sc.name', ['Bono de Alimentación', 'Salario Base'])
+      ->whereIn('sc.name', [
+        'Bono de Alimentación', 
+        'Salario Básico Mensual', 
+        'Asistencia Social de Salud (Art. 105 LOTTT)',
+        'Bono Extraordinario de Rendimiento',
+        'IVSS (4%)',
+        'RPE - Paro Forzoso (0.5%)',
+        'FAOV (1%)'
+      ])
       ->get()
       ->toArray();
 

@@ -1,16 +1,14 @@
 <script setup>
-import SupplierFilters from "@/components/SupplierFilters.vue";
-import SupplierTable from "@/components/SupplierTable.vue";
-import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
-import SupplierDiscountEditDialog from "@/components/dialogs/SupplierDiscountEditDialog.vue";
-import SupplierDiscountRulesDialog from "@/components/dialogs/SupplierDiscountRulesDialog.vue";
+import SupplierCommercialPanel from "@/components/dialogs/SupplierCommercialPanel.vue";
+import SupplierConnectionDialog from "@/components/dialogs/SupplierConnectionDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
-import SupplierLaboratoryEditDialog from "@/components/dialogs/SupplierLaboratoryEditDialog.vue";
-import SupplierPendingInvoicesDialog from "@/components/dialogs/SupplierPendingInvoicesDialog.vue";
+import SupplierFilters from "@/components/SupplierFilters.vue";
+import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
+import SupplierTable from "@/components/SupplierTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 import { useRouter } from 'vue-router';
 
@@ -24,8 +22,18 @@ const sortBy = ref();
 const orderBy = ref();
 const searchQuery = ref("");
 
+const stats = ref({
+  total_debt: 0,
+  active_suppliers_count: 0,
+  connection_success_rate: 100,
+});
+const isLoadingStats = ref(false);
+
+// Estado para el diálogo de configuración de conexión FTP/API
+const isConnectionDialogVisible = ref(false);
+const connectionSupplier = ref({});
+
 const laboratories = ref([]);
-const laboratoryLinks = ref([]);
 const pendingInvoices = ref({});
 const discountRules = ref([]);
 const paymentRules = ref([]);
@@ -36,15 +44,24 @@ const isLoadingFilters = ref(false);
 const currentSupplier = ref({});
 const supplierFormErrors = ref({});
 const isEditDialogVisible = ref(false);
-const isPaymentRuleDialogVisible = ref(false);
-const isSupplierLaboratoryDialogVisible = ref(false);
+const isCommercialPanelVisible = ref(false);
 const isPendingInvoicesDialogVisible = ref(false);
-const isSupplierDiscountRuleDialogVisible = ref(false);
-const isSupplierDiscountDialogVisible = ref(false);
 
 const checkingApiSupplierId = ref(null);
 
 const router = useRouter();
+
+const fetchStats = async () => {
+  isLoadingStats.value = true;
+  try {
+    const response = await axios.get("/suppliers/stats");
+    stats.value = response.data;
+  } catch (error) {
+    console.error("Error al cargar estadísticas:", error);
+  } finally {
+    isLoadingStats.value = false;
+  }
+};
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -85,12 +102,6 @@ const fetchSuppliers = async () => {
   }
 };
 
-const fetchLaboratoryLinks = async () => {
-  const { data } = await axios.get(
-    `/suppliers/${currentSupplier.value.id}/laboratories`
-  );
-  laboratoryLinks.value = data.laboratory_links;
-};
 
 const fetchDiscountRules = async () => {
   try {
@@ -146,6 +157,7 @@ const fetchSupplierDiscount = async () => {
 };
 
 onMounted(() => {
+  fetchStats();
   fetchSelectOptions();
   fetchSuppliers();
 });
@@ -251,143 +263,77 @@ const handleCheckSupplierApi = async (supplier) => {
   }
 };
 
-const handlePaymentRule = async (supplier) => {
+// Abre el diálogo de configuración de conexión FTP/API
+const handleConfigConnection = (supplier) => {
+  connectionSupplier.value = { ...supplier };
+  isConnectionDialogVisible.value = true;
+};
+
+const handleCommercialPanel = async (supplier) => {
   currentSupplier.value = { ...supplier };
   supplierFormErrors.value = {};
-  isPaymentRuleDialogVisible.value = true;
-
+  isCommercialPanelVisible.value = true;
   loading.value = true;
-  await fetchPaymentRules();
+
+  try {
+    await Promise.all([
+      fetchPaymentRules(),
+      fetchSupplierDiscount(),
+      fetchDiscountRules()
+    ]);
+  } catch (error) {
+    console.error("Error al cargar datos comerciales:", error);
+    toast.error("Error al cargar la configuración comercial.");
+  } finally {
+    loading.value = false;
+  }
 };
 
 const handleSavePaymentRule = async (paymentRuleFormData) => {
-  const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/payment-rules`;
   try {
-   const payload = {
-      rules: paymentRuleFormData,
-    };
+    const payload = { rules: paymentRuleFormData };
     await axios.post(url, payload);
-    toast.success(`Reglas de pago creadas con éxito`);
-    isPaymentRuleDialogVisible.value = false;
+    toast.success(`Reglas de pronto pago guardadas`);
     await fetchPaymentRules();
-    await fetchSuppliers();
   } catch (error) {
-    if (error.response && error.response.status === 422) {
-      supplierFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
-    } else {
-      console.error("Error al guardar/crear las reglas de pago:", error);
-      toast.error("Hubo un error al guardar las reglas de pago.");
-    }
+    console.error("Error al guardar reglas de pago:", error);
+    toast.error("Error al guardar reglas de pago.");
   }
 };
 
-const handleSupplierLaboratory = async (supplier) => {
-  currentSupplier.value = { ...supplier };
-  supplierFormErrors.value = {};
-  isSupplierLaboratoryDialogVisible.value = true;
-
-  await fetchLaboratoryLinks();
-};
-
-const handleSaveSupplierLaboratory = async (supplierLaboratoryFormData) => {
-  const url = `/suppliers/${currentSupplier.value.id}/laboratories`;
-  try {
-    const payload = {
-      rulesLaboratory: supplierLaboratoryFormData,
-    };
-    await axios.post(url, payload);
-    toast.success("Laboratorio vinculado con éxito");
-    isSupplierLaboratoryDialogVisible.value = false;
-    await fetchLaboratoryLinks();
-    await fetchSuppliers();
-  } catch (error) {
-    if (error.response && error.response.status === 422) {
-      supplierFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
-    } else {
-      console.error("Error al guardar/crear la regla de pago:", error);
-      toast.error("Hubo un error al guardar la regla de pago.");
-    }
-  }
-};
-
-const handleSupplierPendingInvoices = async (supplier) => {
- // currentSupplier.value = { ...supplier };
- // isPendingInvoicesDialogVisible.value = true;
- // await fetchPendingInvoices();
- const supplierId = supplier.id;
- await router.push({ 
-        name: 'finances-pending-payments', 
-        query: { 
-          supplierId: supplierId 
-        }
-      });
-};
-
-const handleSupplierDiscountRule = async (supplier) => {
-  currentSupplier.value = { ...supplier };
-  isSupplierDiscountRuleDialogVisible.value = true;
-
-  loading.value = true;
-  await fetchLaboratoryLinks();
-  await fetchDiscountRules();
-};
 
 const handleSaveDiscountRules = async (formData) => {
   const url = `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`;
   try {
-    const payload = {
-      rules: formData,
-    };
+    const payload = { rules: formData };
     await axios.post(url, payload);
-    toast.success("Reglas de descuento guardadas con éxito");
-    isSupplierDiscountRuleDialogVisible.value = false;
-
+    toast.success("Escalas de descuento guardadas");
     await fetchDiscountRules();
-    await fetchSuppliers();
   } catch (error) {
-    if (error.response?.status === 422) {
-      supplierFormErrors.value = error.response.data.errors;
-      toast.error("Corrige los errores del formulario.");
-    } else {
-      console.error("Error al guardar reglas de descuento:", error);
-      toast.error("Hubo un error al guardar las reglas.");
-    }
+    console.error("Error al guardar escalas:", error);
+    toast.error("Error al guardar escalas.");
   }
-};
-
-const handleSupplierDiscount = async (supplier) => {
-  currentSupplier.value = { ...supplier };
-  supplierFormErrors.value = {};
-  isSupplierDiscountDialogVisible.value = true;
-
-  loading.value = true;
-  await fetchSupplierDiscount();
 };
 
 const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
-  const isNewSupplier = !currentSupplier.value.id;
   const url = `/suppliers/${currentSupplier.value.id}/discounts`;
   try {
-  const payload = {
-      discounts: supplierDiscountFormData,
-    };
+    const payload = { discounts: supplierDiscountFormData };
     await axios.post(url, payload);
-    toast.success(`Descuentos creados con éxito`);
-    isPaymentRuleDialogVisible.value = false;
+    toast.success(`Descuentos guardados con éxito`);
     await fetchSupplierDiscount();
-    await fetchSuppliers();
   } catch (error) {
-    if (error.response && error.response.status === 422) {
-      supplierFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
-    } else {
-      console.error("Error al guardar/crear los descuentos:", error);
-      toast.error("Hubo un error al guardar los descuentos.");
-    }
+    console.error("Error al guardar descuentos:", error);
+    toast.error("Error al guardar descuentos.");
   }
+};
+
+const handleSupplierPendingInvoices = async (supplier) => {
+  await router.push({ 
+    name: 'finances-pending-payments', 
+    query: { supplierId: supplier.id } 
+  });
 };
 
 const clearFormErrors = () => {
@@ -417,13 +363,15 @@ const updateTableOptions = (options) => {
 </script>
 
 <template>
-  <div>
+  <div class="d-flex flex-column gap-6">
     <SupplierFilters
       v-model:searchQuery="searchQuery"
       @clear="handleClearFilters"
       @sort="handleSort"
       @add-supplier="handleAddSupplier"
     />
+
+    <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
 
     <SupplierTable
       :suppliers="suppliers"
@@ -435,12 +383,10 @@ const updateTableOptions = (options) => {
       @update:options="updateTableOptions"
       @edit-supplier="handleEditSupplier"
       @delete-supplier="handleDeleteSupplier"
-      @payment-rule="handlePaymentRule"
-      @supplier-laboratory="handleSupplierLaboratory"
+      @commercial-panel="handleCommercialPanel"
       @supplier-pending-invoices="handleSupplierPendingInvoices"
-      @supplier-discount-rule="handleSupplierDiscountRule"
       @check-supplier-api="handleCheckSupplierApi"
-      @supplier-discount="handleSupplierDiscount"
+      @config-connection="handleConfigConnection"
     />
 
     <SupplierEditDialog
@@ -451,51 +397,25 @@ const updateTableOptions = (options) => {
       @clear-errors="clearFormErrors"
     />
 
-    <PaymentRuleEditDialog
-      v-model="isPaymentRuleDialogVisible"
-      :supplier="currentSupplier"
-      :payment-rules="paymentRules"
-      :loading="loading"
-      :errors="supplierFormErrors"
-      @save="handleSavePaymentRule"
-      @clear-errors="clearFormErrors"
-    />
-
-    <SupplierLaboratoryEditDialog
-      v-model="isSupplierLaboratoryDialogVisible"
+    <SupplierCommercialPanel
+      v-model="isCommercialPanelVisible"
       :supplier="currentSupplier"
       :laboratories="laboratories"
-      :laboratory-links="laboratoryLinks"
-      :errors="supplierFormErrors"
-      @save="handleSaveSupplierLaboratory"
-      @clear-errors="clearFormErrors"
-    />
-
-    <SupplierPendingInvoicesDialog
-      v-model="isPendingInvoicesDialogVisible"
-      :pending-invoices="pendingInvoices"
-      :loading="loading"
-    />
-
-    <SupplierDiscountRulesDialog
-      v-model="isSupplierDiscountRuleDialogVisible"
-      :supplier="currentSupplier"
-      :laboratories="laboratories"
-      :laboratory-links="laboratoryLinks"
+      :supplier-discount="supplierDiscount"
       :discount-rules="discountRules"
       :loading="loading"
-      @save="handleSaveDiscountRules"
+      :errors="supplierFormErrors"
+      @save-payment-rules="handleSavePaymentRule"
+      @save-discounts="handleSaveSupplierDiscount"
+      @save-discount-rules="handleSaveDiscountRules"
       @clear-errors="clearFormErrors"
     />
 
-    <SupplierDiscountEditDialog
-      v-model="isSupplierDiscountDialogVisible"
-      :supplier="currentSupplier"
-      :supplier-discount="supplierDiscount"
-      :loading="loading"
-      :errors="supplierFormErrors"
-      @save="handleSaveSupplierDiscount"
-      @clear-errors="clearFormErrors"
+    <!-- Diálogo de Configuración de Conexión FTP/API -->
+    <SupplierConnectionDialog
+      v-model="isConnectionDialogVisible"
+      :supplier="connectionSupplier"
+      @saved="fetchSuppliers"
     />
-  </div>
+</div>
 </template>

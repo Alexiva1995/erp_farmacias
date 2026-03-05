@@ -1,4 +1,6 @@
 <script setup>
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -74,19 +76,18 @@ const groupBy = [{ key: "group.name" }];
               :class="{ 'text-primary': item.psychotropic == 1 }"
             >
               {{ item.name }}
-
-              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
 
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
+            <span class="text-sm text-disabled">
+              {{ item.active_ingredient }}
+              <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+            </span>
           </div>
         </div>
       </template>
       <template #item.solicitar="{ item }">
-        <span :style="item.solicitar > 0 ? 'color:#28c76f;' : 'color:#dd4d4f;'"
-          >{{ item.solicitar > 0 ? "+" : "" }}{{ item.solicitar }}</span
+        <span :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f;' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#dd4d4f;' : 'color:inherit;'"
+          >{{ roundIaAnalysis(item.solicitar) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar) }}</span
         >
       </template>
     </VDataTableServer>

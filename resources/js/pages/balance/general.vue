@@ -1,410 +1,291 @@
 <script setup>
-import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, reactive, ref } from "vue";
+import { useBalance } from "@/composables/useBalance";
+import { hexToRgb } from "@layouts/utils";
+import { computed, onMounted } from "vue";
+import { useTheme } from "vuetify";
 
-const balanceData = reactive({
-  activo: {
-    efectivo: 0,
-    inventario: 0,
-    mobiliario: 0,
-  },
-  pasivo: {
-    deudasProveedores: 0,
-    prestamos: 0,
-    depreciacion: 0,
-  },
+const vuetifyTheme = useTheme();
+const { balance, loading, fetchBalance, formatCurrency } = useBalance();
+
+const chartOptions = computed(() => {
+  const currentTheme = vuetifyTheme.current.value.colors;
+  const variableTheme = vuetifyTheme.current.value.variables;
+  const labelColor = `rgba(${hexToRgb(currentTheme["on-surface"])},${variableTheme["disabled-opacity"]})`;
+
+  return {
+    donut: {
+      labels: {
+        show: true,
+        name: { fontSize: "1rem" },
+        value: {
+          fontSize: "1.2rem",
+          color: currentTheme.primary,
+          formatter: (val) => formatCurrency(val),
+        },
+        total: {
+          show: true,
+          label: "Total Activos",
+          fontSize: "1rem",
+          formatter: () => formatCurrency(balance.assets.total_bruto),
+        },
+      },
+      legend: { show: false },
+      dataLabels: { enabled: false },
+      stroke: { width: 0 },
+      colors: [currentTheme.success, currentTheme.info, currentTheme.warning],
+      states: {
+        hover: { filter: { type: "none" } },
+        active: { filter: { type: "none" } },
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: "70%",
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                fontSize: "13px",
+                label: "Total Activos",
+                formatter: () => formatCurrency(balance.assets.total_bruto),
+              },
+            },
+          },
+        },
+      },
+    },
+    bar: {
+        chart: { type: 'bar', toolbar: { show: false } },
+        plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
+        dataLabels: { enabled: false },
+        xaxis: {
+            categories: ['Activos Netos', 'Pasivos', 'Patrimonio'],
+            labels: { style: { colors: labelColor } }
+        },
+        colors: [currentTheme.success, currentTheme.error, currentTheme.primary]
+    }
+  };
 });
 
-const loading = ref(false);
-const cashData = ref({});
-const inventoryData = ref({});
-const supplierDebtsData = ref({});
-const furnitureData = ref({});
-const loansData = ref({});
-const depreciationData = ref({});
+const donutSeries = computed(() => [
+  balance.assets.details.cash,
+  balance.assets.details.inventory,
+  balance.assets.details.furniture_bruto,
+]);
 
-const totalActivo = computed(() => {
-  return (
-    balanceData.activo.efectivo +
-    balanceData.activo.inventario +
-    balanceData.activo.mobiliario
-  );
-});
-
-const totalPasivo = computed(() => {
-  return (
-    balanceData.pasivo.deudasProveedores +
-    balanceData.pasivo.prestamos +
-    balanceData.pasivo.depreciacion
-  );
-});
-
-const patrimonioNeto = computed(() => {
-  return totalActivo.value - totalPasivo.value;
-});
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
-
-const fetchCashData = async () => {
-  try {
-    const { data } = await axios.get("/finances/transactions/stats");
-    cashData.value = data.data;
-    balanceData.activo.efectivo = cashData.value.total_value || 0;
-  } catch (error) {
-    console.error("Error al cargar datos de efectivo:", error);
-    toast.error("No se pudieron cargar los datos de efectivo.");
-  }
-};
-
-const fetchInventoryData = async () => {
-  try {
-    const { data } = await axios.get("/products/inventory/value");
-    inventoryData.value = data.data;
-    balanceData.activo.inventario = inventoryData.value.total_value || 0;
-  } catch (error) {
-    console.error("Error al cargar datos de inventario:", error);
-    toast.error("No se pudieron cargar los datos de inventario.");
-  }
-};
-
-const fetchFurnitureData = async () => {
-  try {
-    const { data } = await axios.get("/furniture/value");
-    furnitureData.value = data.data;
-    balanceData.activo.mobiliario = furnitureData.value.total_value || 0;
-  } catch (error) {
-    console.error("Error al cargar datos de mobiliario:", error);
-    toast.error("No se pudieron cargar los datos de mobiliario.");
-  }
-};
-
-const fetchSupplierDebtsData = async () => {
-  try {
-    const { data } = await axios.get("/invoices/supplier/debts");
-    supplierDebtsData.value = data.data;
-    balanceData.pasivo.deudasProveedores =
-      supplierDebtsData.value.total_debts || 0;
-  } catch (error) {
-    console.error("Error al cargar datos de deudas con proveedores:", error);
-    toast.error("No se pudieron cargar los datos de deudas con proveedores.");
-  }
-};
-
-const fetchLoansData = async () => {
-  try {
-    const { data } = await axios.get("/loans/balance");
-    loansData.value = data.data;
-    balanceData.pasivo.prestamos = loansData.value.total_balance || 0;
-  } catch (error) {
-    console.error("Error al cargar datos de préstamos:", error);
-    toast.error("No se pudieron cargar los datos de préstamos.");
-  }
-};
-
-const fetchDepreciationData = async () => {
-  try {
-    const { data } = await axios.get("/furniture/depreciation");
-    depreciationData.value = data.data;
-    balanceData.pasivo.depreciacion =
-      depreciationData.value.total_depreciation || 0;
-  } catch (error) {
-    console.error("Error al cargar datos de depreciación:", error);
-    toast.error("No se pudieron cargar los datos de depreciación.");
-  }
-};
-
-const fetchBalanceData = async () => {
-  loading.value = true;
-  try {
-    await Promise.all([
-      fetchCashData(),
-      fetchInventoryData(),
-      fetchFurnitureData(),
-      fetchSupplierDebtsData(),
-      fetchLoansData(),
-      fetchDepreciationData(),
-    ]);
-
-    toast.success("Datos del balance actualizados");
-  } catch (error) {
-    console.error("Error al cargar datos del balance:", error);
-    toast.error("No se pudieron cargar los datos del balance.");
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleExport = async (format) => {
-  toast.info(`Exportando balance a ${format}...`);
-};
-
-const handleRefresh = () => {
-  fetchBalanceData();
-};
+const barSeries = computed(() => [{
+    name: 'Monto',
+    data: [balance.assets.total_neto, balance.liabilities.total, balance.equity]
+}]);
 
 onMounted(() => {
-  fetchBalanceData();
+  fetchBalance();
 });
 </script>
 
 <template>
-  <div>
-    <VRow>
-      <!-- Card de Activos -->
-      <VCol cols="12" md="6">
-        <VCard class="h-100" elevation="2">
-          <VCardTitle class="d-flex align-center bg-success text-white">
-            <VIcon class="mr-2">mdi-trending-up</VIcon>
-            Activos
-            <VSpacer />
-            <span class="text-h6">{{ formatCurrency(totalActivo) }}</span>
-          </VCardTitle>
-
-          <VCardText class="pa-0">
-            <VList>
-              <VListItem class="px-4 py-3">
-                <template #prepend>
-                  <VIcon color="green" class="mr-3">mdi-cash</VIcon>
-                </template>
-                <VListItemTitle class="font-weight-medium">
-                  Efectivo
-                  <VChip
-                    v-if="cashData.total_value"
-                    color="success"
-                    variant="outlined"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    Real-time
-                  </VChip>
-                </VListItemTitle>
-                <VListItemSubtitle class="text-caption">
-                  Datos en tiempo real del flujo de caja
-                </VListItemSubtitle>
-                <template #append>
-                  <VChip color="success" variant="flat" size="small">
-                    {{ formatCurrency(balanceData.activo.efectivo) }}
-                  </VChip>
-                </template>
-              </VListItem>
-
-              <VDivider />
-
-              <VListItem class="px-4 py-3">
-                <template #prepend>
-                  <VIcon color="blue" class="mr-3">mdi-package-variant</VIcon>
-                </template>
-                <VListItemTitle class="font-weight-medium">
-                  Inventario
-                  <VChip
-                    v-if="inventoryData.total_value"
-                    color="info"
-                    variant="outlined"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    Real-time
-                  </VChip>
-                </VListItemTitle>
-                <VListItemSubtitle class="text-caption">
-                  Stock × Costo unitario de todos los productos
-                </VListItemSubtitle>
-                <template #append>
-                  <VChip color="info" variant="flat" size="small">
-                    {{ formatCurrency(balanceData.activo.inventario) }}
-                  </VChip>
-                </template>
-              </VListItem>
-
-              <VDivider />
-
-              <VListItem class="px-4 py-3">
-                <template #prepend>
-                  <VIcon color="orange" class="mr-3">mdi-sofa</VIcon>
-                </template>
-                <VListItemTitle class="font-weight-medium">
-                  Mobiliario
-                  <VChip
-                    v-if="furnitureData.total_value"
-                    color="warning"
-                    variant="outlined"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    Real-time
-                  </VChip>
-                </VListItemTitle>
-                <VListItemSubtitle class="text-caption">
-                  Valor actual con depreciación aplicada
-                </VListItemSubtitle>
-                <template #append>
-                  <VChip color="warning" variant="flat" size="small">
-                    {{ formatCurrency(balanceData.activo.mobiliario) }}
-                  </VChip>
-                </template>
-              </VListItem>
-            </VList>
-          </VCardText>
-
-          <VCardActions class="px-4 py-3 bg-grey-lighten-5">
-            <VIcon color="success" size="small">mdi-plus-circle</VIcon>
-            <span class="text-body-2 text-medium-emphasis ml-1">
-              Total de activos disponibles
-            </span>
-          </VCardActions>
-        </VCard>
-      </VCol>
-
-      <!-- Card de Pasivos -->
-      <VCol cols="12" md="6">
-        <VCard class="h-100" elevation="2">
-          <VCardTitle class="d-flex align-center bg-error text-white">
-            <VIcon class="mr-2">mdi-trending-down</VIcon>
-            Pasivos
-            <VSpacer />
-            <span class="text-h6">{{ formatCurrency(totalPasivo) }}</span>
-          </VCardTitle>
-
-          <VCardText class="pa-0">
-            <VList>
-              <VListItem class="px-4 py-3">
-                <template #prepend>
-                  <VIcon color="red" class="mr-3">mdi-account-group</VIcon>
-                </template>
-                <VListItemTitle class="font-weight-medium">
-                  Deudas con Proveedores
-                  <VChip
-                    v-if="supplierDebtsData.total_debts !== undefined"
-                    color="error"
-                    variant="outlined"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    Real-time
-                  </VChip>
-                </VListItemTitle>
-                <VListItemSubtitle class="text-caption">
-                  Facturas pendientes de pago
-                </VListItemSubtitle>
-                <template #append>
-                  <VChip color="error" variant="flat" size="small">
-                    {{ formatCurrency(balanceData.pasivo.deudasProveedores) }}
-                  </VChip>
-                </template>
-              </VListItem>
-
-              <VDivider />
-
-              <VListItem class="px-4 py-3">
-                <template #prepend>
-                  <VIcon color="purple" class="mr-3">mdi-bank</VIcon>
-                </template>
-                <VListItemTitle class="font-weight-medium">
-                  Préstamos
-                  <VChip
-                    v-if="loansData.total_balance !== undefined"
-                    color="secondary"
-                    variant="outlined"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    Real-time
-                  </VChip>
-                </VListItemTitle>
-                <VListItemSubtitle class="text-caption">
-                  Saldo pendiente de todos los préstamos
-                </VListItemSubtitle>
-                <template #append>
-                  <VChip color="secondary" variant="flat" size="small">
-                    {{ formatCurrency(balanceData.pasivo.prestamos) }}
-                  </VChip>
-                </template>
-              </VListItem>
-
-              <VDivider />
-
-              <VListItem class="px-4 py-3">
-                <template #prepend>
-                  <VIcon color="orange" class="mr-3">mdi-trending-down-2</VIcon>
-                </template>
-                <VListItemTitle class="font-weight-medium">
-                  Depreciación
-                  <VChip
-                    v-if="depreciationData.total_depreciation !== undefined"
-                    color="warning"
-                    variant="outlined"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    Real-time
-                  </VChip>
-                </VListItemTitle>
-                <VListItemSubtitle class="text-caption">
-                  Valor total depreciado del mobiliario
-                </VListItemSubtitle>
-                <template #append>
-                  <VChip color="warning" variant="flat" size="small">
-                    {{ formatCurrency(balanceData.pasivo.depreciacion) }}
-                  </VChip>
-                </template>
-              </VListItem>
-            </VList>
-          </VCardText>
-
-          <VCardActions class="px-4 py-3 bg-grey-lighten-5">
-            <VIcon color="error" size="small">mdi-minus-circle</VIcon>
-            <span class="text-body-2 text-medium-emphasis ml-1">
-              Total de obligaciones pendientes
-            </span>
-          </VCardActions>
-        </VCard>
-      </VCol>
-    </VRow>
-
-    <!-- Resumen del Patrimonio Neto -->
-    <VRow class="mt-4">
-      <VCol cols="12">
-        <VCard
-          elevation="3"
-          :color="patrimonioNeto >= 0 ? 'success' : 'error'"
-          variant="tonal"
-        >
-          <VCardText class="d-flex align-center justify-center py-6">
-            <div class="text-center">
-              <VIcon
-                :icon="
-                  patrimonioNeto >= 0 ? 'mdi-trending-up' : 'mdi-trending-down'
-                "
-                size="48"
-                :color="patrimonioNeto >= 0 ? 'success' : 'error'"
-                class="mb-2"
-              />
-              <h3 class="text-h5 font-weight-bold mb-1">Patrimonio Neto</h3>
-              <div class="text-h4 font-weight-bold">
-                {{ formatCurrency(patrimonioNeto) }}
-              </div>
-              <p class="text-body-2 mt-2 opacity-80">
-                {{
-                  patrimonioNeto >= 0
-                    ? "Situación financiera positiva"
-                    : "Revisar obligaciones pendientes"
-                }}
-              </p>
+  <div class="balance-premium">
+    <VRow class="mb-6">
+        <VCol cols="12">
+            <div class="d-flex align-center justify-space-between">
+                <div>
+                    <h4 class="text-h4 font-weight-bold mb-1">Balance General</h4>
+                    <p class="text-body-1 opacity-70">Análisis detallado de la salud financiera de la farmacia</p>
+                </div>
+                <VBtn 
+                    variant="tonal" 
+                    prepend-icon="tabler-refresh" 
+                    :loading="loading"
+                    @click="fetchBalance"
+                >
+                    Actualizar Datos
+                </VBtn>
             </div>
-          </VCardText>
+        </VCol>
+    </VRow>
+
+    <!-- CARDS DE RATIOS -->
+    <VRow class="mb-6">
+        <VCol cols="12" md="4">
+            <VCard elevation="2" class="h-100">
+                <VCardText class="d-flex align-center">
+                    <VAvatar color="primary" variant="tonal" rounded size="52" class="me-4 text-h5">
+                        <VIcon icon="tabler-scale" />
+                    </VAvatar>
+                    <div>
+                        <p class="mb-0 text-caption opacity-70">Ratio de Liquidez</p>
+                        <h5 class="text-h5 font-weight-bold">{{ balance.ratios.liquidity }}</h5>
+                        <VChip size="x-small" :color="balance.ratios.liquidity >= 1.5 ? 'success' : 'warning'" class="mt-1">
+                            {{ balance.ratios.liquidity >= 1.5 ? 'Óptimo' : 'Vigilar' }}
+                        </VChip>
+                    </div>
+                </VCardText>
+            </VCard>
+        </VCol>
+        <VCol cols="12" md="4">
+            <VCard elevation="2" class="h-100">
+                <VCardText class="d-flex align-center">
+                    <VAvatar color="info" variant="tonal" rounded size="52" class="me-4 text-h5">
+                        <VIcon icon="tabler-shield-check" />
+                    </VAvatar>
+                    <div>
+                        <p class="mb-0 text-caption opacity-70">Solvencia</p>
+                        <h5 class="text-h5 font-weight-bold">{{ balance.ratios.solvency }}</h5>
+                        <VChip size="x-small" color="info" class="mt-1">Nivel seguro</VChip>
+                    </div>
+                </VCardText>
+            </VCard>
+        </VCol>
+        <VCol cols="12" md="4">
+            <VCard elevation="3" :color="balance.equity >= 0 ? 'primary' : 'error'" class="h-100">
+                <VCardText class="text-center py-6 text-white">
+                    <p class="mb-1 text-uppercase text-caption font-weight-bold">Patrimonio Neto</p>
+                    <h3 class="text-h3 font-weight-black">{{ formatCurrency(balance.equity) }}</h3>
+                </VCardText>
+            </VCard>
+        </VCol>
+    </VRow>
+
+    <VRow>
+      <!-- COLUMNA DE ACTIVOS -->
+      <VCol cols="12" lg="7">
+        <VCard elevation="2">
+            <VCardItem>
+                <VCardTitle class="d-flex align-center">
+                    <VIcon icon="tabler-trending-up" color="success" class="me-2" />
+                    Estructura de Activos
+                </VCardTitle>
+            </VCardItem>
+            <VDivider />
+            <VRow no-gutters>
+                <VCol cols="12" sm="5" class="pa-4 d-flex align-center justify-center">
+                    <VueApexCharts
+                        type="donut"
+                        height="250"
+                        :options="chartOptions.donut"
+                        :series="donutSeries"
+                    />
+                </VCol>
+                <VCol cols="12" sm="7">
+                    <VList density="comfortable" class="pa-4">
+                        <VListItem>
+                            <template #prepend>
+                                <VAvatar size="32" color="success" variant="tonal" class="me-3">
+                                    <VIcon icon="tabler-cash" size="18" />
+                                </VAvatar>
+                            </template>
+                            <VListItemTitle class="font-weight-medium">Efectivo en Caja</VListItemTitle>
+                            <template #append>
+                                <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.cash) }}</span>
+                            </template>
+                        </VListItem>
+                        <VListItem>
+                            <template #prepend>
+                                <VAvatar size="32" color="info" variant="tonal" class="me-3">
+                                    <VIcon icon="tabler-package" size="18" />
+                                </VAvatar>
+                            </template>
+                            <VListItemTitle class="font-weight-medium">Inventario</VListItemTitle>
+                            <template #append>
+                                <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.inventory) }}</span>
+                            </template>
+                        </VListItem>
+                        <VListItem>
+                            <template #prepend>
+                                <VAvatar size="32" color="warning" variant="tonal" class="me-3">
+                                    <VIcon icon="tabler-sofa" size="18" />
+                                </VAvatar>
+                            </template>
+                            <VListItemTitle class="font-weight-medium">Mobiliario Bruto</VListItemTitle>
+                            <template #append>
+                                <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.furniture_bruto) }}</span>
+                            </template>
+                        </VListItem>
+                        
+                        <VDivider class="my-2" />
+                        
+                        <VListItem class="text-error">
+                            <template #prepend>
+                                <VIcon icon="tabler-trending-down" class="me-3" />
+                            </template>
+                            <VListItemTitle>Depreciación Acumulada</VListItemTitle>
+                            <template #append>
+                                <span class="font-weight-bold">- {{ formatCurrency(balance.assets.depreciation) }}</span>
+                            </template>
+                        </VListItem>
+                    </VList>
+                    <div class="px-6 pb-6 pt-2">
+                        <VAlert color="success" variant="tonal" rounded density="compact">
+                            <div class="d-flex justify-space-between align-center">
+                                <span class="text-caption font-weight-bold text-uppercase">Total Activos Netos</span>
+                                <span class="text-h6 font-weight-black">{{ formatCurrency(balance.assets.total_neto) }}</span>
+                            </div>
+                        </VAlert>
+                    </div>
+                </VCol>
+            </VRow>
+        </VCard>
+      </VCol>
+
+      <!-- COLUMNA DE PASIVOS -->
+      <VCol cols="12" lg="5">
+        <VCard elevation="2" class="mb-6">
+            <VCardItem>
+                <VCardTitle class="d-flex align-center">
+                    <VIcon icon="tabler-trending-down" color="error" class="me-2" />
+                    Pasivos y Obligaciones
+                </VCardTitle>
+            </VCardItem>
+            <VDivider />
+            <VCardText>
+                <VList density="comfortable">
+                    <VListItem>
+                        <template #prepend>
+                            <VIcon icon="tabler-users" color="error" class="me-3" />
+                        </template>
+                        <VListItemTitle>Cuentas por Pagar (Proveedores)</VListItemTitle>
+                        <template #append>
+                            <span class="font-weight-bold">{{ formatCurrency(balance.liabilities.details.supplier_debts) }}</span>
+                        </template>
+                    </VListItem>
+                    <VListItem>
+                        <template #prepend>
+                            <VIcon icon="tabler-building-bank" color="secondary" class="me-3" />
+                        </template>
+                        <VListItemTitle>Préstamos Bancarios</VListItemTitle>
+                        <template #append>
+                            <span class="font-weight-bold">{{ formatCurrency(balance.liabilities.details.loans) }}</span>
+                        </template>
+                    </VListItem>
+                </VList>
+                <VDivider class="my-4" />
+                <div class="d-flex justify-space-between px-4 align-center mb-2">
+                    <span class="text-h6">Total Pasivos</span>
+                    <span class="text-h6 text-error font-weight-black">{{ formatCurrency(balance.liabilities.total) }}</span>
+                </div>
+            </VCardText>
+        </VCard>
+
+        <!-- GRÁFICO RESUMEN -->
+        <VCard elevation="2">
+            <VCardText>
+                <VueApexCharts
+                    type="bar"
+                    height="180"
+                    :options="chartOptions.bar"
+                    :series="barSeries"
+                />
+            </VCardText>
         </VCard>
       </VCol>
     </VRow>
-
-    <!-- Loading Overlay -->
-    <VOverlay v-model="loading" class="align-center justify-center">
-      <VProgressCircular color="primary" indeterminate size="64" />
-    </VOverlay>
   </div>
 </template>
+
+<style lang="scss">
+.balance-premium {
+  .v-card {
+    border-radius: 12px;
+  }
+}
+</style>

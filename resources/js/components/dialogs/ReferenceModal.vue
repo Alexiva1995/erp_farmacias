@@ -1,64 +1,33 @@
 <script setup>
-import { defineProps, defineEmits, computed, nextTick } from "vue";
-import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import TicketHeader from "@/components/TicketHeader.vue";
 import axios from "@/plugins/axios";
-import SectionDivider from "@/components/SectionDivider.vue";
+import { toast } from "@/plugins/sweetalert";
+import { computed, ref } from "vue";
 
 const props = defineProps({
-  isDialogVisible: {
-    type: Boolean,
-    required: true,
-  },
-  reference: {
-    type: Array,
-    default: () => [],
-  },
-  cashData: {
-    type: Object,
-    default: () => ({}),
-  },
+  isDialogVisible: { type: Boolean, required: true },
+  reference: { type: Array, default: () => [] },
+  cashData: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:isDialogVisible"]);
+const emit = defineEmits(["update:isDialogVisible", "modal-closed", "close"]);
+
+const loading = ref(false);
 
 const dialogVisible = computed({
-  get() {
-    return props.isDialogVisible;
-  },
-  set(value) {
-    emit("update:isDialogVisible", value);
-  },
+  get: () => props.isDialogVisible,
+  set: (val) => emit("update:isDialogVisible", val),
 });
 
-const closeModal = () => {
-  emit("update:isDialogVisible", false);
-  emit("modal-closed");
-};
-
-const groupedReferences = computed(() => {
-  if (!Array.isArray(props.reference) || props.reference.length === 0) {
-    return {};
-  }
-
-  return props.reference.reduce((acc, currentRef) => {
-    const currency = currentRef.order_currency;
-    const method = currentRef.method;
-
-    if (!acc[currency]) {
-      acc[currency] = {};
-    }
-
-    if (!acc[currency][method]) {
-      acc[currency][method] = [];
-    }
-
-    acc[currency][method].push(currentRef);
-    return acc;
-  }, {});
-});
+const headers = [
+  { title: "VENDEDOR", key: "seller_name", sortable: true },
+  { title: "MÉTODO", key: "method_label", sortable: true },
+  { title: "REFERENCIA", key: "reference", sortable: true },
+  { title: "MONTO", key: "amount", align: "end", sortable: true },
+  { title: "ESTADO", key: "actions", align: "center", sortable: false },
+];
 
 const translateMethod = (methodKey) => {
+  if (!methodKey) return "Desconocido";
   const translations = {
     CARD: "Tarjeta",
     BANK_TRANSFER: "Transferencia",
@@ -67,201 +36,185 @@ const translateMethod = (methodKey) => {
     PAYPAL: "PayPal",
     MOBILE_PAYMENT: "Pago Móvil",
   };
-  const upperKey = methodKey.toUpperCase();
-  return translations[upperKey] || upperKey.replace(/_/g, " ");
+  const key = String(methodKey).toUpperCase();
+  return translations[key] || key.replace(/_/g, " ");
 };
 
-const ticketStyles = `
-.pa-2 { padding: 8px; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-.mb-2 { margin-bottom: 8px; }
-.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
-.center-block { margin-left: auto; margin-right: auto; }
-.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }
-.w-75 {width: 75% !important;}
-.w-100 {width: 100% !important;}
-.mx-auto { margin-left: auto !important; margin-right: auto !important; }
-.pdf-row-2col {
-  width: 100%;
-  display: block; 
-}
-.pdf-col-50,
-.pdf-col-multi {
-  float: left;
-  width: 50%; 
-  box-sizing: border-box;
-  padding: 0 8px;
-  min-height: 1px;
-}
-.pdf-row-multi:after,
-.pdf-row-2col:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-`;
+// Normalizar moneda a código ISO 4217 válido
+const normalizeCurrency = (code) => {
+  const map = { bs: "VES", "bs.": "VES", cop: "COP", usd: "USD", bolivar: "VES", ves: "VES" };
+  const key = String(code || "").toLowerCase().trim();
+  return map[key] ?? "USD";
+};
 
-const downloadReport = async () => {
-  try {
-    await nextTick();
-    const element = document.getElementById("reference");
-    if (!element) {
-      console.error("No se encontró el contenido de las Referencias.");
-      return;
-    }
-    const htmlContent = element.outerHTML;
-    const params = {
-      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
-      filename: "Referencias",
+const formattedReferences = computed(() => {
+  if (!props.reference || !Array.isArray(props.reference)) return [];
+  return props.reference.map(payment => {
+    const currency = normalizeCurrency(payment.order_currency);
+    return {
+      ...payment,
+      method_label: translateMethod(payment.method || payment.payment_method),
+      amount_display: new Intl.NumberFormat("es-VE", { 
+        style: "currency", 
+        currency
+      }).format(payment.amount || 0)
     };
+  });
+});
 
-    const response = await axios.post(
-      "/finances/cash-closure/downloadReport",
-      params,
-      {
-        responseType: "blob",
-      }
-    );
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    let filename = "Referencias.pdf";
-    link.href = url;
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    closeModal();
+const confirmReference = async (item) => {
+  try {
+    loading.value = true;
+    await axios.patch("/finances/cash-closure/confirm-reference", {
+      order_id: item.order_id,
+      reference_code: item.reference
+    });
+    
+    // Actualizar localmente el estado de confirmación
+    item.is_confirmed = true;
+    toast.success("Referencia confirmada correctamente");
   } catch (error) {
-    console.error("Error al descargar el PDF:", error);
+    console.error("Error al confirmar referencia:", error);
+    toast.error("No se pudo confirmar la referencia");
+  } finally {
+    loading.value = false;
   }
 };
-const printReport = async () => {
-  try {
-    await nextTick();
-    const element = document.getElementById("reference");
-    if (!element) {
-      console.error("No se encontró el contenido de la Referencias.");
-      return;
-    }
-    const htmlContent = element.outerHTML;
 
-    const params = {
-      html_content: `<style>${ticketStyles}</style>${htmlContent}`,
-      filename: "Referencias",
-    };
-
-    const response = await axios.post(
-      "/finances/cash-closure/PrintReport",
-      params,
-      {
-        responseType: "blob",
-      }
-    );
-    const url = window.URL.createObjectURL(
-      new Blob([response.data], { type: "application/pdf" })
-    );
-    const printWindow = window.open(url, "_blank");
-    if (printWindow) {
-      printWindow.focus();
-    }
-    window.URL.revokeObjectURL(url);
-    closeModal();
-  } catch (error) {
-    console.error("Error al visualizar el PDF:", error);
-  }
+const closeModal = () => {
+  dialogVisible.value = false;
+  emit("modal-closed");
+  emit("close");
 };
 </script>
+
 <template>
-  <VDialog v-model="dialogVisible" max-width="700px">
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline"></span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
-      </VCardTitle>
-      <VCardText id="reference">
-        <div>
-          <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
-        </div>
-
-        <table class="w-100">
-          <tr>
-            <td class="text-left">
-              <span class="font-weight-bold tituloAzulPrint">
-                Cierre Diario N° {{ props.cashData.id }}</span
-              >
-            </td>
-            <td class="text-right">
-              <span>
-                {{ formatDateTime(props.cashData.created_at, "date") }}
-                {{ formatDateTime(props.cashData.created_at, "time") }}</span
-              >
-            </td>
-          </tr>
-        </table>
-
-        <div class="mt-3">
-          <SectionDivider
-            :isPdf="true"
-            text="REFERENCIAS"
-            width="35%"
-            class="mx-auto center-block"
-          />
-
-          <div
-            v-for="(methods, currency) in groupedReferences"
-            :key="currency"
-            class="mb-4"
-          >
-            <div v-for="(references, method) in methods" :key="method">
-              <h4
-                class="text-center font-weight-bold my-2"
-                style="font-size: 1rem"
-              >
-                {{ translateMethod(method) }} ({{ references[0].currency }})
-              </h4>
-
-              <table
-                class="table table-borderless table-sm w-75 mx-auto center-block"
-              >
-                <tbody>
-                  <tr v-for="(ref, refIndex) in references" :key="refIndex">
-                    <td class="text-left">
-                      <span>Ref: {{ ref.reference }}</span>
-                    </td>
-                    <td class="text-right">
-                      <span>{{ ref.amount }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+  <VDialog v-model="dialogVisible" max-width="900px" scrollable>
+    <VCard class="rounded-xl overflow-hidden">
+      <!-- Header Premium -->
+      <VCardItem class="bg-primary pt-6 pb-6">
+        <div class="d-flex align-center justify-space-between w-100">
+          <div>
+            <VCardTitle class="text-h5 font-weight-bold text-white mb-1">
+              Consolidación de Referencias
+            </VCardTitle>
+            <VCardSubtitle class="text-white opacity-80">
+              Cierre Diario N° {{ props.cashData.id }} • Gestión de Arqueo
+            </VCardSubtitle>
           </div>
+          <VBtn
+            icon="tabler-x"
+            variant="text"
+            color="white"
+            @click="closeModal"
+          />
         </div>
+      </VCardItem>
+
+      <VCardText class="pa-0">
+        <VDataTable
+          :headers="headers"
+          :items="formattedReferences"
+          class="reference-table"
+          density="comfortable"
+          hover
+          :loading="loading"
+        >
+          <!-- Vendedor -->
+          <template #item.seller_name="{ item }">
+            <div class="d-flex align-center gap-2">
+              <VAvatar size="28" color="primary" variant="tonal">
+                <span class="text-caption font-weight-bold">{{ item.seller_name?.charAt(0).toUpperCase() }}</span>
+              </VAvatar>
+              <span class="font-weight-medium">{{ item.seller_name }}</span>
+            </div>
+          </template>
+
+          <!-- Método -->
+          <template #item.method_label="{ item }">
+            <VChip size="small" variant="tonal" color="info" label>
+              {{ item.method_label }}
+            </VChip>
+          </template>
+
+          <!-- Referencia -->
+          <template #item.reference="{ item }">
+            <code class="text-primary font-weight-bold">{{ item.reference }}</code>
+          </template>
+
+          <!-- Monto -->
+          <template #item.amount="{ item }">
+            <span class="font-weight-bold text-success">{{ item.amount_display }}</span>
+          </template>
+
+          <!-- Acciones / Estado -->
+          <template #item.actions="{ item }">
+            <div v-if="item.is_confirmed" class="d-flex align-center justify-center gap-1 text-success">
+              <VIcon icon="tabler-circle-check" size="20" />
+              <span class="text-caption font-weight-bold">CONFIRMADA</span>
+            </div>
+            <VBtn
+              v-else
+              size="small"
+              variant="elevated"
+              color="primary"
+              prepend-icon="tabler-check"
+              @click="confirmReference(item)"
+              :loading="loading"
+            >
+              Confirmar
+            </VBtn>
+          </template>
+
+          <template #no-data>
+            <div class="py-10 text-center">
+              <VIcon icon="tabler-clipboard-off" size="48" color="disabled" class="mb-2" />
+              <p class="text-body-1 text-disabled">No hay referencias pendientes para este cierre</p>
+            </div>
+          </template>
+        </VDataTable>
       </VCardText>
-      <VCardActions class="p-2 d-flex justify-space-between w-100 mx-auto">
+
+      <VDivider />
+
+      <VCardActions class="pa-4 d-flex flex-column gap-2">
         <VBtn
           color="secondary"
-          variant="outlined"
-          @click="printReport"
-          class="w-50"
+          variant="tonal"
+          prepend-icon="tabler-printer"
+          class="flex-grow-1 w-100"
+          @click="closeModal"
+          disabled
         >
-          Imprimir
+          Imprimir Reporte Arqueo
         </VBtn>
         <VBtn
           color="primary"
           variant="flat"
-          @click="downloadReport"
-          class="w-50"
+          class="flex-grow-1 w-100"
+          @click="closeModal"
         >
-          Descargar
+          Finalizar Revisión
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.reference-table :deep(.v-data-table-header) {
+  background-color: #f8fafc;
+}
+
+.reference-table :deep(th) {
+  color: #64748b !important;
+  font-size: 0.75rem !important;
+  font-weight: bold !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.reference-table :deep(td) {
+  padding-block: 12px !important;
+}
+</style>

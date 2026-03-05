@@ -1,12 +1,14 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
+import { ref } from "vue";
 
 const props = defineProps({
   startDate: { type: [String, null], default: null },
   endDate: { type: [String, null], default: null },
 });
+
+const isGenerating = ref(false);
 
 const emit = defineEmits([
   "update:startDate",
@@ -16,53 +18,9 @@ const emit = defineEmits([
 ]);
 
 const handleManualPayment = async () => {
-  const result = await Swal.fire({
-    title: "¿Toca pagar el bono de alimentación?",
-    text: "El pago será proporcional a los días trabajados si el empleado inició recientemente.",
-    icon: "question",
-    showDenyButton: true,
-    showCancelButton: true,
-    confirmButtonText: "Sí, con bono",
-    denyButtonText: "No, sin bono",
-    cancelButtonText: "Cancelar",
-    confirmButtonColor: "#3085d6",
-    denyButtonColor: "#d33",
-    cancelButtonColor: "#6c757d",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const denyButton = Swal.getDenyButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      if (confirmButton) {
-        confirmButton.style.flex = "1";
-        confirmButton.style.width = "auto";
-      }
-      if (denyButton) {
-        denyButton.style.flex = "1";
-        denyButton.style.width = "auto";
-      }
-      if (cancelButton) {
-        cancelButton.style.flex = "1";
-        cancelButton.style.width = "auto";
-      }
-    },
-  });
-
-  if (!result.isConfirmed && !result.isDenied) return;
-
-  const payFoodVoucher = result.isConfirmed;
-
+  isGenerating.value = true;
   try {
-    const { data } = await axios.post("/finances/payslips", {
-      pay_food_voucher: payFoodVoucher,
-    });
+    const { data } = await axios.post("/finances/payslips");
 
     toast.success(data.message);
     emit("generated");
@@ -70,6 +28,8 @@ const handleManualPayment = async () => {
   } catch (error) {
     toast.error("Error al generar la nómina manual");
     console.error(error);
+  } finally {
+    isGenerating.value = false;
   }
 };
 </script>
@@ -103,7 +63,12 @@ const handleManualPayment = async () => {
       <VBtn color="secondary" variant="outlined" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
-      <VBtn color="primary" @click="handleManualPayment">
+      <VBtn 
+        color="primary" 
+        :loading="isGenerating"
+        :disabled="isGenerating"
+        @click="handleManualPayment"
+      >
         Pagar Nómina Manual
       </VBtn>
     </VCardActions>

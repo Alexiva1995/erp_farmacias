@@ -118,7 +118,7 @@ declare global {
   const pdfPayslipGenerator: typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']
   const pdfProductsAssistantReportGenerator: typeof import('./resources/js/utils/pdfProductsAssistantReportGenerator.js')['default']
   const pdfProductsWithoutSuppliersGenerator: typeof import('./resources/js/utils/pdfProductsWithoutSuppliersGenerator.js')['default']
-  const pdfPurchaseOrderGenerator: typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['default']
+  const pdfPurchaseOrderGenerator: typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['pdfPurchaseOrderGenerator']
   const pdfStockProductsGenerator: typeof import('./resources/js/utils/pdfStockProductsGenerator.js')['default']
   const prefixWithPlus: typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']
   const provide: typeof import('vue')['provide']
@@ -144,6 +144,7 @@ declare global {
   const resolveUnref: typeof import('@vueuse/core')['resolveUnref']
   const resolveVuetifyTheme: typeof import('./resources/js/@core/utils/vuetify.js')['resolveVuetifyTheme']
   const rgbaToHex: typeof import('./resources/js/@core/utils/colorConverter.js')['rgbaToHex']
+  const roundIaAnalysis: typeof import('./resources/js/utils/iaAnalysisRounding.js')['roundIaAnalysis']
   const roundUpToNearestHundred: typeof import('./resources/js/utils/roundUpToNearesHundred.js')['roundUpToNearestHundred']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
@@ -192,6 +193,7 @@ declare global {
   const useAsyncState: typeof import('@vueuse/core')['useAsyncState']
   const useAttrs: typeof import('vue')['useAttrs']
   const useAverage: typeof import('@vueuse/math')['useAverage']
+  const useBalance: typeof import('./resources/js/composables/useBalance.js')['useBalance']
   const useBase64: typeof import('@vueuse/core')['useBase64']
   const useBattery: typeof import('@vueuse/core')['useBattery']
   const useBluetooth: typeof import('@vueuse/core')['useBluetooth']
@@ -496,7 +498,7 @@ declare module 'vue' {
     readonly pdfPayslipGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']>
     readonly pdfProductsAssistantReportGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfProductsAssistantReportGenerator.js')['default']>
     readonly pdfProductsWithoutSuppliersGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfProductsWithoutSuppliersGenerator.js')['default']>
-    readonly pdfPurchaseOrderGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['default']>
+    readonly pdfPurchaseOrderGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['pdfPurchaseOrderGenerator']>
     readonly pdfStockProductsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfStockProductsGenerator.js')['default']>
     readonly prefixWithPlus: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
@@ -522,6 +524,7 @@ declare module 'vue' {
     readonly resolveUnref: UnwrapRef<typeof import('@vueuse/core')['resolveUnref']>
     readonly resolveVuetifyTheme: UnwrapRef<typeof import('./resources/js/@core/utils/vuetify.js')['resolveVuetifyTheme']>
     readonly rgbaToHex: UnwrapRef<typeof import('./resources/js/@core/utils/colorConverter.js')['rgbaToHex']>
+    readonly roundIaAnalysis: UnwrapRef<typeof import('./resources/js/utils/iaAnalysisRounding.js')['roundIaAnalysis']>
     readonly roundUpToNearestHundred: UnwrapRef<typeof import('./resources/js/utils/roundUpToNearesHundred.js')['roundUpToNearestHundred']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>
@@ -570,6 +573,7 @@ declare module 'vue' {
     readonly useAsyncState: UnwrapRef<typeof import('@vueuse/core')['useAsyncState']>
     readonly useAttrs: UnwrapRef<typeof import('vue')['useAttrs']>
     readonly useAverage: UnwrapRef<typeof import('@vueuse/math')['useAverage']>
+    readonly useBalance: UnwrapRef<typeof import('./resources/js/composables/useBalance.js')['useBalance']>
     readonly useBase64: UnwrapRef<typeof import('@vueuse/core')['useBase64']>
     readonly useBattery: UnwrapRef<typeof import('@vueuse/core')['useBattery']>
     readonly useBluetooth: UnwrapRef<typeof import('@vueuse/core')['useBluetooth']>

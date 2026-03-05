@@ -1,4 +1,5 @@
 <script setup>
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { ref } from "vue";
 
 const props = defineProps({
@@ -24,8 +25,8 @@ const editedValues = ref({});
 
 const getInputValue = (item) => {
   if (item.id in editedValues.value) return editedValues.value[item.id];
-  // Precarga con el valor de análisis
-  return item.solicitar ?? 0;
+  // Precarga con el valor de análisis redondeado
+  return roundIaAnalysis(item.solicitar ?? 0);
 };
 
 const onInputChange = (item, val) => {
@@ -60,16 +61,46 @@ const onRowClick = (event, { item }) => {
   emit("update:modelValue", item);
   emit("select-product", item);
 };
+
+const isSelected = (item) => props.modelValue && props.modelValue.id === item.id;
 </script>
 
 <template>
-  <VCard
-    :subtitle="
-      modelValue
-        ? 'Producto seleccionado: ' + modelValue.name
-        : 'Selecciona un producto de esta lista para comparar'
-    "
-  >
+  <VCard>
+    <!-- Header con título y producto seleccionado -->
+    <VCardTitle class="d-flex align-center gap-2 pa-4">
+      <VIcon icon="tabler-package-search" color="warning" size="20" />
+      <span class="text-body-1 font-weight-semibold">Productos sin Asignar en el Pedido</span>
+      <VSpacer />
+      <VChip
+        v-if="modelValue"
+        color="primary"
+        variant="tonal"
+        size="small"
+        prepend-icon="tabler-cursor-text"
+        class="text-truncate"
+        style="max-inline-size: 280px;"
+      >
+        Comparando: {{ modelValue.name }}
+      </VChip>
+    </VCardTitle>
+
+    <VAlert
+      v-if="!modelValue"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="mx-4 mb-3"
+      :icon="false"
+    >
+      <div class="d-flex align-center gap-2">
+        <VIcon icon="tabler-hand-click" color="warning" size="16" />
+        <span class="text-body-2">
+          Haz clic en un producto para buscarlo en el catálogo de proveedores arriba
+        </span>
+      </div>
+    </VAlert>
+
     <VDataTableServer
       :headers="headers"
       :items="products"
@@ -81,34 +112,47 @@ const onRowClick = (event, { item }) => {
       @click:row="onRowClick"
       :row-props="
         (data) => ({
-          class:
-            modelValue && modelValue.id === data.item.id
-              ? 'bg-primary-lighten-4 selected-row'
-              : 'cursor-pointer',
+          class: isSelected(data.item)
+            ? 'selected-row'
+            : 'cursor-pointer',
         })
       "
     >
       <!-- Producto -->
       <template #item.name="{ item }">
-        <div class="d-flex flex-column">
-          <span
-            class="text-body-1 font-weight-medium text-high-emphasis"
-            :class="{ 'text-primary': item.psychotropic == 1 }"
-          >
-            {{ item.name }}
-            <span v-if="item.is_colombian_origin == 1"> (COL)</span>
-          </span>
-          <span class="text-sm text-disabled">{{
-            item.active_ingredient
-          }}</span>
+        <div class="d-flex align-center gap-2">
+          <!-- Icono de selección activa -->
+          <VIcon
+            v-if="isSelected(item)"
+            icon="tabler-arrows-exchange"
+            color="primary"
+            size="16"
+            class="flex-shrink-0"
+          />
+          <div class="d-flex flex-column">
+            <span
+              class="text-body-1 font-weight-medium text-high-emphasis"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
+            </span>
+            <span class="text-sm text-disabled">{{
+              item.active_ingredient
+            }}</span>
+          </div>
         </div>
       </template>
 
-      <!-- Análisis: solo lectura con color -->
+      <!-- Análisis: con redondeo IA -->
       <template #item.solicitar="{ item }">
-        <span :style="item.solicitar > 0 ? 'color:#28c76f' : 'color:#dd4d4f'">
-          {{ item.solicitar > 0 ? "+" : "" }}{{ item.solicitar }}
-        </span>
+        <VChip
+          :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'default'"
+          size="small"
+          variant="tonal"
+        >
+          {{ roundIaAnalysis(item.solicitar) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar) }}
+        </VChip>
       </template>
 
       <!-- Cód. Proveedor: barcode del proveedor con menor precio normal -->
@@ -130,15 +174,19 @@ const onRowClick = (event, { item }) => {
           density="compact"
           variant="outlined"
           hide-details
-          style="min-width: 90px; max-width: 110px"
+          style=" max-inline-size: 110px;min-inline-size: 90px;"
           @update:model-value="onInputChange(item, $event)"
           @click.stop
         />
       </template>
 
       <template #item.costs="{ item }">
-        <div class="text-body-2">
-          {{ item.current_unit_cost ?? "0" }} -
+        <div class="d-flex flex-column text-body-2">
+          <!-- Costo actual -->
+          <span class="text-disabled text-xs">Actual</span>
+          <span class="font-weight-medium">{{ item.current_unit_cost ?? "—" }}</span>
+          <!-- Mejor proveedor -->
+          <span class="text-disabled text-xs mt-1">Mejor oferta</span>
           <span
             class="font-weight-bold"
             :class="{
@@ -207,13 +255,18 @@ const onRowClick = (event, { item }) => {
 
 <style scoped>
 :deep(.selected-row) {
-  background-color: rgba(var(--v-theme-primary), 0.15) !important;
-  font-weight: bold;
-  box-shadow: inset 0 0 0 2px rgb(var(--v-theme-primary)) !important;
+  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+  border-inline-start: 3px solid rgb(var(--v-theme-primary)) !important;
 }
+
+:deep(.selected-row td:first-child) {
+  padding-inline-start: 13px !important; /* Compensar el borde izquierdo de 3px */
+}
+
 :deep(.cursor-pointer) {
   cursor: pointer;
 }
+
 :deep(.cursor-pointer:hover) {
   background-color: rgba(var(--v-theme-on-surface), 0.04);
 }

@@ -176,7 +176,7 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto;">
         <VForm @submit.prevent="submitForm">
           <!-- Información Básica -->
           <div class="text-overline mb-4 text-primary font-weight-bold">
@@ -189,8 +189,6 @@ const submitForm = () => {
                 v-model="formData.loan_date"
                 label="Fecha del Préstamo"
                 placeholder="Seleccionar fecha"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-calendar"
                 :error-messages="formErrors.loan_date"
                 :config="{
@@ -198,39 +196,32 @@ const submitForm = () => {
                   altFormat: 'Y-m-d',
                   dateFormat: 'Y-m-d',
                 }"
-                hide-details="auto"
               />
             </VCol>
 
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model.number="formData.monthly_payment"
                 label="Cuota Mensual"
                 type="number"
                 step="0.01"
                 min="0"
                 prefix="$"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-currency-dollar"
                 placeholder="Ej: 500.00"
                 :error-messages="formErrors.monthly_payment"
-                hide-details="auto"
               />
             </VCol>
 
             <VCol cols="12" md="6">
-              <VTextField
+              <AppTextField
                 v-model.number="formData.total_installments"
                 label="Cantidad de Cuotas"
                 type="number"
                 min="1"
-                variant="outlined"
-                density="compact"
                 prepend-inner-icon="tabler-hash"
                 placeholder="Ej: 36, 48, 60..."
                 :error-messages="formErrors.total_installments"
-                hide-details="auto"
               />
             </VCol>
             <VCol cols="12">

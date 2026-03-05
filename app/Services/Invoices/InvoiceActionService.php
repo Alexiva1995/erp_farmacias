@@ -257,12 +257,21 @@ class InvoiceActionService
             throw new Exception("Solo se pueden finalizar facturas en estado 'pendiente'.");
         }
 
-        $invoice->update([
-            'status' => 'loaded',
-            'loaded_by' => Auth::id()
-        ]);
+        return DB::transaction(function () use ($invoice) {
+            $invoice->update([
+                'status' => 'loaded',
+                'loaded_by' => Auth::id()
+            ]);
 
-        return $invoice->fresh(['details.product', 'supplier']);
+            // Activar productos suspendidos (is_deleted = 1) al finalizar la carga
+            foreach ($invoice->details as $detail) {
+                if ($detail->product && $detail->product->is_deleted) {
+                    $detail->product->update(['is_deleted' => 0]);
+                }
+            }
+
+            return $invoice->fresh(['details.product', 'supplier']);
+        });
     }
     public function approveInvoice(Invoice $invoice, array $data): Invoice
     {

@@ -37,10 +37,14 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
             $product['cost_min'] ? number_format($product['cost_min'], 2) : '0.00',
             $product['cost_max'] ? number_format($product['cost_max'], 2) : '0.00',
             $product['unit_cost'] ? number_format($product['unit_cost'], 2) : '0.00',
+            isset($product['product_suppliers'][0]) 
+                ? number_format($product['product_suppliers'][0]['unit_cost_usd_with_discount'], 2) . ' (' . $product['product_suppliers'][0]['supplier']['name'] . ')'
+                : '---',
             $product['total_sold_completed'] ?? 0,
             $product['lote_quantity'] ?? 0,
-            $product['promedio_calculado'] ? number_format($product['promedio_calculado'], 2) : '0.00',
-            $product['solicitar'] ? number_format($product['solicitar'], 2) : '0.00'
+            $product['promedio_calculado'] ? number_format($product['promedio_calculado'], 1) : '0.0',
+            $product['demanda_ponderada'] ? number_format($product['demanda_ponderada'], 1) : '0.0',
+            $product['solicitar'] ? number_format($product['solicitar'], 1) : '0.0'
         ];
     }
 
@@ -53,10 +57,12 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
             'Laboratorio',
             'Costo Min',
             'Costo Max',
-            'Costo',
+            'Costo Actual',
+            'Mejor Oferta',
             'Ventas',
             'Stock',
-            'Promedio Ventas',
+            'Promedio',
+            'Demanda',
             'Análisis'
         ];
     }
@@ -84,7 +90,7 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
                 ]
             ],
-            'E:K' => [
+            'E:M' => [
                 'alignment' => [
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
                 ]
@@ -96,7 +102,7 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
                 ]
             ],
             // Ajustar texto en todas las celdas
-            'A:K' => [
+            'A:M' => [
                 'alignment' => [
                     'wrapText' => true,
                     'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP

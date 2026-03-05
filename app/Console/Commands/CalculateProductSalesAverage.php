@@ -48,29 +48,36 @@ class CalculateProductSalesAverage extends Command
                 foreach ($products as $product) {
                     $processedProducts++;
 
-                    // Calcular meses desde la creación del producto hasta hoy
                     $createdAt = Carbon::parse($product->created_at);
                     $now = Carbon::now();
-                    $monthsSinceCreation = $createdAt->diffInMonths($now);
 
-                    // Si el producto fue creado hace menos de 1 mes, usar 1 mes mínimo para evitar división por cero
-                    if ($monthsSinceCreation < 1) {
-                        $monthsSinceCreation = 1;
+                    // Ventana de análisis: máximo últimos 12 meses
+                    // Si el producto tiene menos de 12 meses, usamos su antigüedad real
+                    $monthsSinceCreation = $createdAt->diffInMonths($now);
+                    $windowMonths = min($monthsSinceCreation, 12);
+
+                    // Mínimo 1 mes para evitar división por cero
+                    if ($windowMonths < 1) {
+                        $windowMonths = 1;
                     }
 
-                    // Calcular total de unidades vendidas desde order_details donde la orden esté completada
+                    // Fecha de inicio de la ventana de 12 meses
+                    $windowStart = $now->copy()->subMonths($windowMonths);
+
+                    // Total de unidades vendidas en los últimos 12 meses (órdenes completadas)
                     $totalSold = DB::table('order_details')
                         ->join('orders', 'order_details.order_id', '=', 'orders.id')
                         ->where('order_details.product_id', $product->id)
                         ->where('orders.status', 'Completed')
+                        ->where('orders.created_at', '>=', $windowStart)
                         ->sum('order_details.quantity');
 
-                    // Si no hay ventas, establecer sales_average en 0
+                    // Si no hay ventas en la ventana, establecer sales_average en 0
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
                     } else {
-                        // Calcular promedio mensual: total vendido / meses desde creación
-                        $salesAverage = round($totalSold / $monthsSinceCreation, 2);
+                        // Promedio mensual = ventas en ventana / meses de la ventana
+                        $salesAverage = round($totalSold / $windowMonths, 2);
                     }
 
                     // Actualizar el producto

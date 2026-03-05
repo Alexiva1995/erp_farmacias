@@ -59,6 +59,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
+        if ($request->filled("isColombian")) {
+            $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
+        }
+
         if ($request->filled("lapso_de_tiempo")) {
             $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);
@@ -83,80 +87,22 @@ class SuppliersIaOrderAssistantController extends Controller
         $respuesta["paginate"]->each(function ($items) use ($filtros) {
             $items = $this->product->calcularAOProduct($items);
 
-            // Verificar si el producto tiene ventas 0 y stock 0
+            // Verificar si el producto tiene ventas 0 y stock 0 (caso especial: sin historial)
             $ventasCero = ($items->total_sold_completed ?? 0) == 0;
             $stockCero = ($items->lote_quantity ?? 0) == 0;
-            $esProductoSinVentasNiStock = $ventasCero && $stockCero;
+            $aoActual = $items->totalQuantityInAutoOrder ?? 0;
 
-            if ($filtros["tipo_filtracion"] == "combinado") {
-                $filtrosVentas = $filtros;
-                $filtrosVentas["id"] = $items->id;
-                $itemVentas = $this->product->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas)->first();
+            // El campo 'solicitar' ya viene calculado correctamente desde el SQL del repositorio:
+            // solicitar = demanda - stock - AO  (positivo = necesita pedido, negativo = exceso)
 
-                if ($itemVentas) {
-                    $itemVentas = $this->product->calcularAOProduct($itemVentas);
-
-                    $ventasTotales = $itemVentas->total_sold_completed ?? 0;
-                    $promedio = $items->promedio_calculado ?? 0;
-                    $stockActual = $items->lote_quantity ?? 0;
-                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
-
-                    $resultado = (($ventasTotales + $promedio) / 2) - $stockActual - $autoOrder;
-
-                    $items->solicitar = -$resultado;
-                } else {
-                    $promedio = $items->promedio_calculado ?? 0;
-                    $stockActual = $items->lote_quantity ?? 0;
-                    $autoOrder = $items->totalQuantityInAutoOrder ?? 0;
-
-                    $resultado = $promedio - $stockActual - $autoOrder;
-
-                    $items->solicitar = -$resultado;
-                }
-
-                $solicitarCalculado = $items->solicitar;
-                $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-                // Recalcular para asegurar que AO esté incluido
-                $stock = $items->lote_quantity ?? 0;
-                $ventas = $items->total_sold_completed ?? 0;
-
-                // Determine base calculation correctly for Combinado
-                if ($filtros["tipo_filtracion"] == "combinado") {
-                    $baseCalculation = ($promedio + $ventas) / 2;
-                } else {
-                    $baseCalculation = ($filtros["tipo_filtracion"] == "average") ? $promedio : $ventas;
-                }
-
-                if (($filtros['stock'] ?? '') === 'fallas') {
-                    $items->solicitar = $stock - $baseCalculation;
-                } else {
-                    $items->solicitar = $stock - $baseCalculation - $aoActual;
-                }
+            // Caso especial: producto sin ventas y sin stock en inventario → falla por definición
+            if ($ventasCero && $stockCero) {
+                // Si tiene unidades ya en pedido, está cubierto (exceso leve)
+                $items->solicitar = ($aoActual > 0) ? -$aoActual : 1;
             }
 
-            // Apply rounding to ALL types (combinado and standard)
+            // Redondear hacia arriba si falta, hacia abajo si sobra
             $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
-
-            // Si el producto tiene ventas 0 y stock 0, debe ser negativo (falla)
-            // NO forzar a 1, debe calcularse como negativo
-            if ($esProductoSinVentasNiStock) {
-                $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-                // Si tiene AO, el cálculo ya lo incluye. Si no tiene AO, debe ser negativo
-                if ($esProductoSinVentasNiStock) {
-                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-
-                    if (($filtros['stock'] ?? '') === 'fallas') {
-                        $items->solicitar = 0;
-                    } else {
-                        $items->solicitar = 0 - $aoActual;
-                    }
-
-                    // Si no hay AO, debe ser negativo (falla)
-                    if ($aoActual == 0) {
-                        $items->solicitar = -1; // Falla: necesita al menos 1
-                    }
-                }
-            }
         });
 
         return ApiResponse::success($respuesta, "ok", 200);
@@ -188,6 +134,8 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosFallas["laboratoryId"] = $request->laboratoryId;
         if ($request->filled("groups"))
             $filtrosFallas["groups"] = $request->groups;
+        if ($request->filled("isColombian"))
+            $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
         if ($request->filled("lapso_de_tiempo")) {
             $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
@@ -206,14 +154,18 @@ class SuppliersIaOrderAssistantController extends Controller
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
+        // Guardar total de fallas ANTES de remover las cubiertas por AO
+        $totalFallas = $productosFallas->count();
+
         $productosFallas = $this->product->calcularAOProducts($productosFallas);
         $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
         $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
 
-        if ($filtrosFallas["tipo_filtracion"] == "combinado") {
-            foreach ($productosFallas as $producto) {
-                $producto->solicitar = (($producto->promedio_calculado + $producto->total_sold_completed) / 2 - $producto->lote_quantity - $producto->totalQuantityInAutoOrder) * -1;
-            }
+        // Invertir el signo de solicitar para TODOS los productos.
+        // El repositorio devuelve (demanda - stock) positivo para necesidades.
+        // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
+        foreach ($productosFallas as $producto) {
+            $producto->solicitar = $producto->solicitar * -1;
         }
 
         // Para productos con ventas 0 y stock 0, deben ser negativos (fallas)
@@ -244,6 +196,7 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $respuesta["productos_a_reponer"] = $this->orderByDiscount($tempReponer);
         $respuesta["productosFallas"] = $productosFallas;
+        $respuesta["totalFallas"] = $totalFallas;
 
         // $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
         $respuesta["productos_oportunidad_unica"] = [];
@@ -564,11 +517,10 @@ class SuppliersIaOrderAssistantController extends Controller
 
                     $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
                 } else {
-                    $solicitarCalculado = $items->solicitar;
-                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
                     $stock = $items->lote_quantity ?? 0;
                     $ventas = $items->total_sold_completed ?? 0;
-                    $items->solicitar = $stock - $ventas - $aoActual;
+                    // demanda - stock - AO (positivo = necesita pedir, negativo = exceso)
+                    $items->solicitar = $ventas - $stock - $aoActual;
                 }
                 if ($esProductoSinVentasNiStock) {
                     $aoActual = $items->totalQuantityInAutoOrder ?? 0;

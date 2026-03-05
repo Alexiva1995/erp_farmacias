@@ -1,6 +1,6 @@
 <script setup>
-import { defineProps, computed } from 'vue';
 import { formatCurrency } from '@/utils/currencyFormatter';
+import { computed, defineProps } from 'vue';
 
 const props = defineProps({
   payments: {
@@ -15,18 +15,19 @@ const filteredPayments = computed(() => {
 </script>
 
 <template>
-  <table style="width: 100%;">
+  <table style="font-family: monospace; font-size: 13px; inline-size: 100%;">
     <tbody>
       <tr v-for="payment in filteredPayments" :key="payment.label">
-        <td class="left-align-cell">
-          <span>{{ payment.label }}</span>
+        <td class="left-align-cell" style="padding-block: 1px; padding-inline: 0;">
+          {{ payment.label }}
         </td>
-        <td class="text-right">
-          <span>{{ formatCurrency(payment.amount, payment.currency) }}</span>
+        <td class="text-right" style=" font-weight: bold;padding-block: 1px; padding-inline: 0;">
+          {{ formatCurrency(payment.amount, payment.currency) }}
         </td>
       </tr>
+
       <tr v-if="filteredPayments.length === 0">
-        <td colspan="2" class="text-center text-muted">No hay pagos registrados para esta moneda.</td>
+        <td colspan="2" class="text-center text-muted" style="padding-block: 2px; padding-inline: 0;">-</td>
       </tr>
     </tbody>
   </table>
@@ -34,10 +35,10 @@ const filteredPayments = computed(() => {
 
 <style scoped>
 .left-align-cell {
-  text-align: left;
+  text-align: start;
 }
+
 .right-align-cell {
-  text-align: right; 
-  font-weight: bold;
+  text-align: end;
 }
 </style>

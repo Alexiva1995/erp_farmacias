@@ -18,7 +18,7 @@ use PhpOffice\PhpSpreadsheet\Shared\TimeZone;
 class ExpensesRepository
 {
 
-    public function createGasto(CreateExpenseData $data): Expense
+    public function create(CreateExpenseData $data): Expense
     {
         $expenseData = $data->toArray();
 
@@ -59,7 +59,7 @@ class ExpensesRepository
         return Expense::create($expenseData);
     }
 
-    public function createGastoRecurente(CreateExpenseRecurrenceData $data): Expense
+    public function createRecurring(CreateExpenseRecurrenceData $data): Expense
     {
         $gasto = new Expense();
         $gasto->name = $data->name;
@@ -86,7 +86,7 @@ class ExpensesRepository
         return $gasto;
     }
 
-    public function cargarFactura(array $data): Expense
+    public function uploadInvoice(array $data): Expense
     {
         $gasto = Expense::find($data["id"]);
 
@@ -143,12 +143,12 @@ class ExpensesRepository
         return $expense;
     }
 
-    public function consultAll(): Collection
+    public function getAll(): Collection
     {
         return Expense::query()->with(["user", "category"])->orderBy("name", "ASC")->get();
     }
 
-    public function consultById(string $id): ?Expense
+    public function findById(string $id): ?Expense
     {
         return Expense::find($id);
     }
@@ -243,7 +243,7 @@ class ExpensesRepository
     }
 
 
-    public function changeStatus(int $id, string $status): Expense
+    public function updateStatus(int $id, string $status): Expense
     {
         Expense::where("id", "=", $id)->update([
             "status" => $status
@@ -251,7 +251,7 @@ class ExpensesRepository
         return Expense::find($id);
     }
 
-    public function consultAllExpensesRecurringOfToday(): Collection
+    public function getAllRecurringExpensesOfToday(): Collection
     {
         $timeZone = new DateTimeZone(config("app.timezone"));
         $hoy = new DateTime('now', $timeZone);

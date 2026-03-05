@@ -380,6 +380,8 @@
     "translateMethod": true,
     "useExpenses": true,
     "capitalizeFirstAndLastName": true,
-    "formatAmountOnly": true
+    "formatAmountOnly": true,
+    "useBalance": true,
+    "roundIaAnalysis": true
   }
 }

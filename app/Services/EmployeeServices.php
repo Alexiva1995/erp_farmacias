@@ -69,17 +69,7 @@ class EmployeeServices implements Employee
 
   public function downloadDocument(MEmployee $employee, string $file): Exception|StreamedResponse
   {
-    $validFiles = ['rif', 'residence_letter', 'cv'];
-    if (!in_array($file, $validFiles)) {
-      throw new Exception('Documento inválido');
-    }
-
-    $path = $employee->$file;
-    if (empty($path)) {
-      throw new Exception('El archivo no existe');
-    }
-
-    return $this->employeeRepository->downloadDocument($path);
+    return $this->employeeRepository->downloadDocument($employee, $file);
   }
 
   public function reset2FA(MEmployee $employee): bool
@@ -102,5 +92,10 @@ class EmployeeServices implements Employee
   public function setHealthConsumption(MEmployee $employee, int $year, int $month, float $amount): void
   {
     $this->employeeRepository->setHealthConsumption($employee, $year, $month, $amount);
+  }
+
+  public function updatePayrollSettings(MEmployee $employee, array $data): array
+  {
+    return $this->employeeRepository->updatePayrollSettings($employee, $data);
   }
 }

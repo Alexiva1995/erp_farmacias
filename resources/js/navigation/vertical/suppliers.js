@@ -21,15 +21,12 @@ export default [
         // action: "manage",
         // subject: "suppliers-purchase-orders-list",
       },
-      {
-        title: "Historial de Ordenes de Compra",
-        to: "suppliers-purchase-orders-history-list",
-        // action: "manage",
-        // subject: "suppliers-purchase-orders-history-list",
-      },
-      {
-        title: "IA Assistence",
-        children: [
+    ],
+  },
+  {
+    title: "IA Assistence",
+    icon: { icon: "tabler-brain" },
+    children: [
       {
         title: 'Pedidos',
         to: "suppliers-supplieriaorderassistant",
@@ -47,9 +44,8 @@ export default [
         to: 'suppliers-product-comparator-list',
         action: 'manage',
         subject: 'comparadorAssistence',
-      }
-    ],
       },
     ],
   },
 ];
+

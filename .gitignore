@@ -72,3 +72,16 @@ public/mockServiceWorker.js
 # Env files
 .env*
 !.env.example
+.agents/rules/strict.md
+.atom8n/gist/extract-resultDescription.js-bcdf0023c5c0c189d1150e99a27f9ae5/
+components.d.ts
+components.d.ts
+.gitignore
+components.d.ts
+components.d.ts
+.eslintrc-auto-import.json
+auto-imports.d.ts
+components.d.ts
+retencion.xls
+components.d.ts
+typed-router.d.ts

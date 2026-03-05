@@ -1,20 +1,20 @@
 <script setup>
-import SellerBoxTable from "@/components/SellerBoxTable.vue";
-import DailyCashClosingTable from "@/components/DailyCashClosingTable.vue";
-import MonthlyCashClosingTable from "@/components/MonthlyCashClosingTable.vue";
-import CashAverage from "@/components/cards/CashAverage.vue";
-import axios from "@/plugins/axios";
-import { ref, onMounted } from "vue";
-import SellerCashFilters from "@/components/SellerCashFilters.vue";
-import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
-import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
-import { toast } from "@/plugins/sweetalert";
-import CashClosureTicke from "@/components/CashClosureTicke.vue";
-import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
-import ReferenceModal from "@/components/dialogs/ReferenceModal.vue";
 import CashClosingSellersTicke from "@/components/CashClosingSellersTicke.vue";
-import DeliveryModal from "@/components/dialogs/DeliveryModal.vue";
+import CashClosureTicke from "@/components/CashClosureTicke.vue";
+import DailyCashClosingTable from "@/components/DailyCashClosingTable.vue";
+import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
+import MonthlyCashClosingTable from "@/components/MonthlyCashClosingTable.vue";
+import SellerBoxTable from "@/components/SellerBoxTable.vue";
+import SellerCashFilters from "@/components/SellerCashFilters.vue";
+import CashAverage from "@/components/cards/CashAverage.vue";
 import ClosingModal from "@/components/dialogs/ClosingModal.vue";
+import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
+import DeliveryModal from "@/components/dialogs/DeliveryModal.vue";
+import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
+import ConsolidationReferenceModal from "@/components/dialogs/ReferenceModal.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { nextTick, onMounted, ref } from "vue";
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -56,7 +56,7 @@ const isPrinting = ref(false);
 const viewModalDaily = ref(false);
 const dailyCashData = ref({});
 
-const reference = ref(null);
+const referenceData = ref([]);
 const viewModalReference = ref(false);
 
 const monthlyCashDataSellers = ref(null);
@@ -295,36 +295,56 @@ const handleCloseViewModal = () => {
 };
 
 const ticketStyles = `
-.pa-2 { padding: 8px; }
+/* CSS Adaptado para Ticket Térmico POS */
+@page {
+  margin: 0;
+  size: 80mm auto; /* Formato térmico estándar de 80mm */
+}
+body {
+  margin: 0;
+  padding: 5px;
+  background-color: #fff;
+  font-family: 'Courier New', Courier, monospace; /* Fuente monospace obligatoria */
+  font-size: 13px !important;
+  color: #000 !important;
+  line-height: 1.2;
+}
+* {
+  box-sizing: border-box;
+}
+.pa-2 { padding: 4px; }
+.pa-4 { padding: 8px; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
 .text-left { text-align: left; }
-.mb-2 { margin-bottom: 8px; }
-.tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }
+.mb-2 { margin-bottom: 6px; }
+.tbody-bordered { border: none; }
 .center-block { margin-left: auto; margin-right: auto; }
-.single-report-center { width: 50%; margin-left: auto; margin-right: auto; }
-.w-75 {width: 75% !important;}
-.w-100 {width: 100% !important;}
+.w-75, .w-100 { width: 100% !important; }
 .mx-auto { margin-left: auto !important; margin-right: auto !important; }
-.pdf-row-2col {
-  width: 100%;
-  display: block; 
-}
+table { width: 100% !important; border-collapse: collapse; }
+td, th { padding: 1px 0; }
+hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+.pdf-row-2col { width: 100%; display: block; }
 .pdf-col-multi {
- float: left;
- /* ¡CLAVE! Reducir el ancho para dejar espacio */
-width: 48%; 
-box-sizing: border-box;
-padding: 0 5px; 
- margin-right: 2%; /* Espacio entre columnas */
-  min-height: 1px;
+  float: left;
+  width: 48%; 
+  padding: 0 2px; 
+  margin-right: 2%;
 }
-
 .pdf-row-multi:after {
- content: "";
- display: table; 
- clear: both;
-}}
+  content: "";
+  display: table; 
+  clear: both;
+}
+.ticket-bold { font-weight: bold; }
+/* Ocultar bordes de VCard para impresión */
+.v-card--variant-outlined { border: none !important; }
+.v-card {
+   box-shadow: none !important;
+   border: none !important;
+   background: transparent !important;
+}
 `;
 
 const downloadcash = async (cash) => {
@@ -460,6 +480,8 @@ const viewDailyCash = async (daily) => {
   }
 };
 
+const loadingRefId = ref(null);
+
 const referenceDaily = async (daily) => {
   try {
     if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
@@ -467,31 +489,53 @@ const referenceDaily = async (daily) => {
       return [];
     }
     const allPaymentReferences = daily.cash_closings.flatMap((closing) => {
-      const completedOrders = closing.orders.filter(
-        (order) => order.status === "Completed"
-      );
-      return completedOrders.flatMap((order) => {
-        if (!order.payment_methods || order.payment_methods.length === 0) {
-          return [];
+      // Procesar todas las órdenes que tengan pagos, independientemente de su estado para asegurar visibilidad
+      return (closing.orders || []).flatMap((order) => {
+        let paymentMethods = order.payment_methods;
+        
+        // Manejar caso donde paymentMethods sea un string JSON
+        if (typeof paymentMethods === 'string') {
+          try {
+            paymentMethods = JSON.parse(paymentMethods);
+          } catch (e) {
+            paymentMethods = [];
+          }
         }
-        const methodsWithReference = order.payment_methods.filter(
+        
+        // Asegurar que sea un array
+        if (!Array.isArray(paymentMethods)) {
+          paymentMethods = paymentMethods ? [paymentMethods] : [];
+        }
+
+        if (paymentMethods.length === 0) return [];
+        
+        // Filtrar solo métodos que tengan una referencia válida
+        const methodsWithReference = paymentMethods.filter(
           (method) =>
+            method &&
+            method.reference !== undefined &&
             method.reference !== null &&
-            method.reference !== "" &&
-            method.reference !== "null"
+            String(method.reference).trim() !== "" &&
+            String(method.reference).toLowerCase() !== "null"
         );
+
         return methodsWithReference.map((method) => ({
           ...method,
           order_id: order.id,
           order_currency: order.currency,
+          seller_name: closing.seller?.username || 'N/A',
+          is_confirmed: method.is_confirmed || false
         }));
       });
     });
 
-    reference.value = allPaymentReferences;
-    const itemDaily = daily;
-    dailyCashData.value = itemDaily;
+    const references = allPaymentReferences;
     viewModalReference.value = true;
+    
+    // Usar nextTick para asegurar que el componente esté montado antes de pasarle datos complejos
+    await nextTick();
+    referenceData.value = references;
+    dailyCashData.value = daily;
   } catch (error) {
     console.error("Error al obtener las referencias del cierre diario:", error);
     toast.error("Error al obtener las referencias del cierre diario.");
@@ -571,14 +615,33 @@ const closingCashAllSellers = async (cash) => {
   }
 };
 
+const deliveryModalRef = ref(null);
+const dailyCashModalRef = ref(null);
+
 const closingDaily = async (daily) => {
   try {
-    const item = daily;
-    dailyCashData.value = item;
-    viewModalClosing.value = true;
+    dailyCashData.value = daily;
+    
+    // Abrimos los modales internamente y disparamos la impresión
+    // Nota: Necesitaremos exponer las funciones de impresión en los componentes hijos
+    toast.info("Generando reportes de Cierre y Acta...");
+    
+    viewModalDaily.value = true;
+    viewModalDelivery.value = true;
+
+    // Pequeño delay para asegurar que los componentes estén montados
+    setTimeout(async () => {
+      if (dailyCashModalRef.value?.printReport) {
+        await dailyCashModalRef.value.printReport();
+      }
+      if (deliveryModalRef.value?.printReport) {
+        await deliveryModalRef.value.printReport();
+      }
+    }, 500);
+
   } catch (error) {
-    console.error("Error al obtener los cierre", error);
-    toast.error("Error al obtener los cierre.");
+    console.error("Error al procesar la impresión dual:", error);
+    toast.error("Error al generar los reportes.");
   }
 };
 </script>
@@ -617,6 +680,7 @@ const closingDaily = async (daily) => {
     :total-dailyCash="totalDailyCash"
     :items-per-page="itemsPerPageDailyCash"
     :page="pageDailyCash"
+    :loading-id="loadingRefId"
     @update:options="updateTableOptionsDailyCash"
     @view-cash="viewDailyCash"
     @delivery="deliveryDaily"
@@ -632,7 +696,6 @@ const closingDaily = async (daily) => {
     :page="pageMonthlyCash"
     @update:options="updateTableOptionsMonthlyCash"
     @view-cash="viewMonthlyCash"
-    @seller-cash="closingCashAllSellers"
   />
 
   <MonthlyCashModal
@@ -643,19 +706,22 @@ const closingDaily = async (daily) => {
   />
 
   <DailyCashModal
+    ref="dailyCashModalRef"
     v-model:isDialogVisible="viewModalDaily"
     :cashData="dailyCashData"
     @close="handleCloseViewModalDaily"
   />
 
-  <ReferenceModal
+  <ConsolidationReferenceModal
+    v-if="viewModalReference"
     v-model:isDialogVisible="viewModalReference"
-    :reference="reference"
+    :reference="referenceData"
     :cashData="dailyCashData"
     @close="handleCloseViewModalReference"
   />
 
   <DeliveryModal
+    ref="deliveryModalRef"
     v-model:isDialogVisible="viewModalDelivery"
     :cashData="dailyCashData"
     @close="handleCloseViewModalDelivery"
@@ -663,7 +729,7 @@ const closingDaily = async (daily) => {
 
   <ClosingModal
     v-model:isDialogVisible="viewModalClosing"
-    :reference="reference"
+    :reference="referenceData"
     :cashData="dailyCashData"
     @close="handleCloseViewModalClosing"
   />

@@ -25,6 +25,8 @@ class StoreSupplierRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'social_reason' => ['string', 'max:255'],
+            'rif' => ['required', 'string', 'max:20'],
+            'address' => ['nullable', 'string'],
             'sales_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
             'collections_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
             'credit_days' => ['numeric', 'min:0'],

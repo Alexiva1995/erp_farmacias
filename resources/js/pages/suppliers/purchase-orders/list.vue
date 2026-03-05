@@ -1,7 +1,5 @@
 <script setup>
-import PurchaseOrderEditDialog from "@/components/dialogs/PurchaseOrderEditDialog.vue";
-import PurchaseOrderRequestedProducts from "@/components/dialogs/PurchaseOrderRequestedProducts.vue";
-import PurchaseOrderShowDialog from "@/components/dialogs/PurchaseOrderShowDialog.vue";
+import PurchaseOrderManagementDialog from "@/components/dialogs/PurchaseOrderManagementDialog.vue";
 import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
@@ -10,21 +8,36 @@ import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
+const activeTab = ref('all');
+
+// Convierte el valor del tab al entero que espera el backend
+const tabStatusMap = { all: undefined, pending: 0, sent: 1, completed: 2 };
+
+const tabItems = [
+  { label: 'Todas',       value: 'all',       color: 'primary', icon: 'tabler-list',        totalKey: 'total_orders' },
+  { label: 'Pendientes',  value: 'pending',   color: 'warning', icon: 'tabler-clock',        totalKey: 'pending_orders' },
+  { label: 'Enviadas',    value: 'sent',      color: 'info',    icon: 'tabler-send',         totalKey: 'sent_orders' },
+  { label: 'Completadas', value: 'completed', color: 'success', icon: 'tabler-circle-check', totalKey: 'completed_orders' },
+];
+
 const currentPurchaseOrder = ref({});
 const purchaseOrders = ref([]);
 const suppliers = ref([]);
 const selectedSupplier = ref(null);
 const loading = ref(false);
-const formErrors = ref({});
 
 const page = ref(1);
 const itemsPerPage = ref(10);
 const totalPurchaseOrders = ref(0);
+const stats = ref({
+  total_orders: 0,
+  total_amount: 0,
+  pending_orders: 0,
+  sent_orders: 0,
+  completed_orders: 0,
+});
 
-const isEditDialogVisible = ref(false);
-const isShowDialogVisible = ref(false);
-const isShowRequestedProductsVisible = ref(false);
-
+const isManagementDialogVisible = ref(false);
 const { isAdmin } = useAuthStore();
 
 const fetchSuppliers = async () => {
@@ -32,10 +45,17 @@ const fetchSuppliers = async () => {
     const response = await axios.get("/available-suppliers");
     suppliers.value = response.data.data;
   } catch (error) {
-    console.error("Hubo un error al obtener los proveedores:", error);
-    toast.error("Error al obtener los proveedores.");
-  } finally {
-    loading.value = false;
+    console.error("Error al obtener proveedores:", error);
+  }
+};
+
+const fetchStats = async () => {
+  try {
+    const params = { selectedSupplier: selectedSupplier.value };
+    const { data } = await axios.get("/suppliers/purchase-orders/stats", { params });
+    stats.value = data.data;
+  } catch (error) {
+    console.error("Error al obtener estadísticas:", error);
   }
 };
 
@@ -45,38 +65,68 @@ const fetchPurchaseOrders = async () => {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     selectedSupplier: selectedSupplier.value,
+    status: tabStatusMap[activeTab.value],
   };
-
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
 
   try {
     const { data } = await axios.get("/suppliers/purchase-orders", { params });
     purchaseOrders.value = data.data.data;
     totalPurchaseOrders.value = data.data.total;
   } catch (error) {
-    console.error("Hubo un error al obtener las órdenes de compra:", error);
     toast.error("Error al obtener las órdenes de compra.");
   } finally {
     loading.value = false;
   }
 };
 
+const handleManage = (purchaseOrder) => {
+  currentPurchaseOrder.value = { ...purchaseOrder };
+  isManagementDialogVisible.value = true;
+};
+
+const handleDeleteOrder = async (id) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "No podrás revertir la eliminación de esta orden de compra.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated w-100',
+      cancelButton: 'v-btn v-btn--elevated v-theme--light bg-secondary v-btn--density-default v-btn--size-default v-btn--variant-elevated w-100'
+    }
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/suppliers/purchase-orders/${id}`);
+      toast.success("Orden eliminada correctamente.");
+      fetchPurchaseOrders();
+      fetchStats();
+    } catch (error) {
+      toast.error("Error al eliminar la orden.");
+    }
+  }
+};
+
 onMounted(() => {
   fetchSuppliers();
   fetchPurchaseOrders();
+  fetchStats();
 });
 
-let debounceTimer;
-watch(
-  [page, itemsPerPage, selectedSupplier],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchPurchaseOrders(), 300);
-  },
-  { deep: true }
-);
+// Cambiar de pestaña o filtro => reset a página 1 y recargar
+watch([selectedSupplier, activeTab], () => {
+  page.value = 1;
+  fetchPurchaseOrders();
+  fetchStats();
+});
+
+// Paginar sin resetear la página
+watch([page, itemsPerPage], () => {
+  fetchPurchaseOrders();
+});
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -86,188 +136,167 @@ const updateTableOptions = (options) => {
 const handleClearFilters = () => {
   selectedSupplier.value = null;
 };
-
-const handleEditPurchaseOrder = (purchaseOrder) => {
-  currentPurchaseOrder.value = { ...purchaseOrder };
-  isEditDialogVisible.value = true;
-};
-
-const handleShowPurchaseOrder = (purchaseOrder) => {
-  currentPurchaseOrder.value = { ...purchaseOrder };
-  isShowDialogVisible.value = true;
-};
-
-const handleShowRequestedProducts = (purchaseOrder) => {
-  currentPurchaseOrder.value = { ...purchaseOrder };
-  isShowRequestedProductsVisible.value = true;
-};
-
-const handleDeletePurchaseOrderDetail = async (id) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡No podrás revertir la eliminación de este producto para esta orden de compra!",
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Eliminar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    try {
-      await axios.delete(`/suppliers/purchase-orders/details/${id}`);
-      toast.success("Detalle de Orden de compra eliminado correctamente.");
-      isEditDialogVisible.value = false;
-      currentPurchaseOrder.value = false;
-      fetchPurchaseOrders();
-    } catch (error) {
-      console.error(
-        "Hubo un error al eliminar el detalle de la orden de compra:",
-        error
-      );
-      toast.error("Error al eliminar el detalle de la orden de compra.");
-    }
-  }
-};
-
-const handleDeletePurchaseOrder = async (id) => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡No podrás revertir la eliminación de esta orden de compra!",
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: "Eliminar",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
-  });
-
-  if (result.isConfirmed) {
-    try {
-      const { data } = await axios.delete(`/suppliers/purchase-orders/${id}`);
-
-      if (data.data.status === "ok") {
-        toast.success("Orden de compra eliminada correctamente.");
-        fetchPurchaseOrders();
-      } else {
-        toast.error(
-          `No se pudo eliminar la orden de compra ${currentPurchaseOrder.value.id}`
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Hubo un error al eliminar el detalle de la orden de compra:",
-        error
-      );
-      toast.error("Error al eliminar la orden de compra.");
-    }
-  }
-};
-
-const handleClearErrors = () => {
-  formErrors.value = {};
-};
-
-const handleSaveDetails = async (detailsData) => {
-  try {
-    const { data } = await axios.put(
-      `/suppliers/purchase-orders/${currentPurchaseOrder.value.id}`,
-      detailsData
-    );
-    if (data.status === "ok") {
-      toast.success(
-        `Se actualizaron ${data.count} productos de la orden de compra ${currentPurchaseOrder.value.id}`
-      );
-    } else {
-      toast.error(
-        `No se pudo actualizar la orden de compra ${currentPurchaseOrder.value.id}`
-      );
-    }
-    isEditDialogVisible.value = false;
-    currentPurchaseOrder.value = false;
-    fetchPurchaseOrders();
-  } catch (error) {
-    if (error.response && error.response.status === 422) {
-      formErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
-    }
-  }
-};
 </script>
 
 <template>
-  <div>
-    <PurchaseOrderRequestedProducts
-      v-show="isShowRequestedProductsVisible"
-      v-model="isShowRequestedProductsVisible"
-      :purchaseOrder="currentPurchaseOrder"
-    />
+  <VContainer fluid class="pa-6">
+    <!-- KPIs (4 cards con altura uniforme) -->
+    <VRow class="mb-6" no-gutters>
+      <!-- Órdenes Totales -->
+      <VCol cols="12" sm="6" lg="3" class="pa-2">
+        <VCard class="kpi-card h-100" elevation="0">
+          <VCardText class="pa-5 d-flex flex-column justify-space-between h-100">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="primary" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-clipboard-list" size="22" />
+              </VAvatar>
+              <VChip color="primary" size="small" variant="tonal" label>Total</VChip>
+            </div>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Totales</div>
+              <div class="text-h4 font-weight-black text-primary">{{ stats.total_orders }}</div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-    <PurchaseOrderEditDialog
-      v-show="isEditDialogVisible"
-      v-model="isEditDialogVisible"
-      :purchaseOrder="currentPurchaseOrder"
-      :errors="formErrors"
-      @clearErrors="handleClearErrors"
-      @delete-detail="handleDeletePurchaseOrderDetail"
-      @save="handleSaveDetails"
-    />
+      <!-- Monto Total -->
+      <VCol cols="12" sm="6" lg="3" class="pa-2">
+        <VCard class="kpi-card h-100" elevation="0">
+          <VCardText class="pa-5 d-flex flex-column justify-space-between h-100">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="success" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-currency-dollar" size="22" />
+              </VAvatar>
+              <VChip color="success" size="small" variant="tonal" label>Inversión</VChip>
+            </div>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Monto Total (USD)</div>
+              <div class="text-h4 font-weight-black">
+                {{ Number(stats.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-    <PurchaseOrderShowDialog
-      v-show="isShowDialogVisible"
-      v-model="isShowDialogVisible"
-      :purchaseOrder="currentPurchaseOrder"
-    />
+      <!-- Pendientes -->
+      <VCol cols="12" sm="6" lg="3" class="pa-2">
+        <VCard class="kpi-card h-100" elevation="0">
+          <VCardText class="pa-5 d-flex flex-column justify-space-between h-100">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="warning" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-alert-circle" size="22" />
+              </VAvatar>
+              <VChip color="warning" size="small" variant="tonal" label>Por Recibir</VChip>
+            </div>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Pendientes</div>
+              <div class="text-h4 font-weight-black text-warning">{{ stats.pending_orders }}</div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
 
+      <!-- Completadas -->
+      <VCol cols="12" sm="6" lg="3" class="pa-2">
+        <VCard class="kpi-card h-100" elevation="0">
+          <VCardText class="pa-5 d-flex flex-column justify-space-between h-100">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <VAvatar color="info" variant="tonal" size="44" rounded>
+                <VIcon icon="tabler-circle-check" size="22" />
+              </VAvatar>
+              <VChip color="info" size="small" variant="tonal" label>Completadas</VChip>
+            </div>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Órdenes Completadas</div>
+              <div class="text-h4 font-weight-black text-info">{{ stats.completed_orders }}</div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- Filtros -->
     <PurchaseOrdersFilter
       v-model:selectedSupplier="selectedSupplier"
       :suppliers="suppliers"
       @clear="handleClearFilters"
     />
 
-    <PurchaseOrdersTable
-      :purchaseOrders="purchaseOrders"
-      :loading="loading"
-      :total-purchaseOrders="totalPurchaseOrders"
-      :items-per-page="itemsPerPage"
-      :page="page"
+    <!-- Tabla con Pestañas (Estilo Gastos) -->
+    <VCard variant="outlined" class="rounded-lg bg-surface mt-4">
+      <VTabs
+        v-model="activeTab"
+        color="primary"
+        class="px-2"
+        align-tabs="start"
+        density="comfortable"
+      >
+        <VTab
+          v-for="tab in tabItems"
+          :key="tab.label"
+          :value="tab.value"
+          class="tab-with-badge py-2"
+        >
+          <span class="d-inline-flex align-center gap-2 text-body-2 font-weight-bold">
+            <VIcon :icon="tab.icon" size="18" />
+            {{ tab.label }}
+            <VChip
+              v-if="stats[tab.totalKey] > 0 || tab.value === null"
+              size="x-small"
+              variant="tonal"
+              :color="tab.color"
+              class="tab-count font-weight-black"
+            >
+              {{ stats[tab.totalKey] }}
+            </VChip>
+          </span>
+        </VTab>
+      </VTabs>
+
+      <VDivider />
+
+      <PurchaseOrdersTable
+        :purchaseOrders="purchaseOrders"
+        :loading="loading"
+        :total-purchaseOrders="totalPurchaseOrders"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :is-admin="isAdmin"
+        @update:options="updateTableOptions"
+        @manage="handleManage"
+        @delete-purchaseOrder="handleDeleteOrder"
+        @refresh="fetchPurchaseOrders"
+      />
+    </VCard>
+
+    <!-- Diálogo de Gestión -->
+    <PurchaseOrderManagementDialog
+      v-model="isManagementDialogVisible"
+      :purchaseOrder="currentPurchaseOrder"
       :is-admin="isAdmin"
-      @update:options="updateTableOptions"
-      @edit-purchaseOrder="handleEditPurchaseOrder"
-      @delete-purchaseOrder="handleDeletePurchaseOrder"
-      @show-purchaseOrder="handleShowPurchaseOrder"
-      @show-requested-products="handleShowRequestedProducts"
+      @refresh="fetchPurchaseOrders"
     />
-  </div>
+  </VContainer>
 </template>
+
+<style scoped>
+.kpi-card {
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-2px);
+}
+
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+:deep(.v-tabs) {
+  border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.gap-2 { gap: 8px; }
+</style>

@@ -5,6 +5,16 @@ import { reactive, ref, watch } from "vue";
 
 export function useExpenses() {
   const isDeductible = ref(false);
+  // Pestaña activa: null = Todos, o 'Pending' | 'Approved' | 'Cancelled'
+  const activeTab = ref(null);
+
+  const stats = reactive({
+    totalApproved: 0,
+    totalPending: 0,
+    totalCancelled: 0,
+    topCategory: null,
+    loading: false,
+  });
 
   const modal = reactive({
     statu: false,
@@ -16,6 +26,7 @@ export function useExpenses() {
     total: 0,
     categorias: [],
     loadingApp: false,
+    loadingItems: new Set(),
   });
 
   const formulario = reactive({
@@ -171,6 +182,11 @@ export function useExpenses() {
     actualizarTabla();
   });
 
+  watch(activeTab, () => {
+    page.value = 1;
+    actualizarTabla();
+  });
+
   watch(
     [
       buscardor_filtro,
@@ -223,8 +239,10 @@ export function useExpenses() {
   }
 
   async function consultarGastos() {
+    // Si hay pestaña activa => filtrar por ese status; si no => todos
+    const statusFiltro = activeTab.value ? [activeTab.value] : ["Approved", "Cancelled", "Pending"];
     const DATA = {
-      status,
+      status: statusFiltro,
       buscardor_filtro: buscardor_filtro.value,
       currency: currency.value,
       category_id_filtro: category_id_filtro.value,
@@ -255,7 +273,17 @@ export function useExpenses() {
         toast.error("Error al cargar los gastos");
         return { data: [], total: 0 };
       }
-      return { ...respuestaApi.data.data };
+      
+      // El backend devuelve un recurso paginado estándar envuelto en ApiResponse
+      // Formato: respuestaApi.data = { success: true, data: { data: [...items], meta: { total: X }, links: {...} }, message: "ok" }
+      const paginationData = respuestaApi.data.data;
+      const tableData = paginationData?.data || [];
+      const tableTotal = paginationData?.meta?.total || paginationData?.total || tableData.length || 0;
+
+      return {
+        data: tableData,
+        total: tableTotal
+      };
     } catch (error) {
       toast.error("Error al cargar los gastos");
       console.error("Error al consultar gastos:", error);
@@ -274,6 +302,30 @@ export function useExpenses() {
       toast.error("Error al actualizar la tabla de gastos");
     } finally {
       loading.value = false;
+    }
+  }
+
+  async function consultarStats() {
+    stats.loading = true;
+    try {
+      const [approved, pending, cancelled] = await Promise.all([
+        axios.post(`/finances/expenses/filter-paginate?page=1`, {
+          status: ["Approved"], type_of_expense: ["Normal"], itemsPerPage: 1,
+        }),
+        axios.post(`/finances/expenses/filter-paginate?page=1`, {
+          status: ["Pending"], type_of_expense: ["Normal"], itemsPerPage: 1,
+        }),
+        axios.post(`/finances/expenses/filter-paginate?page=1`, {
+          status: ["Cancelled"], type_of_expense: ["Normal"], itemsPerPage: 1,
+        }),
+      ]);
+      stats.totalApproved = approved.data?.data?.meta?.total || approved.data?.data?.total || 0;
+      stats.totalPending = pending.data?.data?.meta?.total || pending.data?.data?.total || 0;
+      stats.totalCancelled = cancelled.data?.data?.meta?.total || cancelled.data?.data?.total || 0;
+    } catch (e) {
+      console.error("Error cargando stats:", e);
+    } finally {
+      stats.loading = false;
     }
   }
 
@@ -470,49 +522,38 @@ export function useExpenses() {
       return false;
     }
   }
-  
-  async function uploadInvoiceFile(expenseId, file) {
+
+  async function cambiarEstadoGasto(id, status) {
     try {
-      const formData = new FormData();
-      formData.append("id", expenseId);
-      formData.append("file_invoice", file);
-
-      const response = await axios.post(
-        "/finances/expenses/upload-file-invoice",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Factura subida correctamente");
-        return true;
-      } else {
-        throw new Error(response.data.message || "Error al subir la factura");
+      statuModule.loadingItems.add(id);
+      const response = await axios.post("/finances/expenses/change-status", {
+        id,
+        status
+      });
+      if (response.status === 200) {
+        toast.success("Estado actualizado con éxito");
+        await actualizarTabla();
+        await consultarStats();
       }
     } catch (error) {
-      console.error("Error uploading file:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Error al subir el archivo. Intente nuevamente.";
-      toast.error(errorMessage);
-      return false;
+      toast.error("Error al actualizar el estado");
+      console.error(error);
+    } finally {
+      statuModule.loadingItems.delete(id);
     }
   }
 
   async function initialize() {
     formulario.user_id = 1;
     await consultarCategorias();
-    await actualizarTabla();
+    await Promise.all([actualizarTabla(), consultarStats()]);
   }
 
   return {
     // States
     isDeductible,
+    activeTab,
+    stats,
     modal,
     statuModule,
     formulario,
@@ -543,6 +584,7 @@ export function useExpenses() {
     generaPdf,
     exportarExcel,
     enviar,
+    cambiarEstadoGasto,
     initialize,
   };
 }

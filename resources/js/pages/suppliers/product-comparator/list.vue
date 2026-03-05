@@ -13,6 +13,9 @@ import { toast } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
 
 const supplierConnections = ref([]);
 const suppliers = ref([]);
@@ -44,7 +47,7 @@ const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
 
 const pollingSupplierId = ref(null);
-const tab = ref("suppliers");
+const tab = ref(route.query.tab || "suppliers");
 const page = ref(1);
 const itemsPerPage = ref(10);
 const totalSupplierConnections = ref(0);
@@ -77,9 +80,9 @@ const con_descuento = ref(true); // Fallas , Execeso o All
 const selectedLaboratory = ref();
 const selectedGroup = ref();
 const tipo_de_vista = ref(false); // grupo o individual
-const tipo_de_filtracion = ref("sales"); // promedio o ventas
-const lapso_de_tiempo = ref("3 month"); // tiempo
-const stock = ref("fallas"); // Fallas , Execeso o All
+const tipo_de_filtracion = ref("combinado"); // mismos defaults que el Asistente IA
+const lapso_de_tiempo = ref("1 month"); // mismos defaults que el Asistente IA
+const stock = ref("fallas"); // Mostrar siempre fallas (lo que hay que pedir)
 const laboratoriesProductsWithoutSupplier = ref([]);
 
 const handleClearFilters = () => {
@@ -337,10 +340,10 @@ const fetchProductsWithoutSupplier = async () => {
   try {
     loadingProductsWithoutSupplier.value = true;
 
-    const params = {
+    const payload = {
       laboratoryId: selectedLaboratory.value,
       groups: selectedGroup.value,
-      //"tipo_vista": tipo_de_vista.value,
+      tipo_vista: tipo_de_vista.value,
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
@@ -350,21 +353,26 @@ const fetchProductsWithoutSupplier = async () => {
       orderBy: orderByProductsWithoutSupplier.value,
     };
 
-    const { data } = await axios.get(
-      "/suppliers-ia-order-assistant/products-without-supplier",
-      { params },
+    const response = await axios.post(
+      `/suppliers-ia-order-assistant/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
+      payload,
     );
 
-    if (data && data.data && data.data.paginate) {
-      listProductsWithoutSupplier.value = data.data.paginate.data;
-      totalProductsWithoutSupplier.value = data.data.paginate.total;
+    // La respuesta tiene estructura: response.data.data.paginate (LengthAwarePaginator de Laravel)
+    // El paginator tiene: .data (array de items), .total (cantidad total)
+    const paginate = response?.data?.data?.paginate ?? null;
+
+    if (paginate && Array.isArray(paginate.data)) {
+      listProductsWithoutSupplier.value = paginate.data;
+      totalProductsWithoutSupplier.value = paginate.total ?? 0;
+    } else {
+      listProductsWithoutSupplier.value = [];
+      totalProductsWithoutSupplier.value = 0;
+      console.warn('[Comparador] Respuesta inesperada del endpoint:', response?.data);
     }
   } catch (error) {
-    console.error(
-      "Hubo un error al obtener los productos sin proveedor:",
-      error,
-    );
-    toast.error("Error al obtener la lista de productos marcados.");
+    console.error('[Comparador] Error al obtener productos sin proveedor:', error);
+    toast.error('Error al obtener los productos sin proveedor.');
   } finally {
     loadingProductsWithoutSupplier.value = false;
   }
@@ -550,7 +558,9 @@ const handleAddItemToAutoOrder = async (product) => {
     if (message && message.warning) {
       toast.warning(message.warning, { timeout: 8000 });
     }
+    // Limpiar selección activa y refrescar ambas tablas
     selectedProductFromTop.value = null;
+    filterSearchQuery.value = "";
     fetchProductsWithoutSupplier();
     fetchProducts();
   } catch (error) {
@@ -618,8 +628,14 @@ const handleSaveAnalysis = async ({ item, newValue }) => {
 
     if (response.data.status === "success") {
       toast.success(response.data.message || "Pedido añadido correctamente.");
+      // Refrescar tabla de faltas (el producto puede ya no aparecer si se pidió completo)
       fetchProductsWithoutSupplier();
       fetchProducts();
+      // Limpiar selección si era el mismo producto
+      if (selectedProductFromTop.value?.id === item.id) {
+        selectedProductFromTop.value = null;
+        filterSearchQuery.value = "";
+      }
     }
   } catch (error) {
     console.error(error);
@@ -637,11 +653,8 @@ const handleMarkScarce = async (item) => {
 
     if (response.data.status === "success") {
       toast.success(response.data.message);
-      // Actualizar el estado local para reflejar el cambio sin recargar todo si es posible
-      const found = listProductsWithoutSupplier.value.find(
-        (p) => p.id === item.id,
-      );
-      if (found) found.is_scarce = response.data.data.is_scarce;
+      // Refrescar la tabla para que el producto escaso desaparezca si el filtro aplica
+      fetchProductsWithoutSupplier();
     }
   } catch (error) {
     console.error(error);
@@ -730,54 +743,62 @@ const updateProductsWithoutSupplierOptions = (options) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <div class="mb-6">
-          <ProductComparisionProductsTable
-            :products="products"
-            :loading="loadingProducts"
-            :total-products="productsTotal"
-            :items-per-page="productsItemPerPage"
-            :page="productsPage"
-            :quantity-errors="quantityErrors"
-            :enable-usd-amount-col="enableUsdAmountCol"
-            :enable-discount-col="enableDiscountCol"
-            :search-query="filterSearchQuery"
-            @update:search-query="filterSearchQuery = $event"
-            :is-strict-search="isStrictSearch"
-            @update:is-strict-search="isStrictSearch = $event"
-            @update:options="updateProductsTableOptions"
-            @send-product="handleAddItemToAutoOrder"
-          />
-        </div>
+        <!-- Layout side-by-side: izquierda = proveedores, derecha = faltas del pedido -->
+        <VRow class="match-height">
+          <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores -->
+          <VCol cols="12" md="6">
+            <ProductComparisionProductsTable
+              :products="products"
+              :loading="loadingProducts"
+              :total-products="productsTotal"
+              :items-per-page="productsItemPerPage"
+              :page="productsPage"
+              :quantity-errors="quantityErrors"
+              :enable-usd-amount-col="enableUsdAmountCol"
+              :enable-discount-col="enableDiscountCol"
+              :search-query="filterSearchQuery"
+              @update:search-query="filterSearchQuery = $event"
+              :is-strict-search="isStrictSearch"
+              @update:is-strict-search="isStrictSearch = $event"
+              :selected-product="selectedProductFromTop"
+              @update:options="updateProductsTableOptions"
+              @send-product="handleAddItemToAutoOrder"
+            />
+          </VCol>
 
-        <ProductsWithoutSupplierComparatorFilter
-          v-model:selectConDescuento="con_descuento"
-          v-model:selectedLaboratory="selectedLaboratory"
-          v-model:selectedGroup="selectedGroup"
-          v-model:tipo_de_vista="tipo_de_vista"
-          v-model:tipo_de_filtracion="tipo_de_filtracion"
-          v-model:lapso_de_tiempo="lapso_de_tiempo"
-          v-model:stock="stock"
-          :groups="groups"
-          :laboratories="laboratoriesProductsWithoutSupplier"
-          :tipo_de_filtracion="tipo_de_filtracion"
-          :tipo_de_vista="tipo_de_vista"
-          :lapso_de_tiempo="lapso_de_tiempo"
-          :stock="stock"
-          @clear="handleClearFilters"
-        />
-        <ProductsWithoutSupplierComparatorTable
-          v-model="selectedProductFromTop"
-          :products="listProductsWithoutSupplier"
-          :loading="loadingProductsWithoutSupplier"
-          :total-products="totalProductsWithoutSupplier"
-          :items-per-page="itemsPerPageProductsWithoutSupplier"
-          :page="pageProductsWithoutSupplier"
-          @update:options="updateProductsWithoutSupplierOptions"
-          @select-product="handleSelectProductFromTop"
-          @delete="handleToggleOrder"
-          @save-analysis="handleSaveAnalysis"
-          @mark-scarce="handleMarkScarce"
-        />
+          <!-- COLUMNA DERECHA: Productos sin proveedor -->
+          <VCol cols="12" md="6">
+            <ProductsWithoutSupplierComparatorFilter
+              v-model:selectConDescuento="con_descuento"
+              v-model:selectedLaboratory="selectedLaboratory"
+              v-model:selectedGroup="selectedGroup"
+              v-model:tipo_de_vista="tipo_de_vista"
+              v-model:tipo_de_filtracion="tipo_de_filtracion"
+              v-model:lapso_de_tiempo="lapso_de_tiempo"
+              v-model:stock="stock"
+              :groups="groups"
+              :laboratories="laboratoriesProductsWithoutSupplier"
+              :tipo_de_filtracion="tipo_de_filtracion"
+              :tipo_de_vista="tipo_de_vista"
+              :lapso_de_tiempo="lapso_de_tiempo"
+              :stock="stock"
+              @clear="handleClearFilters"
+            />
+            <ProductsWithoutSupplierComparatorTable
+              v-model="selectedProductFromTop"
+              :products="listProductsWithoutSupplier"
+              :loading="loadingProductsWithoutSupplier"
+              :total-products="totalProductsWithoutSupplier"
+              :items-per-page="itemsPerPageProductsWithoutSupplier"
+              :page="pageProductsWithoutSupplier"
+              @update:options="updateProductsWithoutSupplierOptions"
+              @select-product="handleSelectProductFromTop"
+              @delete="handleToggleOrder"
+              @save-analysis="handleSaveAnalysis"
+              @mark-scarce="handleMarkScarce"
+            />
+          </VCol>
+        </VRow>
       </VTabsWindowItem>
     </VTabsWindow>
   </div>

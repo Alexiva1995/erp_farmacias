@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modalValue: { type: Boolean, default: false },
@@ -11,10 +11,33 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "close", "refresh-table"]);
 
 const errors = ref({});
-const payed = ref(null);
+const loading = ref(false); // Estado de carga para el botón
+const payedDisplay = ref(""); // Para el formateo visual con puntos
 const currency = ref(null);
 const count = ref(null);
 const exchangeRate = ref(1);
+
+const payed = computed({
+  get: () => {
+    // Remove dots for thousands separator and replace comma with dot for decimal
+    return payedDisplay.value.replace(/\./g, "").replace(",", ".");
+  },
+  set: (val) => {
+    if (!val) {
+      payedDisplay.value = "";
+      return;
+    }
+    // Format with thousands separator dots
+    payedDisplay.value = Math.round(val)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+});
+
+const handlePayedInput = (e) => {
+  const val = e.target.value.replace(/\D/g, ""); // Remove non-digits
+  payedDisplay.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add thousands separator
+};
 
 const countsFilterByCurrency = {
   USD: ["Efectivo", "Binance", "Paypal"],
@@ -22,10 +45,15 @@ const countsFilterByCurrency = {
   BS: ["Efectivo", "Tarjeta", "Pago móvil", "Transferencia"],
 };
 
+const formatCurrency = (amount) => {
+  return (Number(amount) || 0)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+};
+
 const fetchExchangeRate = async () => {
   try {
     const { data } = await axios.get("/finances/exchange-rates/consultOneBCV");
-
     exchangeRate.value = data.rate;
   } catch (error) {
     toast.error("No se pudo obtener la tasa del día");
@@ -33,22 +61,24 @@ const fetchExchangeRate = async () => {
 };
 
 const closeDialog = () => {
-  payed.value = null;
+  payedDisplay.value = "";
   currency.value = null;
   count.value = null;
   exchangeRate.value = null;
   errors.value = {};
+  loading.value = false;
   emit("close");
 };
 
 const submit = async () => {
   errors.value = {};
+  loading.value = true; // Activar spinner
   try {
     const form = new FormData();
     form.append("_method", "PUT");
     form.append("count", count.value);
     form.append("currency", currency.value);
-    form.append("payed", payed.value);
+    form.append("payed", payed.value); // Use the computed value
 
     const { data } = await axios.post(
       `/finances/payslips/${props.selectedPayslip.id}/finalize`,
@@ -68,17 +98,22 @@ const submit = async () => {
   } catch (error) {
     toast.error("Hubo un error al actualizar el estado de la nómina");
 
-    if (error.response.status === 422) {
+    if (error.response?.status === 422) {
       errors.value = error.response.data.errors;
     }
+  } finally {
+    loading.value = false; // Desactivar spinner
   }
 };
 
 watch(
-  () => props.selectedPayslip,
-  () => {
-    if (props.selectedPayslip) {
+  () => props.modalValue,
+  (val) => {
+    if (val && props.selectedPayslip) {
       fetchExchangeRate();
+      currency.value = 'COP';
+      count.value = 'Efectivo';
+      payed.value = props.selectedPayslip.total_full_cop; // Use the computed setter
     }
   }
 );
@@ -86,118 +121,100 @@ watch(
 <template>
   <VDialog
     :model-value="props.modalValue"
-    max-width="800px"
+    max-width="500"
     persistent
     @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline"> Finalizar nómina </span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+    <VCard class="finalize-payslip-dialog glass-morphism overflow-hidden">
+      <!-- Header -->
+      <VCardTitle class="d-flex align-center justify-space-between pa-6">
+        <div class="d-flex align-center">
+          <VAvatar color="primary" variant="tonal" rounded size="48" class="me-4 shadow-sm">
+            <VIcon icon="tabler-currency-dollar-off" size="28" />
+          </VAvatar>
+          <div>
+            <div class="text-h5 font-weight-black text-high-emphasis">Finalizar Pago</div>
+            <div class="text-caption text-medium-emphasis">Registrar desembolso en COP</div>
+          </div>
+        </div>
+        <VBtn icon="tabler-x" variant="tonal" color="secondary" size="small" @click="closeDialog" />
       </VCardTitle>
+
       <VDivider />
-      <VContainer>
-        <VRow>
-          <VCol cols="4">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Total</span>
-              <VChip color="primary" label
-                >{{ selectedPayslip?.total }} $</VChip
-              >
-              <VSpacer />
-            </div>
-          </VCol>
-          <VCol cols="4">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Total</span>
-              <VChip color="primary" label
-                >{{
-                  Intl.NumberFormat("es-Ve", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(selectedPayslip?.total * exchangeRate)
-                }}
-                Bs.</VChip
-              >
-              <VSpacer />
-            </div>
-          </VCol>
-          <VCol cols="4">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Fecha</span>
-              <VChip color="primary" label>{{
-                selectedPayslip?.payslip_date
-              }}</VChip>
-              <VSpacer />
-            </div>
+
+      <VCardText class="pa-6">
+        <!-- Info Cards - Only COP -->
+        <VRow class="mb-6">
+          <VCol cols="12">
+            <VCard flat variant="tonal" color="success" class="rounded-lg pa-4 text-center">
+              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Monto Total a Pagar (COP)</div>
+              <div class="text-h3 font-weight-black mb-1">
+                {{ formatCurrency(selectedPayslip?.total_full_cop) }}
+              </div>
+              <div class="text-caption">Basado en Paquete Salarial + Bono</div>
+            </VCard>
           </VCol>
         </VRow>
 
         <VRow>
-          <VCol cols="6">
+          <VCol cols="12" sm="6">
+            <p class="text-caption font-weight-medium mb-1 ms-1">Moneda</p>
             <VSelect
               v-model="currency"
-              label="Moneda"
               variant="outlined"
+              density="comfortable"
               hide-details="auto"
-              item-title="title"
-              item-value="value"
-              :items="
-                Object.keys(countsFilterByCurrency).map((currency) => ({
-                  title: currency,
-                  value: currency,
-                }))
-              "
+              placeholder="Seleccione moneda"
+              prepend-inner-icon="tabler-cash-banknote"
+              :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
               :error-messages="errors.currency"
+              class="custom-field"
             />
           </VCol>
-          <VCol cols="6">
+
+          <VCol cols="12" sm="6">
+            <p class="text-caption font-weight-medium mb-1 ms-1">Cuenta</p>
             <VSelect
               v-model="count"
-              label="Cuenta"
               variant="outlined"
+              density="comfortable"
               hide-details="auto"
-              item-title="title"
-              item-value="value"
-              :items="
-                (
-                  countsFilterByCurrency[currency] ?? [
-                    ...new Set(Object.values(countsFilterByCurrency).flat()),
-                  ]
-                ).map((account) => ({
-                  title: account,
-                  value: account,
-                }))
-              "
+              placeholder="Seleccione cuenta"
+              prepend-inner-icon="tabler-wallet"
+              :items="(countsFilterByCurrency[currency] ?? [...new Set(Object.values(countsFilterByCurrency).flat())]).map(a => ({ title: a, value: a }))"
               :error-messages="errors.count"
+              class="custom-field"
             />
           </VCol>
-          <VCol cols="6">
+
+          <VCol cols="12">
+            <p class="text-caption font-weight-medium mb-1 ms-1">Confirmar Monto (COP)</p>
             <VTextField
-              v-model="payed"
-              label="Monto a pagar"
-              type="number"
+              v-model="payedDisplay"
+              placeholder="0"
               variant="outlined"
+              density="comfortable"
               hide-details="auto"
-              :step="0.01"
+              prepend-inner-icon="tabler-coin"
+              prefix="+"
+              suffix="COP"
               :error-messages="errors.payed"
+              class="custom-field amount-input"
+              @input="handlePayedInput"
             />
           </VCol>
         </VRow>
-      </VContainer>
+      </VCardText>
+
       <VDivider />
-      <VCardActions class="pa-4">
+
+      <VCardActions class="pa-6 bg-light d-flex">
         <VBtn
           color="secondary"
-          variant="outlined"
+          variant="tonal"
           @click="closeDialog"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
+          class="flex-grow-1 font-weight-bold rounded-lg py-3"
+          height="48"
         >
           Cancelar
         </VBtn>
@@ -205,12 +222,54 @@ watch(
           color="primary"
           variant="flat"
           @click="submit"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
+          :loading="loading"
+          :disabled="loading"
+          class="flex-grow-1 font-weight-bold rounded-lg ms-3 shadow-sm py-3"
+          height="48"
+          prepend-icon="tabler-check"
         >
-          Guardar Cambios
+          Confirmar
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.finalize-payslip-dialog {
+  border-radius: 20px !important;
+}
+
+.glass-morphism {
+  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+  backdrop-filter: blur(10px);
+}
+
+.custom-field :deep(.v-field) {
+  border-radius: 12px !important;
+  background-color: rgba(var(--v-theme-surface), 0.5) !important;
+}
+
+.amount-input :deep(.v-field) {
+  border: 1px solid rgba(var(--v-theme-primary), 0.2) !important;
+  background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.amount-input :deep(input) {
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+}
+
+.bg-light {
+  background-color: rgba(var(--v-theme-surface), 0.9) !important;
+}
+
+.opacity-70 {
+  opacity: 0.7;
+}
+
+.shadow-sm {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important;
+}
+</style>

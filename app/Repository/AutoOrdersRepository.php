@@ -3,7 +3,9 @@
 namespace App\Repository;
 
 use App\AutoOrderDetailStatus;
+use App\Enums\AutoOrderStatus;
 use App\Models\AutoOrder;
+use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,7 @@ class AutoOrdersRepository
                 'auto_orders.id',
                 'auto_orders.status',
                 'auto_orders.order_date',
+                'auto_orders.tentative_delivery_date',
                 'suppliers.name as supplier_name',
                 'suppliers.sales_phone as phone',
                 DB::raw('SUM(auto_order_details.quantity) as total_quantity'),
@@ -24,14 +27,11 @@ class AutoOrdersRepository
             )
             ->join('suppliers', 'auto_orders.supplier_id', '=', 'suppliers.id')
             ->leftJoin('auto_order_details', 'auto_order_details.order_id', '=', 'auto_orders.id')
-            ->when(
-                $filters['selectedSupplier'] ?? null,
-                fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
-            )
             ->groupBy(
                 'auto_orders.id',
                 'auto_orders.status',
                 'auto_orders.order_date',
+                'auto_orders.tentative_delivery_date',
                 'suppliers.name',
                 'suppliers.sales_phone'
             );
@@ -68,6 +68,11 @@ class AutoOrdersRepository
         $filters["itemsPerPage"] ??= 10;
 
         $query = $this->baseQuery();
+
+        // Filtrar por status si se proporciona (valores del Enum: 0=PENDING, 1=SENT, 2=COMPLETED)
+        if (isset($filters['status']) && $filters['status'] !== null && $filters['status'] !== '') {
+            $query->where('auto_orders.status', (int) $filters['status']);
+        }
 
         return $this->applyFilters($query, $filters);
     }
@@ -174,7 +179,7 @@ class AutoOrdersRepository
             ->select(["auto_orders.*", "suppliers.name as supplier_name", "stats.percentage as percentage_arrived"])
             ->join("suppliers", "suppliers.id", "=", "auto_orders.supplier_id")
             ->leftJoinSub($stats, "stats", fn($join) => $join->on("stats.order_id", "=", "auto_orders.id"))
-            ->where("auto_orders.status", 1)
+            ->whereIn("auto_orders.status", [AutoOrderStatus::SENT, AutoOrderStatus::COMPLETED])
             ->orderByDesc("auto_orders.created_at");
 
         return $this->applyFilters($query, $filters);
@@ -195,5 +200,92 @@ class AutoOrdersRepository
             ->get();
 
         return $query;
+    }
+
+    public function getStats(array $filters = [])
+    {
+        $query = AutoOrder::query()
+            ->when(
+                $filters['selectedSupplier'] ?? null,
+                fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
+            );
+
+        return [
+            'total_orders' => (clone $query)->count(),
+            'total_amount' => (clone $query)->sum('total_amount') ?? 0,
+            'pending_orders' => (clone $query)->where('status', AutoOrderStatus::PENDING)->count(),
+            'sent_orders' => (clone $query)->where('status', AutoOrderStatus::SENT)->count(),
+            'completed_orders' => (clone $query)->where('status', AutoOrderStatus::COMPLETED)->count(),
+        ];
+    }
+
+    public function confirmSent(AutoOrder $autoOrder): bool
+    {
+        $sentAt = now();
+        $tentativeDate = null;
+        $supplier = $autoOrder->supplier;
+
+        if ($supplier && !empty($supplier->dispatch_days)) {
+            $dispatchDays = is_string($supplier->dispatch_days) ? json_decode($supplier->dispatch_days, true) : $supplier->dispatch_days;
+            
+            if (!empty($dispatchDays)) {
+                $dayOfWeekMap = [
+                    'sunday'    => 0,
+                    'monday'    => 1,
+                    'tuesday'   => 2,
+                    'wednesday' => 3,
+                    'thursday'  => 4,
+                    'friday'    => 5,
+                    'saturday'  => 6,
+                ];
+
+                $dispatchIndices = array_map(fn($d) => $dayOfWeekMap[strtolower($d)], $dispatchDays);
+                sort($dispatchIndices);
+
+                $currentDayIndex = (int) $sentAt->format('w');
+
+                // Buscar el siguiente día de despacho
+                $nextDayIndex = null;
+                foreach ($dispatchIndices as $index) {
+                    if ($index >= $currentDayIndex) {
+                        $nextDayIndex = $index;
+                        break;
+                    }
+                }
+
+                if ($nextDayIndex === null) {
+                    $nextDayIndex = $dispatchIndices[0];
+                    $daysToAdd = 7 - $currentDayIndex + $nextDayIndex;
+                } else {
+                    $daysToAdd = $nextDayIndex - $currentDayIndex;
+                }
+
+                $tentativeDate = $sentAt->copy()->addDays($daysToAdd);
+            }
+        }
+
+        return $autoOrder->update([
+            'sent_at' => $sentAt,
+            'status' => AutoOrderStatus::SENT,
+            'tentative_delivery_date' => $tentativeDate
+        ]);
+    }
+
+    public function checkAndCompleteOrder(AutoOrder $autoOrder): bool
+    {
+        // Verificar si todos los detalles tienen estado != PENDING (received no nulo)
+        $allProcessed = $autoOrder->details()
+            ->whereNull('received')
+            ->count() === 0;
+
+        if ($allProcessed && $autoOrder->status === AutoOrderStatus::SENT) {
+            return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
+        }
+        
+        return false;
+    }
+    public function finish(AutoOrder $autoOrder): bool
+    {
+        return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
     }
 }

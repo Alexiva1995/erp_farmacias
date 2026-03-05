@@ -28,18 +28,18 @@ class ExpensesServices implements Expenses
     }
 
 
-    public function crearGasto(CreateExpenseData $data): Expense
+    public function create(CreateExpenseData $data): Expense
     {
-        $data->status = "Pending";
+        $data->status = ExpenseStatus::PENDING->value;
 
-        return $this->expensesRepository->createGasto($data);
+        return $this->expensesRepository->create($data);
     }
 
-    public function crearGastoRecurrente(CreateExpenseRecurrenceData $data): Expense
+    public function createRecurring(CreateExpenseRecurrenceData $data): Expense
     {
         $next_expense_date = null;
         $timeZone = new DateTimeZone(config("app.timezone"));
-        $data->status = "Pending";
+        $data->status = ExpenseStatus::PENDING->value;
 
         if ($data->recurrence === Expense::RECURRENCE_MENSUAL) {
             $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 month')->format('Y-m-d');
@@ -51,22 +51,22 @@ class ExpensesServices implements Expenses
 
         $data->next_expense_date = $next_expense_date;
 
-        return $this->expensesRepository->createGastoRecurente($data);
+        return $this->expensesRepository->createRecurring($data);
     }
 
-    public function editarGasto(array $data): Expense
+    public function update(array $data): Expense
     {
         return $this->expensesRepository->edit($data);
     }
 
-    public function consultById(string $id): ?Expense
+    public function findById(string $id): ?Expense
     {
-        return $this->expensesRepository->consultById($id);
+        return $this->expensesRepository->findById($id);
     }
 
-    public function consultAll(): Collection
+    public function getAll(): Collection
     {
-        return $this->expensesRepository->consultAll();
+        return $this->expensesRepository->getAll();
     }
 
     public function deleteById(string $id): void
@@ -84,18 +84,18 @@ class ExpensesServices implements Expenses
         return $this->expensesRepository->filterWithoutPaginate($filtros);
     }
 
-    public function changeStatus(int $id, string $status): Expense
+    public function updateStatus(int $id, string $status): Expense
     {
-        return $this->expensesRepository->changeStatus($id, $status);
+        return $this->expensesRepository->updateStatus($id, $status);
     }
 
-    public function exportExcel(array $filtros): ExpenseExport
+    public function exportToExcel(array $filters): ExpenseExport
     {
-        $build = $this->expensesRepository->buildFilter($filtros);
+        $build = $this->expensesRepository->buildFilter($filters);
         return new ExpenseExport($build);
     }
 
-    public function cargarFactura(array $data): Expense
+    public function uploadInvoice(array $data): Expense
     {
         // Fecha de carga
         $timeZone = new DateTimeZone(config("app.timezone"));
@@ -120,7 +120,7 @@ class ExpensesServices implements Expenses
         $data["extension_file"] = $meta["extension_file"];
         $data["url_file"] = $meta["url_file"];
 
-        return $this->expensesRepository->cargarFactura($data);
+        return $this->expensesRepository->uploadInvoice($data);
     }
 
     private function ensureInvoiceDirectories(string $id): string
@@ -167,9 +167,9 @@ class ExpensesServices implements Expenses
         ];
     }
 
-    public function ejecutarGastosRecurrentesDeHoy(): void
+    public function executeRecurringExpensesOfToday(): void
     {
-        $expenses = $this->expensesRepository->consultAllExpensesRecurringOfToday();
+        $expenses = $this->expensesRepository->getAllRecurringExpensesOfToday();
         Log::info("ejecutar gastos recurrentes");
         for ($index = 0; $index < count($expenses); $index++) {
             $expense = $expenses[$index];
@@ -191,11 +191,11 @@ class ExpensesServices implements Expenses
                 "expense_date" => $hoy->format('Y-m-d'),
                 "user_id" => $expense->user_id,
                 "account" => $expense->count,
-                "type_of_expense" => Expense::TYPE_OF_EXPENSE_NORMAL,
-                "status" => "Pending",
+                "type_of_expense" => ExpenseStatus::PENDING->value, // Usando Enum o constante adecuada si aplica
+                "status" => ExpenseStatus::PENDING->value,
                 "amount_bs" => $expense->amount_bs,
             ]);
-            $expenseNormal = $this->crearGasto($expenseNormalData);
+            $expenseNormal = $this->create($expenseNormalData);
             Log::info("gastos normal creado del recurrente");
             Log::info($expenseNormal);
 

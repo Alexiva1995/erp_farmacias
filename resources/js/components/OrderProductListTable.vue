@@ -1,58 +1,158 @@
 <script setup lang="js">
 
-const props= defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   list: { type: Array, required: true },
 })
 
-const emit= defineEmits("eliminarItemOrden")
+const emit = defineEmits(["eliminarItemOrden"])
+
+const sortedList = computed(() => {
+  return [...props.list].sort((a, b) => {
+    const subtotalA = (Number(a.reponer) || 0) * (Number(a.precio_final_supplier) || 0);
+    const subtotalB = (Number(b.reponer) || 0) * (Number(b.precio_final_supplier) || 0);
+    
+    if (subtotalB !== subtotalA) {
+      return subtotalB - subtotalA;
+    }
+    
+    // Si el subtotal es igual, ordenar por precio unitario
+    return (Number(b.precio_final_supplier) || 0) - (Number(a.precio_final_supplier) || 0);
+  });
+});
 
 const headers = [
-  { title: 'Nombre',                            key: 'product.name'},
-  { title: 'Cantidad',                          key: 'reponer'},
-  { title: 'Costo',                             key: 'precio_final_supplier'},
-  { title: 'Total',                             key: 'totalPorveedor',sortable:false},
-  { title: 'Action',                            key: "action"},
+  { title: 'Producto', key: 'product.name', minWidth: '250px' },
+  { title: 'Demanda', key: 'product.demanda_ponderada', align: 'end', width: '100px' },
+  { title: 'Cantidad', key: 'reponer', align: 'center', width: '120px' },
+  { title: 'Costo Unit.', key: 'precio_final_supplier', align: 'end', width: '120px' },
+  { title: 'Subtotal', key: 'totalPorveedor', align: 'end', width: '140px', sortable: false },
+  { title: 'Acción', key: "action", align: 'center', width: '80px', sortable: false },
 ];
 
 const groupBy = [{ key: 'supplier.name' }]
 </script>
 
 <template>
-  <VCard>
-    <v-data-table-virtual
+  <VCard variant="outlined" class="rounded-lg">
+    <VDataTableVirtual
       :headers="headers"
-      :items="list"
-      height="400"
-      item-value="name"
+      :items="sortedList"
+      height="500"
+      item-value="uuid"
       :group-by="groupBy"
       fixed-header
+      class="text-no-wrap premium-order-table"
     >
-      <template #item.precio_final_supplier="{ item }">
-        <!-- <VIcon icon="tabler-currency-dollar" /> -->
-        {{ parseFloat(item.precio_final_supplier).toFixed(2) }}
+      <!-- Agrupación por Proveedor -->
+      <template #group-header="{ item, columns, toggleGroup, isGroupOpen }">
+        <tr class="bg-light-primary cursor-pointer" @click="toggleGroup(item)">
+          <td :colspan="columns.length" class="ps-4">
+            <div class="d-flex align-center gap-2 py-2">
+              <VBtn
+                size="x-small"
+                variant="tonal"
+                :icon="isGroupOpen(item) ? 'tabler-chevron-down' : 'tabler-chevron-right'"
+                density="comfortable"
+              />
+              <VIcon icon="tabler-building-store" size="20" class="text-primary" />
+              <span class="text-subtitle-2 font-weight-black text-uppercase">{{ item.value }}</span>
+              <VChip size="x-small" color="primary" variant="tonal" class="ms-2">
+                {{ sortedList.filter(i => i.supplier.name === item.value).length }} productos
+              </VChip>
+            </div>
+          </td>
+        </tr>
       </template>
+
+      <!-- Producto -->
+      <template #item.product.name="{ item }">
+        <div class="d-flex flex-column py-1 overflow-hidden" style="max-inline-size: 250px;">
+          <span class="text-body-2 font-weight-medium text-high-emphasis text-truncate" :title="item.product.name">
+            {{ item.product.name }}
+          </span>
+          <span class="text-caption text-disabled text-truncate">
+            ID: #{{ item.product.id }}
+          </span>
+        </div>
+      </template>
+
+      <!-- Demanda -->
+      <template #item.product.demanda_ponderada="{ item }">
+        <span class="text-body-2 font-weight-bold text-primary">
+          {{ Number(item.product.demanda_ponderada || 0).toFixed(1) }}
+        </span>
+      </template>
+
+      <!-- Cantidad Editable -->
       <template #item.reponer="{ item }">
-        <VTextField
-          class=""
-          style="width: 100px"
-          type="number"
-          v-model="item.reponer"
-          :max="item.productSupplier.quantity"
-        />
-        <!-- {{ item.reponer }} -->
+        <div class="d-flex justify-center">
+          <VTextField
+            v-model="item.reponer"
+            type="number"
+            density="compact"
+            hide-details
+            variant="outlined"
+            class="reponer-input-small"
+            :max="item.productSupplier.quantity"
+          />
+        </div>
       </template>
+
+      <!-- Costo Unitario -->
+      <template #item.precio_final_supplier="{ item }">
+        <span class="text-body-2 font-weight-medium">
+          ${{ Number(item.precio_final_supplier || 0).toFixed(2) }}
+        </span>
+      </template>
+
+      <!-- Subtotal -->
       <template #item.totalPorveedor="{ item }">
-        <!-- <VIcon icon="tabler-currency-dollar " /> -->
-        {{ parseFloat(item.precio_final_supplier).toFixed(2) * item.reponer }}
+        <span class="text-body-2 font-weight-black text-primary">
+          ${{ (Number(item.precio_final_supplier || 0) * (Number(item.reponer) || 0)).toFixed(2) }}
+        </span>
       </template>
+
+      <!-- Acciones -->
       <template #item.action="{ item }">
-        <VIcon
-          icon="tabler-circle-minus"
-          size="30"
-          class="mx-auto d-block cursor-pointer"
-          @click="() => emit('eliminarItemOrden', item)"
-        />
+        <VTooltip text="Eliminar del pedido">
+          <template #activator="{ props: tp }">
+            <VBtn
+              v-bind="tp"
+              icon="tabler-trash"
+              size="x-small"
+              color="error"
+              variant="tonal"
+              @click="emit('eliminarItemOrden', item)"
+            />
+          </template>
+        </VTooltip>
       </template>
-    </v-data-table-virtual>
+    </VDataTableVirtual>
   </VCard>
 </template>
+
+<style scoped>
+.premium-order-table :deep(.v-data-table-header) {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.reponer-input-small {
+  inline-size: 100px;
+}
+
+.reponer-input-small :deep(.v-field__input) {
+  padding-block: 4px;
+  text-align: center;
+}
+
+.bg-light-primary {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+:deep(.v-data-table-group-header-row) {
+  background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+</style>
+

@@ -331,7 +331,8 @@ class FinancialStatementController extends Controller
                         return null;
 
                     $amountUsd = $item->amount_usd ?: $this->convertToUsd($item->amount, $item->currency, $exchangeRates);
-                    $costUsd = $this->convertToUsd($item->costs, $item->currency, $exchangeRates);
+                    // El campo 'costs' de la orden ya viene en USD desde la DB
+                    $costUsd = round((float) ($item->costs ?? 0), 2);
                     $utilityUsd = $amountUsd - $costUsd;
 
                     return [

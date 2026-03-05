@@ -69,31 +69,12 @@ export default [
             action: 'manage',
             subject: 'admin',
           },
-      {
-        title: 'Gasto',
-        action: 'manage',
-        subject: 'admin',
-        children: [
           {
             title: 'Gastos',
             to: 'finances-expense-expenses',
+            action: 'manage',
+            subject: 'admin',
           },
-          {
-            title: 'Gastos Pendientes',
-            to: 'finances-expense-pending-expenses',
-          },
-          /*{
-            title: 'Gastos Recurrentes',
-            to: 'finances-expense-recurring-expense',
-          }*/
-        ],
-      },
-      {
-        title: 'Gastos',
-        to: 'finances-expense-expenses',
-        action: 'manage',
-        subject: 'gastos-expenses',
-      },
       {
         title: 'Balance General',
         to: 'balance-general',

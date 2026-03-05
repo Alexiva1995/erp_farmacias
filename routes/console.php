@@ -45,3 +45,4 @@ Schedule::command('app:calculate-monthly-company-discount')->monthlyOn(1, '00:00
 Schedule::command('app:calculate-product-sales-average')->dailyAt('02:00')->onOneServer()->withoutOverlapping();
 Schedule::command('app:classify-clients')->monthlyOn(5, '03:00')->withoutOverlapping();
 Schedule::command('app:close-monthly-performance')->monthlyOn(1, '00:01');
+Schedule::command('suppliers:evaluate')->dailyAt('01:00')->withoutOverlapping();

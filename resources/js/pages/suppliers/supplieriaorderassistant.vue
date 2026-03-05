@@ -4,146 +4,235 @@ import SupplierIaOrderAssistantGrupoTable from '@/components/SupplierIaOrderAssi
 import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, reactive, watch } from 'vue';
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
-const route= useRouter()
 
-const modal= reactive({
-  statu:false,
-  titulo:"Nuevo",
-})
+const router = useRouter();
 
-const statuModule= reactive({
-  total:0,
-  items:[],
-})
 
+const statuModule = reactive({ total: 0, items: [] });
 const groups = ref([]);
 const laboratories = ref([]);
-
 const loading = ref(false);
+const loadingStats = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
-const selectedLaboratory = ref();
-const selectedGroup= ref();
+const selectedLaboratory = ref([]);
+const selectedGroup = ref([]);
 
-const tipo_de_vista= ref(false);// grupo o individual
-const tipo_de_filtracion= ref("sales");// promedio o ventas
-const lapso_de_tiempo= ref("3 month");// tiempo
-const stock= ref("all");// Fallas , Execeso o All
-const con_descuento= ref(true);// Fallas , Execeso o All
+// Defaults mejorados: lapso 1 mes, cálculo combinado
+const tipo_de_vista = ref(false);
+const tipo_de_filtracion = ref("combinado");
+const lapso_de_tiempo = ref("1 month");
+const stock = ref("all");
+const con_descuento = ref(true);
+const isColombian = ref(false);
+
+// KPIs globales (todos los productos, no paginados)
+const kpiGlobal = reactive({ necesitan: 0, exceso: 0, ok: 0 });
 
 const handleClearFilters = () => {
   con_descuento.value = true;
   tipo_de_vista.value = false;
-  tipo_de_filtracion.value = "sales";
-  lapso_de_tiempo.value = "3 month";
+  tipo_de_filtracion.value = "combinado";
+  lapso_de_tiempo.value = "1 month";
   stock.value = "all";
+  isColombian.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
 };
 
-
-async function consultarProductosConPaginacion(){
-  let data ={
-    "laboratoryId":selectedLaboratory.value,
-    "groups":selectedGroup.value,
-    "tipo_vista":tipo_de_vista.value,
-    "tipo_filtracion":tipo_de_filtracion.value,
-    "lapso_de_tiempo":lapso_de_tiempo.value,
-    "stock":stock.value,
-    "page":page.value,
-    "itemsPerPage":itemsPerPage.value,
-    "sortBy":sortBy.value,
-    "orderBy":orderBy.value,
+// Obtiene KPIs de todos los productos (sin paginar)
+async function consultarKpisGlobales() {
+  loadingStats.value = true;
+  try {
+    const data = {
+      laboratoryId: selectedLaboratory.value,
+      groups: selectedGroup.value,
+      tipo_vista: tipo_de_vista.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      stock: stock.value,
+      isColombian: isColombian.value,
+      page: 1,
+      itemsPerPage: 99999, // traer todos para contar
+      sortBy: null,
+      orderBy: null,
+    };
+    const resp = await axios.post('/suppliers-ia-order-assistant/filtrar-paginate?page=1', data);
+    const items = resp.data?.data?.paginate?.data || [];
+    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0).length;
+    kpiGlobal.exceso    = items.filter(p => roundIaAnalysis(p.solicitar) < 0).length;
+    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) == 0).length;
+  } catch (e) {
+    console.error('Error al cargar KPIs globales:', e);
+  } finally {
+    loadingStats.value = false;
   }
-  let respuestaApi = await axios.post(`/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,data)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
+}
+
+async function consultarProductosConPaginacion() {
+  const data = {
+    laboratoryId: selectedLaboratory.value,
+    groups: selectedGroup.value,
+    tipo_vista: tipo_de_vista.value,
+    tipo_filtracion: tipo_de_filtracion.value,
+    lapso_de_tiempo: lapso_de_tiempo.value,
+    stock: stock.value,
+    isColombian: isColombian.value,
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+  };
+  const resp = await axios.post(`/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`, data);
+  if (resp.status !== 200) toast.error("Error al filtrar los datos");
+  return { ...resp.data };
+}
+
+async function actualizarTabla() {
+  loading.value = true;
+  try {
+    const paginacion = await consultarProductosConPaginacion();
+    statuModule.items = paginacion.data.paginate.data;
+    statuModule.total = paginacion.data.paginate.total;
+  } catch (e) {
+    toast.error("Error al cargar los productos.");
+  } finally {
+    loading.value = false;
   }
-    console.log("respues api => ",respuestaApi)
-
-    return {...respuestaApi.data}
 }
 
-async function actualizarTabla(){
-  loading.value=true
-  let paginacion = await consultarProductosConPaginacion()
+const updateTableOptionsTable = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  sortBy.value = options.sortBy[0]?.key;
+  orderBy.value = options.sortBy[0]?.order;
+};
 
-  statuModule.items=paginacion.data.paginate.data
-  statuModule.total=paginacion.data.paginate.total
+// Cuando cambian filtros: recalcular KPIs globales + tabla
+let filterTimeout = null;
+watch([selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock, isColombian], () => {
+  clearTimeout(filterTimeout);
+  filterTimeout = setTimeout(async () => {
+    page.value = 1;
+    await Promise.all([consultarKpisGlobales(), actualizarTabla()]);
+  }, 400); // 400ms de retraso para evitar peticiones masivas
+});
 
-  loading.value=false
+// Al paginar, solo recargar tabla
+let paginationTimeout = null;
+watch([page, itemsPerPage, orderBy, sortBy], () => {
+  clearTimeout(paginationTimeout);
+  paginationTimeout = setTimeout(async () => {
+    await actualizarTabla();
+  }, 200);
+});
 
-}
-
-const updateTableOptionsTable = options => {
-  // console.log(options)
-  page.value = options.page
-  itemsPerPage.value = options.itemsPerPage
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
-}
-
-
-
-watch([
-  selectedLaboratory,
-  selectedGroup,
-  tipo_de_vista,
-  tipo_de_filtracion,
-  lapso_de_tiempo,
-  stock,
-  orderBy,
-  sortBy,
-  page,
-  itemsPerPage,
-],
-async () => {
-  await actualizarTabla()
-})
-
-function generarPedido(){
-  // route.push(`/suppliers/supplieriaorderassistantgenerar-pedido?tipo_de_vista=${tipo_de_vista.value}`)
-  route.push({
-    path:"/suppliers/generar-pedido",
-    query:{
-      "con_descuento":con_descuento.value,
-      "tipo_filtracion":tipo_de_filtracion.value,
-      "lapso_de_tiempo":lapso_de_tiempo.value,
-      "laboratoryId":JSON.stringify(selectedLaboratory.value),
-      "groups":JSON.stringify(selectedGroup.value),
-      // "stock":stock.value,
+function generarPedido() {
+  toast.info('Navegando a generar pedido...');
+  console.log('[DEBUG] Iniciando generarPedido desde el asistente');
+  router.push({
+    path: "/suppliers/generar-pedido",
+    query: {
+      con_descuento: con_descuento.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      stock: stock.value,
+      isColombian: isColombian.value,
+      laboratoryId: JSON.stringify(selectedLaboratory.value),
+      groups: JSON.stringify(selectedGroup.value),
     }
-  })
+  });
 }
 
-async function consultarLaboratorios(){
-  let respuesta=await axios.get("/laboratories")
+async function consultarLaboratorios() {
+  const respuesta = await axios.get("/laboratories");
   laboratories.value = respuesta.data;
 }
-async function consultarGruposProductos(){
-  let respuestaApi=await axios.get("/groups/consult-all")
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
-  }
-  console.log("grupos => ",respuestaApi.data.data)
+
+async function consultarGruposProductos() {
+  const respuestaApi = await axios.get("/groups/consult-all");
+  if (respuestaApi.status !== 200) { toast.error("Error al cargar grupos"); return; }
   groups.value = [...respuestaApi.data.data];
 }
 
 onMounted(async () => {
-  await consultarGruposProductos()
-  await consultarLaboratorios()
-  await actualizarTabla()
-
-})
+  await Promise.all([consultarGruposProductos(), consultarLaboratorios()]);
+  await Promise.all([consultarKpisGlobales(), actualizarTabla()]);
+});
 </script>
+
 <template>
-  <div>
+  <VContainer fluid class="px-0 py-4">
+    <!-- KPIs globales -->
+    <VRow class="mb-5">
+      <VCol cols="12" sm="4">
+        <VCard class="kpi-ia-card" elevation="0">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="error" variant="tonal" size="44" rounded>
+              <VIcon icon="tabler-alert-circle" size="22" />
+            </VAvatar>
+            <div class="flex-grow-1">
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Necesitan Reposición</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-error">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="error" /></template>
+                  <template v-else>{{ kpiGlobal.necesitan }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
+            </div>
+            <VChip color="primary" variant="tonal" size="x-small">IA Activa</VChip>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard class="kpi-ia-card" elevation="0">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="warning" variant="tonal" size="44" rounded>
+              <VIcon icon="tabler-package" size="22" />
+            </VAvatar>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Exceso de Stock</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-warning">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="warning" /></template>
+                  <template v-else>{{ kpiGlobal.exceso }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard class="kpi-ia-card" elevation="0">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="success" variant="tonal" size="44" rounded>
+              <VIcon icon="tabler-circle-check" size="22" />
+            </VAvatar>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Stock Óptimo</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-success">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="success" /></template>
+                  <template v-else>{{ kpiGlobal.ok }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- Filtros -->
     <SupplierIaOrderAssistantFilter
       v-model:selectConDescuento="con_descuento"
       v-model:selectedLaboratory="selectedLaboratory"
@@ -152,34 +241,62 @@ onMounted(async () => {
       v-model:tipo_de_filtracion="tipo_de_filtracion"
       v-model:lapso_de_tiempo="lapso_de_tiempo"
       v-model:stock="stock"
+      v-model:isColombian="isColombian"
       :groups="groups"
       :laboratories="laboratories"
       :tipo_de_filtracion="tipo_de_filtracion"
       :tipo_de_vista="tipo_de_vista"
       :lapso_de_tiempo="lapso_de_tiempo"
       :stock="stock"
+      :isColombian="isColombian"
       @clear="handleClearFilters"
       @generarPedido="generarPedido"
     />
-  </div>
-  <div v-if="tipo_de_vista == true">
-    <SupplierIaOrderAssistantGrupoTable
-      :products="statuModule.items"
-      :total-product="statuModule.total"
-      :loading="loading"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptionsTable"
-    />
-  </div>
-  <div v-if="tipo_de_vista == false">
-    <SupplierIaOrderAssistantIndividualTable
-      :products="statuModule.items"
-      :total-product="statuModule.total"
-      :loading="loading"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptionsTable"
-    />
-  </div>
+
+    <!-- Tabla -->
+    <div class="mt-4">
+      <SupplierIaOrderAssistantGrupoTable
+        v-if="tipo_de_vista == true"
+        :products="statuModule.items"
+        :total-product="statuModule.total"
+        :loading="loading"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptionsTable"
+      />
+      <SupplierIaOrderAssistantIndividualTable
+        v-else
+        :products="statuModule.items"
+        :total-product="statuModule.total"
+        :loading="loading"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptionsTable"
+      />
+    </div>
+  </VContainer>
 </template>
+
+<style scoped>
+.kpi-ia-card {
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+}
+
+.kpi-ia-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 6%) !important;
+  transform: translateY(-2px);
+}
+</style>
+
+<style>
+/* Forzar eliminación de padding del layout boxed solicitado por el usuario */
+.layout-wrapper.layout-content-width-boxed .layout-content-wrapper > main > .v-container {
+  padding-inline: 0 !important;
+}
+
+#app > div > div > div > div.layout-wrapper.layout-nav-type-vertical.layout-navbar-sticky.layout-footer-static.layout-content-width-boxed.layout-overlay-nav > div.layout-content-wrapper > main > div > div {
+  padding-inline: 0 !important;
+}
+</style>

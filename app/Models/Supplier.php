@@ -28,6 +28,7 @@ class Supplier extends Model
     protected $fillable = [
         'name',
         'social_reason',
+        'rif',
         'sales_phone',
         'collections_phone',
         'credit_days',
@@ -41,7 +42,8 @@ class Supplier extends Model
         'payment_due_type',
         'custom_due_days',
         'payment_due_reference',
-        'invoice_date_reference'
+        'invoice_date_reference',
+        'address'
     ];
 
     protected $casts = [
@@ -56,7 +58,17 @@ class Supplier extends Model
      * @var array<string, string>
      */
 
-    protected $appends = ['debt'];
+    protected $appends = ['debt', 'latest_score_value', 'score_breakdown'];
+
+    public function getLatestScoreValueAttribute()
+    {
+        return $this->latestScore ? $this->latestScore->score : null;
+    }
+
+    public function getScoreBreakdownAttribute()
+    {
+        return $this->latestScore ? $this->latestScore->breakdown : null;
+    }
 
     public function products(): HasMany
     {

@@ -530,7 +530,7 @@ async function submitForm() {
           prepend-icon="tabler-device-floppy"
           class="flex-grow-1"
         >
-          {{ isUploading ? "Subiendo..." : "Guardar Gasto" }}
+          {{ isUploading ? "Subiendo..." : "Guardar" }}
         </VBtn>
       </VCardActions>
     </VCard>

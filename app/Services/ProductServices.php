@@ -75,7 +75,7 @@ class ProductServices implements Product
 
     public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate(array $filtros): Collection
     {
-        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSelesWithoutPaginate($filtros);
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
     }
 
     public function filtrarIndividualProductForAssistantReportTypeSalesWithPaginate(array $filtros): LengthAwarePaginator
@@ -95,7 +95,7 @@ class ProductServices implements Product
             $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
         }
         if ($filtros["tipo_filtracion"] == "sales") {
-            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSelesWithoutPaginate($filtros);
+            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
         } else {
             $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
         }

@@ -458,6 +458,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Rutas de Proveedores
+    Route::get('/suppliers/stats', [SupplierController::class, 'stats']);
     Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
     Route::prefix("suppliers")->group(function () {
         Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
@@ -481,9 +482,15 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
         Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
         Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
+        // Rutas de configuración FTP/API autoadministrable
+        Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
+        Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
     });
 
     Route::prefix("suppliers/purchase-orders")->group(function () {
+        Route::get("/stats", [PurchaseOrderController::class, "getStats"]);
+        Route::post("/{autoOrder}/confirm-sent", [PurchaseOrderController::class, "confirmSent"]);
+        Route::post('/{autoOrder}/finish', [PurchaseOrderController::class, 'finish']);
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
         Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
         Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
@@ -580,6 +587,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('', [PayslipController::class, 'store']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
+            Route::get('/{payslip}/download/pdf', [PayslipController::class, 'downloadPdf']);
             Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
@@ -599,6 +607,8 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('/downloadReport', [CashClosureController::class, 'downloadReport']);
             Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
+            Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
+            Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
         });
 
         Route::prefix("expenses")->group(function () {
@@ -614,6 +624,9 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::get("/", [ExpenseCategoryController::class, "getAll"]);
             });
         });
+
+        // Balance General
+        Route::get("/balance-general", [App\Http\Controllers\Api\Accounting\BalanceController::class, "index"]);
     });
     Route::prefix('furniture')->name('furniture.')->controller(FurnitureController::class)->group(function () {
         Route::get('/value', 'getValue')->name('value');
@@ -686,7 +699,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
         Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
+    Route::prefix('retentions')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
+        Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
+        Route::get('/download', [\App\Http\Controllers\Api\RetentionController::class, 'downloadPdf']);
+    });
 });
+
 
 Route::prefix('supervisor')->group(function () {
     Route::get('/cleaning-executions', [EmployeeCleaningActivityController::class, 'supervisorExecutions']);

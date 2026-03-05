@@ -25,6 +25,14 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
+    public function getStats(Request $request)
+    {
+        $filters = $request->query();
+        $stats = $this->purchaseOrder->getStats($filters);
+
+        return ApiResponse::success($stats);
+    }
+
     public function destroy(AutoOrder $autoOrder)
     {
         $result = $this->purchaseOrder->delete($autoOrder);
@@ -62,5 +70,16 @@ class PurchaseOrderController extends Controller
         $data = $this->purchaseOrder->getExportableData($autoOrder);
 
         return ApiResponse::success(["data" => $data]);
+    }
+
+    public function confirmSent(AutoOrder $autoOrder)
+    {
+        return response()->json($this->purchaseOrder->confirmSent($autoOrder));
+    }
+
+    public function finish(AutoOrder $autoOrder)
+    {
+        $repo = new \App\Repository\AutoOrdersRepository();
+        return response()->json($repo->finish($autoOrder));
     }
 }

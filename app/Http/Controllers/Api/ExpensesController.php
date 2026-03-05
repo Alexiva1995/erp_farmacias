@@ -11,6 +11,7 @@ use App\Http\Requests\CreateExpenseRecurrenceRequest;
 use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\EditExpenseRequest;
 use App\Http\Requests\UploadFileInvoiceExpenseRequest;
+use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,9 +31,9 @@ class ExpensesController extends Controller
 
     public function createExpense(CreateExpenseRequest $request): JsonResponse
     {
-        $expense = $this->expenses->crearGasto($request->data);
+        $expense = $this->expenses->create($request->data);
 
-        return ApiResponse::success($expense, "ok");
+        return ApiResponse::success(new ExpenseResource($expense), "ok");
     }
 
     /*public function createExpenseRecurrente(CreateExpenseRecurrenceRequest $request): JsonResponse
@@ -44,9 +45,9 @@ class ExpensesController extends Controller
 
     public function editExpense(EditExpenseRequest $request): JsonResponse
     {
-        $expense = $this->expenses->editarGasto($request->data->toArray());
+        $expense = $this->expenses->update($request->data->toArray());
 
-        return ApiResponse::success($expense, "ok");
+        return ApiResponse::success(new ExpenseResource($expense), "ok");
     }
 
 
@@ -54,114 +55,51 @@ class ExpensesController extends Controller
     {
         $this->expenses->deleteById($request->id);
 
-        $respuestaConsulta = $this->expenses->consultById($request->id);
-
-        if ($respuestaConsulta) {
-            return ApiResponse::error("El gasto no a sido eliminado", 400);
-        }
-
-        return ApiResponse::success($respuestaConsulta, "Gasto Eliminado", 200);
+        return ApiResponse::success(null, "Gasto Eliminado", 200);
     }
 
     public function getAll(): JsonResponse
     {
-        $respuestaConsulta = $this->expenses->consultAll();
+        $expenses = $this->expenses->getAll();
 
-        return ApiResponse::success($respuestaConsulta, "ok");
+        return ApiResponse::success(ExpenseResource::collection($expenses), "ok");
     }
 
-    public function consultById(Request $request)
+    public function consultById(Request $request): JsonResponse
     {
-        $respuestaConsulta = $this->expenses->consultById($request->id);
+        $expense = $this->expenses->findById($request->id);
 
-        if (!$respuestaConsulta) {
-            return ApiResponse::error("El gasto no a sido encontrado", 404);
+        if (!$expense) {
+            return ApiResponse::error("El gasto no ha sido encontrado", 404);
         }
 
-        return ApiResponse::success($respuestaConsulta, "ok", 200);
+        return ApiResponse::success(new ExpenseResource($expense), "ok", 200);
     }
 
 
     public function filterWithPaginate(Request $request): JsonResponse
     {
+        $filters = $request->only([
+            'itemsPerPage', 'page', 'buscardor_filtro', 'category_id_filtro',
+            'currency', 'status', 'fechaDesde_filtro', 'fechaHasta_filtro',
+            'hasInvoice', 'is_deductible', 'orderBy', 'sortBy'
+        ]);
 
-        $filtros = [
-            "itemsPerPage" => $request->itemsPerPage,
-            "page" => $request->page,
-        ];
+        $expenses = $this->expenses->filterWithPaginate($filters, $filters["itemsPerPage"] ?? 10);
 
-        if ($request->filled("buscardor_filtro")) {
-            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
-        }
-
-        if ($request->filled("category_id_filtro")) {
-            $filtros["category_id_filtro"] = $request->category_id_filtro;
-        }
-
-        if ($request->filled("currency")) {
-            $filtros["currency"] = $request->currency;
-        }
-
-        if ($request->filled("status")) {
-            $filtros["status"] = $request->status;
-        }
-
-        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
-            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
-            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
-        }
-
-        if ($request->has("hasInvoice")) {
-            $filtros["hasInvoice"] = (bool) $request->hasInvoice ? 1 : 0;
-        }
-
-        if ($request->has("isDeductible")) {
-            $filtros["isDeductible"] = (bool) $request->isDeductible ? 1 : 0;
-        }
-
-        if ($request->filled("orderBy") && $request->filled("sortBy")) {
-            $filtros["orderBy"] = $request->orderBy;
-            $filtros["sortBy"] = $request->sortBy;
-        }
-
-        $respuestaConsulta = $this->expenses->filterWithPaginate($filtros, $filtros["itemsPerPage"]);
-
-        return ApiResponse::success($respuestaConsulta, "ok", 200);
+        return ApiResponse::success(ExpenseResource::collection($expenses)->response()->getData(true), "ok", 200);
     }
 
     public function filterWithoutPaginate(Request $request): JsonResponse
     {
+        $filters = $request->only([
+            'buscardor_filtro', 'category_id_filtro', 'currency', 'status',
+            'fechaDesde_filtro', 'fechaHasta_filtro', 'type_of_expense'
+        ]);
 
-        $filtros = [];
+        $expenses = $this->expenses->filterWithoutPaginate($filters);
 
-        if ($request->filled("buscardor_filtro")) {
-            $filtros["buscardor_filtro"] = $request->buscardor_filtro;
-        }
-
-        if ($request->filled("category_id_filtro")) {
-            $filtros["category_id_filtro"] = $request->category_id_filtro;
-        }
-
-        if ($request->filled("currency")) {
-            $filtros["currency"] = $request->currency;
-        }
-
-        if ($request->filled("status")) {
-            $filtros["status"] = $request->status;
-        }
-
-        if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
-            $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
-            $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
-        }
-
-        if ($request->filled("type_of_expense")) {
-            $filtros["type_of_expense"] = $request->type_of_expense;
-        }
-
-        $respuestaConsulta = $this->expenses->filterWithoutPaginate($filtros);
-
-        return ApiResponse::success($respuestaConsulta, "ok", 200);
+        return ApiResponse::success(ExpenseResource::collection($expenses), "ok", 200);
     }
 
 
@@ -204,37 +142,29 @@ class ExpensesController extends Controller
 
     public function changeStatus(ChangeStatusExpenseRequest $request): JsonResponse
     {
-
-        $respuestaConsulta = $this->expenses->changeStatus($request->data->id, $request->data->status);
-        $expense = $this->expenses->consultById($request->data->id);
-
-        if ($expense->count == "Tarjeta") {
-            $expense->count = "CARD";
-        } else if ($expense->count == "Efectivo") {
-            $expense->count = "CASH";
-        } else if ($expense->count == "Transferencia") {
-            $expense->count = "TRANSFER";
-        } else if ($expense->count == "Pago Móvil") {
-            $expense->count = "MOBILE";
-        } else if ($expense->count == "Binance") {
-            $expense->count = "BINANCE";
-        } else if ($expense->count == "PayPal") {
-            $expense->count = "PAYPAL";
+        $expense = $this->expenses->findById($request->id);
+        
+        if (!$expense) {
+            return ApiResponse::error("Gasto no encontrado", 404);
         }
 
-        if ($request->data->status == Expense::STATUS_APPROVED) {
-            $transaction = $this->transaction->createTransactionSalida($expense);
+        $this->expenses->updateStatus($request->id, $request->status);
+
+        if ($request->status === \App\Enums\ExpenseStatus::APPROVED->value) {
+            // Mapeo de cuenta usando Enum para la transacción
+            $paymentMethod = \App\Enums\ExpensePaymentMethod::fromOldLabel($expense->count);
+            $expense->count = $paymentMethod->value;
+            
+            $this->transaction->createTransactionSalida($expense);
         }
 
-
-        return ApiResponse::success($respuestaConsulta, "ok", 200);
+        return ApiResponse::success(null, "Estado actualizado con éxito", 200);
     }
 
     public function uploadFileInvoice(UploadFileInvoiceExpenseRequest $request): JsonResponse
     {
+        $this->expenses->uploadInvoice($request->data->toArray());
 
-        $respuestaConsulta = $this->expenses->cargarFactura($request->data->toArray());
-
-        return ApiResponse::success(null, "ok", 200);
+        return ApiResponse::success(null, "Factura cargada", 200);
     }
 }

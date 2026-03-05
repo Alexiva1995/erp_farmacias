@@ -175,6 +175,11 @@ class SupplierQueryService
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
+            Log::info("Analizando facturas para persistencia", [
+                'total_recibidas' => count($invoices),
+                'numeros_recibidos' => collect($invoices)->pluck('header.invoice_number')->toArray()
+            ]);
+
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
             $uniqueProducts = $products;
 
@@ -189,16 +194,23 @@ class SupplierQueryService
                 'primeros_3_productos' => array_slice($uniqueProducts, 0, 3),
             ]);
 
-            $existingInvoiceNumbers = Invoice::whereIn(
-                'invoice_number',
-                collect($invoices)->pluck('header.invoice_number')->filter()->unique()
-            )->pluck('invoice_number')->toArray();
+            $invoiceNumbersToFilter = collect($invoices)->pluck('header.invoice_number')->filter()->unique()->toArray();
+            
+            $existingInvoiceNumbers = Invoice::whereIn('invoice_number', $invoiceNumbersToFilter)
+                ->pluck('invoice_number')
+                ->toArray();
 
             $filteredInvoices = collect($invoices)
                 ->filter(function ($invoice) use ($existingInvoiceNumbers) {
                     $number = $invoice['header']['invoice_number'] ?? null;
-                    return $number && !in_array($number, $existingInvoiceNumbers);
+                    $isNew = $number && !in_array($number, $existingInvoiceNumbers);
+                    if (!$isNew) {
+                        Log::warning("Factura filtrada (ya existe o sin número)", ['number' => $number]);
+                    }
+                    return $isNew;
                 })->values()->toArray();
+
+            Log::info("Facturas tras filtrado", ['total' => count($filteredInvoices)]);
 
             // Procesar productos FUERA de la transacción para evitar rollback si uno falla
             // NO eliminar ningún producto existente
@@ -402,8 +414,30 @@ class SupplierQueryService
                     $exchangeRate = floatval($header['exchange_rate'] ?? 1);
                     $isVitaclinics = $supplier->id === 15;
 
-                    $details = collect($lines)->map(function ($line) use ($invoiceModel, $exchangeRate, $isVitaclinics) {
+                    $details = [];
+                    foreach ($lines as $line) {
                         $lineData = Arr::only($line, InvoiceDetail::FILLABLEDETAILS);
+
+                        // 🔍 Vincular producto por barcode si no tiene product_id
+                        if (empty($lineData['product_id']) && !empty($line['barcode'])) {
+                            $product = Product::where('barcode', $line['barcode'])->first();
+                            
+                            if (!$product && !empty($line['name'])) {
+                                // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
+                                $product = Product::create([
+                                    'name'       => $line['name'],
+                                    'barcode'    => $line['barcode'],
+                                    'unit_cost'  => floatval($line['unit_cost'] ?? 0),
+                                    'sale_price' => floatval($line['unit_cost'] ?? 0),
+                                    'is_active'  => true,
+                                    'is_deleted' => true,
+                                ]);
+                            }
+
+                            if ($product) {
+                                $lineData['product_id'] = $product->id;
+                            }
+                        }
 
                         // ✅ Si es Vitaclinics y tiene exchange_rate, multiplicar unit_cost
                         if ($isVitaclinics && $exchangeRate > 1) {
@@ -415,17 +449,18 @@ class SupplierQueryService
                             $lineData['total_cost'] = number_format($lineData['unit_cost'] * $quantity, 2, '.', '');
                         }
 
-                        return [
+                        $details[] = [
                             ...$lineData,
                             'invoice_id' => $invoiceModel->id,
                         ];
-                    })->toArray();
+                    }
 
                     $invoiceModel->details()->createMany($details);
                 }
             });
             return true;
         } catch (\Throwable $e) {
+            Log::error("Error in storeSupplierConnectionData: " . $e->getMessage());
             report($e);
             return false;
         }
@@ -676,12 +711,38 @@ class SupplierQueryService
             $order->increment("total_quantity", $quantity);
             $order->increment("total_amount", $subtotal);
         } else {
+            // Calcular fecha de entrega tentativa basada en dispatch_days del proveedor
+            $tentativeDate = null;
+            $supplier = $product->supplier;
+            $dispatchDays = $supplier->dispatch_days; // Ej: [1, 3, 5] o ["Monday", ...]
+            
+            if (!empty($dispatchDays) && is_array($dispatchDays)) {
+                $today = now();
+                $minDiff = 8; // Más de una semana
+                foreach ($dispatchDays as $day) {
+                    // Normalizar el día (pueden venir como nombres o números de ISO-8601 1=Mon, 7=Sun)
+                    $targetDay = is_numeric($day) ? (int)$day : date('N', strtotime($day));
+                    $currentDay = (int)$today->format('N');
+                    
+                    $diff = $targetDay - $currentDay;
+                    if ($diff <= 0) $diff += 7; // Próxima semana
+                    
+                    if ($diff < $minDiff) {
+                        $minDiff = $diff;
+                    }
+                }
+                if ($minDiff < 8) {
+                    $tentativeDate = $today->copy()->addDays($minDiff);
+                }
+            }
+
             $payload = [
                 "supplier_id" => $product->supplier_id,
                 "order_date" => now()->today(),
                 "total_items" => 1,
                 "total_quantity" => $quantity,
                 "total_amount" => $subtotal,
+                "tentative_delivery_date" => $tentativeDate,
             ];
             $order = AutoOrder::create($payload);
             $order->details()->create($detailPayload);
@@ -735,7 +796,10 @@ class SupplierQueryService
 
     public function deleteProducts(Supplier $supplier)
     {
-        $supplier->productSuppliers()->delete();
+        // Solo eliminamos productos que NO tengan detalles de órdenes vinculados
+        $supplier->productSuppliers()
+            ->whereDoesntHave('autoOrderDetails')
+            ->delete();
 
         return response()->json(["status" => "ok"]);
     }
@@ -761,5 +825,38 @@ class SupplierQueryService
     public function getSupplierFirstConnection(Supplier $supplier)
     {
         return $supplier->connections()->first();
+    }
+
+    /**
+     * Obtiene el resumen estadístico de proveedores
+     */
+    public function getSupplierSummaryStats(): array
+    {
+        // 1. Deuda Total (Status 0 = Pendiente)
+        $totalDebt = Invoice::where('status_payment', 0)
+            ->where('total_usd', '>', 0)
+            ->sum('total_usd');
+
+        // 2. Total de Proveedores Activos (No eliminados)
+        $activeSuppliersCount = Supplier::count();
+
+        // 3. Éxito de Conexiones (Últimas 24 horas)
+        $last24Hours = now()->subDay();
+        $totalConnections = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)->count();
+        $successfulConnections = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)
+            ->where('status', 'completed')
+            ->count();
+
+        $connectionSuccessRate = $totalConnections > 0 
+            ? round(($successfulConnections / $totalConnections) * 100, 1) 
+            : 100;
+
+        return [
+            'total_debt' => (float)$totalDebt,
+            'active_suppliers_count' => $activeSuppliersCount,
+            'connection_success_rate' => $connectionSuccessRate,
+            'successful_connections' => $successfulConnections,
+            'total_connections_24h' => $totalConnections
+        ];
     }
 }

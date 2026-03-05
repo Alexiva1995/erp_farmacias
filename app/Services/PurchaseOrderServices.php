@@ -30,11 +30,7 @@ class PurchaseOrderServices implements PurchaseOrder
 
   public function getAll(array $data): LengthAwarePaginator
   {
-    $data["itemsPerPage"] ??= 10;
-
-    $query = $this->baseQuery();
-
-    return $this->autoOrdersRepository->applyFilters($query, $data);
+    return $this->autoOrdersRepository->getAll($data);
   }
 
   public function getHistory(array $data): mixed
@@ -57,5 +53,15 @@ class PurchaseOrderServices implements PurchaseOrder
   public function getExportableData(AutoOrder $autoOrder): Collection
   {
     return $this->autoOrdersRepository->getExportableData($autoOrder);
+  }
+
+  public function getStats(array $data): array
+  {
+    return $this->autoOrdersRepository->getStats($data);
+  }
+
+  public function confirmSent(AutoOrder $autoOrder): bool
+  {
+    return $this->autoOrdersRepository->confirmSent($autoOrder);
   }
 }

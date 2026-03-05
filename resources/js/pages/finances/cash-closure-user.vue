@@ -1,14 +1,14 @@
 <script setup>
-import CashSummary from "@/components/CashSummary.vue";
-import axios from "@/plugins/axios";
-import { ref, onMounted, watch, computed, nextTick } from "vue";
-import ClosedCashClosure from "@/components/dialogs/ClosedCashClosure.vue";
-import ClosingHistoryTable from "@/components/ClosingHistoryTable.vue";
-import { toast } from "@/plugins/sweetalert";
 import CashClosureTicke from "@/components/CashClosureTicke.vue";
-import OrderCashCloseTable from "@/components/OrderCashCloseTable.vue";
+import CashSummary from "@/components/CashSummary.vue";
+import ClosingHistoryTable from "@/components/ClosingHistoryTable.vue";
+import ClosedCashClosure from "@/components/dialogs/ClosedCashClosure.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
+import OrderCashCloseTable from "@/components/OrderCashCloseTable.vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const loading = ref(false);
 const cashClosure = ref([]);
@@ -466,7 +466,6 @@ const isSpecialTaxpayer = computed(() => {
       :page="page"
       @update:options="updateTableOptions"
       @print-cash="printCash"
-      @download-cash="downloadcash"
     />
   </VCard>
   <div class="mb-5"></div>
