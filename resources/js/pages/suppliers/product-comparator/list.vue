@@ -733,55 +733,62 @@ const updateProductsWithoutSupplierOptions = (options) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-      <div class="mb-6">
-          <ProductComparisionProductsTable
-            :products="products"
-            :loading="loadingProducts"
-            :total-products="productsTotal"
-            :items-per-page="productsItemPerPage"
-            :page="productsPage"
-            :quantity-errors="quantityErrors"
-            :enable-usd-amount-col="enableUsdAmountCol"
-            :enable-discount-col="enableDiscountCol"
-            :search-query="filterSearchQuery"
-            @update:search-query="filterSearchQuery = $event"
-            :is-strict-search="isStrictSearch"
-            @update:is-strict-search="isStrictSearch = $event"
-            :selected-product="selectedProductFromTop"
-            @update:options="updateProductsTableOptions"
-            @send-product="handleAddItemToAutoOrder"
-          />
-        </div>
+        <!-- Layout side-by-side: izquierda = proveedores, derecha = faltas del pedido -->
+        <VRow class="match-height">
+          <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores -->
+          <VCol cols="12" md="6">
+            <ProductComparisionProductsTable
+              :products="products"
+              :loading="loadingProducts"
+              :total-products="productsTotal"
+              :items-per-page="productsItemPerPage"
+              :page="productsPage"
+              :quantity-errors="quantityErrors"
+              :enable-usd-amount-col="enableUsdAmountCol"
+              :enable-discount-col="enableDiscountCol"
+              :search-query="filterSearchQuery"
+              @update:search-query="filterSearchQuery = $event"
+              :is-strict-search="isStrictSearch"
+              @update:is-strict-search="isStrictSearch = $event"
+              :selected-product="selectedProductFromTop"
+              @update:options="updateProductsTableOptions"
+              @send-product="handleAddItemToAutoOrder"
+            />
+          </VCol>
 
-        <ProductsWithoutSupplierComparatorFilter
-          v-model:selectConDescuento="con_descuento"
-          v-model:selectedLaboratory="selectedLaboratory"
-          v-model:selectedGroup="selectedGroup"
-          v-model:tipo_de_vista="tipo_de_vista"
-          v-model:tipo_de_filtracion="tipo_de_filtracion"
-          v-model:lapso_de_tiempo="lapso_de_tiempo"
-          v-model:stock="stock"
-          :groups="groups"
-          :laboratories="laboratoriesProductsWithoutSupplier"
-          :tipo_de_filtracion="tipo_de_filtracion"
-          :tipo_de_vista="tipo_de_vista"
-          :lapso_de_tiempo="lapso_de_tiempo"
-          :stock="stock"
-          @clear="handleClearFilters"
-        />
-        <ProductsWithoutSupplierComparatorTable
-          v-model="selectedProductFromTop"
-          :products="listProductsWithoutSupplier"
-          :loading="loadingProductsWithoutSupplier"
-          :total-products="totalProductsWithoutSupplier"
-          :items-per-page="itemsPerPageProductsWithoutSupplier"
-          :page="pageProductsWithoutSupplier"
-          @update:options="updateProductsWithoutSupplierOptions"
-          @select-product="handleSelectProductFromTop"
-          @delete="handleToggleOrder"
-          @save-analysis="handleSaveAnalysis"
-          @mark-scarce="handleMarkScarce"
-        />
+          <!-- COLUMNA DERECHA: Productos sin proveedor -->
+          <VCol cols="12" md="6">
+            <ProductsWithoutSupplierComparatorFilter
+              v-model:selectConDescuento="con_descuento"
+              v-model:selectedLaboratory="selectedLaboratory"
+              v-model:selectedGroup="selectedGroup"
+              v-model:tipo_de_vista="tipo_de_vista"
+              v-model:tipo_de_filtracion="tipo_de_filtracion"
+              v-model:lapso_de_tiempo="lapso_de_tiempo"
+              v-model:stock="stock"
+              :groups="groups"
+              :laboratories="laboratoriesProductsWithoutSupplier"
+              :tipo_de_filtracion="tipo_de_filtracion"
+              :tipo_de_vista="tipo_de_vista"
+              :lapso_de_tiempo="lapso_de_tiempo"
+              :stock="stock"
+              @clear="handleClearFilters"
+            />
+            <ProductsWithoutSupplierComparatorTable
+              v-model="selectedProductFromTop"
+              :products="listProductsWithoutSupplier"
+              :loading="loadingProductsWithoutSupplier"
+              :total-products="totalProductsWithoutSupplier"
+              :items-per-page="itemsPerPageProductsWithoutSupplier"
+              :page="pageProductsWithoutSupplier"
+              @update:options="updateProductsWithoutSupplierOptions"
+              @select-product="handleSelectProductFromTop"
+              @delete="handleToggleOrder"
+              @save-analysis="handleSaveAnalysis"
+              @mark-scarce="handleMarkScarce"
+            />
+          </VCol>
+        </VRow>
       </VTabsWindowItem>
     </VTabsWindow>
   </div>
