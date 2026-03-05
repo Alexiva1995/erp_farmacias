@@ -1,5 +1,6 @@
 <script setup>
 import PaymentRuleEditDialog from "@/components/dialogs/PaymentRuleEditDialog.vue";
+import SupplierConnectionDialog from "@/components/dialogs/SupplierConnectionDialog.vue";
 import SupplierDiscountEditDialog from "@/components/dialogs/SupplierDiscountEditDialog.vue";
 import SupplierDiscountRulesDialog from "@/components/dialogs/SupplierDiscountRulesDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
@@ -31,6 +32,10 @@ const stats = ref({
   connection_success_rate: 100,
 });
 const isLoadingStats = ref(false);
+
+// Estado para el diálogo de configuración de conexión FTP/API
+const isConnectionDialogVisible = ref(false);
+const connectionSupplier = ref({});
 
 const laboratories = ref([]);
 const laboratoryLinks = ref([]);
@@ -272,6 +277,12 @@ const handleCheckSupplierApi = async (supplier) => {
   }
 };
 
+// Abre el diálogo de configuración de conexión FTP/API
+const handleConfigConnection = (supplier) => {
+  connectionSupplier.value = { ...supplier };
+  isConnectionDialogVisible.value = true;
+};
+
 const handlePaymentRule = async (supplier) => {
   currentSupplier.value = { ...supplier };
   supplierFormErrors.value = {};
@@ -464,6 +475,7 @@ const updateTableOptions = (options) => {
       @supplier-discount-rule="handleSupplierDiscountRule"
       @check-supplier-api="handleCheckSupplierApi"
       @supplier-discount="handleSupplierDiscount"
+      @config-connection="handleConfigConnection"
     />
 
     <SupplierEditDialog
@@ -519,6 +531,13 @@ const updateTableOptions = (options) => {
       :errors="supplierFormErrors"
       @save="handleSaveSupplierDiscount"
       @clear-errors="clearFormErrors"
+    />
+
+    <!-- Diálogo de Configuración de Conexión FTP/API -->
+    <SupplierConnectionDialog
+      v-model="isConnectionDialogVisible"
+      :supplier="connectionSupplier"
+      @saved="fetchSuppliers"
     />
   </div>
 </template>

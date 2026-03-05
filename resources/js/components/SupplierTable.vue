@@ -18,6 +18,7 @@ const emit = defineEmits([
   "supplier-discount-rule",
   "check-supplier-api",
   "supplier-discount",
+  "config-connection",
 ]);
 
 const headers = [
@@ -179,6 +180,13 @@ const headers = [
                 <VListItemTitle>Editar</VListItemTitle>
               </VListItem>
 
+              <VListItem @click="emit('config-connection', item)">
+                <template #prepend>
+                  <VIcon icon="tabler-plug-connected" size="18" class="me-2" color="warning" />
+                </template>
+                <VListItemTitle>Configurar Conexión</VListItemTitle>
+              </VListItem>
+
               <VListItem
                 :disabled="checkingApiId === item.id"
                 @click="emit('check-supplier-api', item)"
@@ -191,7 +199,7 @@ const headers = [
                     class="me-2"
                   />
                 </template>
-                <VListItemTitle>Sincronizar API</VListItemTitle>
+                <VListItemTitle>Sincronizar</VListItemTitle>
               </VListItem>
 
               <VListItem @click="emit('payment-rule', item)">

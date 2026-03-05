@@ -482,6 +482,9 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
         Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
         Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
+        // Rutas de configuración FTP/API autoadministrable
+        Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
+        Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
     });
 
     Route::prefix("suppliers/purchase-orders")->group(function () {

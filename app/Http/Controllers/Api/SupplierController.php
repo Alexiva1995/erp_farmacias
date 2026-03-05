@@ -496,4 +496,82 @@ class SupplierController extends Controller
         $stats = $this->supplierQueryService->getSupplierSummaryStats();
         return response()->json($stats);
     }
+
+    /**
+     * Obtiene la configuración de conexión FTP/API de un proveedor (sin exponer la contraseña).
+     */
+    public function getConnectionConfig(Supplier $supplier)
+    {
+        $connection = $supplier->connections()->first();
+
+        if (!$connection) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'id'                => $connection->id,
+            'type'              => $connection->type,
+            'host'              => $connection->host,
+            'port'              => $connection->port,
+            'username'          => $connection->username,
+            'has_password'      => !empty($connection->password),
+            'path'              => $connection->path,
+            'pasv'              => (bool) $connection->pasv,
+            'has_header'        => (bool) $connection->has_header,
+            'invoice_path'      => $connection->invoice_path,
+            'last_connection'   => $connection->last_connection,
+        ]);
+    }
+
+    /**
+     * Guarda o actualiza la configuración de conexión FTP/API.
+     * La contraseña se cifra con AES-256 antes de persistirse.
+     */
+    public function saveConnectionConfig(\Illuminate\Http\Request $request, Supplier $supplier)
+    {
+        $validated = $request->validate([
+            'type'          => 'required|in:ftp,sftp,http,api',
+            'host'          => 'required|string|max:500',
+            'port'          => 'nullable|numeric|min:1|max:65535',
+            'username'      => 'nullable|string|max:255',
+            'password'      => 'nullable|string',
+            'path'          => 'nullable|string|max:500',
+            'pasv'          => 'boolean',
+            'has_header'    => 'boolean',
+            'invoice_path'  => 'nullable|string|max:500',
+        ]);
+
+        // Construir el payload que se persiste
+        $data = [
+            'supplier_id' => $supplier->id,
+            'type'        => $validated['type'],
+            'host'        => $validated['host'],
+            'port'        => $validated['port'] ?? null,
+            'username'    => $validated['username'] ?? null,
+            'path'        => $validated['path'] ?? null,
+            'pasv'        => $validated['pasv'] ?? false,
+            'has_header'  => $validated['has_header'] ?? false,
+            'invoice_path' => $validated['invoice_path'] ?? null,
+        ];
+
+        // Solo actualizar la contraseña si el usuario envió una nueva
+        if (!empty($validated['password'])) {
+            $data['password'] = \App\Helpers\FtpCrypt::encrypt($validated['password']);
+        }
+
+        $connection = $supplier->connections()->updateOrCreate(
+            ['supplier_id' => $supplier->id],
+            $data
+        );
+
+        return response()->json([
+            'message'    => 'Configuración guardada correctamente.',
+            'connection' => [
+                'id'           => $connection->id,
+                'type'         => $connection->type,
+                'host'         => $connection->host,
+                'has_password' => !empty($connection->password),
+            ],
+        ]);
+    }
 }
