@@ -281,4 +281,8 @@ class AutoOrdersRepository
         
         return false;
     }
+    public function finish(AutoOrder $autoOrder): bool
+    {
+        return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
+    }
 }

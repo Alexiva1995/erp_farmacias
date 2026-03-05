@@ -411,13 +411,13 @@ class SupplierQueryService
                             $product = Product::where('barcode', $line['barcode'])->first();
                             
                             if (!$product && !empty($line['name'])) {
-                                // 🆕 Crear producto si no existe
+                                // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
                                 $product = Product::create([
                                     'name' => $line['name'],
                                     'barcode' => $line['barcode'],
                                     'is_active' => true,
+                                    'is_deleted' => true,
                                     'supplier_id' => $supplier->id,
-                                    // Podríamos heredar categoría u otros campos si los tuviéramos
                                 ]);
                             }
 
