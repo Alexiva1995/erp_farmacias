@@ -73,6 +73,11 @@ class AutoOrdersRepository
 
         $query = $this->baseQuery();
 
+        // Filtrar por status si se proporciona (valores del Enum: 0=PENDING, 1=SENT, 2=COMPLETED)
+        if (isset($filters['status']) && $filters['status'] !== null && $filters['status'] !== '') {
+            $query->where('auto_orders.status', (int) $filters['status']);
+        }
+
         return $this->applyFilters($query, $filters);
     }
 
