@@ -74,13 +74,12 @@ const groupBy = [{ key: "group.name" }];
               :class="{ 'text-primary': item.psychotropic == 1 }"
             >
               {{ item.name }}
-
-              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
 
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
+            <span class="text-sm text-disabled">
+              {{ item.active_ingredient }}
+              <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+            </span>
           </div>
         </div>
       </template>

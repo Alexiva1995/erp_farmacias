@@ -64,9 +64,11 @@ function rowClass(item) {
             :title="item.name"
           >
             {{ item.name }}
-            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ml-1">COL</VChip>
           </span>
-          <span class="text-caption text-disabled text-truncate">{{ item.active_ingredient }}</span>
+          <span class="text-caption text-disabled text-truncate">
+            {{ item.active_ingredient }}
+            <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+          </span>
         </div>
       </template>
 

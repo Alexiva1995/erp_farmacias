@@ -165,10 +165,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <VContainer fluid class="px-2 py-4">
+  <VContainer fluid class="px-6 py-4">
     <!-- KPIs globales -->
-    <VRow class="mb-5" no-gutters>
-      <VCol cols="12" sm="4" class="pa-2">
+    <VRow class="mb-5">
+      <VCol cols="12" sm="4">
         <VCard class="kpi-ia-card" elevation="0">
           <VCardText class="pa-4 d-flex align-center gap-4">
             <VAvatar color="error" variant="tonal" size="44" rounded>
@@ -188,7 +188,7 @@ onMounted(async () => {
           </VCardText>
         </VCard>
       </VCol>
-      <VCol cols="12" sm="4" class="pa-2">
+      <VCol cols="12" sm="4">
         <VCard class="kpi-ia-card" elevation="0">
           <VCardText class="pa-4 d-flex align-center gap-4">
             <VAvatar color="warning" variant="tonal" size="44" rounded>
@@ -207,7 +207,7 @@ onMounted(async () => {
           </VCardText>
         </VCard>
       </VCol>
-      <VCol cols="12" sm="4" class="pa-2">
+      <VCol cols="12" sm="4">
         <VCard class="kpi-ia-card" elevation="0">
           <VCardText class="pa-4 d-flex align-center gap-4">
             <VAvatar color="success" variant="tonal" size="44" rounded>
