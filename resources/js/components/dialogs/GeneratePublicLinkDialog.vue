@@ -1,7 +1,7 @@
 <script setup>
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   isDialogVisible: { type: Boolean, required: true },
@@ -11,7 +11,12 @@ const props = defineProps({
 const emit = defineEmits(['update:isDialogVisible', 'refresh'])
 
 const loading = ref(false)
-const publicToken = ref(props.selectedSupplier?.public_token || '')
+const publicToken = ref('')
+
+// Sincronizar el token cuando cambia el proveedor seleccionado
+watch(() => props.selectedSupplier, (newVal) => {
+  publicToken.value = newVal?.public_token || ''
+}, { immediate: true })
 
 const publicUrl = computed(() => {
   if (!publicToken.value) return ''
@@ -34,7 +39,6 @@ const generateToken = async () => {
   }
 }
 
-// Alternativa: Si el token ya viene en el objeto 'selectedSupplier'
 const copyToClipboard = () => {
   if (!publicUrl.value) return
   
@@ -54,46 +58,132 @@ const closeDialog = () => {
     max-width="600"
     @update:model-value="closeDialog"
   >
-    <VCard title="Link Público para Proveedor">
-      <VCardText>
-        <p class="mb-4">
-          Proporcione este enlace al proveedor <strong>{{ props.selectedSupplier?.name }}</strong> para que pueda subir su lista de precios sin necesidad de una cuenta.
-        </p>
+    <VCard elevation="10" border="sm" class="overflow-hidden">
+      <!-- Header -->
+      <VCardTitle class="bg-primary text-white d-flex align-center pa-4">
+        <VIcon icon="tabler-link" class="me-2" />
+        <span>Enlace Público de Carga</span>
+        <VSpacer />
+        <VBtn
+          icon="tabler-x"
+          variant="text"
+          color="white"
+          density="compact"
+          @click="closeDialog"
+        />
+      </VCardTitle>
 
-        <div v-if="props.selectedSupplier?.public_token" class="d-flex align-center gap-2">
-          <VTextField
-            :model-value="publicUrl"
-            readonly
-            variant="outlined"
-            density="compact"
-            hide-details
-            prepend-inner-icon="tabler-link"
-          />
-          <VBtn color="primary" @click="copyToClipboard">
-            <VIcon start>tabler-copy</VIcon>
-            Copiar
-          </VBtn>
+      <VCardText class="pa-6">
+        <div class="mb-6">
+          <p class="text-body-1 mb-2">
+            Configuración para el proveedor: 
+            <strong class="text-primary">{{ props.selectedSupplier?.name }}</strong>
+          </p>
+          <p class="text-body-2 text-disabled">
+            Este enlace permite al proveedor subir sus facturas o listas de precios en formato Excel/CSV sin necesidad de acceder al panel administrativo.
+          </p>
         </div>
 
-        <div v-else class="text-center py-4">
-          <VAlert type="info" variant="tonal" class="mb-4">
-            Este proveedor aún no tiene un enlace público generado.
-          </VAlert>
-          <VBtn color="primary" :loading="loading" @click="generateToken">
-            Generar Nuevo Enlace
-          </VBtn>
-        </div>
+        <!-- Vista cuando ya hay token -->
+        <VScaleTransition>
+          <div v-if="publicToken">
+            <VLabel class="mb-2 font-weight-medium">URL de Acceso Directo</VLabel>
+            <div class="d-flex align-center gap-2">
+              <VTextField
+                :model-value="publicUrl"
+                readonly
+                variant="outlined"
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-link"
+                color="primary"
+                class="bg-surface"
+              />
+              <VBtn
+                color="primary"
+                variant="elevated"
+                @click="copyToClipboard"
+                min-width="120"
+              >
+                <VIcon start size="18">tabler-copy</VIcon>
+                Copiar
+              </VBtn>
+            </div>
+
+            <VAlert
+              type="success"
+              variant="tonal"
+              density="compact"
+              class="mt-6"
+              border="start"
+            >
+              <template #prepend>
+                <VIcon icon="tabler-info-circle" size="20" />
+              </template>
+              <div class="text-caption">
+                El enlace es permanente a menos que genere uno nuevo, lo cual invalidará el anterior.
+              </div>
+            </VAlert>
+          </div>
+
+          <!-- Vista cuando no hay token -->
+          <div v-else class="text-center py-6">
+            <VIcon
+              icon="tabler-link-off"
+              size="64"
+              color="disabled"
+              class="mb-4"
+            />
+            <VAlert
+              type="info"
+              variant="tonal"
+              class="mb-6"
+              border="start"
+            >
+              Este proveedor aún no tiene un enlace activo.
+            </VAlert>
+            <VBtn
+              color="primary"
+              size="large"
+              :loading="loading"
+              prepend-icon="tabler-plus"
+              @click="generateToken"
+              class="px-8"
+            >
+              Generar Enlace Seguro
+            </VBtn>
+          </div>
+        </VScaleTransition>
       </VCardText>
 
-      <VCardText class="d-flex justify-end flex-wrap gap-3">
+      <VDivider />
+
+      <VCardActions class="pa-4 bg-light">
+        <VSpacer />
         <VBtn
           color="secondary"
-          variant="tonal"
+          variant="text"
           @click="closeDialog"
         >
           Cerrar
         </VBtn>
-      </VCardText>
+        <VBtn
+          v-if="publicToken"
+          color="warning"
+          variant="tonal"
+          :loading="loading"
+          @click="generateToken"
+        >
+          Regenerar Token
+        </VBtn>
+      </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.bg-light {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+</style>
+
