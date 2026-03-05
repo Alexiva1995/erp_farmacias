@@ -231,13 +231,15 @@ const KPIS_ENCONTRADOS = computed(() => {
   return module.productoFallas?.length || 0;
 })
 
-// KPI: productos que necesitan pedido (solicitar > 0 tras redondeo) pero NO tienen proveedor match
+// KPI: fallas sin proveedor = (total que necesitan reposición) - (las que sí se encontraron)
 const KPIS_NO_ENCONTRADOS = computed(() => {
   if (!module.productosSinReponer?.length) return 0;
-  // Filtramos solo los que realmente necesitan reposición tras el redondeo personalizado
-  return module.productosSinReponer.filter(
+  // Total de fallas reales (solicitar > 0 tras el redondeo personalizado)
+  const totalConNecesidad = module.productosSinReponer.filter(
     p => roundIaAnalysis(p.solicitar) > 0
   ).length;
+  // Restamos las que sí encontraron proveedor
+  return Math.max(0, totalConNecesidad - KPIS_ENCONTRADOS.value);
 })
 
 const LISTA_PORVEEDORES_TOTAL= computed(() => {
