@@ -32,6 +32,38 @@ const tipo_de_filtracion= ref("sales");// promedio o ventas
 const lapso_de_tiempo= ref("3 month");// tiempo
 const stock= ref("all");// Fallas , Execeso o All
 
+// KPIs globales
+const loadingStats = ref(false);
+const kpiGlobal = reactive({ necesitan: 0, exceso: 0, ok: 0 });
+
+// Obtiene KPIs de todos los productos (sin paginar)
+async function consultarKpisGlobales() {
+  loadingStats.value = true;
+  try {
+    const data = {
+      itemsPerPage: 99999, // traer todos para contar
+      page: 1,
+      orderBy: orderBy.value,
+      sortBy: sortBy.value,
+      product: selectProducts.value,
+      laboratoryId: selectedLaboratory.value,
+      is_colombia: checkColombia.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      stock: stock.value,
+    };
+    const resp = await axios.post('/suppliers-ia-assistant-report/filtrar-paginate?page=1', data);
+    const items = resp.data?.data?.data || [];
+    kpiGlobal.necesitan = items.filter(p => parseFloat(p.solicitar) > 0).length;
+    kpiGlobal.exceso    = items.filter(p => parseFloat(p.solicitar) < 0).length;
+    kpiGlobal.ok        = items.filter(p => parseFloat(p.solicitar) == 0).length;
+  } catch (e) {
+    console.error('Error al cargar KPIs globales:', e);
+  } finally {
+    loadingStats.value = false;
+  }
+}
+
 async function consultarDataReport(){
   let data={
     itemsPerPage:itemsPerPage.value,
@@ -75,34 +107,50 @@ const handleClearFilters = () => {
   selectProducts.value = [];
 };
 
+const updateTableOptionsTable = options => {
+  page.value = options.page
+  itemsPerPage.value = options.itemsPerPage
+  sortBy.value = options.sortBy[0]?.key
+  orderBy.value = options.sortBy[0]?.order
+}
+
+// Watchers con debounce para filtros
+let filterTimeout = null;
 watch([
   checkColombia,
   selectProducts,
   selectedLaboratory,
   tipo_de_filtracion,
   lapso_de_tiempo,
-  orderBy,
-  sortBy,
-  page,
-  itemsPerPage,
-],
-async () => {
-  loading.value=true
+  stock,
+], async () => {
+  clearTimeout(filterTimeout);
+  filterTimeout = setTimeout(async () => {
+    loading.value = true;
+    page.value = 1; // reset a la primera página si cambian filtros
+    
+    await Promise.all([
+      consultarKpisGlobales(),
+      (async () => {
+        statuModule.data = await consultarDataReport();
+        statuModule.total = statuModule.data.data.total;
+        statuModule.items = [...statuModule.data.data.data];
+      })()
+    ]);
+    
+    loading.value = false;
+  }, 400);
+});
 
-  statuModule.data=await consultarDataReport()
-  statuModule.total=statuModule.data.data.total
-  statuModule.items=[...statuModule.data.data.data]
+// Watch para paginación y ordenamiento
+watch([page, itemsPerPage, orderBy, sortBy], async () => {
+  loading.value = true;
+  statuModule.data = await consultarDataReport();
+  statuModule.total = statuModule.data.data.total;
+  statuModule.items = [...statuModule.data.data.data];
+  loading.value = false;
+});
 
-  loading.value=false
-})
-
-const updateTableOptionsTable = options => {
-  // console.log(options)
-  page.value = options.page
-  itemsPerPage.value = options.itemsPerPage
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
-}
 
 async function filtrarSinPaginar(dataFiltro){
   let respuestaApi = await axios.post(`/suppliers-ia-assistant-report/filtrar-without-paginate`,dataFiltro)
@@ -199,11 +247,16 @@ onMounted(async () => {
   loading.value=true
   productos.value=await consultarProductos()
 
-  statuModule.data=await consultarDataReport()
-  statuModule.total=statuModule.data.data.total
-  statuModule.items=[...statuModule.data.data.data]
+  await Promise.all([
+    consultarDataReport().then(res => {
+      statuModule.data = res;
+      statuModule.total = res.data.total;
+      statuModule.items = [...res.data.data];
+    }),
+    consultarLaboratorios(),
+    consultarKpisGlobales()
+  ]);
 
-  await consultarLaboratorios()
   productosSelect.value=productos.value.map(p => {
     return {
       name:`${p.id} - ${p.name}`,
@@ -214,7 +267,70 @@ onMounted(async () => {
 })
 </script>
 <template>
-  <div>
+  <VContainer fluid class="px-0 py-4">
+    <!-- KPIs globales -->
+    <VRow class="mb-5">
+      <VCol cols="12" sm="4">
+        <VCard class="kpi-ia-card" elevation="0">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="error" variant="tonal" size="44" rounded>
+              <VIcon icon="tabler-alert-circle" size="22" />
+            </VAvatar>
+            <div class="flex-grow-1">
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Necesitan Reposición</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-error">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="error" /></template>
+                  <template v-else>{{ kpiGlobal.necesitan }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
+            </div>
+            <VChip color="primary" variant="tonal" size="x-small">Reporte IA</VChip>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard class="kpi-ia-card" elevation="0">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="warning" variant="tonal" size="44" rounded>
+              <VIcon icon="tabler-package" size="22" />
+            </VAvatar>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Exceso de Stock</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-warning">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="warning" /></template>
+                  <template v-else>{{ kpiGlobal.exceso }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard class="kpi-ia-card" elevation="0">
+          <VCardText class="pa-4 d-flex align-center gap-4">
+            <VAvatar color="success" variant="tonal" size="44" rounded>
+              <VIcon icon="tabler-circle-check" size="22" />
+            </VAvatar>
+            <div>
+              <div class="text-caption text-disabled text-uppercase font-weight-bold">Stock Óptimo</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-success">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="success" /></template>
+                  <template v-else>{{ kpiGlobal.ok }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- Filtros -->
     <SupplierIaOrderAssistantReportFilter
       v-model:selectProducts="selectProducts"
       v-model:selectedLaboratory="selectedLaboratory"
@@ -230,13 +346,41 @@ onMounted(async () => {
       @export-pdf="generarPdf"
       @export-excel="exportarExcel"
     />
-    <SupplierAssistantReportTable
-      :products="statuModule.items"
-      :total-product="statuModule.total"
-      :loading="loading"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptionsTable"
-    />
-  </div>
+
+    <!-- Tabla -->
+    <div class="mt-4">
+      <SupplierAssistantReportTable
+        :products="statuModule.items"
+        :total-product="statuModule.total"
+        :loading="loading"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptionsTable"
+      />
+    </div>
+  </VContainer>
 </template>
+
+<style scoped>
+.kpi-ia-card {
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+}
+
+.kpi-ia-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 6%) !important;
+  transform: translateY(-2px);
+}
+</style>
+
+<style>
+/* Forzar eliminación de padding del layout boxed solicitado por el usuario */
+.layout-wrapper.layout-content-width-boxed .layout-content-wrapper > main > .v-container {
+  padding-inline: 0 !important;
+}
+
+#app > div > div > div > div.layout-wrapper.layout-nav-type-vertical.layout-navbar-sticky.layout-footer-static.layout-content-width-boxed.layout-overlay-nav > div.layout-content-wrapper > main > div > div {
+  padding-inline: 0 !important;
+}
+</style>
