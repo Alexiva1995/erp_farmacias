@@ -72,40 +72,6 @@ const statsCards = [
 <template>
   <LoaderComponent :loadingApp="statuModule.loadingApp" />
 
-  <!-- === STATS CARDS === -->
-  <VRow class="mb-4">
-    <VCol
-      v-for="card in statsCards"
-      :key="card.key"
-      cols="12"
-      sm="6"
-      md="4"
-    >
-      <VCard :border="`start ${card.color} thin`" rounded="lg" elevation="0">
-        <VCardText class="d-flex align-center gap-4 pa-5">
-          <VAvatar
-            :color="card.color"
-            variant="tonal"
-            size="52"
-            rounded="lg"
-          >
-            <VIcon :icon="card.icon" size="26" />
-          </VAvatar>
-          <div class="flex-grow-1">
-            <div class="text-caption text-medium-emphasis mb-1">{{ card.description }}</div>
-            <div v-if="stats.loading" class="d-flex align-center">
-              <VSkeletonLoader type="text" width="60" class="me-2" />
-            </div>
-            <div v-else class="text-h5 font-weight-bold" :class="`text-${card.color}`">
-              {{ stats[card.key] ?? 0 }}
-            </div>
-            <div class="text-body-2 font-weight-medium mt-1">{{ card.label }}</div>
-          </div>
-        </VCardText>
-      </VCard>
-    </VCol>
-  </VRow>
-
   <!-- === FILTROS === -->
   <FiltrosGastos
     v-model:currency="currency"
@@ -123,6 +89,41 @@ const statsCards = [
     @add="mostarModal"
   />
 
+  <!-- === STATS CARDS === -->
+  <VRow class="mb-6" dense>
+    <VCol
+      v-for="card in statsCards"
+      :key="card.key"
+      cols="12"
+      sm="6"
+      md="4"
+    >
+      <VCard variant="outlined" :class="`border-${card.color}`" class="rounded-lg bg-white h-100">
+        <VCardText class="pa-4">
+          <div class="d-flex align-center gap-3">
+            <VAvatar
+              :color="card.color"
+              variant="tonal"
+              size="48"
+              rounded="lg"
+            >
+              <VIcon :icon="card.icon" size="28" />
+            </VAvatar>
+            <div v-if="!stats.loading" class="flex-grow-1">
+              <span class="text-caption text-medium-emphasis font-weight-bold d-block text-uppercase mb-1">
+                {{ card.label }}
+              </span>
+              <span class="text-h5 font-weight-black" :class="`text-${card.color}`">
+                {{ stats[card.key] ?? 0 }}
+              </span>
+            </div>
+            <VSkeletonLoader v-else type="text, text" class="flex-grow-1" />
+          </div>
+        </VCardText>
+      </VCard>
+    </VCol>
+  </VRow>
+
   <!-- === MODAL FORMULARIO === -->
   <ExpenseFormDialoge
     :modal-formulario="modal.statu"
@@ -136,29 +137,30 @@ const statsCards = [
   />
 
   <!-- === TABLA CON TABS === -->
-  <VCard rounded="lg" elevation="0">
+  <VCard variant="outlined" class="rounded-lg bg-surface mt-6">
     <!-- Tabs de estado -->
     <VTabs
       v-model="activeTab"
       color="primary"
-      class="px-4"
+      class="px-6 py-2"
       align-tabs="start"
+      fixed-tabs
     >
       <VTab
         v-for="tab in tabItems"
         :key="tab.label"
         :value="tab.value"
-        class="text-body-2"
+        class="text-body-2 font-weight-bold"
       >
-        <VIcon :icon="tab.icon" size="16" class="me-1" />
+        <VIcon :icon="tab.icon" size="18" class="me-2" />
         {{ tab.label }}
         <VBadge
           v-if="tab.value === 'Pending' && stats.totalPending > 0"
           :content="stats.totalPending"
           color="warning"
           floating
-          offset-x="-8"
-          offset-y="-8"
+          offset-x="-12"
+          offset-y="-12"
         />
       </VTab>
     </VTabs>
@@ -175,3 +177,13 @@ const statsCards = [
     />
   </VCard>
 </template>
+
+<style scoped>
+.border-success { border: 1px solid rgba(40, 199, 111, 50%) !important; }
+.border-warning { border: 1px solid rgba(255, 159, 67, 50%) !important; }
+.border-error { border: 1px solid rgba(234, 84, 85, 50%) !important; }
+
+:deep(.v-tabs) {
+  border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+</style>
