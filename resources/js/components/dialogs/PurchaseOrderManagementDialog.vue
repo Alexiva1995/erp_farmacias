@@ -57,6 +57,26 @@ const headers = [
   { title: "Estado", key: "actions", sortable: false, align: "center" },
 ];
 
+const getStatusLabel = (status) => {
+  const labels = {
+    0: "PENDIENTE",
+    1: "ENVIADA",
+    2: "COMPLETADA",
+  };
+  if (status === true || status === 2) return "COMPLETADA";
+  return labels[status] || "PENDIENTE";
+};
+
+const getStatusColor = (status) => {
+  const colors = {
+    0: "warning",
+    1: "info",
+    2: "success",
+  };
+  if (status === true || status === 2) return "success";
+  return colors[status] || "warning";
+};
+
 const fetchDetails = async () => {
   if (!props.purchaseOrder?.id) return;
   loading.value = true;
@@ -64,7 +84,8 @@ const fetchDetails = async () => {
     const { data } = await axios.get(`/suppliers/purchase-orders/${props.purchaseOrder.id}`, {
       params: { page: page.value, perPage: itemsPerPage.value },
     });
-    details.value = data.data;
+    // Ordenar por subtotal de mayor a menor
+    details.value = data.data.sort((a, b) => (b.quantity * b.unit_cost) - (a.quantity * a.unit_cost));
     totalDetails.value = data.total;
 
     // Inicializar estado para detección de cambios
@@ -107,12 +128,17 @@ const handleSave = async () => {
 const handleConfirmSent = async () => {
   sending.value = true;
   try {
-    await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`);
-    toast.success("Orden marcada como enviada.");
+    const isFinishing = props.purchaseOrder.status === 1 || props.purchaseOrder.sent_at;
+    const url = isFinishing 
+      ? `/suppliers/purchase-orders/${props.purchaseOrder.id}/finish` 
+      : `/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`;
+      
+    await axios.post(url);
+    toast.success(isFinishing ? "Orden finalizada correctamente." : "Orden marcada como enviada.");
     emit("refresh");
     closeDialog();
   } catch (error) {
-    toast.error("Error al confirmar el envío.");
+    toast.error("Error al procesar la solicitud.");
   } finally {
     sending.value = false;
   }
@@ -214,16 +240,15 @@ watch(
               </div>
             </VCol>
             <VCol cols="12" md="3">
-              <div class="text-caption text-uppercase text-medium-emphasis font-weight-bold">Estado Envío</div>
               <div class="mt-1">
                 <VChip
-                  :color="purchaseOrder.sent_at ? 'success' : 'warning'"
+                  :color="getStatusColor(purchaseOrder.status)"
                   size="x-small"
                   label
                   variant="flat"
                   class="font-weight-bold"
                 >
-                  {{ purchaseOrder.sent_at ? 'ENVIADA' : 'PENDIENTE' }}
+                  {{ getStatusLabel(purchaseOrder.status) }}
                 </VChip>
                 <div v-if="purchaseOrder.sent_at" class="text-xxs text-medium-emphasis mt-1">
                   {{ formatDate(purchaseOrder.sent_at) }}
@@ -255,7 +280,6 @@ watch(
           <template #item.product_name="{ item }">
             <div class="d-flex flex-column">
               <span class="font-weight-medium text-body-2">{{ item.product_name }}</span>
-              <span class="text-caption text-medium-emphasis">{{ item.cod || 'S/C' }}</span>
             </div>
           </template>
 
@@ -340,15 +364,15 @@ watch(
         </VBtn>
 
         <VBtn
-          v-if="!purchaseOrder.sent_at"
-          color="success"
+          v-if="purchaseOrder.status !== 2"
+          :color="purchaseOrder.status === 1 ? 'primary' : 'success'"
           variant="tonal"
-          prepend-icon="tabler-send"
+          :prepend-icon="purchaseOrder.status === 1 ? 'tabler-check' : 'tabler-send'"
           @click="handleConfirmSent"
           :loading="sending"
           class="flex-grow-1"
         >
-          Confirmar Envío
+          {{ purchaseOrder.status === 1 ? 'Finalizar Orden' : 'Confirmar Envío' }}
         </VBtn>
 
         <VBtn

@@ -74,8 +74,12 @@ class PurchaseOrderController extends Controller
 
     public function confirmSent(AutoOrder $autoOrder)
     {
-        $this->purchaseOrder->confirmSent($autoOrder);
+        return response()->json($this->purchaseOrder->confirmSent($autoOrder));
+    }
 
-        return ApiResponse::success(null, "Orden de compra enviada exitosamente.");
+    public function finish(AutoOrder $autoOrder)
+    {
+        $repo = new \App\Repository\AutoOrdersRepository();
+        return response()->json($repo->finish($autoOrder));
     }
 }

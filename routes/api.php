@@ -490,6 +490,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("suppliers/purchase-orders")->group(function () {
         Route::get("/stats", [PurchaseOrderController::class, "getStats"]);
         Route::post("/{autoOrder}/confirm-sent", [PurchaseOrderController::class, "confirmSent"]);
+        Route::post('/{autoOrder}/finish', [PurchaseOrderController::class, 'finish']);
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);
         Route::get("/{autoOrder}/export", [PurchaseOrderController::class, "getExportData"]);
         Route::delete("/{autoOrder}", [PurchaseOrderController::class, "destroy"]);
