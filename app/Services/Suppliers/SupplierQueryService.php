@@ -425,9 +425,11 @@ class SupplierQueryService
                             if (!$product && !empty($line['name'])) {
                                 // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
                                 $product = Product::create([
-                                    'name' => $line['name'],
-                                    'barcode' => $line['barcode'],
-                                    'is_active' => true,
+                                    'name'       => $line['name'],
+                                    'barcode'    => $line['barcode'],
+                                    'unit_cost'  => floatval($line['unit_cost'] ?? 0),
+                                    'sale_price' => floatval($line['unit_cost'] ?? 0),
+                                    'is_active'  => true,
                                     'is_deleted' => true,
                                 ]);
                             }

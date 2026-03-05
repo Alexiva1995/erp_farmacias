@@ -8,13 +8,16 @@ import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 
-const activeTab = ref(null);
+const activeTab = ref('all');
+
+// Convierte el valor del tab al entero que espera el backend
+const tabStatusMap = { all: undefined, pending: 0, sent: 1, completed: 2 };
 
 const tabItems = [
-  { label: 'Todas',       value: null, color: 'primary', icon: 'tabler-list',        totalKey: 'total_orders' },
-  { label: 'Pendientes',  value: 0,    color: 'warning', icon: 'tabler-clock',        totalKey: 'pending_orders' },
-  { label: 'Enviadas',    value: 1,    color: 'info',    icon: 'tabler-send',         totalKey: 'sent_orders' },
-  { label: 'Completadas', value: 2,    color: 'success', icon: 'tabler-circle-check', totalKey: 'completed_orders' },
+  { label: 'Todas',       value: 'all',       color: 'primary', icon: 'tabler-list',        totalKey: 'total_orders' },
+  { label: 'Pendientes',  value: 'pending',   color: 'warning', icon: 'tabler-clock',        totalKey: 'pending_orders' },
+  { label: 'Enviadas',    value: 'sent',      color: 'info',    icon: 'tabler-send',         totalKey: 'sent_orders' },
+  { label: 'Completadas', value: 'completed', color: 'success', icon: 'tabler-circle-check', totalKey: 'completed_orders' },
 ];
 
 const currentPurchaseOrder = ref({});
@@ -62,7 +65,7 @@ const fetchPurchaseOrders = async () => {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     selectedSupplier: selectedSupplier.value,
-    status: activeTab.value !== null ? activeTab.value : undefined,
+    status: tabStatusMap[activeTab.value],
   };
 
   try {

@@ -89,7 +89,6 @@ declare module 'vue-router/auto-routes' {
     'suppliers-list': RouteRecordInfo<'suppliers-list', '/suppliers/list', Record<never, never>, Record<never, never>>,
     'suppliers-product-comparator-list': RouteRecordInfo<'suppliers-product-comparator-list', '/suppliers/product-comparator/list', Record<never, never>, Record<never, never>>,
     'suppliers-products-without-supplier': RouteRecordInfo<'suppliers-products-without-supplier', '/suppliers/products-without-supplier', Record<never, never>, Record<never, never>>,
-    'suppliers-purchase-orders-history-list': RouteRecordInfo<'suppliers-purchase-orders-history-list', '/suppliers/purchase-orders/history/list', Record<never, never>, Record<never, never>>,
     'suppliers-purchase-orders-list': RouteRecordInfo<'suppliers-purchase-orders-list', '/suppliers/purchase-orders/list', Record<never, never>, Record<never, never>>,
     'suppliers-supplieriaorderassistant': RouteRecordInfo<'suppliers-supplieriaorderassistant', '/suppliers/supplieriaorderassistant', Record<never, never>, Record<never, never>>,
     'suppliers-supplieriaorderassistantreport': RouteRecordInfo<'suppliers-supplieriaorderassistantreport', '/suppliers/supplieriaorderassistantreport', Record<never, never>, Record<never, never>>,
