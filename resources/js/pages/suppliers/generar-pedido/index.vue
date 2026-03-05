@@ -7,7 +7,6 @@ import ProductsExceededToleranceTable from "@/components/ProductsExceededToleran
 import ProductsStablePriceTable from "@/components/ProductsStablePriceTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import Swal from 'sweetalert2';
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -231,15 +230,11 @@ const KPIS_ENCONTRADOS = computed(() => {
   return module.productoFallas?.length || 0;
 })
 
-// KPI: fallas sin proveedor = (total que necesitan reposición) - (las que sí se encontraron)
+// KPI: fallas sin proveedor = total fallas - las que sí encontraron proveedor
+// productosSinReponer ya viene filtrado por "fallas" desde el backend
 const KPIS_NO_ENCONTRADOS = computed(() => {
-  if (!module.productosSinReponer?.length) return 0;
-  // Total de fallas reales (solicitar > 0 tras el redondeo personalizado)
-  const totalConNecesidad = module.productosSinReponer.filter(
-    p => roundIaAnalysis(p.solicitar) > 0
-  ).length;
-  // Restamos las que sí encontraron proveedor
-  return Math.max(0, totalConNecesidad - KPIS_ENCONTRADOS.value);
+  const totalFallas = module.productosSinReponer?.length || 0;
+  return Math.max(0, totalFallas - KPIS_ENCONTRADOS.value);
 })
 
 const LISTA_PORVEEDORES_TOTAL= computed(() => {

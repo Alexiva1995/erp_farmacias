@@ -341,11 +341,12 @@ const fetchProductsWithoutSupplier = async () => {
     loadingProductsWithoutSupplier.value = true;
 
     // Usamos el mismo endpoint POST que el Asistente IA
+    // Las claves deben coincidir con lo que espera el controlador
     const payload = {
       laboratoryId: selectedLaboratory.value,
       groups: selectedGroup.value,
       tipo_vista: tipo_de_vista.value,
-      tipo_filtracion: tipo_de_filtracion.value,
+      tipo_filtracion: tipo_de_filtracion.value, // SIN "de_" — nombre exacto esperado por el controlador
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value, // siempre 'fallas'
       page: pageProductsWithoutSupplier.value,
@@ -354,14 +355,19 @@ const fetchProductsWithoutSupplier = async () => {
       orderBy: orderByProductsWithoutSupplier.value,
     };
 
-    const { data } = await axios.post(
+    const resp = await axios.post(
       `/suppliers-ia-order-assistant/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
       payload,
     );
 
-    if (data && data.data && data.data.paginate) {
-      listProductsWithoutSupplier.value = data.data.paginate.data;
-      totalProductsWithoutSupplier.value = data.data.paginate.total;
+    // ApiResponse::success envuelve en {data: {paginate: ..., tipo_filtracion: ...}}
+    const paginateData = resp.data?.data?.paginate;
+    if (paginateData) {
+      listProductsWithoutSupplier.value = paginateData.data;
+      totalProductsWithoutSupplier.value = paginateData.total;
+    } else {
+      listProductsWithoutSupplier.value = [];
+      totalProductsWithoutSupplier.value = 0;
     }
   } catch (error) {
     console.error(
