@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
-import { pdfPurchaseOrderGenerator } from "@/plugins/pdfGenerator";
 import { toast } from "@/plugins/sweetalert";
+import { pdfPurchaseOrderGenerator } from "@/utils/pdfPurchaseOrderGenerator";
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({

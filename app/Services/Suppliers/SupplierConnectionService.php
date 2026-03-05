@@ -194,18 +194,21 @@ class SupplierConnectionService
 
             // Productos
             $payload = $this->buildPayload($connection, 'productos');
-            $url = $payload['url'] ?? $connection->path;
-            
-            $productResponse = $this->fetchFromAPI($token, $payload, $client, $url, $payload['method'] ?? 'post');
-            
-            // Detectar si los productos vienen en una clave específica (ej: 'articulos')
-            $productsRaw = $productResponse;
-            if (isset($productResponse['articulos']) && is_array($productResponse['articulos'])) {
-                $productsRaw = $productResponse['articulos'];
-            }
+            $productData = [];
 
-            $productCsvString = $this->convertJsonArrayToCsvString($productsRaw);
-            $productData = $this->parseDynamicContent($productCsvString, $connection);
+            if ($payload) {
+                $url = $payload['url'] ?? $connection->path;
+                $productResponse = $this->fetchFromAPI($token, $payload, $client, $url, $payload['method'] ?? 'post');
+                
+                // Detectar si los productos vienen en una clave específica
+                $productsRaw = $productResponse;
+                if (isset($productResponse['articulos']) && is_array($productResponse['articulos'])) {
+                    $productsRaw = $productResponse['articulos'];
+                }
+
+                $productCsvString = $this->convertJsonArrayToCsvString($productsRaw);
+                $productData = $this->parseDynamicContent($productCsvString, $connection);
+            }
 
             // Facturas (si tiene ruta definida)
             $invoiceResults = [];
@@ -897,14 +900,19 @@ class SupplierConnectionService
         ];
     }
 
-    public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): array
+    public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): ?array
     {
         $supplierId = $connection->supplier_id;
-        //$config = config("suppliers.{$supplierId}");
-        $config = require app_path("SupplierConfigs/{$supplierId}.php");
+        $configPath = app_path("SupplierConfigs/{$supplierId}.php");
+
+        if (!file_exists($configPath)) {
+            return null;
+        }
+
+        $config = require $configPath;
 
         if (!isset($config[$endpoint])) {
-            throw new \Exception("No se encontró configuración para {$endpoint} en proveedor {$supplierId}");
+            return null;
         }
 
         $payload = $config[$endpoint];

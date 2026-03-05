@@ -5,7 +5,7 @@ const LOGO = "/images/logoDonative.png";
 const LOGO_WIDTH = 90;
 const LOGO_HEIGHT = 35;
 
-export default function pdfPurchaseOrderGenerator(data) {
+export function pdfPurchaseOrderGenerator(data) {
   const doc = new jsPDF();
 
   const pageWidth = doc.internal.pageSize.getWidth();
