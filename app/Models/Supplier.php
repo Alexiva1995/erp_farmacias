@@ -58,7 +58,17 @@ class Supplier extends Model
      * @var array<string, string>
      */
 
-    protected $appends = ['debt'];
+    protected $appends = ['debt', 'latest_score_value', 'score_breakdown'];
+
+    public function getLatestScoreValueAttribute()
+    {
+        return $this->latestScore ? $this->latestScore->score : null;
+    }
+
+    public function getScoreBreakdownAttribute()
+    {
+        return $this->latestScore ? $this->latestScore->breakdown : null;
+    }
 
     public function products(): HasMany
     {

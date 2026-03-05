@@ -2,6 +2,12 @@
 
 namespace App\Services\Suppliers;
 
+use App\Models\Supplier;
+use App\Models\SupplierScore;
+use App\Models\Invoice;
+use App\Models\InvoiceReturn;
+use App\Models\AutoOrder;
+
 class SupplierEvaluationService
 {
     /**

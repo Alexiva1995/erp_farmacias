@@ -4,21 +4,16 @@ import SupplierIaOrderAssistantGrupoTable from '@/components/SupplierIaOrderAssi
 import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
 
 const route = useRouter();
 
-const modal = reactive({ statu: false, titulo: "Nuevo" });
-
-const statuModule = reactive({
-  total: 0,
-  items: [],
-});
-
+const statuModule = reactive({ total: 0, items: [] });
 const groups = ref([]);
 const laboratories = ref([]);
 const loading = ref(false);
+const loadingStats = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -28,21 +23,53 @@ const orderBy = ref();
 const selectedLaboratory = ref([]);
 const selectedGroup = ref([]);
 
-const tipo_de_vista = ref(false);      // false=individual, true=grupal
-const tipo_de_filtracion = ref("sales");
-const lapso_de_tiempo = ref("3 month");
+// Defaults mejorados: lapso 1 mes, cálculo combinado
+const tipo_de_vista = ref(false);
+const tipo_de_filtracion = ref("combinado");
+const lapso_de_tiempo = ref("1 month");
 const stock = ref("all");
 const con_descuento = ref(true);
+
+// KPIs globales (todos los productos, no paginados)
+const kpiGlobal = reactive({ necesitan: 0, exceso: 0, ok: 0 });
 
 const handleClearFilters = () => {
   con_descuento.value = true;
   tipo_de_vista.value = false;
-  tipo_de_filtracion.value = "sales";
-  lapso_de_tiempo.value = "3 month";
+  tipo_de_filtracion.value = "combinado";
+  lapso_de_tiempo.value = "1 month";
   stock.value = "all";
   selectedLaboratory.value = [];
   selectedGroup.value = [];
 };
+
+// Obtiene KPIs de todos los productos (sin paginar)
+async function consultarKpisGlobales() {
+  loadingStats.value = true;
+  try {
+    const data = {
+      laboratoryId: selectedLaboratory.value,
+      groups: selectedGroup.value,
+      tipo_vista: tipo_de_vista.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      stock: stock.value,
+      page: 1,
+      itemsPerPage: 99999, // traer todos para contar
+      sortBy: null,
+      orderBy: null,
+    };
+    const resp = await axios.post('/suppliers-ia-order-assistant/filtrar-paginate?page=1', data);
+    const items = resp.data?.data?.paginate?.data || [];
+    kpiGlobal.necesitan = items.filter(p => parseFloat(p.solicitar) > 0).length;
+    kpiGlobal.exceso    = items.filter(p => parseFloat(p.solicitar) < 0).length;
+    kpiGlobal.ok        = items.filter(p => parseFloat(p.solicitar) == 0).length;
+  } catch (e) {
+    console.error('Error al cargar KPIs globales:', e);
+  } finally {
+    loadingStats.value = false;
+  }
+}
 
 async function consultarProductosConPaginacion() {
   const data = {
@@ -57,11 +84,9 @@ async function consultarProductosConPaginacion() {
     sortBy: sortBy.value,
     orderBy: orderBy.value,
   };
-  const respuestaApi = await axios.post(`/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`, data);
-  if (respuestaApi.status !== 200) {
-    toast.error("Error al filtrar los datos");
-  }
-  return { ...respuestaApi.data };
+  const resp = await axios.post(`/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`, data);
+  if (resp.status !== 200) toast.error("Error al filtrar los datos");
+  return { ...resp.data };
 }
 
 async function actualizarTabla() {
@@ -84,10 +109,16 @@ const updateTableOptionsTable = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-watch(
-  [selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock, orderBy, sortBy, page, itemsPerPage],
-  async () => { await actualizarTabla(); }
-);
+// Cuando cambian filtros: recalcular KPIs globales + tabla
+watch([selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock], async () => {
+  page.value = 1;
+  await Promise.all([consultarKpisGlobales(), actualizarTabla()]);
+});
+
+// Al paginar, solo recargar tabla
+watch([page, itemsPerPage, orderBy, sortBy], async () => {
+  await actualizarTabla();
+});
 
 function generarPedido() {
   route.push({
@@ -109,39 +140,19 @@ async function consultarLaboratorios() {
 
 async function consultarGruposProductos() {
   const respuestaApi = await axios.get("/groups/consult-all");
-  if (respuestaApi.status !== 200) {
-    toast.error("Error al filtrar los datos");
-    return;
-  }
+  if (respuestaApi.status !== 200) { toast.error("Error al cargar grupos"); return; }
   groups.value = [...respuestaApi.data.data];
 }
 
-// KPIs calculados desde los datos actuales de la página
-const kpiNecesitan = computed(() => statuModule.items.filter(p => parseFloat(p.solicitar) > 0).length);
-const kpiExceso = computed(() => statuModule.items.filter(p => parseFloat(p.solicitar) < 0).length);
-const kpiOk = computed(() => statuModule.items.filter(p => parseFloat(p.solicitar) == 0).length);
-
 onMounted(async () => {
-  await consultarGruposProductos();
-  await consultarLaboratorios();
-  await actualizarTabla();
+  await Promise.all([consultarGruposProductos(), consultarLaboratorios()]);
+  await Promise.all([consultarKpisGlobales(), actualizarTabla()]);
 });
 </script>
 
 <template>
   <VContainer fluid class="pa-6">
-    <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
-      <div>
-        <h4 class="text-h5 font-weight-bold">Asistente Inteligente de Pedidos</h4>
-        <p class="text-body-2 text-disabled mb-0">Analiza el inventario y genera órdenes de compra optimizadas con IA</p>
-      </div>
-      <VChip color="primary" variant="tonal" prepend-icon="tabler-brain">
-        IA Activa
-      </VChip>
-    </div>
-
-    <!-- KPIs resumen rápido -->
+    <!-- KPIs globales -->
     <VRow class="mb-5" no-gutters>
       <VCol cols="12" sm="4" class="pa-2">
         <VCard class="kpi-ia-card" elevation="0">
@@ -149,10 +160,17 @@ onMounted(async () => {
             <VAvatar color="error" variant="tonal" size="44" rounded>
               <VIcon icon="tabler-alert-circle" size="22" />
             </VAvatar>
-            <div>
+            <div class="flex-grow-1">
               <div class="text-caption text-disabled text-uppercase font-weight-bold">Necesitan Reposición</div>
-              <div class="text-h5 font-weight-black text-error">{{ kpiNecesitan }}</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-error">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="error" /></template>
+                  <template v-else>{{ kpiGlobal.necesitan }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
             </div>
+            <VChip color="primary" variant="tonal" size="x-small">IA Activa</VChip>
           </VCardText>
         </VCard>
       </VCol>
@@ -164,7 +182,13 @@ onMounted(async () => {
             </VAvatar>
             <div>
               <div class="text-caption text-disabled text-uppercase font-weight-bold">Exceso de Stock</div>
-              <div class="text-h5 font-weight-black text-warning">{{ kpiExceso }}</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-warning">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="warning" /></template>
+                  <template v-else>{{ kpiGlobal.exceso }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
             </div>
           </VCardText>
         </VCard>
@@ -177,7 +201,13 @@ onMounted(async () => {
             </VAvatar>
             <div>
               <div class="text-caption text-disabled text-uppercase font-weight-bold">Stock Óptimo</div>
-              <div class="text-h5 font-weight-black text-success">{{ kpiOk }}</div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-h5 font-weight-black text-success">
+                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="success" /></template>
+                  <template v-else>{{ kpiGlobal.ok }}</template>
+                </span>
+                <span class="text-caption text-disabled">productos</span>
+              </div>
             </div>
           </VCardText>
         </VCard>
