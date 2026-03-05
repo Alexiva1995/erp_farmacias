@@ -84,27 +84,6 @@ class SuppliersIaOrderAssistantController extends Controller
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         }
 
-        $respuesta["paginate"]->each(function ($items) use ($filtros) {
-            $items = $this->product->calcularAOProduct($items);
-
-            // Verificar si el producto tiene ventas 0 y stock 0 (caso especial: sin historial)
-            $ventasCero = ($items->total_sold_completed ?? 0) == 0;
-            $stockCero = ($items->lote_quantity ?? 0) == 0;
-            $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-
-            // El campo 'solicitar' ya viene calculado correctamente desde el SQL del repositorio:
-            // solicitar = demanda - stock - AO  (positivo = necesita pedido, negativo = exceso)
-
-            // Caso especial: producto sin ventas y sin stock en inventario → falla por definición
-            if ($ventasCero && $stockCero) {
-                // Si tiene unidades ya en pedido, está cubierto (exceso leve)
-                $items->solicitar = ($aoActual > 0) ? -$aoActual : 1;
-            }
-
-            // Redondear hacia arriba si falta, hacia abajo si sobra
-            $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
-        });
-
         return ApiResponse::success($respuesta, "ok", 200);
     }
 

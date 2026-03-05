@@ -447,18 +447,24 @@ class ProductRepository
                 AND aod.deleted_at IS NULL)';
 
         // calcular solicitar: demanda - stock - AO  (positivo = falta, negativo = exceso)
-        // Para fallas no se resta AO (nos interesa saber si el producto en sí tiene deficit)
+        // Redondear hacia arriba si falta, hacia abajo si sobra (CEIL/FLOOR)
         $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo_filtracion == "combinado") {
             // Demanda combinada = (promedio + ventas) / 2
             $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             // solicitar = demanda - stock - AO
-            $columnas[] = DB::raw('((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+            $columnas[] = DB::raw('CASE 
+                WHEN ((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+                ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+            END AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         } else {
             // solicitar = promedio - stock - AO
-            $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+            $columnas[] = DB::raw('CASE 
+                WHEN ((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+                ELSE FLOOR((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+            END AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         }
@@ -664,8 +670,8 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes .
-                (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
+            DB::raw('CASE 
+                WHEN (' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
@@ -673,8 +679,31 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
-                )' : '') .
-                ') AS solicitar'),
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                )) > 0 THEN CEIL(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                ))
+                ELSE FLOOR(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                ))
+            END AS solicitar'),
             DB::raw('(
                 SELECT ps.barcode_match
                 FROM product_suppliers ps

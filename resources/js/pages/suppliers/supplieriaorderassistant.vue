@@ -57,7 +57,7 @@ async function consultarKpisGlobales() {
       tipo_vista: tipo_de_vista.value,
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
-      stock: stock.value,
+      stock: 'all',
       isColombian: isColombian.value,
       page: 1,
       itemsPerPage: 99999, // traer todos para contar

@@ -28,6 +28,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         public ?int $userId,
         public ?string $filePath = null,
         public array $columnMap = [],
+        public ?float $exchangeRate = null,
     ) {
     }
 
@@ -107,7 +108,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     costUsdCol: $this->columnMap["unit_cost_usd"] ?? null,
                     activeIngredientCol: $this->columnMap["active_ingredient"] ?? null,
                     expirationCol: $this->columnMap["expiration"] ?? null,
-                    currencyCol: $this->columnMap["currency"] ?? null,
+                    currencyCol: $this->exchangeRate ?? ($this->columnMap["currency"] ?? null),
                 );
 
                 $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
