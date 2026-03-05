@@ -39,117 +39,149 @@ const headers = [
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
+        <div class="d-flex align-center">
+          <VAvatar
+            size="32"
+            variant="tonal"
+            color="primary"
+            class="me-2"
+          >
+            <span class="text-xs">#{{ item.id }}</span>
+          </VAvatar>
+        </div>
       </template>
 
-      <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">
-              {{ item.name }}
-            </span>
-          </div>
+      <template #item.supplier_name="{ item }">
+        <div class="d-flex flex-column">
+          <span class="text-body-1 font-weight-bold text-high-emphasis">
+            {{ item.supplier_name }}
+          </span>
+          <span v-if="item.phone" class="text-caption text-secondary">
+            <VIcon icon="tabler-phone" size="12" class="me-1" />
+            {{ item.phone }}
+          </span>
         </div>
       </template>
 
       <template #item.total_quantity="{ item }">
-        <span class="font-weight-medium">
-          {{ item.total_quantity }}
-        </span>
+        <div class="d-flex align-center">
+          <VIcon icon="tabler-box" size="16" class="me-1 text-secondary" />
+          <span class="font-weight-medium">
+            {{ item.total_quantity }} u.
+          </span>
+        </div>
       </template>
 
       <template #item.total_amount="{ item }">
-        <span class="font-weight-medium">{{
-          Intl.NumberFormat("es", {
-            maximumFractionDigits: 2,
-            minimumFractionDigits: 2,
+        <span class="font-weight-bold text-primary">{{
+          Intl.NumberFormat("es-VE", {
+            style: "currency",
+            currency: "USD",
           }).format(item.total_amount)
         }}</span>
       </template>
 
-      <template #item.debt="{ item }">
-        <span class="font-weight-medium">
-          {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
-        </span>
+      <template #item.order_date="{ item }">
+        <div class="d-flex flex-column">
+          <span class="text-body-2 font-weight-medium">
+            {{ new Date(item.order_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }}
+          </span>
+          <span class="text-caption text-secondary">
+            {{ new Date(item.order_date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) }}
+          </span>
+        </div>
       </template>
 
       <template #item.status="{ item }">
-        <span
-          class="font-weight-medium"
-          :class="item.status ? 'text-success' : 'text-error'"
+        <VChip
+          size="small"
+          :color="item.status ? 'success' : 'warning'"
+          class="font-weight-bold"
+          label
         >
-          {{ item.status ? "Compleado" : "Pendiente" }}
-        </span>
+          {{ item.status ? "COMPLETADO" : "PENDIENTE" }}
+        </VChip>
       </template>
 
       <template #item.actions="{ item }">
-        <VTooltip text="Gestión de Productos" location="top">
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              @click="emit('show-requested-products', item)"
-            >
-              <VIcon icon="tabler-circle-dashed-check" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          v-if="props.isAdmin"
-          text="Editar Orden de Compra"
-          location="top"
-        >
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-purchaseOrder', item)">
-              <VIcon icon="tabler-edit" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Ver Orden de Compra" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('show-purchaseOrder', item)" color="info">
-              <VIcon icon="tabler-eye" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          v-if="props.isAdmin"
-          text="Eliminar Orden de Compra"
-          location="top"
-        >
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              @click="emit('delete-purchaseOrder', item.id)"
-            >
-              <VIcon icon="tabler-trash" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Contactar Proveedor" location="top">
-          <template #activator="{ props }">
-            <VBtn
-              icon
-              :disabled="!item.phone"
-              :href="
-                item.phone
-                  ? `https://wa.me/${item.phone.replace(
-                      /\D/g,
-                      ''
-                    )}?text=%2ADebe%20adjuntar%20el%20archivo%20que%20descargó%20del%20detalle%20de%20la%20orden%20de%20compra%20${
-                      item.id
-                    }%2A`
-                  : undefined
-              "
-              target="_blank"
-              variant="text"
-              v-bind="props"
-            >
-              <VIcon
-                :icon="item.phone ? 'tabler-phone-ringing' : 'tabler-phone-off'"
-              />
-            </VBtn>
-          </template>
-        </VTooltip>
+        <div class="d-flex align-center gap-1">
+          <VTooltip text="Gestionar Productos" location="top">
+            <template #activator="{ props }">
+              <VBtn
+                v-bind="props"
+                icon
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                @click="emit('show-requested-products', item)"
+              >
+                <VIcon icon="tabler-list-check" size="20" />
+              </VBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Ver Detalle" location="top">
+            <template #activator="{ props }">
+              <VBtn
+                v-bind="props"
+                icon
+                size="x-small"
+                variant="tonal"
+                color="info"
+                @click="emit('show-purchaseOrder', item)"
+              >
+                <VIcon icon="tabler-eye" size="20" />
+              </VBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip v-if="props.isAdmin" text="Editar" location="top">
+            <template #activator="{ props }">
+              <VBtn
+                v-bind="props"
+                icon
+                size="x-small"
+                variant="tonal"
+                color="warning"
+                @click="emit('edit-purchaseOrder', item)"
+              >
+                <VIcon icon="tabler-edit" size="20" />
+              </VBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip v-if="props.isAdmin" text="Eliminar" location="top">
+            <template #activator="{ props }">
+              <VBtn
+                v-bind="props"
+                icon
+                size="x-small"
+                variant="tonal"
+                color="error"
+                @click="emit('delete-purchaseOrder', item.id)"
+              >
+                <VIcon icon="tabler-trash" size="20" />
+              </VBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Contactar WhatsApp" location="top">
+            <template #activator="{ props }">
+              <VBtn
+                v-bind="props"
+                icon
+                size="x-small"
+                variant="tonal"
+                color="success"
+                :disabled="!item.phone"
+                :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=%2ADebe%20adjuntar%20el%20archivo%20que%20descargó%20del%20detalle%20de%20la%20orden%20de%20compra%20${item.id}%2A` : undefined"
+                target="_blank"
+              >
+                <VIcon icon="tabler-brand-whatsapp" size="20" />
+              </VBtn>
+            </template>
+          </VTooltip>
+        </div>
       </template>
     </VDataTableServer>
   </VCard>

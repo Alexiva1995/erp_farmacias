@@ -20,6 +20,11 @@ const formErrors = ref({});
 const page = ref(1);
 const itemsPerPage = ref(10);
 const totalPurchaseOrders = ref(0);
+const stats = ref({
+  total_orders: 0,
+  total_amount: 0,
+  pending_orders: 0,
+});
 
 const isEditDialogVisible = ref(false);
 const isShowDialogVisible = ref(false);
@@ -36,6 +41,18 @@ const fetchSuppliers = async () => {
     toast.error("Error al obtener los proveedores.");
   } finally {
     loading.value = false;
+  }
+};
+
+const fetchStats = async () => {
+  try {
+    const params = {
+      selectedSupplier: selectedSupplier.value,
+    };
+    const { data } = await axios.get("/suppliers/purchase-orders/stats", { params });
+    stats.value = data.data;
+  } catch (error) {
+    console.error("Error al obtener estadísticas:", error);
   }
 };
 
@@ -66,6 +83,7 @@ const fetchPurchaseOrders = async () => {
 onMounted(() => {
   fetchSuppliers();
   fetchPurchaseOrders();
+  fetchStats();
 });
 
 let debounceTimer;
@@ -73,7 +91,10 @@ watch(
   [page, itemsPerPage, selectedSupplier],
   () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchPurchaseOrders(), 300);
+    debounceTimer = setTimeout(() => {
+      fetchPurchaseOrders();
+      fetchStats();
+    }, 300);
   },
   { deep: true }
 );
@@ -227,47 +248,118 @@ const handleSaveDetails = async (detailsData) => {
 </script>
 
 <template>
-  <div>
-    <PurchaseOrderRequestedProducts
-      v-show="isShowRequestedProductsVisible"
-      v-model="isShowRequestedProductsVisible"
-      :purchaseOrder="currentPurchaseOrder"
-    />
+  <VRow class="match-height">
+    <!-- ── Estadísticas ───────────────────────────────────────────── -->
+    <VCol cols="12" md="4">
+      <VCard>
+        <VCardText class="d-flex align-center">
+          <VAvatar
+            rounded
+            variant="tonal"
+            color="primary"
+            icon="tabler-clipboard-list"
+            size="44"
+            class="me-4"
+          />
+          <div>
+            <div class="text-body-1">Total Órdenes</div>
+            <div class="text-h5 font-weight-bold">{{ stats.total_orders }}</div>
+          </div>
+        </VCardText>
+      </VCard>
+    </VCol>
 
-    <PurchaseOrderEditDialog
-      v-show="isEditDialogVisible"
-      v-model="isEditDialogVisible"
-      :purchaseOrder="currentPurchaseOrder"
-      :errors="formErrors"
-      @clearErrors="handleClearErrors"
-      @delete-detail="handleDeletePurchaseOrderDetail"
-      @save="handleSaveDetails"
-    />
+    <VCol cols="12" md="4">
+      <VCard>
+        <VCardText class="d-flex align-center">
+          <VAvatar
+            rounded
+            variant="tonal"
+            color="success"
+            icon="tabler-currency-dollar"
+            size="44"
+            class="me-4"
+          />
+          <div>
+            <div class="text-body-1">Monto Total</div>
+            <div class="text-h5 font-weight-bold">
+              {{
+                Intl.NumberFormat("es-VE", {
+                  style: "currency",
+                  currency: "USD",
+                }).format(stats.total_amount)
+              }}
+            </div>
+          </div>
+        </VCardText>
+      </VCard>
+    </VCol>
 
-    <PurchaseOrderShowDialog
-      v-show="isShowDialogVisible"
-      v-model="isShowDialogVisible"
-      :purchaseOrder="currentPurchaseOrder"
-    />
+    <VCol cols="12" md="4">
+      <VCard>
+        <VCardText class="d-flex align-center">
+          <VAvatar
+            rounded
+            variant="tonal"
+            color="warning"
+            icon="tabler-alert-circle"
+            size="44"
+            class="me-4"
+          />
+          <div>
+            <div class="text-body-1">Órdenes Pendientes</div>
+            <div class="text-h5 font-weight-bold text-warning">
+              {{ stats.pending_orders }}
+            </div>
+          </div>
+        </VCardText>
+      </VCard>
+    </VCol>
 
-    <PurchaseOrdersFilter
-      v-model:selectedSupplier="selectedSupplier"
-      :suppliers="suppliers"
-      @clear="handleClearFilters"
-    />
+    <VCol cols="12">
+      <PurchaseOrderRequestedProducts
+        v-show="isShowRequestedProductsVisible"
+        v-model="isShowRequestedProductsVisible"
+        :purchaseOrder="currentPurchaseOrder"
+      />
 
-    <PurchaseOrdersTable
-      :purchaseOrders="purchaseOrders"
-      :loading="loading"
-      :total-purchaseOrders="totalPurchaseOrders"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      :is-admin="isAdmin"
-      @update:options="updateTableOptions"
-      @edit-purchaseOrder="handleEditPurchaseOrder"
-      @delete-purchaseOrder="handleDeletePurchaseOrder"
-      @show-purchaseOrder="handleShowPurchaseOrder"
-      @show-requested-products="handleShowRequestedProducts"
-    />
-  </div>
+      <PurchaseOrderEditDialog
+        v-show="isEditDialogVisible"
+        v-model="isEditDialogVisible"
+        :purchaseOrder="currentPurchaseOrder"
+        :errors="formErrors"
+        @clearErrors="handleClearErrors"
+        @delete-detail="handleDeletePurchaseOrderDetail"
+        @save="handleSaveDetails"
+      />
+
+      <PurchaseOrderShowDialog
+        v-show="isShowDialogVisible"
+        v-model="isShowDialogVisible"
+        :purchaseOrder="currentPurchaseOrder"
+      />
+
+      <div class="mt-4">
+        <PurchaseOrdersFilter
+          v-model:selectedSupplier="selectedSupplier"
+          :suppliers="suppliers"
+          @clear="handleClearFilters"
+        />
+      </div>
+
+      <PurchaseOrdersTable
+        :purchaseOrders="purchaseOrders"
+        :loading="loading"
+        :total-purchaseOrders="totalPurchaseOrders"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :is-admin="isAdmin"
+        @update:options="updateTableOptions"
+        @edit-purchaseOrder="handleEditPurchaseOrder"
+        @delete-purchaseOrder="handleDeletePurchaseOrder"
+        @show-purchaseOrder="handleShowPurchaseOrder"
+        @show-requested-products="handleShowRequestedProducts"
+      />
+    </VCol>
+  </VRow>
 </template>

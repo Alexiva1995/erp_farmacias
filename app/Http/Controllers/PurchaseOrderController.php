@@ -25,6 +25,14 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
+    public function getStats(Request $request)
+    {
+        $filters = $request->query();
+        $stats = $this->purchaseOrder->getStats($filters);
+
+        return ApiResponse::success($stats);
+    }
+
     public function destroy(AutoOrder $autoOrder)
     {
         $result = $this->purchaseOrder->delete($autoOrder);

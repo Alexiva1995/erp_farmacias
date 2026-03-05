@@ -58,4 +58,9 @@ class PurchaseOrderServices implements PurchaseOrder
   {
     return $this->autoOrdersRepository->getExportableData($autoOrder);
   }
+
+  public function getStats(array $data): array
+  {
+    return $this->autoOrdersRepository->getStats($data);
+  }
 }

@@ -196,4 +196,19 @@ class AutoOrdersRepository
 
         return $query;
     }
+
+    public function getStats(array $filters = [])
+    {
+        $query = AutoOrder::query()
+            ->when(
+                $filters['selectedSupplier'] ?? null,
+                fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
+            );
+
+        return [
+            'total_orders' => (clone $query)->count(),
+            'total_amount' => (clone $query)->sum('total_amount') ?? 0,
+            'pending_orders' => (clone $query)->where('status', 0)->count(),
+        ];
+    }
 }
