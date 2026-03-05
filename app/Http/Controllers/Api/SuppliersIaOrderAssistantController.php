@@ -133,41 +133,14 @@ class SuppliersIaOrderAssistantController extends Controller
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
-        // Guardar total de fallas ANTES de remover las cubiertas por AO
+        // Guardar total de fallas (SQL es ahora la fuente única de verdad)
         $totalFallas = $productosFallas->count();
 
-        $productosFallas = $this->product->calcularAOProducts($productosFallas);
-        $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
-        $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
-
         // Invertir el signo de solicitar para TODOS los productos.
-        // El repositorio devuelve (demanda - stock) positivo para necesidades.
+        // El repositorio devuelve (demanda - stock - AO) positivo para necesidades.
         // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
         foreach ($productosFallas as $producto) {
             $producto->solicitar = $producto->solicitar * -1;
-        }
-
-        // Para productos con ventas 0 y stock 0, deben ser negativos (fallas)
-        // NO forzar a 1, deben calcularse como negativos
-        foreach ($productosFallas as $producto) {
-            $ventasCero = ($producto->total_sold_completed ?? 0) == 0;
-            $stockCero = ($producto->lote_quantity ?? 0) == 0;
-            $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
-
-            if ($ventasCero && $stockCero) {
-                $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
-
-                if (($filtrosFallas['stock'] ?? '') === 'fallas') {
-                    $producto->solicitar = 0;
-                } else {
-                    $producto->solicitar = 0 - $aoActual;
-                }
-
-                // Si no hay AO, debe ser negativo (falla)
-                if ($aoActual == 0) {
-                    $producto->solicitar = -1; // Falla: necesita al menos 1
-                }
-            }
         }
 
         $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
