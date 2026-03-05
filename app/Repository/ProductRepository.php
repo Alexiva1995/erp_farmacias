@@ -423,12 +423,24 @@ class ProductRepository
                 AND orders.status = "Completed"
             )';
 
-        // calcular solicitar
+        // Sub-consulta del AO (unidades ya en pedido activo) para incluirla en el cálculo SQL
+        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND aod.status = 0)';
+
+        // calcular solicitar: demanda - stock - AO  (positivo = falta, negativo = exceso)
+        // Para fallas no se resta AO (nos interesa saber si el producto en sí tiene deficit)
         $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo_filtracion == "combinado") {
-            $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - ((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS solicitar');
+            // Demanda combinada = (promedio + ventas) / 2
+            $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
+            // solicitar = demanda - stock - AO
+            $columnas[] = DB::raw('((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
         } else {
-            $columnas[] = DB::raw($this->subConsultaParaCalcularStockPorLotes . ' - (' . $promedio_calculado . ') AS solicitar');
+            // solicitar = promedio - stock - AO
+            $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
         }
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
