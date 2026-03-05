@@ -9,15 +9,15 @@ const emit = defineEmits(["update:selectedSupplier", "clear"]);
 </script>
 
 <template>
-  <VCard class="mb-6 shadow-sm border">
-    <VCardText class="py-4">
-      <VRow align="center" dense>
-        <VCol cols="12" md="10">
+  <VCard class="mb-6 rounded-xl border">
+    <VCardText class="pa-5">
+      <VRow>
+        <VCol cols="12" md="4" lg="3">
           <AppAutocomplete
             :model-value="props.selectedSupplier"
             :items="props.suppliers"
             :loading="props.loading"
-            placeholder="Filtrar por proveedor"
+            placeholder="Seleccionar Proveedor"
             item-title="name"
             item-value="id"
             clearable
@@ -26,18 +26,24 @@ const emit = defineEmits(["update:selectedSupplier", "clear"]);
             @update:model-value="emit('update:selectedSupplier', $event)"
           />
         </VCol>
-        <VCol cols="12" md="2" class="d-flex justify-end">
-          <VBtn 
-            color="secondary" 
-            variant="tonal" 
-            block
-            @click="emit('clear')"
-          >
-            <VIcon icon="tabler-filter-off" class="me-1" size="18" />
-            Limpiar
-          </VBtn>
-        </VCol>
       </VRow>
     </VCardText>
+    <VDivider />
+    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
+      <VBtn 
+        color="secondary" 
+        variant="outlined" 
+        @click="emit('clear')"
+      >
+        <VIcon icon="tabler-filter-off" class="me-1" size="18" />
+        Limpiar Filtros
+      </VBtn>
+    </VCardActions>
   </VCard>
 </template>
+
+<style scoped>
+.v-card {
+  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+}
+</style>
