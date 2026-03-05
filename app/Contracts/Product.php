@@ -28,7 +28,7 @@ interface Product
     public function exportAssistantReportExcel(array $filtros): AssistantReportProductExport;
     public function calcularAOProduct(ModelsProduct $producto): ModelsProduct;
     public function calcularAOProducts(Collection $productos): Collection;
-    public function removerProductosConPedidosAutomaticos(Collection $productos): Collection;
+
     public function actualizarElSolicitadoConElAO(Collection $productos): Collection;
     public function filtrarIndividualProductForAssistantReportTypeSalesToArray(array $filtros): array;
 }

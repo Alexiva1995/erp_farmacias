@@ -648,22 +648,7 @@ const handleSaveAnalysis = async ({ item, newValue }) => {
   }
 };
 
-const handleMarkScarce = async (item) => {
-  try {
-    const response = await axios.patch(
-      `/suppliers-ia-order-assistant/products-without-supplier/${item.id}/toggle-scarce`,
-    );
 
-    if (response.data.status === "success") {
-      toast.success(response.data.message);
-      // Refrescar la tabla para que el producto escaso desaparezca si el filtro aplica
-      fetchProductsWithoutSupplier();
-    }
-  } catch (error) {
-    console.error(error);
-    toast.error("Error al actualizar estado de escasez.");
-  }
-};
 
 const updateProductsWithoutSupplierOptions = (options) => {
   pageProductsWithoutSupplier.value = options.page;

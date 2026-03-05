@@ -490,15 +490,7 @@ class SuppliersIaOrderAssistantController extends Controller
         }
     }
 
-    public function toggleScarce(Request $request, $id)
-    {
-        $product = ModelsProduct::findOrFail($id);
-        $product->update([
-            'is_scarce' => !$product->is_scarce,
-        ]);
 
-        return ApiResponse::success(["is_scarce" => $product->is_scarce], "Estado actualizado");
-    }
 
     public function directOrder(Request $request)
     {

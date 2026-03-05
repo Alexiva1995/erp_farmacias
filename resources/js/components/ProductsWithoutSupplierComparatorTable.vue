@@ -223,22 +223,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
             <VTooltip activator="parent" location="top">Pedir Directo</VTooltip>
           </IconBtn>
 
-          <!-- Escaso -->
-          <IconBtn
-            :color="item.is_scarce ? 'error' : 'warning'"
-            @click.stop="emit('mark-scarce', item)"
-          >
-            <VIcon
-              :icon="
-                item.is_scarce ? 'tabler-alert-circle' : 'tabler-alert-triangle'
-              "
-            />
-            <VTooltip activator="parent" location="top">
-              {{
-                item.is_scarce ? "Quitar marca de escaso" : "Marcar como escaso"
-              }}
-            </VTooltip>
-          </IconBtn>
+
 
           <!-- Borrar -->
           <IconBtn @click.stop="emit('delete', item)">

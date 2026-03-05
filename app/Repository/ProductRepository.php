@@ -378,7 +378,6 @@ class ProductRepository
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
-            'products.is_scarce',
             'products.unit_cost as current_unit_cost',
             DB::raw('(
                 SELECT ps.unit_cost_usd
@@ -700,7 +699,6 @@ class ProductRepository
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
-            'products.is_scarce',
             'products.unit_cost as current_unit_cost',
             DB::raw('(
                 SELECT ps.unit_cost_usd
