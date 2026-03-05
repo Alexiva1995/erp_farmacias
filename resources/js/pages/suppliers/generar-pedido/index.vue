@@ -7,7 +7,6 @@ import ProductsExceededToleranceTable from "@/components/ProductsExceededToleran
 import ProductsStablePriceTable from "@/components/ProductsStablePriceTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import pdfProductsWithoutSuppliersGenerator from "@/utils/pdfProductsWithoutSuppliersGenerator";
 import Swal from 'sweetalert2';
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -371,22 +370,12 @@ async function realizarCompra(){
     
     module.loadingApp=false
     toast.success("Compra realizada con éxito")
-    module.loadingApp=true
-
-    let productosSinPorveedor= await consultarProductosSinProveedor()
     
-    // Generar PDF
-    if (productosSinPorveedor.length > 0) {
-      pdfProductsWithoutSuppliersGenerator(productosSinPorveedor)
-      
-      // Abrir nueva pestaña con la vista de productos sin proveedor
-      const productosEncoded = encodeURIComponent(JSON.stringify(productosSinPorveedor))
-      const url = `${window.location.origin}/suppliers/products-without-supplier?productos=${productosEncoded}`
-      //window.open(url, '_blank');
-    }
-
-    module.loadingApp=false
-    router.push("/suppliers/purchase-orders/list")
+    // Redirigir al comparador de productos, pestaña productos, filtro fallas
+    router.push({
+      path: "/suppliers/product-comparator/list",
+      query: { tab: "products", stock: "fallas" }
+    })
   } catch (error) {
     console.error("Error al realizar compra:", error)
     module.loadingApp=false
@@ -447,49 +436,11 @@ function eliminarItemOrden(payload){
   <div>
     <NavegationIaAutoOrder
       :index-navegacion="indexNavegacion"
+      :encontrados="module.productoFallas?.length || 0"
+      :no-encontrados="module.productosSinReponer?.length || 0"
       @actualizar-index-navegacion="actualizarIndexNavegacion"
     />
 
-    <!-- KPIs Orientativos -->
-    <VRow class="mb-6 mt-1">
-      <VCol cols="12" sm="6">
-        <VCard variant="outlined" class="rounded-lg border-opacity-100" style="border-color: rgba(var(--v-theme-success), 0.3) !important;">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="success" variant="tonal" size="48" rounded>
-              <VIcon icon="tabler-truck-delivery" size="26" />
-            </VAvatar>
-            <div>
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Productos con Oferta</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-success">
-                  {{ module.productoFallas?.length || 0 }}
-                </span>
-                <span class="text-caption text-disabled">listos para pedir</span>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <VCol cols="12" sm="6">
-        <VCard variant="outlined" class="rounded-lg border-opacity-100" style="border-color: rgba(var(--v-theme-warning), 0.3) !important;">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="warning" variant="tonal" size="48" rounded>
-              <VIcon icon="tabler-shopping-cart-off" size="26" />
-            </VAvatar>
-            <div>
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Sin Proveedor Asignado</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-warning">
-                  {{ module.productosSinReponer?.length || 0 }}
-                </span>
-                <span class="text-caption text-disabled">requieren atención</span>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
     <VCard class="mb-6" v-if="indexNavegacion == 1">
       <template #title>
         Productos con Costo Elevado

@@ -13,6 +13,9 @@ import { toast } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
 
 const supplierConnections = ref([]);
 const suppliers = ref([]);
@@ -44,7 +47,7 @@ const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
 
 const pollingSupplierId = ref(null);
-const tab = ref("suppliers");
+const tab = ref(route.query.tab || "suppliers");
 const page = ref(1);
 const itemsPerPage = ref(10);
 const totalSupplierConnections = ref(0);
@@ -79,7 +82,7 @@ const selectedGroup = ref();
 const tipo_de_vista = ref(false); // grupo o individual
 const tipo_de_filtracion = ref("sales"); // promedio o ventas
 const lapso_de_tiempo = ref("3 month"); // tiempo
-const stock = ref("fallas"); // Fallas , Execeso o All
+const stock = ref(route.query.stock || "fallas"); // Fallas , Execeso o All
 const laboratoriesProductsWithoutSupplier = ref([]);
 
 const handleClearFilters = () => {

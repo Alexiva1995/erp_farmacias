@@ -1,6 +1,8 @@
 <script setup lang="js">
 const props = defineProps({
-  indexNavegacion: { type: Number, required: true }
+  indexNavegacion: { type: Number, required: true },
+  encontrados: { type: Number, default: 0 },
+  noEncontrados: { type: Number, default: 0 },
 });
 const emit = defineEmits(['actualizarIndexNavegacion']);
 
@@ -13,9 +15,36 @@ const pasos = [
 </script>
 
 <template>
-  <VCard class="mb-5 overflow-hidden">
-    <!-- Header -->
-    <div class="d-flex align-center justify-space-between px-6 pt-5 pb-3">
+  <VCard class="mb-5 overflow-hidden" variant="outlined">
+    <!-- Header con KPIs minimalistas -->
+    <div class="d-flex align-center justify-space-between px-6 pt-4 pb-2 border-b bg-light-section">
+      <div class="d-flex align-center gap-2">
+        <span class="text-subtitle-2 font-weight-black text-uppercase text-disabled me-2">Análisis de Fallas:</span>
+        <VTooltip text="Productos que tienen oferta de proveedores">
+          <template #activator="{ props: tp }">
+            <VChip v-bind="tp" color="success" size="small" variant="flat" density="comfortable" class="font-weight-bold">
+              <VIcon start size="14" icon="tabler-check" />
+              {{ props.encontrados }} Encontrados
+            </VChip>
+          </template>
+        </VTooltip>
+        <VTooltip text="Productos sin oferta disponible">
+          <template #activator="{ props: tp }">
+            <VChip v-bind="tp" color="warning" size="small" variant="flat" density="comfortable" class="font-weight-bold">
+              <VIcon start size="14" icon="tabler-alert-triangle" />
+              {{ props.noEncontrados }} No Encontrados
+            </VChip>
+          </template>
+        </VTooltip>
+      </div>
+      
+      <div class="text-caption text-disabled italic">
+        Paso {{ props.indexNavegacion }} de 4
+      </div>
+    </div>
+
+    <!-- Navegación -->
+    <div class="d-flex align-center justify-space-between px-6 py-4">
       <!-- Botón anterior -->
       <VBtn
         variant="tonal"

@@ -59,7 +59,7 @@ const headers = [
 
 // Determina el color de fondo por fila (Light mode friendly)
 function rowClass(item) {
-  const val = parseFloat(item.solicitar);
+  const val = roundIaAnalysis(item.solicitar);
   if (val > 0) return 'row-needs';
   if (val < 0) return 'row-excess';
   return '';
