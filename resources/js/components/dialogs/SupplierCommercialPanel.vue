@@ -435,14 +435,21 @@ const close = () => {
       <VDivider />
 
       <VCardActions class="pa-4 bg-grey-lighten-4">
-        <VBtn variant="text" color="secondary" @click="close">Cerrar</VBtn>
+        <VBtn 
+          variant="outlined" 
+          color="secondary" 
+          style="min-inline-size: 150px;"
+          @click="close"
+        >
+          Cerrar
+        </VBtn>
         <VSpacer />
         <VBtn 
           v-if="activeTab === 0" 
           color="primary" 
           variant="flat" 
           prepend-icon="tabler-device-floppy"
-          class="px-6"
+          style="min-inline-size: 150px;"
           :loading="loading"
           @click="saveFinances"
         >
@@ -453,7 +460,7 @@ const close = () => {
           color="success" 
           variant="flat" 
           prepend-icon="tabler-device-floppy"
-          class="px-6"
+          style="min-inline-size: 150px;"
           :loading="loading"
           @click="saveBrands"
         >
@@ -464,7 +471,7 @@ const close = () => {
           color="primary" 
           variant="flat" 
           prepend-icon="tabler-device-floppy"
-          class="px-6"
+          style="min-inline-size: 150px;"
           :loading="loading"
           @click="saveDiscounts"
         >

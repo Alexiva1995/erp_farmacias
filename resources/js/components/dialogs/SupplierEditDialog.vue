@@ -411,17 +411,23 @@ watch(
 
       <!-- ── Footer ─────────────────────────────────────────────────── -->
       <VCardActions class="pa-4 gap-3">
-        <VBtn color="secondary" variant="outlined" class="flex-grow-1" @click="closeDialog">
+        <VSpacer />
+        <VBtn 
+          color="secondary" 
+          variant="outlined" 
+          style="min-inline-size: 140px;" 
+          @click="closeDialog"
+        >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
           variant="flat"
-          class="flex-grow-1"
+          style="min-inline-size: 140px;"
           prepend-icon="tabler-device-floppy"
           @click="submitForm"
         >
-          {{ isNewSupplier ? "Crear Proveedor" : "Guardar Cambios" }}
+          {{ isNewSupplier ? "Crear" : "Guardar" }}
         </VBtn>
       </VCardActions>
 

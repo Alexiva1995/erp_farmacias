@@ -512,12 +512,13 @@ async function submitForm() {
       <VDivider />
 
       <VCardActions class="pa-4 d-flex gap-2">
+        <VSpacer />
         <VBtn
           color="secondary"
           variant="outlined"
           @click="close"
           prepend-icon="tabler-arrow-left"
-          class="flex-grow-1"
+          style="min-inline-size: 150px;"
         >
           Cancelar
         </VBtn>
@@ -528,9 +529,9 @@ async function submitForm() {
           :loading="isUploading"
           :disabled="isUploading"
           prepend-icon="tabler-device-floppy"
-          class="flex-grow-1"
+          style="min-inline-size: 150px;"
         >
-          {{ isUploading ? "Subiendo..." : "Guardar Gasto" }}
+          {{ isUploading ? "Subiendo..." : "Guardar" }}
         </VBtn>
       </VCardActions>
     </VCard>
