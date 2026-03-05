@@ -135,13 +135,24 @@ export function pdfPurchaseOrderGenerator(data) {
     body: tableRows,
     startY: tableYPosition,
     theme: "grid",
-    headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: "bold", halign: "center" },
-    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { 
+      fillColor: [220, 220, 220], 
+      textColor: 0, 
+      fontStyle: "bold", 
+      halign: "center",
+      fontSize: 8.5
+    },
+    styles: { 
+      fontSize: 8, 
+      cellPadding: 1.2,
+      valign: 'middle'
+    },
     columnStyles: {
-      0: { cellWidth: "auto" },
-      1: { halign: "center" },
-      2: { halign: "right" },
-      3: { halign: "right" },
+      0: { cellWidth: 20, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 30, halign: 'right' },
+      4: { cellWidth: 30, halign: 'right' },
     },
   });
 
