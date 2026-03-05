@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { roundIaAnalysis } from './iaAnalysisRounding';
 
 export default function pdfProductsAssistantReportGenerator(data) {
     const doc = new jsPDF({
@@ -12,6 +13,13 @@ export default function pdfProductsAssistantReportGenerator(data) {
     const today = new Date();
     const dateStr = `${today.getDate()}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
     
+    // --- 0. ORDENAMIENTO POR ANÁLISIS DESCENDENTE ---
+    const sortedData = [...data].sort((a, b) => {
+        const valA = roundIaAnalysis(a.solicitar || 0);
+        const valB = roundIaAnalysis(b.solicitar || 0);
+        return valB - valA; // Lo más necesario primero
+    });
+
     // --- 1. MEMBRETE OFICIAL ---
     try {
         const logoSrc = '/images/logoDonative.png';
@@ -55,9 +63,7 @@ export default function pdfProductsAssistantReportGenerator(data) {
             { content: 'ID', styles: { halign: 'center' } },
             { content: 'PRODUCTO' },
             { content: 'LABORATORIO' },
-            { content: 'C. MIN', styles: { halign: 'center' } },
-            { content: 'C. MAX', styles: { halign: 'center' } },
-            { content: 'C. ACTUAL', styles: { halign: 'center' } },
+            { content: 'COSTO ACTUAL\n(Ficha / Min-Max)', styles: { halign: 'center' } },
             { content: 'MEJOR OFERTA', styles: { halign: 'center' } },
             { content: 'VTAS', styles: { halign: 'center' } },
             { content: 'STOCK', styles: { halign: 'center' } },
@@ -67,22 +73,14 @@ export default function pdfProductsAssistantReportGenerator(data) {
         ]
     ];
     
-    const rows = data.map((product, index) => [
+    const rows = sortedData.map((product, index) => [
         { content: index + 1, styles: { halign: 'center' } },
         { content: product.id, styles: { halign: 'center' } },
         product.name,
         product.laboratory?.name || 'N/A',
         { 
-            content: product.cost_min ? parseFloat(product.cost_min).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
-        },
-        { 
-            content: product.cost_max ? parseFloat(product.cost_max).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
-        },
-        { 
-            content: product.unit_cost ? parseFloat(product.unit_cost).toFixed(2) : '0.00',
-            styles: { halign: 'right' }
+            content: `$${parseFloat(product.unit_cost || 0).toFixed(2)}\n$${parseFloat(product.cost_min || 0).toFixed(2)} / $${parseFloat(product.cost_max || 0).toFixed(2)}`,
+            styles: { halign: 'center', fontSize: 6.5 }
         },
         {
             content: product.product_suppliers?.length > 0 
@@ -107,8 +105,8 @@ export default function pdfProductsAssistantReportGenerator(data) {
             styles: { halign: 'right', fontStyle: 'bold' }
         },
         { 
-            content: product.solicitar ? parseFloat(product.solicitar).toFixed(1) : '0.0',
-            styles: { halign: 'right', fontStyle: 'bold' }
+            content: product.solicitar ? roundIaAnalysis(product.solicitar) : '0',
+            styles: { halign: 'right', fontStyle: 'bold', fontSize: 8.5 }
         }
     ]);
     
@@ -127,7 +125,7 @@ export default function pdfProductsAssistantReportGenerator(data) {
             lineColor: [0, 0, 0]
         },
         styles: {
-            fontSize: 7,
+            fontSize: 7.5,
             cellPadding: 1.5,
             lineWidth: 0.1,
             lineColor: [0, 0, 0],
@@ -137,17 +135,15 @@ export default function pdfProductsAssistantReportGenerator(data) {
         columnStyles: {
             0: { cellWidth: 8 },  // #
             1: { cellWidth: 12 }, // ID
-            2: { cellWidth: 50 }, // Producto
-            3: { cellWidth: 35 }, // Laboratorio
-            4: { cellWidth: 18 }, // C. Min
-            5: { cellWidth: 18 }, // C. Max
-            6: { cellWidth: 18 }, // Costo actual
-            7: { cellWidth: 40 }, // Mejor oferta
-            8: { cellWidth: 12 }, // Ventas
-            9: { cellWidth: 12 }, // Stock
-            10: { cellWidth: 15 }, // Prom
-            11: { cellWidth: 15 }, // Demanda
-            12: { cellWidth: 15 }  // Análisis
+            2: { cellWidth: 65 }, // Producto
+            3: { cellWidth: 40 }, // Laboratorio
+            4: { cellWidth: 35 }, // Costo actual vertical
+            5: { cellWidth: 45 }, // Mejor oferta
+            6: { cellWidth: 12 }, // Ventas
+            7: { cellWidth: 12 }, // Stock
+            8: { cellWidth: 15 }, // Prom
+            9: { cellWidth: 15 }, // Demanda
+            10: { cellWidth: 18 } // Análisis
         },
         margin: { left: 10, right: 10 },
         pageBreak: 'auto'
