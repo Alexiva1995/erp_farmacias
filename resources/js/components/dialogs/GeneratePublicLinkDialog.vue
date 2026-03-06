@@ -14,11 +14,9 @@ const loading = ref(false)
 const publicToken = ref('')
 
 // Sincronizar el token cuando cambia el proveedor
-watch(() => props.selectedSupplier?.id, (newId, oldId) => {
-  if (newId !== oldId) {
-    publicToken.value = props.selectedSupplier?.public_token || ''
-  }
-}, { immediate: true })
+watch(() => props.selectedSupplier, (newVal) => {
+  publicToken.value = newVal?.public_token || ''
+}, { deep: true, immediate: true })
 
 const publicUrl = computed(() => {
   if (!publicToken.value) return ''
@@ -33,11 +31,6 @@ const generateToken = async () => {
     
     const newToken = response.data.data
     publicToken.value = newToken
-
-    // Actualizar el objeto por referencia para que el padre lo vea antes del refresh
-    if (props.selectedSupplier) {
-      props.selectedSupplier.public_token = newToken
-    }
 
     toast.success('Token generado con éxito')
     emit('refresh')
@@ -96,68 +89,84 @@ const closeDialog = () => {
         <!-- Vista cuando ya hay token -->
         <VScaleTransition>
           <div v-if="publicToken">
-            <VLabel class="mb-2 font-weight-medium">URL de Acceso Directo</VLabel>
-            <div class="d-flex align-center gap-2">
-              <VTextField
-                :model-value="publicUrl"
-                readonly
-                variant="outlined"
-                density="compact"
-                hide-details
-                prepend-inner-icon="tabler-link"
-                color="primary"
-                class="bg-surface"
-              />
-              <VBtn
-                color="primary"
-                variant="elevated"
-                @click="copyToClipboard"
-                min-width="120"
-              >
-                <VIcon start size="18">tabler-copy</VIcon>
-                Copiar
-              </VBtn>
-            </div>
+            <VCard variant="flat" border class="pa-4 mb-4 bg-primary-light">
+              <div class="d-flex align-center mb-3">
+                <VIcon icon="tabler-copy" color="primary" class="me-2" />
+                <span class="text-subtitle-2 font-weight-bold text-primary">Enlace de acceso rápido</span>
+              </div>
+              
+              <div class="d-flex align-center gap-2">
+                <VTextField
+                  :model-value="publicUrl"
+                  readonly
+                  variant="outlined"
+                  bg-color="surface"
+                  density="comfortable"
+                  hide-details
+                  prepend-inner-icon="tabler-world-www"
+                  color="primary"
+                  class="flex-grow-1"
+                />
+                
+                <VBtn
+                  color="primary"
+                  variant="elevated"
+                  size="large"
+                  @click="copyToClipboard"
+                  class="font-weight-bold"
+                >
+                  <VIcon start size="18">tabler-copy</VIcon>
+                  Copiar Link
+                </VBtn>
+              </div>
+            </VCard>
 
             <VAlert
               type="success"
               variant="tonal"
               density="compact"
-              class="mt-6"
               border="start"
+              class="mt-2"
             >
               <template #prepend>
-                <VIcon icon="tabler-info-circle" size="20" />
+                <VIcon icon="tabler-circle-check" size="20" />
               </template>
               <div class="text-caption">
-                El enlace es permanente a menos que genere uno nuevo, lo cual invalidará el anterior.
+                Este enlace es seguro y exclusivo para <strong>{{ props.selectedSupplier?.name }}</strong>. 
+                Utilízalo para recibir sus archivos directamente en el sistema.
               </div>
             </VAlert>
           </div>
 
           <!-- Vista cuando no hay token -->
           <div v-else class="text-center py-6">
-            <VIcon
-              icon="tabler-link-off"
-              size="64"
-              color="disabled"
-              class="mb-4"
-            />
+            <div class="mb-4">
+              <VIcon
+                icon="tabler-link-off"
+                size="64"
+                color="disabled"
+                alpha="0.3"
+              />
+            </div>
+            
             <VAlert
               type="info"
               variant="tonal"
-              class="mb-6"
+              class="mb-6 mx-auto"
+              style="max-inline-size: 400px;"
               border="start"
             >
-              Este proveedor aún no tiene un enlace activo.
+              No se ha generado ningún enlace de carga para este proveedor todavía.
             </VAlert>
+            
             <VBtn
               color="primary"
               size="large"
               :loading="loading"
               prepend-icon="tabler-plus"
               @click="generateToken"
-              class="px-8"
+              class="px-8 font-weight-bold elevation-4"
+              rounded="lg"
             >
               Generar Enlace Seguro
             </VBtn>
@@ -193,6 +202,10 @@ const closeDialog = () => {
 <style scoped>
 .bg-light {
   background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.bg-primary-light {
+  background-color: rgba(var(--v-theme-primary), 0.05);
 }
 </style>
 
