@@ -187,12 +187,13 @@ const closeDialog = () => {
         </VBtn>
         <VBtn
           v-if="publicToken"
-          color="warning"
-          variant="tonal"
-          :loading="loading"
-          @click="generateToken"
+          color="success"
+          variant="elevated"
+          prepend-icon="tabler-copy"
+          @click="copyToClipboard"
+          class="font-weight-bold"
         >
-          Regenerar Token
+          Copiar Enlace Público
         </VBtn>
       </VCardActions>
     </VCard>
