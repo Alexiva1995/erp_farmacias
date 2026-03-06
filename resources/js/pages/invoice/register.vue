@@ -569,8 +569,9 @@ const handleCancel = () => {
 
           <VDivider class="my-4" />
           
-          <VRow class="mb-2" density="compact">
-            <VCol cols="12" md="3">
+          <!-- Bloque Financiero -->
+          <VRow index="2" density="compact" class="align-center mb-2">
+            <VCol cols="12" md="2">
               <VSelect
                 v-model="formData.currency"
                 :items="currencyOptions"
@@ -585,7 +586,7 @@ const handleCancel = () => {
                 </template>
               </VSelect>
             </VCol>
-            <VCol v-if="shouldShowExchangeRate" cols="12" md="3">
+            <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
               <VExpandTransition>
                 <VTextField
                   v-model.number="formData.exchange_rate"
@@ -600,10 +601,6 @@ const handleCancel = () => {
                 </VTextField>
               </VExpandTransition>
             </VCol>
-          </VRow>
-
-          <!-- Sección de Montos con Estilo Premium -->
-          <VRow index="3" density="compact" class="align-center">
             <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.exempt_amount"
@@ -613,7 +610,7 @@ const handleCancel = () => {
                 variant="underlined"
               />
             </VCol>
-            <VCol cols="12" md="2">
+            <VCol cols="12" md="2" :md="shouldShowExchangeRate ? 2 : 3">
               <VTextField
                 v-model.number="formData.taxable_base"
                 label="Base (16%)"
@@ -622,7 +619,7 @@ const handleCancel = () => {
                 variant="underlined"
               />
             </VCol>
-            <VCol cols="12" md="2">
+            <VCol cols="12" md="2" :md="shouldShowExchangeRate ? 2 : 3">
               <VTextField
                 v-model.number="formData.tax_amount"
                 label="IVA"
@@ -632,18 +629,20 @@ const handleCancel = () => {
                 variant="underlined"
               />
             </VCol>
-            
-            <!-- Totales Minimalistas -->
-            <VCol cols="12" md="3">
-              <div class="pa-2 rounded" style=" border: 1px solid rgba(var(--v-theme-primary), 0.1);background: rgba(var(--v-theme-primary), 0.05);">
-                <div class="text-caption text-medium-emphasis">Total ({{ formData.currency }})</div>
-                <div class="text-h6 font-weight-bold text-primary">{{ getCurrencySymbol }} {{ formData.total_amount }}</div>
+          </VRow>
+
+          <!-- Totales Minimalistas -->
+          <VRow index="3" density="compact" class="mt-2">
+            <VCol cols="12" md="6">
+              <div class="pa-2 rounded d-flex justify-space-between align-center" style=" border: 1px solid rgba(var(--v-theme-primary), 0.1);background: rgba(var(--v-theme-primary), 0.05);">
+                <span class="text-caption text-medium-emphasis">Total Factura ({{ formData.currency }})</span>
+                <span class="text-h6 font-weight-bold text-primary">{{ getCurrencySymbol }} {{ formData.total_amount }}</span>
               </div>
             </VCol>
-            <VCol cols="12" md="3">
-              <div class="pa-2 rounded" style=" border: 1px solid rgba(var(--v-theme-success), 0.1);background: rgba(var(--v-theme-success), 0.05);">
-                <div class="text-caption text-medium-emphasis">Total (USD)</div>
-                <div class="text-h6 font-weight-bold text-success">$ {{ formData.total_usd }}</div>
+            <VCol cols="12" md="6">
+              <div class="pa-2 rounded d-flex justify-space-between align-center" style=" border: 1px solid rgba(var(--v-theme-success), 0.1);background: rgba(var(--v-theme-success), 0.05);">
+                <span class="text-caption text-medium-emphasis">Referencia Total (USD)</span>
+                <span class="text-h6 font-weight-bold text-success">$ {{ formData.total_usd }}</span>
               </div>
             </VCol>
           </VRow>
