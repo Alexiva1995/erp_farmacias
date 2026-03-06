@@ -576,7 +576,6 @@ const handleCancel = () => {
           <VRow class="mb-6">
             <VCol cols="12" md="4">
               <VSelect
-                v-slot:prepend-inner
                 v-model="formData.currency"
                 :items="currencyOptions"
                 label="Moneda de la Factura"
