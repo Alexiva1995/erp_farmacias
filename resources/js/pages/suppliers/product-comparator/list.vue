@@ -300,6 +300,14 @@ const fetchSupplierConnections = async () => {
     const response = await axios.get("/suppliers/connections", { params });
     supplierConnections.value = response.data.data;
     totalSupplierConnections.value = response.data.total;
+
+    // Sincronizar el proveedor seleccionado para el link si el diálogo está abierto
+    if (isGeneratePublicLinkDialogActive.value && supplierForPublicLink.value) {
+      const freshSupplier = supplierConnections.value.find(s => s.id === supplierForPublicLink.value.id);
+      if (freshSupplier) {
+        supplierForPublicLink.value = freshSupplier;
+      }
+    }
   } catch (error) {
     console.error("Hubo un error al obtener las conexiones:", error);
     toast.error("Error al obtener las conexiones.");

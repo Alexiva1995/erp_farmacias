@@ -13,9 +13,11 @@ const emit = defineEmits(['update:isDialogVisible', 'refresh'])
 const loading = ref(false)
 const publicToken = ref('')
 
-// Sincronizar el token cuando cambia el proveedor seleccionado
-watch(() => props.selectedSupplier, (newVal) => {
-  publicToken.value = newVal?.public_token || ''
+// Sincronizar el token cuando cambia el proveedor
+watch(() => props.selectedSupplier?.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    publicToken.value = props.selectedSupplier?.public_token || ''
+  }
 }, { immediate: true })
 
 const publicUrl = computed(() => {
@@ -29,7 +31,14 @@ const generateToken = async () => {
   try {
     const response = await axios.post(`/suppliers/${props.selectedSupplier.id}/generate-public-token`)
     
-    publicToken.value = response.data.data
+    const newToken = response.data.data
+    publicToken.value = newToken
+
+    // Actualizar el objeto por referencia para que el padre lo vea antes del refresh
+    if (props.selectedSupplier) {
+      props.selectedSupplier.public_token = newToken
+    }
+
     toast.success('Token generado con éxito')
     emit('refresh')
   } catch (error) {
