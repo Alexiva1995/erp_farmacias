@@ -43,7 +43,8 @@ class Supplier extends Model
         'custom_due_days',
         'payment_due_reference',
         'invoice_date_reference',
-        'address'
+        'address',
+        'public_token'
     ];
 
     protected $casts = [
