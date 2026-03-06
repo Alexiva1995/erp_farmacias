@@ -185,8 +185,23 @@ const closeDialog = () => {
         >
           Cerrar
         </VBtn>
+        
+        <!-- Botón de Generar (Solo si no hay token) -->
         <VBtn
-          v-if="publicToken"
+          v-if="!publicToken"
+          color="primary"
+          variant="elevated"
+          :loading="loading"
+          prepend-icon="tabler-plus"
+          @click="generateToken"
+          class="font-weight-bold"
+        >
+          Generar Enlace
+        </VBtn>
+
+        <!-- Botón de Copiar (Solo si hay token) -->
+        <VBtn
+          v-else
           color="success"
           variant="elevated"
           prepend-icon="tabler-copy"

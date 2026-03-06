@@ -140,7 +140,15 @@ const headers = [
           </template>
         </VTooltip>
 
-        <VTooltip text="Link Público de Carga" location="top">
+        <VTooltip v-if="item.public_token" text="Copiar Link Público" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" color="success" @click="copyPublicLink(item)">
+              <VIcon icon="tabler-copy" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+
+        <VTooltip text="Configurar Link Público" location="top">
           <template #activator="{ props }">
             <IconBtn v-bind="props" color="secondary" @click="emit('open-public-link', item)">
               <VIcon icon="tabler-link" />
