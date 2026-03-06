@@ -488,7 +488,7 @@ const handleCancel = () => {
 
       <VCardText>
         <VForm @submit.prevent="handleSubmit">
-          <VRow>
+          <VRow index="0" density="compact" class="mb-2">
             <VCol cols="12" md="4">
               <VAutocomplete
                 v-model="formData.supplier_id"
@@ -498,29 +498,32 @@ const handleCancel = () => {
                 item-value="id"
                 label="Proveedor"
                 placeholder="Busque un proveedor"
+                density="compact"
               />
             </VCol>
             <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.invoice_number"
                 label="N° de factura"
+                density="compact"
               />
             </VCol>
             <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.control_number"
                 label="N° de Control"
+                density="compact"
               />
             </VCol>
           </VRow>
 
-          <VRow>
+          <VRow index="1" density="compact" class="mb-2">
             <VCol cols="12" md="3">
               <VTextField
                 v-model="formData.created_invoice_date"
                 label="F. de Emisión"
                 type="date"
-                placeholder="YYYY-MM-DD"
+                density="compact"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -528,15 +531,15 @@ const handleCancel = () => {
                 v-model="formData.received_date"
                 label="F. de Recibo"
                 type="date"
-                placeholder="YYYY-MM-DD"
+                density="compact"
               />
             </VCol>
             <VCol cols="12" md="3">
               <VTextField
                 v-model="formData.exp_date"
-                label="Fecha de Vencimiento"
+                label="Vencimiento"
                 type="date"
-                placeholder="YYYY-MM-DD"
+                density="compact"
                 :error="!!expDateError"
                 :error-messages="expDateError"
               />
@@ -546,8 +549,8 @@ const handleCancel = () => {
                 v-model="formData.payment_date"
                 label="Fecha de Pago"
                 type="date"
-                placeholder="YYYY-MM-DD"
-                hint="Se calcula automáticamente pero puede editarse"
+                density="compact"
+                hint="Auto-calculado"
                 persistent-hint
               />
             </VCol>
@@ -571,37 +574,37 @@ const handleCancel = () => {
             </VCol>
           </VRow>
 
-          <VDivider class="my-6" />
+          <VDivider class="my-4" />
           
-          <VRow class="mb-6">
-            <VCol cols="12" md="4">
+          <VRow class="mb-2" density="compact">
+            <VCol cols="12" md="3">
               <VSelect
                 v-model="formData.currency"
                 :items="currencyOptions"
-                label="Moneda de la Factura"
+                label="Moneda"
                 item-title="title"
                 item-value="value"
                 variant="solo-filled"
+                density="compact"
                 flat
               >
                 <template #prepend-inner>
-                   <VIcon icon="tabler-coin" color="primary" />
+                   <VIcon icon="tabler-coin" color="primary" size="20" />
                 </template>
               </VSelect>
             </VCol>
-            <VCol v-if="shouldShowExchangeRate" cols="12" md="4">
+            <VCol v-if="shouldShowExchangeRate" cols="12" md="3">
               <VExpandTransition>
                 <VTextField
                   v-model.number="formData.exchange_rate"
-                  label="Tasa de Cambio"
+                  label="Tasa"
                   type="number"
                   variant="outlined"
+                  density="compact"
                   color="primary"
-                  persistent-placeholder
-                  placeholder="0.00"
                 >
                    <template #prepend-inner>
-                    <VIcon icon="tabler-trending-up" />
+                    <VIcon icon="tabler-trending-up" size="20" />
                   </template>
                 </VTextField>
               </VExpandTransition>
@@ -609,62 +612,51 @@ const handleCancel = () => {
           </VRow>
 
           <!-- Sección de Montos con Estilo Premium -->
-          <VRow>
-            <VCol cols="12" md="3">
+          <VRow index="3" density="compact" class="align-center">
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.exempt_amount"
-                label="Monto Exento"
+                label="Exento"
                 type="number"
                 :prefix="getCurrencySymbol"
                 variant="underlined"
+                density="compact"
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.taxable_base"
-                label="Base Imponible (16%)"
+                label="Base (16%)"
                 type="number"
                 :prefix="getCurrencySymbol"
                 variant="underlined"
+                density="compact"
               />
             </VCol>
-            <VCol cols="12" md="3">
+            <VCol cols="12" md="2">
               <VTextField
                 v-model.number="formData.tax_amount"
-                label="IVA Calculado"
+                label="IVA"
                 type="number"
                 :prefix="getCurrencySymbol"
                 readonly
                 variant="underlined"
-                hint="Auto-calculado al 16%"
-                persistent-hint
+                density="compact"
               />
             </VCol>
             
-            <!-- Tarjetas de Totales Glassmorphism -->
-            <VCol cols="12" md="6" class="mt-4">
-              <VCard
-                class="pa-4 border-dashed"
-                style=" border: 1px solid rgba(var(--v-theme-primary), 0.1); backdrop-filter: blur(8px);background: rgba(var(--v-theme-primary), 0.05);"
-                flat
-              >
-                 <div class="d-flex justify-space-between align-center">
-                    <span class="text-subtitle-1 text-medium-emphasis">Total Factura ({{ formData.currency }})</span>
-                    <span class="text-h4 font-weight-bold text-primary">{{ getCurrencySymbol }} {{ formData.total_amount }}</span>
-                 </div>
-              </VCard>
+            <!-- Totales Minimalistas -->
+            <VCol cols="12" md="3">
+              <div class="pa-2 rounded" style=" border: 1px solid rgba(var(--v-theme-primary), 0.1);background: rgba(var(--v-theme-primary), 0.05);">
+                <div class="text-caption text-medium-emphasis">Total ({{ formData.currency }})</div>
+                <div class="text-h6 font-weight-bold text-primary">{{ getCurrencySymbol }} {{ formData.total_amount }}</div>
+              </div>
             </VCol>
-            <VCol cols="12" md="6" class="mt-4">
-              <VCard
-                class="pa-4"
-                style=" border: 1px solid rgba(var(--v-theme-success), 0.1); backdrop-filter: blur(8px);background: rgba(var(--v-theme-success), 0.05);"
-                flat
-              >
-                 <div class="d-flex justify-space-between align-center">
-                    <span class="text-subtitle-1 text-medium-emphasis">Referencia Total (USD)</span>
-                    <span class="text-h4 font-weight-bold text-success">$ {{ formData.total_usd }}</span>
-                 </div>
-              </VCard>
+            <VCol cols="12" md="3">
+              <div class="pa-2 rounded" style=" border: 1px solid rgba(var(--v-theme-success), 0.1);background: rgba(var(--v-theme-success), 0.05);">
+                <div class="text-caption text-medium-emphasis">Total (USD)</div>
+                <div class="text-h6 font-weight-bold text-success">$ {{ formData.total_usd }}</div>
+              </div>
             </VCol>
           </VRow>
         </VForm>
