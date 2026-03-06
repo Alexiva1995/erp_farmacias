@@ -498,21 +498,18 @@ const handleCancel = () => {
                 item-value="id"
                 label="Proveedor"
                 placeholder="Busque un proveedor"
-                density="compact"
               />
             </VCol>
             <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.invoice_number"
                 label="N° de factura"
-                density="compact"
               />
             </VCol>
             <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.control_number"
                 label="N° de Control"
-                density="compact"
               />
             </VCol>
           </VRow>
@@ -523,7 +520,6 @@ const handleCancel = () => {
                 v-model="formData.created_invoice_date"
                 label="F. de Emisión"
                 type="date"
-                density="compact"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -531,7 +527,6 @@ const handleCancel = () => {
                 v-model="formData.received_date"
                 label="F. de Recibo"
                 type="date"
-                density="compact"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -539,7 +534,6 @@ const handleCancel = () => {
                 v-model="formData.exp_date"
                 label="Vencimiento"
                 type="date"
-                density="compact"
                 :error="!!expDateError"
                 :error-messages="expDateError"
               />
@@ -549,7 +543,6 @@ const handleCancel = () => {
                 v-model="formData.payment_date"
                 label="Fecha de Pago"
                 type="date"
-                density="compact"
                 hint="Auto-calculado"
                 persistent-hint
               />
@@ -585,7 +578,6 @@ const handleCancel = () => {
                 item-title="title"
                 item-value="value"
                 variant="solo-filled"
-                density="compact"
                 flat
               >
                 <template #prepend-inner>
@@ -600,7 +592,6 @@ const handleCancel = () => {
                   label="Tasa"
                   type="number"
                   variant="outlined"
-                  density="compact"
                   color="primary"
                 >
                    <template #prepend-inner>
@@ -620,7 +611,6 @@ const handleCancel = () => {
                 type="number"
                 :prefix="getCurrencySymbol"
                 variant="underlined"
-                density="compact"
               />
             </VCol>
             <VCol cols="12" md="2">
@@ -630,7 +620,6 @@ const handleCancel = () => {
                 type="number"
                 :prefix="getCurrencySymbol"
                 variant="underlined"
-                density="compact"
               />
             </VCol>
             <VCol cols="12" md="2">
@@ -641,7 +630,6 @@ const handleCancel = () => {
                 :prefix="getCurrencySymbol"
                 readonly
                 variant="underlined"
-                density="compact"
               />
             </VCol>
             
