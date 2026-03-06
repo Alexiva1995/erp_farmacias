@@ -23,7 +23,10 @@ const emit = defineEmits([
 ]);
 
 const copyPublicLink = (item) => {
-  if (!item.public_token) return;
+  if (!item.public_token) {
+    toast.error("El enlace público no ha sido generado todavía.");
+    return;
+  }
   const baseUrl = window.location.origin;
   const publicUrl = `${baseUrl}/p/suppliers/upload/${item.public_token}`;
 
@@ -153,9 +156,13 @@ const headers = [
           </template>
         </VTooltip>
 
-        <VTooltip v-if="item.public_token" text="Copiar Link Público" location="top">
+        <VTooltip text="Copiar Link Público" location="top">
           <template #activator="{ props }">
-            <IconBtn v-bind="props" color="success" @click="copyPublicLink(item)">
+            <IconBtn 
+              v-bind="props" 
+              :color="item.public_token ? 'success' : 'grey-500'" 
+              @click="copyPublicLink(item)"
+            >
               <VIcon icon="tabler-copy" />
             </IconBtn>
           </template>
