@@ -1,4 +1,6 @@
 <script setup>
+import { toast } from "@/plugins/sweetalert";
+
 const props = defineProps({
   checkingApiId: { type: Number, default: null },
   supplierConnections: { type: Array, required: true },
@@ -19,6 +21,17 @@ const emit = defineEmits([
   "update:searchQuery",
   "open-public-link",
 ]);
+
+const copyPublicLink = (item) => {
+  if (!item.public_token) return;
+  const baseUrl = window.location.origin;
+  const publicUrl = `${baseUrl}/p/suppliers/upload/${item.public_token}`;
+
+  navigator.clipboard
+    .writeText(publicUrl)
+    .then(() => toast.success("Enlace copiado al portapapeles"))
+    .catch(() => toast.error("Error al copiar el enlace"));
+};
 
 const headers = [
   { title: "Id", key: "id", sortable: false },
