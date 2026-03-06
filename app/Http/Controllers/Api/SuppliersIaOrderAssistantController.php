@@ -123,7 +123,7 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
         }
 
-        if ($filtrosFallas["tipo_filtracion"] == "average") {
+        if ($filtrosFallas["tipo_filtracion"] == "average" || $filtrosFallas["tipo_filtracion"] == "combinado") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
         } else {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
@@ -201,10 +201,9 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
 
-        if ($filtros["tipo_filtracion"] == "average") {
+        if ($filtros["tipo_filtracion"] == "average" || $filtros["tipo_filtracion"] == "combinado") {
             $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
-        }
-        if ($filtros["tipo_filtracion"] == "sales") {
+        } elseif ($filtros["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
 
