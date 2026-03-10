@@ -161,11 +161,11 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       <!-- Análisis: con redondeo IA -->
       <template #item.solicitar="{ item }">
         <VChip
-          :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'default'"
+          :color="roundIaAnalysis(item.solicitar ?? 0) > 0 ? 'success' : roundIaAnalysis(item.solicitar ?? 0) < 0 ? 'error' : 'default'"
           size="small"
           variant="tonal"
         >
-          {{ roundIaAnalysis(item.solicitar) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar) }}
+          {{ roundIaAnalysis(item.solicitar ?? 0) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar ?? 0) }}
         </VChip>
       </template>
 

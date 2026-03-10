@@ -379,6 +379,7 @@ const fetchProductsWithoutSupplier = async () => {
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
       q: searchQueryRight.value,
+      isStrictSearch: false, // Por ahora general para la tabla derecha
       page: pageProductsWithoutSupplier.value,
       itemsPerPage: itemsPerPageProductsWithoutSupplier.value,
       sortBy: sortByProductsWithoutSupplier.value,

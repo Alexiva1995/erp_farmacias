@@ -1073,12 +1073,11 @@ class ProductRepository
         }
 
         if (array_key_exists("stock", $filtros)) {
-
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("solicitar", ">", 0);
+                $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", "<", 0);
+                $consulta->having("solicitar", ">", 0);
             }
         }
 
@@ -1303,12 +1302,11 @@ class ProductRepository
         }
 
         if (array_key_exists("stock", $filtros)) {
-
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("solicitar", ">", 0);
+                $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", "<", 0);
+                $consulta->having("solicitar", ">", 0);
             }
         }
 
