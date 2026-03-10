@@ -65,12 +65,12 @@ class ProductServices implements Product
 
     public function filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate(array $filtros): LengthAwarePaginator
     {
-        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithPaginate($filtros, $filtros["itemsPerPage"]);
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros, $filtros["itemsPerPage"]);
     }
 
     public function filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate(array $filtros): Collection
     {
-        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
+        return $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
     }
 
     public function filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate(array $filtros): Collection
@@ -92,12 +92,12 @@ class ProductServices implements Product
     {
         $respuestaConsulta = null;
         if ($filtros["tipo_filtracion"] == "average") {
-            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
+            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
         }
         if ($filtros["tipo_filtracion"] == "sales") {
             $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
         } else {
-            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros);
+            $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
         }
         // if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
         //     for ($index = 0; $index < count($respuestaConsulta); $index++) {

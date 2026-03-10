@@ -81,7 +81,7 @@ class IaAssistantReportService
             unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
             
             // Obtenemos todos sin paginar para tener el set completo de IDs
-            $tipo = $filtros['tipo_filtracion'] ?? 'average';
+            $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
             
             if ($tipo === 'sales') {
                 $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
