@@ -1326,14 +1326,14 @@ class ProductRepository
         return $consulta;
     }
 
-    public function filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros): Collection
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros): Collection
     {
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros);
 
         return $consulta->get();
     }
 
-    public function filtrarIndividualProductForAssistantReportTypeAverageWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros);
 
