@@ -326,14 +326,14 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'barcode' => 'required|string',
             'supplier_id' => 'required|integer|exists:suppliers,id',
-            'auto_order_id' => 'required|integer|exists:auto_orders,id',
+            'auto_order_id' => 'nullable|integer|exists:auto_orders,id',
         ]);
 
         try {
             $result = $this->invoiceQueryService->matchBarcodeWithAutoOrder(
                 $validated['barcode'],
                 $validated['supplier_id'],
-                $validated['auto_order_id']
+                $validated['auto_order_id'] ?? null
             );
 
             if (!$result) {
@@ -343,12 +343,9 @@ class InvoiceController extends Controller
                 ], 404);
             }
 
-            if (isset($result->error) && $result->error === 'not_in_order') {
-                return response()->json([
-                    'status' => 'warning',
-                    'message' => 'Este producto existe pero NO pertenece a la orden actual.',
-                    'product' => $result->product
-                ], 200);
+            // Si el servicio devuelve status (warning), ya viene en el formato unificado
+            if (isset($result->status)) {
+                return response()->json($result, 200);
             }
 
             return response()->json([

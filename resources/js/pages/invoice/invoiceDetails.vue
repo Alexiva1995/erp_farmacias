@@ -1108,11 +1108,16 @@ const handleBarcodeScan = async () => {
     const response = await axios.post("/invoices/match-barcode", {
       barcode: barcodeInput.value,
       supplier_id: invoice.value.supplier_id,
-      auto_order_id: invoice.value.auto_order_id,
+      auto_order_id: invoice.value.auto_order_id || null,
     });
 
-    if (response.data.status === "success") {
+    if (response.data.status === "success" || response.data.status === "warning") {
       const newDetail = response.data.data;
+
+      // Asegurar que estamos en modo edición si encontramos algo
+      if (!isEditMode.value) {
+        toggleEditMode(true);
+      }
 
       // Verificar si ya existe en la lista para evitar duplicados accidentales
       const existingIndex = invoiceDetails.value.findIndex(
@@ -1131,18 +1136,21 @@ const handleBarcodeScan = async () => {
           id: `new_${Date.now()}`,
         });
 
-        toast.fire({
-          icon: "success",
-          title: `Producto añadido: ${newDetail.product.name}`,
-          timer: 1500,
-        });
+        if (response.data.status === "warning") {
+          toast.fire({
+            icon: "warning",
+            title: "Producto extra",
+            text: response.data.message,
+            timer: 2000,
+          });
+        } else {
+          toast.fire({
+            icon: "success",
+            title: `Producto añadido: ${newDetail.product.name}`,
+            timer: 1500,
+          });
+        }
       }
-    } else if (response.data.status === "warning") {
-      toast.fire({
-        icon: "warning",
-        title: "Producto no solicitado",
-        text: response.data.message,
-      });
     }
   } catch (error) {
     console.error("Scanner error:", error);
@@ -1156,6 +1164,49 @@ const handleBarcodeScan = async () => {
     nextTick(() => {
       scannerInputRef.value?.focus();
     });
+  }
+};
+
+const loadAutoOrderDetails = async () => {
+  if (!invoice.value?.auto_order_id) return;
+
+  const result = await Swal.fire({
+    title: "¿Cargar productos de Auto-Orden?",
+    text: "Esto reemplazará la lista actual de productos con los sugeridos por la orden original.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, cargar todo",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  loadingDetails.value = true;
+  try {
+    const response = await axios.get(
+      `/invoices/${props.invoiceId}/suggested-details`,
+    );
+
+    if (response.data.data) {
+      invoiceDetails.value = response.data.data.map((detail, index) => ({
+        ...detail,
+        display_order: index,
+      }));
+
+      isEditMode.value = true;
+      toast.fire({
+        icon: "success",
+        title: "Productos cargados desde Auto-Orden",
+      });
+    }
+  } catch (error) {
+    console.error("Error loading suggested details:", error);
+    toast.fire({
+      icon: "error",
+      title: "No se pudieron cargar los datos de la Auto-Orden",
+    });
+  } finally {
+    loadingDetails.value = false;
   }
 };
 
@@ -1415,17 +1466,36 @@ const detailsHeaders = computed(() => {
                     {{ formatCurrency(editableDetailsTotal, invoice.currency) }}
                   </VChip>
                 </div>
-                <VBtn
-                  v-if="isEditableMode && isEditMode && invoice.auto_order_id"
-                  :color="isScannerMode ? 'info' : 'secondary'"
-                  :variant="isScannerMode ? 'flat' : 'tonal'"
-                  size="small"
-                  class="me-2"
-                  @click="toggleScannerMode"
-                >
-                  <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" class="me-2" />
-                  {{ isScannerMode ? 'Modo Escáner Activo' : 'Carga por Escáner' }}
-                </VBtn>
+                <!-- Botones de Carga y Escaneo (Visibles en modo editable) -->
+                <template v-if="isEditableMode">
+                  <VBtn
+                    v-if="invoice.auto_order_id && invoiceDetails.length === 0"
+                    color="warning"
+                    variant="tonal"
+                    size="small"
+                    class="me-2"
+                    :loading="loadingDetails"
+                    @click="loadAutoOrderDetails"
+                  >
+                    <VIcon icon="tabler-refresh" class="me-2" />
+                    Cargar Auto-Orden
+                  </VBtn>
+
+                  <VBtn
+                    :color="isScannerMode ? 'info' : 'secondary'"
+                    :variant="isScannerMode ? 'flat' : 'tonal'"
+                    size="small"
+                    class="me-2"
+                    @click="toggleScannerMode"
+                  >
+                    <VIcon
+                      :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'"
+                      class="me-2"
+                    />
+                    {{ isScannerMode ? "Modo Escáner Activo" : "Carga por Escáner" }}
+                  </VBtn>
+                </template>
+
                 <VBtn
                   v-if="isEditableMode && isEditMode"
                   color="primary"

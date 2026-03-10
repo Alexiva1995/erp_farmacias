@@ -200,36 +200,52 @@ class InvoiceQueryService
         return (float) ($totalDebts ?? 0);
     }
 
-    public function matchBarcodeWithAutoOrder(string $barcode, int $supplierId, int $autoOrderId): ?object
+    public function matchBarcodeWithAutoOrder(string $barcode, int $supplierId, ?int $autoOrderId = null): ?object
     {
         // 1. Buscar el producto por barcode
-        $product = Product::where('barcode', $barcode)->first();
+        $product = Product::with(['laboratory'])->where('barcode', $barcode)->first();
 
         if (!$product) {
             return null; // Producto no existe
         }
 
-        // 2. Buscar si el producto pertenece a la orden mediante product_suppliers
-        $autoOrderDetail = DB::table('auto_order_details')
-            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
-            ->where('auto_order_details.order_id', $autoOrderId)
-            ->where('product_suppliers.product_id', $product->id)
-            ->where('product_suppliers.supplier_id', $supplierId)
-            ->select(
-                'auto_order_details.id as auto_order_detail_id',
-                'auto_order_details.quantity',
-                'auto_order_details.unit_cost',
-                'auto_order_details.subtotal',
-                'product_suppliers.expiration',
-                'product_suppliers.price as supplier_price'
-            )
-            ->first();
+        // 2. Si hay autoOrderId, buscar si el producto pertenece a la orden
+        $autoOrderDetail = null;
+        if ($autoOrderId) {
+            $autoOrderDetail = DB::table('auto_order_details')
+                ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+                ->where('auto_order_details.order_id', $autoOrderId)
+                ->where('product_suppliers.product_id', $product->id)
+                ->where('product_suppliers.supplier_id', $supplierId)
+                ->select(
+                    'auto_order_details.id as auto_order_detail_id',
+                    'auto_order_details.quantity',
+                    'auto_order_details.unit_cost',
+                    'auto_order_details.subtotal',
+                    'product_suppliers.expiration',
+                    'product_suppliers.price as supplier_price'
+                )
+                ->first();
+        }
 
         if (!$autoOrderDetail) {
             return (object) [
-                'error' => 'not_in_order',
-                'product' => $product
-            ]; // El producto existe pero no se pidió en esta orden
+                'status' => 'warning',
+                'message' => $autoOrderId ? 'El producto no está en la Auto-Orden.' : 'No hay Auto-Orden vinculada.',
+                'data' => [
+                    'id' => 'new_' . time(),
+                    'product_id' => $product->id,
+                    'product' => $product,
+                    'quantity' => 0,
+                    'unit_cost' => $product->unit_cost ?? 0,
+                    'total_cost' => 0,
+                    'lot_number' => '',
+                    'location' => 'Por Asignar',
+                    'tax_enabled' => $product->iva ?? false,
+                    'is_return' => false,
+                    'expiration_date' => null,
+                ]
+            ];
         }
 
         // 3. Devolver la estructura lista para InvoiceDetails en Frontend
