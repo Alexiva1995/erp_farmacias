@@ -53,8 +53,8 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->select(
                 'order_details.product_id',
                 DB::raw('SUM(order_details.quantity) as sold_units'),
-                DB::raw('SUM((order_details.quantity * order_details.price) / NULLIF(orders.usd_conversion, 0)) as total_sales'),
-                DB::raw('SUM((order_details.quantity * order_details.unit_cost) / NULLIF(orders.usd_conversion, 0)) as total_cost')
+                DB::raw('SUM(order_details.quantity * CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = \'USD\' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END) as total_sales'),
+                DB::raw('SUM(order_details.quantity * order_details.unit_cost) as total_cost')
             )
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->where('orders.status', 'Completed')

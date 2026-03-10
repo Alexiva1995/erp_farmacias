@@ -201,6 +201,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\Repositories\AbcReportRepositoryInterface::class,
             \App\Repositories\AbcReportRepository::class
         );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\SkuReportRepositoryInterface::class,
+            \App\Repositories\SkuReportRepository::class
+        );
     }
 
     /**
