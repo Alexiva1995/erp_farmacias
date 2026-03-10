@@ -1241,42 +1241,7 @@ const detailsHeaders = computed(() => {
     </div>
 
     <div v-else-if="invoice">
-      <VAlert
-        v-if="invoice.currency !== 'USD'"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-      >
-        <template #prepend>
-          <VIcon icon="tabler-info-circle" />
-        </template>
-        <div>
-          <strong>Factura en {{ invoice.currency }}</strong>
-          <div class="text-caption mt-1">
-            Se muestra el equivalente en USD calculado con la tasa de la factura
-            ({{ formatNumber(invoice.exchange_rate) }})
-          </div>
-        </div>
-      </VAlert>
-      <VAlert
-        v-if="!invoiceHasIva"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-      >
-        <template #prepend>
-          <VIcon icon="tabler-info-circle" />
-        </template>
-        <div>
-          <strong>Factura sin IVA</strong>
-          <div class="text-caption mt-1">
-            Esta factura no incluye IVA según su configuración fiscal. Los
-            productos agregados no podrán tener IVA aplicado.
-          </div>
-        </div>
-      </VAlert>
+
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
           <VCardText class="header-section">

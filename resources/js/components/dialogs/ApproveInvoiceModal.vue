@@ -114,24 +114,7 @@ const formatCurrency = (value, currency) => {
       <VDivider />
 
       <VCardText class="flex-grow-1" style="overflow-y: auto;">
-        <VAlert
-          v-if="props.invoice.currency !== 'USD'"
-          type="info"
-          variant="tonal"
-          density="compact"
-          class="mb-4"
-        >
-          <template #prepend>
-            <VIcon icon="tabler-info-circle" />
-          </template>
-          <div>
-            <strong>Factura en {{ props.invoice.currency }}</strong>
-            <div class="text-caption mt-1">
-              Los montos se muestran en la moneda de la factura, calculados
-              desde USD con la tasa de cambio de la factura.
-            </div>
-          </div>
-        </VAlert>
+
 
         <p class="text-h6 font-weight-medium mb-4">
           Paso 1: Aplicar Descuentos (Opcional)
