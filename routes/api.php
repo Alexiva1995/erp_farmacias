@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\MarketOpportunityController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
@@ -530,6 +531,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+    });
+
+    Route::prefix("market-opportunities")->group(function () {
+        Route::get("/", [MarketOpportunityController::class, "index"]);
+        Route::get("/export", [MarketOpportunityController::class, "export"]);
     });
     Route::prefix("users")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);

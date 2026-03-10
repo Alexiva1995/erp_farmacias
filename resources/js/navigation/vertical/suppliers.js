@@ -40,6 +40,12 @@ export default [
         subject: 'admin',
       },
       {
+        title: 'Oportunidad de Mercado',
+        to: 'suppliers-market-opportunities',
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
         title: 'Comparador',
         to: 'suppliers-product-comparator-list',
         action: 'manage',
