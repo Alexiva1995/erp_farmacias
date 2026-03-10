@@ -191,6 +191,11 @@ class AppServiceProvider extends ServiceProvider
             SupplierRepositoryInterface::class,
             SupplierRepository::class
         );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\MarketOpportunityRepositoryInterface::class,
+            \App\Repositories\MarketOpportunityRepository::class
+        );
     }
 
     /**

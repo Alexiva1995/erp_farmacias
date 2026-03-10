@@ -41,11 +41,8 @@ async function fetchOpportunities() {
     };
 
     const response = await axios.get('/market-opportunities', { params });
-    items.value = response.data.data.map(item => ({
-      ...item,
-      quantity_to_add: 1
-    }));
-    totalItems.value = response.data.total;
+    items.value = response.data.data;
+    totalItems.value = response.data.meta.total;
   } catch (error) {
     console.error("Error al cargar oportunidades:", error);
   } finally {
