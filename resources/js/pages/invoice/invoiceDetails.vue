@@ -801,6 +801,15 @@ const removeProductFromInvoice = (detailId) => {
 
 const startEditingDetail = (detail) => {
   editedDetailData.value = { ...detail };
+  
+  // Si no tiene fecha, predefinir el día 1 del mes actual para facilitar la edición manual rápida
+  if (!editedDetailData.value.expiration_date) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    editedDetailData.value.expiration_date = `${year}-${month}-01`;
+  }
+  
   editingDetailId.value = detail.id;
 };
 
@@ -1601,8 +1610,14 @@ const detailsHeaders = computed(() => {
                     density="compact"
                     hide-details
                     class="editable-cell mt-1"
-                    :config="{ allowInput: true }"
-                    :placeholder="item.is_return ? 'Venc. (Dev)' : 'F. Venc'"
+                    :config="{ 
+                      allowInput: true,
+                      dateFormat: 'Y-m-d',
+                      altInput: true,
+                      altFormat: 'd-m-Y',
+                      clickOpens: true
+                    }"
+                    :placeholder="item.is_return ? 'Venc. (Dev)' : 'F. Venc (DD-MM-YYYY)'"
                   />
                   <span
                     v-else
