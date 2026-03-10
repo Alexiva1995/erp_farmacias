@@ -54,8 +54,8 @@ class SupplierPublicUploadController extends Controller
             // Guardar el archivo temporalmente
             $path = $request->file('file')->store('temp', ['disk' => 'local']);
             
-            // Despachar el Job con la tasa de cambio
-            ProcessSupplierConnectionJob::dispatch(
+            // Despachar el Job con la tasa de cambio (SÍNCRONO)
+            ProcessSupplierConnectionJob::dispatchSync(
                 $supplier,
                 null, // No hay usuario autenticado (es público)
                 $path,
