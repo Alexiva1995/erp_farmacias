@@ -49,10 +49,18 @@ class SupplierController extends Controller
         $perPage = $request->input("itemsPerPage", 10);
 
         if ($perPage < 1) {
-            return SupplierResource::collection($query->get());
+            $suppliers = $query->get();
+            return response()->json([
+                "data" => SupplierResource::collection($suppliers)->resolve(),
+                "total" => $suppliers->count(),
+            ]);
         }
 
-        return SupplierResource::collection($query->paginate($perPage));
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json([
+            "data" => SupplierResource::collection($paginatedResult->getCollection())->resolve(),
+            "total" => $paginatedResult->total(),
+        ]);
     }
 
     /**
