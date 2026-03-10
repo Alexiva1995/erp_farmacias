@@ -98,62 +98,58 @@ onMounted(() => {
           <VIcon icon="tabler-trending-down" class="me-2" />
           Oportunidades de Mercado
         </h1>
-        <p class="text-subtitle-1 text-muted">
-          Productos con costo actual menor al mínimo histórico de los últimos 12 meses.
-        </p>
       </VCol>
     </VRow>
 
-    <!-- Filtros Reutilizados (Adaptados) -->
-    <VCard class="mb-6" elevation="0" border>
+    <!-- Filtros Estandarizados -->
+    <VCard class="mb-6">
       <VCardText>
-        <VRow>
+        <VRow align="center">
           <VCol cols="12" md="4">
-            <VAutocomplete
-              v-model="selectedLaboratory"
-              :items="laboratories"
-              label="Filtrar por Laboratorio"
-              item-title="name"
-              item-value="id"
-              multiple
-              chips
-              closable-chips
-              clearable
-              variant="outlined"
-            />
-          </VCol>
-          <VCol cols="12" md="4">
-            <VAutocomplete
+            <AppAutocomplete
               v-model="selectProducts"
               :items="productosSelect"
-              label="Filtrar por Producto"
+              placeholder="Seleccionar Productos"
               item-title="name"
               item-value="id"
               multiple
               chips
-              closable-chips
               clearable
-              variant="outlined"
+              hide-details="auto"
             />
           </VCol>
           <VCol cols="12" md="4">
-            <VTextField
-              v-model="searchQuery"
-              label="Buscar por nombre o barcode"
-              prepend-inner-icon="tabler-search"
+            <AppAutocomplete
+              v-model="selectedLaboratory"
+              :items="laboratories"
+              placeholder="Seleccionar Laboratorio"
+              item-title="name"
+              item-value="id"
+              multiple
+              chips
               clearable
-              variant="outlined"
+              hide-details="auto"
             />
           </VCol>
-        </VRow>
-        <VRow justify="end">
-          <VCol cols="auto">
-            <VBtn color="secondary" variant="tonal" @click="handleClearFilters">
-              Limpiar Filtros
-            </VBtn>
+          <VCol cols="12" md="4">
+            <AppTextField
+              v-model="searchQuery"
+              placeholder="Buscar por nombre o barcode"
+              prepend-inner-icon="tabler-search"
+              clearable
+              hide-details="auto"
+            />
           </VCol>
         </VRow>
       </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 px-6">
+        <VBtn color="secondary" variant="outlined" @click="handleClearFilters">
+          Limpiar Filtros
+        </VBtn>
+      </VCardActions>
     </VCard>
 
     <!-- Tabla de Resultados -->
