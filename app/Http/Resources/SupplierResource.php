@@ -24,6 +24,9 @@ class SupplierResource extends JsonResource
             'status' => $this->status,
             'public_token' => $this->public_token,
             'dispatch_days' => $this->dispatch_days,
+            'debt' => $this->debt,
+            'latest_score_value' => $this->latest_score_value,
+            'score_breakdown' => $this->score_breakdown,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             
