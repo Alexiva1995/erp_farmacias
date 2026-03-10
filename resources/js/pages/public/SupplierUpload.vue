@@ -1,5 +1,6 @@
 <script setup>
 import axios from '@/plugins/axios'
+import logo from '@images/logo.png'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -82,9 +83,13 @@ onMounted(fetchSupplier)
 
       <div v-else>
         <div class="mb-8">
-          <VAvatar size="80" color="primary" variant="tonal" class="mb-4">
-            <VIcon size="40">tabler-user-share</VIcon>
-          </VAvatar>
+          <div class="d-flex justify-center mb-6">
+            <VImg
+              :src="logo"
+              max-width="180"
+              alt="Logo Farmacia"
+            />
+          </div>
           <h1 class="text-h4 font-weight-bold mb-1">Hola, {{ supplierName }}</h1>
           <p class="text-body-1 text-secondary">Suba su lista de precios actualizada</p>
         </div>
@@ -162,3 +167,8 @@ onMounted(fetchSupplier)
   border-radius: 12px;
 }
 </style>
+
+<route lang="yaml">
+meta:
+  layout: blank
+</route>
