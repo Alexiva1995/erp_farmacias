@@ -18,6 +18,9 @@ use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use App\Http\Resources\SupplierResource;
+use App\Http\Resources\SupplierConnectionResource;
+use App\Http\Resources\SupplierProductResource;
+use App\Http\Resources\LaboratoryResource;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Arr;
@@ -325,7 +328,7 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->getSupplierConnections($request);
 
         return response()->json([
-            "data" => $results->items(),
+            "data" => SupplierConnectionResource::collection($results->getCollection())->resolve(),
             "total" => $results->total(),
         ]);
     }
@@ -335,7 +338,7 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->getSupplierProducts($supplier, $request);
 
         return response()->json([
-            "data" => $results->items(),
+            "data" => SupplierProductResource::collection($results->getCollection())->resolve(),
             "total" => $results->total(),
         ]);
     }
@@ -345,7 +348,7 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->getProducts($request);
 
         return response()->json([
-            "data" => $results->items(),
+            "data" => SupplierProductResource::collection($results->getCollection())->resolve(),
             "total" => $results->total(),
         ]);
     }
@@ -354,7 +357,7 @@ class SupplierController extends Controller
     {
         $results = $this->supplierQueryService->getAvailableLaboratories();
 
-        return response()->json($results);
+        return LaboratoryResource::collection($results);
     }
 
     public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
