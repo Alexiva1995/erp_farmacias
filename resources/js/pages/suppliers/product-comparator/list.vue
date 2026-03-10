@@ -30,8 +30,6 @@ const quantityErrors = reactive({});
 
 const supplierOption = ref(null);
 const selectedSupplier = ref(null);
-const searchedSupplier = ref(null);
-const searchedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const filterSearchQuery = ref("");
 const stockStatusFilter = ref(null);
@@ -450,38 +448,6 @@ watch(
   { deep: true },
 );
 
-// WATCHER DE PRODUCTOS ACTUALIZADO
-// Se agrega sortOptions para que reaccione al cambio de orden
-let productDebounceTimer;
-watch(
-  [productsPage, productsItemPerPage, sortOptions],
-  () => {
-    clearTimeout(productDebounceTimer);
-    productDebounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
-);
-
-let debounceTimer;
-watch(
-  [
-    searchedSupplier,
-    searchedLaboratory,
-    filterSearchQuery,
-    stockStatusFilter,
-    isStrictSearch,
-    selectedOrigin,
-  ],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  {
-    deep: true,
-  },
-);
-
-let debounceTimerProductsWithoutSupplier;
 watch(
   [
     selectedLaboratory,
@@ -491,19 +457,22 @@ watch(
     lapso_de_tiempo,
     stock,
     searchQueryRight,
+    filterSearchQuery,
+    selectedSupplier,
+    selectedOrigin,
+    stockStatusFilter,
+    isStrictSearch,
     pageProductsWithoutSupplier,
     itemsPerPageProductsWithoutSupplier,
-    sortByProductsWithoutSupplier,
-    orderByProductsWithoutSupplier,
-    selectedLaboratory,
-    selectedGroup,
+    productsPage,
+    productsItemPerPage,
   ],
   () => {
     clearTimeout(debounceTimerProductsWithoutSupplier);
     debounceTimerProductsWithoutSupplier = setTimeout(() => {
       fetchProductsWithoutSupplier();
-      fetchProducts(); // Refrescamos también el catálogo al cambiar filtros globales
-    }, 300);
+      fetchProducts();
+    }, 400); // Un poco más de debounce para seguridad
   },
   { deep: true },
 );
@@ -780,7 +749,27 @@ const handleOpenPublicLink = (supplier) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <!-- Layout side-by-side: izquierda = proveedores, derecha = faltas del pedido -->
+        <!-- FILA DE FILTROS MAESTROS -->
+        <VRow class="mb-4">
+          <VCol cols="12">
+            <ProductsWithoutSupplierComparatorFilter
+              v-model:selectConDescuento="con_descuento"
+              v-model:selectedLaboratory="selectedLaboratory"
+              v-model:selectedGroup="selectedGroup"
+              v-model:tipo_de_vista="tipo_de_vista"
+              v-model:tipo_de_filtracion="tipo_de_filtracion"
+              v-model:lapso_de_tiempo="lapso_de_tiempo"
+              v-model:stock="stock"
+              :groups="groups"
+              :laboratories="laboratoriesProductsWithoutSupplier"
+              :tipo_de_filtracion="tipo_de_filtracion"
+              :tipo_de_vista="tipo_de_vista"
+              :lapso_de_tiempo="lapso_de_tiempo"
+              @clear="handleClearFilters"
+            />
+          </VCol>
+        </VRow>
+
         <VRow class="match-height">
           <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores -->
           <VCol cols="12" md="6">
@@ -805,43 +794,6 @@ const handleOpenPublicLink = (supplier) => {
 
           <!-- COLUMNA DERECHA: Productos sin proveedor -->
           <VCol cols="12" md="6">
-            <ProductsWithoutSupplierComparatorFilter
-              v-model:selectConDescuento="con_descuento"
-              v-model:selectedLaboratory="selectedLaboratory"
-              v-model:selectedGroup="selectedGroup"
-              v-model:tipo_de_vista="tipo_de_vista"
-              v-model:tipo_de_filtracion="tipo_de_filtracion"
-              v-model:lapso_de_tiempo="lapso_de_tiempo"
-              v-model:stock="stock"
-              :groups="groups"
-              :laboratories="laboratoriesProductsWithoutSupplier"
-              :tipo_de_filtracion="tipo_de_filtracion"
-              :tipo_de_vista="tipo_de_vista"
-              :lapso_de_tiempo="lapso_de_tiempo"
-              :stock="stock"
-              @clear="handleClearFilters"
-            />
-            <ProductsComparisionProductsFilter
-              v-if="tab === 'products'"
-              @open-delete-dialog="isDeleteDialogVisible = true"
-              @update-all-api="handleUpdateAllApi"
-              v-model:enable-discounts="enableDiscounts"
-              v-model:enable-usd-amount-col="enableUsdAmountCol"
-              v-model:enable-discount-col="enableDiscountCol"
-              v-model:searchQuery="filterSearchQuery"
-              v-model:stockStatusFilter="stockStatusFilter"
-              v-model:selectedOrigin="selectedOrigin"
-              v-model:isStrictSearch="isStrictSearch"
-              :suppliers="suppliers"
-              :laboratories="laboratories"
-              :selected-laboratory="selectedLaboratory"
-              :selected-supplier="searchedSupplier"
-              :origins="origins"
-              @clear="handleClearProductsFilters"
-              @update:selectedLaboratory="selectedLaboratory = $event"
-              @update:selectedSupplier="handleSearchSupplier"
-            />
-          </VCol>
             <ProductsWithoutSupplierComparatorTable
               v-model="selectedProductFromTop"
               :products="listProductsWithoutSupplier"

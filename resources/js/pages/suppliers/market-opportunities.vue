@@ -20,13 +20,11 @@ const searchQuery = ref("");
 
 const headers = [
   { title: "Producto", key: "product_name_inventory", sortable: true },
-  { title: "Laboratorio", key: "laboratory_name", sortable: true },
-  { title: "Principio Activo", key: "active_ingredient_inventory", sortable: false },
   { title: "Costo Actual", key: "unit_cost_usd", align: "end", sortable: true },
   { title: "Mín. Histórico", key: "min_historic_cost", align: "end", sortable: true },
-  { title: "Ahorro", key: "saving_amount", align: "end", sortable: true, color: 'success' },
+  { title: "Ahorro", key: "saving_amount", align: "end", sortable: true },
   { title: "% Ahorro", key: "saving_percentage", align: "end", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
+  { title: "Añadir", key: "actions", sortable: false, align: "center", width: "150px" },
 ];
 
 async function fetchOpportunities() {
@@ -43,7 +41,10 @@ async function fetchOpportunities() {
     };
 
     const response = await axios.get('/market-opportunities', { params });
-    items.value = response.data.data;
+    items.value = response.data.data.map(item => ({
+      ...item,
+      quantity_to_add: 1
+    }));
     totalItems.value = response.data.total;
   } catch (error) {
     console.error("Error al cargar oportunidades:", error);
@@ -165,8 +166,24 @@ onMounted(() => {
         hover
         class="text-no-wrap"
       >
+        <template #item.product_name_inventory="{ item }">
+          <div class="d-flex flex-column py-2">
+            <span class="font-weight-bold text-wrap mb-1" style="line-height: 1.2;">
+              {{ item.product_name_inventory }}
+            </span>
+            <div class="d-flex flex-wrap ga-2">
+              <span class="text-caption text-medium-emphasis">
+                {{ item.active_ingredient_inventory }}
+              </span>
+              <span class="text-caption text-primary font-weight-medium">
+                {{ item.laboratory_name }}
+              </span>
+            </div>
+          </div>
+        </template>
+
         <template #item.unit_cost_usd="{ item }">
-          <span class="font-weight-medium">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
+          <span class="font-weight-medium text-success">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
         </template>
 
         <template #item.min_historic_cost="{ item }">
@@ -174,25 +191,36 @@ onMounted(() => {
         </template>
 
         <template #item.saving_amount="{ item }">
-          <VChip color="success" variant="tonal" size="small" class="font-weight-bold">
-            - {{ formatCurrency(item.saving_amount, 'USD') }}
-          </VChip>
+          <span class="text-success font-weight-bold">
+            {{ formatCurrency(item.saving_amount, 'USD') }}
+          </span>
         </template>
 
         <template #item.saving_percentage="{ item }">
-          <span class="text-success font-weight-bold">{{ item.saving_percentage }}%</span>
+          <VChip color="success" size="x-small" label class="font-weight-bold">
+            {{ item.saving_percentage }}%
+          </VChip>
         </template>
 
         <template #item.actions="{ item }">
-          <VBtn
-            color="primary"
-            variant="tonal"
-            size="small"
-            @click="handleAddUnits(item)"
-          >
-            <VIcon icon="tabler-plus" class="me-1" />
-            Añadir
-          </VBtn>
+          <div class="d-flex align-center ga-2 justify-center">
+            <VTextField
+              v-model="item.quantity_to_add"
+              type="number"
+              density="compact"
+              hide-details
+              variant="outlined"
+              class="quantity-input"
+              @keypress.enter="handleAddUnits(item)"
+            />
+            <VBtn
+              icon="tabler-plus"
+              color="primary"
+              variant="tonal"
+              size="small"
+              @click="handleAddUnits(item)"
+            />
+          </div>
         </template>
       </VDataTableServer>
     </VCard>
@@ -201,9 +229,13 @@ onMounted(() => {
 
 <style scoped>
 .v-data-table :deep(thead th) {
-  font-weight: bold !important;
-  text-transform: uppercase !important;
   font-size: 0.75rem !important;
+  font-weight: bold !important;
   letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+.quantity-input {
+  inline-size: 70px;
 }
 </style>

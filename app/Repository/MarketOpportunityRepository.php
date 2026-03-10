@@ -25,13 +25,17 @@ class MarketOpportunityRepository
 
         $query = ProductSupplier::query()
             ->select(
-                'product_suppliers.*',
+                'product_suppliers.id',
+                'product_suppliers.product_id',
+                'product_suppliers.supplier_id',
+                'product_suppliers.unit_cost_usd',
+                'product_suppliers.name as product_name_supplier',
                 'products.name as product_name_inventory',
                 'products.active_ingredient as active_ingredient_inventory',
                 'laboratories.name as laboratory_name',
-                'historic.min_historic_cost',
-                DB::raw('(historic.min_historic_cost - product_suppliers.unit_cost_usd) as saving_amount'),
-                DB::raw('ROUND(((historic.min_historic_cost - product_suppliers.unit_cost_usd) / historic.min_historic_cost) * 100, 2) as saving_percentage')
+                DB::raw('CAST(historic.min_historic_cost AS DECIMAL(15,2)) as min_historic_cost'),
+                DB::raw('CAST(historic.min_historic_cost - product_suppliers.unit_cost_usd AS DECIMAL(15,2)) as saving_amount'),
+                DB::raw('CAST(ROUND(((historic.min_historic_cost - product_suppliers.unit_cost_usd) / historic.min_historic_cost) * 100, 2) AS DECIMAL(15,2)) as saving_percentage')
             )
             ->join('products', 'product_suppliers.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
