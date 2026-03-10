@@ -61,6 +61,12 @@ class InvoiceQueryService
             $query->orderBy('invoices.id', 'desc');
         }
 
+        // Si estamos buscando facturas por ordenar, incluir un resumen de las localizaciones
+        if ($request->input('status') === 'to_order' || (is_array($request->input('status')) && in_array('to_order', $request->input('status')))) {
+            $query->select('invoices.*')
+                ->selectRaw('(SELECT GROUP_CONCAT(DISTINCT location SEPARATOR ", ") FROM invoice_details WHERE invoice_id = invoices.id AND location != "N/A" AND location != "Por Asignar") as locations_summary');
+        }
+
         return $query;
     }
 

@@ -41,7 +41,7 @@ const headers = computed(() => {
   ];
 
   if (props.actionsMode === "location") {
-    baseHeaders.push({ title: "Localización", key: "location", sortable: true });
+    baseHeaders.push({ title: "Localización", key: "locations_summary", sortable: true });
   }
 
   baseHeaders.push(
@@ -109,6 +109,7 @@ const processedInvoices = computed(() => {
 
       <template #item.actions="{ item }">
         <div class="d-flex ga-2">
+          <!-- Botón Devolver: Visible en todas las vistas EXCEPTO en 'Por Ordenar' (location) -->
           <div v-if="props.isAdmin && props.actionsMode !== 'location'">
             <VBtn
               v-bind="props"
