@@ -106,7 +106,12 @@ const handleSelectProductFromTop = (product) => {
   } else if (product.barcode) {
     filterSearchQuery.value = product.barcode;
   } else {
-    filterSearchQuery.value = String(product.id);
+    // Regla de 4 letras de nombre + 4 letras del laboratorio
+    const namePart = product.name ? product.name.substring(0, 4) : "";
+    const labPart = product.laboratory?.name ? product.laboratory.name.substring(0, 4) : "";
+    // Si la combinación queda muy corta, se usa el ID como fallback
+    const filter = `${namePart} ${labPart}`.trim();
+    filterSearchQuery.value = filter.length > 2 ? filter : String(product.id);
   }
 
   toast.success(
@@ -262,6 +267,20 @@ const fetchProducts = async () => {
   if (sortOptions.value && sortOptions.value.length > 0) {
     params.sortBy = sortOptions.value[0].key;
     params.order = sortOptions.value[0].order;
+  }
+
+  // Prevenir carga inicial masiva si no hay ningún filtro o búsqueda activa
+  if (
+    !params.supplierId &&
+    !params.laboratoryId &&
+    !params.q &&
+    !params.originId &&
+    params.hasStock === undefined
+  ) {
+    products.value = [];
+    productsTotal.value = 0;
+    loadingProducts.value = false;
+    return;
   }
 
   // Limpieza de parámetros nulos/vacíos
