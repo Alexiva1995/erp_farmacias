@@ -10,6 +10,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
+  initialInvoice: { type: Object, default: null },
   mode: { type: String, default: "editable" },
   supplierDiscounts: { type: Array, default: () => [] },
   paymentRules: { type: [Array, Object], default: () => [] },
@@ -1322,7 +1323,19 @@ const detailsHeaders = computed(() => {
       sortable: false,
       width: "18%",
     },
-    // Location added conditionally below
+  ];
+
+  if (isLocationMode.value) {
+    headers.push({
+      title: "Localización",
+      key: "location",
+      align: "center",
+      sortable: false,
+      width: "12%",
+    });
+  }
+
+  headers.push(
     {
       title: "Unidades",
       key: "quantity",
@@ -1450,6 +1463,20 @@ const detailsHeaders = computed(() => {
             </VRow>
           </VCardText>
           <VDivider />
+
+          <!-- Alerta de Reglas de Pago Faltantes -->
+          <VCardText v-if="isApprovalMode && formattedPaymentRules.length === 0" class="pb-0">
+            <VAlert
+              type="warning"
+              variant="tonal"
+              closable
+              icon="tabler-alert-triangle"
+              class="mb-0"
+            >
+              <div class="font-weight-bold">Proveedor sin reglas de pago</div>
+              <div>Este proveedor no tiene reglas de pago configuradas. Por favor, revise la ficha del proveedor si esto es un error.</div>
+            </VAlert>
+          </VCardText>
 
           <VCardText class="products-section pt-6">
             <div class="d-flex align-center mb-4">
