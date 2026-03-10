@@ -631,10 +631,13 @@ class SupplierQueryService
                 $query->where('products.origin_id', $originId);
             })
             ->when($supplierId, function ($query) use ($supplierId) {
-                $query->where("supplier_id", $supplierId);
+                $query->where("product_suppliers.supplier_id", $supplierId);
             })
-            ->when($laboratoryId, function ($query) use ($laboratory) {
-                $query->where("laboratory", $laboratory->name);
+            ->when($laboratoryId, function ($query) use ($laboratoryId) {
+                $query->where("products.laboratory_id", $laboratoryId);
+            })
+            ->when($request->query('groupId'), function ($query) use ($request) {
+                $query->where("products.group_id", $request->query('groupId'));
             })
 
             ->orderBy($sortColumn, $sortOrder)

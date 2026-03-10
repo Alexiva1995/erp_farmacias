@@ -1371,7 +1371,7 @@ const detailsHeaders = computed(() => {
       align: "center",
       width: "5%",
     },
-  ];
+  );
 
     // La columna Localización no es necesaria en la vista por defecto de facturas pendientes
     // headers.splice(2, 0, {

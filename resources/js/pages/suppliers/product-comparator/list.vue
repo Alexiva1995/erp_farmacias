@@ -256,8 +256,8 @@ const fetchProducts = async () => {
     page: productsPage.value,
     perPage: productsItemPerPage.value,
     supplierId: searchedSupplier.value,
-    laboratoryId: searchedLaboratory.value,
-    q: filterSearchQuery.value,
+    laboratoryId: selectedLaboratory.value, // Usar el mismo laboratorio que IA
+    q: filterSearchQuery.value || searchQueryRight.value, // Sincronizar búsqueda
     originId: selectedOrigin.value,
     isStrictSearch: isStrictSearch.value,
     ...(stockStatusFilter.value !== null && {
@@ -271,31 +271,15 @@ const fetchProducts = async () => {
     params.order = sortOptions.value[0].order;
   }
 
-  // Prevenir carga inicial masiva si no hay ningún filtro o búsqueda activa
-  if (
-    !params.supplierId &&
-    !params.laboratoryId &&
-    !params.q &&
-    !params.originId &&
-    params.hasStock === undefined
-  ) {
-    products.value = [];
-    productsTotal.value = 0;
-    loadingProducts.value = false;
-    return;
-  }
-
-  if (loadingProducts.value) return;
-
-  // Limpieza de parámetros nulos/vacíos
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
-
+  // No bloqueamos la carga inicial. Si no hay filtros, el backend traerá fallas por defecto o catálogo base.
+  
   try {
     loadingProducts.value = true;
     const { data } = await axios.get("/suppliers/available-products", {
-      params,
+      params: {
+        ...params,
+        groupId: selectedGroup.value, // Unificamos el grupo
+      }
     });
     products.value = data.data;
     productsTotal.value = data.total;
@@ -511,11 +495,14 @@ watch(
     itemsPerPageProductsWithoutSupplier,
     sortByProductsWithoutSupplier,
     orderByProductsWithoutSupplier,
+    selectedLaboratory,
+    selectedGroup,
   ],
   () => {
     clearTimeout(debounceTimerProductsWithoutSupplier);
     debounceTimerProductsWithoutSupplier = setTimeout(() => {
       fetchProductsWithoutSupplier();
+      fetchProducts(); // Refrescamos también el catálogo al cambiar filtros globales
     }, 300);
   },
   { deep: true },
@@ -834,6 +821,27 @@ const handleOpenPublicLink = (supplier) => {
               :stock="stock"
               @clear="handleClearFilters"
             />
+            <ProductsComparisionProductsFilter
+              v-if="tab === 'products'"
+              @open-delete-dialog="isDeleteDialogVisible = true"
+              @update-all-api="handleUpdateAllApi"
+              v-model:enable-discounts="enableDiscounts"
+              v-model:enable-usd-amount-col="enableUsdAmountCol"
+              v-model:enable-discount-col="enableDiscountCol"
+              v-model:searchQuery="filterSearchQuery"
+              v-model:stockStatusFilter="stockStatusFilter"
+              v-model:selectedOrigin="selectedOrigin"
+              v-model:isStrictSearch="isStrictSearch"
+              :suppliers="suppliers"
+              :laboratories="laboratories"
+              :selected-laboratory="selectedLaboratory"
+              :selected-supplier="searchedSupplier"
+              :origins="origins"
+              @clear="handleClearProductsFilters"
+              @update:selectedLaboratory="selectedLaboratory = $event"
+              @update:selectedSupplier="handleSearchSupplier"
+            />
+          </VCol>
             <ProductsWithoutSupplierComparatorTable
               v-model="selectedProductFromTop"
               :products="listProductsWithoutSupplier"
