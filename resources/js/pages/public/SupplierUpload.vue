@@ -8,6 +8,7 @@ const route = useRoute()
 const token = route.params.token
 
 const supplierName = ref('')
+const lastUpload = ref(null)
 const loading = ref(true)
 const isError = ref(false)
 const errorMessage = ref('')
@@ -21,6 +22,7 @@ const fetchSupplier = async () => {
   try {
     const response = await axios.get(`/public/suppliers/upload/${token}`)
     supplierName.value = response.data.data.name
+    lastUpload.value = response.data.data.last_upload
     loading.value = false
   } catch (error) {
     isError.value = true
@@ -45,11 +47,33 @@ const handleUpload = async () => {
     })
     isSuccess.value = true
     uploading.value = false
+    // Refrescar información para tener la nueva fecha de última carga
+    fetchSupplier()
   } catch (error) {
     isError.value = true
     errorMessage.value = error.response?.data?.message || 'Error al procesar el archivo. Por favor, contacte con el personal de la farmacia.'
     uploading.value = false
   }
+}
+
+const resetForm = () => {
+  file.value = null
+  exchangeRate.value = null
+  isSuccess.value = false
+  isError.value = false
+  errorMessage.value = ''
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'Nunca'
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
 }
 
 onMounted(fetchSupplier)
@@ -69,7 +93,19 @@ onMounted(fetchSupplier)
         <p class="text-body-1 mb-6">
           Hemos recibido su lista de precios correctamente. El sistema la procesará automáticamente.
         </p>
-        <p class="text-caption">Ya puede cerrar esta ventana.</p>
+        
+        <VBtn
+          block
+          variant="tonal"
+          color="success"
+          @click="resetForm"
+          class="mb-4"
+        >
+          <VIcon start>tabler-plus</VIcon>
+          Subir otro archivo
+        </VBtn>
+        
+        <p class="text-caption">Ya puede cerrar esta ventana o subir una nueva lista.</p>
       </div>
 
       <div v-else-if="isError">
@@ -91,7 +127,11 @@ onMounted(fetchSupplier)
             />
           </div>
           <h1 class="text-h4 font-weight-bold mb-1">Hola, {{ supplierName }}</h1>
-          <p class="text-body-1 text-secondary">Suba su lista de precios actualizada</p>
+          <p class="text-body-1 text-secondary mb-0">Suba su lista de precios actualizada</p>
+          <div v-if="lastUpload" class="mt-2 text-caption text-secondary">
+            <VIcon size="14" class="me-1">tabler-history</VIcon>
+            Última subida: {{ formatDate(lastUpload) }}
+          </div>
         </div>
 
         <VForm @submit.prevent="handleUpload">

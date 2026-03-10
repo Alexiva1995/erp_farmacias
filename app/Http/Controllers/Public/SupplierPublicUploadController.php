@@ -24,7 +24,8 @@ class SupplierPublicUploadController extends Controller
 
         return ApiResponse::success([
             'name' => $supplier->name,
-            'id' => $supplier->id
+            'id' => $supplier->id,
+            'last_upload' => $supplier->connections()->first()?->last_connection
         ]);
     }
 
