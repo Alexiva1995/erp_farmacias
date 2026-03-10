@@ -53,7 +53,10 @@ const router = createRouter({
         path: '/p/suppliers/upload/:token',
         name: 'public-supplier-upload',
         component: () => import('@/pages/public/SupplierUpload.vue'),
-        meta: { requiresAuth: false }
+        meta: { 
+          requiresAuth: false,
+          layout: 'blank'
+        }
       }
     ]
     
