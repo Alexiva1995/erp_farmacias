@@ -196,6 +196,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\Repositories\MarketOpportunityRepositoryInterface::class,
             \App\Repositories\MarketOpportunityRepository::class
         );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\AbcReportRepositoryInterface::class,
+            \App\Repositories\AbcReportRepository::class
+        );
     }
 
     /**

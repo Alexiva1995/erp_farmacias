@@ -537,6 +537,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/", [MarketOpportunityController::class, "index"]);
         Route::get("/export", [MarketOpportunityController::class, "export"]);
     });
+    Route::prefix("bi")->group(function () {
+        Route::get("/abc", [\App\Http\Controllers\Api\Bi\AbcReportController::class, "generateReport"]);
+    });
+    
     Route::prefix("users")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);
     });
