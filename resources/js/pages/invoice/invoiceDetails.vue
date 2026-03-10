@@ -6,7 +6,7 @@ import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
@@ -58,6 +58,10 @@ const searchingBarcode = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
+const isScannerMode = ref(false);
+const barcodeInput = ref("");
+const scannerLoading = ref(false);
+const scannerInputRef = ref(null);
 
 const locations = [
   "E-001",
@@ -1087,6 +1091,84 @@ const handleDragEnd = () => {
   draggedOverItem.value = null;
 };
 
+const handleBarcodeScan = async () => {
+  if (!barcodeInput.value || scannerLoading.value) return;
+
+  if (!invoice.value?.auto_order_id) {
+    toast.fire({
+      icon: "error",
+      title: "Esta factura no tiene una Auto-Orden asociada.",
+    });
+    barcodeInput.value = "";
+    return;
+  }
+
+  scannerLoading.value = true;
+  try {
+    const response = await axios.post("/invoices/match-barcode", {
+      barcode: barcodeInput.value,
+      supplier_id: invoice.value.supplier_id,
+      auto_order_id: invoice.value.auto_order_id,
+    });
+
+    if (response.data.status === "success") {
+      const newDetail = response.data.data;
+
+      // Verificar si ya existe en la lista para evitar duplicados accidentales
+      const existingIndex = invoiceDetails.value.findIndex(
+        (d) => d.product_id === newDetail.product_id,
+      );
+
+      if (existingIndex !== -1) {
+        toast.fire({
+          icon: "info",
+          title: "El producto ya está en la lista.",
+        });
+      } else {
+        // Agregar al inicio de la lista
+        invoiceDetails.value.unshift({
+          ...newDetail,
+          id: `new_${Date.now()}`,
+        });
+
+        toast.fire({
+          icon: "success",
+          title: `Producto añadido: ${newDetail.product.name}`,
+          timer: 1500,
+        });
+      }
+    } else if (response.data.status === "warning") {
+      toast.fire({
+        icon: "warning",
+        title: "Producto no solicitado",
+        text: response.data.message,
+      });
+    }
+  } catch (error) {
+    console.error("Scanner error:", error);
+    toast.fire({
+      icon: "error",
+      title: error.response?.data?.message || "Error al escanear producto",
+    });
+  } finally {
+    barcodeInput.value = "";
+    scannerLoading.value = false;
+    nextTick(() => {
+      scannerInputRef.value?.focus();
+    });
+  }
+};
+
+const toggleScannerMode = () => {
+  isScannerMode.value = !isScannerMode.value;
+  if (isScannerMode.value) {
+    isEditMode.value = true;
+    nextTick(() => {
+      scannerInputRef.value?.focus();
+    });
+  }
+};
+
 const handleFinalizeInvoice = async () => {
   if (isTotalMismatch.value) {
     toast.error(
@@ -1334,6 +1416,17 @@ const detailsHeaders = computed(() => {
                   </VChip>
                 </div>
                 <VBtn
+                  v-if="isEditableMode && isEditMode && invoice.auto_order_id"
+                  :color="isScannerMode ? 'info' : 'secondary'"
+                  :variant="isScannerMode ? 'flat' : 'tonal'"
+                  size="small"
+                  class="me-2"
+                  @click="toggleScannerMode"
+                >
+                  <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" class="me-2" />
+                  {{ isScannerMode ? 'Modo Escáner Activo' : 'Carga por Escáner' }}
+                </VBtn>
+                <VBtn
                   v-if="isEditableMode && isEditMode"
                   color="primary"
                   variant="flat"
@@ -1345,6 +1438,33 @@ const detailsHeaders = computed(() => {
                 </VBtn>
               </div>
             </div>
+
+            <!-- Área de Escaneo Rápido -->
+            <VExpandTransition>
+              <div v-if="isScannerMode" class="mb-4 pa-4 bg-primary-lighten-5 rounded border-dashed d-flex align-center">
+                <VIcon icon="tabler-scan" color="primary" size="24" class="me-3" />
+                <div class="flex-grow-1">
+                  <VTextField
+                    ref="scannerInputRef"
+                    v-model="barcodeInput"
+                    placeholder="Escanee el código de barras del producto físico..."
+                    prepend-inner-icon="tabler-barcode"
+                    variant="solo"
+                    density="comfortable"
+                    hide-details
+                    :loading="scannerLoading"
+                    autofocus
+                    @keyup.enter="handleBarcodeScan"
+                  >
+                    <template #append-inner>
+                      <VChip v-if="scannerLoading" size="x-small" color="primary">Buscando...</VChip>
+                      <kbd v-else class="text-caption px-2 bg-grey-lighten-3 rounded">ENTER</kbd>
+                    </template>
+                  </VTextField>
+                </div>
+                <VBtn icon="tabler-x" variant="text" size="small" class="ms-2" @click="isScannerMode = false" />
+              </div>
+            </VExpandTransition>
 
             <VDataTable
               :headers="detailsHeaders"

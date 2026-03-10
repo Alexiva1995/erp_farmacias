@@ -445,6 +445,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
+        Route::post('/match-barcode', 'matchBarcode')->name('match-barcode');
         Route::get('/{invoice}/details', 'getDetails')->name('details');
         Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
         Route::put('/{invoice}/data', 'updateData')->name('updateData');
