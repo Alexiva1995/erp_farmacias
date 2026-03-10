@@ -77,6 +77,7 @@ const orderByProductsWithoutSupplier = ref();
 
 // Variable para rastrear la selección
 const selectedProductFromTop = ref(null);
+const searchQueryRight = ref("");
 
 //variables para el flitro de productos sin proveedor
 const con_descuento = ref(true); // Fallas , Execeso o All
@@ -377,6 +378,7 @@ const fetchProductsWithoutSupplier = async () => {
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
+      q: searchQueryRight.value,
       page: pageProductsWithoutSupplier.value,
       itemsPerPage: itemsPerPageProductsWithoutSupplier.value,
       sortBy: sortByProductsWithoutSupplier.value,
@@ -384,7 +386,7 @@ const fetchProductsWithoutSupplier = async () => {
     };
 
     const response = await axios.post(
-      `/suppliers-ia-order-assistant/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
+      `/suppliers-ia-assistant-report/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
       payload,
     );
 
@@ -496,6 +498,7 @@ watch(
     tipo_de_filtracion,
     lapso_de_tiempo,
     stock,
+    searchQueryRight,
     pageProductsWithoutSupplier,
     itemsPerPageProductsWithoutSupplier,
     sortByProductsWithoutSupplier,
@@ -817,6 +820,8 @@ const handleOpenPublicLink = (supplier) => {
               :total-products="totalProductsWithoutSupplier"
               :items-per-page="itemsPerPageProductsWithoutSupplier"
               :page="pageProductsWithoutSupplier"
+              :search-query="searchQueryRight"
+              @update:search-query="searchQueryRight = $event"
               @update:options="updateProductsWithoutSupplierOptions"
               @select-product="handleSelectProductFromTop"
               @delete="handleToggleOrder"

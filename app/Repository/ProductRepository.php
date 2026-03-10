@@ -1036,6 +1036,38 @@ class ProductRepository
             $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
 
+        if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+            $consulta->whereIn("group_id", $filtros["groups"]);
+        }
+
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+            $isStrictSearch = $filtros["isStrictSearch"] ?? false;
+            $searchTerm = $filtros["q"];
+
+            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $query->where("name", "like", "%" . $searchTerm . "%")
+                        ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
+                        ->orWhere("barcode", "like", $searchTerm)
+                        ->orWhere("id", "like", "%" . $searchTerm . "%");
+                } else {
+                    $words = explode(' ', trim($searchTerm));
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $query->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where("name", "like", "%" . $word . "%")
+                                ->orWhere("active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("id", "like", "%" . $word . "%")
+                                ->orWhereHas("laboratory", function ($labQuery) use ($word) {
+                                    $labQuery->where("name", "like", "%" . $word . "%");
+                                });
+                        });
+                    }
+                }
+            });
+        }
+
         if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
             $consulta->whereIn("id", $filtros["ids_in"]);
         }
@@ -1234,6 +1266,40 @@ class ProductRepository
             if (count($filtros["laboratoryId"]) > 0) {
                 $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
             }
+        }
+
+        if (array_key_exists("groups", $filtros)) {
+            if (count($filtros["groups"]) > 0) {
+                $consulta->whereIn("group_id", $filtros["groups"]);
+            }
+        }
+
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+            $isStrictSearch = $filtros["isStrictSearch"] ?? false;
+            $searchTerm = $filtros["q"];
+
+            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $query->where("name", "like", "%" . $searchTerm . "%")
+                        ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
+                        ->orWhere("barcode", "like", $searchTerm)
+                        ->orWhere("id", "like", "%" . $searchTerm . "%");
+                } else {
+                    $words = explode(' ', trim($searchTerm));
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $query->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where("name", "like", "%" . $word . "%")
+                                ->orWhere("active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("id", "like", "%" . $word . "%")
+                                ->orWhereHas("laboratory", function ($labQuery) use ($word) {
+                                    $labQuery->where("name", "like", "%" . $word . "%");
+                                });
+                        });
+                    }
+                }
+            });
         }
 
         if (array_key_exists("stock", $filtros)) {

@@ -9,6 +9,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   modelValue: { type: Object, default: null },
+  searchQuery: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -18,6 +19,7 @@ const emit = defineEmits([
   "delete",
   "save-analysis",
   "mark-scarce",
+  "update:search-query",
 ]);
 
 // Track edited pedido values per item id
@@ -84,6 +86,18 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
         Comparando: {{ modelValue.name }}
       </VChip>
     </VCardTitle>
+
+    <div class="px-4 pb-4">
+      <VTextField
+        :model-value="searchQuery"
+        @update:model-value="(val) => emit('update:search-query', val)"
+        placeholder="Buscar por Nombre, Código de Barras o Principio Activo"
+        prepend-inner-icon="tabler-search"
+        density="compact"
+        class="mt-2"
+        clearable
+      />
+    </div>
 
     <VAlert
       v-if="!modelValue"
