@@ -53,7 +53,6 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->select(
                 'products.id',
                 'products.name as product_name',
-                'categories.name as category_name',
                 'laboratories.name as laboratory_name',
                 'products.stock as current_stock',
                 'products.unit_cost as last_cost', // Asumido desde products.unit_cost o product_lots dependiendo del negocio
@@ -65,7 +64,6 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales')
             )
-            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->leftJoin('order_details', 'products.id', '=', 'order_details.product_id')
             ->leftJoin('orders', function ($join) use ($startDate, $endDate) {
@@ -81,7 +79,6 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->groupBy(
                 'products.id',
                 'products.name',
-                'categories.name',
                 'laboratories.name',
                 'products.stock',
                 'products.unit_cost',
@@ -90,10 +87,6 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             );
 
         // Aplicar Filtros adicionales
-        if (!empty($filtros['category_id'])) {
-            $query->whereIn('products.category_id', (array) $filtros['category_id']);
-        }
-        
         if (!empty($filtros['laboratory_id'])) {
             $query->whereIn('products.laboratory_id', (array) $filtros['laboratory_id']);
         }

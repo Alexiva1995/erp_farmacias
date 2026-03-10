@@ -31,7 +31,6 @@ class AbcReportRequest extends FormRequest
         return [
             'start_date' => ['nullable', 'date', 'before_or_equal:end_date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'category_id' => ['nullable'], // Puede ser array o integer
             'laboratory_id' => ['nullable'],
             'final_classification' => ['nullable', 'string', 'size:3', 'regex:/^[ABC][ABC][XYZ]$/i'],
             'page' => ['nullable', 'integer', 'min:1'],
