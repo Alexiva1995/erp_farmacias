@@ -633,11 +633,13 @@ class SupplierQueryService
             ->when($supplierId, function ($query) use ($supplierId) {
                 $query->where("product_suppliers.supplier_id", $supplierId);
             })
-            ->when($laboratoryId, function ($query) use ($laboratoryId) {
-                $query->where("products.laboratory_id", $laboratoryId);
+            ->when(!empty($request->query('laboratoryId')), function ($query) use ($request) {
+                $labs = Arr::wrap($request->query('laboratoryId'));
+                $query->whereIn("products.laboratory_id", $labs);
             })
-            ->when($request->query('groupId'), function ($query) use ($request) {
-                $query->where("products.group_id", $request->query('groupId'));
+            ->when(!empty($request->query('groupId')), function ($query) use ($request) {
+                $groups = Arr::wrap($request->query('groupId'));
+                $query->whereIn("products.group_id", $groups);
             })
 
             ->orderBy($sortColumn, $sortOrder)
