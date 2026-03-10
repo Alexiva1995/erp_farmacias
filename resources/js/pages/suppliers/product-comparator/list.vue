@@ -390,9 +390,9 @@ const fetchProductsWithoutSupplier = async () => {
       payload,
     );
 
-    // La respuesta tiene estructura: response.data.data.paginate (LengthAwarePaginator de Laravel)
+    // La respuesta de SupplierIaAssistantReportController es directamente el paginador
     // El paginator tiene: .data (array de items), .total (cantidad total)
-    const paginate = response?.data?.data?.paginate ?? null;
+    const paginate = response?.data?.data ?? null;
 
     if (paginate && Array.isArray(paginate.data)) {
       listProductsWithoutSupplier.value = paginate.data;
