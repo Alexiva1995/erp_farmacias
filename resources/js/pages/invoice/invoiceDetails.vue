@@ -450,10 +450,8 @@ const toggleReturnItem = (itemToToggle) => {
     if (item.is_return) {
       item.location = "N/A";
       item.manual_return_override = false;
-      startEditingDetail(item);
     } else {
       item.location = "Por Asignar";
-      startEditingDetail(item);
     }
   }
 };
