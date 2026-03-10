@@ -57,10 +57,10 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 'laboratories.name as laboratory_name',
                 'products.stock as current_stock',
                 'products.unit_cost as last_cost', // Asumido desde products.unit_cost o product_lots dependiendo del negocio
-                // Agregados de Ventas
+                // Agregados de Ventas en base Dolarizada usando factor de conversión
                 DB::raw('COALESCE(SUM(order_details.quantity), 0) as sold_units'),
-                DB::raw('COALESCE(SUM(order_details.quantity * order_details.price), 0) as total_sales'),
-                DB::raw('COALESCE(SUM(order_details.quantity * order_details.unit_cost), 0) as total_cost'),
+                DB::raw('COALESCE(SUM((order_details.quantity * order_details.price) / NULLIF(orders.usd_conversion, 0)), 0) as total_sales'),
+                DB::raw('COALESCE(SUM((order_details.quantity * order_details.unit_cost) / NULLIF(orders.usd_conversion, 0)), 0) as total_cost'),
                 // Variables de cálculo para XYZ
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales')
