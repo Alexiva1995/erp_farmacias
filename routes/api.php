@@ -539,6 +539,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
     Route::prefix("bi")->group(function () {
         Route::get("/abc", [\App\Http\Controllers\Api\Bi\AbcReportController::class, "generateReport"]);
+        Route::get("/sku-margin", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "generateReport"]);
     });
     
     Route::prefix("users")->group(function () {
