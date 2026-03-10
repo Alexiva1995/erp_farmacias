@@ -1604,20 +1604,15 @@ const detailsHeaders = computed(() => {
                     {{ item.lot_number || "Sin Lote" }}
                   </span>
 
-                  <AppDateTimePicker
+                  <VTextField
                     v-if="isEditableMode && item.id === editingDetailId"
                     v-model="editedDetailData.expiration_date"
+                    type="date"
                     density="compact"
                     hide-details
+                    variant="outlined"
                     class="editable-cell mt-1"
-                    :config="{ 
-                      allowInput: true,
-                      dateFormat: 'Y-m-d',
-                      altInput: true,
-                      altFormat: 'd-m-Y',
-                      clickOpens: true
-                    }"
-                    :placeholder="item.is_return ? 'Venc. (Dev)' : 'F. Venc (DD-MM-YYYY)'"
+                    :placeholder="item.is_return ? 'Venc. (Dev)' : 'F. Venc'"
                   />
                   <span
                     v-else
