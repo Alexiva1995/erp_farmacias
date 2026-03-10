@@ -1,5 +1,5 @@
 <script setup>
-import axios from '@axios'
+import axios from '@/plugins/axios'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
