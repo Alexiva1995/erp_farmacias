@@ -36,7 +36,7 @@ const handleUpload = async () => {
   isError.value = false
 
   const formData = new FormData()
-  formData.append('file', file.value[0])
+  formData.append('file', file.value)
   formData.append('exchange_rate', exchangeRate.value)
 
   try {

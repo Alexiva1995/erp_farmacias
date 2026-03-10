@@ -89,9 +89,9 @@ router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
     console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
     
-    // Solo intentar obtener el usuario si no está cargado aún
-    // Usar una promesa compartida para evitar múltiples llamadas simultáneas
-    if (!authStore.isLoaded && !authStore.user && !isFetchingUser) {
+    // Solo intentar obtener el usuario si la ruta requiere autenticación y no está cargado aún
+    const requiresAuth = to.meta?.requiresAuth
+    if (requiresAuth && !authStore.isLoaded && !authStore.user && !isFetchingUser) {
       console.log('[ROUTER] Intentando obtener usuario...')
       isFetchingUser = true
       
@@ -121,7 +121,6 @@ router.beforeEach(async (to, from, next) => {
     clearTimeout(safetyTimeout)
     
     const isAuthenticated = authStore.isAuthenticated
-    const requiresAuth = to.meta?.requiresAuth
     console.log('[ROUTER] Verificación:', { isAuthenticated, requiresAuth })
     
     if (requiresAuth && !isAuthenticated) {
