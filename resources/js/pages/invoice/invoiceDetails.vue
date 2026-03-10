@@ -1851,6 +1851,7 @@ const detailsHeaders = computed(() => {
                 Volver a la Lista
               </VBtn>
             </div>
+            </VCardActions>
           </div>
         </VForm>
       </VCard>
