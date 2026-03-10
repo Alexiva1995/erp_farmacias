@@ -1072,12 +1072,16 @@ class ProductRepository
             $consulta->whereIn("id", $filtros["ids_in"]);
         }
 
+        if (array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
+            $consulta->doesntHave("productSuppliers");
+        }
+
         if (array_key_exists("stock", $filtros)) {
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", ">", 0);
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -1301,12 +1305,16 @@ class ProductRepository
             });
         }
 
+        if (array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
+            $consulta->doesntHave("productSuppliers");
+        }
+
         if (array_key_exists("stock", $filtros)) {
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", ">", 0);
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 

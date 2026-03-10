@@ -72,6 +72,7 @@ class IaAssistantReportService
             'q' => $filtros['q'] ?? '',
             'stock' => $filtros['stock'] ?? 'fallas',
             'tipo' => $filtros['tipo_de_filtracion'] ?? 'average',
+            'ws' => $filtros['without_supplier'] ?? false,
         ]));
 
         return Cache::remember($cacheKey, 600, function () use ($filtros) {
