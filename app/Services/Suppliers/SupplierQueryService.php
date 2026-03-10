@@ -20,20 +20,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Contracts\Repositories\SupplierRepositoryInterface;
 use PhpOffice\PhpSpreadsheet\Calculation\Statistical\Distributions\F;
 
 class SupplierQueryService
 {
+    public function __construct(
+        private SupplierRepositoryInterface $supplierRepository
+    ) {}
     /**
      * Prepares the base query for suppliers.
      */
     private function getBaseQuery(): Builder
     {
-
-        return Supplier::query()
-            ->withoutTrashed()
-            ->select('suppliers.*')
-            ->with(['latestScore', 'paymentRules', 'paymentDate']);
+        return $this->supplierRepository->getQuery();
     }
 
     /**

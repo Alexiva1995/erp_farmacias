@@ -32,21 +32,21 @@ class MarketOpportunityRepository
                 'product_suppliers.name as product_name_supplier',
                 'products.name as product_name_inventory',
                 'products.active_ingredient as active_ingredient_inventory',
+                'products.unit_cost as inventory_unit_cost',
                 'laboratories.name as laboratory_name',
-                DB::raw('CAST(historic.min_historic_cost AS DECIMAL(15,2)) as min_historic_cost'),
-                DB::raw('CAST(historic.min_historic_cost - product_suppliers.unit_cost_usd AS DECIMAL(15,2)) as saving_amount'),
-                DB::raw('CAST(ROUND(((historic.min_historic_cost - product_suppliers.unit_cost_usd) / historic.min_historic_cost) * 100, 2) AS DECIMAL(15,2)) as saving_percentage')
+                DB::raw('LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost) as effective_min_cost'),
+                DB::raw('(LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost) - product_suppliers.unit_cost_usd) as saving_amount'),
+                DB::raw('ROUND(((LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost) - product_suppliers.unit_cost_usd) / LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost)) * 100, 2) as saving_percentage')
             )
             ->join('products', 'product_suppliers.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->joinSub($minHistoricCostSubquery, 'historic', function ($join) {
+            ->leftJoinSub($minHistoricCostSubquery, 'historic', function ($join) {
                 $join->on('products.id', '=', 'historic.product_id');
             })
             // Solo registros con costo mayor a 0 para evitar divisiones por cero y datos basura
             ->where('product_suppliers.unit_cost_usd', '>', 0)
-            ->where('historic.min_historic_cost', '>', 0)
-            // Solo productos donde el precio actual del proveedor es MENOR al mínimo histórico registrado en lotes
-            ->whereRaw('product_suppliers.unit_cost_usd < historic.min_historic_cost');
+            // Solo productos donde el precio actual del proveedor es MENOR al costo efectivo mínimo (lote o inventario)
+            ->whereRaw('product_suppliers.unit_cost_usd < LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost)');
 
         // Aplicar filtros similares a los de productos
         if (!empty($filtros['q'])) {

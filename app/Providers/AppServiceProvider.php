@@ -64,6 +64,8 @@ use App\Services\SocialBenefitServices;
 use App\Services\TransactionServices;
 use App\Contracts\Accounting\BalanceRepositoryInterface;
 use App\Repositories\Accounting\BalanceRepository;
+use App\Contracts\Repositories\SupplierRepositoryInterface;
+use App\Repositories\Eloquent\SupplierRepository;
 use App\Http\Controllers\Api\Accounting\BalanceController;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -183,6 +185,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             BalanceRepositoryInterface::class,
             BalanceRepository::class
+        );
+
+        $this->app->bind(
+            SupplierRepositoryInterface::class,
+            SupplierRepository::class
         );
     }
 

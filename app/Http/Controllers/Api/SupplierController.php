@@ -17,6 +17,7 @@ use App\Http\Requests\StoreDiscountsRequest;
 use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
+use App\Http\Resources\SupplierResource;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Arr;
@@ -48,17 +49,10 @@ class SupplierController extends Controller
         $perPage = $request->input("itemsPerPage", 10);
 
         if ($perPage < 1) {
-            $items = $query->get();
-            return response()->json([
-                "data" => $items,
-                "total" => $items->count(),
-            ]);
+            return SupplierResource::collection($query->get());
         }
-        $paginatedResult = $query->paginate($perPage);
-        return response()->json([
-            "data" => $paginatedResult->items(),
-            "total" => $paginatedResult->total(),
-        ]);
+
+        return SupplierResource::collection($query->paginate($perPage));
     }
 
     /**
@@ -70,13 +64,10 @@ class SupplierController extends Controller
     {
         $supplier = $this->supplierActionService->createSupplier($request->validated());
 
-        return response()->json(
-            [
-                "message" => "Proveedor creado con éxito.",
-                "supplier" => $supplier,
-            ],
-            201,
-        );
+        return (new SupplierResource($supplier))
+            ->additional(['message' => 'Proveedor creado con éxito.'])
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
@@ -89,13 +80,8 @@ class SupplierController extends Controller
     {
         $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
         
-        return response()->json(
-            [
-                "message" => "Proveedor actualizado con éxito.",
-                "supplier" => $updatedSupplier,
-            ],
-            200,
-        );
+        return (new SupplierResource($updatedSupplier))
+            ->additional(['message' => 'Proveedor actualizado con éxito.']);
     }
 
     /**

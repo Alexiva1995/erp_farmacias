@@ -21,7 +21,7 @@ const searchQuery = ref("");
 const headers = [
   { title: "Producto", key: "product_name_inventory", sortable: true },
   { title: "Costo Actual", key: "unit_cost_usd", align: "end", sortable: true },
-  { title: "Mín. Histórico", key: "min_historic_cost", align: "end", sortable: true },
+  { title: "Mín. Referencia", key: "effective_min_cost", align: "end", sortable: true },
   { title: "Ahorro", key: "saving_amount", align: "end", sortable: true },
   { title: "% Ahorro", key: "saving_percentage", align: "end", sortable: true },
   { title: "Añadir", key: "actions", sortable: false, align: "center", width: "150px" },
@@ -186,8 +186,8 @@ onMounted(() => {
           <span class="font-weight-medium text-success">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
         </template>
 
-        <template #item.min_historic_cost="{ item }">
-          <span class="text-medium-emphasis">{{ formatCurrency(item.min_historic_cost, 'USD') }}</span>
+        <template #item.effective_min_cost="{ item }">
+          <span class="text-medium-emphasis">{{ formatCurrency(item.effective_min_cost, 'USD') }}</span>
         </template>
 
         <template #item.saving_amount="{ item }">
