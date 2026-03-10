@@ -319,7 +319,7 @@ defineExpose({ printReport });
             <VCard variant="outlined" class="bg-white rounded-lg border h-100">
               <VCardItem class="pa-4">
                 <div class="d-flex justify-space-between align-start mb-1">
-                  <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL BS</span>
+                  <span class="text-caption font-weight-bold text-medium-emphasis">TOTAL Bs</span>
                   <VIcon icon="tabler-currency-bolivar" color="warning" size="20" />
                 </div>
                 <h4 class="text-h6 font-weight-bold">{{ formatCurrency(totalBsGlobal, 'BS') }}</h4>
@@ -393,7 +393,7 @@ defineExpose({ printReport });
                       </td>
                     </tr>
                     <tr>
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">BS:</td>
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Bs:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-warning">
                         {{ formatCurrency(closing.real_bs, 'BS') }} 
                         <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ formatCurrency(closing.total_bs_in_usd, 'USD') }})</span>
@@ -432,7 +432,7 @@ defineExpose({ printReport });
             <table class="info-table">
               <tr>
                 <td style="inline-size: 40%;"><strong>CORRELATIVO:</strong> #{{ props.cashData.id }}</td>
-                <td style="inline-size: 30%;"><strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} BS</td>
+                <td style="inline-size: 30%;"><strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} Bs</td>
                 <td style="inline-size: 30%; text-align: end;"><strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}</td>
               </tr>
               <tr>
@@ -449,7 +449,7 @@ defineExpose({ printReport });
             <thead>
               <tr>
                 <th style="padding: 4px; font-size: 8pt;">RESPONSABLE / MÉTODO</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">BS</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">Bs</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">COP</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">USD</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">TOTAL USD</th>

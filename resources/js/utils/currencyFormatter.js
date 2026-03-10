@@ -19,8 +19,8 @@ export const formatCurrency = (value, currency) => {
   let currencySymbol = '';
   let digital = 2;
 
-  if (currency === 'BS') {
-    currencySymbol = ' BS';
+  if (currency === 'BS' || currency === 'Bs') {
+    currencySymbol = ' Bs';
   } else if (currency === 'COP') {
     currencySymbol = ' COP';
     digital = 0; // COP sin decimales

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { formatCurrency as globalFormatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   invoices: { type: Array, required: true },
@@ -37,14 +38,9 @@ const headers = [
 ];
 
 const formatCurrency = (value, currency) => {
-  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
-  const mappedCurrency = currencyMap[currency] || currency;
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: mappedCurrency,
-    minimumFractionDigits: 2,
-  }).format(value);
+  return globalFormatCurrency(Number(value), currency);
 };
+
 const formatDate = (dateString) => {
   if (!dateString) return "";
   return new Date(dateString).toLocaleDateString("es-VE", {

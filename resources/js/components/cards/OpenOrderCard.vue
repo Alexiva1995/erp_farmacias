@@ -177,7 +177,7 @@ const Identidad = computed(() => {
     : "";
 });
 
-const availableCurrency = ref(["USD", "BS", "COP"]);
+const availableCurrency = ref(["USD", "Bs", "COP"]);
 const chipColor = "primary";
 
 const breakdownItems = computed(() => {
@@ -243,7 +243,7 @@ const getDiscountFactor = (product) => {
 
 // Precio original de lista (para aplicar descuento una sola vez)
 const getOriginalBasePrice = (product, currency) => {
-  if (currency === "BS") {
+  if (currency === "BS" || currency === "Bs") {
     return product.original_price_bs ?? product.originalPriceBs ?? product.price_bs ?? 0;
   }
   if (currency === "COP") {
@@ -256,11 +256,11 @@ const getOriginalBasePrice = (product, currency) => {
 const getProductPriceSinIva = (product, currency) => {
   let basePrice = 0;
   if (product.discountApplied) {
-    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+    basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+    basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
@@ -275,7 +275,7 @@ const getProductPriceOriginalSinIva = (product, currency) => {
   const hasProductDiscount = product.discount_percentage > 0 || (product.has_pack_discount && product.pack_id);
   const hasGlobalDiscount = activeDiscountDisplay.value != null && !product.pack_id && product.discount_type !== "expiration";
   if (hasProductDiscount || hasGlobalDiscount) {
-    if (currency === "BS") {
+    if (currency === "BS" || currency === "Bs") {
       basePrice = product.original_price_bs || product.originalPriceBs || product.price_bs || 0;
     } else if (currency === "COP") {
       basePrice = product.original_price_cop || product.originalPriceCop || product.price_cop || 0;
@@ -283,7 +283,7 @@ const getProductPriceOriginalSinIva = (product, currency) => {
       basePrice = product.original_price_usd || product.originalPrice || product.basePrice || product.price || 0;
     }
   } else {
-    if (currency === "BS") basePrice = product.price_bs || 0;
+    if (currency === "BS" || currency === "Bs") basePrice = product.price_bs || 0;
     else if (currency === "COP") basePrice = product.price_cop || 0;
     else basePrice = product.price || 0;
   }
@@ -301,7 +301,7 @@ const getProductPriceSinDescuento = (product, currency) => {
     (product.has_pack_discount && product.pack_id) ||
     product.discount_percentage > 0
   ) {
-    if (currency === "BS") {
+    if (currency === "BS" || currency === "Bs") {
       basePrice = product.original_price_bs || product.price_bs || 0;
     } else if (currency === "COP") {
       basePrice = product.original_price_cop || product.price_cop || 0;
@@ -309,7 +309,7 @@ const getProductPriceSinDescuento = (product, currency) => {
       basePrice = product.original_price_usd || product.basePrice || product.price || 0;
     }
   } else {
-    if (currency === "BS") {
+    if (currency === "BS" || currency === "Bs") {
       basePrice = product.price_bs || 0;
     } else if (currency === "COP") {
       basePrice = product.price_cop || 0;
@@ -330,11 +330,11 @@ const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
   if (product.discountApplied) {
-    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+    basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+    basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
   let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
   if (currency === "COP") {
@@ -347,11 +347,11 @@ const getIva = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
   if (product.discountApplied) {
-    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+    basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
-    basePrice = currency === "BS" ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
+    basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
   let Iva = basePrice * product.selectedQuantity * taxRate;
   if (currency === "COP") {
@@ -615,7 +615,7 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="width: 140px"
+            style="inline-size: 140px;"
             class="me-2"
             placeholder="Descuento"
             clearable
@@ -628,7 +628,7 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="width: 250px"
+            style="inline-size: 250px;"
             class="me-2"
             placeholder="Seleccione Empresa"
             item-title="title"
@@ -642,7 +642,7 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="width: 250px"
+            style="inline-size: 250px;"
             class="me-2"
             placeholder="Seleccione Médico"
             item-title="title"
@@ -655,7 +655,7 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="width: 250px"
+            style="inline-size: 250px;"
             class="me-2"
             placeholder="Subir Recipe"
             accept="image/*"
@@ -754,7 +754,7 @@ const specialTaxAmount = computed(() => {
                 placeholder="Código de Barra"
                 clearable
                 class="py-1"
-                style="max-width: 240px"
+                style="max-inline-size: 240px;"
                 @update:model-value="emit('update:searchQuery', $event)"
               />
             </VCol>
@@ -768,7 +768,7 @@ const specialTaxAmount = computed(() => {
       <VTable density="compact" lines="none">
         <tbody>
           <tr v-for="(product, index) in props.orderProducts" :key="product.id">
-            <td style="white-space: normal; word-wrap: break-word; max-width: none;">
+            <td style="white-space: normal; max-inline-size: none; word-wrap: break-word;">
               <div class="d-flex flex-column">
                 <span class="text-body-1 font-weight-medium text-high-emphasis" style="white-space: normal; word-wrap: break-word;">
                   {{ product.title }}

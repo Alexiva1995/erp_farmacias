@@ -78,7 +78,7 @@ let barcodeInputTimer;
 const BARCODE_LENGTH_THRESHOLD = 10;
 
 const getItemPriceByCurrency = (item, currency) => {
-  if (currency === "BS") {
+  if (currency === "BS" || currency === "Bs") {
     return item.price_bs || 0;
   } else if (currency === "COP") {
     return item.price_cop || 0;

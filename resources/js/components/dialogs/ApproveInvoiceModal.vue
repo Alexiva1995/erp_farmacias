@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { formatCurrency as globalFormatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -80,17 +81,7 @@ const closeDialog = () => {
 };
 
 const formatCurrency = (value, currency) => {
-  const currencyMap = {
-    BS: "VES",
-    Bs: "VES",
-    COP: "COP",
-    USD: "USD",
-  };
-  const mappedCurrency = currencyMap[currency] || currency;
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: mappedCurrency,
-  }).format(value);
+  return globalFormatCurrency(Number(value), currency);
 };
 </script>
 
@@ -122,7 +113,7 @@ const formatCurrency = (value, currency) => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1" style="overflow-y: auto;">
         <VAlert
           v-if="props.invoice.currency !== 'USD'"
           type="info"

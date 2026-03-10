@@ -216,11 +216,11 @@ const calculatedTotalUsd = computed(() => {
 
 const getCurrencySymbol = computed(() => {
   const symbolMap = {
-    Bs: "Bs.",
+    Bs: "Bs",
     USD: "$",
     COP: "COP$",
   };
-  return symbolMap[formData.value.currency] || "Bs.";
+  return symbolMap[formData.value.currency] || "Bs";
 });
 
 // Función para limpiar el formulario manteniendo el proveedor
