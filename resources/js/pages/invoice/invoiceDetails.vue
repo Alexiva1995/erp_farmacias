@@ -877,8 +877,24 @@ const saveEditingDetail = () => {
         itemType.charAt(0).toUpperCase() + itemType.slice(1)
       } actualizado correctamente`,
     );
+
+    // Buscar el siguiente producto que necesite datos (Lote o Vencimiento vacío)
+    const nextIncompleteDetail = invoiceDetails.value.find(
+      (d, index) =>
+        index > detailIndex && (!d.lot_number?.trim() || !d.expiration_date),
+    );
+
+    if (nextIncompleteDetail) {
+      // Pequeño retraso para que el usuario vea el feedback del guardado antes de saltar al siguiente
+      setTimeout(() => {
+        startEditingDetail(nextIncompleteDetail);
+      }, 300);
+    } else {
+      cancelEditingDetail();
+    }
+  } else {
+    cancelEditingDetail();
   }
-  cancelEditingDetail();
 };
 
 const cancelEditingDetail = () => {
