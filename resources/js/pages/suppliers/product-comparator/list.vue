@@ -285,6 +285,8 @@ const fetchProducts = async () => {
     return;
   }
 
+  if (loadingProducts.value) return;
+
   // Limpieza de parámetros nulos/vacíos
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key],
@@ -370,6 +372,7 @@ const fetchStatuses = async () => {
 
 const fetchProductsWithoutSupplier = async () => {
   try {
+    if (loadingProductsWithoutSupplier.value) return;
     loadingProductsWithoutSupplier.value = true;
 
     const payload = {
@@ -532,6 +535,12 @@ const updateTableOptions = (options) => {
 
 // FUNCIÓN ACTUALIZADA PARA CAPTURAR ORDENAMIENTO DE LA TABLA
 const updateProductsTableOptions = (options) => {
+  if (productsPage.value === options.page && 
+      productsItemPerPage.value === options.itemsPerPage && 
+      JSON.stringify(sortOptions.value) === JSON.stringify(options.sortBy || [])) {
+    return;
+  }
+  
   productsPage.value = options.page;
   productsItemPerPage.value = options.itemsPerPage;
   // VDataTableServer envía 'sortBy' en las opciones
@@ -685,6 +694,13 @@ const handleSaveAnalysis = async ({ item, newValue }) => {
 
 
 const updateProductsWithoutSupplierOptions = (options) => {
+  if (pageProductsWithoutSupplier.value === options.page && 
+      itemsPerPageProductsWithoutSupplier.value === options.itemsPerPage &&
+      sortByProductsWithoutSupplier.value === options.sortBy?.[0]?.key &&
+      orderByProductsWithoutSupplier.value === options.sortBy?.[0]?.order) {
+    return;
+  }
+
   pageProductsWithoutSupplier.value = options.page;
   itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
   if (options.sortBy && options.sortBy.length > 0) {
