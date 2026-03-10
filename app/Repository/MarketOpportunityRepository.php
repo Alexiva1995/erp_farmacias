@@ -2,7 +2,7 @@
 
 namespace App\Repository;
 
-use App\Models\SuppliersConfigProduct;
+use App\Models\ProductSupplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -11,43 +11,45 @@ class MarketOpportunityRepository
 {
     /**
      * Construye la consulta base para las oportunidades de mercado.
-     * Compara suppliers_config_products.price con el MIN(unit_cost) de invoice_details de los últimos 12 meses.
+     * Compara product_suppliers.unit_cost_usd con el MIN(unit_cost) de product_lots.
      */
     public function builderMarketOpportunities($filtros): Builder
     {
         $doceMesesAtras = now()->subMonths(12)->toDateString();
 
-        // Subconsulta para el costo mínimo histórico por producto en los últimos 12 meses
-        $minHistoricCostSubquery = DB::table('invoice_details')
-            ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+        // Subconsulta para el costo mínimo histórico por producto en los lotes (últimos 12 meses)
+        $minHistoricCostSubquery = DB::table('product_lots')
             ->select('product_id', DB::raw('MIN(unit_cost) as min_historic_cost'))
-            ->whereDate('invoices.received_date', '>=', $doceMesesAtras)
+            ->whereDate('created_at', '>=', $doceMesesAtras)
             ->groupBy('product_id');
 
-        $query = SuppliersConfigProduct::query()
+        $query = ProductSupplier::query()
             ->select(
-                'suppliers_config_products.*',
+                'product_suppliers.*',
                 'products.name as product_name_inventory',
                 'products.active_ingredient as active_ingredient_inventory',
                 'laboratories.name as laboratory_name',
                 'historic.min_historic_cost',
-                DB::raw('(historic.min_historic_cost - suppliers_config_products.price) as saving_amount'),
-                DB::raw('ROUND(((historic.min_historic_cost - suppliers_config_products.price) / historic.min_historic_cost) * 100, 2) as saving_percentage')
+                DB::raw('(historic.min_historic_cost - product_suppliers.unit_cost_usd) as saving_amount'),
+                DB::raw('ROUND(((historic.min_historic_cost - product_suppliers.unit_cost_usd) / historic.min_historic_cost) * 100, 2) as saving_percentage')
             )
-            ->join('products', 'suppliers_config_products.barcode', '=', 'products.barcode')
+            ->join('products', 'product_suppliers.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->joinSub($minHistoricCostSubquery, 'historic', function ($join) {
                 $join->on('products.id', '=', 'historic.product_id');
             })
-            // Solo productos donde el precio actual del proveedor es MENOR al mínimo histórico
-            ->whereRaw('suppliers_config_products.price < historic.min_historic_cost');
+            // Solo registros con costo mayor a 0 para evitar divisiones por cero y datos basura
+            ->where('product_suppliers.unit_cost_usd', '>', 0)
+            ->where('historic.min_historic_cost', '>', 0)
+            // Solo productos donde el precio actual del proveedor es MENOR al mínimo histórico registrado en lotes
+            ->whereRaw('product_suppliers.unit_cost_usd < historic.min_historic_cost');
 
         // Aplicar filtros similares a los de productos
         if (!empty($filtros['q'])) {
             $query->where(function ($q) use ($filtros) {
                 $searchTerm = '%' . $filtros['q'] . '%';
-                $q->where('suppliers_config_products.product_name', 'like', $searchTerm)
-                  ->orWhere('suppliers_config_products.barcode', 'like', $searchTerm)
+                $q->where('product_suppliers.name', 'like', $searchTerm)
+                  ->orWhere('product_suppliers.barcode_match', 'like', $searchTerm)
                   ->orWhere('products.name', 'like', $searchTerm);
             });
         }
@@ -65,6 +67,9 @@ class MarketOpportunityRepository
         // Ordenamiento por defecto: mayor ahorro porcentual primero
         $sortBy = $filtros['sortBy'] ?? 'saving_percentage';
         $orderBy = $filtros['orderBy'] ?? 'desc';
+
+        // Mapeo de columnas para ordenamiento si es necesario (ej: price -> unit_cost_usd)
+        if ($sortBy === 'price') $sortBy = 'unit_cost_usd';
 
         return $query->orderBy($sortBy, $orderBy);
     }

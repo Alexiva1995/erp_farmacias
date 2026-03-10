@@ -22,7 +22,7 @@ const headers = [
   { title: "Producto", key: "product_name_inventory", sortable: true },
   { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "Principio Activo", key: "active_ingredient_inventory", sortable: false },
-  { title: "Costo Actual", key: "price", align: "end", sortable: true },
+  { title: "Costo Actual", key: "unit_cost_usd", align: "end", sortable: true },
   { title: "Mín. Histórico", key: "min_historic_cost", align: "end", sortable: true },
   { title: "Ahorro", key: "saving_amount", align: "end", sortable: true, color: 'success' },
   { title: "% Ahorro", key: "saving_percentage", align: "end", sortable: true },
@@ -165,8 +165,8 @@ onMounted(() => {
         hover
         class="text-no-wrap"
       >
-        <template #item.price="{ item }">
-          <span class="font-weight-medium">{{ formatCurrency(item.price, 'USD') }}</span>
+        <template #item.unit_cost_usd="{ item }">
+          <span class="font-weight-medium">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
         </template>
 
         <template #item.min_historic_cost="{ item }">
