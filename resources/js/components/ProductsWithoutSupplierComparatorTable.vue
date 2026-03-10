@@ -18,7 +18,6 @@ const emit = defineEmits([
   "update:modelValue",
   "delete",
   "save-analysis",
-  "mark-scarce",
   "update:search-query",
 ]);
 

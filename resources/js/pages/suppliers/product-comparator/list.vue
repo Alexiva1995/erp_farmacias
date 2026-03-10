@@ -22,6 +22,7 @@ const supplierConnections = ref([]);
 const suppliers = ref([]);
 const origins = ref([]);
 const laboratories = ref([]);
+const groups = ref([]);
 const products = ref([]);
 const loadingSuppliers = ref(false);
 const loadingProducts = ref(false);
@@ -81,8 +82,8 @@ const searchQueryRight = ref("");
 
 //variables para el flitro de productos sin proveedor
 const con_descuento = ref(true); // Fallas , Execeso o All
-const selectedLaboratory = ref();
-const selectedGroup = ref();
+const selectedLaboratory = ref([]);
+const selectedGroup = ref([]);
 const tipo_de_vista = ref(false); // grupo o individual
 const tipo_de_filtracion = ref("combinado"); // mismos defaults que el Asistente IA
 const lapso_de_tiempo = ref("1 month"); // mismos defaults que el Asistente IA
@@ -425,15 +426,17 @@ const stopPolling = () => {
 
 const fetchOptions = async () => {
   try {
-    const [labResponse, originResponse, suppliersResponse] = await Promise.all([
+    const [labResponse, originResponse, suppliersResponse, groupsResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/available-suppliers"),
+      axios.get("/groups"),
     ]);
     laboratories.value = labResponse.data;
     laboratoriesProductsWithoutSupplier.value = labResponse.data;
     origins.value = originResponse.data;
     suppliers.value = suppliersResponse.data.data;
+    groups.value = groupsResponse.data;
   } catch (error) {
     console.error("Hubo un error al obtener los datos para filtrar:", error);
     toast.error("Hubo un error al obtener los datos para filtrar.");
@@ -827,7 +830,6 @@ const handleOpenPublicLink = (supplier) => {
               @select-product="handleSelectProductFromTop"
               @delete="handleToggleOrder"
               @save-analysis="handleSaveAnalysis"
-              @mark-scarce="handleMarkScarce"
             />
           </VCol>
         </VRow>
