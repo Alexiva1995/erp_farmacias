@@ -35,6 +35,10 @@ const filterSearchQuery = ref("");
 const stockStatusFilter = ref(null);
 const isStrictSearch = ref(false);
 
+const searchedSupplier = ref(null);
+const searchedLaboratory = ref(null);
+let debounceTimerProductsWithoutSupplier;
+
 const enableDiscounts = ref(false);
 
 const isShowSupplierProductsDialogActive = ref(false);
