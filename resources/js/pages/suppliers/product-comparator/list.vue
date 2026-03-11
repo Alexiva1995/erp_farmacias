@@ -4,7 +4,8 @@ import DeleteOldProductsDialog from "@/components/dialogs/DeleteOldProductsDialo
 import GeneratePublicLinkDialog from "@/components/dialogs/GeneratePublicLinkDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
-import ComparatorAdvancedFiltersDialog from "@/components/dialogs/ComparatorAdvancedFiltersDialog.vue";
+import ComparatorCatalogFiltersDialog from "@/components/dialogs/ComparatorCatalogFiltersDialog.vue";
+import ComparatorNeedsFiltersDialog from "@/components/dialogs/ComparatorNeedsFiltersDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
@@ -48,10 +49,9 @@ const supplierForDiscount = ref(null);
 const isGeneratePublicLinkDialogActive = ref(false);
 const supplierForPublicLink = ref(null);
 
+const isCatalogFiltersDialogVisible = ref(false);
+const isNeedsFiltersDialogVisible = ref(false);
 const checkingApiSupplierId = ref(null);
-const pollingInterval = ref(null);
-
-const isAdvancedFiltersDialogVisible = ref(false);
 const pollingSupplierId = ref(null);
 const tab = ref(route.query.tab || "suppliers");
 const page = ref(1);
@@ -84,8 +84,10 @@ const searchQueryRight = ref("");
 
 //variables para el flitro de productos sin proveedor
 const con_descuento = ref(true); // Fallas , Execeso o All
-const selectedLaboratory = ref([]);
-const selectedGroup = ref([]);
+const selectedLaboratory = ref([]); // Filtro Catálogo
+const selectedGroup = ref([]); // Filtro Catálogo
+const needsLaboratory = ref([]); // Filtro Necesidades IA
+const needsGroup = ref([]); // Filtro Necesidades IA
 const tipo_de_vista = ref(false); // grupo o individual
 const tipo_de_filtracion = ref("combinado"); // mismos defaults que el Asistente IA
 const lapso_de_tiempo = ref("1 month"); // mismos defaults que el Asistente IA
@@ -100,6 +102,8 @@ const handleClearFilters = () => {
   stock.value = "all";
   selectedLaboratory.value = [];
   selectedGroup.value = [];
+  needsLaboratory.value = [];
+  needsGroup.value = [];
 };
 
 const handleSelectProductFromTop = (product) => {
@@ -258,7 +262,7 @@ const fetchProducts = async () => {
     page: productsPage.value,
     perPage: productsItemPerPage.value,
     supplierId: searchedSupplier.value,
-    laboratoryId: selectedLaboratory.value, // Usar el mismo laboratorio que IA
+    laboratoryId: selectedLaboratory.value, // Filtro exclusivo del catálogo
     q: filterSearchQuery.value || searchQueryRight.value, // Sincronizar búsqueda
     originId: selectedOrigin.value,
     isStrictSearch: isStrictSearch.value,
@@ -362,8 +366,8 @@ const fetchProductsWithoutSupplier = async () => {
     loadingProductsWithoutSupplier.value = true;
 
     const payload = {
-      laboratoryId: selectedLaboratory.value,
-      groups: selectedGroup.value,
+      laboratoryId: needsLaboratory.value,
+      groups: needsGroup.value,
       tipo_vista: tipo_de_vista.value,
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
@@ -456,6 +460,8 @@ watch(
   [
     selectedLaboratory,
     selectedGroup,
+    needsLaboratory,
+    needsGroup,
     tipo_de_vista,
     tipo_de_filtracion,
     lapso_de_tiempo,
@@ -700,53 +706,41 @@ const handleOpenPublicLink = (supplier) => {
           <VTab value="suppliers"> Proveedores</VTab>
           <VTab value="products"> Productos</VTab>
         </VTabs>
-        <ComparatorAdvancedFiltersDialog
+        <ComparatorCatalogFiltersDialog
           v-if="tab === 'products'"
-          v-model:is-dialog-visible="isAdvancedFiltersDialogVisible"
+          v-model:is-dialog-visible="isCatalogFiltersDialogVisible"
           v-model:selected-laboratory="selectedLaboratory"
           v-model:selected-group="selectedGroup"
-          v-model:tipo_de_filtracion="tipo_de_filtracion"
-          v-model:lapso_de_tiempo="lapso_de_tiempo"
-          v-model:stock="stock"
-          v-model:select-con-descuento="con_descuento"
+          v-model:selected-origin="selectedOrigin"
+          v-model:selected-supplier="searchedSupplier"
           v-model:enable-discounts="enableDiscounts"
           v-model:enable-usd-amount-col="enableUsdAmountCol"
           v-model:enable-discount-col="enableDiscountCol"
-          v-model:selected-origin="selectedOrigin"
-          v-model:selected-supplier="searchedSupplier"
           v-model:is-strict-search="isStrictSearch"
           :laboratories="laboratories"
           :groups="groups"
           :origins="origins"
           :suppliers="suppliers"
-          @clear="handleClearFilters"
-          @open-delete-dialog="isDeleteDialogVisible = true"
+          @clear="handleClearProductsFilters"
           @update-all-api="handleUpdateAllApi"
         />
+
+        <ComparatorNeedsFiltersDialog
+          v-if="tab === 'products'"
+          v-model:is-dialog-visible="isNeedsFiltersDialogVisible"
+          v-model:selected-laboratory="needsLaboratory"
+          v-model:selected-group="needsGroup"
+          v-model:tipo_de_filtracion="tipo_de_filtracion"
+          v-model:lapso_de_tiempo="lapso_de_tiempo"
+          v-model:stock="stock"
+          v-model:select-con-descuento="con_descuento"
+          :laboratories="laboratories"
+          :groups="groups"
+          @clear="handleClearFilters"
+          @open-delete-dialog="isDeleteDialogVisible = true"
+        />
         
-        <div v-if="tab === 'products'" class="d-flex align-center gap-4 px-4 pb-2">
-          <VBtn
-            color="primary"
-            variant="tonal"
-            prepend-icon="tabler-adjustments-horizontal"
-            @click="isAdvancedFiltersDialogVisible = true"
-          >
-            Filtros Avanzados
-          </VBtn>
-          
-          <VChipGroup v-if="selectedLaboratory.length > 0" class="d-inline-flex">
-            <VChip
-              v-for="labId in selectedLaboratory"
-              :key="labId"
-              closable
-              size="small"
-              color="primary"
-              @click:close="selectedLaboratory = selectedLaboratory.filter(id => id !== labId)"
-            >
-              {{ laboratories.find(l => l.id === labId)?.name }}
-            </VChip>
-          </VChipGroup>
-        </div>
+        <!-- HEADER ELIMINADO PARA MAXIMIZAR ESPACIO VERTICAL -->
       </VCardText>
     </VCard>
 
@@ -793,6 +787,7 @@ const handleOpenPublicLink = (supplier) => {
               :selected-product="selectedProductFromTop"
               @update:options="updateProductsTableOptions"
               @send-product="handleAddItemToAutoOrder"
+              @open-filters="isCatalogFiltersDialogVisible = true"
             />
           </VCol>
 
@@ -811,6 +806,7 @@ const handleOpenPublicLink = (supplier) => {
               @select-product="handleSelectProductFromTop"
               @delete="handleToggleOrder"
               @save-analysis="handleSaveAnalysis"
+              @open-filters="isNeedsFiltersDialogVisible = true"
             />
           </VCol>
         </VRow>

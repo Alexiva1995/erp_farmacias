@@ -23,6 +23,7 @@ const emit = defineEmits([
   "send-product",
   "update:searchQuery",
   "update:isStrictSearch",
+  "open-filters"
 ]);
 
 const localSearch = ref(props.searchQuery);
@@ -61,7 +62,7 @@ const formatUsd = (amount) => {
     new Intl.NumberFormat("es-VE", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount) + " $"
+    }).format(amount)
   );
 };
 
@@ -97,14 +98,12 @@ const getPriceDiff = (item) => {
 
 const allHeaders = [
   { title: "Proveedor", key: "supplier_name", sortable: false, width: "170px" },
-  { title: "Nombre", key: "name", sortable: true, width: "400px" },
-  { title: "Diferencia", key: "price_diff", sortable: false },
-  { title: "Usd", key: "unit_cost_usd", sortable: true },
-  { title: "Usd %", key: "final_cost_usd", sortable: true },
-  { title: "Bs", key: "unit_cost_bs", sortable: true },
-  { title: "Bs %", key: "final_cost_bs", sortable: true },
-  { title: "Vencimiento", key: "expiration", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false, width: "230px" },
+  { title: "Nombre", key: "name", sortable: true, width: "350px" },
+  { title: "Lab.", key: "laboratory_name", sortable: false, width: "120px" },
+  { title: "Costo", key: "unit_cost_usd", sortable: true, width: "80px" },
+  { title: "Final", key: "final_cost_usd", sortable: true, width: "80px" },
+  { title: "Ahorro", key: "price_diff", sortable: false, width: "120px" },
+  { title: "", key: "actions", sortable: false, width: "110px" },
 ];
 
 const headers = computed(() =>
@@ -125,21 +124,26 @@ const headers = computed(() =>
 </script>
 
 <template>
-  <VCard>
-    <VCardText class="py-4 gap-4">
+    <div class="d-flex align-center gap-4 px-4 py-2 border-bottom">
       <AppTextField
         :model-value="localSearch"
-        placeholder="Buscar por Nombre o Laboratorio"
+        placeholder="Buscar en catálogo..."
         clearable
         @update:model-value="$emit('update:searchQuery', $event)"
-        class="w-25"
+        class="w-50"
+        density="compact"
       />
-      <VCheckbox
-        label="Búsqueda Estricta"
-        :model-value="props.isStrictSearch"
-        @update:model-value="$emit('update:isStrictSearch', $event)"
-      />
-    </VCardText>
+      <VSpacer />
+      <VBtn
+        color="primary"
+        variant="tonal"
+        size="small"
+        prepend-icon="tabler-adjustments-horizontal"
+        @click="emit('open-filters')"
+      >
+        Filtros Catálogo
+      </VBtn>
+    </div>
 
     <VDivider />
 
@@ -191,7 +195,7 @@ const headers = computed(() =>
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
             <span
-              class="text-body-1 font-weight-medium text-high-emphasis text-wrap"
+              class="text-caption font-weight-medium text-high-emphasis text-wrap"
             >
               {{ item.name }}
             </span>
@@ -237,19 +241,17 @@ const headers = computed(() =>
       <!-- Acciones -->
       <template #item.actions="{ item }">
         <div class="d-flex align-center ga-2">
-          <VTextField
-            :model-value="getQty(item.id)"
-            @update:model-value="(val) => rows[item.id] = Number(val)"
-            label="Cantidad"
-            min="1"
-            type="number"
-            variant="outlined"
-            density="compact"
-            hide-details="auto"
-            style="inline-size: 80px;"
-            :error="!!quantityErrors[item.id]"
-            :error-messages="quantityErrors[item.id]"
-          />
+              <VTextField
+                :model-value="getQty(item.id)"
+                @update:model-value="(val) => (rows[item.id] = Number(val))"
+                type="number"
+                variant="underlined"
+                density="compact"
+                hide-details
+                class="compact-input-qty"
+                style="width: 45px"
+                :error="!!quantityErrors[item.id]"
+              />
 
           <VTooltip text="Agregar al Pedido del Día" location="top">
             <template #activator="{ props: tooltipProps }">

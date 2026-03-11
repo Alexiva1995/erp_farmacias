@@ -19,6 +19,7 @@ const emit = defineEmits([
   "delete",
   "save-analysis",
   "update:search-query",
+  "open-filters"
 ]);
 
 // Track edited pedido values per item id
@@ -75,15 +76,22 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       <VSpacer />
       <VChip
         v-if="modelValue"
-        color="primary"
+        color="info"
         variant="tonal"
         size="small"
-        prepend-icon="tabler-cursor-text"
-        class="text-truncate"
-        style="max-inline-size: 280px;"
       >
         Comparando: {{ modelValue.name }}
       </VChip>
+      
+      <VBtn
+        color="primary"
+        variant="tonal"
+        size="small"
+        prepend-icon="tabler-adjustments-horizontal"
+        @click="emit('open-filters')"
+      >
+        Filtros IA
+      </VBtn>
     </VCardTitle>
 
     <div class="px-4 pb-4">
@@ -172,7 +180,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       <template #item.cheapest_barcode="{ item }">
         <span
           v-if="item.cheapest_barcode"
-          class="text-body-2 font-weight-medium"
+          class="text-caption font-weight-medium text-wrap"
         >
           {{ item.cheapest_barcode }}
         </span>
@@ -183,12 +191,13 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       <template #item.pedido="{ item }">
         <VTextField
           :model-value="getInputValue(item)"
-          type="number"
           density="compact"
-          variant="outlined"
+          variant="underlined"
           hide-details
-          style=" max-inline-size: 110px;min-inline-size: 90px;"
-          @update:model-value="onInputChange(item, $event)"
+          type="number"
+          class="compact-input-qty"
+          style="width: 45px"
+          @update:model-value="(val) => onInputChange(item, val)"
           @click.stop
         />
       </template>
@@ -262,6 +271,27 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
 }
 
 :deep(.cursor-pointer) {
+  cursor: pointer;
+}
+
+
+.compact-input-qty :deep(.v-field__input) {
+  padding: 4px 0 !important;
+  text-align: center;
+  font-size: 0.85rem;
+  min-height: auto !important;
+}
+
+.text-caption {
+  font-size: 0.72rem !important;
+  line-height: 0.9rem !important;
+}
+
+.selected-row {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.cursor-pointer {
   cursor: pointer;
 }
 
