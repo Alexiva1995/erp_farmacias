@@ -216,11 +216,11 @@ const calculatedTotalUsd = computed(() => {
 
 const getCurrencySymbol = computed(() => {
   const symbolMap = {
-    Bs: "Bs.",
+    Bs: "Bs",
     USD: "$",
     COP: "COP$",
   };
-  return symbolMap[formData.value.currency] || "Bs.";
+  return symbolMap[formData.value.currency] || "Bs";
 });
 
 // Función para limpiar el formulario manteniendo el proveedor
@@ -488,7 +488,7 @@ const handleCancel = () => {
 
       <VCardText>
         <VForm @submit.prevent="handleSubmit">
-          <VRow>
+          <VRow index="0" density="compact" class="mb-2">
             <VCol cols="12" md="4">
               <VAutocomplete
                 v-model="formData.supplier_id"
@@ -514,13 +514,12 @@ const handleCancel = () => {
             </VCol>
           </VRow>
 
-          <VRow>
+          <VRow index="1" density="compact" class="mb-2">
             <VCol cols="12" md="3">
               <VTextField
                 v-model="formData.created_invoice_date"
                 label="F. de Emisión"
                 type="date"
-                placeholder="YYYY-MM-DD"
               />
             </VCol>
             <VCol cols="12" md="3">
@@ -528,15 +527,13 @@ const handleCancel = () => {
                 v-model="formData.received_date"
                 label="F. de Recibo"
                 type="date"
-                placeholder="YYYY-MM-DD"
               />
             </VCol>
             <VCol cols="12" md="3">
               <VTextField
                 v-model="formData.exp_date"
-                label="Fecha de Vencimiento"
+                label="Vencimiento"
                 type="date"
-                placeholder="YYYY-MM-DD"
                 :error="!!expDateError"
                 :error-messages="expDateError"
               />
@@ -546,93 +543,107 @@ const handleCancel = () => {
                 v-model="formData.payment_date"
                 label="Fecha de Pago"
                 type="date"
-                placeholder="YYYY-MM-DD"
-                hint="Se calcula automáticamente pero puede editarse"
+                hint="Auto-calculado"
                 persistent-hint
               />
             </VCol>
           </VRow>
-          <VRow v-if="!isEditMode && selectedSupplier">
+          <VRow v-if="!isEditMode && selectedSupplier" class="mb-4">
             <VCol cols="12">
-              <VAlert type="info" variant="outlined" density="compact">
-                <div class="text-caption">
-                  Proveedor seleccionado: {{ selectedSupplier.name }} | Método
-                  de pago:
-                  {{
-                    translatePaymentMethodType(
-                      selectedSupplier.payment_due_type,
-                    ) || "No definido"
-                  }}
-                  | Días: {{ selectedSupplier.custom_due_days || "N/A" }}
-                </div>
-              </VAlert>
+              <div class="d-flex align-center flex-wrap gap-2 pa-3 rounded bg-light-primary" style="background: rgba(var(--v-theme-primary), 0.05);">
+                <VIcon icon="tabler-info-circle" color="primary" class="mr-2" />
+                <span class="text-body-2 font-weight-medium">Configuración de Pago:</span>
+                <VChip color="primary" size="small" variant="flat" class="ml-2">
+                  {{ translatePaymentMethodType(selectedSupplier.payment_due_type) || "No definido" }}
+                </VChip>
+                <VChip v-if="selectedSupplier.custom_due_days" color="secondary" size="small" variant="tonal">
+                  {{ selectedSupplier.custom_due_days }} días
+                </VChip>
+                <VSpacer />
+                <span class="text-caption text-medium-emphasis italic">
+                   La fecha de pago se recalcula automáticamente basado en estas reglas.
+                </span>
+              </div>
             </VCol>
           </VRow>
 
           <VDivider class="my-4" />
-
-          <VRow>
-            <VCol cols="12" md="4">
+          
+          <!-- Bloque Financiero -->
+          <VRow index="2" density="compact" class="align-center mb-2">
+            <VCol cols="12" md="2">
               <VSelect
                 v-model="formData.currency"
                 :items="currencyOptions"
-                label="Moneda de la Factura"
+                label="Moneda"
                 item-title="title"
                 item-value="value"
+                variant="solo-filled"
+                flat
+              >
+                <template #prepend-inner>
+                   <VIcon icon="tabler-coin" color="primary" size="20" />
+                </template>
+              </VSelect>
+            </VCol>
+            <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
+              <VExpandTransition>
+                <VTextField
+                  v-model.number="formData.exchange_rate"
+                  label="Tasa"
+                  type="number"
+                  variant="outlined"
+                  color="primary"
+                >
+                   <template #prepend-inner>
+                    <VIcon icon="tabler-trending-up" size="20" />
+                  </template>
+                </VTextField>
+              </VExpandTransition>
+            </VCol>
+            <VCol cols="12" md="2">
+              <VTextField
+                v-model.number="formData.exempt_amount"
+                label="Exento"
+                type="number"
+                :prefix="getCurrencySymbol"
+                variant="underlined"
+              />
+            </VCol>
+            <VCol cols="12" md="2" :md="shouldShowExchangeRate ? 2 : 3">
+              <VTextField
+                v-model.number="formData.taxable_base"
+                label="Base (16%)"
+                type="number"
+                :prefix="getCurrencySymbol"
+                variant="underlined"
+              />
+            </VCol>
+            <VCol cols="12" md="2" :md="shouldShowExchangeRate ? 2 : 3">
+              <VTextField
+                v-model.number="formData.tax_amount"
+                label="IVA"
+                type="number"
+                :prefix="getCurrencySymbol"
+                readonly
+                variant="underlined"
               />
             </VCol>
           </VRow>
 
-          <VRow>
-            <VCol cols="12" md="2">
-              <VTextField
-                v-model.number="formData.exempt_amount"
-                label="Monto Excento IVA"
-                type="number"
-                :prefix="getCurrencySymbol"
-              />
+          <!-- Totales Minimalistas -->
+          <VRow index="3" density="compact" class="mt-2">
+            <VCol cols="12" md="6">
+              <div class="pa-2 rounded d-flex justify-space-between align-center" style=" border: 1px solid rgba(var(--v-theme-primary), 0.1);background: rgba(var(--v-theme-primary), 0.05);">
+                <span class="text-caption text-medium-emphasis">Total Factura ({{ formData.currency }})</span>
+                <span class="text-h6 font-weight-bold text-primary">{{ getCurrencySymbol }} {{ formData.total_amount }}</span>
+              </div>
             </VCol>
-            <VCol cols="12" md="2">
-              <VTextField
-                v-model.number="formData.taxable_base"
-                label="Base Imponible 16%"
-                type="number"
-                :prefix="getCurrencySymbol"
-              />
-            </VCol>
-            <VCol cols="12" md="2">
-              <VTextField
-                v-model.number="formData.tax_amount"
-                label="Impuesto 16%"
-                type="number"
-                :prefix="getCurrencySymbol"
-                readonly
-              />
-            </VCol>
-            <VCol cols="12" md="2">
-              <VTextField
-                v-model.number="formData.total_amount"
-                label="Total Factura"
-                type="number"
-                :prefix="getCurrencySymbol"
-                readonly
-              />
-            </VCol>
-            <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
-              <VTextField
-                v-model.number="formData.exchange_rate"
-                label="Tasa de Cambio"
-                type="number"
-              />
-            </VCol>
-            <VCol cols="12" md="2">
-              <VTextField
-                v-model.number="formData.total_usd"
-                label="Total Referencia (USD)"
-                type="number"
-                prefix="$"
-                readonly
-              />
+            <VCol cols="12" md="6">
+              <div class="pa-2 rounded d-flex justify-space-between align-center" style=" border: 1px solid rgba(var(--v-theme-success), 0.1);background: rgba(var(--v-theme-success), 0.05);">
+                <span class="text-caption text-medium-emphasis">Referencia Total (USD)</span>
+                <span class="text-h6 font-weight-bold text-success">$ {{ formData.total_usd }}</span>
+              </div>
             </VCol>
           </VRow>
         </VForm>

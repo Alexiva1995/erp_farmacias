@@ -20,20 +20,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Contracts\Repositories\SupplierRepositoryInterface;
 use PhpOffice\PhpSpreadsheet\Calculation\Statistical\Distributions\F;
 
 class SupplierQueryService
 {
+    public function __construct(
+        private SupplierRepositoryInterface $supplierRepository
+    ) {}
     /**
      * Prepares the base query for suppliers.
      */
     private function getBaseQuery(): Builder
     {
-
-        return Supplier::query()
-            ->withoutTrashed()
-            ->select('suppliers.*')
-            ->with(['latestScore', 'paymentRules', 'paymentDate']);
+        return $this->supplierRepository->getQuery();
     }
 
     /**
@@ -479,6 +479,7 @@ class SupplierQueryService
             ->select(
                 "suppliers.name as name",
                 "suppliers.id",
+                "suppliers.public_token",
                 DB::raw(
                     "COALESCE(supplier_connections.last_connection, 'No se ha establecido conexión') as last_connection",
                 ),
@@ -630,10 +631,15 @@ class SupplierQueryService
                 $query->where('products.origin_id', $originId);
             })
             ->when($supplierId, function ($query) use ($supplierId) {
-                $query->where("supplier_id", $supplierId);
+                $query->where("product_suppliers.supplier_id", $supplierId);
             })
-            ->when($laboratoryId, function ($query) use ($laboratory) {
-                $query->where("laboratory", $laboratory->name);
+            ->when(!empty($request->query('laboratoryId')), function ($query) use ($request) {
+                $labs = Arr::wrap($request->query('laboratoryId'));
+                $query->whereIn("products.laboratory_id", $labs);
+            })
+            ->when(!empty($request->query('groupId')), function ($query) use ($request) {
+                $groups = Arr::wrap($request->query('groupId'));
+                $query->whereIn("products.group_id", $groups);
             })
 
             ->orderBy($sortColumn, $sortOrder)
@@ -674,7 +680,7 @@ class SupplierQueryService
 
         $barcodeWarning = null;
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
-        if ($mainProduct && empty($mainProduct->barcode) && !empty($product->barcode_match)) {
+        if ($mainProduct && (empty($mainProduct->barcode) || strlen($mainProduct->barcode) < 6) && !empty($product->barcode_match)) {
             $barcodeExists = Product::where('barcode', $product->barcode_match)->exists();
             if (!$barcodeExists) {
                 // 2. Solo si no existe en ningún otro lado, lo asignamos

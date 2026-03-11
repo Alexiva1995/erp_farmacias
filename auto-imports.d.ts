@@ -113,7 +113,6 @@ declare global {
   const pdfClienstGenerator: typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']
   const pdfCompaniesGenerator: typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']
   const pdfDoctorsGenerator: typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']
-  const pdfEmployeesGenerator: typeof import('./resources/js/utils/pdfEmployeesGenerator.js')['default']
   const pdfGastos: typeof import('./resources/js/utils/pdfGastos.js')['default']
   const pdfPayslipGenerator: typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']
   const pdfProductsAssistantReportGenerator: typeof import('./resources/js/utils/pdfProductsAssistantReportGenerator.js')['default']

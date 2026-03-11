@@ -1,4 +1,6 @@
 <script setup>
+import { toast } from "@/plugins/sweetalert";
+
 const props = defineProps({
   checkingApiId: { type: Number, default: null },
   supplierConnections: { type: Array, required: true },
@@ -17,7 +19,22 @@ const emit = defineEmits([
   "delete-products",
   "open-discount-dialog",
   "update:searchQuery",
+  "open-public-link",
 ]);
+
+const copyPublicLink = (item) => {
+  if (!item.public_token) {
+    toast.error("El enlace público no ha sido generado todavía.");
+    return;
+  }
+  const baseUrl = window.location.origin;
+  const publicUrl = `${baseUrl}/p/suppliers/upload/${item.public_token}`;
+
+  navigator.clipboard
+    .writeText(publicUrl)
+    .then(() => toast.success("Enlace copiado al portapapeles"))
+    .catch(() => toast.error("Error al copiar el enlace"));
+};
 
 const headers = [
   { title: "Id", key: "id", sortable: false },
@@ -135,6 +152,26 @@ const headers = [
                 "
                 :class="checkingApiId === item.id ? 'spin-icon' : ''"
               />
+            </IconBtn>
+          </template>
+        </VTooltip>
+
+        <VTooltip text="Copiar Link Público" location="top">
+          <template #activator="{ props }">
+            <IconBtn 
+              v-bind="props" 
+              :color="item.public_token ? 'success' : 'grey-500'" 
+              @click="copyPublicLink(item)"
+            >
+              <VIcon icon="tabler-copy" />
+            </IconBtn>
+          </template>
+        </VTooltip>
+
+        <VTooltip text="Configurar Link Público" location="top">
+          <template #activator="{ props }">
+            <IconBtn v-bind="props" color="secondary" @click="emit('open-public-link', item)">
+              <VIcon icon="tabler-link" />
             </IconBtn>
           </template>
         </VTooltip>

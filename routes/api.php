@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\ExpirationController;
 use App\Http\Controllers\Api\LotteryController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\MarketOpportunityController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
@@ -62,6 +63,7 @@ use App\Http\Controllers\Api\FinancialStatementController;
 use App\Http\Controllers\Api\GeneralSettingController;
 use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Public\SupplierPublicUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +77,8 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
+Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
+Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
 
 // TEMPORAL: Estado de Resultados público para debugging
 Route::prefix("finances")->group(function () {
@@ -442,6 +446,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
+        Route::post('/match-barcode', 'matchBarcode')->name('match-barcode');
         Route::get('/{invoice}/details', 'getDetails')->name('details');
         Route::get('/{invoice}/suggested-details', 'getSuggestedDetails')->name('suggested-details');
         Route::put('/{invoice}/data', 'updateData')->name('updateData');
@@ -482,6 +487,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
         Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
         Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
+        Route::post("/{supplier}/generate-public-token", [SupplierController::class, "generatePublicToken"]);
         // Rutas de configuración FTP/API autoadministrable
         Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
         Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
@@ -526,6 +532,16 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
     });
+
+    Route::prefix("market-opportunities")->group(function () {
+        Route::get("/", [MarketOpportunityController::class, "index"]);
+        Route::get("/export", [MarketOpportunityController::class, "export"]);
+    });
+    Route::prefix("bi")->group(function () {
+        Route::get("/abc", [\App\Http\Controllers\Api\Bi\AbcReportController::class, "generateReport"]);
+        Route::get("/sku-margin", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "generateReport"]);
+    });
+    
     Route::prefix("users")->group(function () {
         Route::get("/", [UserController::class, "getAll"]);
     });

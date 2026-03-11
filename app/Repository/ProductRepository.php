@@ -280,7 +280,7 @@ class ProductRepository
                 $consulta->orderBy($sortCol, $sortDir);
             }
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("diferencia_product", "DESC");
         }
 
 
@@ -378,7 +378,6 @@ class ProductRepository
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
-            'products.is_scarce',
             'products.unit_cost as current_unit_cost',
             DB::raw('(
                 SELECT ps.unit_cost_usd
@@ -447,18 +446,24 @@ class ProductRepository
                 AND aod.deleted_at IS NULL)';
 
         // calcular solicitar: demanda - stock - AO  (positivo = falta, negativo = exceso)
-        // Para fallas no se resta AO (nos interesa saber si el producto en sí tiene deficit)
+        // Redondear hacia arriba si falta, hacia abajo si sobra (CEIL/FLOOR)
         $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo_filtracion == "combinado") {
             // Demanda combinada = (promedio + ventas) / 2
             $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             // solicitar = demanda - stock - AO
-            $columnas[] = DB::raw('((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+            $columnas[] = DB::raw('CASE 
+                WHEN ((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+                ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+            END AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         } else {
             // solicitar = promedio - stock - AO
-            $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+            $columnas[] = DB::raw('CASE 
+                WHEN ((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+                ELSE FLOOR((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+            END AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         }
@@ -518,23 +523,9 @@ class ProductRepository
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                // Para evitar el error "Unknown column in having clause" en la consulta count(*) de la paginación de Laravel,
-                // debemos usar las subconsultas enteras o aliadas correctamente, no las variables que desaparecen en count.
-                // afortunadamente Laravel permite usar los alias si la versión de BD lo soporta, o debemos inyectarlas enteras.
-                // Como 'solicitar' es un alias válido solo en el bloque principal, y en la de count() puede romperse el de 'total_sold_completed',
-                // lo expandimos: 'solicitar > 0' O que (ventas sean 0 AND stock sea 0 AND AO sea 0)
-                $consulta->havingRaw("(
-                    solicitar > 0 OR 
-                    ( 
-                      (SELECT COALESCE(SUM(order_details.quantity), 0)
-                       FROM order_details JOIN orders ON orders.id = order_details.order_id
-                       WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '" . $filtros["previousDate"] . "' AND '" . $filtros["dateToday"] . "' AND orders.status = 'Completed') = 0 
-                      AND 
-                      (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
-                      AND
-                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL) = 0
-                    )
-                )");
+                // Ahora unificado: demanda - stock - AO > 0 = falla (puramente matemático)
+                // Y excepcion: solicitar es 0, y el stock físico también es 0
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -553,7 +544,7 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("solicitar", "DESC");
         }
 
 
@@ -664,8 +655,8 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes .
-                (($filtros['stock'] ?? '') !== 'fallas' ? ' - (
+            DB::raw('CASE 
+                WHEN (' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
@@ -673,8 +664,31 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
-                )' : '') .
-                ') AS solicitar'),
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                )) > 0 THEN CEIL(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                ))
+                ELSE FLOOR(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                ))
+            END AS solicitar'),
             DB::raw('(
                 SELECT ps.barcode_match
                 FROM product_suppliers ps
@@ -685,7 +699,6 @@ class ProductRepository
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
-            'products.is_scarce',
             'products.unit_cost as current_unit_cost',
             DB::raw('(
                 SELECT ps.unit_cost_usd
@@ -791,19 +804,9 @@ class ProductRepository
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                // Ahora unificado: demanda - stock - AO > 0 = falla
-                $consulta->havingRaw("(
-                    solicitar > 0 OR 
-                    ( 
-                      (SELECT COALESCE(SUM(order_details.quantity), 0)
-                       FROM order_details JOIN orders ON orders.id = order_details.order_id
-                       WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '" . $filtros["previousDate"] . "' AND '" . $filtros["dateToday"] . "' AND orders.status = 'Completed') = 0 
-                      AND 
-                      (SELECT COALESCE (SUM(quantity), 0) FROM product_lots WHERE product_id = products.id) = 0
-                      AND
-                      (SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL) = 0
-                    )
-                )");
+                // Ahora unificado: demanda - stock - AO > 0 = falla puramente matemático
+                // Y excepcion: solicitar es 0, y el stock físico también es 0
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -822,7 +825,7 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("solicitar", "DESC");
         }
 
 
@@ -986,10 +989,20 @@ class ProductRepository
                 AND aod.deleted_at IS NULL)';
 
         // calcular solicitar: demanda - stock - AO
-        $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+        $calcSolicitar = '((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')';
+        $columnas[] = DB::raw('CASE 
+            WHEN ' . $calcSolicitar . ' > 0 THEN CEIL(' . $calcSolicitar . ')
+            ELSE FLOOR(' . $calcSolicitar . ')
+        END AS solicitar');
 
 
-        $consulta = Product::select($columnas)->where('is_deleted', false)->with([
+        $consulta = Product::select($columnas)
+            ->where(function ($query) {
+                $query->whereNull('ignore_until')
+                    ->orWhere('ignore_until', '<=', now());
+            })
+            ->where('is_deleted', false)
+            ->with([
             "laboratory",
             "lots",
             "group",
@@ -1033,17 +1046,52 @@ class ProductRepository
             $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
 
+        if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+            $consulta->whereIn("group_id", $filtros["groups"]);
+        }
+
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+            $isStrictSearch = $filtros["isStrictSearch"] ?? false;
+            $searchTerm = $filtros["q"];
+
+            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $query->where("name", "like", "%" . $searchTerm . "%")
+                        ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
+                        ->orWhere("barcode", "like", $searchTerm)
+                        ->orWhere("id", "like", "%" . $searchTerm . "%");
+                } else {
+                    $words = explode(' ', trim($searchTerm));
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $query->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where("name", "like", "%" . $word . "%")
+                                ->orWhere("active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("id", "like", "%" . $word . "%")
+                                ->orWhereHas("laboratory", function ($labQuery) use ($word) {
+                                    $labQuery->where("name", "like", "%" . $word . "%");
+                                });
+                        });
+                    }
+                }
+            });
+        }
+
         if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
             $consulta->whereIn("id", $filtros["ids_in"]);
         }
 
-        if (array_key_exists("stock", $filtros)) {
+        if (array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
+            $consulta->doesntHave("productSuppliers");
+        }
 
+        if (array_key_exists("stock", $filtros)) {
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("solicitar", ">", 0);
+                $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", "<", 0);
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -1147,17 +1195,40 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-            )) AS solicitar'),
+            DB::raw('CASE 
+                WHEN ((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                    SELECT COALESCE(SUM(aod.quantity), 0)
+                    FROM auto_order_details aod
+                    JOIN auto_orders ao ON ao.id = aod.order_id
+                    JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                    WHERE ps.product_id = products.id
+                    AND ao.status IN (0, 1)
+                    AND aod.status = 0
+                    AND ao.deleted_at IS NULL
+                    AND aod.deleted_at IS NULL
+                )) > 0 THEN CEIL((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                    SELECT COALESCE(SUM(aod.quantity), 0)
+                    FROM auto_order_details aod
+                    JOIN auto_orders ao ON ao.id = aod.order_id
+                    JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                    WHERE ps.product_id = products.id
+                    AND ao.status IN (0, 1)
+                    AND aod.status = 0
+                    AND ao.deleted_at IS NULL
+                    AND aod.deleted_at IS NULL
+                ))
+                ELSE FLOOR((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                    SELECT COALESCE(SUM(aod.quantity), 0)
+                    FROM auto_order_details aod
+                    JOIN auto_orders ao ON ao.id = aod.order_id
+                    JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                    WHERE ps.product_id = products.id
+                    AND ao.status IN (0, 1)
+                    AND aod.status = 0
+                    AND ao.deleted_at IS NULL
+                    AND aod.deleted_at IS NULL
+                ))
+            END AS solicitar'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
@@ -1178,7 +1249,13 @@ class ProductRepository
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
 
-        $consulta = Product::select($columnas)->where('is_deleted', false)->with([
+        $consulta = Product::select($columnas)
+            ->where(function ($query) {
+                $query->whereNull('ignore_until')
+                    ->orWhere('ignore_until', '<=', now());
+            })
+            ->where('is_deleted', false)
+            ->with([
             "laboratory",
             "lots",
             "group",
@@ -1233,13 +1310,50 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("stock", $filtros)) {
+        if (array_key_exists("groups", $filtros)) {
+            if (count($filtros["groups"]) > 0) {
+                $consulta->whereIn("group_id", $filtros["groups"]);
+            }
+        }
 
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+            $isStrictSearch = $filtros["isStrictSearch"] ?? false;
+            $searchTerm = $filtros["q"];
+
+            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $query->where("name", "like", "%" . $searchTerm . "%")
+                        ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
+                        ->orWhere("barcode", "like", $searchTerm)
+                        ->orWhere("id", "like", "%" . $searchTerm . "%");
+                } else {
+                    $words = explode(' ', trim($searchTerm));
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $query->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where("name", "like", "%" . $word . "%")
+                                ->orWhere("active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("id", "like", "%" . $word . "%")
+                                ->orWhereHas("laboratory", function ($labQuery) use ($word) {
+                                    $labQuery->where("name", "like", "%" . $word . "%");
+                                });
+                        });
+                    }
+                }
+            });
+        }
+
+        if (array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
+            $consulta->doesntHave("productSuppliers");
+        }
+
+        if (array_key_exists("stock", $filtros)) {
             if ($filtros["stock"] == "exceso") {
-                $consulta->having("solicitar", ">", 0);
+                $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->having("solicitar", "<", 0);
+                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
             }
         }
 
@@ -1252,21 +1366,21 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("name", "ASC");
+            $consulta->orderBy("solicitar", "DESC");
         }
 
 
         return $consulta;
     }
 
-    public function filtrarIndividualProductForAssistantReportTypeAverageWithoutPaginate($filtros): Collection
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros): Collection
     {
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros);
 
         return $consulta->get();
     }
 
-    public function filtrarIndividualProductForAssistantReportTypeAverageWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
+    public function filtrarIndividualProductForAssistantReportTypeAveragesWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros);
 

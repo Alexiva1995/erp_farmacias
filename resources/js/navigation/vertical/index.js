@@ -1,4 +1,4 @@
-import businessIntelligence from './businessIntelligence'
+import bi from './bi'
 import configuration from './configuration'
 import crm from './crm'
 import cyclicInventory from './cyclicInventory'
@@ -11,5 +11,5 @@ import rrhh from './rrhh'
 import suppliers from './suppliers'
 import tpv from './tpv'
 
-export default [...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity, ...businessIntelligence, ...configuration]
+export default [...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity, ...bi, ...configuration]
 

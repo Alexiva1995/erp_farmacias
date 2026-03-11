@@ -21,7 +21,8 @@ class SuppliersIaOrderAssistantController extends Controller
     public function __construct(
         protected Product $product,
         protected ProductSupplier $productSupplier,
-        protected AutoOrder $autoOrder
+        protected AutoOrder $autoOrder,
+        protected \App\Services\Reports\IaAssistantReportService $iaAssistantReportService
     ) {
     }
 
@@ -70,40 +71,19 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
             $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
-            $filtros["previousDate"] = $previousDate->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d 00:00:00");
         }
 
-        if ($respuesta["tipo_filtracion"] == "average") {
+        if ($respuesta["tipo_filtracion"] == "combinado") {
+            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+        } elseif ($respuesta["tipo_filtracion"] == "average") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         } elseif ($respuesta["tipo_filtracion"] == "sales") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "combinado") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         } else {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         }
-
-        $respuesta["paginate"]->each(function ($items) use ($filtros) {
-            $items = $this->product->calcularAOProduct($items);
-
-            // Verificar si el producto tiene ventas 0 y stock 0 (caso especial: sin historial)
-            $ventasCero = ($items->total_sold_completed ?? 0) == 0;
-            $stockCero = ($items->lote_quantity ?? 0) == 0;
-            $aoActual = $items->totalQuantityInAutoOrder ?? 0;
-
-            // El campo 'solicitar' ya viene calculado correctamente desde el SQL del repositorio:
-            // solicitar = demanda - stock - AO  (positivo = necesita pedido, negativo = exceso)
-
-            // Caso especial: producto sin ventas y sin stock en inventario → falla por definición
-            if ($ventasCero && $stockCero) {
-                // Si tiene unidades ya en pedido, está cubierto (exceso leve)
-                $items->solicitar = ($aoActual > 0) ? -$aoActual : 1;
-            }
-
-            // Redondear hacia arriba si falta, hacia abajo si sobra
-            $items->solicitar = $items->solicitar > 0 ? ceil($items->solicitar) : floor($items->solicitar);
-        });
 
         return ApiResponse::success($respuesta, "ok", 200);
     }
@@ -140,11 +120,11 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("lapso_de_tiempo")) {
             $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d");
+            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
         }
 
-        if ($filtrosFallas["tipo_filtracion"] == "average") {
+        if ($filtrosFallas["tipo_filtracion"] == "average" || $filtrosFallas["tipo_filtracion"] == "combinado") {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
         } else {
             $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
@@ -154,41 +134,14 @@ class SuppliersIaOrderAssistantController extends Controller
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
-        // Guardar total de fallas ANTES de remover las cubiertas por AO
+        // Guardar total de fallas (SQL es ahora la fuente única de verdad)
         $totalFallas = $productosFallas->count();
 
-        $productosFallas = $this->product->calcularAOProducts($productosFallas);
-        $productosFallas = $this->product->removerProductosConPedidosAutomaticos($productosFallas);
-        $productosFallas = $this->product->actualizarElSolicitadoConElAO($productosFallas);
-
         // Invertir el signo de solicitar para TODOS los productos.
-        // El repositorio devuelve (demanda - stock) positivo para necesidades.
+        // El repositorio devuelve (demanda - stock - AO) positivo para necesidades.
         // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
         foreach ($productosFallas as $producto) {
             $producto->solicitar = $producto->solicitar * -1;
-        }
-
-        // Para productos con ventas 0 y stock 0, deben ser negativos (fallas)
-        // NO forzar a 1, deben calcularse como negativos
-        foreach ($productosFallas as $producto) {
-            $ventasCero = ($producto->total_sold_completed ?? 0) == 0;
-            $stockCero = ($producto->lote_quantity ?? 0) == 0;
-            $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
-
-            if ($ventasCero && $stockCero) {
-                $aoActual = $producto->totalQuantityInAutoOrder ?? 0;
-
-                if (($filtrosFallas['stock'] ?? '') === 'fallas') {
-                    $producto->solicitar = 0;
-                } else {
-                    $producto->solicitar = 0 - $aoActual;
-                }
-
-                // Si no hay AO, debe ser negativo (falla)
-                if ($aoActual == 0) {
-                    $producto->solicitar = -1; // Falla: necesita al menos 1
-                }
-            }
         }
 
         $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
@@ -210,7 +163,7 @@ class SuppliersIaOrderAssistantController extends Controller
         $timeZone = new DateTimeZone(config("app.timezone"));
         $fecha = new DateTime("now", $timeZone);
         $fecha->modify("-" . $cantidad . " " . $tiempo);
-        return $fecha->format("Y-m-d");
+        return $fecha->format("Y-m-d 00:00:00");
     }
 
     public function generarOrden(Request $request): JsonResponse
@@ -244,15 +197,14 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("lapso_de_tiempo")) {
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtros["previousDate"] = $this->generarPreviousDate($filtros["tiempo"], $filtros["tipo_de_tiempo"]);
         }
 
 
-        if ($filtros["tipo_filtracion"] == "average") {
+        if ($filtros["tipo_filtracion"] == "average" || $filtros["tipo_filtracion"] == "combinado") {
             $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
-        }
-        if ($filtros["tipo_filtracion"] == "sales") {
+        } elseif ($filtros["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
         }
 
@@ -285,7 +237,7 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros = [
                 "tipo_filtracion" => $request->tipo_filtracion,
                 "lapso_de_tiempo" => "1 year",
-                "dateToday" => $dateToday->format("Y-m-d h:m:s"),
+                "dateToday" => $dateToday->format("Y-m-d H:i:s"),
                 "previousDate" => $this->generarPreviousDate("1", "year"),
                 "orderBy" => "asc",
                 "sortBy" => "name",
@@ -538,15 +490,7 @@ class SuppliersIaOrderAssistantController extends Controller
         }
     }
 
-    public function toggleScarce(Request $request, $id)
-    {
-        $product = ModelsProduct::findOrFail($id);
-        $product->update([
-            'is_scarce' => !$product->is_scarce,
-        ]);
 
-        return ApiResponse::success(["is_scarce" => $product->is_scarce], "Estado actualizado");
-    }
 
     public function directOrder(Request $request)
     {

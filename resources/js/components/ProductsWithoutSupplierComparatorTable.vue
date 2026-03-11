@@ -9,6 +9,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   modelValue: { type: Object, default: null },
+  searchQuery: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -17,7 +18,8 @@ const emit = defineEmits([
   "update:modelValue",
   "delete",
   "save-analysis",
-  "mark-scarce",
+  "update:search-query",
+  "open-filters"
 ]);
 
 // Track edited pedido values per item id
@@ -43,23 +45,33 @@ const handleSave = (item) => {
   delete editedValues.value[item.id];
 };
 
+const formatUsd = (amount) => {
+  return (
+    new Intl.NumberFormat("es-VE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  );
+};
+
 const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Ventas", key: "total_sold_completed", sortable: true },
-  { title: "Stock", key: "lote_quantity", sortable: true },
-  { title: "AO", key: "totalQuantityInAutoOrder", sortable: true },
-  { title: "Costo", key: "costs", sortable: false },
-  { title: "Análisis", key: "solicitar", sortable: true },
-  { title: "Pedido", key: "pedido", sortable: false },
-  { title: "Acción", key: "actions", sortable: false },
+  { title: "PRODUCTO / LAB.", key: "name", sortable: true },
+  { title: "COSTO", key: "costs", sortable: false },
+  { title: "ANÁLISIS", key: "solicitar", sortable: true },
+  { title: "ACCIÓN", key: "actions", sortable: false },
 ];
 
 const onRowClick = (event, { item }) => {
   if (event.target.closest("input")) return;
-  emit("update:modelValue", item);
-  emit("select-product", item);
+
+  // Toggle selección: si ya está seleccionado, deseleccionar (Solicitud V16.2)
+  if (props.modelValue && props.modelValue.id === item.id) {
+    emit("update:modelValue", null);
+    emit("select-product", null);
+  } else {
+    emit("update:modelValue", item);
+    emit("select-product", item);
+  }
 };
 
 const isSelected = (item) => props.modelValue && props.modelValue.id === item.id;
@@ -68,38 +80,33 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
 <template>
   <VCard>
     <!-- Header con título y producto seleccionado -->
-    <VCardTitle class="d-flex align-center gap-2 pa-4">
-      <VIcon icon="tabler-package-search" color="warning" size="20" />
-      <span class="text-body-1 font-weight-semibold">Productos sin Asignar en el Pedido</span>
+    <!-- Header con título y producto seleccionado -->
+    <VCardTitle class="d-flex align-center gap-2 pt-4 px-4 pb-0">
+      <span class="text-h6 font-weight-bold">NECESIDADES (ANÁLISIS IA)</span>
       <VSpacer />
-      <VChip
-        v-if="modelValue"
+      <VBtn
         color="primary"
         variant="tonal"
         size="small"
-        prepend-icon="tabler-cursor-text"
-        class="text-truncate"
-        style="max-inline-size: 280px;"
+        prepend-icon="tabler-adjustments-horizontal"
+        @click="emit('open-filters')"
       >
-        Comparando: {{ modelValue.name }}
-      </VChip>
+        Filtros IA
+      </VBtn>
     </VCardTitle>
 
-    <VAlert
-      v-if="!modelValue"
-      type="warning"
-      variant="tonal"
-      density="compact"
-      class="mx-4 mb-3"
-      :icon="false"
-    >
-      <div class="d-flex align-center gap-2">
-        <VIcon icon="tabler-hand-click" color="warning" size="16" />
-        <span class="text-body-2">
-          Haz clic en un producto para buscarlo en el catálogo de proveedores arriba
-        </span>
-      </div>
-    </VAlert>
+    <div class="px-4 py-2 mt-2">
+      <VTextField
+        :model-value="searchQuery"
+        @update:model-value="(val) => emit('update:search-query', val)"
+        placeholder="Buscar por Nombre, Código de Barras o Principio Activo..."
+        prepend-inner-icon="tabler-search"
+        density="compact"
+        class="w-100"
+        clearable
+      />
+    </div>
+
 
     <VDataTableServer
       :headers="headers"
@@ -108,7 +115,8 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       :items-per-page="itemsPerPage"
       :page="page"
       :loading="loading"
-      @update:options="emit('update:options', $event)"
+      class="text-no-wrap custom-table-header"
+      @update:options="(options) => emit('update:options', options)"
       @click:row="onRowClick"
       :row-props="
         (data) => ({
@@ -131,15 +139,15 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
           />
           <div class="d-flex flex-column">
             <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
+              class="text-caption font-weight-medium text-high-emphasis"
               :class="{ 'text-primary': item.psychotropic == 1 }"
             >
-              {{ item.name }}
+              #{{ item.id }} - {{ item.name }}
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
+            <span class="text-xs text-disabled">
+              {{ item.laboratory?.name }}
+            </span>
           </div>
         </div>
       </template>
@@ -147,61 +155,28 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       <!-- Análisis: con redondeo IA -->
       <template #item.solicitar="{ item }">
         <VChip
-          :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'default'"
+          :color="roundIaAnalysis(item.solicitar ?? 0) > 0 ? 'success' : roundIaAnalysis(item.solicitar ?? 0) < 0 ? 'error' : 'default'"
           size="small"
           variant="tonal"
         >
-          {{ roundIaAnalysis(item.solicitar) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar) }}
+          {{ roundIaAnalysis(item.solicitar ?? 0) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar ?? 0) }}
         </VChip>
       </template>
 
-      <!-- Cód. Proveedor: barcode del proveedor con menor precio normal -->
       <template #item.cheapest_barcode="{ item }">
         <span
-          v-if="item.cheapest_barcode"
-          class="text-body-2 font-weight-medium"
+          class="text-caption font-weight-bold text-uppercase"
+          style="letter-spacing: 0.5px;"
         >
-          {{ item.cheapest_barcode }}
+          {{ item.name?.substring(0, 5) }} {{ item.laboratory?.name?.substring(0, 3) }}
         </span>
-        <span v-else class="text-disabled text-body-2">—</span>
       </template>
 
-      <!-- Pedido: input editable precargado con el valor de análisis -->
-      <template #item.pedido="{ item }">
-        <VTextField
-          :model-value="getInputValue(item)"
-          type="number"
-          density="compact"
-          variant="outlined"
-          hide-details
-          style=" max-inline-size: 110px;min-inline-size: 90px;"
-          @update:model-value="onInputChange(item, $event)"
-          @click.stop
-        />
-      </template>
+
 
       <template #item.costs="{ item }">
         <div class="d-flex flex-column text-body-2">
-          <!-- Costo actual -->
-          <span class="text-disabled text-xs">Actual</span>
-          <span class="font-weight-medium">{{ item.current_unit_cost ?? "—" }}</span>
-          <!-- Mejor proveedor -->
-          <span class="text-disabled text-xs mt-1">Mejor oferta</span>
-          <span
-            class="font-weight-bold"
-            :class="{
-              'text-success':
-                item.cheapest_unit_cost &&
-                Number(item.cheapest_unit_cost) <
-                  Number(item.current_unit_cost),
-              'text-error':
-                item.cheapest_unit_cost &&
-                Number(item.cheapest_unit_cost) >
-                  Number(item.current_unit_cost),
-            }"
-          >
-            {{ item.cheapest_unit_cost ?? "—" }}
-          </span>
+          <span class="font-weight-medium">{{ formatUsd(item.unit_cost ?? 0) }}</span>
         </div>
       </template>
 
@@ -223,22 +198,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
             <VTooltip activator="parent" location="top">Pedir Directo</VTooltip>
           </IconBtn>
 
-          <!-- Escaso -->
-          <IconBtn
-            :color="item.is_scarce ? 'error' : 'warning'"
-            @click.stop="emit('mark-scarce', item)"
-          >
-            <VIcon
-              :icon="
-                item.is_scarce ? 'tabler-alert-circle' : 'tabler-alert-triangle'
-              "
-            />
-            <VTooltip activator="parent" location="top">
-              {{
-                item.is_scarce ? "Quitar marca de escaso" : "Marcar como escaso"
-              }}
-            </VTooltip>
-          </IconBtn>
+
 
           <!-- Borrar -->
           <IconBtn @click.stop="emit('delete', item)">
@@ -267,7 +227,44 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
   cursor: pointer;
 }
 
+.compact-input-qty :deep(.v-field__input) {
+  font-size: 0.85rem;
+  min-block-size: auto !important;
+  padding-block: 4px !important;
+  padding-inline: 0 !important;
+  text-align: center;
+}
+
+.text-caption {
+  font-size: 0.72rem !important;
+  line-height: 0.9rem !important;
+}
+
+.selected-row {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
 :deep(.cursor-pointer:hover) {
   background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.text-xs {
+  font-size: 0.68rem !important;
+  line-height: 0.8rem !important;
+}
+</style>
+<style scoped>
+.custom-table-header :deep(thead) {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.compact-input-qty :deep(.v-field__input) {
+  padding-block: 4px;
+  padding-inline: 0;
+  text-align: center;
 }
 </style>

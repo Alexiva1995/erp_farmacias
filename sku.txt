@@ -1,0 +1,61 @@
+Reporte de Margen Real por SKU 💰
+Este es el reporte que más sorpresas da a los dueños de farmacia, porque por primera vez ven cuánto dinero realmente les queda de cada producto, no cuánto venden.
+
+¿Por qué se llama "Margen REAL"?
+Porque no es solo precio menos costo. El margen real descuenta todo lo que silenciosamente te come la ganancia:
+Lo que crees que ganasLo que realmente ganasPrecio venta − Costo compraPrecio venta − Costo − Descuentos aplicados − Merma − Vencidos − Devoluciones − Bonificaciones
+
+Ejemplo real: Un medicamento que vendes en $100 y te cuesta $70 parece tener 30% de margen. Pero si le aplicaron 10% de descuento, vino una devolución y hay 2% de merma... tu margen real es cercano al 17%.
+
+
+Las 4 Capas del Margen Real
+Capa 1 — Margen Bruto Básico
+Margen Bruto = Precio de Venta − Costo de Compra
+% Margen Bruto = (Margen Bruto ÷ Precio de Venta) × 100
+Este es el que ya ves en tu ERP. No es suficiente.
+
+Capa 2 — Margen Neto de Venta
+Margen Neto Venta = Precio de Venta Real Cobrado − Costo de Compra
+
+Precio Real Cobrado = Precio de Lista − Descuentos aplicados 
+                      − Bonificaciones − Promociones
+Aquí ya aparece la primera sorpresa: cuánto descuento se está aplicando sin que lo controles.
+
+Capa 3 — Margen Operativo
+Margen Operativo = Margen Neto Venta − Pérdidas por SKU
+
+Pérdidas por SKU = Vencidos + Merma + Devoluciones no recuperadas
+                   + Diferencias de inventario
+Aquí aparece la segunda sorpresa: el costo oculto de los productos que se vencen o se pierden.
+
+Capa 4 — Margen Real Final (el que importa)
+Margen Real = Margen Operativo − Costo de mantenimiento de inventario
+
+Costo mantenimiento = Días de inventario × Costo financiero del capital
+Este último nivel lo usan las cadenas grandes. Para empezar, con las 3 primeras capas ya tienes información muy poderosa.
+
+Campos que debe tener el reporte en tu ERP
+CampoDescripciónDe qué tabla vieneCódigo SKUID único del productoProductosNombre productoDescripción completaProductosCategoríaLínea terapéuticaProductosProveedorLaboratorio o distribuidorProductosUnidades vendidasEn el períodoVentasPrecio de lista $Precio oficial del catálogoProductosPrecio promedio vendido $Precio real después de descuentosVentasCosto unitario $Último costo de compra registradoComprasDescuento promedio %Promedio de descuentos aplicadosVentasMargen bruto $Precio lista − CostoCalculadoMargen bruto %(Margen bruto ÷ Precio lista) × 100CalculadoMargen neto $Precio real cobrado − CostoCalculadoMargen neto %(Margen neto ÷ Precio real) × 100CalculadoPérdidas por vencidos $Unidades vencidas × CostoInventarioPérdidas por devoluciones $Devoluciones no recuperadasVentas/ComprasMargen real $ totalTodo descontado × UnidadesCalculadoMargen real %Margen real ÷ Ventas reales × 100CalculadoSemáforoRojo / Amarillo / Verde según umbralCalculado
+
+El Semáforo de Rentabilidad
+Dile a tu programador que agregue una columna de semáforo automático con estos umbrales:
+ColorCondiciónSignificadoAcción🟢 VerdeMargen real > 25%Producto rentableMantener y potenciar🟡 AmarilloMargen real 10% – 25%Rentabilidad mediaOptimizar costos🔴 RojoMargen real < 10%Peligro de pérdidaActuar de inmediato⚫ NegroMargen real negativoEstás perdiendo dineroSuspender o renegociar
+
+Los umbrales puedes ajustarlos según tu negocio. En farmacias independientes el margen saludable suele estar entre 20% y 35% dependiendo de la categoría.
+
+
+Lo que vas a descubrir cuando lo implementes
+Casi siempre aparecen estos 4 hallazgos que nadie esperaba:
+1. Productos zombi — Se venden bien pero el margen real es negativo. Estás financiando ventas sin ganar nada.
+2. Descuentos invisibles — El equipo aplica descuentos cotidianos que en conjunto representan 3% a 8% de tus ventas totales.
+3. Categorías trampa — Una categoría completa (ej. cosméticos) parece rentable en ventas pero al ver el margen real por SKU resulta que 70% de los productos están en rojo.
+4. Joyas ocultas — Productos C en ventas que tienen margen real del 40%+. Son los que deberías estar impulsando más.
+
+Filtros que debe tener
+
+Rango de fechas
+Categoría / línea terapéutica
+Proveedor o laboratorio
+Semáforo (ver solo los rojos)
+Rango de margen % (ej. mostrar solo menores al 10%)
+Ordenar por margen real de menor a mayor

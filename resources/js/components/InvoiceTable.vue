@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { formatCurrency as globalFormatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   invoices: { type: Array, required: true },
@@ -11,6 +12,10 @@ const props = defineProps({
   actionsMode: {
     type: String,
     default: "default",
+  },
+  highlightedId: {
+    type: [Number, String],
+    default: null,
   },
 });
 
@@ -26,25 +31,31 @@ const emit = defineEmits([
   "return-invoice",
 ]);
 
-const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true },
-  { title: "N° Factura", key: "invoice_number", sortable: true },
-  { title: "N° Control", key: "control_number", sortable: true },
-  { title: "Vencimiento", key: "exp_date", sortable: true },
-  { title: "Total", key: "total_amount", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
-];
+const headers = computed(() => {
+  const baseHeaders = [
+    { title: "ID", key: "id", sortable: true },
+    { title: "Proveedor", key: "supplier.name", sortable: true },
+    { title: "N° Factura", key: "invoice_number", sortable: true },
+    { title: "N° Control", key: "control_number", sortable: true },
+    { title: "Vencimiento", key: "exp_date", sortable: true },
+  ];
+
+  if (props.actionsMode === "location") {
+    baseHeaders.push({ title: "Localización", key: "locations_summary", sortable: true });
+  }
+
+  baseHeaders.push(
+    { title: "Total", key: "total_amount", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false, align: "center" }
+  );
+
+  return baseHeaders;
+});
 
 const formatCurrency = (value, currency) => {
-  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
-  const mappedCurrency = currencyMap[currency] || currency;
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: mappedCurrency,
-    minimumFractionDigits: 2,
-  }).format(value);
+  return globalFormatCurrency(Number(value), currency);
 };
+
 const formatDate = (dateString) => {
   if (!dateString) return "";
   return new Date(dateString).toLocaleDateString("es-VE", {
@@ -68,7 +79,13 @@ const processedInvoices = computed(() => {
       :items="processedInvoices"
       :items-length="props.totalInvoices"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="text-no-wrap invoice-table"
+      :row-props="
+        (data) => ({
+          class:
+            data.item.id === props.highlightedId ? 'highlighted-row' : '',
+        })
+      "
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.supplier\.name="{ item }">
@@ -92,7 +109,8 @@ const processedInvoices = computed(() => {
 
       <template #item.actions="{ item }">
         <div class="d-flex ga-2">
-          <div v-if="props.isAdmin">
+          <!-- Botón Devolver: Visible en todas las vistas EXCEPTO en 'Por Ordenar' (location) -->
+          <div v-if="props.isAdmin && props.actionsMode !== 'location'">
             <VBtn
               v-bind="props"
               color="primary"
@@ -178,3 +196,14 @@ const processedInvoices = computed(() => {
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+.invoice-table :deep(.highlighted-row) {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+  transition: background-color 0.3s ease;
+}
+
+.invoice-table :deep(.highlighted-row:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+}
+</style>

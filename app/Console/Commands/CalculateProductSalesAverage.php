@@ -47,19 +47,11 @@ class CalculateProductSalesAverage extends Command
             Product::chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, &$skippedProducts, $progressBar) {
                 foreach ($products as $product) {
                     $processedProducts++;
-
-                    $createdAt = Carbon::parse($product->created_at);
                     $now = Carbon::now();
 
-                    // Ventana de análisis: máximo últimos 12 meses
-                    // Si el producto tiene menos de 12 meses, usamos su antigüedad real
-                    $monthsSinceCreation = $createdAt->diffInMonths($now);
-                    $windowMonths = min($monthsSinceCreation, 12);
-
-                    // Mínimo 1 mes para evitar división por cero
-                    if ($windowMonths < 1) {
-                        $windowMonths = 1;
-                    }
+                    // Ventana de análisis: siempre últimos 12 meses para capturar historial
+                    // independiente de cuándo se creó el registro en esta tabla.
+                    $windowMonths = 12;
 
                     // Fecha de inicio de la ventana de 12 meses
                     $windowStart = $now->copy()->subMonths($windowMonths);
@@ -87,7 +79,7 @@ class CalculateProductSalesAverage extends Command
                     $this->info(
                         "Producto ID {$product->id} ({$product->name}): " .
                         "Total vendido: {$totalSold}, " .
-                        "Meses: {$monthsSinceCreation}, " .
+                        "Meses base: {$windowMonths}, " .
                         "Promedio mensual: {$salesAverage}",
                         'v'
                     );

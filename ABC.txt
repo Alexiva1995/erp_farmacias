@@ -1,0 +1,68 @@
+ABC Multicriterio — Cómo mandarlo a hacer en tu ERP 💊
+Te explico todo lo que necesitas decirle a tu programador o proveedor del ERP para que lo construya correctamente.
+
+¿Qué le tienes que pedir exactamente?
+
+"Necesito un reporte ABC Multicriterio que clasifique todos los productos por 3 criterios al mismo tiempo: Valor de Ventas, Margen de Ganancia y Rotación de Inventario. Que muestre la clasificación combinada de cada producto y permita filtrar por fecha."
+
+
+Las 3 Dimensiones que debe calcular
+📊 Dimensión 1 — ABC por Valor de Ventas
+¿Qué mide? Cuánto dinero genera cada producto
+Fórmula que debe programar el ERP:
+% Participación = (Ventas del producto ÷ Ventas totales) x 100
+Acumulado de mayor a menor:
+  - A = productos que acumulan el 80% de las ventas
+  - B = productos que acumulan del 80% al 95%
+  - C = productos que acumulan del 95% al 100%
+
+📊 Dimensión 2 — ABC por Margen de Ganancia
+¿Qué mide? Cuánto dinero DEJA cada producto después de costos
+Fórmula que debe programar el ERP:
+Margen unitario = Precio de venta - Costo de compra
+Margen total del producto = Margen unitario x Unidades vendidas
+% Margen = (Margen total ÷ Ventas totales del producto) x 100
+
+Clasificación igual que ventas:
+  - A = 80% del margen total acumulado
+  - B = 80% al 95%
+  - C = 95% al 100%
+
+📊 Dimensión 3 — XYZ por Rotación/Predictibilidad
+¿Qué mide? Qué tan rápido y predecible se vende cada producto
+Fórmula que debe programar el ERP:
+Días de Inventario = (Stock actual ÷ Promedio ventas diarias)
+Coeficiente de Variación = Desviación estándar de ventas ÷ Promedio de ventas
+
+Clasificación:
+  - X = Venta muy regular y predecible (CV menor a 0.5)
+  - Y = Venta variable pero con tendencia (CV entre 0.5 y 1.0)
+  - Z = Venta irregular, impredecible (CV mayor a 1.0)
+
+Los Campos que debe tener la tabla final
+Dile a tu programador que la tabla de resultados debe mostrar estas columnas exactas:
+CampoDescripciónCódigo productoID único del ERPNombre productoDescripción completaCategoríaLínea terapéutica o laboratorioUnidades vendidasEn el período seleccionadoVentas totales $Precio venta x unidadesCosto total $Costo compra x unidadesMargen $Ventas - CostoMargen %Margen ÷ Ventas x 100Días de inventarioStock ÷ venta diaria promedioClasificación A (ventas)A, B o CClasificación B (margen)A, B o CClasificación Z (rotación)X, Y o ZClasificación FinalCombinación: AAX, ABY, CCZ, etc.Stock actualUnidades en bodega hoyÚltimo precio de compraPara calcular costo actualizado
+
+La Clasificación Final Combinada — Lo más importante
+Esta es la columna que realmente te da el poder de decisión:
+ClasificaciónSignificadoQué hacerAAXVende mucho + Deja mucho + Predecible🏆 Nunca quedes sin stock. Máxima prioridadAAYVende mucho + Deja mucho + Variable✅ Mantener stock alto, monitorear demandaABXVende mucho + Margen medio + Predecible📈 Renegociar costo con proveedorACXVende mucho + Margen bajo + Predecible⚠️ Urgente: renegociar o sustituirBAXVende regular + Deja mucho + Predecible💡 Impulsar ventas, tiene potencial ocultoBBXVende regular + Margen regular + Predecible📊 Mantener, optimizarCAXVende poco + Margen alto + Predecible💎 Producto premium, promocionarCBZVende poco + Margen bajo + Impredecible🗑️ Candidato a eliminarCCZVende poco + Margen malo + Impredecible❌ Eliminar del catálogo YA
+
+Filtros que debe tener el reporte
+Dile que el reporte necesita estos filtros obligatorios:
+
+Rango de fechas — para analizar cualquier período
+Categoría o línea terapéutica — para ver solo medicamentos, cosméticos, etc.
+Proveedor / Laboratorio — para negociaciones
+Clasificación final — para ver solo los CCZ o solo los AAX
+Sucursal — por si en el futuro creces
+
+
+Datos que necesita tomar del ERP
+Tu programador debe conectar este reporte a estas tablas del sistema:
+VENTAS          → fecha, código producto, cantidad, precio venta
+COMPRAS         → código producto, cantidad, costo unitario, fecha
+INVENTARIO      → código producto, stock actual, fecha vencimiento
+PRODUCTOS       → código, nombre, categoría, proveedor, laboratorio
+
+Período recomendado de análisis
+PeríodoPara qué sirveÚltimos 30 díasVer situación actual inmediataÚltimos 90 díasEl más recomendado — equilibra tendencia y actualidadÚltimos 12 mesesPara decisiones anuales y negociaciones con proveedores

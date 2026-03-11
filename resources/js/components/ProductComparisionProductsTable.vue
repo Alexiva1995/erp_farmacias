@@ -1,4 +1,5 @@
 <script setup>
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { computed, reactive, ref, watch } from "vue";
 
 const props = defineProps({
@@ -15,6 +16,7 @@ const props = defineProps({
   isStrictSearch: { type: Boolean, default: false },
   // Producto seleccionado desde la tabla inferior (para calcular diferencia de precio)
   selectedProduct: { type: Object, default: null },
+  sortBy: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -22,6 +24,8 @@ const emit = defineEmits([
   "send-product",
   "update:searchQuery",
   "update:isStrictSearch",
+  "open-filters",
+  "update:sortBy",
 ]);
 
 const localSearch = ref(props.searchQuery);
@@ -37,7 +41,15 @@ watch(
 );
 
 const rows = reactive({});
-const getQty = (id) => rows[id] || 1;
+const getQty = (id) => {
+  if (id in rows) return rows[id];
+  // Si no se ha modificado manualmente, traer la sugerencia de la IA si existe un producto seleccionado
+  if (props.selectedProduct && props.selectedProduct.solicitar) {
+    const suggested = roundIaAnalysis(props.selectedProduct.solicitar);
+    return suggested > 0 ? suggested : 1;
+  }
+  return 1;
+};
 
 const formatBs = (amount) => {
   return (
@@ -52,7 +64,7 @@ const formatUsd = (amount) => {
     new Intl.NumberFormat("es-VE", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount) + " $"
+    }).format(amount)
   );
 };
 
@@ -87,15 +99,11 @@ const getPriceDiff = (item) => {
 };
 
 const allHeaders = [
-  { title: "Proveedor", key: "supplier_name", sortable: false, width: "170px" },
-  { title: "Nombre", key: "name", sortable: true, width: "400px" },
-  { title: "Diferencia", key: "price_diff", sortable: false },
-  { title: "Usd", key: "unit_cost_usd", sortable: true },
-  { title: "Usd %", key: "final_cost_usd", sortable: true },
-  { title: "Bs", key: "unit_cost_bs", sortable: true },
-  { title: "Bs %", key: "final_cost_bs", sortable: true },
-  { title: "Vencimiento", key: "expiration", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false, width: "230px" },
+  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "350px" },
+  { title: "COSTO", key: "unit_cost_usd", sortable: true, width: "80px" },
+  { title: "FINAL", key: "final_cost_usd", sortable: true, width: "80px" },
+  { title: "AHORRO", key: "price_diff", sortable: false, width: "120px" },
+  { title: "ACCIÓN", key: "actions", sortable: false, width: "110px" },
 ];
 
 const headers = computed(() =>
@@ -117,20 +125,31 @@ const headers = computed(() =>
 
 <template>
   <VCard>
-    <VCardText class="py-4 gap-4">
-      <AppTextField
+    <VCardTitle class="d-flex align-center gap-2 pt-4 px-4 pb-0">
+      <span class="text-h6 font-weight-bold">CATÁLOGO DE PRODUCTOS</span>
+      <VSpacer />
+      <VBtn
+        color="primary"
+        variant="tonal"
+        size="small"
+        prepend-icon="tabler-adjustments-horizontal"
+        @click="emit('open-filters')"
+      >
+        Filtros Catálogo
+      </VBtn>
+    </VCardTitle>
+
+    <div class="px-4 py-2 mt-2">
+      <VTextField
         :model-value="localSearch"
-        placeholder="Buscar por Nombre o Laboratorio"
+        placeholder="Buscar por Nombre, Laboratorio o Proveedor..."
         clearable
+        prepend-inner-icon="tabler-search"
         @update:model-value="$emit('update:searchQuery', $event)"
-        class="w-25"
+        density="compact"
+        class="w-100"
       />
-      <VCheckbox
-        label="Búsqueda Estricta"
-        :model-value="props.isStrictSearch"
-        @update:model-value="$emit('update:isStrictSearch', $event)"
-      />
-    </VCardText>
+    </div>
 
     <VDivider />
 
@@ -162,20 +181,34 @@ const headers = computed(() =>
       :items="props.products"
       :items-length="props.totalProducts"
       :loading="props.loading"
-      class="text-no-wrap"
+      :sort-by="props.sortBy"
+      @update:sort-by="emit('update:sortBy', $event)"
+      class="text-no-wrap custom-table-header"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #no-data>
+        <div class="d-flex flex-column align-center justify-center py-6 text-center">
+          <VIcon icon="tabler-search" size="48" color="secondary" class="mb-2" />
+          <h4 class="text-h6 font-weight-medium mb-1">
+            Utilice los filtros o el buscador
+          </h4>
+          <p class="text-body-2 text-disabled">
+            Para encontrar productos, escriba en el buscador superior o haga clic en una fila de la tabla derecha.
+          </p>
+        </div>
+      </template>
+
       <!-- Template Nombre -->
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <div class="d-flex flex-column">
             <span
-              class="text-body-1 font-weight-medium text-high-emphasis text-wrap"
+              class="text-caption font-weight-medium text-high-emphasis text-wrap"
             >
               {{ item.name }}
             </span>
-            <span class="text-sm text-disabled">
-              {{ item.active_ingredient }}
+            <span class="text-xs text-disabled">
+              {{ item.laboratory_name }} | {{ item.supplier_name }}
             </span>
           </div>
         </div>
@@ -216,18 +249,17 @@ const headers = computed(() =>
       <!-- Acciones -->
       <template #item.actions="{ item }">
         <div class="d-flex align-center ga-2">
-          <VTextField
-            v-model.number="rows[item.id]"
-            label="Cantidad"
-            min="1"
-            type="number"
-            variant="outlined"
-            density="compact"
-            hide-details="auto"
-            style="inline-size: 80px;"
-            :error="!!quantityErrors[item.id]"
-            :error-messages="quantityErrors[item.id]"
-          />
+              <VTextField
+                :model-value="getQty(item.id)"
+                @update:model-value="(val) => (rows[item.id] = Number(val))"
+                type="number"
+                variant="underlined"
+                density="compact"
+                hide-details
+                class="compact-input-qty"
+                style="inline-size: 45px;"
+                :error="!!quantityErrors[item.id]"
+              />
 
           <VTooltip text="Agregar al Pedido del Día" location="top">
             <template #activator="{ props: tooltipProps }">
@@ -250,3 +282,14 @@ const headers = computed(() =>
     </VDataTableServer>
   </VCard>
 </template>
+<style scoped>
+.custom-table-header :deep(thead) {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.compact-input-qty :deep(.v-field__input) {
+  padding-block: 4px;
+  padding-inline: 0;
+  text-align: center;
+}
+</style>

@@ -10,6 +10,7 @@ import { onMounted, ref, watch } from "vue";
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
+const selectedInvoice = ref(null);
 
 const invoices = ref([]);
 const totalInvoices = ref(0);
@@ -112,6 +113,7 @@ const handleClearFilters = () => {
 
 const handleLocateProducts = (invoice) => {
   selectedInvoiceId.value = invoice.id;
+  selectedInvoice.value = invoice;
   currentView.value = "detail";
 };
 
@@ -183,7 +185,10 @@ const handleReturnInvoice = async (invoiceId) => {
         :invoices="invoices"
         :loading="loading"
         :total-invoices="totalInvoices"
+        :items-per-page="itemsPerPage"
+        :page="page"
         :is-admin="isAdmin"
+        :highlighted-id="selectedInvoiceId"
         actions-mode="location"
         @update:options="updateTableOptions"
         @locate-products="handleLocateProducts"
@@ -194,6 +199,7 @@ const handleReturnInvoice = async (invoiceId) => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
+        :initial-invoice="selectedInvoice"
         mode="location"
         @back-to-list="handleReturnToList"
       />

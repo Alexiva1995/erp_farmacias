@@ -18,7 +18,7 @@ class IaAssistantReportService
     public function getFilteredReportWithPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
         $page = $filtros['page'] ?? 1;
         $perPage = $filtros['itemsPerPage'] ?? 10;
 
@@ -70,6 +70,9 @@ class IaAssistantReportService
             'groups' => $filtros['groups'] ?? [],
             'is_col' => $filtros['is_colombia'] ?? null,
             'q' => $filtros['q'] ?? '',
+            'stock' => $filtros['stock'] ?? 'fallas',
+            'tipo' => $filtros['tipo_de_filtracion'] ?? 'average',
+            'ws' => $filtros['without_supplier'] ?? false,
         ]));
 
         return Cache::remember($cacheKey, 600, function () use ($filtros) {
@@ -79,7 +82,7 @@ class IaAssistantReportService
             unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
             
             // Obtenemos todos sin paginar para tener el set completo de IDs
-            $tipo = $filtros['tipo_filtracion'] ?? 'average';
+            $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
             
             if ($tipo === 'sales') {
                 $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
@@ -98,7 +101,7 @@ class IaAssistantReportService
     {
         $filtros = $this->prepareDateFilters($filtros);
         
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
         
         if ($tipo === 'sales') {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);

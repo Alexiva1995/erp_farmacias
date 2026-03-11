@@ -12,15 +12,19 @@
 const LOCALE_NUMBERS = 'es-ES';
 
 export const formatCurrency = (value, currency) => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    value = 0;
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (typeof numericValue !== 'number' || isNaN(numericValue)) {
+    return '0,00';
   }
+
+  let val = numericValue;
 
   let currencySymbol = '';
   let digital = 2;
 
-  if (currency === 'BS') {
-    currencySymbol = ' BS';
+  if (currency === 'BS' || currency === 'Bs') {
+    currencySymbol = ' Bs';
   } else if (currency === 'COP') {
     currencySymbol = ' COP';
     digital = 0; // COP sin decimales
@@ -36,7 +40,7 @@ export const formatCurrency = (value, currency) => {
     useGrouping: true,
   });
 
-  const formattedValue = formatter.format(value);
+  const formattedValue = formatter.format(val);
   return `${formattedValue}${currencySymbol}`;
 };
 
@@ -47,9 +51,13 @@ export const formatCurrency = (value, currency) => {
  * @returns {string} El valor formateado sin moneda.
  */
 export const formatAmountOnly = (value, currency) => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    value = 0;
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (typeof numericValue !== 'number' || isNaN(numericValue)) {
+    return '0,00';
   }
+
+  let val = numericValue;
   let digital = 2;
   if (currency === 'COP') {
     digital = 0; // COP sin decimales
@@ -59,5 +67,5 @@ export const formatAmountOnly = (value, currency) => {
     maximumFractionDigits: digital,
     useGrouping: true,
   });
-  return formatter.format(value);
+  return formatter.format(val);
 };
