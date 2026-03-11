@@ -57,7 +57,7 @@ async function consultarKpisGlobales() {
       tipo_vista: tipo_de_vista.value,
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
-      stock: stock.value,
+      stock: 'all',
       isColombian: isColombian.value,
       page: 1,
       itemsPerPage: 99999, // traer todos para contar
@@ -66,9 +66,9 @@ async function consultarKpisGlobales() {
     };
     const resp = await axios.post('/suppliers-ia-order-assistant/filtrar-paginate?page=1', data);
     const items = resp.data?.data?.paginate?.data || [];
-    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0).length;
+    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0 || (roundIaAnalysis(p.solicitar) === 0 && (Number(p.lote_quantity) || 0) <= 0)).length;
     kpiGlobal.exceso    = items.filter(p => roundIaAnalysis(p.solicitar) < 0).length;
-    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) == 0).length;
+    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) === 0 && (Number(p.lote_quantity) || 0) > 0).length;
   } catch (e) {
     console.error('Error al cargar KPIs globales:', e);
   } finally {

@@ -9,6 +9,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   modelValue: { type: Object, default: null },
+  searchQuery: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -17,7 +18,7 @@ const emit = defineEmits([
   "update:modelValue",
   "delete",
   "save-analysis",
-  "mark-scarce",
+  "update:search-query",
 ]);
 
 // Track edited pedido values per item id
@@ -85,6 +86,18 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       </VChip>
     </VCardTitle>
 
+    <div class="px-4 pb-4">
+      <VTextField
+        :model-value="searchQuery"
+        @update:model-value="(val) => emit('update:search-query', val)"
+        placeholder="Buscar por Nombre, Código de Barras o Principio Activo"
+        prepend-inner-icon="tabler-search"
+        density="compact"
+        class="mt-2"
+        clearable
+      />
+    </div>
+
     <VAlert
       v-if="!modelValue"
       type="warning"
@@ -147,11 +160,11 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       <!-- Análisis: con redondeo IA -->
       <template #item.solicitar="{ item }">
         <VChip
-          :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'default'"
+          :color="roundIaAnalysis(item.solicitar ?? 0) > 0 ? 'success' : roundIaAnalysis(item.solicitar ?? 0) < 0 ? 'error' : 'default'"
           size="small"
           variant="tonal"
         >
-          {{ roundIaAnalysis(item.solicitar) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar) }}
+          {{ roundIaAnalysis(item.solicitar ?? 0) > 0 ? "+" : "" }}{{ roundIaAnalysis(item.solicitar ?? 0) }}
         </VChip>
       </template>
 
@@ -223,22 +236,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
             <VTooltip activator="parent" location="top">Pedir Directo</VTooltip>
           </IconBtn>
 
-          <!-- Escaso -->
-          <IconBtn
-            :color="item.is_scarce ? 'error' : 'warning'"
-            @click.stop="emit('mark-scarce', item)"
-          >
-            <VIcon
-              :icon="
-                item.is_scarce ? 'tabler-alert-circle' : 'tabler-alert-triangle'
-              "
-            />
-            <VTooltip activator="parent" location="top">
-              {{
-                item.is_scarce ? "Quitar marca de escaso" : "Marcar como escaso"
-              }}
-            </VTooltip>
-          </IconBtn>
+
 
           <!-- Borrar -->
           <IconBtn @click.stop="emit('delete', item)">

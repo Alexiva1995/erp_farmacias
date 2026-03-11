@@ -10,6 +10,7 @@ import { onMounted, ref, watch } from "vue";
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
+const selectedInvoice = ref(null);
 const invoices = ref([]);
 const totalInvoices = ref(0);
 const loading = ref(false);
@@ -117,6 +118,7 @@ const handleClearFilters = () => {
 
 const handleReviewInvoice = async (invoice) => {
   selectedInvoiceId.value = invoice.id;
+  selectedInvoice.value = invoice;
 
   try {
     const response = await axios.get(
@@ -234,6 +236,7 @@ const handleReturnInvoice = async (invoiceId) => {
         :items-per-page="itemsPerPage"
         :page="page"
         :is-admin="isAdmin"
+        :highlighted-id="selectedInvoiceId"
         actions-mode="approval"
         @update:options="updateTableOptions"
         @edit-invoice="handleReviewInvoice"
@@ -244,6 +247,7 @@ const handleReturnInvoice = async (invoiceId) => {
     <div v-else-if="currentView === 'detail'">
       <InvoiceDetailView
         :invoice-id="selectedInvoiceId"
+        :initial-invoice="selectedInvoice"
         :payment-rules="availablePaymentRules"
         :is-saving="isApproving"
         mode="approval"

@@ -113,7 +113,7 @@ function procesarRespuesta(data) {
     module.productosOportunidadUnica = { data: [], total: 0 };
   }
 
-  module.totalFallas = data.totalFallas || 0;
+  module.totalFallas = data.data.totalFallas || 0;
   module.dataProductos = { ...data.data };
 }
 

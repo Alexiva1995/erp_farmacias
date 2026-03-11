@@ -17,6 +17,10 @@ use App\Http\Requests\StoreDiscountsRequest;
 use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
+use App\Http\Resources\SupplierResource;
+use App\Http\Resources\SupplierConnectionResource;
+use App\Http\Resources\SupplierProductResource;
+use App\Http\Resources\LaboratoryResource;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Arr;
@@ -48,15 +52,16 @@ class SupplierController extends Controller
         $perPage = $request->input("itemsPerPage", 10);
 
         if ($perPage < 1) {
-            $items = $query->get();
+            $suppliers = $query->get();
             return response()->json([
-                "data" => $items,
-                "total" => $items->count(),
+                "data" => SupplierResource::collection($suppliers)->resolve(),
+                "total" => $suppliers->count(),
             ]);
         }
+
         $paginatedResult = $query->paginate($perPage);
         return response()->json([
-            "data" => $paginatedResult->items(),
+            "data" => SupplierResource::collection($paginatedResult->getCollection())->resolve(),
             "total" => $paginatedResult->total(),
         ]);
     }
@@ -70,13 +75,10 @@ class SupplierController extends Controller
     {
         $supplier = $this->supplierActionService->createSupplier($request->validated());
 
-        return response()->json(
-            [
-                "message" => "Proveedor creado con éxito.",
-                "supplier" => $supplier,
-            ],
-            201,
-        );
+        return (new SupplierResource($supplier))
+            ->additional(['message' => 'Proveedor creado con éxito.'])
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
@@ -89,13 +91,8 @@ class SupplierController extends Controller
     {
         $updatedSupplier = $this->supplierActionService->updateSupplier($supplier, $request->validated());
         
-        return response()->json(
-            [
-                "message" => "Proveedor actualizado con éxito.",
-                "supplier" => $updatedSupplier,
-            ],
-            200,
-        );
+        return (new SupplierResource($updatedSupplier))
+            ->additional(['message' => 'Proveedor actualizado con éxito.']);
     }
 
     /**
@@ -331,7 +328,7 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->getSupplierConnections($request);
 
         return response()->json([
-            "data" => $results->items(),
+            "data" => SupplierConnectionResource::collection($results->getCollection())->resolve(),
             "total" => $results->total(),
         ]);
     }
@@ -341,7 +338,7 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->getSupplierProducts($supplier, $request);
 
         return response()->json([
-            "data" => $results->items(),
+            "data" => SupplierProductResource::collection($results->getCollection())->resolve(),
             "total" => $results->total(),
         ]);
     }
@@ -351,7 +348,7 @@ class SupplierController extends Controller
         $results = $this->supplierQueryService->getProducts($request);
 
         return response()->json([
-            "data" => $results->items(),
+            "data" => SupplierProductResource::collection($results->getCollection())->resolve(),
             "total" => $results->total(),
         ]);
     }
@@ -360,7 +357,7 @@ class SupplierController extends Controller
     {
         $results = $this->supplierQueryService->getAvailableLaboratories();
 
-        return response()->json($results);
+        return LaboratoryResource::collection($results);
     }
 
     public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
@@ -490,6 +487,15 @@ class SupplierController extends Controller
     ]);
     return ApiResponse::success("Producto eliminado de la lista");
 }
+
+    public function generatePublicToken(Supplier $supplier)
+    {
+        $supplier->update([
+            'public_token' => \Illuminate\Support\Str::random(40),
+        ]);
+
+        return ApiResponse::success($supplier->public_token, "Token generado correctamente");
+    }
 
     public function stats()
     {

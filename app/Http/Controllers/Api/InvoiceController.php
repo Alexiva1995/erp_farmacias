@@ -320,4 +320,44 @@ class InvoiceController extends Controller
                     : 'No se pudo devolver la factura a pendientes')
         ], 200);
     }
+
+    public function matchBarcode(Request $request)
+    {
+        $validated = $request->validate([
+            'barcode' => 'required|string',
+            'supplier_id' => 'required|integer|exists:suppliers,id',
+            'auto_order_id' => 'nullable|integer|exists:auto_orders,id',
+        ]);
+
+        try {
+            $result = $this->invoiceQueryService->matchBarcodeWithAutoOrder(
+                $validated['barcode'],
+                $validated['supplier_id'],
+                $validated['auto_order_id'] ?? null
+            );
+
+            if (!$result) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Producto no encontrado en el sistema.'
+                ], 404);
+            }
+
+            // Si el servicio devuelve status (warning), ya viene en el formato unificado
+            if (isset($result->status)) {
+                return response()->json($result, 200);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $result
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error al buscar el producto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

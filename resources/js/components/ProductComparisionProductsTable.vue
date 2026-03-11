@@ -1,4 +1,5 @@
 <script setup>
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { computed, reactive, ref, watch } from "vue";
 
 const props = defineProps({
@@ -37,7 +38,15 @@ watch(
 );
 
 const rows = reactive({});
-const getQty = (id) => rows[id] || 1;
+const getQty = (id) => {
+  if (id in rows) return rows[id];
+  // Si no se ha modificado manualmente, traer la sugerencia de la IA si existe un producto seleccionado
+  if (props.selectedProduct && props.selectedProduct.solicitar) {
+    const suggested = roundIaAnalysis(props.selectedProduct.solicitar);
+    return suggested > 0 ? suggested : 1;
+  }
+  return 1;
+};
 
 const formatBs = (amount) => {
   return (
@@ -165,6 +174,18 @@ const headers = computed(() =>
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #no-data>
+        <div class="d-flex flex-column align-center justify-center py-6 text-center">
+          <VIcon icon="tabler-search" size="48" color="secondary" class="mb-2" />
+          <h4 class="text-h6 font-weight-medium mb-1">
+            Utilice los filtros o el buscador
+          </h4>
+          <p class="text-body-2 text-disabled">
+            Para encontrar productos, escriba en el buscador superior o haga clic en una fila de la tabla derecha.
+          </p>
+        </div>
+      </template>
+
       <!-- Template Nombre -->
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
@@ -217,7 +238,8 @@ const headers = computed(() =>
       <template #item.actions="{ item }">
         <div class="d-flex align-center ga-2">
           <VTextField
-            v-model.number="rows[item.id]"
+            :model-value="getQty(item.id)"
+            @update:model-value="(val) => rows[item.id] = Number(val)"
             label="Cantidad"
             min="1"
             type="number"

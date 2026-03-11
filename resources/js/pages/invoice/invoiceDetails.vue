@@ -6,10 +6,11 @@ import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
+  initialInvoice: { type: Object, default: null },
   mode: { type: String, default: "editable" },
   supplierDiscounts: { type: Array, default: () => [] },
   paymentRules: { type: [Array, Object], default: () => [] },
@@ -58,6 +59,10 @@ const searchingBarcode = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
+const isScannerMode = ref(false);
+const barcodeInput = ref("");
+const scannerLoading = ref(false);
+const scannerInputRef = ref(null);
 
 const locations = [
   "E-001",
@@ -446,10 +451,8 @@ const toggleReturnItem = (itemToToggle) => {
     if (item.is_return) {
       item.location = "N/A";
       item.manual_return_override = false;
-      startEditingDetail(item);
     } else {
       item.location = "Por Asignar";
-      startEditingDetail(item);
     }
   }
 };
@@ -797,6 +800,15 @@ const removeProductFromInvoice = (detailId) => {
 
 const startEditingDetail = (detail) => {
   editedDetailData.value = { ...detail };
+  
+  // Si no tiene fecha, predefinir el día 1 del mes actual para facilitar la edición manual rápida
+  if (!editedDetailData.value.expiration_date) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    editedDetailData.value.expiration_date = `${year}-${month}-01`;
+  }
+  
   editingDetailId.value = detail.id;
 };
 
@@ -864,8 +876,24 @@ const saveEditingDetail = () => {
         itemType.charAt(0).toUpperCase() + itemType.slice(1)
       } actualizado correctamente`,
     );
+
+    // Buscar el siguiente producto que necesite datos (Lote o Vencimiento vacío)
+    const nextIncompleteDetail = invoiceDetails.value.find(
+      (d, index) =>
+        index > detailIndex && (!d.lot_number?.trim() || !d.expiration_date),
+    );
+
+    if (nextIncompleteDetail) {
+      // Pequeño retraso para que el usuario vea el feedback del guardado antes de saltar al siguiente
+      setTimeout(() => {
+        startEditingDetail(nextIncompleteDetail);
+      }, 300);
+    } else {
+      cancelEditingDetail();
+    }
+  } else {
+    cancelEditingDetail();
   }
-  cancelEditingDetail();
 };
 
 const cancelEditingDetail = () => {
@@ -1087,6 +1115,135 @@ const handleDragEnd = () => {
   draggedOverItem.value = null;
 };
 
+const handleBarcodeScan = async () => {
+  if (!barcodeInput.value || scannerLoading.value) return;
+
+  if (!invoice.value?.auto_order_id) {
+    toast.fire({
+      icon: "error",
+      title: "Esta factura no tiene una Auto-Orden asociada.",
+    });
+    barcodeInput.value = "";
+    return;
+  }
+
+  scannerLoading.value = true;
+  try {
+    const response = await axios.post("/invoices/match-barcode", {
+      barcode: barcodeInput.value,
+      supplier_id: invoice.value.supplier_id,
+      auto_order_id: invoice.value.auto_order_id || null,
+    });
+
+    if (response.data.status === "success" || response.data.status === "warning") {
+      const newDetail = response.data.data;
+
+      // Asegurar que estamos en modo edición si encontramos algo
+      if (!isEditMode.value) {
+        toggleEditMode(true);
+      }
+
+      // Verificar si ya existe en la lista para evitar duplicados accidentales
+      const existingIndex = invoiceDetails.value.findIndex(
+        (d) => d.product_id === newDetail.product_id,
+      );
+
+      if (existingIndex !== -1) {
+        toast.fire({
+          icon: "info",
+          title: "El producto ya está en la lista.",
+        });
+      } else {
+        // Agregar al inicio de la lista
+        invoiceDetails.value.unshift({
+          ...newDetail,
+          id: `new_${Date.now()}`,
+        });
+
+        if (response.data.status === "warning") {
+          toast.fire({
+            icon: "warning",
+            title: "Producto extra",
+            text: response.data.message,
+            timer: 2000,
+          });
+        } else {
+          toast.fire({
+            icon: "success",
+            title: `Producto añadido: ${newDetail.product.name}`,
+            timer: 1500,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Scanner error:", error);
+    toast.fire({
+      icon: "error",
+      title: error.response?.data?.message || "Error al escanear producto",
+    });
+  } finally {
+    barcodeInput.value = "";
+    scannerLoading.value = false;
+    nextTick(() => {
+      scannerInputRef.value?.focus();
+    });
+  }
+};
+
+const loadAutoOrderDetails = async () => {
+  if (!invoice.value?.auto_order_id) return;
+
+  const result = await Swal.fire({
+    title: "¿Cargar productos de Auto-Orden?",
+    text: "Esto reemplazará la lista actual de productos con los sugeridos por la orden original.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, cargar todo",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  loadingDetails.value = true;
+  try {
+    const response = await axios.get(
+      `/invoices/${props.invoiceId}/suggested-details`,
+    );
+
+    if (response.data.data) {
+      invoiceDetails.value = response.data.data.map((detail, index) => ({
+        ...detail,
+        display_order: index,
+      }));
+
+      isEditMode.value = true;
+      toast.fire({
+        icon: "success",
+        title: "Productos cargados desde Auto-Orden",
+      });
+    }
+  } catch (error) {
+    console.error("Error loading suggested details:", error);
+    toast.fire({
+      icon: "error",
+      title: "No se pudieron cargar los datos de la Auto-Orden",
+    });
+  } finally {
+    loadingDetails.value = false;
+  }
+};
+
+const toggleScannerMode = () => {
+  isScannerMode.value = !isScannerMode.value;
+  if (isScannerMode.value) {
+    isEditMode.value = true;
+    nextTick(() => {
+      scannerInputRef.value?.focus();
+    });
+  }
+};
+
 const handleFinalizeInvoice = async () => {
   if (isTotalMismatch.value) {
     toast.error(
@@ -1157,23 +1314,28 @@ const detailsHeaders = computed(() => {
       title: "Descripción",
       key: "product_name_with_tax",
       sortable: false,
-      width: isEditMode.value ? "40%" : "30%",
+      width: isEditMode.value ? "35%" : "25%",
     },
     {
-      title: "N° Lote",
-      key: "lot_number",
+      title: "Lote / Vencimiento",
+      key: "lot_and_expiration",
       align: "center",
       sortable: false,
-      width: "10%",
+      width: "18%",
     },
-    {
-      title: "F. Vencimiento",
-      key: "expiration_date",
+  ];
+
+  if (isLocationMode.value) {
+    headers.push({
+      title: "Localización",
+      key: "location",
       align: "center",
       sortable: false,
-      width: "10%",
-    },
-    // Location added conditionally below
+      width: "12%",
+    });
+  }
+
+  headers.push(
     {
       title: "Unidades",
       key: "quantity",
@@ -1209,18 +1371,16 @@ const detailsHeaders = computed(() => {
       align: "center",
       width: "5%",
     },
-  ];
+  );
 
-  if (!isEditMode.value) {
-    // Insert Location after Expiration Date (index 2 + 1 = 3)
-    headers.splice(3, 0, {
-      title: "Localización",
-      key: "location",
-      align: "center",
-      sortable: false,
-      width: "10%",
-    });
-  }
+    // La columna Localización no es necesaria en la vista por defecto de facturas pendientes
+    // headers.splice(2, 0, {
+    //   title: "Localización",
+    //   key: "location",
+    //   align: "center",
+    //   sortable: false,
+    //   width: "10%",
+    // });
 
   if (isLocationMode.value) {
     return headers.filter(
@@ -1241,45 +1401,10 @@ const detailsHeaders = computed(() => {
     </div>
 
     <div v-else-if="invoice">
-      <VAlert
-        v-if="invoice.currency !== 'USD'"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-      >
-        <template #prepend>
-          <VIcon icon="tabler-info-circle" />
-        </template>
-        <div>
-          <strong>Factura en {{ invoice.currency }}</strong>
-          <div class="text-caption mt-1">
-            Se muestra el equivalente en USD calculado con la tasa de la factura
-            ({{ formatNumber(invoice.exchange_rate) }})
-          </div>
-        </div>
-      </VAlert>
-      <VAlert
-        v-if="!invoiceHasIva"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-      >
-        <template #prepend>
-          <VIcon icon="tabler-info-circle" />
-        </template>
-        <div>
-          <strong>Factura sin IVA</strong>
-          <div class="text-caption mt-1">
-            Esta factura no incluye IVA según su configuración fiscal. Los
-            productos agregados no podrán tener IVA aplicado.
-          </div>
-        </div>
-      </VAlert>
+
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
-          <VCardText class="header-section">
+          <VCardText class="header-section pb-4">
             <VRow align="center" justify="space-between" class="mb-4">
               <VCol cols="auto">
                 <VBtn
@@ -1300,74 +1425,60 @@ const detailsHeaders = computed(() => {
                 </VBtn>
               </VCol>
             </VRow>
-            <VRow align="start" justify="space-between">
-              <VCol cols="12" md="auto">
+            <VRow align="center" justify="space-between" class="mt-0">
+              <VCol cols="12" md="6">
                 <div>
                   <h1
-                    class="font-weight-bold text-primary text-h4"
+                    class="font-weight-bold text-primary text-h4 mb-2"
                     style="text-transform: uppercase !important"
                   >
                     {{ invoice.supplier.name }}
                   </h1>
-                  <div class="d-flex align-center mt-2">
-                    <span class="text-subtitle-1 font-weight-medium me-2"
-                      >N° DE CONTROL</span
-                    >
-                    <span class="text-h4 font-weight-bold text-error">{{
-                      invoice.control_number
-                    }}</span>
+                  <div class="d-flex flex-wrap gap-2 align-center">
+                    <VChip size="small" color="error" variant="flat" class="font-weight-bold">
+                      Control: {{ invoice.control_number }}
+                    </VChip>
+                    <VChip size="small" color="error" variant="flat" class="font-weight-bold">
+                      Factura: {{ invoice.invoice_number }}
+                    </VChip>
                   </div>
                 </div>
               </VCol>
-              <VCol cols="12" md="auto" class="text-md-end">
-                <div class="d-flex align-center justify-md-end">
-                  <span class="text-subtitle-1 font-weight-medium me-2"
-                    >FACTURA N°</span
-                  >
-                  <span class="text-h4 font-weight-bold text-error">{{
-                    invoice.invoice_number
-                  }}</span>
+              <VCol cols="12" md="6" class="text-md-end">
+                <div class="d-flex flex-wrap justify-md-end gap-2">
+                  <VChip size="small" variant="tonal" color="secondary">
+                    <VIcon start icon="tabler-calendar" size="14" />
+                    Emisión: {{ formatDate(invoice.exp_date) || "N/A" }}
+                  </VChip>
+                  <VChip size="small" variant="tonal" color="info">
+                    <VIcon start icon="tabler-download" size="14" />
+                    Recibo: {{ formatDate(invoice.received_date) || "N/A" }}
+                  </VChip>
+                  <VChip size="small" variant="tonal" color="warning">
+                    <VIcon start icon="tabler-calendar-due" size="14" />
+                    Vence: {{ formatDate(invoice.payment_date) || "N/A" }}
+                  </VChip>
                 </div>
               </VCol>
             </VRow>
           </VCardText>
           <VDivider />
 
-          <VCardText class="dates-section">
-            <VRow>
-              <VCol
-                v-for="(dateField, index) in [
-                  'exp_date',
-                  'received_date',
-                  'payment_date',
-                ]"
-                :key="dateField"
-                cols="12"
-                md="4"
-                :class="{
-                  'text-start': index === 0,
-                  'text-center': index === 1,
-                  'text-end': index === 2,
-                }"
-              >
-                <p class="text-subtitle-2 text-disabled">
-                  {{
-                    {
-                      exp_date: "Fecha de Emisión",
-                      received_date: "Fecha de Recibo",
-                      payment_date: "Fecha de Vencimiento",
-                    }[dateField]
-                  }}
-                </p>
-                <p class="text-body-1 font-weight-medium mt-1">
-                  {{ formatDate(invoice[dateField]) || "N/A" }}
-                </p>
-              </VCol>
-            </VRow>
+          <!-- Alerta de Reglas de Pago Faltantes -->
+          <VCardText v-if="isApprovalMode && formattedPaymentRules.length === 0" class="pb-0">
+            <VAlert
+              type="warning"
+              variant="tonal"
+              closable
+              icon="tabler-alert-triangle"
+              class="mb-0"
+            >
+              <div class="font-weight-bold">Proveedor sin reglas de pago</div>
+              <div>Este proveedor no tiene reglas de pago configuradas. Por favor, revise la ficha del proveedor si esto es un error.</div>
+            </VAlert>
           </VCardText>
-          <VDivider />
 
-          <VCardText class="products-section">
+          <VCardText class="products-section pt-6">
             <div class="d-flex align-center mb-4">
               <span class="text-h6 font-weight-medium">Productos</span>
               <VChip color="primary" variant="outlined" class="ms-2">
@@ -1405,6 +1516,36 @@ const detailsHeaders = computed(() => {
                     {{ formatCurrency(editableDetailsTotal, invoice.currency) }}
                   </VChip>
                 </div>
+                <!-- Botones de Carga y Escaneo (Visibles en modo editable) -->
+                <template v-if="isEditableMode">
+                  <VBtn
+                    v-if="invoice.auto_order_id && invoiceDetails.length === 0"
+                    color="warning"
+                    variant="tonal"
+                    size="small"
+                    class="me-2"
+                    :loading="loadingDetails"
+                    @click="loadAutoOrderDetails"
+                  >
+                    <VIcon icon="tabler-refresh" class="me-2" />
+                    Cargar Auto-Orden
+                  </VBtn>
+
+                  <VBtn
+                    :color="isScannerMode ? 'info' : 'secondary'"
+                    :variant="isScannerMode ? 'flat' : 'tonal'"
+                    size="small"
+                    class="me-2"
+                    @click="toggleScannerMode"
+                  >
+                    <VIcon
+                      :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'"
+                      class="me-2"
+                    />
+                    {{ isScannerMode ? "Modo Escáner Activo" : "Carga por Escáner" }}
+                  </VBtn>
+                </template>
+
                 <VBtn
                   v-if="isEditableMode && isEditMode"
                   color="primary"
@@ -1417,6 +1558,33 @@ const detailsHeaders = computed(() => {
                 </VBtn>
               </div>
             </div>
+
+            <!-- Área de Escaneo Rápido -->
+            <VExpandTransition>
+              <div v-if="isScannerMode" class="mb-4 pa-4 bg-primary-lighten-5 rounded border-dashed d-flex align-center">
+                <VIcon icon="tabler-scan" color="primary" size="24" class="me-3" />
+                <div class="flex-grow-1">
+                  <VTextField
+                    ref="scannerInputRef"
+                    v-model="barcodeInput"
+                    placeholder="Escanee el código de barras del producto físico..."
+                    prepend-inner-icon="tabler-barcode"
+                    variant="solo"
+                    density="comfortable"
+                    hide-details
+                    :loading="scannerLoading"
+                    autofocus
+                    @keyup.enter="handleBarcodeScan"
+                  >
+                    <template #append-inner>
+                      <VChip v-if="scannerLoading" size="x-small" color="primary">Buscando...</VChip>
+                      <kbd v-else class="text-caption px-2 bg-grey-lighten-3 rounded">ENTER</kbd>
+                    </template>
+                  </VTextField>
+                </div>
+                <VBtn icon="tabler-x" variant="text" size="small" class="ms-2" @click="isScannerMode = false" />
+              </div>
+            </VExpandTransition>
 
             <VDataTable
               :headers="detailsHeaders"
@@ -1462,51 +1630,42 @@ const detailsHeaders = computed(() => {
                 </div>
               </template>
 
-              <template #item.lot_number="{ item }">
-                <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
+              <template #item.lot_and_expiration="{ item }">
+                <div class="d-flex flex-column align-center" :class="{ 'near-expiration-row': isNearExpiration(item) }">
                   <VTextField
                     v-if="isEditableMode && item.id === editingDetailId"
                     v-model="editedDetailData.lot_number"
                     density="compact"
                     hide-details
                     variant="outlined"
-                    class="editable-cell"
-                    :placeholder="
-                      item.is_return ? 'Lote (Devolución)' : 'Ingrese lote'
-                    "
+                    class="editable-cell mb-1"
+                    :placeholder="item.is_return ? 'Lote (Dev)' : 'Ingrese Lote'"
                   />
-                  <span
-                    v-else
-                    :class="{ 'returned-item': isItemReturned(item) }"
-                  >
-                    {{ item.lot_number || "-" }}
+                  <span v-else :class="{ 'returned-item': isItemReturned(item) }" class="font-weight-medium">
+                    {{ item.lot_number || "Sin Lote" }}
                   </span>
-                </div>
-              </template>
 
-              <template #item.expiration_date="{ item }">
-                <div :class="{ 'near-expiration-row': isNearExpiration(item) }">
-                  <AppDateTimePicker
+                  <VTextField
                     v-if="isEditableMode && item.id === editingDetailId"
                     v-model="editedDetailData.expiration_date"
+                    type="date"
                     density="compact"
-                    class="editable-cell"
-                    :config="{ allowInput: true }"
-                    :placeholder="
-                      item.is_return
-                        ? 'F. Venc. (Devolución)'
-                        : 'F. Vencimiento'
-                    "
+                    hide-details
+                    variant="outlined"
+                    class="editable-cell mt-1"
+                    :placeholder="item.is_return ? 'Venc. (Dev)' : 'F. Venc'"
                   />
                   <span
                     v-else
+                    class="text-caption"
                     :class="{
                       'returned-item': isItemReturned(item),
-                      'text-warning':
-                        isNearExpiration(item) && !isItemReturned(item),
+                      'text-warning font-weight-bold': isNearExpiration(item) && !isItemReturned(item),
+                      'text-disabled': !isNearExpiration(item)
                     }"
                   >
-                    {{ item.expiration_date || "-" }}
+                    <VIcon v-if="isNearExpiration(item) && !isItemReturned(item)" icon="tabler-alert-triangle-filled" size="14" class="me-1" />
+                    {{ item.expiration_date || "Sin Vencimiento" }}
                   </span>
                 </div>
               </template>
@@ -1757,138 +1916,111 @@ const detailsHeaders = computed(() => {
           </VCardText>
           <VDivider />
 
-          <VCardText class="totals-section">
-            <div class="totals-list">
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Monto Total Excento de IVA:</span
-                >
-                <span class="text-h6 ms-2">{{
-                  formatCurrency(invoice.exempt_amount)
-                }}</span>
-              </div>
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Base Imponible segun Alicuota 16 %:</span
-                >
-                <span class="text-h6 ms-2">{{
-                  formatCurrency(invoice.taxable_base)
-                }}</span>
-              </div>
+          <VCardText class="totals-section pb-6 pt-4 bg-var-theme-background">
+            <h3 class="text-h6 font-weight-medium mb-4">Resumen Financiero</h3>
+            <VRow>
+              <!-- Tarjeta: Exento y Base Imponible -->
+              <VCol cols="12" md="4">
+                <VCard variant="outlined" class="h-100 summary-card glassmorphism">
+                  <VCardText>
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <span class="text-subtitle-2 text-medium-emphasis">Total Exento (0%)</span>
+                      <span class="text-body-1 font-weight-medium">{{ formatCurrency(invoice.exempt_amount) }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between align-center">
+                      <span class="text-subtitle-2 text-medium-emphasis">Base Imponible (16%)</span>
+                      <span class="text-body-1 font-weight-medium">{{ formatCurrency(invoice.taxable_base) }}</span>
+                    </div>
+                  </VCardText>
+                </VCard>
+              </VCol>
 
-              <div class="total-item-row">
-                <div class="d-flex align-center">
-                  <VTooltip
-                    v-if="isTaxAmountMismatch && isEditMode"
-                    text="El monto de IVA calculado debe coincidir con el configurado en la factura."
-                  >
-                    <template #activator="{ props }">
-                      <VIcon
-                        v-bind="props"
-                        icon="tabler-alert-circle"
-                        color="warning"
-                        class="me-2"
+              <!-- Tarjeta: IVA y Descuentos -->
+              <VCol cols="12" md="4">
+                <VCard variant="outlined" class="h-100 summary-card glassmorphism">
+                  <VCardText>
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <div class="d-flex align-center">
+                        <VTooltip
+                          v-if="isTaxAmountMismatch && isEditMode"
+                          text="El monto de IVA calculado difiere del original."
+                        >
+                          <template #activator="{ props }">
+                            <VIcon v-bind="props" icon="tabler-alert-circle" color="warning" size="16" class="me-1" />
+                          </template>
+                        </VTooltip>
+                        <span class="text-subtitle-2 text-medium-emphasis">Impuesto IVA (16%)</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="text-body-1 font-weight-medium">{{ formatCurrency(invoice.tax_amount) }}</span>
+                        <div v-if="isEditMode" class="text-caption" :class="{ 'text-warning': isTaxAmountMismatch }">
+                          Calc: {{ formatCurrency(editableDetailsTaxAmount, invoice.currency) }}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Descuentos Edit Mode -->
+                    <div v-if="isEditableMode && isEditMode" class="mt-3">
+                      <VSelect
+                        v-model="selectedSupplierDiscountId"
+                        :items="formattedSupplierDiscounts"
+                        item-title="displayText"
+                        item-value="id"
+                        label="Descuento Proveedor"
+                        variant="underlined"
+                        density="compact"
+                        clearable
+                        hide-details
                       />
-                    </template>
-                  </VTooltip>
-                  <span class="text-subtitle-2 text-disabled"
-                    >Impuesto segun Alicuota 16 %:</span
-                  >
-                </div>
-                <div class="d-flex flex-column align-end">
-                  <span class="text-h6">{{
-                    formatCurrency(invoice.tax_amount)
-                  }}</span>
-                  <span
-                    v-if="isEditMode"
-                    class="text-caption"
-                    :class="{ 'text-warning': isTaxAmountMismatch }"
-                  >
-                    Calculado:
-                    {{
-                      formatCurrency(editableDetailsTaxAmount, invoice.currency)
-                    }}
-                  </span>
-                </div>
-              </div>
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Base Imponible segun Alicuota 16 %:</span
-                ><span class="text-h6 ms-2">{{
-                  formatCurrency(invoice.taxable_base)
-                }}</span>
-              </div>
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled"
-                  >Impuesto segun Alicuota 16 %:</span
-                ><span class="text-h6 ms-2">{{
-                  formatCurrency(invoice.tax_amount)
-                }}</span>
-              </div>
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Total Factura:</span
-                ><span class="text-h6 ms-2 font-weight-bold">{{
-                  formatCurrency(invoice.total_amount)
-                }}</span>
-              </div>
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Tasa BCV:</span
-                ><span class="text-h6 ms-2">{{
-                  formatNumber(invoice.exchange_rate)
-                }}</span>
-              </div>
-              <div class="total-item-row">
-                <span class="text-subtitle-2 text-disabled">Total USD:</span
-                ><span class="text-h6 ms-2">{{
-                  formatCurrency(invoice.total_usd, "USD")
-                }}</span>
-              </div>
-              <div
-                v-if="isEditableMode && isEditMode"
-                class="total-item-row mt-4"
-                style="max-width: 400px; width: 100%"
-              >
-                <VSelect
-                  v-model="selectedSupplierDiscountId"
-                  :items="formattedSupplierDiscounts"
-                  item-title="displayText"
-                  item-value="id"
-                  label="Descuento por Proveedor"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </div>
-              <div v-if="isApprovalMode" class="total-item-row mt-4">
-                <VSelect
-                  v-model="selectedPaymentRuleId"
-                  :items="formattedPaymentRules"
-                  item-title="displayText"
-                  item-value="id"
-                  label="Descuento Pronto Pago (Opcional)"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </div>
-              <div
-                v-if="isApprovalMode && selectedPaymentRuleId"
-                class="total-item-row mt-3 text-success"
-              >
-                <span class="text-subtitle-1 font-weight-medium"
-                  >Total con Descuento:</span
-                >
-                <span class="text-h5 ms-2 font-weight-bold">{{
-                  formatCurrency(totalWithDiscount, invoice.currency)
-                }}</span>
-              </div>
-            </div>
-          </VCardText>
-          <VDivider />
+                    </div>
+                    <!-- Descuentos Approval Mode -->
+                    <div v-if="isApprovalMode" class="mt-3">
+                      <VSelect
+                        v-model="selectedPaymentRuleId"
+                        :items="formattedPaymentRules"
+                        item-title="displayText"
+                        item-value="id"
+                        label="Pronto Pago"
+                        variant="underlined"
+                        density="compact"
+                        clearable
+                        hide-details
+                      />
+                    </div>
+                  </VCardText>
+                </VCard>
+              </VCol>
 
-          <VCardActions class="pa-6">
+              <!-- Tarjeta: Totales Principales -->
+              <VCol cols="12" md="4">
+                <VCard color="primary" variant="tonal" class="h-100 summary-card glassmorphism border-primary-variant">
+                  <VCardText>
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <span class="text-subtitle-1 font-weight-bold">Total Factura</span>
+                      <span class="text-h5 font-weight-bold text-primary">{{ formatCurrency(invoice.total_amount) }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <span class="text-subtitle-2 opacity-80">Total USD</span>
+                      <span class="text-subtitle-1 font-weight-medium text-primary">{{ formatCurrency(invoice.total_usd, "USD") }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between align-center text-caption opacity-70">
+                      <span>Tasa BCV Aplicada</span>
+                      <span>{{ formatNumber(invoice.exchange_rate) }}</span>
+                    </div>
+                    
+                    <VDivider v-if="isApprovalMode && selectedPaymentRuleId" class="my-2" />
+                    <div v-if="isApprovalMode && selectedPaymentRuleId" class="d-flex justify-space-between align-center text-success mt-2">
+                      <span class="text-subtitle-2 font-weight-bold">Con Descuento</span>
+                      <span class="text-h6 font-weight-bold">{{ formatCurrency(totalWithDiscount, invoice.currency) }}</span>
+                    </div>
+                  </VCardText>
+                </VCard>
+              </VCol>
+            </VRow>
+          </VCardText>
+
+          <div class="sticky-bottom-actions pa-4 bg-surface elevation-10">
+            <VCardActions class="pa-0">
             <div v-if="isLocationMode" class="d-flex w-100">
               <VBtn
                 :loading="loading"
@@ -1960,7 +2092,8 @@ const detailsHeaders = computed(() => {
                 Volver a la Lista
               </VBtn>
             </div>
-          </VCardActions>
+            </VCardActions>
+          </div>
         </VForm>
       </VCard>
 
@@ -2026,6 +2159,8 @@ const detailsHeaders = computed(() => {
 
 <style lang="scss">
 .invoice-detail-card {
+  overflow: hidden;
+
   .header-section {
     background-color: rgba(var(--v-theme-on-surface), 0.02);
     border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
@@ -2051,6 +2186,32 @@ const detailsHeaders = computed(() => {
   .total-item p {
     white-space: nowrap;
   }
+}
+
+.sticky-bottom-actions {
+  position: sticky;
+  z-index: 10;
+  border-block-start: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  inset-block-end: 0;
+}
+
+.summary-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.summary-card:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 8%);
+  transform: translateY(-2px);
+}
+
+.glassmorphism {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  backdrop-filter: blur(10px);
+  background: rgba(var(--v-theme-surface), 0.7) !important;
+}
+
+.border-primary-variant {
+  border: 1px solid rgba(var(--v-theme-primary), 0.3) !important;
 }
 .editable-cell {
   min-width: 120px;
@@ -2078,6 +2239,7 @@ const detailsHeaders = computed(() => {
   text-decoration: line-through;
   opacity: 0.6;
 }
+
 .cost-cell {
   padding: 4px 8px;
   border-radius: 6px;
@@ -2108,10 +2270,6 @@ const detailsHeaders = computed(() => {
   }
 }
 
-.returned-item {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
 .cost-new-product {
   background-color: rgba(var(--v-theme-warning), 0.1);
 

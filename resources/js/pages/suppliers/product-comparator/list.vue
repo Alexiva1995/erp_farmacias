@@ -1,6 +1,7 @@
 <script setup>
 import ApplyDiscountDialog from "@/components/dialogs/ApplyDiscountDialog.vue";
 import DeleteOldProductsDialog from "@/components/dialogs/DeleteOldProductsDialog.vue";
+import GeneratePublicLinkDialog from "@/components/dialogs/GeneratePublicLinkDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
@@ -21,6 +22,7 @@ const supplierConnections = ref([]);
 const suppliers = ref([]);
 const origins = ref([]);
 const laboratories = ref([]);
+const groups = ref([]);
 const products = ref([]);
 const loadingSuppliers = ref(false);
 const loadingProducts = ref(false);
@@ -28,12 +30,14 @@ const quantityErrors = reactive({});
 
 const supplierOption = ref(null);
 const selectedSupplier = ref(null);
-const searchedSupplier = ref(null);
-const searchedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const filterSearchQuery = ref("");
 const stockStatusFilter = ref(null);
 const isStrictSearch = ref(false);
+
+const searchedSupplier = ref(null);
+const searchedLaboratory = ref(null);
+let debounceTimerProductsWithoutSupplier;
 
 const enableDiscounts = ref(false);
 
@@ -42,6 +46,8 @@ const isShowImportFileDialogActive = ref(false);
 
 const isApplyDiscountDialogActive = ref(false);
 const supplierForDiscount = ref(null);
+const isGeneratePublicLinkDialogActive = ref(false);
+const supplierForPublicLink = ref(null);
 
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
@@ -74,11 +80,12 @@ const orderByProductsWithoutSupplier = ref();
 
 // Variable para rastrear la selección
 const selectedProductFromTop = ref(null);
+const searchQueryRight = ref("");
 
 //variables para el flitro de productos sin proveedor
 const con_descuento = ref(true); // Fallas , Execeso o All
-const selectedLaboratory = ref();
-const selectedGroup = ref();
+const selectedLaboratory = ref([]);
+const selectedGroup = ref([]);
 const tipo_de_vista = ref(false); // grupo o individual
 const tipo_de_filtracion = ref("combinado"); // mismos defaults que el Asistente IA
 const lapso_de_tiempo = ref("1 month"); // mismos defaults que el Asistente IA
@@ -103,7 +110,12 @@ const handleSelectProductFromTop = (product) => {
   } else if (product.barcode) {
     filterSearchQuery.value = product.barcode;
   } else {
-    filterSearchQuery.value = String(product.id);
+    // Regla de 4 letras de nombre + 4 letras del laboratorio
+    const namePart = product.name ? product.name.substring(0, 4) : "";
+    const labPart = product.laboratory?.name ? product.laboratory.name.substring(0, 4) : "";
+    // Si la combinación queda muy corta, se usa el ID como fallback
+    const filter = `${namePart} ${labPart}`.trim();
+    filterSearchQuery.value = filter.length > 2 ? filter : String(product.id);
   }
 
   toast.success(
@@ -246,8 +258,8 @@ const fetchProducts = async () => {
     page: productsPage.value,
     perPage: productsItemPerPage.value,
     supplierId: searchedSupplier.value,
-    laboratoryId: searchedLaboratory.value,
-    q: filterSearchQuery.value,
+    laboratoryId: selectedLaboratory.value, // Usar el mismo laboratorio que IA
+    q: filterSearchQuery.value || searchQueryRight.value, // Sincronizar búsqueda
     originId: selectedOrigin.value,
     isStrictSearch: isStrictSearch.value,
     ...(stockStatusFilter.value !== null && {
@@ -261,15 +273,15 @@ const fetchProducts = async () => {
     params.order = sortOptions.value[0].order;
   }
 
-  // Limpieza de parámetros nulos/vacíos
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
-
+  // No bloqueamos la carga inicial. Si no hay filtros, el backend traerá fallas por defecto o catálogo base.
+  
   try {
     loadingProducts.value = true;
     const { data } = await axios.get("/suppliers/available-products", {
-      params,
+      params: {
+        ...params,
+        groupId: selectedGroup.value, // Unificamos el grupo
+      }
     });
     products.value = data.data;
     productsTotal.value = data.total;
@@ -297,6 +309,14 @@ const fetchSupplierConnections = async () => {
     const response = await axios.get("/suppliers/connections", { params });
     supplierConnections.value = response.data.data;
     totalSupplierConnections.value = response.data.total;
+
+    // Sincronizar el proveedor seleccionado para el link si el diálogo está abierto
+    if (isGeneratePublicLinkDialogActive.value && supplierForPublicLink.value) {
+      const freshSupplier = supplierConnections.value.find(s => s.id === supplierForPublicLink.value.id);
+      if (freshSupplier) {
+        supplierForPublicLink.value = freshSupplier;
+      }
+    }
   } catch (error) {
     console.error("Hubo un error al obtener las conexiones:", error);
     toast.error("Error al obtener las conexiones.");
@@ -338,6 +358,7 @@ const fetchStatuses = async () => {
 
 const fetchProductsWithoutSupplier = async () => {
   try {
+    if (loadingProductsWithoutSupplier.value) return;
     loadingProductsWithoutSupplier.value = true;
 
     const payload = {
@@ -347,6 +368,9 @@ const fetchProductsWithoutSupplier = async () => {
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
+      q: searchQueryRight.value,
+      without_supplier: true,
+      isStrictSearch: false, // Por ahora general para la tabla derecha
       page: pageProductsWithoutSupplier.value,
       itemsPerPage: itemsPerPageProductsWithoutSupplier.value,
       sortBy: sortByProductsWithoutSupplier.value,
@@ -354,13 +378,13 @@ const fetchProductsWithoutSupplier = async () => {
     };
 
     const response = await axios.post(
-      `/suppliers-ia-order-assistant/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
+      `/suppliers-ia-assistant-report/filtrar-paginate?page=${pageProductsWithoutSupplier.value}`,
       payload,
     );
 
-    // La respuesta tiene estructura: response.data.data.paginate (LengthAwarePaginator de Laravel)
+    // La respuesta de SupplierIaAssistantReportController es directamente el paginador
     // El paginator tiene: .data (array de items), .total (cantidad total)
-    const paginate = response?.data?.data?.paginate ?? null;
+    const paginate = response?.data?.data ?? null;
 
     if (paginate && Array.isArray(paginate.data)) {
       listProductsWithoutSupplier.value = paginate.data;
@@ -392,15 +416,17 @@ const stopPolling = () => {
 
 const fetchOptions = async () => {
   try {
-    const [labResponse, originResponse, suppliersResponse] = await Promise.all([
+    const [labResponse, originResponse, suppliersResponse, groupsResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/available-suppliers"),
+      axios.get("/groups"),
     ]);
     laboratories.value = labResponse.data;
     laboratoriesProductsWithoutSupplier.value = labResponse.data;
     origins.value = originResponse.data;
     suppliers.value = suppliersResponse.data.data;
+    groups.value = groupsResponse.data;
   } catch (error) {
     console.error("Hubo un error al obtener los datos para filtrar:", error);
     toast.error("Hubo un error al obtener los datos para filtrar.");
@@ -426,38 +452,6 @@ watch(
   { deep: true },
 );
 
-// WATCHER DE PRODUCTOS ACTUALIZADO
-// Se agrega sortOptions para que reaccione al cambio de orden
-let productDebounceTimer;
-watch(
-  [productsPage, productsItemPerPage, sortOptions],
-  () => {
-    clearTimeout(productDebounceTimer);
-    productDebounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
-);
-
-let debounceTimer;
-watch(
-  [
-    searchedSupplier,
-    searchedLaboratory,
-    filterSearchQuery,
-    stockStatusFilter,
-    isStrictSearch,
-    selectedOrigin,
-  ],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  {
-    deep: true,
-  },
-);
-
-let debounceTimerProductsWithoutSupplier;
 watch(
   [
     selectedLaboratory,
@@ -466,16 +460,23 @@ watch(
     tipo_de_filtracion,
     lapso_de_tiempo,
     stock,
+    searchQueryRight,
+    filterSearchQuery,
+    selectedSupplier,
+    selectedOrigin,
+    stockStatusFilter,
+    isStrictSearch,
     pageProductsWithoutSupplier,
     itemsPerPageProductsWithoutSupplier,
-    sortByProductsWithoutSupplier,
-    orderByProductsWithoutSupplier,
+    productsPage,
+    productsItemPerPage,
   ],
   () => {
     clearTimeout(debounceTimerProductsWithoutSupplier);
     debounceTimerProductsWithoutSupplier = setTimeout(() => {
       fetchProductsWithoutSupplier();
-    }, 300);
+      fetchProducts();
+    }, 400); // Un poco más de debounce para seguridad
   },
   { deep: true },
 );
@@ -495,6 +496,12 @@ const updateTableOptions = (options) => {
 
 // FUNCIÓN ACTUALIZADA PARA CAPTURAR ORDENAMIENTO DE LA TABLA
 const updateProductsTableOptions = (options) => {
+  if (productsPage.value === options.page && 
+      productsItemPerPage.value === options.itemsPerPage && 
+      JSON.stringify(sortOptions.value) === JSON.stringify(options.sortBy || [])) {
+    return;
+  }
+  
   productsPage.value = options.page;
   productsItemPerPage.value = options.itemsPerPage;
   // VDataTableServer envía 'sortBy' en las opciones
@@ -645,30 +652,27 @@ const handleSaveAnalysis = async ({ item, newValue }) => {
   }
 };
 
-const handleMarkScarce = async (item) => {
-  try {
-    const response = await axios.patch(
-      `/suppliers-ia-order-assistant/products-without-supplier/${item.id}/toggle-scarce`,
-    );
 
-    if (response.data.status === "success") {
-      toast.success(response.data.message);
-      // Refrescar la tabla para que el producto escaso desaparezca si el filtro aplica
-      fetchProductsWithoutSupplier();
-    }
-  } catch (error) {
-    console.error(error);
-    toast.error("Error al actualizar estado de escasez.");
-  }
-};
 
 const updateProductsWithoutSupplierOptions = (options) => {
+  if (pageProductsWithoutSupplier.value === options.page && 
+      itemsPerPageProductsWithoutSupplier.value === options.itemsPerPage &&
+      sortByProductsWithoutSupplier.value === options.sortBy?.[0]?.key &&
+      orderByProductsWithoutSupplier.value === options.sortBy?.[0]?.order) {
+    return;
+  }
+
   pageProductsWithoutSupplier.value = options.page;
   itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
   if (options.sortBy && options.sortBy.length > 0) {
     sortByProductsWithoutSupplier.value = options.sortBy[0].key;
     orderByProductsWithoutSupplier.value = options.sortBy[0].order;
   }
+};
+
+const handleOpenPublicLink = (supplier) => {
+  supplierForPublicLink.value = supplier;
+  isGeneratePublicLinkDialogActive.value = true;
 };
 </script>
 
@@ -688,6 +692,11 @@ const updateProductsWithoutSupplierOptions = (options) => {
       v-model:isDialogVisible="isApplyDiscountDialogActive"
       :selected-supplier="supplierForDiscount"
       @submit="handleApplyDiscount"
+    />
+    <GeneratePublicLinkDialog
+      v-model:isDialogVisible="isGeneratePublicLinkDialogActive"
+      :selected-supplier="supplierForPublicLink"
+      @refresh="fetchSupplierConnections"
     />
     <DeleteOldProductsDialog
       v-model:isDialogVisible="isDeleteDialogVisible"
@@ -739,11 +748,32 @@ const updateProductsWithoutSupplierOptions = (options) => {
           @load-products="handleShowImportProductsDialog"
           @delete-products="handleDeleteSupplierProducts"
           @open-discount-dialog="handleShowDiscountDialog"
+          @open-public-link="handleOpenPublicLink"
         />
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <!-- Layout side-by-side: izquierda = proveedores, derecha = faltas del pedido -->
+        <!-- FILA DE FILTROS MAESTROS -->
+        <VRow class="mb-4">
+          <VCol cols="12">
+            <ProductsWithoutSupplierComparatorFilter
+              v-model:selectConDescuento="con_descuento"
+              v-model:selectedLaboratory="selectedLaboratory"
+              v-model:selectedGroup="selectedGroup"
+              v-model:tipo_de_vista="tipo_de_vista"
+              v-model:tipo_de_filtracion="tipo_de_filtracion"
+              v-model:lapso_de_tiempo="lapso_de_tiempo"
+              v-model:stock="stock"
+              :groups="groups"
+              :laboratories="laboratoriesProductsWithoutSupplier"
+              :tipo_de_filtracion="tipo_de_filtracion"
+              :tipo_de_vista="tipo_de_vista"
+              :lapso_de_tiempo="lapso_de_tiempo"
+              @clear="handleClearFilters"
+            />
+          </VCol>
+        </VRow>
+
         <VRow class="match-height">
           <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores -->
           <VCol cols="12" md="6">
@@ -768,22 +798,6 @@ const updateProductsWithoutSupplierOptions = (options) => {
 
           <!-- COLUMNA DERECHA: Productos sin proveedor -->
           <VCol cols="12" md="6">
-            <ProductsWithoutSupplierComparatorFilter
-              v-model:selectConDescuento="con_descuento"
-              v-model:selectedLaboratory="selectedLaboratory"
-              v-model:selectedGroup="selectedGroup"
-              v-model:tipo_de_vista="tipo_de_vista"
-              v-model:tipo_de_filtracion="tipo_de_filtracion"
-              v-model:lapso_de_tiempo="lapso_de_tiempo"
-              v-model:stock="stock"
-              :groups="groups"
-              :laboratories="laboratoriesProductsWithoutSupplier"
-              :tipo_de_filtracion="tipo_de_filtracion"
-              :tipo_de_vista="tipo_de_vista"
-              :lapso_de_tiempo="lapso_de_tiempo"
-              :stock="stock"
-              @clear="handleClearFilters"
-            />
             <ProductsWithoutSupplierComparatorTable
               v-model="selectedProductFromTop"
               :products="listProductsWithoutSupplier"
@@ -791,11 +805,12 @@ const updateProductsWithoutSupplierOptions = (options) => {
               :total-products="totalProductsWithoutSupplier"
               :items-per-page="itemsPerPageProductsWithoutSupplier"
               :page="pageProductsWithoutSupplier"
+              :search-query="searchQueryRight"
+              @update:search-query="searchQueryRight = $event"
               @update:options="updateProductsWithoutSupplierOptions"
               @select-product="handleSelectProductFromTop"
               @delete="handleToggleOrder"
               @save-analysis="handleSaveAnalysis"
-              @mark-scarce="handleMarkScarce"
             />
           </VCol>
         </VRow>
