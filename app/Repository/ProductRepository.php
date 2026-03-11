@@ -989,7 +989,11 @@ class ProductRepository
                 AND aod.deleted_at IS NULL)';
 
         // calcular solicitar: demanda - stock - AO
-        $columnas[] = DB::raw('((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') AS solicitar');
+        $calcSolicitar = '((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')';
+        $columnas[] = DB::raw('CASE 
+            WHEN ' . $calcSolicitar . ' > 0 THEN CEIL(' . $calcSolicitar . ')
+            ELSE FLOOR(' . $calcSolicitar . ')
+        END AS solicitar');
 
 
         $consulta = Product::select($columnas)->where('is_deleted', false)->with([
@@ -1185,17 +1189,40 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-            )) AS solicitar'),
+            DB::raw('CASE 
+                WHEN ((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                    SELECT COALESCE(SUM(aod.quantity), 0)
+                    FROM auto_order_details aod
+                    JOIN auto_orders ao ON ao.id = aod.order_id
+                    JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                    WHERE ps.product_id = products.id
+                    AND ao.status IN (0, 1)
+                    AND aod.status = 0
+                    AND ao.deleted_at IS NULL
+                    AND aod.deleted_at IS NULL
+                )) > 0 THEN CEIL((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                    SELECT COALESCE(SUM(aod.quantity), 0)
+                    FROM auto_order_details aod
+                    JOIN auto_orders ao ON ao.id = aod.order_id
+                    JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                    WHERE ps.product_id = products.id
+                    AND ao.status IN (0, 1)
+                    AND aod.status = 0
+                    AND ao.deleted_at IS NULL
+                    AND aod.deleted_at IS NULL
+                ))
+                ELSE FLOOR((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                    SELECT COALESCE(SUM(aod.quantity), 0)
+                    FROM auto_order_details aod
+                    JOIN auto_orders ao ON ao.id = aod.order_id
+                    JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                    WHERE ps.product_id = products.id
+                    AND ao.status IN (0, 1)
+                    AND aod.status = 0
+                    AND ao.deleted_at IS NULL
+                    AND aod.deleted_at IS NULL
+                ))
+            END AS solicitar'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
