@@ -21,7 +21,8 @@ class SuppliersIaOrderAssistantController extends Controller
     public function __construct(
         protected Product $product,
         protected ProductSupplier $productSupplier,
-        protected AutoOrder $autoOrder
+        protected AutoOrder $autoOrder,
+        protected \App\Services\Reports\IaAssistantReportService $iaAssistantReportService
     ) {
     }
 
@@ -70,16 +71,16 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
             $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
-            $filtros["previousDate"] = $previousDate->format("Y-m-d");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
+            $filtros["previousDate"] = $previousDate->format("Y-m-d 00:00:00");
         }
 
-        if ($respuesta["tipo_filtracion"] == "average") {
+        if ($respuesta["tipo_filtracion"] == "combinado") {
+            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+        } elseif ($respuesta["tipo_filtracion"] == "average") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         } elseif ($respuesta["tipo_filtracion"] == "sales") {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "combinado") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         } else {
             $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
         }
@@ -119,7 +120,7 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("lapso_de_tiempo")) {
             $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d");
+            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
         }
 
@@ -162,7 +163,7 @@ class SuppliersIaOrderAssistantController extends Controller
         $timeZone = new DateTimeZone(config("app.timezone"));
         $fecha = new DateTime("now", $timeZone);
         $fecha->modify("-" . $cantidad . " " . $tiempo);
-        return $fecha->format("Y-m-d");
+        return $fecha->format("Y-m-d 00:00:00");
     }
 
     public function generarOrden(Request $request): JsonResponse
@@ -196,7 +197,7 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("lapso_de_tiempo")) {
             $filtros["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
             $filtros["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtros["previousDate"] = $this->generarPreviousDate($filtros["tiempo"], $filtros["tipo_de_tiempo"]);
         }
 
@@ -236,7 +237,7 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros = [
                 "tipo_filtracion" => $request->tipo_filtracion,
                 "lapso_de_tiempo" => "1 year",
-                "dateToday" => $dateToday->format("Y-m-d h:m:s"),
+                "dateToday" => $dateToday->format("Y-m-d H:i:s"),
                 "previousDate" => $this->generarPreviousDate("1", "year"),
                 "orderBy" => "asc",
                 "sortBy" => "name",
