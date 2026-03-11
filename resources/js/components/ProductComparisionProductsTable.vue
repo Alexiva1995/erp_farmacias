@@ -16,6 +16,7 @@ const props = defineProps({
   isStrictSearch: { type: Boolean, default: false },
   // Producto seleccionado desde la tabla inferior (para calcular diferencia de precio)
   selectedProduct: { type: Object, default: null },
+  sortBy: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -23,7 +24,8 @@ const emit = defineEmits([
   "send-product",
   "update:searchQuery",
   "update:isStrictSearch",
-  "open-filters"
+  "open-filters",
+  "update:sortBy",
 ]);
 
 const localSearch = ref(props.searchQuery);
@@ -179,6 +181,8 @@ const headers = computed(() =>
       :items="props.products"
       :items-length="props.totalProducts"
       :loading="props.loading"
+      :sort-by="props.sortBy"
+      @update:sort-by="emit('update:sortBy', $event)"
       class="text-no-wrap custom-table-header"
       @update:options="(options) => emit('update:options', options)"
     >

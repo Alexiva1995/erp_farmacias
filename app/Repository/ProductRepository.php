@@ -996,7 +996,13 @@ class ProductRepository
         END AS solicitar');
 
 
-        $consulta = Product::select($columnas)->where('is_deleted', false)->with([
+        $consulta = Product::select($columnas)
+            ->where(function ($query) {
+                $query->whereNull('ignore_until')
+                    ->orWhere('ignore_until', '<=', now());
+            })
+            ->where('is_deleted', false)
+            ->with([
             "laboratory",
             "lots",
             "group",
@@ -1243,7 +1249,13 @@ class ProductRepository
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
 
-        $consulta = Product::select($columnas)->where('is_deleted', false)->with([
+        $consulta = Product::select($columnas)
+            ->where(function ($query) {
+                $query->whereNull('ignore_until')
+                    ->orWhere('ignore_until', '<=', now());
+            })
+            ->where('is_deleted', false)
+            ->with([
             "laboratory",
             "lots",
             "group",

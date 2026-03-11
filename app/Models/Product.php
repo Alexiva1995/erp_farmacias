@@ -51,6 +51,7 @@ class Product extends Model
         'is_deleted',
         'is_active',
         'stock',
+        'ignore_until',
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -67,6 +68,7 @@ class Product extends Model
         'sale_price' => 'float',
         'is_ordered' => 'boolean',
         'is_scarce' => 'boolean',
+        'ignore_until' => 'datetime',
     ];
 
 

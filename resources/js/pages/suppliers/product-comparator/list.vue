@@ -787,6 +787,7 @@ const handleOpenPublicLink = (supplier) => {
               :is-strict-search="isStrictSearch"
               @update:is-strict-search="isStrictSearch = $event"
               :selected-product="selectedProductFromTop"
+              v-model:sortBy="sortOptions"
               @update:options="updateProductsTableOptions"
               @send-product="handleAddItemToAutoOrder"
               @open-filters="isCatalogFiltersDialogVisible = true"

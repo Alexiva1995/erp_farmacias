@@ -480,13 +480,14 @@ class SupplierController extends Controller
     }
 
     public function toggleOrder(Request $request, $id)
-{
-    $product = Product::findOrFail($id);
-    $product->update([
-        'is_ordered' => false,
-    ]);
-    return ApiResponse::success("Producto eliminado de la lista");
-}
+    {
+        $product = Product::findOrFail($id);
+        $product->update([
+            'is_ordered' => false,
+            'ignore_until' => now()->addHours(48),
+        ]);
+        return ApiResponse::success("Producto eliminado de la lista por 48 horas");
+    }
 
     public function generatePublicToken(Supplier $supplier)
     {
