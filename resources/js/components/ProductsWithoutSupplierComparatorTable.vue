@@ -46,22 +46,23 @@ const handleSave = (item) => {
 };
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Ventas", key: "total_sold_completed", sortable: true },
-  { title: "Stock", key: "lote_quantity", sortable: true },
-  { title: "AO", key: "totalQuantityInAutoOrder", sortable: true },
-  { title: "Costo", key: "costs", sortable: false },
+  { title: "ID / Producto / Lab.", key: "name", sortable: true },
+  { title: "Costo Actual", key: "costs", sortable: false },
   { title: "Análisis", key: "solicitar", sortable: true },
-  { title: "Pedido", key: "pedido", sortable: false },
   { title: "Acción", key: "actions", sortable: false },
 ];
 
 const onRowClick = (event, { item }) => {
   if (event.target.closest("input")) return;
-  emit("update:modelValue", item);
-  emit("select-product", item);
+
+  // Toggle selección: si ya está seleccionado, deseleccionar (Solicitud V16.2)
+  if (props.modelValue && props.modelValue.id === item.id) {
+    emit("update:modelValue", null);
+    emit("select-product", null);
+  } else {
+    emit("update:modelValue", item);
+    emit("select-product", item);
+  }
 };
 
 const isSelected = (item) => props.modelValue && props.modelValue.id === item.id;
@@ -152,15 +153,15 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
           />
           <div class="d-flex flex-column">
             <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
+              class="text-caption font-weight-medium text-high-emphasis"
               :class="{ 'text-primary': item.psychotropic == 1 }"
             >
-              {{ item.name }}
+              #{{ item.id }} - {{ item.name }}
               <span v-if="item.is_colombian_origin == 1"> (COL)</span>
             </span>
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
+            <span class="text-xs text-disabled">
+              {{ item.laboratory?.name }}
+            </span>
           </div>
         </div>
       </template>
@@ -176,54 +177,20 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
         </VChip>
       </template>
 
-      <!-- Cód. Proveedor: barcode del proveedor con menor precio normal -->
       <template #item.cheapest_barcode="{ item }">
         <span
-          v-if="item.cheapest_barcode"
-          class="text-caption font-weight-medium text-wrap"
+          class="text-caption font-weight-bold text-uppercase"
+          style="letter-spacing: 0.5px;"
         >
-          {{ item.cheapest_barcode }}
+          {{ item.name?.substring(0, 5) }} {{ item.laboratory?.name?.substring(0, 3) }}
         </span>
-        <span v-else class="text-disabled text-body-2">—</span>
       </template>
 
-      <!-- Pedido: input editable precargado con el valor de análisis -->
-      <template #item.pedido="{ item }">
-        <VTextField
-          :model-value="getInputValue(item)"
-          density="compact"
-          variant="underlined"
-          hide-details
-          type="number"
-          class="compact-input-qty"
-          style="width: 45px"
-          @update:model-value="(val) => onInputChange(item, val)"
-          @click.stop
-        />
       </template>
 
       <template #item.costs="{ item }">
         <div class="d-flex flex-column text-body-2">
-          <!-- Costo actual -->
-          <span class="text-disabled text-xs">Actual</span>
           <span class="font-weight-medium">{{ item.current_unit_cost ?? "—" }}</span>
-          <!-- Mejor proveedor -->
-          <span class="text-disabled text-xs mt-1">Mejor oferta</span>
-          <span
-            class="font-weight-bold"
-            :class="{
-              'text-success':
-                item.cheapest_unit_cost &&
-                Number(item.cheapest_unit_cost) <
-                  Number(item.current_unit_cost),
-              'text-error':
-                item.cheapest_unit_cost &&
-                Number(item.cheapest_unit_cost) >
-                  Number(item.current_unit_cost),
-            }"
-          >
-            {{ item.cheapest_unit_cost ?? "—" }}
-          </span>
         </div>
       </template>
 
@@ -274,12 +241,12 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
   cursor: pointer;
 }
 
-
 .compact-input-qty :deep(.v-field__input) {
-  padding: 4px 0 !important;
-  text-align: center;
   font-size: 0.85rem;
-  min-height: auto !important;
+  min-block-size: auto !important;
+  padding-block: 4px !important;
+  padding-inline: 0 !important;
+  text-align: center;
 }
 
 .text-caption {
@@ -297,5 +264,10 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
 
 :deep(.cursor-pointer:hover) {
   background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.text-xs {
+  font-size: 0.68rem !important;
+  line-height: 0.8rem !important;
 }
 </style>

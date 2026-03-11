@@ -97,9 +97,7 @@ const getPriceDiff = (item) => {
 };
 
 const allHeaders = [
-  { title: "Proveedor", key: "supplier_name", sortable: false, width: "170px" },
-  { title: "Nombre", key: "name", sortable: true, width: "350px" },
-  { title: "Lab.", key: "laboratory_name", sortable: false, width: "120px" },
+  { title: "Producto / Proveedor", key: "name", sortable: true, width: "350px" },
   { title: "Costo", key: "unit_cost_usd", sortable: true, width: "80px" },
   { title: "Final", key: "final_cost_usd", sortable: true, width: "80px" },
   { title: "Ahorro", key: "price_diff", sortable: false, width: "120px" },
@@ -124,6 +122,7 @@ const headers = computed(() =>
 </script>
 
 <template>
+  <VCard>
     <div class="d-flex align-center gap-4 px-4 py-2 border-bottom">
       <AppTextField
         :model-value="localSearch"
@@ -199,8 +198,8 @@ const headers = computed(() =>
             >
               {{ item.name }}
             </span>
-            <span class="text-sm text-disabled">
-              {{ item.active_ingredient }}
+            <span class="text-xs text-disabled">
+              {{ item.laboratory_name }} | {{ item.supplier_name }}
             </span>
           </div>
         </div>
@@ -249,7 +248,7 @@ const headers = computed(() =>
                 density="compact"
                 hide-details
                 class="compact-input-qty"
-                style="width: 45px"
+                style="inline-size: 45px;"
                 :error="!!quantityErrors[item.id]"
               />
 

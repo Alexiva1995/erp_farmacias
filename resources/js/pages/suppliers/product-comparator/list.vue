@@ -62,7 +62,7 @@ const totalSupplierConnections = ref(0);
 const productsPage = ref(1);
 const productsItemPerPage = ref(10);
 const productsTotal = ref(0);
-const sortOptions = ref([]);
+const sortOptions = ref([{ key: "unit_cost_usd", order: "asc" }]);
 
 const enableUsdAmountCol = ref(true);
 const enableDiscountCol = ref(false);
@@ -107,20 +107,22 @@ const handleClearFilters = () => {
 };
 
 const handleSelectProductFromTop = (product) => {
+  if (!product) {
+    selectedProductFromTop.value = null;
+    filterSearchQuery.value = "";
+    return;
+  }
+
   selectedProductFromTop.value = product;
 
-  if (product.cheapest_barcode) {
-    filterSearchQuery.value = product.cheapest_barcode;
-  } else if (product.barcode) {
-    filterSearchQuery.value = product.barcode;
-  } else {
-    // Regla de 4 letras de nombre + 4 letras del laboratorio
-    const namePart = product.name ? product.name.substring(0, 4) : "";
-    const labPart = product.laboratory?.name ? product.laboratory.name.substring(0, 4) : "";
-    // Si la combinación queda muy corta, se usa el ID como fallback
-    const filter = `${namePart} ${labPart}`.trim();
-    filterSearchQuery.value = filter.length > 2 ? filter : String(product.id);
-  }
+  // Regla de 5 letras de nombre + espacio + 3 letras del laboratorio (Solicitud V16.3.1)
+  const namePart = product.name ? product.name.substring(0, 5) : "";
+  const labPart = product.laboratory?.name ? product.laboratory.name.substring(0, 3) : "";
+  
+  const filter = `${namePart} ${labPart}`.trim();
+  
+  // Si por alguna razón queda vacío, usar el ID como último recurso
+  filterSearchQuery.value = filter.length > 1 ? filter : String(product.id);
 
   toast.success(
     `Seleccionado: ${product.name}. Ahora busque el proveedor equivalente arriba.`,
