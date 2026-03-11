@@ -4,10 +4,9 @@ import DeleteOldProductsDialog from "@/components/dialogs/DeleteOldProductsDialo
 import GeneratePublicLinkDialog from "@/components/dialogs/GeneratePublicLinkDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
+import ComparatorAdvancedFiltersDialog from "@/components/dialogs/ComparatorAdvancedFiltersDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
-import ProductsComparisionProductsFilter from "@/components/ProductsComparisionProductsFilter.vue";
-import ProductsWithoutSupplierComparatorFilter from "@/components/ProductsWithoutSupplierComparatorFilter.vue";
 import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -52,6 +51,7 @@ const supplierForPublicLink = ref(null);
 const checkingApiSupplierId = ref(null);
 const pollingInterval = ref(null);
 
+const isAdvancedFiltersDialogVisible = ref(false);
 const pollingSupplierId = ref(null);
 const tab = ref(route.query.tab || "suppliers");
 const page = ref(1);
@@ -481,14 +481,6 @@ watch(
   { deep: true },
 );
 
-const handleSearchSupplier = (supplier) => {
-  searchedSupplier.value = supplier;
-};
-
-const handleSearchLaboratory = (laboratory) => {
-  searchedLaboratory.value = laboratory;
-};
-
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
@@ -708,26 +700,53 @@ const handleOpenPublicLink = (supplier) => {
           <VTab value="suppliers"> Proveedores</VTab>
           <VTab value="products"> Productos</VTab>
         </VTabs>
-        <ProductsComparisionProductsFilter
+        <ComparatorAdvancedFiltersDialog
           v-if="tab === 'products'"
-          @open-delete-dialog="isDeleteDialogVisible = true"
-          @update-all-api="handleUpdateAllApi"
+          v-model:is-dialog-visible="isAdvancedFiltersDialogVisible"
+          v-model:selected-laboratory="selectedLaboratory"
+          v-model:selected-group="selectedGroup"
+          v-model:tipo_de_filtracion="tipo_de_filtracion"
+          v-model:lapso_de_tiempo="lapso_de_tiempo"
+          v-model:stock="stock"
+          v-model:select-con-descuento="con_descuento"
           v-model:enable-discounts="enableDiscounts"
           v-model:enable-usd-amount-col="enableUsdAmountCol"
           v-model:enable-discount-col="enableDiscountCol"
-          v-model:searchQuery="filterSearchQuery"
-          v-model:stockStatusFilter="stockStatusFilter"
-          v-model:selectedOrigin="selectedOrigin"
-          v-model:isStrictSearch="isStrictSearch"
-          :suppliers="suppliers"
+          v-model:selected-origin="selectedOrigin"
+          v-model:selected-supplier="searchedSupplier"
+          v-model:is-strict-search="isStrictSearch"
           :laboratories="laboratories"
-          :selected-laboratory="searchedLaboratory"
-          :selected-supplier="searchedSupplier"
+          :groups="groups"
           :origins="origins"
-          @clear="handleClearProductsFilters"
-          @update:selectedLaboratory="handleSearchLaboratory"
-          @update:selectedSupplier="handleSearchSupplier"
+          :suppliers="suppliers"
+          @clear="handleClearFilters"
+          @open-delete-dialog="isDeleteDialogVisible = true"
+          @update-all-api="handleUpdateAllApi"
         />
+        
+        <div v-if="tab === 'products'" class="d-flex align-center gap-4 px-4 pb-2">
+          <VBtn
+            color="primary"
+            variant="tonal"
+            prepend-icon="tabler-adjustments-horizontal"
+            @click="isAdvancedFiltersDialogVisible = true"
+          >
+            Filtros Avanzados
+          </VBtn>
+          
+          <VChipGroup v-if="selectedLaboratory.length > 0" class="d-inline-flex">
+            <VChip
+              v-for="labId in selectedLaboratory"
+              :key="labId"
+              closable
+              size="small"
+              color="primary"
+              @click:close="selectedLaboratory = selectedLaboratory.filter(id => id !== labId)"
+            >
+              {{ laboratories.find(l => l.id === labId)?.name }}
+            </VChip>
+          </VChipGroup>
+        </div>
       </VCardText>
     </VCard>
 
@@ -753,26 +772,7 @@ const handleOpenPublicLink = (supplier) => {
       </VTabsWindowItem>
 
       <VTabsWindowItem value="products">
-        <!-- FILA DE FILTROS MAESTROS -->
-        <VRow class="mb-4">
-          <VCol cols="12">
-            <ProductsWithoutSupplierComparatorFilter
-              v-model:selectConDescuento="con_descuento"
-              v-model:selectedLaboratory="selectedLaboratory"
-              v-model:selectedGroup="selectedGroup"
-              v-model:tipo_de_vista="tipo_de_vista"
-              v-model:tipo_de_filtracion="tipo_de_filtracion"
-              v-model:lapso_de_tiempo="lapso_de_tiempo"
-              v-model:stock="stock"
-              :groups="groups"
-              :laboratories="laboratoriesProductsWithoutSupplier"
-              :tipo_de_filtracion="tipo_de_filtracion"
-              :tipo_de_vista="tipo_de_vista"
-              :lapso_de_tiempo="lapso_de_tiempo"
-              @clear="handleClearFilters"
-            />
-          </VCol>
-        </VRow>
+        <!-- ESPACIO PARA FILTROS REMOVIDO PARA MAXIMIZAR TABLAS -->
 
         <VRow class="match-height">
           <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores -->
