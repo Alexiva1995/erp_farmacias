@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { onMounted, ref, watch } from "vue";
-import { toast } from 'vue3-toastify';
+import { toast } from "@/plugins/sweetalert";
 
 const skus = ref([]);
 const loading = ref(false);
