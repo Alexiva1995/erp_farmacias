@@ -107,21 +107,6 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       />
     </div>
 
-    <VAlert
-      v-if="!modelValue"
-      type="warning"
-      variant="tonal"
-      density="compact"
-      class="mx-4 mb-3"
-      :icon="false"
-    >
-      <div class="d-flex align-center gap-2">
-        <VIcon icon="tabler-hand-click" color="warning" size="16" />
-        <span class="text-body-2">
-          Haz clic en un producto para buscarlo en el catálogo de proveedores arriba
-        </span>
-      </div>
-    </VAlert>
 
     <VDataTableServer
       :headers="headers"
