@@ -186,7 +186,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
         </span>
       </template>
 
-      </template>
+
 
       <template #item.costs="{ item }">
         <div class="d-flex flex-column text-body-2">
