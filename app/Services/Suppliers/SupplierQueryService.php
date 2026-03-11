@@ -600,10 +600,6 @@ class SupplierQueryService
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
-            ->where(function($query) {
-                $query->where('products.is_deleted', false)
-                      ->orWhereNull('products.is_deleted');
-            })
 
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
                 if ($isStrictSearch) {
