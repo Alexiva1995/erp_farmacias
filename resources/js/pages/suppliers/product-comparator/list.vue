@@ -426,7 +426,7 @@ const fetchOptions = async () => {
     laboratoriesProductsWithoutSupplier.value = labResponse.data;
     origins.value = originResponse.data;
     suppliers.value = suppliersResponse.data.data;
-    groups.value = groupsResponse.data;
+    groups.value = groupsResponse.data.data;
   } catch (error) {
     console.error("Hubo un error al obtener los datos para filtrar:", error);
     toast.error("Hubo un error al obtener los datos para filtrar.");
