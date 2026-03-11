@@ -680,7 +680,7 @@ class SupplierQueryService
 
         $barcodeWarning = null;
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
-        if ($mainProduct && empty($mainProduct->barcode) && !empty($product->barcode_match)) {
+        if ($mainProduct && (empty($mainProduct->barcode) || strlen($mainProduct->barcode) < 6) && !empty($product->barcode_match)) {
             $barcodeExists = Product::where('barcode', $product->barcode_match)->exists();
             if (!$barcodeExists) {
                 // 2. Solo si no existe en ningún otro lado, lo asignamos

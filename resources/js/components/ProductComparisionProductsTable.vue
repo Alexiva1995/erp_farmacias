@@ -97,11 +97,11 @@ const getPriceDiff = (item) => {
 };
 
 const allHeaders = [
-  { title: "Producto / Proveedor", key: "name", sortable: true, width: "350px" },
-  { title: "Costo", key: "unit_cost_usd", sortable: true, width: "80px" },
-  { title: "Final", key: "final_cost_usd", sortable: true, width: "80px" },
-  { title: "Ahorro", key: "price_diff", sortable: false, width: "120px" },
-  { title: "", key: "actions", sortable: false, width: "110px" },
+  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "350px" },
+  { title: "COSTO", key: "unit_cost_usd", sortable: true, width: "80px" },
+  { title: "FINAL", key: "final_cost_usd", sortable: true, width: "80px" },
+  { title: "AHORRO", key: "price_diff", sortable: false, width: "120px" },
+  { title: "ACCIÓN", key: "actions", sortable: false, width: "110px" },
 ];
 
 const headers = computed(() =>
@@ -123,15 +123,8 @@ const headers = computed(() =>
 
 <template>
   <VCard>
-    <div class="d-flex align-center gap-4 px-4 py-2 border-bottom">
-      <AppTextField
-        :model-value="localSearch"
-        placeholder="Buscar en catálogo..."
-        clearable
-        @update:model-value="$emit('update:searchQuery', $event)"
-        class="w-50"
-        density="compact"
-      />
+    <VCardTitle class="d-flex align-center gap-2 pt-4 px-4 pb-0">
+      <span class="text-h6 font-weight-bold">CATÁLOGO DE PRODUCTOS</span>
       <VSpacer />
       <VBtn
         color="primary"
@@ -142,6 +135,18 @@ const headers = computed(() =>
       >
         Filtros Catálogo
       </VBtn>
+    </VCardTitle>
+
+    <div class="px-4 py-2 mt-2">
+      <VTextField
+        :model-value="localSearch"
+        placeholder="Buscar por Nombre, Laboratorio o Proveedor..."
+        clearable
+        prepend-inner-icon="tabler-search"
+        @update:model-value="$emit('update:searchQuery', $event)"
+        density="compact"
+        class="w-100"
+      />
     </div>
 
     <VDivider />
@@ -174,7 +179,7 @@ const headers = computed(() =>
       :items="props.products"
       :items-length="props.totalProducts"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="text-no-wrap custom-table-header"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #no-data>
@@ -273,3 +278,14 @@ const headers = computed(() =>
     </VDataTableServer>
   </VCard>
 </template>
+<style scoped>
+.custom-table-header :deep(thead) {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.compact-input-qty :deep(.v-field__input) {
+  padding-block: 4px;
+  padding-inline: 0;
+  text-align: center;
+}
+</style>

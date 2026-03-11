@@ -75,8 +75,8 @@ const totalProductsWithoutSupplier = ref(0);
 const loadingProductsWithoutSupplier = ref(false);
 const pageProductsWithoutSupplier = ref(1);
 const itemsPerPageProductsWithoutSupplier = ref(10);
-const sortByProductsWithoutSupplier = ref();
-const orderByProductsWithoutSupplier = ref();
+const sortByProductsWithoutSupplier = ref("solicitar");
+const orderByProductsWithoutSupplier = ref("desc");
 
 // Variable para rastrear la selección
 const selectedProductFromTop = ref(null);

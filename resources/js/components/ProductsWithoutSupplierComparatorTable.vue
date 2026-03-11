@@ -45,11 +45,20 @@ const handleSave = (item) => {
   delete editedValues.value[item.id];
 };
 
+const formatUsd = (amount) => {
+  return (
+    new Intl.NumberFormat("es-VE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  );
+};
+
 const headers = [
-  { title: "ID / Producto / Lab.", key: "name", sortable: true },
-  { title: "Costo Actual", key: "costs", sortable: false },
-  { title: "Análisis", key: "solicitar", sortable: true },
-  { title: "Acción", key: "actions", sortable: false },
+  { title: "PRODUCTO / LAB.", key: "name", sortable: true },
+  { title: "COSTO", key: "costs", sortable: false },
+  { title: "ANÁLISIS", key: "solicitar", sortable: true },
+  { title: "ACCIÓN", key: "actions", sortable: false },
 ];
 
 const onRowClick = (event, { item }) => {
@@ -71,19 +80,10 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
 <template>
   <VCard>
     <!-- Header con título y producto seleccionado -->
-    <VCardTitle class="d-flex align-center gap-2 pa-4">
-      <VIcon icon="tabler-package-search" color="warning" size="20" />
-      <span class="text-body-1 font-weight-semibold">Productos sin Asignar en el Pedido</span>
+    <!-- Header con título y producto seleccionado -->
+    <VCardTitle class="d-flex align-center gap-2 pt-4 px-4 pb-0">
+      <span class="text-h6 font-weight-bold">NECESIDADES (ANÁLISIS IA)</span>
       <VSpacer />
-      <VChip
-        v-if="modelValue"
-        color="info"
-        variant="tonal"
-        size="small"
-      >
-        Comparando: {{ modelValue.name }}
-      </VChip>
-      
       <VBtn
         color="primary"
         variant="tonal"
@@ -95,14 +95,14 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       </VBtn>
     </VCardTitle>
 
-    <div class="px-4 pb-4">
+    <div class="px-4 py-2 mt-2">
       <VTextField
         :model-value="searchQuery"
         @update:model-value="(val) => emit('update:search-query', val)"
-        placeholder="Buscar por Nombre, Código de Barras o Principio Activo"
+        placeholder="Buscar por Nombre, Código de Barras o Principio Activo..."
         prepend-inner-icon="tabler-search"
         density="compact"
-        class="mt-2"
+        class="w-100"
         clearable
       />
     </div>
@@ -130,7 +130,8 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
       :items-per-page="itemsPerPage"
       :page="page"
       :loading="loading"
-      @update:options="emit('update:options', $event)"
+      class="text-no-wrap custom-table-header"
+      @update:options="(options) => emit('update:options', options)"
       @click:row="onRowClick"
       :row-props="
         (data) => ({
@@ -190,7 +191,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
 
       <template #item.costs="{ item }">
         <div class="d-flex flex-column text-body-2">
-          <span class="font-weight-medium">{{ item.current_unit_cost ?? "—" }}</span>
+          <span class="font-weight-medium">{{ formatUsd(item.unit_cost ?? 0) }}</span>
         </div>
       </template>
 
@@ -269,5 +270,16 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
 .text-xs {
   font-size: 0.68rem !important;
   line-height: 0.8rem !important;
+}
+</style>
+<style scoped>
+.custom-table-header :deep(thead) {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.compact-input-qty :deep(.v-field__input) {
+  padding-block: 4px;
+  padding-inline: 0;
+  text-align: center;
 }
 </style>
