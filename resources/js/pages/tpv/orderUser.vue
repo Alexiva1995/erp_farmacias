@@ -1,18 +1,26 @@
 <script setup>
-import OrderFilters from "@/components/OrderFilters.vue";
-import OrderProductsTable from "@/components/OrderProductsTable.vue";
-import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
-import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import OpenOrderCard from "@/components/cards/OpenOrderCard.vue";
 import OrderClienteCard from "@/components/cards/OrderClienteCard.vue";
 import BuysModal from "@/components/dialogs/BuysModal.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import PackDetailsModal from "@/components/dialogs/PackDetailsModal.vue";
+import OrderFilters from "@/components/OrderFilters.vue";
+import OrderProductsTable from "@/components/OrderProductsTable.vue";
+import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
+import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed, nextTick, onMounted, reactive, ref, watch, onUnmounted } from "vue";
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 
 const activeTab = ref("products");
 const packs = ref([]);
@@ -350,7 +358,9 @@ const handlePrescriptionFileSelected = (file) => {
   prescriptionFile.value = file;
   validateAndApplyPrescriptionDiscount();
   if (file && activePrescriptionOffers.value.length > 0) {
-    const porcentaje = parseFloat(activePrescriptionOffers.value[0].discount_percentage || 0);
+    const porcentaje = parseFloat(
+      activePrescriptionOffers.value[0].discount_percentage || 0,
+    );
     if (porcentaje > 0) {
       toast.success(`Descuento de receta del ${porcentaje}% aplicado.`);
     } else {
@@ -366,7 +376,9 @@ const handleDoctorDiscountSelected = (offerId) => {
   selectedDoctorOffer.value = offer;
   validateAndApplyDoctorDiscount();
   if (offer) {
-    toast.success(`Descuento de médico ${offer.percentage}% habilitado para esta orden.`);
+    toast.success(
+      `Descuento de médico ${offer.percentage}% habilitado para esta orden.`,
+    );
   } else {
     toast.info("Descuento de médico removido.");
   }
@@ -403,9 +415,7 @@ const validateAndApplyDoctorDiscount = () => {
   } else {
     removeDiscount();
     selectedDoctorOffer.value = null;
-    toast.info(
-      "Esta oferta de médico no tiene un descuento configurado.",
-    );
+    toast.info("Esta oferta de médico no tiene un descuento configurado.");
   }
 };
 
@@ -617,8 +627,10 @@ const applyDiscount = (percentage, source) => {
       return item;
     }
     const origUsd = item.originalPrice ?? item.original_price_usd ?? item.price;
-    const origBs = item.originalPriceBs ?? item.original_price_bs ?? item.price_bs;
-    const origCop = item.originalPriceCop ?? item.original_price_cop ?? item.price_cop;
+    const origBs =
+      item.originalPriceBs ?? item.original_price_bs ?? item.price_bs;
+    const origCop =
+      item.originalPriceCop ?? item.original_price_cop ?? item.price_cop;
     const productPct = parseFloat(item.discount_percentage || 0);
     const bestPct = Math.max(percentage, productPct);
     const discountFactor = bestPct > 0 ? 1 - bestPct / 100 : 1;
@@ -631,8 +643,12 @@ const applyDiscount = (percentage, source) => {
       price_bs: origBs * discountFactor,
       price_cop: origCop * discountFactor,
       discountApplied: true,
-      discountSource: bestPct === productPct ? (item.discount_type || "individual") : source.type,
-      discountSourceId: bestPct === productPct ? item.discount_source_id : source.id,
+      discountSource:
+        bestPct === productPct
+          ? item.discount_type || "individual"
+          : source.type,
+      discountSourceId:
+        bestPct === productPct ? item.discount_source_id : source.id,
       appliedDiscountPercentage: bestPct,
     };
   });
@@ -648,8 +664,10 @@ const removeDiscount = () => {
     // Restaurar al precio del backend (con descuento individual/categoría si aplica)
     // Misma lógica que Médico: no perder el descuento base del producto
     const origUsd = item.original_price_usd ?? item.originalPrice ?? item.price;
-    const origBs = item.original_price_bs ?? item.originalPriceBs ?? item.price_bs;
-    const origCop = item.original_price_cop ?? item.originalPriceCop ?? item.price_cop;
+    const origBs =
+      item.original_price_bs ?? item.originalPriceBs ?? item.price_bs;
+    const origCop =
+      item.original_price_cop ?? item.originalPriceCop ?? item.price_cop;
     const productPct = parseFloat(item.discount_percentage || 0);
     const factor = productPct > 0 ? 1 - productPct / 100 : 1;
 
@@ -766,7 +784,6 @@ const formatOrderItemForFrontend = (backendItem) => {
       ? 1 - backendItem.discount_percentage / 100
       : 1;
 
-
   const taxMultiplier = product.iva == 1 ? 0.16 : 0;
 
   // Precio original del producto
@@ -774,8 +791,9 @@ const formatOrderItemForFrontend = (backendItem) => {
   const originalPriceBs = parseFloat(product.price_bs) || 0;
   const originalPriceCop = parseFloat(product.price_cop) || 0;
 
-  // Precio con descuento (unit_cost del pack o precio normal)
-  const discountedPrice = parseFloat(backendItem.unit_cost) || originalPrice * discountFactor;
+  // Precio con descuento (unit_price_usd del pack o precio normal)
+  const discountedPrice =
+    parseFloat(backendItem.unit_price_usd) || originalPrice * discountFactor;
 
   /*const discountedPriceBs = backendItem.unit_cost
     ? originalPriceBs * (discountedPrice / originalPriceBs)
@@ -785,28 +803,23 @@ const formatOrderItemForFrontend = (backendItem) => {
     ? originalPriceCop * (discountedPrice / originalPriceCop)
     : originalPriceCop * discountFactor;*/
 
-let priceFactor = discountFactor; // Por defecto el factor de vencimiento (1 o menos)
+  let priceFactor = discountFactor; // Por defecto el factor de vencimiento (1 o menos)
 
-if (backendItem.unit_cost) {
-  const unitCost = parseFloat(backendItem.unit_cost);
-  if (selectedDisplayCurrency.value === "BS") {
-    priceFactor = unitCost / originalPriceBs;
-  } else if (selectedDisplayCurrency.value === "COP") {
-    priceFactor = unitCost / originalPriceCop;
-  } else {
-    priceFactor = unitCost / originalPrice; // USD
+  if (backendItem.unit_price_usd) {
+    const unitPriceUsd = parseFloat(backendItem.unit_price_usd);
+    // El factor de precio siempre debe ser la relación entre el precio USD actual (con descuento) y el precio USD original
+    priceFactor = originalPrice > 0 ? unitPriceUsd / originalPrice : 1;
   }
-}
 
-// 3. Aplicar el factor resultante a todas las monedas para mantener la paridad
-const discountedPriceBs  = originalPriceBs * priceFactor;
-const discountedPriceCop = originalPriceCop * priceFactor;
+  // 3. Aplicar el factor resultante a todas las monedas para mantener la paridad
+  const discountedPriceBs = originalPriceBs * priceFactor;
+  const discountedPriceCop = originalPriceCop * priceFactor;
 
   // Determinar si hay descuento de pack (precio personalizado diferente al original)
   const hasPackDiscount =
     backendItem.pack_id &&
-    backendItem.unit_cost &&
-    Math.abs(parseFloat(backendItem.unit_cost) - originalPrice) > 0.01;
+    backendItem.unit_price_usd &&
+    Math.abs(parseFloat(backendItem.unit_price_usd) - originalPrice) > 0.01;
 
   return {
     order_detail_id: backendItem.id,
@@ -866,7 +879,7 @@ const fetchOpenOrder = async () => {
       } else {
         orderItems.value = [];
       }
-      console.log('llamando la orden');
+      console.log("llamando la orden");
       console.log(orderItems);
     } else {
       hasOpenOrder.value = false;
@@ -1162,7 +1175,6 @@ const verifyClient = async (identification) => {
   }
 };
 
-
 const handleLoadQuotation = async (quotationId) => {
   if (!quotationId?.trim()) return;
   try {
@@ -1183,23 +1195,26 @@ const handleLoadQuotation = async (quotationId) => {
       }
     } else {
       pendingQuotationProducts.value = products;
-      toast.warning("La cotización no tiene cliente. Ingrese la cédula del cliente.");
+      toast.warning(
+        "La cotización no tiene cliente. Ingrese la cédula del cliente.",
+      );
     }
   } catch (error) {
-    const msg = error.response?.data?.message || "Error al cargar la cotización.";
+    const msg =
+      error.response?.data?.message || "Error al cargar la cotización.";
     toast.error(msg);
     console.error("Error loading quotation:", error);
   }
 };
 
 const reservedOrderCliente = async () => {
-try {
- const response = await axios.get(`/tpv/order/searchReserved`);
- if (response.data && response.data.message) {
+  try {
+    const response = await axios.get(`/tpv/order/searchReserved`);
+    if (response.data && response.data.message) {
       toast.success(response.data.message);
     }
-  await fetchOpenOrder();
-} catch (error) {
+    await fetchOpenOrder();
+  } catch (error) {
     if (error.response && error.response.data && error.response.data.message) {
       toast.warning(error.response.data.message);
     } else {
@@ -1328,8 +1343,7 @@ const handleCurrencyChanged = async (newCurrency) => {
         // But basePrice should be present for all valid products now.
         calculatedTotalUSD += usdPrice * qty;
 
-
-        console.log('LLAMANDO ANTES DE ACTUZALIAR newCurrency '+newCurrency);
+        console.log("LLAMANDO ANTES DE ACTUZALIAR newCurrency " + newCurrency);
         console.log(item);
 
         // Calculate Target Currency Total
@@ -1341,10 +1355,10 @@ const handleCurrencyChanged = async (newCurrency) => {
           // USD
           calculatedTotal += usdPrice * qty;
         }
-         console.log('LLAMANDO ANTES DE ACTUZALIAR MONEDA '+item.price_cop);
+        console.log("LLAMANDO ANTES DE ACTUZALIAR MONEDA " + item.price_cop);
       });
-     console.log('LLAMANDO ANTES DE ACTUZALIAR newCurrency '+newCurrency);
-   
+      console.log("LLAMANDO ANTES DE ACTUZALIAR newCurrency " + newCurrency);
+
       await axios.patch(`/tpv/orders/${openOrderData.value.id}`, {
         currency: newCurrency,
         total_amount: calculatedTotal,
@@ -1881,10 +1895,7 @@ const addProductToOrder = async ({
     }
 
     // Si hay descuento global activo, aplicar al producto recién agregado (igual que Médico)
-    if (
-      selectedDiscountType.value === "Medico" &&
-      selectedDoctorOffer.value
-    ) {
+    if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
       validateAndApplyDoctorDiscount();
     } else if (
       selectedDiscountType.value === "Recipe" &&
@@ -2264,11 +2275,17 @@ const handleBuysCompletion = async (
   try {
     isFinishingOrder.value = true;
 
-    if (typeof updateTotalsTimer !== 'undefined') clearTimeout(updateTotalsTimer);
+    if (typeof updateTotalsTimer !== "undefined")
+      clearTimeout(updateTotalsTimer);
     await updateOrderTotalsInBackend();
     const finalAmount = parseFloat(totalOrderAmountWithspecialTaxAmount.value);
-    if (orderItems.value.length > 0 && (finalAmount <= 0 || isNaN(finalAmount))) {
-      throw new Error("El monto total calculado es inválido. Por favor, revisa los productos.");
+    if (
+      orderItems.value.length > 0 &&
+      (finalAmount <= 0 || isNaN(finalAmount))
+    ) {
+      throw new Error(
+        "El monto total calculado es inválido. Por favor, revisa los productos.",
+      );
     }
 
     const balanceUsed = paymentsData.some(
@@ -2310,9 +2327,12 @@ const handleBuysCompletion = async (
       ? specialTaxAmount.value
       : 0.0;
 
-
-    const safeChangeAmount = isNaN(parseFloat(changeAmount)) ? 0 : parseFloat(changeAmount);
-    const safeChangeAmountUSD = isNaN(parseFloat(changeAmountUSD)) ? 0 : parseFloat(changeAmountUSD);
+    const safeChangeAmount = isNaN(parseFloat(changeAmount))
+      ? 0
+      : parseFloat(changeAmount);
+    const safeChangeAmountUSD = isNaN(parseFloat(changeAmountUSD))
+      ? 0
+      : parseFloat(changeAmountUSD);
 
     const formData = new FormData();
     formData.append("order_id", orderId);
@@ -2332,13 +2352,15 @@ const handleBuysCompletion = async (
     formData.append("spe_surcharge_amount", spe_surcharge_amount);
 
     const mappedItems = orderItems.value.map((item) => {
-
-    const isTaxable = item.taxRate != 0;
-    const taxRateValue = isTaxable ? 0.16 : 0;
-    const taxMultiplier = isTaxable ? 1.16 : 1;
+      const isTaxable = item.taxRate != 0;
+      const taxRateValue = isTaxable ? 0.16 : 0;
+      const taxMultiplier = isTaxable ? 1.16 : 1;
 
       // getItemPriceByCurrency devuelve item.price/price_bs/price_cop (ya modificados por applyDiscount si aplica)
-      let finalPrice = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+      let finalPrice = getItemPriceByCurrency(
+        item,
+        selectedDisplayCurrency.value,
+      );
       let finalPriceBeforeDiscount = finalPrice;
       let dType = null;
       let dPercent = 0;
@@ -2349,44 +2371,60 @@ const handleBuysCompletion = async (
         dType = item.discountSource || item.discount_type;
         dPercent = parseFloat(item.appliedDiscountPercentage || 0);
         dSourceId = item.discountSourceId || item.discount_source_id;
-        const orig = selectedDisplayCurrency.value === "BS"
-          ? (item.originalPriceBs ?? item.original_price_bs)
-          : selectedDisplayCurrency.value === "COP"
-            ? (item.originalPriceCop ?? item.original_price_cop)
-            : (item.originalPrice ?? item.original_price_usd);
+        const orig =
+          selectedDisplayCurrency.value === "BS"
+            ? (item.originalPriceBs ?? item.original_price_bs)
+            : selectedDisplayCurrency.value === "COP"
+              ? (item.originalPriceCop ?? item.original_price_cop)
+              : (item.originalPrice ?? item.original_price_usd);
         if (orig != null) finalPriceBeforeDiscount = orig;
       } else {
         const productPct = parseFloat(item.discount_percentage || 0);
-        const globalPct = currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
+        const globalPct =
+          currentPercentage > 0 && !item.pack_id ? currentPercentage : 0;
         if (globalPct > productPct) {
           dType = currentTypeName;
           dPercent = globalPct;
           dSourceId = currentSourceId;
-          const basePrice = selectedDisplayCurrency.value === "BS"
-            ? (item.original_price_bs ?? item.originalPriceBs ?? item.basePrice)
-            : selectedDisplayCurrency.value === "COP"
-              ? (item.original_price_cop ?? item.originalPriceCop ?? item.basePrice)
-              : (item.basePrice ?? item.original_price_usd ?? item.originalPrice);
+          const basePrice =
+            selectedDisplayCurrency.value === "BS"
+              ? (item.original_price_bs ??
+                item.originalPriceBs ??
+                item.basePrice)
+              : selectedDisplayCurrency.value === "COP"
+                ? (item.original_price_cop ??
+                  item.originalPriceCop ??
+                  item.basePrice)
+                : (item.basePrice ??
+                  item.original_price_usd ??
+                  item.originalPrice);
           finalPriceBeforeDiscount = basePrice;
           finalPrice = basePrice * (1 - dPercent / 100);
         } else if (productPct > 0) {
           dType = item.discount_type || "individual";
           dPercent = productPct;
           dSourceId = item.discount_source_id;
-          finalPriceBeforeDiscount = (selectedDisplayCurrency.value === "BS"
-            ? (item.original_price_bs ?? item.originalPriceBs)
-            : selectedDisplayCurrency.value === "COP"
-              ? (item.original_price_cop ?? item.originalPriceCop)
-              : (item.basePrice ?? item.original_price_usd ?? item.originalPrice)) ?? finalPrice;
+          finalPriceBeforeDiscount =
+            (selectedDisplayCurrency.value === "BS"
+              ? (item.original_price_bs ?? item.originalPriceBs)
+              : selectedDisplayCurrency.value === "COP"
+                ? (item.original_price_cop ?? item.originalPriceCop)
+                : (item.basePrice ??
+                  item.original_price_usd ??
+                  item.originalPrice)) ?? finalPrice;
         }
       }
-      
+
       const ivaAmount = finalPrice * taxRateValue;
-      let finalPriceTax = (finalPrice * taxMultiplier);
-      let finalPriceBeforeDiscountTax = (finalPriceBeforeDiscount * taxMultiplier);
+      let finalPriceTax = finalPrice * taxMultiplier;
+      let finalPriceBeforeDiscountTax =
+        finalPriceBeforeDiscount * taxMultiplier;
 
       let finalIva;
-      finalIva = (selectedDisplayCurrency.value === 'COP') ? roundUpToNearestHundred(ivaAmount) : parseFloat(ivaAmount.toFixed(2));
+      finalIva =
+        selectedDisplayCurrency.value === "COP"
+          ? roundUpToNearestHundred(ivaAmount)
+          : parseFloat(ivaAmount.toFixed(2));
 
       // 4. Rounding for specific currencies if needed (e.g. COP)
       // getItemPriceByCurrency usually handles base rounding, but discount might introduce decimals.
@@ -2500,7 +2538,9 @@ const printTickeCompletion = async () => {
 
   if (printContents && printContents.innerHTML.trim() !== "") {
     const printWindow = window.open("", "", "height=600,width=800");
-    printWindow.document.write("<html><head><title>Ticket 54mm - Farmacia Barrio Sucre</title>");
+    printWindow.document.write(
+      "<html><head><title>Ticket 54mm - Farmacia Barrio Sucre</title>",
+    );
     printWindow.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
 
     printWindow.document.write("</head><body>");
@@ -2578,7 +2618,6 @@ const handleAddQuotationProducts = async (productsFromQuotation) => {
 
 const addReserverOrder = async () => {
   try {
-
     const response = await axios.patch(
       `/tpv/order/${openOrderData.value.id}/reserveAdd`,
     );
@@ -2587,7 +2626,7 @@ const addReserverOrder = async () => {
     if (pending_order?.currency) {
       selectedDisplayCurrency.value = pending_order.currency.toUpperCase();
     }
-/*
+    /*
     openOrderData.value = pending_order;
     reservedOrderData.value = reserved_order;
     selectedClient.value = pending_order.client;
@@ -2605,15 +2644,14 @@ const addReserverOrder = async () => {
     toast.success("Orden agregada exitosamente.");
     return response.data.data.order;*/
 
-
     // Actualizamos los datos solo si existen
     if (pending_order) {
       openOrderData.value = pending_order;
       selectedClient.value = pending_order.client;
-      
+
       if (pending_order.details) {
         orderItems.value = pending_order.details.map((item) =>
-          formatOrderItemForFrontend(item)
+          formatOrderItemForFrontend(item),
         );
       } else {
         orderItems.value = [];
@@ -2626,7 +2664,6 @@ const addReserverOrder = async () => {
 
     await nextTick();
     toast.success("Orden actualizada correctamente.");
-
   } catch (error) {
     const errorMessage =
       error.response?.data?.message ||
@@ -2979,13 +3016,13 @@ const finalizeAndCheckPending = () => {
     reservedOrderData.value = null;
     toast.info("Orden reservada cargada automáticamente.");
   } else {*/
-    hasOpenOrder.value = false;
-    openOrderData.value = null;
-    selectedDisplayCurrency.value = "COP";
-    orderItems.value = [];
-    selectedClient.value = null;
-    clientIdentification.value = "";
-    reservedOrderData.value = null;
+  hasOpenOrder.value = false;
+  openOrderData.value = null;
+  selectedDisplayCurrency.value = "COP";
+  orderItems.value = [];
+  selectedClient.value = null;
+  clientIdentification.value = "";
+  reservedOrderData.value = null;
   //}
 };
 
@@ -2993,15 +3030,15 @@ const finalizeAndCheckPending = () => {
 const startHeartbeat = () => {
   const interval = setInterval(async () => {
     try {
-      await axios.get('/api/tpv/heartbeat');
+      await axios.get("/api/tpv/heartbeat");
       console.log("Sesión renovada automáticamente");
     } catch (error) {
       // Si el token ya se perdió, intentamos recuperarlo
       if (error.response?.status === 419) {
-        window.location.reload(); 
+        window.location.reload();
       }
     }
-  }, 300000); 
+  }, 300000);
   return interval;
 };
 
@@ -3013,7 +3050,6 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(heartbeatInterval);
 });
-
 </script>
 <template>
   <div>

@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Product;
 use App\Models\Credit;
-use App\Models\Client;
 use App\Models\FiscalHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -129,6 +128,16 @@ class OrderActionService
         try {
 
             $product = Product::findOrFail($validatedData['product_id']);
+            Log::info('--- ADD_ORDER_ITEM START ---');
+            Log::info('Product details:', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sale_price' => $product->sale_price,
+                'price_cop_attribute' => $product->price_cop, // Test if attribute is working here
+            ]);
+            Log::info('Payload received:', $validatedData);
+            Log::info('Order info:', ['id' => $order->id, 'currency' => $order->currency]);
+
             $product->loadSum('lots', 'quantity');
             $availableStock = (int) $product->lots_sum_quantity ?? 0;
 
@@ -136,8 +145,12 @@ class OrderActionService
             $unitPriceAtOrder = $validatedData['price_at_product'];
 
             if ($order->currency === 'COP') {
-                // Round up to nearest 100 COP
+                $roundedBefore = $unitPriceAtOrder;
                 $unitPriceAtOrder = ceil($unitPriceAtOrder / 100) * 100;
+                Log::info('COP Rounding Applied:', [
+                    'original' => $roundedBefore,
+                    'rounded' => $unitPriceAtOrder
+                ]);
             }
 
             $price_usd = $validatedData['price_usd_unit'];
@@ -324,7 +337,10 @@ class OrderActionService
 
                 // Apply logic
                 if ($discountPct > 0) {
-                    $finalUnitPrice = ceil($unitPriceAtOrder * (1 - ($discountPct / 100)) / 100) * 100;
+                    $finalUnitPrice = $unitPriceAtOrder * (1 - ($discountPct / 100));
+                    if ($order->currency === 'COP') {
+                        $finalUnitPrice = ceil($finalUnitPrice / 100) * 100;
+                    }
                 }
 
                 // Compute Total Price Explicitly (Unit * Qty)
@@ -516,9 +532,9 @@ class OrderActionService
                 $unitPriceInOrderCurrency = $detail->unit_cost;
                 $unitPriceInUsd = $detail->unit_price_usd;
 
-                $priceBs = (strtoupper($order->currency) !== 'BS') 
-                ? ($unitPriceInUsd * $exchangeRate) 
-                : $unitPriceInOrderCurrency;
+                $priceBs = (strtoupper($order->currency) !== 'BS')
+                    ? ($unitPriceInUsd * $exchangeRate)
+                    : $unitPriceInOrderCurrency;
 
                 $itemSubtotal = $priceBs * $quantity;
 
@@ -569,9 +585,9 @@ class OrderActionService
                 $unitPriceInOrderCurrency = $detail->unit_cost;
                 $unitPriceInUsd = $detail->unit_price_usd;
 
-                $priceBs = (strtoupper($order->currency) !== 'BS') 
-                ? ($unitPriceInUsd * $exchangeRate) 
-                : $unitPriceInOrderCurrency;
+                $priceBs = (strtoupper($order->currency) !== 'BS')
+                    ? ($unitPriceInUsd * $exchangeRate)
+                    : $unitPriceInOrderCurrency;
 
                 $quantity = $detail->quantity;
                 $isTaxable = ($product->iva == 1);
@@ -582,14 +598,14 @@ class OrderActionService
                 // Insertamos en la tabla de detalles
                 FiscalHistoryDetail::create([
                     'fiscal_history_id' => $fiscalHistory->id,
-                    'product_id'        => $product->id,
-                    'product_name'      => $product->name,
-                    'quantity'          => $quantity,
-                    'vat_status'        => $isTaxable ? 1 : 0,
-                    'exempt_amount'     => !$isTaxable ? $subtotal : 0,
-                    'iva_amount'        => $ivaAmount,
-                    'total_amount'      => $totalItem,
-                    'big_amount'      => $totalItem,
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'quantity' => $quantity,
+                    'vat_status' => $isTaxable ? 1 : 0,
+                    'exempt_amount' => !$isTaxable ? $subtotal : 0,
+                    'iva_amount' => $ivaAmount,
+                    'total_amount' => $totalItem,
+                    'big_amount' => $totalItem,
                 ]);
             }
 
@@ -625,9 +641,9 @@ class OrderActionService
             $currency = strtoupper($p['currency'] ?? 'USD');
             $rate = $rates[$currency] ?? 1;
             // Convertir a moneda de la orden: amount en X -> USD -> orden
-           // $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
-           // $sumInOrderCurrency += $amountInOrderCurrency;
-           if ($currency === $orderCurrency) {
+            // $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
+            // $sumInOrderCurrency += $amountInOrderCurrency;
+            if ($currency === $orderCurrency) {
                 $sumInOrderCurrency += $amount;
             } else {
                 $amountInBase = ($currency === 'USD') ? $amount : ($amount / $rate);
@@ -949,7 +965,7 @@ class OrderActionService
             $current_cash->total_cop = $total_cop;
             $current_cash->total_usd = $total_usd;
             $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
-            $current_cash->cop_delivered = $current_cash->cop_cash - ($current_cash->cop_conversion+$current_cash->cop_conversion_payment_credit);
+            $current_cash->cop_delivered = $current_cash->cop_cash - ($current_cash->cop_conversion + $current_cash->cop_conversion_payment_credit);
             $current_cash->bs_delivered = $current_cash->bs_cash;
 
             $cop_in_usd = $current_cash->total_cop_in_usd;
@@ -1198,7 +1214,7 @@ class OrderActionService
                 $cashClosing->total_cop = $total_cop;
                 $cashClosing->total_usd = $total_usd;
                 $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
-                $cashClosing->cop_delivered = $cashClosing->cop_cash - ($cashClosing->cop_conversion+$cashClosing->cop_conversion_payment_credit);
+                $cashClosing->cop_delivered = $cashClosing->cop_cash - ($cashClosing->cop_conversion + $cashClosing->cop_conversion_payment_credit);
                 $cashClosing->bs_delivered = $cashClosing->bs_cash;
 
                 $cop_in_usd = $cashClosing->total_cop_in_usd;

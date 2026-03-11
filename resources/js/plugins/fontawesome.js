@@ -15,7 +15,8 @@ import {
     faSave,
     faTrash,
     faUser,
-    faUsers
+    faUsers,
+    faChartBar
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -33,7 +34,8 @@ library.add(
   faFileLines,
   faAddressBook,
   faChartSimple,
-  faArrowsRotate
+  faArrowsRotate,
+  faChartBar
 )
 
 export default function (app) {

@@ -247,9 +247,20 @@ const getOriginalBasePrice = (product, currency) => {
     return product.original_price_bs ?? product.originalPriceBs ?? product.price_bs ?? 0;
   }
   if (currency === "COP") {
-    return product.original_price_cop ?? product.originalPriceCop ?? product.price_cop ?? 0;
+    return (
+      product.original_price_cop ??
+      product.originalPriceCop ??
+      product.price_cop ??
+      0
+    );
   }
-  return product.original_price_usd ?? product.originalPrice ?? product.basePrice ?? product.price ?? 0;
+  return (
+    product.original_price_usd ??
+    product.originalPrice ??
+    product.basePrice ??
+    product.price ??
+    0
+  );
 };
 
 // Base con descuento aplicado; usa precio ORIGINAL * factor único para evitar doble descuento
@@ -258,7 +269,8 @@ const getProductPriceSinIva = (product, currency) => {
   if (product.discountApplied) {
     basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
-    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
+    basePrice =
+      getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
     basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
@@ -272,15 +284,29 @@ const getProductPriceSinIva = (product, currency) => {
 // Precio original sin IVA (para mostrar tachado): producto/pack o Empresa
 const getProductPriceOriginalSinIva = (product, currency) => {
   let basePrice = 0;
-  const hasProductDiscount = product.discount_percentage > 0 || (product.has_pack_discount && product.pack_id);
-  const hasGlobalDiscount = activeDiscountDisplay.value != null && !product.pack_id && product.discount_type !== "expiration";
+  const hasProductDiscount =
+    product.discount_percentage > 0 ||
+    (product.has_pack_discount && product.pack_id);
+  const hasGlobalDiscount =
+    activeDiscountDisplay.value != null &&
+    !product.pack_id &&
+    product.discount_type !== "expiration";
   if (hasProductDiscount || hasGlobalDiscount) {
     if (currency === "BS" || currency === "Bs") {
       basePrice = product.original_price_bs || product.originalPriceBs || product.price_bs || 0;
     } else if (currency === "COP") {
-      basePrice = product.original_price_cop || product.originalPriceCop || product.price_cop || 0;
+      basePrice =
+        product.original_price_cop ||
+        product.originalPriceCop ||
+        product.price_cop ||
+        0;
     } else {
-      basePrice = product.original_price_usd || product.originalPrice || product.basePrice || product.price || 0;
+      basePrice =
+        product.original_price_usd ||
+        product.originalPrice ||
+        product.basePrice ||
+        product.price ||
+        0;
     }
   } else {
     if (currency === "BS" || currency === "Bs") basePrice = product.price_bs || 0;
@@ -306,7 +332,8 @@ const getProductPriceSinDescuento = (product, currency) => {
     } else if (currency === "COP") {
       basePrice = product.original_price_cop || product.price_cop || 0;
     } else {
-      basePrice = product.original_price_usd || product.basePrice || product.price || 0;
+      basePrice =
+        product.original_price_usd || product.basePrice || product.price || 0;
     }
   } else {
     if (currency === "BS" || currency === "Bs") {
@@ -332,7 +359,8 @@ const getProductPrice = (product, currency) => {
   if (product.discountApplied) {
     basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
-    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
+    basePrice =
+      getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
     basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
@@ -349,7 +377,8 @@ const getIva = (product, currency) => {
   if (product.discountApplied) {
     basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
-    basePrice = getOriginalBasePrice(product, currency) * getDiscountFactor(product);
+    basePrice =
+      getOriginalBasePrice(product, currency) * getDiscountFactor(product);
   } else {
     basePrice = (currency === "BS" || currency === "Bs") ? (product.price_bs || 0) : currency === "COP" ? (product.price_cop || 0) : (product.price || 0);
   }
@@ -770,7 +799,10 @@ const specialTaxAmount = computed(() => {
           <tr v-for="(product, index) in props.orderProducts" :key="product.id">
             <td style="max-inline-size: none; white-space: normal; word-wrap: break-word;">
               <div class="d-flex flex-column">
-                <span class="text-body-1 font-weight-medium text-high-emphasis" style="white-space: normal; word-wrap: break-word;">
+                <span
+                  class="text-body-1 font-weight-medium text-high-emphasis"
+                  style="white-space: normal; word-wrap: break-word"
+                >
                   {{ product.title }}
                   <VIcon
                     v-if="product.pack_id"
@@ -912,19 +944,32 @@ const specialTaxAmount = computed(() => {
                 >
                 <div class="d-flex flex-column align-end">
                   <del
-                    v-if="(product.discount_percentage > 0 || product.has_pack_discount) || (activeDiscountDisplay && !product.pack_id && product.discount_type !== 'expiration')"
+                    v-if="
+                      product.discount_percentage > 0 ||
+                      product.has_pack_discount ||
+                      (activeDiscountDisplay &&
+                        !product.pack_id &&
+                        product.discount_type !== 'expiration')
+                    "
                     class="precio-tachado"
                   >
                     {{
                       formatCurrency(
-                        getProductPriceOriginalSinIva(product, props.selectedDisplayCurrency),
+                        getProductPriceOriginalSinIva(
+                          product,
+                          props.selectedDisplayCurrency,
+                        ),
                         props.selectedDisplayCurrency,
                       )
                     }}
                   </del>
                   <span
                     :class="
-                      (product.discount_percentage > 0 || product.has_pack_discount) || (activeDiscountDisplay && !product.pack_id && product.discount_type !== 'expiration')
+                      product.discount_percentage > 0 ||
+                      product.has_pack_discount ||
+                      (activeDiscountDisplay &&
+                        !product.pack_id &&
+                        product.discount_type !== 'expiration')
                         ? 'precio-oferta'
                         : 'precio-normal'
                     "
