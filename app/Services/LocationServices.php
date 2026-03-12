@@ -31,6 +31,6 @@ class LocationServices
      */
     public function getAllLocations(): Collection
     {
-        return $this->locationRepository.getAll();
+        return $this->locationRepository->getAll();
     }
 }
