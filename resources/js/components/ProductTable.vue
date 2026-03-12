@@ -389,6 +389,7 @@ const handleMobilePageChange = (newPage) => {
   </VCard>
 </template>
 
+<style scoped>
 .product-mobile-card {
   border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
