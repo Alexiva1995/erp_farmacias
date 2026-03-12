@@ -57,7 +57,6 @@ const getNextExpiration = (lots) => {
 </script>
 
 <template>
-<template>
   <VCard>
     <VCardTitle class="pa-4 d-none d-sm-block">
       Inventario por Producto (Gestión de Lotes)
