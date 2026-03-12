@@ -166,94 +166,97 @@ const formattedDateAndFullTime = computed(() => {
 }
 
 .thermal-print {
-  width: var(--thermal-width) !important;
-  max-width: var(--thermal-width) !important;
-  min-width: var(--thermal-width) !important;
-  margin: 0 !important;
+  box-sizing: border-box !important;
   padding: var(--thermal-padding) !important;
+  margin: 0 !important;
+  color: #000 !important;
   font-family: "Courier New", monospace !important;
   font-size: var(--thermal-font-size) !important;
-  line-height: var(--thermal-line-height) !important;
-  box-sizing: border-box !important;
   font-weight: 900 !important;
-  color: #000 !important;
+  inline-size: var(--thermal-width) !important;
+  line-height: var(--thermal-line-height) !important;
+  max-inline-size: var(--thermal-width) !important;
+  min-inline-size: var(--thermal-width) !important;
 }
 
 .thermal-print * {
-  max-width: calc(var(--thermal-width) - 2 * var(--thermal-padding)) !important;
   box-sizing: border-box !important;
-  word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  margin: 0 !important;
   padding: 0 !important;
-  font-weight: 900 !important;
+  margin: 0 !important;
   color: #000 !important;
+  font-weight: 900 !important;
+  max-inline-size: calc(var(--thermal-width) - 2 * var(--thermal-padding)) !important;
+  overflow-wrap: break-word !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
+  word-wrap: break-word !important;
 }
 
 .thermal-header {
+  margin-block-end: 2mm !important;
   text-align: center !important;
-  margin-bottom: 2mm !important;
 }
 
 .thermal-logo {
-  max-width: 40mm !important;
-  height: auto !important;
-  margin: 0 auto !important;
   display: block !important;
+  block-size: auto !important;
+  margin-block: 0 !important;
+  margin-inline: auto !important;
+  max-inline-size: 40mm !important;
 }
 
 .thermal-rif {
+  color: #000 !important;
   font-size: 8px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  margin: 1mm 0 !important;
+  margin-block: 1mm !important;
+  margin-inline: 0 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-company-name {
+  color: #000 !important;
   font-size: 8px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  margin: 1mm 0 !important;
   line-height: 1.1 !important;
+  margin-block: 1mm !important;
+  margin-inline: 0 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-address {
+  color: #000 !important;
   font-size: 7px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  margin: 0.5mm 0 !important;
   line-height: 1.1 !important;
+  margin-block: 0.5mm !important;
+  margin-inline: 0 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-quotation-header {
   display: flex !important;
-  justify-content: space-between !important;
   align-items: flex-start !important;
-  margin-top: 2mm !important;
-  margin-bottom: 2mm !important;
+  justify-content: space-between !important;
+  margin-block: 2mm !important;
 }
 
 .thermal-quotation-number {
+  color: #000 !important;
   font-size: 9px !important;
   font-weight: 900 !important;
-  color: #000 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-date {
+  color: #000 !important;
   font-size: 8px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  text-align: right !important;
+  text-align: end !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
@@ -261,106 +264,106 @@ const formattedDateAndFullTime = computed(() => {
 .thermal-cashier {
   display: flex !important;
   justify-content: space-between !important;
+  color: #000 !important;
   font-size: 8px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  margin-bottom: 1mm !important;
+  margin-block-end: 1mm !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-items {
-  margin-top: 2mm !important;
+  margin-block-start: 2mm !important;
 }
 
 .thermal-item {
   display: flex !important;
   justify-content: space-between !important;
-  margin-bottom: 1mm !important;
-  padding-bottom: 1mm !important;
+  margin-block-end: 1mm !important;
+  padding-block-end: 1mm !important;
 }
 
 .thermal-item-qty {
   flex: 0 0 8mm !important;
+  color: #000 !important;
   font-size: 8px !important;
   font-weight: 900 !important;
-  color: #000 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-details {
   flex: 1 !important;
-  padding: 0 1mm !important;
+  color: #000 !important;
   font-size: 7px !important;
   font-weight: 900 !important;
-  color: #000 !important;
   line-height: 1.1 !important;
+  padding-block: 0 !important;
+  padding-inline: 1mm !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-price {
   flex: 0 0 15mm !important;
-  text-align: right !important;
+  color: #000 !important;
   font-size: 8px !important;
   font-weight: 900 !important;
-  color: #000 !important;
+  text-align: end !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-name {
   display: block !important;
-  font-weight: 900 !important;
   color: #000 !important;
-  margin-bottom: 0.5mm !important;
+  font-weight: 900 !important;
+  margin-block-end: 0.5mm !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-item-laboratory {
   display: block !important;
+  color: #000 !important;
   font-size: 6px !important;
   font-weight: 900 !important;
-  color: #000 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .thermal-total {
   display: flex !important;
-  justify-content: space-between !important;
   align-items: center !important;
-  margin-top: 2mm !important;
-  margin-bottom: 2mm !important;
-  padding-top: 2mm !important;
+  justify-content: space-between !important;
+  margin-block: 2mm !important;
+  padding-block-start: 2mm !important;
 }
 
 .thermal-total-label {
+  color: #000 !important;
   font-size: 9px !important;
   font-weight: 900 !important;
-  color: #000 !important;
   -webkit-text-stroke: 0.15px #000 !important;
   text-stroke: 0.15px #000 !important;
 }
 
 .thermal-total-amount {
+  color: #000 !important;
   font-size: 10px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  text-align: right !important;
+  text-align: end !important;
   -webkit-text-stroke: 0.15px #000 !important;
   text-stroke: 0.15px #000 !important;
 }
 
 .thermal-footer {
-  text-align: center !important;
+  color: #000 !important;
   font-size: 7px !important;
   font-weight: 900 !important;
-  color: #000 !important;
-  margin-top: 3mm !important;
-  padding-top: 2mm !important;
+  margin-block-start: 3mm !important;
+  padding-block-start: 2mm !important;
+  text-align: center !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
@@ -370,22 +373,22 @@ const formattedDateAndFullTime = computed(() => {
 }
 
 .text-right {
-  text-align: right !important;
+  text-align: end !important;
 }
 
 .font-bold {
-  font-weight: 900 !important;
   color: #000 !important;
+  font-weight: 900 !important;
   -webkit-text-stroke: 0.1px #000 !important;
   text-stroke: 0.1px #000 !important;
 }
 
 .mt-1 {
-  margin-top: 1mm !important;
+  margin-block-start: 1mm !important;
 }
 
 .mb-1 {
-  margin-bottom: 1mm !important;
+  margin-block-end: 1mm !important;
 }
 
 .no-print {

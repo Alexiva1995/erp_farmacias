@@ -104,7 +104,7 @@ watch(
     </div>
 
     <!-- Template de preview (oculto) -->
-    <div id="dz-preview-template" style="display: none">
+    <div id="dz-preview-template" style="display: none;">
       <div class="dz-preview dz-file-preview">
         <div class="dz-details">
           <div class="dz-filename"><span data-dz-name></span></div>
@@ -124,12 +124,12 @@ watch(
 
 <style scoped>
 .dropzone {
+  padding: 16px;
   border: 2px dashed var(--v-theme-primary, #7367f0);
   border-radius: 8px;
-  background-color: rgba(115, 103, 240, 0.05);
-  min-height: 160px;
-  padding: 16px;
+  background-color: rgba(115, 103, 240, 5%);
   color: #c2c6dc;
+  min-block-size: 160px;
 }
 
 .dropzone .dz-preview {
@@ -139,22 +139,23 @@ watch(
 }
 
 .dz-preview .dz-image {
-  width: 120px;
-  height: 120px;
   overflow: hidden;
   border-radius: 10px;
+  block-size: 120px;
+  inline-size: 120px;
 }
 
 .dz-preview .dz-image img {
-  width: 100% !important;
-  height: 100% !important;
+  block-size: 100% !important;
+  inline-size: 100% !important;
   object-fit: cover;
 }
 
 .dropzone .dz-message {
+  inline-size: 100%;
+  margin-block: 20px;
+  margin-inline: 0;
   text-align: center;
-  width: 100%;
-  margin: 20px 0;
 }
 
 .error-text {

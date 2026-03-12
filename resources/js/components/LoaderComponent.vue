@@ -7,16 +7,16 @@ const props = defineProps({
 <style lang="css">
 .contenedor-loader {
   position: absolute;
-  top: 0px;
-  left: 0px;
-  width: 100vw;
-  height: 100vh;
   z-index: 1004;
-  background-color: #11111191;
   display: flex;
   flex-direction: row;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  background-color: #11111191;
+  block-size: 100vh;
+  inline-size: 100vw;
+  inset-block-start: 0;
+  inset-inline-start: 0;
 }
 </style>
 

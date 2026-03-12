@@ -51,57 +51,57 @@ const groupedCashDataSellers = computed(() => {
         class="center-block"
       />
       
-      <table style="width: 100%; padding-top: 20px;">
+      <table style="inline-size: 100%; padding-block-start: 20px;">
         <tbody>
           <tr v-for="(pair, rowIndex) in cashGroups" :key="rowIndex">
             
             <td 
               v-for="(cash, colIndex) in pair" 
               :key="colIndex" 
-              style="width: 50%; vertical-align: top;"
+              style="inline-size: 50%; vertical-align: top;"
             >
-              <span style="display: block; margin-bottom: 5px;">Cierre N° {{ cash.id }}</span>
+              <span style="display: block; margin-block-end: 5px;">Cierre N° {{ cash.id }}</span>
               
-              <table style="width: 100%;">
+              <table style="inline-size: 100%;">
               <tbody>
                 <tr>
-                  <td style="text-align: left"><span>USD:</span></td>
-                  <td style="text-align: right">
+                  <td style="text-align: start;"><span>USD:</span></td>
+                  <td style="text-align: end;">
                     <span>{{formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0))}}$</span>
                   </td>
-                  <td style="text-align: right">
+                  <td style="text-align: end;">
                     <span>{{formatCurrency(parseFloat(cash.total_usd || 0) + parseFloat(cash.usd_credit || 0))}}$</span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="text-align: left"><span>BS:</span></td>
-                  <td style="text-align: right">
+                  <td style="text-align: start;"><span>BS:</span></td>
+                  <td style="text-align: end;">
                     <span>{{ cash.total_bs }}BS</span>
                   </td>
-                  <td style="text-align: right">
+                  <td style="text-align: end;">
                     <span>{{formatCurrency(cash.total_bs_in_usd)}}$</span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="text-align: left"><span>COP:</span></td>
-                  <td style="text-align: right">
+                  <td style="text-align: start;"><span>COP:</span></td>
+                  <td style="text-align: end;">
                     <span>{{ cash.total_cop }}COP</span>
                   </td>
-                  <td style="text-align: right">
+                  <td style="text-align: end;">
                     <span>{{formatCurrency(cash.total_cop_in_usd)}}$</span>
                   </td>
                 </tr>
-                <tr style="margin-bottom: 2px;">
-                    <td style="text-align: left;"><span></span></td>
-                    <td style="text-align: right; font-weight: bold;"><span>TOTAL VENTA</span></td>
-                    <td style="text-align: right; font-weight: bold;">
+                <tr style="margin-block-end: 2px;">
+                    <td style="text-align: start;"><span></span></td>
+                    <td style=" font-weight: bold;text-align: end;"><span>TOTAL VENTA</span></td>
+                    <td style=" font-weight: bold;text-align: end;">
                       <span>{{ cash.total_sales}}$</span>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </td>
-            <td v-if="pair.length === 1" style="width: 50%;"></td>
+            <td v-if="pair.length === 1" style="inline-size: 50%;"></td>
           </tr>
         </tbody>
       </table>

@@ -265,7 +265,7 @@ const totalRefundAmount = computed(() => {
                 density="compact"
                 variant="outlined"
                 hide-details
-                style="max-width: 90px"
+                style="max-inline-size: 90px;"
                 :max="detailItem.quantity"
                 :disabled="detailItem.quantity === 0"
                 @update:model-value="(v) => setReturnsQuantity(detailItem.id, v)"
@@ -294,7 +294,7 @@ const totalRefundAmount = computed(() => {
             variant="outlined"
             size="large"
             class="flex-grow-1"
-            style="flex: 1 1 50%"
+            style="flex: 1 1 50%;"
             @click="closeProductsModal"
           >
             Cancelar
@@ -303,7 +303,7 @@ const totalRefundAmount = computed(() => {
             color="warning"
             size="large"
             class="flex-grow-1"
-            style="flex: 1 1 50%"
+            style="flex: 1 1 50%;"
             :disabled="
               !selectedProductsToReturn[selectedOrderForModal.id]?.length
             "

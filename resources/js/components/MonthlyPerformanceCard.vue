@@ -116,7 +116,7 @@ initializeCurrentMonth()
         variant="outlined"
         prepend-inner-icon="tabler-calendar-event"
         class="month-selector"
-        style="max-width: 200px;"
+        style="max-inline-size: 200px;"
         @update:model-value="handleMonthChange"
       />
     </VCardTitle>
@@ -130,7 +130,7 @@ initializeCurrentMonth()
           <VCard color="primary" theme="dark" height="120" class="elevation-2">
             <VCardText class="d-flex align-center justify-center text-center pa-4">
               <div>
-                <div class="bg-light-primary rounded-circle d-inline-flex align-center justify-center mb-3" style="width: 48px; height: 48px;">
+                <div class="bg-light-primary rounded-circle d-inline-flex align-center justify-center mb-3" style=" block-size: 48px;inline-size: 48px;">
                   <VIcon icon="tabler-cash" color="primary" size="24" />
                 </div>
                 <div class="text-h5 font-weight-bold text-white">
@@ -147,7 +147,7 @@ initializeCurrentMonth()
           <VCard variant="tonal" color="success" height="120" class="elevation-2">
             <VCardText class="d-flex align-center justify-center text-center pa-4">
               <div>
-                <div class="bg-light-success rounded-circle d-inline-flex align-center justify-center mb-3" style="width: 48px; height: 48px;">
+                <div class="bg-light-success rounded-circle d-inline-flex align-center justify-center mb-3" style=" block-size: 48px;inline-size: 48px;">
                   <VIcon icon="tabler-package" color="success" size="24" />
                 </div>
                 <div class="text-h5 font-weight-bold text-success">
@@ -164,7 +164,7 @@ initializeCurrentMonth()
           <VCard variant="tonal" color="warning" height="120" class="elevation-2">
             <VCardText class="d-flex align-center justify-center text-center pa-4">
               <div>
-                <div class="bg-light-warning rounded-circle d-inline-flex align-center justify-center mb-3" style="width: 48px; height: 48px;">
+                <div class="bg-light-warning rounded-circle d-inline-flex align-center justify-center mb-3" style=" block-size: 48px;inline-size: 48px;">
                   <VIcon icon="tabler-receipt" color="warning" size="24" />
                 </div>
                 <div class="text-h5 font-weight-bold text-warning">
@@ -181,7 +181,7 @@ initializeCurrentMonth()
           <VCard variant="tonal" color="info" height="120" class="elevation-2">
             <VCardText class="d-flex align-center justify-center text-center pa-4">
               <div>
-                <div class="bg-light-info rounded-circle d-inline-flex align-center justify-center mb-3" style="width: 48px; height: 48px;">
+                <div class="bg-light-info rounded-circle d-inline-flex align-center justify-center mb-3" style=" block-size: 48px;inline-size: 48px;">
                   <VIcon icon="tabler-box-multiple" color="info" size="24" />
                 </div>
                 <div class="text-h5 font-weight-bold text-info">
@@ -217,7 +217,7 @@ initializeCurrentMonth()
 
 /* Vuexy elevation styles */
 .elevation-2 {
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 10%), 0 3px 6px rgba(0, 0, 0, 5%) !important;
 }
 
 /* Vuexy background utility classes */
@@ -240,7 +240,7 @@ initializeCurrentMonth()
 /* Responsive adjustments */
 @media (max-width: 960px) {
   .month-selector {
-    max-width: 150px !important;
+    max-inline-size: 150px !important;
   }
 }
 
@@ -250,9 +250,9 @@ initializeCurrentMonth()
     align-items: flex-start !important;
     gap: 1rem;
   }
-  
+
   .month-selector {
-    max-width: 100% !important;
+    max-inline-size: 100% !important;
   }
 }
 </style>

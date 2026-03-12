@@ -675,7 +675,7 @@ watch([filterClient, filterDate, filterCurrency], () => {
 
 .products-table td {
   border-block-end:
- 1px solid
+    1px solid
     rgba(var(--v-border-color), var(--v-border-opacity, 0.12));
   line-height: 1.25;
   padding-block: 4px;

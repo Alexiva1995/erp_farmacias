@@ -32,7 +32,7 @@ const currentPage = computed({
           <th>Proveedor</th>
           <th>ID</th>
 
-          <th style="width: 400px">Producto</th>
+          <th style="inline-size: 400px;">Producto</th>
           <th>Ventas</th>
           <th>Promedio</th>
           <th>Costo Lot.</th>
@@ -40,7 +40,7 @@ const currentPage = computed({
           <th>Costo</th>
           <th>Stock A.</th>
           <th>Costo P.</th>
-          <th style="width: 100px">Sugerencia</th>
+          <th style="inline-size: 100px;">Sugerencia</th>
         </tr>
       </thead>
 
@@ -49,7 +49,7 @@ const currentPage = computed({
           <td>{{ item.supplier.name }}</td>
           <td>{{ item.product.id }}</td>
 
-          <td style="width: 220px; max-width: 220px">
+          <td style="inline-size: 220px; max-inline-size: 220px;">
             <div class="d-flex align-center gap-x-4">
               <VAvatar
                 v-if="item.product.photo_url"
@@ -58,7 +58,7 @@ const currentPage = computed({
                 rounded
                 :image="item.product.photo_url"
               />
-              <div class="d-flex flex-column" style="min-width: 0">
+              <div class="d-flex flex-column" style="min-inline-size: 0;">
                 <span
                   class="text-body-2 font-weight-medium text-high-emphasis text-truncate"
                 >
@@ -104,7 +104,7 @@ const currentPage = computed({
               v-model="item.reponer"
               density="compact"
               hide-details
-              style="min-width: 100px"
+              style="min-inline-size: 100px;"
               :max="item.productSupplier.quantity"
               :suffix="'/' + item.productSupplier.quantity"
             />

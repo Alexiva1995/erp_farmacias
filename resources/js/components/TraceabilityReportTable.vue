@@ -67,7 +67,7 @@ const headers = [
       </template>
 
       <template #item.product.name="{ item }">
-        <div class="d-flex align-start gap-x-4" style="max-width: 300px; width: 100%;">
+        <div class="d-flex align-start gap-x-4" style=" inline-size: 100%;max-inline-size: 300px;">
           <VAvatar
             v-if="item.product?.photo_url"
             size="38"
@@ -76,22 +76,22 @@ const headers = [
             :image="item.product.photo_url"
             style="flex-shrink: 0;"
           />
-          <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
+          <div class="d-flex flex-column" style=" flex: 1;min-inline-size: 0; overflow-wrap: break-word; word-wrap: break-word;">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
               :class="{ 
                 'text-warning font-weight-bold': item.product?.psychotropic == 1 || item.product?.psychotropic === true
               }"
-              style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; white-space: normal;"
+              style=" line-height: 1.4; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
             >
               {{ item.product?.name?.toUpperCase() || 'N/A' }}
               <span v-if="item.product?.iva == 1 || item.product?.iva === true"> (G)</span>
               <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
             </span>
-            <span class="text-sm text-disabled" v-if="item.product?.active_ingredient" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;">{{
+            <span class="text-sm text-disabled" v-if="item.product?.active_ingredient" style=" line-height: 1.3; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;">{{
               item.product.active_ingredient
             }}</span>
-            <span class="text-sm text-disabled" v-if="item.product?.laboratory?.name" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;">{{
+            <span class="text-sm text-disabled" v-if="item.product?.laboratory?.name" style=" line-height: 1.3; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;">{{
               item.product.laboratory.name
             }}</span>
           </div>
@@ -182,20 +182,19 @@ const headers = [
 
 <style scoped>
 :deep(.v-data-table td:nth-child(2)) {
+  overflow: hidden !important;
+  inline-size: 300px !important;
+  max-inline-size: 300px !important;
+  overflow-wrap: break-word !important;
+  padding-block: 12px !important;
+  vertical-align: top !important;
   white-space: normal !important;
   word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  max-width: 300px !important;
-  width: 300px !important;
-  vertical-align: top !important;
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
-  overflow: hidden !important;
 }
 
 :deep(.v-data-table th:nth-child(2)) {
-  max-width: 300px !important;
-  width: 300px !important;
+  inline-size: 300px !important;
+  max-inline-size: 300px !important;
   white-space: normal !important;
 }
 

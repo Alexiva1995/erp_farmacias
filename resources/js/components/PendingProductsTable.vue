@@ -142,7 +142,7 @@ const nextExpirationDate = (product) => {
             v-model="editingValue"
             density="compact"
             variant="outlined"
-            style="width: 300px"
+            style="inline-size: 300px;"
             @keyup.enter="saveInlineEdit(item)"
             autofocus
             :error="props.productWithError === item.id"

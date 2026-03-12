@@ -212,7 +212,7 @@ const nextExpirationDate = (product) => {
             item-value="id"
             variant="outlined"
             class="responsive-autocomplete"
-            style="min-width: 200px; max-width: 350px;"
+            style=" max-inline-size: 350px;min-inline-size: 200px;"
             placeholder="Buscar o crear grupo"
             clearable
             @keydown.enter.prevent="

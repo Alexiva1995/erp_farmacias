@@ -202,7 +202,7 @@ const handleClear = () => {
         label="Stock"
         :items="stock"
         clearable
-        style="max-width: 150px;"
+        style="max-inline-size: 150px;"
         @update:model-value="emit('update:stock', $event)"
       />
 
@@ -210,7 +210,7 @@ const handleClear = () => {
         :model-value="props.days"
         label="Días"
         :items="diasVencimientos"
-        style="max-width: 150px;"
+        style="max-inline-size: 150px;"
         @update:model-value="emit('update:days', $event)"
       />
 
@@ -218,7 +218,7 @@ const handleClear = () => {
         :model-value="props.tipoFiltracion"
         label="Calcular Por"
         :items="tipoFiltracionOpcion"
-        style="max-width: 150px;"
+        style="max-inline-size: 150px;"
         @update:model-value="emit('update:tipoFiltracion', $event)"
       />
 

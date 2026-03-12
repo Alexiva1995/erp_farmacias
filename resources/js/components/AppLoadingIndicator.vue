@@ -47,7 +47,7 @@ defineExpose({
   <div
     v-if="showProgress"
     class="position-fixed"
-    style="z-index: 9999; inset-block-start: 0; inset-inline: 0 0"
+    style="z-index: 9999; inset-block-start: 0; inset-inline: 0;"
   >
     <VProgressLinear
       v-model="progressValue"

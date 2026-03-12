@@ -115,57 +115,61 @@ const productLineText = (item) => item.lineText;
 
 <style scoped>
 .thermal-54-ticket {
-  width: 54mm;
-  max-width: 54mm;
-  min-width: 54mm;
+  box-sizing: border-box;
   padding: 2mm;
   margin: 0;
-  background: #ffffff;
-  color: #000000;
+  background: #fff;
+  color: #000;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 10px;
+  inline-size: 54mm;
   line-height: 1.25;
-  box-sizing: border-box;
+  max-inline-size: 54mm;
+  min-inline-size: 54mm;
   text-transform: uppercase;
 }
+
 .thermal-54-ticket * {
-  color: #000000 !important;
-  background: transparent !important;
   box-sizing: border-box;
+  background: transparent !important;
+  color: #000 !important;
   text-transform: uppercase !important;
 }
+
 .thermal-header {
+  border-block-end: 1px dashed #000;
+  margin-block-end: 2mm;
+  padding-block-end: 2mm;
   text-align: center;
-  margin-bottom: 2mm;
-  padding-bottom: 2mm;
-  border-bottom: 1px dashed #000000;
 }
+
 .thermal-logo {
   display: block;
-  margin: 0 auto 1mm;
-  max-width: 40mm;
-  height: auto;
+  block-size: auto;
   filter: grayscale(100%) contrast(1.1);
+  margin-block: 0 1mm;
+  margin-inline: auto;
+  max-inline-size: 40mm;
 }
-.thermal-rif { font-size: 9px !important; font-weight: bold !important; margin: 0 0 0.5mm !important; }
-.thermal-company { font-size: 10px !important; font-weight: bold !important; margin: 0 0 0.5mm !important; }
-.thermal-address { font-size: 9px !important; margin: 0 !important; line-height: 1.15 !important; }
-.thermal-data { margin-bottom: 2mm !important; }
-.thermal-data-row { display: flex !important; justify-content: space-between !important; margin: 0.5mm 0 !important; font-size: 10px !important; }
-.thermal-label { font-weight: bold !important; flex-shrink: 0 !important; }
-.thermal-value { text-align: right !important; word-break: break-word !important; margin-left: 2mm !important; }
-.thermal-value-cliente { text-align: right !important; word-break: break-word !important; }
-.thermal-title-row { justify-content: center !important; margin-bottom: 1mm !important; }
-.thermal-products { margin-bottom: 2mm !important; border-top: 1px dashed #000000 !important; padding-top: 1mm !important; }
-.thermal-products-head { display: flex !important; font-size: 10px !important; font-weight: bold !important; padding: 0.4mm 0 !important; border-bottom: 1px dashed #000000 !important; }
-.thermal-col-desc { flex: 1 !important; min-width: 0 !important; padding: 0 1.5mm 0 0 !important; }
-.thermal-col-amount { width: 16mm !important; flex-shrink: 0 !important; text-align: right !important; }
-.thermal-product-row { display: flex !important; align-items: flex-start !important; padding: 0.5mm 0 !important; font-size: 10px !important; line-height: 1.2 !important; border-bottom: 1px solid #000000 !important; }
+.thermal-rif { font-size: 9px !important; font-weight: bold !important; margin-block: 0 0.5mm !important; margin-inline: 0 !important; }
+.thermal-company { font-size: 10px !important; font-weight: bold !important; margin-block: 0 0.5mm !important; margin-inline: 0 !important; }
+.thermal-address { margin: 0 !important; font-size: 9px !important; line-height: 1.15 !important; }
+.thermal-data { margin-block-end: 2mm !important; }
+.thermal-data-row { display: flex !important; justify-content: space-between !important; font-size: 10px !important; margin-block: 0.5mm !important; margin-inline: 0 !important; }
+.thermal-label { flex-shrink: 0 !important; font-weight: bold !important; }
+.thermal-value { margin-inline-start: 2mm !important; text-align: end !important; word-break: break-word !important; }
+.thermal-value-cliente { text-align: end !important; word-break: break-word !important; }
+.thermal-title-row { justify-content: center !important; margin-block-end: 1mm !important; }
+.thermal-products { border-block-start: 1px dashed #000 !important; margin-block-end: 2mm !important; padding-block-start: 1mm !important; }
+.thermal-products-head { display: flex !important; border-block-end: 1px dashed #000 !important; font-size: 10px !important; font-weight: bold !important; padding-block: 0.4mm !important; padding-inline: 0 !important; }
+.thermal-col-desc { flex: 1 !important; min-inline-size: 0 !important; padding-block: 0 !important; padding-inline: 0 1.5mm !important; }
+.thermal-col-amount { flex-shrink: 0 !important; inline-size: 16mm !important; text-align: end !important; }
+.thermal-product-row { display: flex !important; align-items: flex-start !important; border-block-end: 1px solid #000 !important; font-size: 10px !important; line-height: 1.2 !important; padding-block: 0.5mm !important; padding-inline: 0 !important; }
 .thermal-product-row .thermal-col-desc { display: flex !important; flex-direction: column !important; }
-.thermal-product-name { font-size: 8px !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
-.thermal-totals { margin-top: 2mm !important; padding-top: 1mm !important; font-size: 10px !important; }
-.thermal-total-row { display: flex !important; justify-content: space-between !important; margin: 0.5mm 0 !important; }
-.thermal-total-block { border-top: 2px solid #000000 !important; border-bottom: 2px solid #000000 !important; padding: 1.5mm 0 !important; margin: 1mm 0 !important; }
+.thermal-product-name { font-size: 8px !important; overflow-wrap: break-word !important; word-wrap: break-word !important; }
+.thermal-totals { font-size: 10px !important; margin-block-start: 2mm !important; padding-block-start: 1mm !important; }
+.thermal-total-row { display: flex !important; justify-content: space-between !important; margin-block: 0.5mm !important; margin-inline: 0 !important; }
+.thermal-total-block { border-block-end: 2px solid #000 !important; border-block-start: 2px solid #000 !important; margin-block: 1mm !important; margin-inline: 0 !important; padding-block: 1.5mm !important; padding-inline: 0 !important; }
 .thermal-total-main { font-size: 11px !important; font-weight: bold !important; }
-.thermal-footer { text-align: center !important; font-size: 11px !important; font-weight: bold !important; margin-top: 3mm !important; padding-top: 2mm !important; border-top: 1px dashed #000000 !important; }
+.thermal-footer { border-block-start: 1px dashed #000 !important; font-size: 11px !important; font-weight: bold !important; margin-block-start: 3mm !important; padding-block-start: 2mm !important; text-align: center !important; }
 </style>

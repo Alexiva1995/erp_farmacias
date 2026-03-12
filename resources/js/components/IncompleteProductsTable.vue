@@ -280,7 +280,7 @@ const nextExpirationDate = (product) => {
             density="compact"
             variant="outlined"
             class="responsive-autocomplete"
-            style="min-width: 150px; flex-grow: 1;"
+            style=" flex-grow: 1;min-inline-size: 150px;"
             placeholder="Buscar o crear laboratorio"
             clearable
             @keydown.enter.prevent="
@@ -319,7 +319,7 @@ const nextExpirationDate = (product) => {
             density="compact"
             variant="outlined"
             class="responsive-input"
-            style="min-width: 120px; flex-grow: 1;"
+            style=" flex-grow: 1;min-inline-size: 120px;"
             @keyup.enter="saveInlineEdit(item)"
             autofocus
             placeholder="Escribir barcode"
@@ -358,7 +358,7 @@ const nextExpirationDate = (product) => {
             density="compact"
             variant="outlined"
             class="responsive-autocomplete"
-            style="min-width: 150px; flex-grow: 1;"
+            style=" flex-grow: 1;min-inline-size: 150px;"
             placeholder="Buscar o crear origen"
             clearable
             @keydown.enter.prevent="

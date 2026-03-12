@@ -18,13 +18,13 @@ const props = defineProps({
 </script>
 
 <template>
-  <div v-if="!isPdf" style="display: flex; align-items: center; margin: 16px 0;">
-    <div style="flex-grow: 1; border-bottom: 1px solid #000; height: 1px;"></div>
-    <span style="padding: 0 12px; font-weight: bold; white-space: nowrap;">{{ text }}</span>
-    <div style="flex-grow: 1; border-bottom: 1px solid #000; height: 1px;"></div>
+  <div v-if="!isPdf" style="display: flex; align-items: center; margin-block: 16px; margin-inline: 0;">
+    <div style="flex-grow: 1; block-size: 1px; border-block-end: 1px solid #000;"></div>
+    <span style=" font-weight: bold;padding-block: 0; padding-inline: 12px; white-space: nowrap;">{{ text }}</span>
+    <div style="flex-grow: 1; block-size: 1px; border-block-end: 1px solid #000;"></div>
   </div>
 
-   <div v-else style="text-align: center; margin: 16px 0;">
+   <div v-else style=" margin-block: 16px; margin-inline: 0;text-align: center;">
     <hr :style="{ width: width, border: '0.5px solid #000', display: 'inline-block', verticalAlign: 'middle' }" >
     <span class="divider-text">{{ text }}</span>
     <hr :style="{ width: width, border: '0.5px solid #000', display: 'inline-block', verticalAlign: 'middle' }" >

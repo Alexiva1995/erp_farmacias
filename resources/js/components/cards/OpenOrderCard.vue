@@ -698,7 +698,7 @@ const specialTaxAmount = computed(() => {
               props.prescriptionDiscountPercentage > 0
             "
             class="text-body-2 text-success font-weight-bold"
-            style="white-space: nowrap"
+            style="white-space: nowrap;"
           >
             {{ props.prescriptionDiscountPercentage }}% Descuento
           </span>
@@ -801,7 +801,7 @@ const specialTaxAmount = computed(() => {
               <div class="d-flex flex-column">
                 <span
                   class="text-body-1 font-weight-medium text-high-emphasis"
-                  style="white-space: normal; word-wrap: break-word"
+                  style="white-space: normal; word-wrap: break-word;"
                 >
                   {{ product.title }}
                   <VIcon
@@ -911,7 +911,7 @@ const specialTaxAmount = computed(() => {
                   single-line
                   hide-details
                   class="mx-1"
-                  style="width: 50px; text-align: center"
+                  style="inline-size: 50px; text-align: center;"
                   :disabled="!!product.pack_id"
                   @change="
                     $emit('update-quantity', {
@@ -1124,7 +1124,7 @@ const specialTaxAmount = computed(() => {
 
 <style scoped>
 .v-table__wrapper > table > tbody > tr > td {
-  border-bottom: none !important;
+  border-block-end: none !important;
 }
 
 /* Precio normal (sin oferta): color negro */
@@ -1135,8 +1135,8 @@ const specialTaxAmount = computed(() => {
 /* Precio original tachado (base sin IVA) cuando hay descuento */
 .precio-tachado {
   color: #a0a0a0;
-  text-decoration: line-through;
   font-size: 0.75rem;
+  text-decoration: line-through;
 }
 
 /* Precio con oferta/descuento - destaca (tono chocolate/dorado) */
@@ -1147,13 +1147,13 @@ const specialTaxAmount = computed(() => {
 
 /* Chip de oferta individual - más atractivo (verde) */
 .chip-oferta {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 8%);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Chip de oferta por categoría - color distinto (azul/info) */
 .chip-categoria {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 8%);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 </style>

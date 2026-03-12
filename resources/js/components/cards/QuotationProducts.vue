@@ -481,7 +481,7 @@ onMounted(() => {
           density="compact"
           variant="outlined"
           hide-details
-          style="width: 140px"
+          style="inline-size: 140px;"
           placeholder="Descuento"
           clearable
           @update:model-value="emit('update:selectedDiscountType', $event)"
@@ -493,7 +493,7 @@ onMounted(() => {
           density="compact"
           variant="outlined"
           hide-details
-          style="width: 200px"
+          style="inline-size: 200px;"
           placeholder="Seleccione Empresa"
           item-title="title"
           item-value="value"
@@ -506,7 +506,7 @@ onMounted(() => {
           density="compact"
           variant="outlined"
           hide-details
-          style="width: 200px"
+          style="inline-size: 200px;"
           placeholder="Seleccione Médico"
           item-title="title"
           item-value="value"
@@ -518,7 +518,7 @@ onMounted(() => {
           density="compact"
           variant="outlined"
           hide-details
-          style="width: 200px"
+          style="inline-size: 200px;"
           placeholder="Subir Recipe"
           accept="image/*"
           prepend-icon=""
@@ -531,7 +531,7 @@ onMounted(() => {
             props.prescriptionDiscountPercentage > 0
           "
           class="text-body-2 text-success font-weight-bold"
-          style="white-space: nowrap"
+          style="white-space: nowrap;"
         >
           {{ props.prescriptionDiscountPercentage }}% Descuento
         </span>
@@ -556,7 +556,7 @@ onMounted(() => {
             class="rounded-0"
           >
             <template #prepend>
-              <div class="d-flex align-center" style="width: 60px">
+              <div class="d-flex align-center" style="inline-size: 60px;">
                 <VTextField
                   v-model.number="product.selectedQuantity"
                   type="number"

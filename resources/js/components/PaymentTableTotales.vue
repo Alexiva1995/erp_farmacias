@@ -22,7 +22,7 @@ const filteredPayments = computed(() => {
         <td class="text-right font-weight-bold">
           <span>{{ payment.label }}</span>
         </td>
-        <td class="text-right font-weight-bold" style="width:150px;">
+        <td class="text-right font-weight-bold" style="inline-size: 150px;">
           <span> {{ formatCurrency(payment.amount, payment.currency) }}</span>
         </td>
       </tr>
@@ -32,7 +32,7 @@ const filteredPayments = computed(() => {
 
 <style scoped>
 .right-align-cell {
-  text-align: right;
   font-weight: bold;
+  text-align: end;
 }
 </style>

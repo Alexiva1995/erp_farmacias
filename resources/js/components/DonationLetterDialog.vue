@@ -86,7 +86,7 @@ const closeDialog = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-6" style="overflow-y: auto;">
         <div class="mb-6">
           <p class="text-h6 font-weight-medium mb-1">Información de la Institución</p>
           <p class="text-body-2 text-medium-emphasis mb-4">Nombre de la institución que recibirá la donación</p>
