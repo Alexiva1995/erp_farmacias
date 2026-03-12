@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref } from "vue";
+import { formatDate } from "@/utils/formatters";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -30,7 +31,13 @@ const searchInput = ref("");
 const currentEditingProduct = ref(null);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
+  { 
+    title: "ID", 
+    key: "id", 
+    sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory", sortable: true },
   { title: "Barcode", key: "barcode", sortable: true },
@@ -42,8 +49,16 @@ const headers = [
     value: (item) => {
       return item.stock_calculado;
     },
+    cellClass: "d-none d-md-table-cell",
+    headerClass: "d-none d-md-table-cell"
   },
-  { title: "Exp.", key: "next_expiration", sortable: true },
+  { 
+    title: "Exp.", 
+    key: "next_expiration", 
+    sortable: true,
+    cellClass: "d-none d-md-table-cell",
+    headerClass: "d-none d-md-table-cell"
+  },
   { title: "Origen", key: "origin", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
 ];
@@ -199,7 +214,7 @@ const nextExpirationDate = (product) => {
     (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date),
   );
   const closestDate = new Date(validLots[0].expiration_date);
-  return closestDate.toISOString().split("T")[0];
+  return formatDate(closestDate);
 };
 </script>
 
@@ -235,20 +250,20 @@ const nextExpirationDate = (product) => {
                   item.psychotropic == 1 || item.psychotropic === true,
               }"
             >
+              <!-- En móvil añadimos ID y Laboratorio al nombre si el lab existe -->
+              <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
               {{ item.name.toUpperCase() }}
               <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-              <span
-                v-if="
-                  item.is_colombian_origin == 1 ||
-                  item.is_colombian_origin === true
-                "
-              >
-                (COL)</span
-              >
+              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+              <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
+                {{ item.laboratory.name }}
+              </div>
             </span>
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
+            <span class="text-sm text-disabled">
+              {{ item.active_ingredient }}
+              <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" class="ms-1">Falta Lab</VChip>
+              <VChip v-if="isMissing(item, 'barcode')" size="x-small" color="error" class="ms-1">Falta Barcode</VChip>
+            </span>
           </div>
         </div>
       </template>
@@ -264,7 +279,8 @@ const nextExpirationDate = (product) => {
             item-value="id"
             density="compact"
             variant="outlined"
-            style="width: 300px"
+            class="responsive-autocomplete"
+            style="min-width: 150px; flex-grow: 1;"
             placeholder="Buscar o crear laboratorio"
             clearable
             @keydown.enter.prevent="
@@ -302,9 +318,11 @@ const nextExpirationDate = (product) => {
             v-model="editingBarcode"
             density="compact"
             variant="outlined"
-            style="width: 300px"
+            class="responsive-input"
+            style="min-width: 120px; flex-grow: 1;"
             @keyup.enter="saveInlineEdit(item)"
             autofocus
+            placeholder="Escribir barcode"
             :error="props.productWithError === item.id"
             :error-messages="
               props.productWithError === item.id
@@ -339,7 +357,8 @@ const nextExpirationDate = (product) => {
             item-value="id"
             density="compact"
             variant="outlined"
-            style="width: 300px"
+            class="responsive-autocomplete"
+            style="min-width: 150px; flex-grow: 1;"
             placeholder="Buscar o crear origen"
             clearable
             @keydown.enter.prevent="
