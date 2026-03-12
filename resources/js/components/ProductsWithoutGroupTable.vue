@@ -333,9 +333,9 @@ const nextExpirationDate = (product) => {
                 @update:search="handleGroupSearch"
                 @keydown.enter.prevent="handleCreateGroupOnEnter"
               />
-              <div class="d-flex gap-2 justify-end">
-                <VBtn size="small" variant="tonal" color="secondary" @click="cancelEdit">Cancelar</VBtn>
-                <VBtn size="small" color="primary" @click="saveInlineEdit(item)">Guardar</VBtn>
+              <div class="d-flex gap-2 justify-center mt-2">
+                <VBtn size="small" variant="tonal" color="secondary" class="flex-grow-1" @click="cancelEdit">Cancelar</VBtn>
+                <VBtn size="small" color="primary" class="flex-grow-1" @click="saveInlineEdit(item)">Guardar</VBtn>
               </div>
             </div>
             <div v-else class="mt-1">

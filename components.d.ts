@@ -34,6 +34,7 @@ declare module 'vue' {
     AppStepper: typeof import('./resources/js/@core/components/AppStepper.vue')['default']
     AppTextarea: typeof import('./resources/js/@core/components/app-form-elements/AppTextarea.vue')['default']
     AppTextField: typeof import('./resources/js/@core/components/app-form-elements/AppTextField.vue')['default']
+    BarcodeScannerDialog: typeof import('./resources/js/components/dialogs/BarcodeScannerDialog.vue')['default']
     BarcodeSearchModal: typeof import('./resources/js/components/dialogs/BarcodeSearchModal.vue')['default']
     ButtonProfitability: typeof import('./resources/js/components/buttonProfitability.vue')['default']
     BuyNow: typeof import('./resources/js/@core/components/BuyNow.vue')['default']

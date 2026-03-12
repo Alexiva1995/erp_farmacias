@@ -1,6 +1,7 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
+import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -15,6 +16,8 @@ const emit = defineEmits(["update:modelValue", "save"]);
 
 const distributedLots = ref([]);
 const originalLots = ref([]);
+const isScannerVisible = ref(false);
+const activeScannerLot = ref(null);
 
 let tempIdCounter = 0;
 
@@ -241,6 +244,18 @@ const handleSave = () => {
 const closeDialog = () => {
   emit("update:modelValue", false);
 };
+
+const openScanner = (lot) => {
+  activeScannerLot.value = lot;
+  isScannerVisible.value = true;
+};
+
+const handleScan = (code) => {
+  if (activeScannerLot.value) {
+    activeScannerLot.value.lot_number = code;
+  }
+  isScannerVisible.value = false;
+};
 </script>
 
 <template>
@@ -355,6 +370,8 @@ const closeDialog = () => {
                     hide-details
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                     placeholder="LOTE-001"
+                    append-inner-icon="tabler-camera"
+                    @click:append-inner="openScanner(item)"
                     :disabled="(Number(item.quantity) || 0) === 0"
                   />
                 </VCol>
@@ -502,6 +519,8 @@ const closeDialog = () => {
                       hide-details
                       placeholder="Ej: LOTE-001"
                       class="mb-2"
+                      append-inner-icon="tabler-camera"
+                      @click:append-inner="openScanner(item)"
                       :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                       :disabled="(Number(item.quantity) || 0) === 0"
                     />
@@ -586,6 +605,11 @@ const closeDialog = () => {
       </VCardActions>
     </VCard>
   </VDialog>
+
+  <BarcodeScannerDialog
+    v-model="isScannerVisible"
+    @scan="handleScan"
+  />
 </template>
 
 <style scoped>

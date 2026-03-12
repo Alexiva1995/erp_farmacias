@@ -1,7 +1,8 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref } from "vue";
+import { ref, watch } from "vue";
+import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { formatDate } from "@/utils/formatters";
 
 const props = defineProps({
@@ -29,6 +30,8 @@ const editingLaboratoryId = ref(null);
 const editingOriginId = ref(null);
 const searchInput = ref("");
 const currentEditingProduct = ref(null);
+const isScannerVisible = ref(false);
+const activeScannerTarget = ref(null); // 'barcode' | 'etc'
 
 const headers = [
   { 
@@ -137,6 +140,21 @@ const cancelEdit = () => {
   searchInput.value = "";
 };
 
+const openScanner = (product) => {
+  currentEditingProduct.value = product;
+  isScannerVisible.value = true;
+};
+
+const handleScan = (code) => {
+  editingBarcode.value = code;
+  isScannerVisible.value = false;
+  
+  // Si estamos en modo edición, podemos intentar guardar automáticamente o dejar que el usuario revise
+  if (editingProductId.value === currentEditingProduct.value?.id) {
+    saveInlineEdit(currentEditingProduct.value);
+  }
+};
+
 const handleLaboratorySearch = (search) => {
   searchInput.value = search;
 };
@@ -220,191 +238,372 @@ const nextExpirationDate = (product) => {
 
 <template>
   <VCard>
-    <VDataTableServer
-      :headers="headers"
-      :items="products"
-      :items-length="totalProduct"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      :loading="loading"
-      @update:options="(opts) => emit('update:options', opts)"
-    >
-      <template #item.id="{ item }">
-        {{ item.id }}
-      </template>
-
-      <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <VAvatar
-            v-if="item.photo_url"
-            size="38"
-            variant="tonal"
-            rounded
-            :image="item.photo_url"
-          />
-          <div class="d-flex flex-column">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{
-                'text-warning font-weight-bold':
-                  item.psychotropic == 1 || item.psychotropic === true,
-              }"
-            >
-              <!-- En móvil añadimos ID y Laboratorio al nombre si el lab existe -->
-              <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
-              {{ item.name.toUpperCase() }}
-              <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
-              <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
-                {{ item.laboratory.name }}
-              </div>
-            </span>
-            <span class="text-sm text-disabled">
-              {{ item.active_ingredient }}
-              <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" class="ms-1">Falta Lab</VChip>
-              <VChip v-if="isMissing(item, 'barcode')" size="x-small" color="error" class="ms-1">Falta Barcode</VChip>
-            </span>
-          </div>
-        </div>
-      </template>
-
-      <template #item.laboratory="{ item }">
-        <template
-          v-if="editingProductId === item.id && isMissing(item, 'laboratory')"
-        >
-          <VAutocomplete
-            v-model="editingLaboratoryId"
-            :items="props.laboratories"
-            item-title="name"
-            item-value="id"
-            density="compact"
-            variant="outlined"
-            class="responsive-autocomplete"
-            style=" flex-grow: 1;min-inline-size: 150px;"
-            placeholder="Buscar o crear laboratorio"
-            clearable
-            @keydown.enter.prevent="
-              searchInput && searchInput.trim() && !editingLaboratoryId
-                ? handleCreateLaboratoryOnEnter()
-                : saveInlineEdit(item)
-            "
-            autofocus
-            :error="props.productWithError === item.id"
-            :error-messages="
-              props.productWithError === item.id
-                ? 'Error al asignar laboratorio'
-                : ''
-            "
-            @update:search="handleLaboratorySearch"
-            :no-data-text="
-              searchInput && searchInput.trim()
-                ? 'No se encontró. Presiona Enter para crear uno nuevo.'
-                : 'No hay laboratorios disponibles.'
-            "
-          />
+    <!-- Desktop Table -->
+    <div class="d-none d-md-block">
+      <VDataTableServer
+        :headers="headers"
+        :items="products"
+        :items-length="totalProduct"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :loading="loading"
+        @update:options="(opts) => emit('update:options', opts)"
+      >
+        <template #item.id="{ item }">
+          {{ item.id }}
         </template>
-        <template v-else>
-          <div class="d-flex align-center gap-2">
-            <span>{{ item.laboratory?.name || "—" }}</span>
-          </div>
-        </template>
-      </template>
 
-      <template #item.barcode="{ item }">
-        <template
-          v-if="editingProductId === item.id && isMissing(item, 'barcode')"
-        >
-          <VTextField
-            v-model="editingBarcode"
-            density="compact"
-            variant="outlined"
-            class="responsive-input"
-            style=" flex-grow: 1;min-inline-size: 120px;"
-            @keyup.enter="saveInlineEdit(item)"
-            autofocus
-            placeholder="Escribir barcode"
-            :error="props.productWithError === item.id"
-            :error-messages="
-              props.productWithError === item.id
-                ? props.errorMessage || 'Ya se encuentra registrado'
-                : ''
-            "
-          />
-        </template>
-        <template v-else>
-          <div class="d-flex align-center gap-2">
-            <span>{{ item.barcode || "—" }}</span>
-          </div>
-        </template>
-      </template>
-
-      <template #item.valid_stock="{ item }">
-        <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
-      </template>
-
-      <template #item.next_expiration="{ item }">
-        <span>{{ nextExpirationDate(item) }}</span>
-      </template>
-
-      <template #item.origin="{ item }">
-        <template
-          v-if="editingProductId === item.id && isMissing(item, 'origin')"
-        >
-          <VAutocomplete
-            v-model="editingOriginId"
-            :items="props.origins"
-            item-title="name"
-            item-value="id"
-            density="compact"
-            variant="outlined"
-            class="responsive-autocomplete"
-            style=" flex-grow: 1;min-inline-size: 150px;"
-            placeholder="Buscar o crear origen"
-            clearable
-            @keydown.enter.prevent="
-              searchInput && searchInput.trim() && !editingOriginId
-                ? handleCreateOriginOnEnter()
-                : saveInlineEdit(item)
-            "
-            autofocus
-            :error="props.productWithError === item.id"
-            :error-messages="
-              props.productWithError === item.id
-                ? 'Error al asignar origen'
-                : ''
-            "
-            @update:search="handleOriginSearch"
-            :no-data-text="
-              searchInput && searchInput.trim()
-                ? 'No se encontró. Presiona Enter para crear uno nuevo.'
-                : 'No hay orígenes disponibles.'
-            "
-          />
-        </template>
-        <template v-else>
-          <div class="d-flex align-center gap-2">
-            <span>{{ item.origin?.name || "—" }}</span>
-          </div>
-        </template>
-      </template>
-
-      <template #item.actions="{ item }">
-        <div class="d-flex gap-2">
-          <template v-if="editingProductId === item.id">
-            <VBtn
-              icon="tabler-check"
-              size="small"
-              @click="saveInlineEdit(item)"
+        <template #item.name="{ item }">
+          <div class="d-flex align-center gap-x-4">
+            <VAvatar
+              v-if="item.photo_url"
+              size="38"
+              variant="tonal"
+              rounded
+              :image="item.photo_url"
             />
-            <VBtn icon="tabler-x" size="small" @click="cancelEdit" />
+            <div class="d-flex flex-column">
+              <span
+                class="text-body-1 font-weight-medium text-high-emphasis"
+                :class="{
+                  'text-warning font-weight-bold':
+                    item.psychotropic == 1 || item.psychotropic === true,
+                }"
+              >
+                {{ item.name.toUpperCase() }}
+                <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+              </span>
+              <span class="text-sm text-disabled">
+                {{ item.active_ingredient }}
+                <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" class="ms-1">Falta Lab</VChip>
+                <VChip v-if="isMissing(item, 'barcode')" size="x-small" color="error" class="ms-1">Falta Barcode</VChip>
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <template #item.laboratory="{ item }">
+          <template
+            v-if="editingProductId === item.id && isMissing(item, 'laboratory')"
+          >
+            <VAutocomplete
+              v-model="editingLaboratoryId"
+              :items="props.laboratories"
+              item-title="name"
+              item-value="id"
+              density="compact"
+              variant="outlined"
+              class="responsive-autocomplete"
+              style=" flex-grow: 1;min-inline-size: 150px;"
+              placeholder="Buscar o crear laboratorio"
+              clearable
+              @keydown.enter.prevent="
+                searchInput && searchInput.trim() && !editingLaboratoryId
+                  ? handleCreateLaboratoryOnEnter()
+                  : saveInlineEdit(item)
+              "
+              autofocus
+              :error="props.productWithError === item.id"
+              :error-messages="
+                props.productWithError === item.id
+                  ? 'Error al asignar laboratorio'
+                  : ''
+              "
+              @update:search="handleLaboratorySearch"
+              :no-data-text="
+                searchInput && searchInput.trim()
+                  ? 'No se encontró. Presiona Enter para crear uno nuevo.'
+                  : 'No hay laboratorios disponibles.'
+              "
+            />
           </template>
           <template v-else>
-            <IconBtn @click="startEdit(item)" color="warning">
-              <VIcon icon="tabler-edit" />
-            </IconBtn>
+            <div class="d-flex align-center gap-2">
+              <span>{{ item.laboratory?.name || "—" }}</span>
+            </div>
           </template>
+        </template>
+
+        <template #item.barcode="{ item }">
+          <template
+            v-if="editingProductId === item.id && isMissing(item, 'barcode')"
+          >
+            <VTextField
+              v-model="editingBarcode"
+              density="compact"
+              variant="outlined"
+              class="responsive-input"
+              style=" flex-grow: 1;min-inline-size: 120px;"
+              @keyup.enter="saveInlineEdit(item)"
+              autofocus
+              placeholder="Escribir barcode"
+              append-inner-icon="tabler-camera"
+              @click:append-inner="openScanner(item)"
+              :error="props.productWithError === item.id"
+              :error-messages="
+                props.productWithError === item.id
+                  ? props.errorMessage || 'Ya se encuentra registrado'
+                  : ''
+              "
+            />
+          </template>
+          <template v-else>
+            <div class="d-flex align-center gap-2">
+              <span>{{ item.barcode || "—" }}</span>
+            </div>
+          </template>
+        </template>
+
+        <template #item.valid_stock="{ item }">
+          <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
+        </template>
+
+        <template #item.next_expiration="{ item }">
+          <span>{{ nextExpirationDate(item) }}</span>
+        </template>
+
+        <template #item.origin="{ item }">
+          <template
+            v-if="editingProductId === item.id && isMissing(item, 'origin')"
+          >
+            <VAutocomplete
+              v-model="editingOriginId"
+              :items="props.origins"
+              item-title="name"
+              item-value="id"
+              density="compact"
+              variant="outlined"
+              class="responsive-autocomplete"
+              style=" flex-grow: 1;min-inline-size: 150px;"
+              placeholder="Buscar o crear origen"
+              clearable
+              @keydown.enter.prevent="
+                searchInput && searchInput.trim() && !editingOriginId
+                  ? handleCreateOriginOnEnter()
+                  : saveInlineEdit(item)
+              "
+              autofocus
+              :error="props.productWithError === item.id"
+              :error-messages="
+                props.productWithError === item.id
+                  ? 'Error al asignar origen'
+                  : ''
+              "
+              @update:search="handleOriginSearch"
+              :no-data-text="
+                searchInput && searchInput.trim()
+                  ? 'No se encontró. Presiona Enter para crear uno nuevo.'
+                  : 'No hay orígenes disponibles.'
+              "
+            />
+          </template>
+          <template v-else>
+            <div class="d-flex align-center gap-2">
+              <span>{{ item.origin?.name || "—" }}</span>
+            </div>
+          </template>
+        </template>
+
+        <template #item.actions="{ item }">
+          <div class="d-flex gap-2">
+            <template v-if="editingProductId === item.id">
+              <VBtn
+                icon="tabler-check"
+                size="small"
+                @click="saveInlineEdit(item)"
+              />
+              <VBtn icon="tabler-x" size="small" @click="cancelEdit" />
+            </template>
+            <template v-else>
+              <IconBtn @click="startEdit(item)" color="warning">
+                <VIcon icon="tabler-edit" />
+              </IconBtn>
+            </template>
+          </div>
+        </template>
+      </VDataTableServer>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="d-block d-md-none">
+      <div v-if="loading && products.length === 0" class="pa-5 text-center">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <div class="pa-2">
+        <VCard
+          v-for="item in products"
+          :key="item.id"
+          variant="flat"
+          class="product-mobile-card border mb-2 overflow-hidden"
+        >
+          <div class="pa-3">
+            <div class="d-flex gap-3 align-start mb-2">
+              <VAvatar
+                v-if="item.photo_url"
+                size="44"
+                variant="tonal"
+                rounded
+                :image="item.photo_url"
+                class="flex-shrink-0 mt-1"
+              />
+              <div class="flex-grow-1 min-width-0">
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                  <span class="text-primary mr-1">#{{ item.id }}</span>
+                  <span class="mx-1 text-disabled">|</span>
+                  {{ item.name }}
+                </h3>
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
+                  <span class="text-medium-emphasis font-weight-medium">{{ item.active_ingredient }}</span>
+                  <span v-if="item.laboratory" class="text-disabled">|</span>
+                  <span v-if="item.laboratory" class="text-primary font-weight-bold">{{ item.laboratory.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <VDivider class="my-2 border-opacity-10" />
+
+            <div class="d-flex justify-space-between align-center px-1 mb-2">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock</span>
+                <span class="text-xs font-weight-black" :class="item.stock_calculado > 0 ? 'text-success' : 'text-error'">
+                  {{ item.stock_calculado || 0 }} <small>UNDS</small>
+                </span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Expl.</span>
+                <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
+              </div>
+            </div>
+
+            <div class="bg-var-theme-background pa-2 rounded mt-2">
+              <!-- Edit Mode inside Card -->
+              <div v-if="editingProductId === item.id">
+                <VRow dense>
+                  <VCol v-if="isMissing(item, 'barcode')" cols="12">
+                    <VTextField
+                      v-model="editingBarcode"
+                      label="Código de Barras"
+                      density="compact"
+                      variant="outlined"
+                      class="mb-2"
+                      hide-details="auto"
+                      append-inner-icon="tabler-camera"
+                      @click:append-inner="openScanner(item)"
+                      :error="props.productWithError === item.id"
+                      :error-messages="props.productWithError === item.id ? props.errorMessage : ''"
+                    />
+                  </VCol>
+                  <VCol v-if="isMissing(item, 'laboratory')" cols="12">
+                    <VAutocomplete
+                      v-model="editingLaboratoryId"
+                      :items="props.laboratories"
+                      item-title="name"
+                      item-value="id"
+                      label="Laboratorio"
+                      density="compact"
+                      variant="outlined"
+                      class="mb-2"
+                      hide-details="auto"
+                      placeholder="Buscar o crear..."
+                      @update:search="handleLaboratorySearch"
+                      @keydown.enter.prevent="handleCreateLaboratoryOnEnter"
+                    />
+                  </VCol>
+                  <VCol v-if="isMissing(item, 'origin')" cols="12">
+                    <VAutocomplete
+                      v-model="editingOriginId"
+                      :items="props.origins"
+                      item-title="name"
+                      item-value="id"
+                      label="Origen"
+                      density="compact"
+                      variant="outlined"
+                      class="mb-2"
+                      hide-details="auto"
+                      placeholder="Buscar o crear..."
+                      @update:search="handleOriginSearch"
+                      @keydown.enter.prevent="handleCreateOriginOnEnter"
+                    />
+                  </VCol>
+                </VRow>
+                <div class="d-flex gap-2 justify-center mt-2">
+                  <VBtn variant="tonal" color="secondary" size="small" class="flex-grow-1" @click="cancelEdit">Cancelar</VBtn>
+                  <VBtn color="primary" size="small" class="flex-grow-1" @click="saveInlineEdit(item)">Guardar</VBtn>
+                </div>
+              </div>
+
+              <!-- Display Mode -->
+              <div v-else class="d-flex flex-column gap-y-1">
+                <div class="d-flex justify-space-between text-super-xs">
+                  <span class="text-disabled font-weight-bold">BARCODE:</span>
+                  <span :class="item.barcode ? 'text-high-emphasis' : 'text-error font-weight-black'">
+                    {{ item.barcode || 'FALTA' }}
+                  </span>
+                </div>
+                <div class="d-flex justify-space-between text-super-xs">
+                  <span class="text-disabled font-weight-bold">ORIGEN:</span>
+                  <span :class="item.origin ? 'text-high-emphasis' : 'text-error font-weight-black'">
+                    {{ item.origin?.name || 'FALTA' }}
+                  </span>
+                </div>
+                <div v-if="!item.laboratory_id" class="d-flex justify-space-between text-super-xs">
+                  <span class="text-disabled font-weight-bold">LABORATORIO:</span>
+                  <span class="text-error font-weight-black">FALTA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones Rectangulares Movil -->
+          <div v-if="editingProductId !== item.id" class="d-flex border-t border-opacity-10">
+            <VBtn
+              block
+              color="warning"
+              variant="text"
+              class="rounded-0"
+              height="40"
+              prepend-icon="tabler-edit"
+              @click="startEdit(item)"
+            >
+              COMPLETAR DATOS
+            </VBtn>
+          </div>
+        </VCard>
+
+        <!-- Paginación Móvil -->
+        <div class="d-flex justify-center mt-4">
+          <VPagination
+            :model-value="page"
+            :length="Math.ceil(totalProduct / itemsPerPage)"
+            :total-visible="3"
+            density="compact"
+            size="small"
+            @update:model-value="emit('update:options', { page: $event, itemsPerPage })"
+          />
         </div>
-      </template>
-    </VDataTableServer>
+      </div>
+    </div>
+
+    <BarcodeScannerDialog
+      v-model="isScannerVisible"
+      @scan="handleScan"
+    />
   </VCard>
 </template>
+
+<style scoped>
+.product-mobile-card {
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+</style>
