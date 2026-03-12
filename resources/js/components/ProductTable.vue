@@ -339,11 +339,9 @@ const handleMobilePageChange = (newPage) => {
                 variant="text" 
                 class="flex-grow-1 rounded-0" 
                 height="40"
-                prepend-icon="tabler-edit" 
+                icon="tabler-edit" 
                 @click="emit('edit-product', item)"
-              >
-                Editar
-              </VBtn>
+              />
               <VDivider vertical class="border-opacity-10" />
               <VBtn 
                 v-if="authStore.isAdmin" 
