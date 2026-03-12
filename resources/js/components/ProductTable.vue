@@ -262,39 +262,3 @@ const openMergeModal = (product) => {
     />
   </VCard>
 </template>
-                label="Colombia"
-                :true-value="1"
-                :false-value="0"
-                density="compact"
-                hide-details
-              />
-            </VCol>
-          </VRow>
-        </div>
-      </VCardText>
-      <VDivider />
-      <VCardActions class="pa-4 d-flex gap-2">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="closeProductModal"
-          class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
-          :disabled="isMerging"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="handleMerge"
-          class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
-          :loading="isMerging"
-        >
-          Fusionar Productos
-        </VBtn>
-      </VCardActions>
-    </VCard>
-  </VDialog>
-</template>
