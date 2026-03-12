@@ -284,51 +284,38 @@ const handleMobilePageChange = (newPage) => {
           class="product-mobile-card border mb-1"
         >
           <div class="pa-3">
-            <!-- Línea 1: ID y Badges -->
-            <div class="d-flex justify-space-between align-center mb-1">
-              <span class="text-super-xs font-weight-black text-primary bg-primary-lighten-5 px-1 rounded">
-                #{{ item.id }}
-              </span>
-              <div class="d-flex gap-1">
-                <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs">PSI</VChip>
-                <VChip v-if="item.iva == 1" color="success" size="x-small" label variant="tonal" class="text-super-xs">IVA</VChip>
-              </div>
-            </div>
-
-            <!-- Línea 2: Nombre y Foto -->
-            <div class="d-flex gap-3 align-center mb-2">
+            <!-- Línea 1 y 2 integradas: Foto + (ID | Nombre + Subtítulos) -->
+            <div class="d-flex gap-3 align-start">
               <VAvatar
                 v-if="item.photo_url"
-                size="40"
+                size="44"
                 variant="tonal"
                 rounded
                 :image="item.photo_url"
-                class="flex-shrink-0"
+                class="flex-shrink-0 mt-1"
               />
               <div class="flex-grow-1 min-width-0">
-                <h3 class="text-sm font-weight-bold text-high-emphasis text-uppercase leading-tight truncate-2-lines">
-                  {{ item.name }}
-                </h3>
-                <div class="text-super-xs text-disabled truncate">{{ item.active_ingredient }}</div>
+                <div class="d-flex align-center gap-1 mb-1">
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                    <span class="text-primary">#{{ item.id }}</span>
+                    <span class="mx-1 text-disabled">|</span>
+                    {{ item.name }}
+                  </h3>
+                  <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
+                </div>
+                
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
+                  <span class="text-medium-emphasis font-weight-medium">{{ item.active_ingredient }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-bold">{{ item.laboratory?.name || 'S/L' }}</span>
+                </div>
               </div>
             </div>
 
-            <VDivider class="mb-2 border-opacity-10" />
+            <VDivider class="my-3 border-opacity-10" />
 
-            <!-- Línea 3: Info Secundaria Grid Compacto -->
-            <div class="d-flex justify-space-between align-center mb-2">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Laboratorio</span>
-                <span class="text-xs font-weight-medium text-truncate-custom">{{ item.laboratory?.name || '---' }}</span>
-              </div>
-              <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Prox. Venc</span>
-                <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
-              </div>
-            </div>
-
-            <!-- Línea 4: Stock y Precio (Resaltado) -->
-            <div class="d-flex align-center justify-space-between bg-var-theme-background pa-2 rounded-lg border-dashed-thin">
+            <!-- Línea de Stock y Precio (Layout más limpio) -->
+            <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock</span>
                 <span :class="item.stock_calculado > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
@@ -336,33 +323,76 @@ const handleMobilePageChange = (newPage) => {
                 </span>
               </div>
               <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">P. Venta</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Precio Venta ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
                 <span class="text-base font-weight-black text-primary">
                   {{ formatPrice(calculateSalePriceWithIva(item)) }}
                 </span>
               </div>
             </div>
+          </div>
 
-            <!-- Acciones Compactas -->
-            <div class="d-flex justify-end gap-1 mt-3">
-              <template v-if="mode === 'products'">
-                <VBtn size="x-small" color="warning" variant="tonal" icon="tabler-edit" @click="emit('edit-product', item)" />
-                <VBtn v-if="authStore.isAdmin" size="x-small" color="info" variant="tonal" icon="tabler-package" @click="openMergeModal(item)" />
-                <VBtn v-if="authStore.isAdmin" size="x-small" color="error" variant="tonal" icon="tabler-trash" @click="emit('delete-product', item.id)" />
-              </template>
+          <!-- Acciones Rectangulares al 100% -->
+          <div class="d-flex border-t border-opacity-10">
+            <template v-if="mode === 'products'">
+              <VBtn 
+                color="warning" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                prepend-icon="tabler-edit" 
+                @click="emit('edit-product', item)"
+              >
+                Editar
+              </VBtn>
+              <VDivider vertical class="border-opacity-10" />
+              <VBtn 
+                v-if="authStore.isAdmin" 
+                color="info" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-package" 
+                @click="openMergeModal(item)"
+              />
+              <VDivider v-if="authStore.isAdmin" vertical class="border-opacity-10" />
+              <VBtn 
+                v-if="authStore.isAdmin" 
+                color="error" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-trash" 
+                @click="emit('delete-product', item.id)"
+              />
+            </template>
 
-              <template v-else-if="mode === 'inventory'">
-                <VBtn block size="small" color="purple" variant="flat" prepend-icon="tabler-scan" @click="emit('count-product', item)">
-                  CONTAR
-                </VBtn>
-              </template>
+            <template v-else-if="mode === 'inventory'">
+              <VBtn 
+                block 
+                color="purple" 
+                variant="flat" 
+                class="rounded-0"
+                height="44"
+                prepend-icon="tabler-scan" 
+                @click="emit('count-product', item)"
+              >
+                CONTAR PRODUCTO
+              </VBtn>
+            </template>
 
-              <template v-else-if="mode === 'add-to-invoice'">
-                <VBtn block size="small" color="success" variant="flat" prepend-icon="tabler-plus" @click="emit('add-product-to-invoice', item)">
-                  AÑADIR
-                </VBtn>
-              </template>
-            </div>
+            <template v-else-if="mode === 'add-to-invoice'">
+              <VBtn 
+                block 
+                color="success" 
+                variant="flat" 
+                class="rounded-0"
+                height="44"
+                prepend-icon="tabler-plus" 
+                @click="emit('add-product-to-invoice', item)"
+              >
+                AÑADIR A FACTURA
+              </VBtn>
+            </template>
           </div>
         </VCard>
       </div>
