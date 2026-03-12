@@ -268,134 +268,98 @@ const handleMobilePageChange = (newPage) => {
       </VDataTableServer>
     </div>
 
-    <!-- Vista de Móvil (Tarjetas) -->
-    <div class="d-block d-md-none pa-4">
-      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-4" />
+    <!-- Vista de Móvil (Tarjetas Compactas) -->
+    <div class="d-block d-md-none pa-2">
+      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
       <div v-if="props.products.length === 0 && !props.loading" class="text-center py-8 text-disabled">
         No se encontraron productos.
       </div>
 
-      <div class="d-flex flex-column gap-4">
+      <div class="d-flex flex-column gap-2">
         <VCard
           v-for="item in props.products"
           :key="item.id"
-          variant="outlined"
-          class="product-mobile-card"
+          variant="flat"
+          class="product-mobile-card border mb-1"
         >
-          <div class="pa-4">
-            <div class="d-flex gap-4 align-start mb-3">
-              <VAvatar
-                size="48"
-                variant="tonal"
-                rounded
-                :image="item.photo_url"
-                v-if="item.photo_url"
-              />
-              <div class="d-flex flex-column flex-grow-1">
-                <div class="d-flex justify-space-between align-start">
-                  <span class="text-xs text-primary font-weight-bold">#{{ item.id }}</span>
-                  <VChip
-                    v-if="item.psychotropic"
-                    color="warning"
-                    size="x-small"
-                    label
-                    variant="flat"
-                  >
-                    PSICOTRÓPICO
-                  </VChip>
-                </div>
-                <h3 class="text-body-1 font-weight-bold text-high-emphasis leading-tight">
-                  {{ item.name.toUpperCase() }}
-                </h3>
-                <span class="text-xs text-disabled">{{ item.active_ingredient }}</span>
+          <div class="pa-3">
+            <!-- Línea 1: ID y Badges -->
+            <div class="d-flex justify-space-between align-center mb-1">
+              <span class="text-super-xs font-weight-black text-primary bg-primary-lighten-5 px-1 rounded">
+                #{{ item.id }}
+              </span>
+              <div class="d-flex gap-1">
+                <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs">PSI</VChip>
+                <VChip v-if="item.iva == 1" color="success" size="x-small" label variant="tonal" class="text-super-xs">IVA</VChip>
               </div>
             </div>
 
-            <VDivider class="mb-3 border-opacity-25" />
+            <!-- Línea 2: Nombre y Foto -->
+            <div class="d-flex gap-3 align-center mb-2">
+              <VAvatar
+                v-if="item.photo_url"
+                size="40"
+                variant="tonal"
+                rounded
+                :image="item.photo_url"
+                class="flex-shrink-0"
+              />
+              <div class="flex-grow-1 min-width-0">
+                <h3 class="text-sm font-weight-bold text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                  {{ item.name }}
+                </h3>
+                <div class="text-super-xs text-disabled truncate">{{ item.active_ingredient }}</div>
+              </div>
+            </div>
 
-            <VRow dense class="mb-2">
-              <VCol cols="6">
-                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">Laboratorio</div>
-                <div class="text-sm font-weight-medium truncate">{{ item.laboratory?.name || 'N/A' }}</div>
-              </VCol>
-              <VCol cols="6">
-                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">Próx. Venc.</div>
-                <div class="text-sm font-weight-medium">{{ nextExpirationDate(item) }}</div>
-              </VCol>
-            </VRow>
+            <VDivider class="mb-2 border-opacity-10" />
 
-            <VRow dense class="mb-4">
-              <VCol cols="6">
-                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">Stock Actual</div>
-                <VChip
-                  :color="item.stock_calculado > 0 ? 'success' : 'error'"
-                  label
-                  size="small"
-                  class="font-weight-bold"
-                >
-                  {{ item.stock_calculado ?? 0 }} UNDS
-                </VChip>
-              </VCol>
-              <VCol cols="6">
-                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">P. Venta</div>
-                <div class="text-lg font-weight-black text-primary">
+            <!-- Línea 3: Info Secundaria Grid Compacto -->
+            <div class="d-flex justify-space-between align-center mb-2">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Laboratorio</span>
+                <span class="text-xs font-weight-medium text-truncate-custom">{{ item.laboratory?.name || '---' }}</span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Prox. Venc</span>
+                <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
+              </div>
+            </div>
+
+            <!-- Línea 4: Stock y Precio (Resaltado) -->
+            <div class="d-flex align-center justify-space-between bg-var-theme-background pa-2 rounded-lg border-dashed-thin">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock</span>
+                <span :class="item.stock_calculado > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
+                  {{ item.stock_calculado ?? 0 }} <small class="text-super-xs">UNDS</small>
+                </span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">P. Venta</span>
+                <span class="text-base font-weight-black text-primary">
                   {{ formatPrice(calculateSalePriceWithIva(item)) }}
-                </div>
-                <div v-if="item.iva == 1" class="text-super-xs text-success font-weight-bold mt-n1">CON IVA</div>
-              </VCol>
-            </VRow>
+                </span>
+              </div>
+            </div>
 
-            <div class="d-flex justify-end gap-2 mt-2">
+            <!-- Acciones Compactas -->
+            <div class="d-flex justify-end gap-1 mt-3">
               <template v-if="mode === 'products'">
-                <VBtn
-                  color="warning"
-                  variant="tonal"
-                  size="small"
-                  prepend-icon="tabler-edit"
-                  @click="emit('edit-product', item)"
-                >
-                  Editar
-                </VBtn>
-                <VBtn
-                  v-if="authStore.isAdmin"
-                  color="info"
-                  variant="tonal"
-                  size="small"
-                  icon="tabler-package"
-                  @click="openMergeModal(item)"
-                />
-                <VBtn
-                  v-if="authStore.isAdmin"
-                  color="error"
-                  variant="tonal"
-                  size="small"
-                  icon="tabler-trash"
-                  @click="emit('delete-product', item.id)"
-                />
+                <VBtn size="x-small" color="warning" variant="tonal" icon="tabler-edit" @click="emit('edit-product', item)" />
+                <VBtn v-if="authStore.isAdmin" size="x-small" color="info" variant="tonal" icon="tabler-package" @click="openMergeModal(item)" />
+                <VBtn v-if="authStore.isAdmin" size="x-small" color="error" variant="tonal" icon="tabler-trash" @click="emit('delete-product', item.id)" />
               </template>
 
               <template v-else-if="mode === 'inventory'">
-                <VBtn
-                  block
-                  color="purple"
-                  variant="flat"
-                  prepend-icon="tabler-scan"
-                  @click="emit('count-product', item)"
-                >
-                  Contar Producto
+                <VBtn block size="small" color="purple" variant="flat" prepend-icon="tabler-scan" @click="emit('count-product', item)">
+                  CONTAR
                 </VBtn>
               </template>
 
               <template v-else-if="mode === 'add-to-invoice'">
-                <VBtn
-                  block
-                  color="success"
-                  variant="flat"
-                  prepend-icon="tabler-plus"
-                  @click="emit('add-product-to-invoice', item)"
-                >
-                  Añadir Factura
+                <VBtn block size="small" color="success" variant="flat" prepend-icon="tabler-plus" @click="emit('add-product-to-invoice', item)">
+                  AÑADIR
                 </VBtn>
               </template>
             </div>
@@ -403,13 +367,13 @@ const handleMobilePageChange = (newPage) => {
         </VCard>
       </div>
 
-      <!-- Paginación Móvil -->
-      <div class="d-flex justify-center mt-6">
+      <!-- Paginación Móvil Compacta -->
+      <div class="d-flex justify-center mt-4">
         <VPagination
           :model-value="props.page"
           :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
           :total-visible="3"
-          density="comfortable"
+          density="compact"
           size="small"
           @update:model-value="handleMobilePageChange"
         />
@@ -425,33 +389,45 @@ const handleMobilePageChange = (newPage) => {
   </VCard>
 </template>
 
-<style scoped>
 .product-mobile-card {
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
-  transition: transform 0.2s ease;
+  overflow: hidden;
 }
 
-.product-mobile-card:active {
-  transform: scale(0.98);
+.truncate-2-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.truncate {
+.text-truncate-custom {
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.leading-tight {
-  line-height: 1.25;
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
 }
 
 .text-super-xs {
-  font-size: 0.65rem;
-  letter-spacing: 0.5px;
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 
-.gap-4 {
-  gap: 1rem !important;
-}
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+.gap-4 { gap: 16px !important; }
 </style>
