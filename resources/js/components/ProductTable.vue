@@ -135,36 +135,7 @@ const handleMobilePageChange = (newPage) => {
 <template>
   <VCard>
     <VCardTitle v-if="props.title">{{ props.title }}</VCardTitle>
-<style scoped>
-.product-mobile-card {
-  border-radius: 12px !important;
-  background: rgb(var(--v-theme-surface));
-  transition: transform 0.2s ease;
-}
 
-.product-mobile-card:active {
-  transform: scale(0.98);
-}
-
-.truncate {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.leading-tight {
-  line-height: 1.25;
-}
-
-.text-super-xs {
-  font-size: 0.65rem;
-  letter-spacing: 0.5px;
-}
-
-.gap-4 {
-  gap: 1rem !important;
-}
-</style>
 
     <!-- Vista de Escritorio (Tabla) -->
     <div class="d-none d-md-block">
@@ -453,3 +424,34 @@ const handleMobilePageChange = (newPage) => {
     />
   </VCard>
 </template>
+
+<style scoped>
+.product-mobile-card {
+  border-radius: 12px !important;
+  background: rgb(var(--v-theme-surface));
+  transition: transform 0.2s ease;
+}
+
+.product-mobile-card:active {
+  transform: scale(0.98);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.text-super-xs {
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+</style>
