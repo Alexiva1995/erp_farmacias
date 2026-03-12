@@ -123,136 +123,327 @@ const openMergeModal = (product) => {
   isMergeDialogVisible.value = true;
 };
 
+const handleMobilePageChange = (newPage) => {
+  emit('update:options', {
+    page: newPage,
+    itemsPerPage: props.itemsPerPage,
+    sortBy: [],
+  });
+};
 </script>
 
 <template>
   <VCard>
     <VCardTitle v-if="props.title">{{ props.title }}</VCardTitle>
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="visibleHeaders"
-      :items="props.products"
-      :items-length="props.totalProduct"
-      :loading="props.loading"
-      class="text-no-wrap"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
-      </template>
+<style scoped>
+.product-mobile-card {
+  border-radius: 12px !important;
+  background: rgb(var(--v-theme-surface));
+  transition: transform 0.2s ease;
+}
 
-      <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <VAvatar
-            v-if="item.photo_url"
-            size="38"
-            variant="tonal"
-            rounded
-            :image="item.photo_url"
-          />
-          <div class="d-flex flex-column">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 
-                'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
-              }"
-            >
-              <!-- En móvil añadimos ID y Laboratorio al nombre -->
-              <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
-              {{ item.name.toUpperCase() }}
-              <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
-              <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
-                {{ item.laboratory.name }}
-              </div>
-            </span>
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
-          </div>
-        </div>
-      </template>
+.product-mobile-card:active {
+  transform: scale(0.98);
+}
 
-      <template #item.stock_calculado="{ item }">
-        <div class="text-end">
-          <span class="font-weight-medium">{{ item.stock_calculado ?? 0 }}</span>
-        </div>
-      </template>
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-      <template #item.next_expiration="{ item }">
-        <span>{{ nextExpirationDate(item) }}</span>
-      </template>
+.leading-tight {
+  line-height: 1.25;
+}
 
-      <template #item.unit_cost="{ item }">
-        <span class="font-weight-medium">{{ item.unit_cost }}</span>
-      </template>
+.text-super-xs {
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
 
-      <template #item.sale_price="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            formatPrice(calculateSalePriceWithIva(item))
-          }}</span>
-          <span v-if="item.iva == 1" class="text-xs text-success"
-            >(IVA incluido)</span
-          >
-        </div>
-      </template>
+.gap-4 {
+  gap: 1rem !important;
+}
+</style>
 
-      <template #item.actions="{ item }">
-        <template v-if="mode === 'products'">
-          <IconBtn @click="emit('edit-product', item)" color="warning">
-            <VIcon icon="tabler-edit" />
-            <VTooltip activator="parent">Editar</VTooltip>
-          </IconBtn>
-          <IconBtn
-            v-if="authStore.isAdmin"
-            color="info"
-            @click="openMergeModal(item)"
-          >
-            <VIcon icon="tabler-package" />
-            <VTooltip activator="parent">Fusionar</VTooltip>
-          </IconBtn>
-          <IconBtn
-            @click="emit('delete-product', item.id)"
-            v-if="authStore.isAdmin"
-            color="error"
-          >
-            <VIcon icon="tabler-trash" />
-            <VTooltip activator="parent">Eliminar</VTooltip>
-          </IconBtn>
+    <!-- Vista de Escritorio (Tabla) -->
+    <div class="d-none d-md-block">
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="visibleHeaders"
+        :items="props.products"
+        :items-length="props.totalProduct"
+        :loading="props.loading"
+        class="text-no-wrap"
+        @update:options="(options) => emit('update:options', options)"
+      >
+        <template #item.id="{ item }">
+          <span class="font-weight-medium">{{ item.id }}</span>
         </template>
 
-        <template v-else-if="mode === 'inventory'">
-          <div class="d-flex justify-center">
-            <IconBtn 
-              @click="emit('count-product', item)" 
-              color="purple"
-            >
-              <VIcon icon="tabler-scan" />
-              <VTooltip activator="parent" location="top"
-                >Contar producto</VTooltip
+        <template #item.name="{ item }">
+          <div class="d-flex align-center gap-x-4">
+            <VAvatar
+              v-if="item.photo_url"
+              size="38"
+              variant="tonal"
+              rounded
+              :image="item.photo_url"
+            />
+            <div class="d-flex flex-column">
+              <span
+                class="text-body-1 font-weight-medium text-high-emphasis"
+                :class="{ 
+                  'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+                }"
               >
-            </IconBtn>
+                {{ item.name.toUpperCase() }}
+                <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+              </span>
+              <span class="text-sm text-disabled">{{
+                item.active_ingredient
+              }}</span>
+            </div>
           </div>
         </template>
 
-        <template v-else-if="mode === 'add-to-invoice'">
-          <VBtn
-            icon
-            variant="tonal"
-            color="success"
-            size="small"
-            @click="emit('add-product-to-invoice', item)"
-          >
-            <VIcon icon="tabler-plus" />
-            <VTooltip activator="parent" location="top"
-              >Añadir a la factura</VTooltip
+        <template #item.stock_calculado="{ item }">
+          <div class="text-end">
+            <VChip
+              :color="item.stock_calculado > 0 ? 'success' : 'error'"
+              label
+              size="small"
+              variant="tonal"
             >
-          </VBtn>
+              {{ item.stock_calculado ?? 0 }}
+            </VChip>
+          </div>
         </template>
-      </template>
-    </VDataTableServer>
+
+        <template #item.next_expiration="{ item }">
+          <span>{{ nextExpirationDate(item) }}</span>
+        </template>
+
+        <template #item.unit_cost="{ item }">
+          <span class="font-weight-medium">{{ item.unit_cost }}</span>
+        </template>
+
+        <template #item.sale_price="{ item }">
+          <div class="d-flex flex-column">
+            <span class="font-weight-medium">{{
+              formatPrice(calculateSalePriceWithIva(item))
+            }}</span>
+            <span v-if="item.iva == 1" class="text-xs text-success"
+              >(IVA incluido)</span
+            >
+          </div>
+        </template>
+
+        <template #item.actions="{ item }">
+          <template v-if="mode === 'products'">
+            <IconBtn @click="emit('edit-product', item)" color="warning">
+              <VIcon icon="tabler-edit" />
+              <VTooltip activator="parent">Editar</VTooltip>
+            </IconBtn>
+            <IconBtn
+              v-if="authStore.isAdmin"
+              color="info"
+              @click="openMergeModal(item)"
+            >
+              <VIcon icon="tabler-package" />
+              <VTooltip activator="parent">Fusionar</VTooltip>
+            </IconBtn>
+            <IconBtn
+              @click="emit('delete-product', item.id)"
+              v-if="authStore.isAdmin"
+              color="error"
+            >
+              <VIcon icon="tabler-trash" />
+              <VTooltip activator="parent">Eliminar</VTooltip>
+            </IconBtn>
+          </template>
+
+          <template v-else-if="mode === 'inventory'">
+            <div class="d-flex justify-center">
+              <IconBtn 
+                @click="emit('count-product', item)" 
+                color="purple"
+              >
+                <VIcon icon="tabler-scan" />
+                <VTooltip activator="parent" location="top"
+                  >Contar producto</VTooltip
+                >
+              </IconBtn>
+            </div>
+          </template>
+
+          <template v-else-if="mode === 'add-to-invoice'">
+            <VBtn
+              icon
+              variant="tonal"
+              color="success"
+              size="small"
+              @click="emit('add-product-to-invoice', item)"
+            >
+              <VIcon icon="tabler-plus" />
+              <VTooltip activator="parent" location="top"
+                >Añadir a la factura</VTooltip
+              >
+            </VBtn>
+          </template>
+        </template>
+      </VDataTableServer>
+    </div>
+
+    <!-- Vista de Móvil (Tarjetas) -->
+    <div class="d-block d-md-none pa-4">
+      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-4" />
+      
+      <div v-if="props.products.length === 0 && !props.loading" class="text-center py-8 text-disabled">
+        No se encontraron productos.
+      </div>
+
+      <div class="d-flex flex-column gap-4">
+        <VCard
+          v-for="item in props.products"
+          :key="item.id"
+          variant="outlined"
+          class="product-mobile-card"
+        >
+          <div class="pa-4">
+            <div class="d-flex gap-4 align-start mb-3">
+              <VAvatar
+                size="48"
+                variant="tonal"
+                rounded
+                :image="item.photo_url"
+                v-if="item.photo_url"
+              />
+              <div class="d-flex flex-column flex-grow-1">
+                <div class="d-flex justify-space-between align-start">
+                  <span class="text-xs text-primary font-weight-bold">#{{ item.id }}</span>
+                  <VChip
+                    v-if="item.psychotropic"
+                    color="warning"
+                    size="x-small"
+                    label
+                    variant="flat"
+                  >
+                    PSICOTRÓPICO
+                  </VChip>
+                </div>
+                <h3 class="text-body-1 font-weight-bold text-high-emphasis leading-tight">
+                  {{ item.name.toUpperCase() }}
+                </h3>
+                <span class="text-xs text-disabled">{{ item.active_ingredient }}</span>
+              </div>
+            </div>
+
+            <VDivider class="mb-3 border-opacity-25" />
+
+            <VRow dense class="mb-2">
+              <VCol cols="6">
+                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">Laboratorio</div>
+                <div class="text-sm font-weight-medium truncate">{{ item.laboratory?.name || 'N/A' }}</div>
+              </VCol>
+              <VCol cols="6">
+                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">Próx. Venc.</div>
+                <div class="text-sm font-weight-medium">{{ nextExpirationDate(item) }}</div>
+              </VCol>
+            </VRow>
+
+            <VRow dense class="mb-4">
+              <VCol cols="6">
+                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">Stock Actual</div>
+                <VChip
+                  :color="item.stock_calculado > 0 ? 'success' : 'error'"
+                  label
+                  size="small"
+                  class="font-weight-bold"
+                >
+                  {{ item.stock_calculado ?? 0 }} UNDS
+                </VChip>
+              </VCol>
+              <VCol cols="6">
+                <div class="text-xs text-disabled mb-1 text-uppercase font-weight-bold">P. Venta</div>
+                <div class="text-lg font-weight-black text-primary">
+                  {{ formatPrice(calculateSalePriceWithIva(item)) }}
+                </div>
+                <div v-if="item.iva == 1" class="text-super-xs text-success font-weight-bold mt-n1">CON IVA</div>
+              </VCol>
+            </VRow>
+
+            <div class="d-flex justify-end gap-2 mt-2">
+              <template v-if="mode === 'products'">
+                <VBtn
+                  color="warning"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="tabler-edit"
+                  @click="emit('edit-product', item)"
+                >
+                  Editar
+                </VBtn>
+                <VBtn
+                  v-if="authStore.isAdmin"
+                  color="info"
+                  variant="tonal"
+                  size="small"
+                  icon="tabler-package"
+                  @click="openMergeModal(item)"
+                />
+                <VBtn
+                  v-if="authStore.isAdmin"
+                  color="error"
+                  variant="tonal"
+                  size="small"
+                  icon="tabler-trash"
+                  @click="emit('delete-product', item.id)"
+                />
+              </template>
+
+              <template v-else-if="mode === 'inventory'">
+                <VBtn
+                  block
+                  color="purple"
+                  variant="flat"
+                  prepend-icon="tabler-scan"
+                  @click="emit('count-product', item)"
+                >
+                  Contar Producto
+                </VBtn>
+              </template>
+
+              <template v-else-if="mode === 'add-to-invoice'">
+                <VBtn
+                  block
+                  color="success"
+                  variant="flat"
+                  prepend-icon="tabler-plus"
+                  @click="emit('add-product-to-invoice', item)"
+                >
+                  Añadir Factura
+                </VBtn>
+              </template>
+            </div>
+          </div>
+        </VCard>
+      </div>
+
+      <!-- Paginación Móvil -->
+      <div class="d-flex justify-center mt-6">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
+          :total-visible="3"
+          density="comfortable"
+          size="small"
+          @update:model-value="handleMobilePageChange"
+        />
+      </div>
+    </div>
 
     <!-- Diálogo de Fusión Refactorizado -->
     <ProductMergeDialog
