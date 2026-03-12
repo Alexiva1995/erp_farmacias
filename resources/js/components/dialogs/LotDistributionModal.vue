@@ -165,6 +165,10 @@ const handleRemoveNewLot = (tempId) => {
   );
 };
 
+const handleClearLotQuantity = (lot) => {
+  lot.quantity = 0;
+};
+
 const handleSave = () => {
   if (!canSave.value) {
     toast.error("Por favor, complete todos los campos requeridos (número de lote, fecha de vencimiento y ubicación) para los lotes con cantidad mayor a 0.");
@@ -326,7 +330,7 @@ const closeDialog = () => {
         </VRow>
 
         <!-- Tabla: columnas paralelas INFORMACIÓN DEL LOTE | STOCK SISTEMA | CANTIDAD AJUSTADA | ACCIONES -->
-        <div class="lot-table-wrapper">
+        <div class="lot-table-wrapper d-none d-sm-block">
           <VDataTable
             :headers="[
               { title: 'Información del Lote', key: 'info', sortable: false },
@@ -411,23 +415,133 @@ const closeDialog = () => {
                 min="0"
                 style="max-inline-size: 100px;"
                 class="mx-auto"
+                @wheel="$event.target.blur()"
               />
             </template>
 
             <template #item.actions="{ item }">
-              <IconBtn
-                v-if="item.isNew"
-                @click="handleRemoveNewLot(item.temp_id)"
-                color="error"
-                size="small"
-                variant="text"
-              >
-                <VIcon icon="tabler-trash" size="18" />
-                <VTooltip activator="parent" location="top">Eliminar lote</VTooltip>
-              </IconBtn>
-              <span v-else class="text-disabled text-caption">—</span>
+              <div class="d-flex align-center justify-center gap-1">
+                <IconBtn
+                  v-if="item.isNew"
+                  @click="handleRemoveNewLot(item.temp_id)"
+                  color="error"
+                  size="small"
+                  variant="text"
+                >
+                  <VIcon icon="tabler-trash" size="18" />
+                  <VTooltip activator="parent" location="top">Eliminar lote</VTooltip>
+                </IconBtn>
+                <IconBtn
+                  v-else
+                  @click="handleClearLotQuantity(item)"
+                  color="warning"
+                  size="small"
+                  variant="text"
+                  :disabled="(Number(item.quantity) || 0) === 0"
+                >
+                  <VIcon icon="tabler-trash-x" size="18" />
+                  <VTooltip activator="parent" location="top">Vaciar cantidad</VTooltip>
+                </IconBtn>
+              </div>
             </template>
           </VDataTable>
+        </div>
+
+        <!-- Vista de Tarjetas para Móvil -->
+        <div class="d-block d-sm-none">
+          <div v-if="distributedLots.length === 0" class="text-center py-8 text-disabled">
+            Este producto no tiene lotes registrados.
+          </div>
+          <div v-else class="d-flex flex-column gap-4">
+            <VCard
+              v-for="item in distributedLots"
+              :key="item.isNew ? item.temp_id : item.id"
+              variant="outlined"
+              class="pa-4 border-dashed"
+              :color="item.isNew ? 'success' : undefined"
+            >
+              <div class="d-flex justify-space-between align-center mb-4">
+                <VChip
+                  label
+                  size="small"
+                  :color="item.isNew ? 'success' : 'primary'"
+                  variant="tonal"
+                >
+                  {{ item.isNew ? 'NUEVO LOTE' : `LOTE EXISTENTE (Stock: ${originalLots.find((l) => l.id === item.id)?.quantity || 0})` }}
+                </VChip>
+                <IconBtn
+                  v-if="item.isNew"
+                  @click="handleRemoveNewLot(item.temp_id)"
+                  color="error"
+                  size="small"
+                >
+                  <VIcon icon="tabler-trash" />
+                </IconBtn>
+                <IconBtn
+                  v-else
+                  @click="handleClearLotQuantity(item)"
+                  color="warning"
+                  size="small"
+                  :disabled="(Number(item.quantity) || 0) === 0"
+                >
+                  <VIcon icon="tabler-trash-x" />
+                </IconBtn>
+              </div>
+
+              <VRow dense>
+                <VCol cols="12">
+                  <VTextField
+                    v-model="item.lot_number"
+                    label="Nº Lote"
+                    variant="outlined"
+                    density="compact"
+                    placeholder="LOTE-001"
+                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
+                    :disabled="(Number(item.quantity) || 0) === 0"
+                  />
+                </VCol>
+                <VCol cols="12">
+                  <VTextField
+                    v-model="item.expiration_date"
+                    label="Vencimiento"
+                    type="date"
+                    variant="outlined"
+                    density="compact"
+                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
+                    :disabled="(Number(item.quantity) || 0) === 0"
+                  />
+                </VCol>
+                <VCol cols="12">
+                  <VAutocomplete
+                    v-model="item.location"
+                    label="Ubicación"
+                    variant="outlined"
+                    density="compact"
+                    :items="props.locations"
+                    item-title="name"
+                    item-value="name"
+                    placeholder="Ubicación"
+                    clearable
+                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
+                    :disabled="(Number(item.quantity) || 0) === 0"
+                  />
+                </VCol>
+                <VCol cols="12">
+                  <VTextField
+                    v-model.number="item.quantity"
+                    label="Cantidad Ajustada"
+                    type="number"
+                    variant="outlined"
+                    density="comfortable"
+                    min="0"
+                    @wheel="$event.target.blur()"
+                    class="font-weight-bold"
+                    prefix="UNDS:"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+          </div>
         </div>
       </VCardText>
 
@@ -452,49 +566,26 @@ const closeDialog = () => {
 </template>
 
 <style scoped>
-.lot-distribution-card {
-  max-block-size: 90vh;
+.border-dashed {
+  border-width: 1.5px !important;
+  border-style: dashed !important;
 }
 
-.lot-distribution-content {
-  overflow: visible;
-  min-block-size: 0;
+.gap-4 {
+  gap: 1rem !important;
 }
 
-.lot-table-wrapper {
-  overflow: auto;
-  max-block-size: 50vh;
-}
-
-@media (min-width: 1280px) {
-  .lot-table-wrapper {
-    max-block-size: 400px;
+@media (max-width: 600px) {
+  .lot-distribution-card {
+    max-block-size: 100vh;
   }
-}
 
-:deep(.lot-table) {
-  border-radius: 8px;
-}
+  .lot-distribution-content {
+    padding: 12px !important;
+  }
 
-:deep(.lot-table .v-data-table__td),
-:deep(.lot-table .v-data-table__th) {
-  padding-block: 8px;
-  padding-inline: 12px;
-  vertical-align: middle;
-}
-
-:deep(.lot-table th) {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-:deep(.lot-table .v-field) {
-  font-size: 0.875rem;
-}
-
-:deep(.v-chip) {
-  font-weight: 600;
+  .text-h6 {
+    font-size: 1.125rem !important;
+  }
 }
 </style>
