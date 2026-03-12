@@ -95,7 +95,7 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <VForm @submit.prevent="submitForm">
           <VRow dense class="mb-2">
             <VCol cols="12">
@@ -150,7 +150,7 @@ const submitForm = () => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -159,7 +159,7 @@ const submitForm = () => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Guardar
         </VBtn>

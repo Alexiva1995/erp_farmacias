@@ -184,7 +184,7 @@ const handleLocationSearch = (search) => {
             density="compact"
             variant="outlined"
             class="responsive-autocomplete"
-            style="min-width: 150px; flex-grow: 1;"
+            style=" flex-grow: 1;min-inline-size: 150px;"
             placeholder="Seleccionar ubicación"
             :loading="loadingLocations"
             clearable

@@ -303,7 +303,7 @@ const submitForm = () => {
           </VTab>
         </VTabs>
 
-        <VWindow v-model="activeTab" class="pa-4" style="max-height: 65vh; overflow-y: auto;">
+        <VWindow v-model="activeTab" class="pa-4" style="max-block-size: 65vh; overflow-y: auto;">
           <!-- Pestaña General -->
           <VWindowItem :value="0">
             <VForm @submit.prevent="submitForm">

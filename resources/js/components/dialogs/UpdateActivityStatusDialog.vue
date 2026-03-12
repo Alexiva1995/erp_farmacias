@@ -312,7 +312,7 @@ const formatDate = (date) => {
                   ref="fileInput"
                   type="file"
                   accept="image/jpeg,image/png,image/jpg"
-                  style="display: none"
+                  style="display: none;"
                   @change="handlePhotoChange"
                 />
 

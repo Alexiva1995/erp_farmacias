@@ -765,9 +765,9 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
           <p class="mt-4">Cargando tasas de cambio. Por favor, espere...</p>
         </div>
 
-        <div v-else class="d-flex gap-4" style="min-height: 500px">
+        <div v-else class="d-flex gap-4" style="min-block-size: 500px;">
           <!-- COLUMNA IZQUIERDA: Resumen Créditos + Métodos de Pago -->
-          <div class="flex-grow-1" style="flex: 1; overflow-y: auto">
+          <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
             <div class="pa-4">
               <!-- Resumen del Cliente y Crédito -->
               <VCard variant="outlined" class="mb-4">
@@ -903,17 +903,17 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
           <!-- COLUMNA DERECHA: Resumen de Pago (Sticky) -->
           <div
             style="
-              width: 400px;
               position: sticky;
-              top: 0;
-              align-self: flex-start;
-              max-height: calc(100vh - 200px);
               display: flex;
               flex-direction: column;
-            "
+              align-self: flex-start;
+              inline-size: 400px;
+              inset-block-start: 0;
+              max-block-size: calc(100vh - 200px);
+"
           >
-            <VCard variant="outlined" class="flex-grow-1" style="display: flex; flex-direction: column">
-              <VCardText style="flex: 1; overflow-y: auto">
+            <VCard variant="outlined" class="flex-grow-1" style="display: flex; flex-direction: column;">
+              <VCardText style="flex: 1; overflow-y: auto;">
                 <div class="text-h6 font-weight-bold mb-4">Resumen de Pago</div>
 
                 <VDivider class="my-3" />
@@ -939,7 +939,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
                     v-for="(payment, idx) in payments.filter((p) => p.method)"
                     :key="idx"
                     class="d-flex justify-space-between align-center mb-3 payment-row"
-                    style="min-height: 32px"
+                    style="min-block-size: 32px;"
                   >
                     <span class="text-body-1">
                       {{
@@ -953,7 +953,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
                     <div
                       v-if="payment._isInputActive"
                       class="d-flex align-center gap-2 fade-in"
-                      style="flex: 0 0 auto"
+                      style="flex: 0 0 auto;"
                     >
                       <input
                         :value="payment.inputAmount || ''"
@@ -1067,7 +1067,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
                     <div
                       v-else
                       class="d-flex flex-column align-end gap-1 fade-in"
-                      style="flex: 0 0 auto"
+                      style="flex: 0 0 auto;"
                     >
                       <div class="d-flex align-center gap-2">
                         <span
@@ -1120,7 +1120,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
                           payment.reference
                         "
                         class="text-caption text-medium-emphasis"
-                        style="font-size: 11px"
+                        style="font-size: 11px;"
                       >
                         Ref: {{ payment.reference }}
                       </div>
@@ -1195,7 +1195,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
       <!-- Ticket de confirmación -->
       <VCardText v-else-if="currentProgress === 100">
         <div class="d-flex justify-center">
-          <div style="width: 50%">
+          <div style="inline-size: 50%;">
             <div class="text-center">
               <img width="130" :src="logoSrc" alt="Logotipo" />
             </div>
@@ -1342,8 +1342,8 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
 }
 
 .payment-input:focus {
-  border-bottom-color: rgb(var(--v-theme-primary)) !important;
   background: rgba(var(--v-theme-primary), 0.04) !important;
+  border-block-end-color: rgb(var(--v-theme-primary)) !important;
 }
 
 .fade-in {
@@ -1355,6 +1355,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1374,8 +1375,8 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
 }
 
 .payment-method-btn--added {
-  opacity: 0.6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .payment-method-btn--added:hover {

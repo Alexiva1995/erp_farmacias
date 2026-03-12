@@ -51,7 +51,7 @@
 
             <VDivider />
 
-            <VCardText class="flex-grow-1" style="overflow-y: auto">
+            <VCardText class="flex-grow-1" style="overflow-y: auto;">
                 <template v-if="props.loading">
                     <div class="text-center text-medium-emphasis py-8">
                         <VProgressCircular indeterminate color="primary" size="32" />

@@ -332,7 +332,7 @@ watch(
           ]"
         >
           <template #item.product.name="{ item: count }">
-            <div class="d-flex align-start gap-x-3" style="max-width: 300px; width: 100%;">
+            <div class="d-flex align-start gap-x-3" style=" inline-size: 100%;max-inline-size: 300px;">
               <VAvatar
                 v-if="count.product?.photo_url"
                 size="32"
@@ -341,20 +341,20 @@ watch(
                 :image="count.product.photo_url"
                 style="flex-shrink: 0;"
               />
-              <div class="d-flex flex-column" style="min-width: 0; flex: 1; word-wrap: break-word; overflow-wrap: break-word;">
+              <div class="d-flex flex-column" style=" flex: 1;min-inline-size: 0; overflow-wrap: break-word; word-wrap: break-word;">
                 <span
                   class="text-sm font-weight-medium text-high-emphasis"
                   :class="{ 
                     'text-primary': count.product.psychotropic == 1,
                     'text-warning font-weight-bold': count.product.psychotropic == 1 || count.product.psychotropic === true
                   }"
-                  style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; white-space: normal;"
+                  style=" line-height: 1.3; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
                 >
                   {{ count.product.name?.toUpperCase() || 'N/A' }}
                   <span v-if="count.product.iva == 1"> (G)</span>
                   <span v-if="count.product.is_colombian_origin == 1"> (COL)</span>
                 </span>
-                <span class="text-xs text-disabled" v-if="count.product.laboratory?.name" style="word-wrap: break-word; overflow-wrap: break-word; line-height: 1.2; white-space: normal;">
+                <span class="text-xs text-disabled" v-if="count.product.laboratory?.name" style=" line-height: 1.2; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;">
                   {{ count.product.laboratory.name }}
                 </span>
               </div>
@@ -419,31 +419,32 @@ watch(
 }
 
 :deep(.v-data-table td) {
-  padding: 8px 16px !important;
-  height: auto !important;
+  block-size: auto !important;
+  padding-block: 8px !important;
+  padding-inline: 16px !important;
 }
 
 :deep(.v-data-table th) {
-  padding: 10px 16px !important;
   font-size: 0.75rem !important;
   font-weight: 600 !important;
+  padding-block: 10px !important;
+  padding-inline: 16px !important;
 }
 
 :deep(.v-data-table td:nth-child(1)) {
+  overflow: hidden !important;
+  inline-size: 300px !important;
+  max-inline-size: 300px !important;
+  overflow-wrap: break-word !important;
+  padding-block: 8px !important;
+  vertical-align: top !important;
   white-space: normal !important;
   word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  max-width: 300px !important;
-  width: 300px !important;
-  vertical-align: top !important;
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
-  overflow: hidden !important;
 }
 
 :deep(.v-data-table th:nth-child(1)) {
-  max-width: 300px !important;
-  width: 300px !important;
+  inline-size: 300px !important;
+  max-inline-size: 300px !important;
   white-space: normal !important;
 }
 
@@ -452,12 +453,12 @@ watch(
 }
 
 :deep(.v-avatar) {
-  width: 32px !important;
-  height: 32px !important;
+  block-size: 32px !important;
+  inline-size: 32px !important;
 }
 
 :deep(.v-chip) {
-  height: 20px !important;
+  block-size: 20px !important;
   font-size: 0.75rem !important;
 }
 </style>

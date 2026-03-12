@@ -16,7 +16,13 @@ const emit = defineEmits([
 ]);
 
 const headers = [
-  { title: "ID", key: "id", width: "10%" },
+  { 
+    title: "ID", 
+    key: "id", 
+    width: "10%",
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
   { title: "Nombre", key: "name" },
   { title: "Acción", key: "actions", sortable: false, align: "end" },
 ];

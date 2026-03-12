@@ -280,12 +280,12 @@ const onClose = () => {
 
 <style scoped>
 .stat-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

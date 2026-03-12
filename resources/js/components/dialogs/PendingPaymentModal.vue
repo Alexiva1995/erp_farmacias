@@ -117,7 +117,7 @@ const supplierInfo = computed(() => {
       <VDivider />
 
       <!-- Contenido -->
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1" style="overflow-y: auto;">
         <!-- Información del proveedor -->
         <div v-if="supplierInfo" class="mb-6">
           <VCard variant="tonal" color="primary">

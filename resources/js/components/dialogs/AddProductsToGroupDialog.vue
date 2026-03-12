@@ -128,7 +128,13 @@ watch(
 );
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
+  { 
+    title: "ID", 
+    key: "id", 
+    sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
   { title: "Producto", key: "name", sortable: true },
   {
     title: "Acciones",
@@ -248,7 +254,7 @@ onMounted(() => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <ProductFilters
           v-model:searchQuery="filterSearchQuery"
           v-model:selectedLaboratory="selectedLaboratory"
@@ -297,13 +303,16 @@ onMounted(() => {
                     'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
                   }"
                 >
+                  <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
                   {{ item.name.toUpperCase() }}
                   <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
                   <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+                  <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
+                    {{ item.laboratory.name }}
+                  </div>
                 </span>
                 <span class="text-sm text-disabled">
                   {{ item.active_ingredient }}
-                  {{ item.laboratory ? " - " + item.laboratory?.name : "" }}
                 </span>
               </div>
             </div>
@@ -338,7 +347,7 @@ onMounted(() => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style=" flex: 1 1 50%;max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -347,7 +356,7 @@ onMounted(() => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style=" flex: 1 1 50%;max-inline-size: 50%;"
         >
           Guardar
         </VBtn>

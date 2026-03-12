@@ -221,7 +221,7 @@ const validateRuleLaboratory = (ruleLaboratory, index) => {
         </VBtn>
       </VCardTitle>
       <VDivider />
-      <VCardText class="flex-grow-1" style="overflow-y: auto">
+      <VCardText class="flex-grow-1" style="overflow-y: auto;">
         <div class="d-flex align-center mb-4">
           <VSpacer />
           <VBtn

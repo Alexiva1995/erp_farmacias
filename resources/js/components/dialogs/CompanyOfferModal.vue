@@ -474,9 +474,9 @@ const formatDateForInput = (dateString) => {
 
 <style scoped>
 .scale-row {
+  padding: 16px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 16px;
   background-color: #fafafa;
 }
 </style>

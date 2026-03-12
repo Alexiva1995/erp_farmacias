@@ -461,7 +461,7 @@ const closeDialog = () => {
                 density="compact"
                 hide-details
                 min="0"
-                style="max-width: 100px"
+                style="max-inline-size: 100px;"
                 class="mx-auto"
               />
             </template>
@@ -505,22 +505,22 @@ const closeDialog = () => {
 
 <style scoped>
 .lot-distribution-card {
-  max-height: 90vh;
+  max-block-size: 90vh;
 }
 
 .lot-distribution-content {
   overflow: visible;
-  min-height: 0;
+  min-block-size: 0;
 }
 
 .lot-table-wrapper {
   overflow: auto;
-  max-height: 50vh;
+  max-block-size: 50vh;
 }
 
 @media (min-width: 1280px) {
   .lot-table-wrapper {
-    max-height: 400px;
+    max-block-size: 400px;
   }
 }
 
@@ -530,15 +530,16 @@ const closeDialog = () => {
 
 :deep(.lot-table .v-data-table__td),
 :deep(.lot-table .v-data-table__th) {
-  padding: 8px 12px;
+  padding-block: 8px;
+  padding-inline: 12px;
   vertical-align: middle;
 }
 
 :deep(.lot-table th) {
-  font-weight: 600;
   font-size: 0.75rem;
-  text-transform: uppercase;
+  font-weight: 600;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 :deep(.lot-table .v-field) {

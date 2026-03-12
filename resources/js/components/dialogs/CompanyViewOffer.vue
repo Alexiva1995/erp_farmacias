@@ -184,7 +184,7 @@ const isOfferActive = computed(() => {
 
 <style scoped>
 .details-container {
-  max-height: 60vh;
+  max-block-size: 60vh;
   overflow-y: auto;
 }
 </style>

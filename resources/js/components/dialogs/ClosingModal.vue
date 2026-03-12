@@ -570,7 +570,7 @@ const translateMethod = (methodKey) => {
         <div id="closing-report">
           <TicketHeader :logoSrc="BASE64_LOGO_DATA" />
 
-           <table style="width: 100%;" class='mt-2'>
+           <table style="inline-size: 100%;" class='mt-2'>
                 <tbody>
                   <tr>
                     <td class="text-left font-weight-bold tituloAzulPrint">
@@ -629,7 +629,7 @@ const translateMethod = (methodKey) => {
                     <td class="text-right">
                       <span>{{ props.cashData.total_usd }} USD</span>
                     </td>
-                    <td class="text-right" style="width:150px;">
+                    <td class="text-right" style="inline-size: 150px;">
                       <span>{{ props.cashData.total_usd }} USD</span>
                     </td>
                   </tr>
@@ -638,13 +638,13 @@ const translateMethod = (methodKey) => {
                     <td class="text-right">
                       <span>{{ props.cashData.total_bs }} BS</span>
                     </td>
-                    <td class="text-right" style="width:150px;">
+                    <td class="text-right" style="inline-size: 150px;">
                       <span>{{ props.cashData.total_bs_in_usd }} USD</span>
                     </td>
                   </tr>
                   <tr>
                     <td class="text-left"><span>COP:</span></td>
-                    <td class="text-right" style="width:150px;">
+                    <td class="text-right" style="inline-size: 150px;">
                       <span>{{ props.cashData.total_cop }} COP</span>
                     </td>
                     <td class="text-right">
@@ -654,7 +654,7 @@ const translateMethod = (methodKey) => {
                   <tr>
                     <td class="text-start"><span></span></td>
                     <td class="text-right font-weight-bold"><span>TOTAL</span></td>
-                    <td class="text-right font-weight-bold" style="width:150px;">
+                    <td class="text-right font-weight-bold" style="inline-size: 150px;">
                       <span>{{ props.cashData.total_sales }} USD</span>
                     </td>
                   </tr>
@@ -680,7 +680,7 @@ const translateMethod = (methodKey) => {
             <div v-for="(references, method) in methods" :key="method">
               <h4
                 class="text-center font-weight-bold my-2"
-                style="font-size: 1rem"
+                style="font-size: 1rem;"
               >
                 {{ translateMethod(method) }} ({{ references[0].currency }})
               </h4>
@@ -727,12 +727,12 @@ const translateMethod = (methodKey) => {
   </VDialog>
 </template>
 <style scoped>
-.tituloAzulPrint{
-   font-family: 'Poppins'!important;
-        font-weight: 600!important;
-        font-size: 18px !important;
-        line-height: 18px !important;
-        color: #044C94!important;
-        letter-spacing: 0.9px;
+.tituloAzulPrint {
+  color: #044c94 !important;
+  font-family: Poppins !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.9px;
+  line-height: 18px !important;
 }
 </style>

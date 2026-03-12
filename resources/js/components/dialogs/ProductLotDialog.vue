@@ -150,7 +150,7 @@ const locations = [
         </VBtn>
       </VCardTitle>
       <VDivider />
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <VContainer class="pa-0">
           <VRow>
             <VCol cols="12">
@@ -255,7 +255,7 @@ const locations = [
           variant="outlined" 
           @click="onCancel" 
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -264,7 +264,7 @@ const locations = [
           variant="flat" 
           @click="onSave" 
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           {{ props.isEditing ? "Actualizar Lote" : "Guardar Lote" }}
         </VBtn>
