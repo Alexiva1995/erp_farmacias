@@ -3,6 +3,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { computed, ref, watch } from "vue";
+import { formatDate, calculateStock } from "@/utils/formatters";
 
 const authStore = useAuthStore();
 
@@ -123,10 +124,7 @@ const groupProductsHeaders = [
   { title: "Stock", key: "lots", sortable: false },
 ];
 
-const calculateStock = (product) => {
-  if (!product.lots || !Array.isArray(product.lots)) return 0;
-  return product.lots.reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
-};
+// calculateStock eliminado (ahora se importa)
 
 watch(
   () => props.errors,
@@ -180,18 +178,7 @@ const lotHeaders = [
   { title: "Exp.", key: "expiration_date", sortable: false },
 ];
 
-const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-  try {
-    const date = new Date(dateString);
-    const year = date.getUTCFullYear();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-    const day = date.getUTCDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  } catch (error) {
-    return "Fecha inválida";
-  }
-};
+// formatDate eliminado (ahora se importa)
 
 const closeDialog = () => {
   emit("update:modelValue", false);

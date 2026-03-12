@@ -239,6 +239,7 @@ declare module 'vue' {
     ProductFilters: typeof import('./resources/js/components/ProductFilters.vue')['default']
     ProductLotDialog: typeof import('./resources/js/components/dialogs/ProductLotDialog.vue')['default']
     ProductLotEditDialog: typeof import('./resources/js/components/dialogs/ProductLotEditDialog.vue')['default']
+    ProductMergeDialog: typeof import('./resources/js/components/dialogs/ProductMergeDialog.vue')['default']
     ProductProfitabilityEditDialog: typeof import('./resources/js/components/dialogs/ProductProfitabilityEditDialog.vue')['default']
     ProductsComparisionProductsFilter: typeof import('./resources/js/components/ProductsComparisionProductsFilter.vue')['default']
     ProductsComparisionSuppliersFilter: typeof import('./resources/js/components/ProductsComparisionSuppliersFilter.vue')['default']

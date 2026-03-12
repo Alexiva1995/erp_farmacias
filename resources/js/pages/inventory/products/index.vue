@@ -340,6 +340,7 @@ const handleSort = sortOptions => {
       :groups="groups"
       @save="handleSaveProduct"
       @clear-errors="clearFormErrors"
+      @laboratory-created="fetchSelectOptions"
     />
   </div>
 </template>
