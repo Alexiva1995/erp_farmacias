@@ -46,7 +46,7 @@ const fetchSelectOptions = async () => {
     ]);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
-    locations.value = locationResponse.data;
+    locations.value = locationResponse.data.data || locationResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -261,7 +261,7 @@ const handleCleanZeroQuantity = async () => {
       v-model="isDistributionModalVisible"
       :product-name="currentProductForDistribution?.name || ''"
       :lots="currentProductForDistribution?.lots || []"
-      :target-quantity="currentProductForDistribution?.stock || 0"
+      :target-quantity="currentProductForDistribution?.stock_calculado || 0"
       :locations="locations"
       mode="adjustment"
       @save="handleSaveLots"

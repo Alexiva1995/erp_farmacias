@@ -113,10 +113,15 @@ const getNextExpiration = (lots) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex justify-center gap-2">
-          <IconBtn @click="emit('adjust-lots', item)" color="primary">
+          <VBtn
+            icon
+            variant="text"
+            color="primary"
+            @click.stop="emit('adjust-lots', item)"
+          >
             <VIcon icon="tabler-package" />
             <VTooltip activator="parent" location="top">Ajustar Lotes</VTooltip>
-          </IconBtn>
+          </VBtn>
         </div>
       </template>
     </VDataTableServer>
