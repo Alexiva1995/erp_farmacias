@@ -589,14 +589,19 @@ const handleScan = (code) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-5 flex-grow-0">
-        <VBtn color="secondary" variant="outlined" prepend-icon="tabler-x" @click="closeDialog">
+      <VCardActions class="pa-4 px-5 flex-grow-0 d-flex gap-2">
+        <VBtn 
+          color="secondary" 
+          variant="outlined" 
+          class="flex-grow-1"
+          @click="closeDialog"
+        >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
           variant="flat"
-          prepend-icon="tabler-check"
+          class="flex-grow-1"
           :disabled="!canSave"
           @click="handleSave"
         >

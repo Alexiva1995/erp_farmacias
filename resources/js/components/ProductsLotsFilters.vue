@@ -162,6 +162,24 @@ const isOptionSelected = (option) => {
   );
 };
 
+const isAdvancedFiltersVisible = ref(false);
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
+
+const hasActiveAdvancedFilters = computed(() => {
+  return (
+    props.selectedLaboratory ||
+    props.selectedOrigin ||
+    props.stockStatusFilter !== null ||
+    props.startDate ||
+    props.endDate ||
+    props.isStrictSearch ||
+    selectedSort.value
+  );
+});
+
 const handleClear = () => {
   // clearSortFilter();
   emit("clear");
@@ -184,182 +202,216 @@ watch(
 
 <template>
   <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="2">
+    <VCardText class="pa-4 text-center pb-0" v-if="props.loading && !isAdvancedFiltersVisible">
+       <VProgressLinear indeterminate color="primary" height="2" />
+    </VCardText>
+    <VCardText class="pa-4">
+      <!-- Fila Principal: Búsqueda y Toggle -->
+      <VRow align="center" no-gutters class="gap-3">
+        <VCol cols="12" sm="true">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Lote, Producto, Proveedor..."
             clearable
+            prepend-inner-icon="tabler-search"
+            class="search-bar"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="3" md="2">
-          <VAutocomplete
-            :model-value="props.selectedLaboratory"
-            :items="props.laboratories"
-            :loading="props.loading"
-            label="Laboratorio"
-            placeholder="Buscar un laboratorio"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedLaboratory', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="3" md="2">
-          <VSelect
-            :model-value="props.selectedOrigin"
-            label="Origen"
-            placeholder="Buscar un origen"
-            :items="props.origins"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedOrigin', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="3" md="2">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            :items="stockOptions"
-            placeholder="Stock"
-            clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
-          />
-        </VCol>
+        <VCol cols="auto" class="d-flex gap-2">
+          <VBtn
+            variant="tonal"
+            :color="hasActiveAdvancedFilters ? 'primary' : 'secondary'"
+            :prepend-icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'"
+            @click="toggleAdvancedFilters"
+          >
+            {{ isAdvancedFiltersVisible ? 'Ocultar Filtros' : 'Más Filtros' }}
+            <VBadge
+              v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+              color="error"
+              dot
+              offset-x="10"
+              offset-y="-5"
+            />
+          </VBtn>
 
-        <VCol cols="12" sm="3" md="2">
-          <AppDateTimePicker
-            :model-value="props.startDate"
-            placeholder="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:startDate', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2">
-          <AppDateTimePicker
-            :model-value="props.endDate"
-            placeholder="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:endDate', $event)"
+          <VBtn
+            v-if="props.isAdmin"
+            color="success"
+            prepend-icon="tabler-plus"
+            :loading="props.addLotLoading"
+            :disabled="props.addLotLoading"
+            class="d-none d-sm-flex"
+            @click="emit('add-lot')"
+          >
+            Añadir Lote
+          </VBtn>
+          <VBtn
+            v-if="props.isAdmin"
+            color="success"
+            icon="tabler-plus"
+            :loading="props.addLotLoading"
+            :disabled="props.addLotLoading"
+            class="d-sm-none"
+            @click="emit('add-lot')"
           />
         </VCol>
       </VRow>
-    </VCardText>
 
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
-        Limpiar Filtros
-      </VBtn>
-
-      <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
+      <!-- Sección Colapsable -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VDivider class="my-4" />
+          
+          <VRow>
+            <VCol cols="12" sm="6" md="3">
+              <VAutocomplete
+                :model-value="props.selectedLaboratory"
+                :items="props.laboratories"
+                :loading="props.loading"
+                label="Laboratorio"
+                placeholder="Buscar un laboratorio"
+                item-title="name"
+                item-value="id"
+                clearable
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:selectedLaboratory', $event)"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <VSelect
+                :model-value="props.selectedOrigin"
+                label="Origen"
+                placeholder="Buscar un origen"
+                :items="props.origins"
+                item-title="name"
+                item-value="id"
+                clearable
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:selectedOrigin', $event)"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <VSelect
+                :model-value="props.stockStatusFilter"
+                label="Estado de Stock"
+                :items="stockOptions"
+                placeholder="Todos"
+                clearable
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:stockStatusFilter', $event)"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <div class="d-flex align-center h-100 ps-2">
+                <VCheckbox
+                  :model-value="props.isStrictSearch"
+                  label="Búsqueda Estricta"
                   color="primary"
+                  density="compact"
+                  hide-details
+                  @update:model-value="emit('update:isStrictSearch', $event)"
                 />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
+              </div>
+            </VCol>
 
-        <VChip
-          v-if="selectedSort"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click:close="clearSortFilter"
-        >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
-        </VChip>
-      </div>
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                :model-value="props.startDate"
+                placeholder="Desde"
+                clearable
+                :config="{
+                  altInput: true,
+                  altFormat: 'Y-m-d',
+                  dateFormat: 'Y-m-d',
+                }"
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:startDate', $event)"
+              />
+            </VCol>
 
-      <div class="d-flex align-center">
-        <VCheckbox
-          :model-value="props.isStrictSearch"
-          @update:model-value="emit('update:isStrictSearch', $event)"
-          color="primary"
-          class="me-2"
-        >
-          <template #label>
-            <div class="d-flex align-center">
-              <VIcon icon="tabler-search" class="me-2" size="20" />
-              <span class="text-subtitle-1 font-weight-medium">
-                ¿Búsqueda Estricta?
-              </span>
-            </div>
-          </template>
-        </VCheckbox>
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                :model-value="props.endDate"
+                placeholder="Hasta"
+                clearable
+                :config="{
+                  altInput: true,
+                  altFormat: 'Y-m-d',
+                  dateFormat: 'Y-m-d',
+                }"
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:endDate', $event)"
+              />
+            </VCol>
 
-        <VChip
-          v-if="props.isStrictSearch"
-          color="primary"
-          size="small"
-          class="ms-2"
-        >
-          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
-          Modo Estricto Activo
-        </VChip>
-      </div>
+            <VCol cols="12" sm="6" md="3">
+              <VMenu>
+                <template #activator="{ props: menuProps }">
+                  <VBtn v-bind="menuProps" variant="outlined" block density="compact" class="h-100">
+                    <VIcon start :icon="getSelectedSortIcon() || 'tabler-sort-ascending'" />
+                    {{ getSelectedSortTitle() || 'Ordenar Por' }}
+                    <VIcon end icon="tabler-chevron-down" />
+                  </VBtn>
+                </template>
+                <VList density="compact">
+                  <VListItem
+                    v-for="(option, index) in sortOptions"
+                    :key="index"
+                    :active="isOptionSelected(option)"
+                    color="primary"
+                    @click="handleSortClick(option)"
+                  >
+                    <template #prepend>
+                      <VIcon :icon="option.icon" size="20" />
+                    </template>
+                    <VListItemTitle>{{ option.title }}</VListItemTitle>
+                  </VListItem>
+                </VList>
+              </VMenu>
+            </VCol>
 
-      <VSpacer />
-
-      <VBtn
-        v-if="props.isAdmin"
-        color="error"
-        variant="outlined"
-        icon="tabler-trash"
-        @click="emit('clean-zero-quantity')"
-      />
-
-      <VBtn
-        v-if="props.isAdmin"
-        color="success"
-        prepend-icon="tabler-plus"
-        :loading="props.addLotLoading"
-        :disabled="props.addLotLoading"
-        @click="emit('add-lot')"
-      >
-        Añadir Lote
-      </VBtn>
-    </VCardActions>
+            <VCol cols="12" sm="6" md="3" class="d-flex gap-2">
+              <VBtn color="secondary" variant="tonal" block @click="handleClear">
+                Limpiar
+              </VBtn>
+            </VCol>
+          </VRow>
+          
+          <div v-if="props.isAdmin" class="d-flex justify-end mt-4">
+             <VBtn
+              color="error"
+              variant="text"
+              prepend-icon="tabler-trash"
+              size="small"
+              @click="emit('clean-zero-quantity')"
+            >
+              Limpiar Cantidades en Cero
+            </VBtn>
+          </div>
+        </div>
+      </VExpandTransition>
+    </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.search-bar :deep(.v-field__input) {
+  font-size: 0.9rem;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+@media (max-width: 600px) {
+  .search-bar :deep(.v-field__input) {
+    font-size: 0.8rem;
+  }
+}
+</style>
