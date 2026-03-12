@@ -12,6 +12,7 @@ use App\Contracts\PurchaseOrder;
 use App\Contracts\Role;
 use App\Contracts\SocialBenefit;
 use App\Contracts\Transaction;
+use App\Contracts\Location as LocationContract;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\Api\SocialBenefitController;
+use App\Http\Controllers\Api\LocationController;
 use App\Models\Payslip;
 use App\Services\ClientServices;
 use App\Services\CompanyServices;
@@ -62,10 +64,12 @@ use App\Services\RoleServices;
 use App\Services\PayslipServices;
 use App\Services\SocialBenefitServices;
 use App\Services\TransactionServices;
+use App\Services\LocationServices;
 use App\Contracts\Accounting\BalanceRepositoryInterface;
 use App\Repositories\Accounting\BalanceRepository;
 use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Repositories\Eloquent\SupplierRepository;
+use App\Repositories\Eloquent\LocationRepository;
 use App\Http\Controllers\Api\Accounting\BalanceController;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -206,6 +210,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\Repositories\SkuReportRepositoryInterface::class,
             \App\Repositories\SkuReportRepository::class
         );
+
+        $this->app->bind(LocationContract::class, LocationRepository::class);
+
+        $this->app->when(LocationController::class)
+            ->needs(LocationContract::class)
+            ->give(LocationRepository::class);
     }
 
     /**

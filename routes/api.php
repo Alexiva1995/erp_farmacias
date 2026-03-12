@@ -64,6 +64,7 @@ use App\Http\Controllers\Api\GeneralSettingController;
 use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Public\SupplierPublicUploadController;
+use App\Http\Controllers\Api\LocationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -132,6 +133,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/origins", [ResourceController::class, "getOrigins"]);
     Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);
+    Route::get("/locations", [LocationController::class, "index"]);
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);

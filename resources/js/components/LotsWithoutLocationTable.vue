@@ -1,7 +1,8 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import { formatDate } from "@/utils/formatters";
 
 const props = defineProps({
   lots: { type: Array, required: true },
@@ -20,22 +21,57 @@ const editingLocation = ref("");
 const searchInput = ref("");
 const currentEditingLot = ref(null);
 
-const locations = [
-  "E-001", "E-002", "E-003", "E-004", "E-005", "E-006", "E-007", "E-008", "E-009", "E-010",
-  "G-001", "G-002", "G-003", "G-004", "G-005", "G-006", "G-007", "G-008", "G-009", "G-010",
-  "I-001", "I-002", "I-003", "I-004", "I-005", "I-006", "I-007", "I-008", "I-009", "I-010",
-  "N-001", "N-002",
-  "P-001", "P-002", "P-003", "P-004", "P-005", "P-006", "P-007", "P-008", "P-009", "P-010",
-  "D-001", "D-002", "D-003", "D-004", "D-005", "D-006", "D-007", "D-008", "D-009", "D-010",
-].sort();
+const locationsList = ref([]);
+const loadingLocations = ref(false);
+
+const fetchLocations = async () => {
+  loadingLocations.ref = true;
+  try {
+    const response = await axios.get("/locations");
+    locationsList.value = response.data;
+  } catch (error) {
+    console.error("Error al cargar ubicaciones:", error);
+    toast.error("No se pudieron cargar las ubicaciones.");
+  } finally {
+    loadingLocations.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchLocations();
+});
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
+  { 
+    title: "ID", 
+    key: "id", 
+    sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
   { title: "Producto", key: "product.name", sortable: true },
-  { title: "Laboratorio", key: "product.laboratory.name", sortable: true },
+  { 
+    title: "Laboratorio", 
+    key: "product.laboratory.name", 
+    sortable: true,
+    cellClass: "d-none d-md-table-cell",
+    headerClass: "d-none d-md-table-cell"
+  },
   { title: "# Lote", key: "lot_number", sortable: true },
-  { title: "Cantidad", key: "quantity", sortable: true },
-  { title: "Expiración", key: "expiration_date", sortable: true },
+  { 
+    title: "Cantidad", 
+    key: "quantity", 
+    sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
+  { 
+    title: "Expiración", 
+    key: "expiration_date", 
+    sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
   { title: "Ubicación", key: "location", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
 ];
@@ -73,19 +109,6 @@ const cancelEdit = () => {
 const handleLocationSearch = (search) => {
   searchInput.value = search;
 };
-
-const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-  try {
-    const date = new Date(dateString);
-    const year = date.getUTCFullYear();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-    const day = date.getUTCDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  } catch (error) {
-    return "Fecha inválida";
-  }
-};
 </script>
 
 <template>
@@ -120,16 +143,13 @@ const formatDate = (dateString) => {
                   item.product?.psychotropic == 1 || item.product?.psychotropic === true,
               }"
             >
+              <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
               {{ item.product?.name?.toUpperCase() || "—" }}
               <span v-if="item.product?.iva == 1 || item.product?.iva === true"> (G)</span>
-              <span
-                v-if="
-                  item.product?.is_colombian_origin == 1 ||
-                  item.product?.is_colombian_origin === true
-                "
-              >
-                (COL)</span
-              >
+              <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
+              <div v-if="item.product?.laboratory" class="d-block d-md-none text-xs text-secondary italic">
+                {{ item.product.laboratory.name }}
+              </div>
             </span>
             <span class="text-sm text-disabled">{{
               item.product?.active_ingredient || ""
@@ -158,11 +178,15 @@ const formatDate = (dateString) => {
         <template v-if="editingLotId === item.lot_id">
           <VAutocomplete
             v-model="editingLocation"
-            :items="locations"
+            :items="locationsList"
+            item-title="name"
+            item-value="name"
             density="compact"
             variant="outlined"
-            style="width: 200px"
+            class="responsive-autocomplete"
+            style="min-width: 150px; flex-grow: 1;"
             placeholder="Seleccionar ubicación"
+            :loading="loadingLocations"
             clearable
             @keydown.enter.prevent="saveInlineEdit(item)"
             autofocus
