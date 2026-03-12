@@ -154,117 +154,241 @@ const nextExpirationDate = (product) => {
 
 <template>
   <VCard>
-    <VDataTableServer
-      :headers="headers"
-      :items="products"
-      :items-length="totalProduct"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      :loading="loading"
-      @update:options="(opts) => emit('update:options', opts)"
-    >
-      <template #item.id="{ item }">
-        {{ item.id }}
-      </template>
-
-      <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <VAvatar
-            v-if="item.photo_url"
-            size="38"
-            variant="tonal"
-            rounded
-            :image="item.photo_url"
-          />
-          <div class="d-flex flex-column">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 
-                'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
-              }"
-            >
-              <!-- En móvil añadimos ID y Laboratorio al nombre -->
-              <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
-              {{ item.name.toUpperCase() }}
-              <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
-              <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
-                {{ item.laboratory.name }}
-              </div>
-            </span>
-            <span class="text-sm text-disabled">{{
-              item.active_ingredient
-            }}</span>
-          </div>
-        </div>
-      </template>
-
-      <template #item.laboratory.name="{ item }">
-        <span>{{ item.laboratory?.name || "—" }}</span>
-      </template>
-
-      <template #item.group="{ item }">
-        <template v-if="editingProductId === item.id">
-          <VAutocomplete
-            v-model="editingValue"
-            :items="props.groups"
-            item-title="name"
-            item-value="id"
-            variant="outlined"
-            class="responsive-autocomplete"
-            style=" max-inline-size: 350px;min-inline-size: 200px;"
-            placeholder="Buscar o crear grupo"
-            clearable
-            @keydown.enter.prevent="
-              searchInput && searchInput.trim() && !editingValue
-                ? handleCreateGroupOnEnter()
-                : saveInlineEdit(item)
-            "
-            autofocus
-            :error="props.productWithError === item.id"
-            :error-messages="
-              props.productWithError === item.id
-                ? 'Error al asignar grupo'
-                : ''
-            "
-            @update:search="handleGroupSearch"
-            :no-data-text="
-              searchInput && searchInput.trim()
-                ? 'No se encontró. Presiona Enter para crear uno nuevo.'
-                : 'No hay grupos disponibles.'
-            "
-          />
+    <!-- Desktop Table -->
+    <div class="d-none d-md-block">
+      <VDataTableServer
+        :headers="headers"
+        :items="products"
+        :items-length="totalProduct"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :loading="loading"
+        @update:options="(opts) => emit('update:options', opts)"
+      >
+        <template #item.id="{ item }">
+          {{ item.id }}
         </template>
-        <template v-else>
-          {{ item.group?.name || "—" }}
-        </template>
-      </template>
 
-      <template #item.valid_stock="{ item }">
-        <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
-      </template>
-
-      <template #item.next_expiration="{ item }">
-        <span>{{ nextExpirationDate(item) }}</span>
-      </template>
-
-      <template #item.actions="{ item }">
-        <div class="d-flex gap-2">
-          <template v-if="editingProductId === item.id">
-            <VBtn
-              icon="tabler-check"
-              size="small"
-              @click="saveInlineEdit(item)"
+        <template #item.name="{ item }">
+          <div class="d-flex align-center gap-x-4">
+            <VAvatar
+              v-if="item.photo_url"
+              size="38"
+              variant="tonal"
+              rounded
+              :image="item.photo_url"
             />
-            <VBtn icon="tabler-x" size="small" @click="cancelEdit" />
+            <div class="d-flex flex-column">
+              <span
+                class="text-body-1 font-weight-medium text-high-emphasis"
+                :class="{ 
+                  'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+                }"
+              >
+                {{ item.name.toUpperCase() }}
+                <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+              </span>
+              <span class="text-sm text-disabled">{{
+                item.active_ingredient
+              }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template #item.laboratory.name="{ item }">
+          <span>{{ item.laboratory?.name || "—" }}</span>
+        </template>
+
+        <template #item.group="{ item }">
+          <template v-if="editingProductId === item.id">
+            <VAutocomplete
+              v-model="editingValue"
+              :items="props.groups"
+              item-title="name"
+              item-value="id"
+              variant="outlined"
+              class="responsive-autocomplete"
+              style="max-inline-size: 350px; min-inline-size: 200px;"
+              placeholder="Buscar o crear grupo"
+              clearable
+              @keydown.enter.prevent="
+                searchInput && searchInput.trim() && !editingValue
+                  ? handleCreateGroupOnEnter()
+                  : saveInlineEdit(item)
+              "
+              autofocus
+              :error="props.productWithError === item.id"
+              :error-messages="
+                props.productWithError === item.id
+                  ? 'Error al asignar grupo'
+                  : ''
+              "
+              @update:search="handleGroupSearch"
+              :no-data-text="
+                searchInput && searchInput.trim()
+                  ? 'No se encontró. Presiona Enter para crear uno nuevo.'
+                  : 'No hay grupos disponibles.'
+              "
+            />
           </template>
           <template v-else>
-            <IconBtn @click="startEdit(item)" color="warning">
-              <VIcon icon="tabler-edit" />
-            </IconBtn>
+            {{ item.group?.name || "—" }}
           </template>
+        </template>
+
+        <template #item.valid_stock="{ item }">
+          <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
+        </template>
+
+        <template #item.next_expiration="{ item }">
+          <span>{{ nextExpirationDate(item) }}</span>
+        </template>
+
+        <template #item.actions="{ item }">
+          <div class="d-flex gap-2">
+            <template v-if="editingProductId === item.id">
+              <VBtn
+                icon="tabler-check"
+                size="small"
+                @click="saveInlineEdit(item)"
+              />
+              <VBtn icon="tabler-x" size="small" @click="cancelEdit" />
+            </template>
+            <template v-else>
+              <IconBtn @click="startEdit(item)" color="warning">
+                <VIcon icon="tabler-edit" />
+              </IconBtn>
+            </template>
+          </div>
+        </template>
+      </VDataTableServer>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="d-block d-md-none">
+      <div v-if="loading && products.length === 0" class="pa-5 text-center">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+
+      <div class="pa-2">
+        <VCard
+          v-for="item in products"
+          :key="item.id"
+          variant="flat"
+          class="product-mobile-card border mb-2 overflow-hidden"
+        >
+          <div class="pa-3">
+            <div class="d-flex gap-3 align-start mb-2">
+              <VAvatar
+                v-if="item.photo_url"
+                size="44"
+                variant="tonal"
+                rounded
+                :image="item.photo_url"
+                class="flex-shrink-0 mt-1"
+              />
+              <div class="flex-grow-1 min-width-0">
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                  <span class="text-primary">#{{ item.id }}</span>
+                  <span class="mx-1 text-disabled">|</span>
+                  {{ item.name }}
+                </h3>
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
+                  <span class="text-medium-emphasis font-weight-medium">{{ item.active_ingredient }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-bold">{{ item.laboratory?.name || 'S/L' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <VDivider class="my-2 border-opacity-10" />
+
+            <div class="d-flex justify-space-between align-center px-1 mb-2">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock</span>
+                <span class="text-xs font-weight-black" :class="item.stock_calculado > 0 ? 'text-success' : 'text-error'">
+                  {{ item.stock_calculado || 0 }} <small>UNDS</small>
+                </span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Expl.</span>
+                <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
+              </div>
+            </div>
+
+            <!-- Inline Editing Area in Card -->
+            <div v-if="editingProductId === item.id" class="mt-2 pa-2 bg-var-theme-background rounded">
+              <VAutocomplete
+                v-model="editingValue"
+                :items="props.groups"
+                item-title="name"
+                item-value="id"
+                label="Asignar Grupo"
+                variant="outlined"
+                density="compact"
+                hide-details
+                class="mb-2"
+                placeholder="Buscar o crear..."
+                @update:search="handleGroupSearch"
+                @keydown.enter.prevent="handleCreateGroupOnEnter"
+              />
+              <div class="d-flex gap-2 justify-end">
+                <VBtn size="small" variant="tonal" color="secondary" @click="cancelEdit">Cancelar</VBtn>
+                <VBtn size="small" color="primary" @click="saveInlineEdit(item)">Guardar</VBtn>
+              </div>
+            </div>
+            <div v-else class="mt-1">
+              <div class="d-flex justify-space-between align-center py-1 px-2 bg-var-theme-background rounded">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Grupo:</span>
+                <span class="text-xs font-weight-bold text-primary">{{ item.group?.name || '---' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones Rectangulares Movil -->
+          <div v-if="editingProductId !== item.id" class="d-flex border-t border-opacity-10">
+            <VBtn
+              block
+              color="warning"
+              variant="text"
+              class="rounded-0"
+              height="40"
+              prepend-icon="tabler-edit"
+              @click="startEdit(item)"
+            >
+              ASIGNAR GRUPO
+            </VBtn>
+          </div>
+        </VCard>
+
+        <!-- Paginación Móvil -->
+        <div class="d-flex justify-center mt-4">
+          <VPagination
+            :model-value="page"
+            :length="Math.ceil(totalProduct / itemsPerPage)"
+            :total-visible="3"
+            density="compact"
+            size="small"
+            @update:model-value="emit('update:options', { page: $event, itemsPerPage })"
+          />
         </div>
-      </template>
-    </VDataTableServer>
+      </div>
+    </div>
   </VCard>
 </template>
+
+<style scoped>
+.product-mobile-card {
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+</style>

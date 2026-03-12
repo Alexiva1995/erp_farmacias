@@ -447,99 +447,122 @@ const closeDialog = () => {
           </VDataTable>
         </div>
 
-        <!-- Vista de Tarjetas para Móvil -->
-        <div class="d-block d-sm-none">
+        <!-- Vista de Tarjetas para Móvil (Compacta y Optimizada) -->
+        <div class="d-block d-sm-none mt-2">
           <div v-if="distributedLots.length === 0" class="text-center py-8 text-disabled">
             Este producto no tiene lotes registrados.
           </div>
-          <div v-else class="d-flex flex-column gap-4">
+          <div v-else class="d-flex flex-column gap-2">
             <VCard
               v-for="item in distributedLots"
               :key="item.isNew ? item.temp_id : item.id"
-              variant="outlined"
-              class="pa-4 border-dashed"
-              :color="item.isNew ? 'success' : undefined"
+              variant="flat"
+              class="lot-mobile-card border mb-1"
             >
-              <div class="d-flex justify-space-between align-center mb-4">
-                <VChip
-                  label
-                  size="small"
-                  :color="item.isNew ? 'success' : 'primary'"
-                  variant="tonal"
-                >
-                  {{ item.isNew ? 'NUEVO LOTE' : `LOTE EXISTENTE (Stock: ${originalLots.find((l) => l.id === item.id)?.quantity || 0})` }}
-                </VChip>
-                <IconBtn
-                  v-if="item.isNew"
-                  @click="handleRemoveNewLot(item.temp_id)"
-                  color="error"
-                  size="small"
-                >
-                  <VIcon icon="tabler-trash" />
-                </IconBtn>
-                <IconBtn
-                  v-else
-                  @click="handleClearLotQuantity(item)"
-                  color="warning"
-                  size="small"
-                  :disabled="(Number(item.quantity) || 0) === 0"
-                >
-                  <VIcon icon="tabler-trash-x" />
-                </IconBtn>
-              </div>
+              <div class="pa-3">
+                <!-- Línea superior: Tipo de Lote y Acción -->
+                <div class="d-flex justify-space-between align-center mb-3">
+                  <VChip
+                    label
+                    size="x-small"
+                    :color="item.isNew ? 'success' : 'primary'"
+                    variant="flat"
+                    class="text-super-xs font-weight-black"
+                  >
+                    {{ item.isNew ? 'NUEVO LOTE' : `EXISTENTE | STOCK: ${originalLots.find((l) => l.id === item.id)?.quantity || 0}` }}
+                  </VChip>
+                  
+                  <VBtn
+                    v-if="item.isNew"
+                    @click="handleRemoveNewLot(item.temp_id)"
+                    color="error"
+                    variant="tonal"
+                    size="x-small"
+                    icon="tabler-trash"
+                  />
+                  <VBtn
+                    v-else
+                    @click="handleClearLotQuantity(item)"
+                    color="warning"
+                    variant="tonal"
+                    size="x-small"
+                    icon="tabler-trash-x"
+                    :disabled="(Number(item.quantity) || 0) === 0"
+                  />
+                </div>
 
-              <VRow dense>
-                <VCol cols="12">
-                  <VTextField
-                    v-model="item.lot_number"
-                    label="Nº Lote"
-                    variant="outlined"
-                    density="compact"
-                    placeholder="LOTE-001"
-                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
-                    :disabled="(Number(item.quantity) || 0) === 0"
-                  />
-                </VCol>
-                <VCol cols="12">
-                  <VTextField
-                    v-model="item.expiration_date"
-                    label="Vencimiento"
-                    type="date"
-                    variant="outlined"
-                    density="compact"
-                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
-                    :disabled="(Number(item.quantity) || 0) === 0"
-                  />
-                </VCol>
-                <VCol cols="12">
-                  <VAutocomplete
-                    v-model="item.location"
-                    label="Ubicación"
-                    variant="outlined"
-                    density="compact"
-                    :items="props.locations"
-                    item-title="name"
-                    item-value="name"
-                    placeholder="Ubicación"
-                    clearable
-                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
-                    :disabled="(Number(item.quantity) || 0) === 0"
-                  />
-                </VCol>
-                <VCol cols="12">
-                  <VTextField
-                    v-model.number="item.quantity"
-                    label="Cantidad Ajustada"
-                    type="number"
-                    variant="outlined"
-                    density="comfortable"
-                    min="0"
-                    @wheel="$event.target.blur()"
-                    class="font-weight-bold"
-                    prefix="UNDS:"
-                  />
-                </VCol>
-              </VRow>
+                <!-- Grid de Inputs compactos -->
+                <VRow dense>
+                  <VCol cols="12">
+                    <VTextField
+                      v-model="item.lot_number"
+                      label="Nº Lote"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      placeholder="Ej: LOTE-001"
+                      class="mb-2"
+                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
+                      :disabled="(Number(item.quantity) || 0) === 0"
+                    />
+                  </VCol>
+                  
+                  <VCol cols="6">
+                    <VTextField
+                      v-model="item.expiration_date"
+                      label="Vencimiento"
+                      type="date"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
+                      :disabled="(Number(item.quantity) || 0) === 0"
+                    />
+                  </VCol>
+                  
+                  <VCol cols="6">
+                    <VAutocomplete
+                      v-model="item.location"
+                      label="Ubicación"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      :items="props.locations"
+                      item-title="name"
+                      item-value="name"
+                      placeholder="Seleccionar"
+                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
+                      :disabled="(Number(item.quantity) || 0) === 0"
+                    />
+                  </VCol>
+
+                  <VCol cols="12" class="mt-2">
+                    <div class="bg-var-theme-background pa-2 rounded border-dashed-thin">
+                      <div class="d-flex align-center justify-space-between">
+                        <span class="text-super-xs text-disabled text-uppercase font-weight-black">Cantidad Ajustada</span>
+                        <div style="max-inline-size: 140px;">
+                          <VTextField
+                            v-model.number="item.quantity"
+                            type="number"
+                            variant="solo"
+                            density="compact"
+                            hide-details
+                            flat
+                            min="0"
+                            class="font-weight-black text-center"
+                            bg-color="transparent"
+                            @wheel="$event.target.blur()"
+                          >
+                            <template #append-inner>
+                              <span class="text-super-xs text-disabled font-weight-bold">UNDS</span>
+                            </template>
+                          </VTextField>
+                        </div>
+                      </div>
+                    </div>
+                  </VCol>
+                </VRow>
+              </div>
             </VCard>
           </div>
         </div>

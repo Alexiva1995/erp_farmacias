@@ -479,22 +479,51 @@ const submitForm = () => {
                   <VIcon icon="tabler-packages" size="20" class="me-1" />
                   Lotes Registrados
                 </p>
-                <VDataTable
-                  :headers="lotHeaders"
-                  :items="formData.lots"
-                  density="compact"
-                  class="border rounded"
-                  hide-default-footer
-                >
-                  <template #item.quantity="{ item }">
-                    <VChip size="x-small" :color="item.quantity > 0 ? 'success' : 'error'">
-                      {{ item.quantity }}
-                    </VChip>
-                  </template>
-                  <template #item.expiration_date="{ item }">
-                    {{ formatDate(item.expiration_date) }}
-                  </template>
-                </VDataTable>
+                
+                <!-- Desktop Table -->
+                <div class="d-none d-sm-block">
+                  <VDataTable
+                    :headers="lotHeaders"
+                    :items="formData.lots"
+                    density="compact"
+                    class="border rounded"
+                    hide-default-footer
+                  >
+                    <template #item.quantity="{ item }">
+                      <VChip size="x-small" :color="item.quantity > 0 ? 'success' : 'error'">
+                        {{ item.quantity }}
+                      </VChip>
+                    </template>
+                    <template #item.expiration_date="{ item }">
+                      {{ formatDate(item.expiration_date) }}
+                    </template>
+                  </VDataTable>
+                </div>
+
+                <!-- Mobile Cards -->
+                <div class="d-block d-sm-none">
+                  <div class="d-flex flex-column gap-2">
+                    <VCard
+                      v-for="item in formData.lots"
+                      :key="item.id"
+                      variant="flat"
+                      class="lot-mobile-card border mb-1 bg-var-theme-background"
+                    >
+                      <div class="pa-3">
+                        <div class="d-flex justify-space-between align-center mb-2">
+                          <span class="text-xs font-weight-bold text-primary">LOTE: {{ item.lot_number }}</span>
+                          <VChip size="x-small" :color="item.quantity > 0 ? 'success' : 'error'" class="font-weight-black">
+                            {{ item.quantity }} <small class="ml-1">UNDS</small>
+                          </VChip>
+                        </div>
+                        <div class="d-flex justify-space-between text-super-xs text-medium-emphasis">
+                          <span><VIcon icon="tabler-map-pin" size="12" class="me-1" />{{ item.location || 'S/U' }}</span>
+                          <span><VIcon icon="tabler-calendar" size="12" class="me-1" />{{ formatDate(item.expiration_date) }}</span>
+                        </div>
+                      </div>
+                    </VCard>
+                  </div>
+                </div>
               </VCol>
             </VRow>
           </VWindowItem>
@@ -529,16 +558,47 @@ const submitForm = () => {
 
               <VCol v-if="productsInGroup.length > 0" cols="12" class="mt-4">
                 <p class="text-subtitle-1 font-weight-bold mb-2">Otros productos en este grupo</p>
-                <VDataTable
-                  :headers="groupProductsHeaders"
-                  :items="productsInGroup"
-                  density="compact"
-                  class="border rounded"
-                >
-                  <template #item.lots="{ item }">
-                    {{ calculateStock(item) }}
-                  </template>
-                </VDataTable>
+                
+                <!-- Desktop Table -->
+                <div class="d-none d-sm-block">
+                  <VDataTable
+                    :headers="groupProductsHeaders"
+                    :items="productsInGroup"
+                    density="compact"
+                    class="border rounded"
+                  >
+                    <template #item.lots="{ item }">
+                      {{ calculateStock(item) }}
+                    </template>
+                  </VDataTable>
+                </div>
+
+                <!-- Mobile Cards -->
+                <div class="d-block d-sm-none">
+                  <div class="d-flex flex-column gap-2">
+                    <VCard
+                      v-for="item in productsInGroup"
+                      :key="item.id"
+                      variant="flat"
+                      class="border mb-1"
+                    >
+                      <div class="pa-3">
+                        <div class="d-flex align-center justify-space-between mb-1">
+                          <h4 class="text-xs font-weight-black text-uppercase truncate-2-lines flex-grow-1 mr-2">
+                            <span class="text-primary mr-1">#{{ item.id }}</span>
+                            {{ item.name }}
+                          </h4>
+                          <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black">
+                            STK: {{ calculateStock(item) }}
+                          </VChip>
+                        </div>
+                        <div class="text-super-xs text-disabled">
+                          {{ item.laboratory?.name || 'S/L' }}
+                        </div>
+                      </div>
+                    </VCard>
+                  </div>
+                </div>
               </VCol>
             </VRow>
           </VWindowItem>
@@ -608,3 +668,30 @@ const submitForm = () => {
     </VCard>
   </VDialog>
 </template>
+<style scoped>
+.lot-mobile-card {
+  border-radius: 8px !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-theme-primary), 0.03);
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+}
+
+.truncate-2-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Optimización de scroll en móvil dentro del diálogo */
+@media (max-width: 600px) {
+  :deep(.v-window) {
+    max-block-size: 55vh !important;
+  }
+}
+</style>
