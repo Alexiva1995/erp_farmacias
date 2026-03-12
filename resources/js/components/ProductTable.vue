@@ -391,21 +391,21 @@ const handleMobilePageChange = (newPage) => {
 
 <style scoped>
 .product-mobile-card {
+  overflow: hidden;
   border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
-  overflow: hidden;
 }
 
 .truncate-2-lines {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .text-truncate-custom {
-  max-width: 140px;
   overflow: hidden;
+  max-inline-size: 140px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

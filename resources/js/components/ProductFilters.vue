@@ -406,20 +406,19 @@ const hasActiveAdvancedFilters = computed(() => {
       </VExpandTransition>
     </VCardText>
   </VCard>
-
-  <style scoped>
-  .search-bar :deep(.v-field__input) {
-    font-size: 0.9rem;
-  }
-  
-  .gap-2 { gap: 8px !important; }
-  .gap-3 { gap: 12px !important; }
-  
-  @media (max-width: 600px) {
-    .search-bar :deep(.v-field__input) {
-      font-size: 0.8rem;
-    }
-  }
-  </style>
-  </VCard>
 </template>
+
+<style scoped>
+.search-bar :deep(.v-field__input) {
+  font-size: 0.9rem;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+@media (max-width: 600px) {
+  .search-bar :deep(.v-field__input) {
+    font-size: 0.8rem;
+  }
+}
+</style>
