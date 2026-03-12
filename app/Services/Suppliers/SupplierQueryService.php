@@ -175,6 +175,17 @@ class SupplierQueryService
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
+            // Borrado automático de productos previos del proveedor que NO estén en auto-orden
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🧹 Iniciando limpieza automática de productos para el proveedor: {$supplier->id}\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            
+            $deletedCount = $supplier->productSuppliers()
+                ->whereDoesntHave('autoOrderDetails')
+                ->delete();
+            
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Limpieza completada. Productos eliminados: {$deletedCount}\n";
+            file_put_contents($logFile, $logMessage, FILE_APPEND);
+
             Log::info("Analizando facturas para persistencia", [
                 'total_recibidas' => count($invoices),
                 'numeros_recibidos' => collect($invoices)->pluck('header.invoice_number')->toArray()
