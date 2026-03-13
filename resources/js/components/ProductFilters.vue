@@ -213,27 +213,29 @@ const hasActiveAdvancedFilters = computed(() => {
 <template>
   <VCard :class="{ 'mb-6': !flat, 'elevation-0': flat }">
     <VCardText class="pa-4">
-      <!-- Fila Principal: Búsqueda y Toggle -->
+      <!-- Fila Principal: Búsqueda y Botones de Acción -->
       <VRow align="center" no-gutters class="gap-3">
-        <VCol cols="12" sm="true">
+        <!-- Buscador -->
+        <VCol cols="12" md="4" lg="5">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por ID, Producto, C. Activo..."
-            clearable
             prepend-inner-icon="tabler-search"
-            class="search-bar"
+            clearable
+            persistent-placeholder
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        
-        <VCol cols="auto" class="d-flex gap-2">
+
+        <VCol class="d-flex gap-2 flex-wrap flex-md-nowrap align-center">
+          <!-- Toggle Filtros -->
           <VBtn
             variant="tonal"
-            :color="hasActiveAdvancedFilters ? 'primary' : 'secondary'"
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
             :prepend-icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'"
             @click="toggleAdvancedFilters"
           >
-            {{ isAdvancedFiltersVisible ? 'Ocultar Filtros' : 'Más Filtros' }}
+            Filtros
             <VBadge
               v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
               color="error"
@@ -243,33 +245,86 @@ const hasActiveAdvancedFilters = computed(() => {
             />
           </VBtn>
 
+          <!-- Ordenar Por (Ahora en la principal) -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn 
+                v-bind="menuProps" 
+                variant="tonal" 
+                color="secondary"
+                :prepend-icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'"
+              >
+                {{ selectedSort ? getSelectedSortTitle() : 'Ordenar' }}
+              </VBtn>
+            </template>
+            <VList density="compact">
+              <VListItem
+                v-for="(option, index) in sortOptions"
+                :key="index"
+                :active="isOptionSelected(option)"
+                color="primary"
+                @click="handleSortClick(option)"
+              >
+                <template #prepend>
+                  <VIcon :icon="option.icon" size="20" />
+                </template>
+                <VListItemTitle>{{ option.title }}</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <VSpacer class="d-none d-md-block" />
+
+          <!-- Exportar (Menú unificado) -->
+          <VMenu v-if="mode === 'products'">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                color="success"
+                variant="flat"
+                prepend-icon="tabler-file-export"
+                v-bind="menuProps"
+              >
+                Exportar
+              </VBtn>
+            </template>
+            <VList>
+              <VListItem @click="emit('export', 'xlsx')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+                </template>
+                <VListItemTitle class="text-success">Excel</VListItemTitle>
+              </VListItem>
+              <VListItem @click="emit('export', 'pdf')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-pdf" class="me-2" />
+                </template>
+                <VListItemTitle>PDF</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <!-- Añadir Producto -->
           <template v-if="mode === 'products' || mode === 'minimal'">
             <VBtn
               v-if="props.showAddButton"
-              color="success"
-              icon="tabler-plus"
-              class="d-sm-none"
-              @click="emit('add-product')"
-            />
-            <VBtn
-              v-if="props.showAddButton"
-              color="success"
+              color="primary"
+              variant="flat"
               prepend-icon="tabler-plus"
-              class="d-none d-sm-flex"
               @click="emit('add-product')"
             >
-              {{ props.mode === 'inventory' ? 'Añadir' : props.addButtonText }}
+              {{ props.addButtonText }}
             </VBtn>
           </template>
         </VCol>
       </VRow>
 
-      <!-- Sección Colapsable -->
+      <!-- Panel de Filtros Colapsable -->
       <VExpandTransition>
         <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-4" />
+          <VDivider class="my-4 border-opacity-10" />
           
           <VRow>
+            <!-- Grupos de Filtros -->
             <VCol cols="12" sm="6" md="3">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
@@ -281,10 +336,10 @@ const hasActiveAdvancedFilters = computed(() => {
                 item-value="id"
                 clearable
                 density="compact"
-                hide-details
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
             </VCol>
+
             <VCol cols="12" sm="6" md="3">
               <VAutocomplete
                 :model-value="props.selectedOrigin"
@@ -296,10 +351,10 @@ const hasActiveAdvancedFilters = computed(() => {
                 item-value="id"
                 clearable
                 density="compact"
-                hide-details
                 @update:model-value="emit('update:selectedOrigin', $event)"
               />
             </VCol>
+
             <VCol cols="12" sm="6" md="3">
               <VSelect
                 :model-value="props.stockStatusFilter"
@@ -308,100 +363,58 @@ const hasActiveAdvancedFilters = computed(() => {
                 placeholder="Todos"
                 clearable
                 density="compact"
-                hide-details
                 @update:model-value="emit('update:stockStatusFilter', $event)"
               />
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <div class="d-flex align-center h-100 ps-2">
-                <VCheckbox
-                  :model-value="props.isStrictSearch"
-                  label="Búsqueda Estricta"
-                  color="primary"
-                  density="compact"
-                  hide-details
-                  @update:model-value="emit('update:isStrictSearch', $event)"
-                />
-              </div>
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.startDate"
-                placeholder="Desde"
+                label="Desde"
+                placeholder="YYYY-MM-DD"
                 clearable
-                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 density="compact"
-                hide-details
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:startDate', $event)"
               />
             </VCol>
+
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.endDate"
-                placeholder="Hasta"
+                label="Hasta"
+                placeholder="YYYY-MM-DD"
                 clearable
-                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 density="compact"
-                hide-details
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:endDate', $event)"
               />
             </VCol>
-            
-            <VCol cols="12" sm="6" md="3">
-              <VMenu>
-                <template #activator="{ props: menuProps }">
-                  <VBtn v-bind="menuProps" variant="outlined" block density="compact" class="h-100">
-                    <VIcon start :icon="getSelectedSortIcon() || 'tabler-sort-ascending'" />
-                    {{ getSelectedSortTitle() || 'Ordenar Por' }}
-                    <VIcon end icon="tabler-chevron-down" />
-                  </VBtn>
-                </template>
-                <VList density="compact">
-                  <VListItem
-                    v-for="(option, index) in sortOptions"
-                    :key="index"
-                    :active="isOptionSelected(option)"
-                    color="primary"
-                    @click="handleSortClick(option)"
-                  >
-                    <template #prepend>
-                      <VIcon :icon="option.icon" size="20" />
-                    </template>
-                    <VListItemTitle>{{ option.title }}</VListItemTitle>
-                  </VListItem>
-                </VList>
-              </VMenu>
+
+            <!-- Checkboxes -->
+            <VCol cols="12" md="6" class="d-flex align-center">
+              <VCheckbox
+                :model-value="props.isStrictSearch"
+                label="Búsqueda Estricta"
+                color="primary"
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:isStrictSearch', $event)"
+              />
             </VCol>
 
-            <VCol cols="12" sm="6" md="3" class="d-flex gap-2">
-              <VBtn color="secondary" variant="tonal" block @click="handleClear">
+            <VCol cols="12" class="d-flex justify-end gap-2 mt-2">
+              <VBtn 
+                color="secondary" 
+                variant="outlined" 
+                size="small" 
+                prepend-icon="tabler-eraser"
+                @click="handleClear"
+              >
                 Limpiar
               </VBtn>
             </VCol>
           </VRow>
-
-          <!-- Acciones de Exportación -->
-          <div v-if="mode === 'products'" class="d-flex justify-end gap-2 mt-4">
-            <VBtn
-              color="success"
-              variant="flat"
-              prepend-icon="tabler-download"
-              size="small"
-              @click="emit('export', 'xlsx')"
-            >
-              Excel
-            </VBtn>
-            <VBtn
-              color="error"
-              variant="flat"
-              prepend-icon="tabler-file-type-pdf"
-              size="small"
-              @click="emit('export', 'pdf')"
-            >
-              PDF
-            </VBtn>
-          </div>
         </div>
       </VExpandTransition>
     </VCardText>
