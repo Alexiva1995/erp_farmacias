@@ -72,6 +72,42 @@ const isStrictSearchModel = computed({
 });
 
 const hasSelectedLots = computed(() => props.selectedLots.length > 0);
+
+const quickFilters = [
+  { label: "Este mes", range: 0 },
+  { label: "Próximos 90 días", range: 90 },
+];
+
+const isFilterActive = (filter) => {
+  const today = new Date().toISOString().split('T')[0];
+  const targetDate = new Date();
+  if (filter.range === 0) {
+    targetDate.setMonth(targetDate.getMonth() + 1);
+    targetDate.setDate(0); // Último día del mes
+  } else {
+    targetDate.setDate(targetDate.getDate() + filter.range);
+  }
+  const targetStr = targetDate.toISOString().split('T')[0];
+
+  return props.startDate === today && props.endDate === targetStr;
+};
+
+const applyQuickFilter = (filter) => {
+  const today = new Date().toISOString().split('T')[0];
+  const targetDate = new Date();
+  
+  if (filter.range === 0) {
+    targetDate.setMonth(targetDate.getMonth() + 1);
+    targetDate.setDate(0);
+  } else {
+    targetDate.setDate(targetDate.getDate() + filter.range);
+  }
+
+  const targetStr = targetDate.toISOString().split('T')[0];
+  
+  emit("update:startDate", today);
+  emit("update:endDate", targetStr);
+};
 </script>
 
 <template>
@@ -200,54 +236,5 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
         </VTooltip>
       </div>
     </VCardActions>
-</script>
-
-<script>
-export default {
-  setup(props, { emit }) {
-    const quickFilters = [
-      { label: "Este mes", range: 0 },
-      { label: "Próximos 90 días", range: 90 },
-    ];
-
-    const isFilterActive = (filter) => {
-      const today = new Date().toISOString().split('T')[0];
-      const targetDate = new Date();
-      if (filter.range === 0) {
-        targetDate.setMonth(targetDate.getMonth() + 1);
-        targetDate.setDate(0); // Último día del mes
-      } else {
-        targetDate.setDate(targetDate.getDate() + filter.range);
-      }
-      const targetStr = targetDate.toISOString().split('T')[0];
-
-      return props.startDate === today && props.endDate === targetStr;
-    };
-
-    const applyQuickFilter = (filter) => {
-      const today = new Date().toISOString().split('T')[0];
-      const targetDate = new Date();
-      
-      if (filter.range === 0) {
-        targetDate.setMonth(targetDate.getMonth() + 1);
-        targetDate.setDate(0);
-      } else {
-        targetDate.setDate(targetDate.getDate() + filter.range);
-      }
-
-      const targetStr = targetDate.toISOString().split('T')[0];
-      
-      emit("update:startDate", today);
-      emit("update:endDate", targetStr);
-    };
-
-    return {
-      quickFilters,
-      isFilterActive,
-      applyQuickFilter
-    };
-  }
-}
-</script>
   </VCard>
 </template>
