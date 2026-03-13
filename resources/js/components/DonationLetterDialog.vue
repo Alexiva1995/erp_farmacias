@@ -74,6 +74,7 @@ const closeDialog = () => {
     @update:model-value="closeDialog"
     :scrollable="true"
     content-class="d-flex"
+    :fullscreen="$vuetify.display.xs"
   >
     <VCard class="d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-6">

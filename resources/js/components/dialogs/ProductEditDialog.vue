@@ -250,6 +250,7 @@ const submitForm = () => {
     @update:model-value="closeDialog"
     :scrollable="true"
     content-class="d-flex"
+    :fullscreen="$vuetify.display.xs"
   >
     <VCard v-if="formData" class="d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">

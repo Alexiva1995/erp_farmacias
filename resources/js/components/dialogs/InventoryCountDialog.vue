@@ -151,9 +151,9 @@ const handleSave = async () => {
     v-model="isVisible"
     max-width="500"
     persistent
-    location="top"
-    transition="slide-y-transition"
-    class="premium-dialog-top"
+    :fullscreen="$vuetify.display.xs"
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
   >
     <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
       <!-- Cabecera Compacta Premium -->
@@ -177,100 +177,147 @@ const handleSave = async () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-3 pa-sm-4 bg-light inventory-count-content">
-        <!-- Perfil del Producto Compacto -->
-        <VCard variant="flat" class="border pa-3 mb-4 bg-white elevation-1 rounded-lg">
+      <VCardText class="pa-4 bg-light inventory-count-content h-100">
+        <!-- Perfil del Producto Premium Elevado -->
+        <VCard variant="flat" class="border pa-4 mb-4 bg-white elevation-2 rounded-lg transition-all border-l-primary">
           <div class="d-flex flex-column min-width-0">
-            <div class="d-flex align-center gap-2 mb-1">
-              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase px-2">
-                {{ product.laboratory?.name || 'S/L' }}
-              </VChip>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase" style="font-size: 0.55rem;">Laboratorio</span>
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="d-flex align-center gap-2">
+                <VChip size="small" color="primary" variant="flat" class="font-weight-black uppercase px-3 shadow-sm">
+                  ID: {{ product.id }}
+                </VChip>
+                <VChip size="small" color="secondary" variant="tonal" class="font-weight-black uppercase px-3">
+                  {{ product.category?.name || 'General' }}
+                </VChip>
+              </div>
+              <div class="header-indicator primary"></div>
             </div>
-            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-1">
+            
+            <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-2">
               {{ product.name }}
             </h3>
-            <div class="d-flex align-center gap-1 text-super-xs text-disabled font-weight-medium">
-              <VIcon icon="tabler-flask" size="10" />
-              <span class="text-truncate">{{ product.active_ingredient }}</span>
+
+            <div class="d-flex flex-wrap align-center gap-x-6 gap-y-3 mt-1">
+              <div class="d-flex align-center gap-2">
+                <VAvatar size="24" color="primary-lighten-5" class="border">
+                  <VIcon icon="tabler-building-factory" size="14" color="primary" />
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">Laboratorio</span>
+                  <span class="text-xs font-weight-bold text-high-emphasis uppercase">
+                    {{ product.laboratory?.name || 'S/L' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="d-flex align-center gap-2">
+                <VAvatar size="24" color="primary-lighten-5" class="border">
+                  <VIcon icon="tabler-flask" size="14" color="primary" />
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">P. Activo</span>
+                  <span class="text-xs font-weight-bold text-high-emphasis uppercase text-truncate" style="max-inline-size: 150px;">
+                    {{ product.active_ingredient || 'Sin registrar' }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </VCard>
 
         <VForm @submit.prevent="handleSave">
-          <!-- Banner de Selección de Modo Compacto -->
+          <!-- Banner de Selección de Modo Llamativo -->
           <VCard
             variant="flat"
             :color="allowWithoutBarcode ? 'warning' : 'primary'"
-            class="pa-2 mb-4 rounded-lg border-dashed-2 transition-all"
+            class="pa-3 mb-4 rounded-lg border-dashed-2 transition-all shadow-sm"
             :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
           >
             <VCheckbox
               v-model="allowWithoutBarcode"
               :color="allowWithoutBarcode ? 'warning' : 'primary'"
               hide-details
-              density="compact"
+              density="comfortable"
+              class="ma-0 pa-0"
             >
               <template #label>
-                <div class="d-flex align-center gap-2">
-                  <VIcon 
-                    :icon="allowWithoutBarcode ? 'tabler-barcode-off' : 'tabler-barcode'" 
-                    size="18" 
-                    :color="allowWithoutBarcode ? 'warning' : 'primary'" 
-                  />
-                  <span class="text-xs font-weight-black uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
-                    Sin código
-                  </span>
+                <div class="d-flex align-center gap-3">
+                  <VAvatar :color="allowWithoutBarcode ? 'warning' : 'primary'" size="32" variant="tonal" class="elevation-1">
+                    <VIcon 
+                      :icon="allowWithoutBarcode ? 'tabler-barcode-off' : 'tabler-barcode'" 
+                      size="20" 
+                    />
+                  </VAvatar>
+                  <div>
+                    <span class="text-subtitle-2 font-weight-black uppercase d-block" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
+                      {{ allowWithoutBarcode ? 'Conteo Manual Activo' : 'Modo Escaneo Activo' }}
+                    </span>
+                    <span class="text-super-xs font-weight-bold opacity-70 uppercase">
+                      {{ allowWithoutBarcode ? 'Ajuste de stock sin código de barras' : 'Validación obligatoria por scanner' }}
+                    </span>
+                  </div>
                 </div>
               </template>
             </VCheckbox>
           </VCard>
           
-          <!-- Campo de Código de Barras Compacto -->
-          <div class="mb-3">
+          <!-- Campo de Escaneo Premium -->
+          <div v-if="!allowWithoutBarcode" class="mb-4">
             <AppTextField
               id="barcode-input"
               v-model="barcodeInput"
-              label="Escanear"
-              placeholder="Código de barras"
+              label="Escanear Producto"
+              placeholder="Apunta el lector aquí..."
               :error-messages="barcodeError"
-              :disabled="allowWithoutBarcode"
-              density="compact"
+              density="comfortable"
+              class="shadow-sm premium-textfield"
               @keyup.enter="handleBarcodeEnter"
             >
               <template #append-inner>
-                <div class="d-flex align-center gap-1">
+                <div class="d-flex align-center gap-2 px-1">
                   <VBtn
+                    v-tooltip="'Llenar código del producto'"
                     icon
                     variant="tonal"
-                    size="x-small"
+                    size="small"
+                    color="secondary"
+                    class="rounded-lg"
+                    @click="fillBarcode"
+                  >
+                    <VIcon icon="tabler-key" size="18" />
+                  </VBtn>
+                  
+                  <VBtn
+                    v-tooltip="'Escanear con cámara'"
+                    icon
+                    variant="elevated"
+                    size="small"
                     color="primary"
-                    :disabled="allowWithoutBarcode"
+                    class="rounded-lg shadow-sm"
                     @click="isScannerVisible = true"
                   >
-                    <VIcon icon="tabler-camera" size="16" />
+                    <VIcon icon="tabler-camera" size="18" />
                   </VBtn>
                 </div>
               </template>
             </AppTextField>
           </div>
 
-          <!-- Input de Cantidad Compacto -->
-          <VCard variant="flat" border class="pa-3 rounded-lg mb-2 bg-white border-dashed-2">
-            <div class="d-flex align-center justify-space-between mb-1">
-              <span class="text-super-xs font-weight-black text-disabled uppercase" style="font-size: 0.55rem;">Cantidad</span>
+          <!-- Input de Cantidad Premium -->
+          <VCard variant="flat" border class="pa-4 rounded-lg mb-4 bg-white border-dashed-2 shadow-sm">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <span class="text-subtitle-2 font-weight-black text-disabled uppercase letter-spacing-1">Cantidad Auditada</span>
               <VChip 
-                size="x-small" 
+                size="small" 
                 color="primary" 
-                variant="flat" 
-                class="font-weight-black px-1"
-                style="block-size: 16px; font-size: 0.5rem;"
+                variant="tonal" 
+                class="font-weight-black px-2"
               >
                 UNIDADES
               </VChip>
             </div>
             
-            <div class="d-flex justify-center align-center">
+            <div class="d-flex justify-center align-center py-2">
               <AppTextField
                 id="quantity-input"
                 v-model.number="countedQuantity"
@@ -278,7 +325,7 @@ const handleSave = async () => {
                 min="0"
                 placeholder="0"
                 variant="plain"
-                class="ultra-huge-input-text"
+                class="ultra-huge-input-text h-auto font-weight-950"
                 density="compact"
                 hide-details
                 :disabled="!allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
@@ -291,30 +338,31 @@ const handleSave = async () => {
 
       <VDivider />
 
-      <VCardActions class="pa-2 bg-light border-t">
-        <div class="d-flex flex-column gap-2 w-100">
+      <VCardActions class="pa-4 bg-light border-t">
+        <div class="d-flex flex-column gap-3 w-100">
           <VBtn
             color="primary"
             variant="flat"
-            size="small"
+            size="large"
             block
-            height="36"
-            class="font-weight-black rounded-lg shadow-sm"
+            height="50"
+            class="font-weight-black rounded-lg shadow-primary text-button uppercase"
             :disabled="!canSave"
             @click="handleSave"
           >
-            GUARDAR CONTEO
+            <VIcon icon="tabler-cloud-upload" class="me-2" />
+            Guardar Conteo
           </VBtn>
           <VBtn
             color="secondary"
             variant="tonal"
-            size="small"
+            size="large"
             block
-            height="32"
-            class="font-weight-black rounded-lg"
+            height="44"
+            class="font-weight-black rounded-lg text-button uppercase"
             @click="handleCancel"
           >
-            CANCELAR
+            Cancelar
           </VBtn>
         </div>
       </VCardActions>
