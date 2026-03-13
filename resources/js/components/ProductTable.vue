@@ -198,7 +198,7 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.unit_cost="{ item }">
-          <span class="font-weight-medium">{{ item.unit_cost }}</span>
+          <span class="font-weight-medium">{{ formatPrice(item.unit_cost) }}</span>
         </template>
 
         <template #item.sale_price="{ item }">
