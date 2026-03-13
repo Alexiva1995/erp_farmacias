@@ -294,4 +294,3 @@ const handleClear = () => {
 .gap-3 { gap: 12px; }
 .gap-x-4 { column-gap: 16px; }
 </style>
-</template>
