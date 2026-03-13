@@ -206,37 +206,44 @@ const handleMobilePageChange = (newPage) => {
           class="cycle-mobile-card border mb-1"
         >
           <div class="pa-3">
-            <!-- Cabecera: ID | Estado -->
-            <div class="d-flex align-center justify-space-between mb-3">
-              <div class="d-flex align-center gap-1">
-                <span class="text-sm font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
+            <!-- Cabecera Compacta: ID + Fechas | Acciones + Estado -->
+            <div class="d-flex align-start justify-space-between mb-3">
+              <div class="d-flex flex-column min-width-0">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <span class="text-sm font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
+                  <VChip
+                    :color="getCycleStatusColor(cycle.cycle_status)"
+                    size="x-small"
+                    label
+                    variant="flat"
+                    class="text-super-xs font-weight-bold"
+                  >
+                    {{ getCycleStatusText(cycle.cycle_status).toUpperCase() }}
+                  </VChip>
+                </div>
+                <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-x-2">
+                  <span class="d-flex align-center">
+                    <VIcon icon="tabler-calendar-plus" size="10" class="me-1" />
+                    {{ formatDate(cycle.start_date) }}
+                  </span>
+                  <span class="text-disabled">|</span>
+                  <span class="d-flex align-center">
+                    <VIcon icon="tabler-calendar-check" size="10" class="me-1" />
+                    {{ formatDate(cycle.end_date) }}
+                  </span>
+                </div>
               </div>
-              <VChip
-                :color="getCycleStatusColor(cycle.cycle_status)"
-                size="x-small"
-                label
-                variant="flat"
-                class="text-super-xs"
-              >
-                {{ getCycleStatusText(cycle.cycle_status).toUpperCase() }}
-              </VChip>
-            </div>
 
-            <!-- Fechas -->
-            <div class="d-flex gap-4 mb-3">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Inicio</span>
-                <span class="text-xs font-weight-medium">
-                  <VIcon icon="tabler-calendar-plus" size="12" class="me-1" />
-                  {{ formatDate(cycle.start_date) }}
-                </span>
-              </div>
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Fin</span>
-                <span class="text-xs font-weight-medium">
-                  <VIcon icon="tabler-calendar-check" size="12" class="me-1" />
-                  {{ formatDate(cycle.end_date) }}
-                </span>
+              <div class="d-flex align-center">
+                <IconBtn
+                  variant="tonal"
+                  color="info"
+                  size="32"
+                  class="rounded"
+                  @click="viewCycleDetails(cycle.cycle_id)"
+                >
+                  <VIcon icon="tabler-eye" size="18" />
+                </IconBtn>
               </div>
             </div>
 
@@ -264,19 +271,6 @@ const handleMobilePageChange = (newPage) => {
               </div>
             </div>
           </div>
-
-          <!-- Acciones -->
-          <VBtn 
-            block 
-            color="info" 
-            variant="flat" 
-            class="rounded-0"
-            height="44"
-            prepend-icon="tabler-eye" 
-            @click="viewCycleDetails(cycle.cycle_id)"
-          >
-            VER DETALLES
-          </VBtn>
         </VCard>
       </div>
 
