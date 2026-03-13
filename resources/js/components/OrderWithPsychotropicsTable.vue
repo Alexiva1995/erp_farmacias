@@ -171,9 +171,7 @@ const handleMobilePageChange = (newPage) => {
                 label
                 variant="flat"
                 class="font-weight-black px-3"
-              >
-                {{ item.quantity > 0 ? `+${item.quantity}` : item.quantity }}
-              </Chip>
+              </VChip>
             </div>
 
             <div class="bg-var-theme-background-light rounded border-s-4 border-primary pa-3 mb-3">
