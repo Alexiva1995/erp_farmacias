@@ -246,11 +246,11 @@ const handleMobilePageChange = (newPage) => {
 
 .stat-box .label {
   display: block;
+  color: rgba(var(--v-theme-on-surface), 0.45);
   font-size: 0.6rem;
   font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.45);
+  margin-block-end: 2px;
   text-transform: uppercase;
-  margin-bottom: 2px;
 }
 
 .stat-box .value {

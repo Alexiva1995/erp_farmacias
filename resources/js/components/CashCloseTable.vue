@@ -205,7 +205,7 @@ const handleMobilePageChange = (newPage) => {
               <div v-if="item.supervisor" class="d-flex align-center gap-1">
                 <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
                 <span class="text-super-xs font-weight-medium">
-                  {{ (item.supervisor?.employee_name || '').split(' ')[0] }}
+                  {{ item.supervisor.employee_name }} {{ item.supervisor.employee_last_name || '' }}
                 </span>
               </div>
             </div>
