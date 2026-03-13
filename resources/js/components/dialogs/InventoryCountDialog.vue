@@ -104,6 +104,13 @@ const handleBarcodeEnter = () => {
   }
 };
 
+const fillBarcode = () => {
+  if (props.product.barcode) {
+    barcodeInput.value = props.product.barcode;
+    handleBarcodeEnter();
+  }
+};
+
 const onBarcodeScanned = (scannedBarcode) => {
   barcodeInput.value = scannedBarcode;
   isScannerVisible.value = false;
@@ -230,26 +237,26 @@ const handleSave = async () => {
                 id="barcode-input"
                 v-model="barcodeInput"
                 label="Validación de Código"
-                placeholder="Ingresa el código de barras manualmente"
+                placeholder="Escanea o ingresa el código"
                 :error-messages="barcodeError"
                 :disabled="allowWithoutBarcode"
                 @keyup.enter="handleBarcodeEnter"
               >
                 <template #append-inner>
-                  <div class="d-flex align-center">
-                    <VTooltip location="top">
-                      <template #activator="{ props: tooltipProps }">
-                        <VIcon 
-                          v-bind="tooltipProps"
-                          icon="tabler-keyboard" 
-                          size="20" 
-                          class="text-disabled me-1" 
-                        />
-                      </template>
-                      Entrada manual activa
-                    </VTooltip>
-                    
-                    <VDivider vertical class="mx-2 my-1" />
+                  <div class="d-flex align-center h-100">
+                    <VBtn
+                      icon
+                      variant="text"
+                      size="small"
+                      color="info"
+                      :disabled="allowWithoutBarcode || !product.barcode"
+                      @click="fillBarcode"
+                    >
+                      <VIcon icon="tabler-wand" size="20" />
+                      <VTooltip activator="parent" location="top">Cargar código del sistema</VTooltip>
+                    </VBtn>
+
+                    <VDivider vertical class="mx-1 my-2" />
                     
                     <VBtn
                       icon
@@ -259,8 +266,8 @@ const handleSave = async () => {
                       :disabled="allowWithoutBarcode"
                       @click="isScannerVisible = true"
                     >
-                      <VIcon icon="tabler-camera-selfie" size="22" />
-                      <VTooltip activator="parent" location="top">Escaneado con cámara</VTooltip>
+                      <VIcon icon="tabler-camera" size="22" />
+                      <VTooltip activator="parent" location="top">Escanear con cámara</VTooltip>
                     </VBtn>
                   </div>
                 </template>
@@ -311,10 +318,11 @@ const handleSave = async () => {
                 class="font-weight-black"
                 @click="handleSave"
               >
-                GUARDAR CONTEO
+                GUARDAR
               </VBtn>
             </VCol>
           </VRow>
+        </VCardActions>
         </VCardActions>
       </VCard>
     </VDialog>
