@@ -270,11 +270,11 @@ const handleScan = (code) => {
               <div class="min-width-0">
                 <div class="d-flex align-center gap-2 mb-1">
                   <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2 shadow-sm">
-                    {{ props.mode === 'adjustment' ? 'MODO CÍCLICO' : 'MODOR RETORNO' }}
+                    {{ props.mode === 'adjustment' ? 'MODO CÍCLICO' : 'MODO RETORNO' }}
                   </VChip>
                   <div class="header-indicator primary"></div>
                 </div>
-                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-0">
+                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-0 truncate">
                   {{ props.productName }}
                 </h3>
               </div>
@@ -300,12 +300,10 @@ const handleScan = (code) => {
               <VIcon icon="tabler-plus" size="20" />
             </VBtn>
           </div>
-        </VCard>
-
-        <!-- Resumen de Stock Premium Estilo Bloques -->
-        <VRow dense class="mb-2">
+        </VCard>        <!-- Resumen de Stock Premium Compacto -->
+        <VRow dense class="mb-2 flex-shrink-0">
           <VCol cols="4">
-            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1 transition-all h-100 border-l-primary">
+            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1 border-l-primary">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">OBJETIVO</span>
               <div class="text-h6 font-weight-950 text-primary leading-none">
                 {{ formatNumber(objective) }}
@@ -314,7 +312,7 @@ const handleScan = (code) => {
           </VCol>
           
           <VCol cols="4">
-            <VCard variant="flat" border class="pa-3 bg-white text-center rounded-lg elevation-1 transition-all h-100">
+            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">ASIGNADO</span>
               <div class="text-h6 font-weight-950 text-info leading-none">
                 {{ formatNumber(totalDistributed) }}
@@ -323,7 +321,7 @@ const handleScan = (code) => {
           </VCol>
 
           <VCol cols="4">
-            <VCard variant="flat" border class="pa-3 bg-white text-center rounded-lg elevation-1 transition-all h-100">
+            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">DIFERENCIA</span>
               <div 
                 class="text-h6 font-weight-950 leading-none"
@@ -347,7 +345,7 @@ const handleScan = (code) => {
         </div>
 
         <!-- Tabla Escritorio con Scroll -->
-        <div class="d-none d-md-block overflow-y-auto pr-1" style="max-block-size: 400px;">
+        <div class="d-none d-md-block flex-grow-1 overflow-y-auto pr-1" style="min-height: 0;">
           <VDataTable
             :headers="[
               { title: 'Información del Lote', key: 'info', sortable: false },
@@ -447,8 +445,8 @@ const handleScan = (code) => {
         </div>
 
         <!-- Vista Móvil de Tarjetas con Scroll -->
-        <div class="d-block d-md-none pr-1">
-          <div class="d-flex flex-column gap-2 overflow-y-auto" style="max-block-size: 420px; padding-block-end: 8px;">
+        <div class="d-block d-md-none flex-grow-1 overflow-y-auto pr-1" style="min-height: 0;">
+          <div class="d-flex flex-column gap-2" style="padding-block-end: 80px;">
             <VCard
               v-for="item in distributedLots"
               :key="item.isNew ? item.temp_id : item.id"

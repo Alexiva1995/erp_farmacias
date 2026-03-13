@@ -112,7 +112,7 @@ const handleLocationSearch = (search) => {
 </script>
 
 <template>
-  <VCard class="rounded-xl border-0 elevation-12 overflow-hidden bg-surface">
+  <VCard padding="0">
     <!-- Desktop Table -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -125,24 +125,34 @@ const handleLocationSearch = (search) => {
         @update:options="(opts) => emit('update:options', opts)"
       >
         <template #item.id="{ item }">
-          <span class="text-xs font-weight-black text-disabled">#{{ item.id }}</span>
+          {{ item.id }}
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span
-              class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase"
-              :class="{
-                'text-warning':
-                  item.product?.psychotropic == 1 || item.product?.psychotropic === true,
-              }"
-            >
-              {{ item.product?.name?.toUpperCase() || "—" }}
-              <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true" class="text-info"> (COL)</span>
-            </span>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">{{
-              item.product?.active_ingredient || ""
-            }}</span>
+          <div class="d-flex align-center gap-x-4">
+            <VAvatar
+              v-if="item.product?.photo_url"
+              size="38"
+              variant="tonal"
+              rounded
+              :image="item.product.photo_url"
+            />
+            <div class="d-flex flex-column">
+              <span
+                class="text-body-1 font-weight-medium text-high-emphasis"
+                :class="{
+                  'text-warning font-weight-bold':
+                    item.product?.psychotropic == 1 || item.product?.psychotropic === true,
+                }"
+              >
+                {{ item.product?.name?.toUpperCase() || "—" }}
+                <span v-if="item.product?.iva == 1 || item.product?.iva === true"> (G)</span>
+                <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
+              </span>
+              <span class="text-sm text-disabled">{{
+                item.product?.active_ingredient || ""
+              }}</span>
+            </div>
           </div>
         </template>
 
@@ -169,11 +179,11 @@ const handleLocationSearch = (search) => {
               :items="locationsList"
               item-title="name"
               item-value="name"
-              density="comfortable"
+              density="compact"
               variant="outlined"
-              class="premium-textfield shadow-sm"
-              style="min-inline-size: 180px;"
-              placeholder="Ubicación..."
+              class="responsive-autocomplete"
+              style=" flex-grow: 1;min-inline-size: 150px;"
+              placeholder="Seleccionar ubicación"
               :loading="loadingLocations"
               clearable
               @keydown.enter.prevent="saveInlineEdit(item)"
@@ -188,9 +198,7 @@ const handleLocationSearch = (search) => {
             />
           </template>
           <template v-else>
-            <VChip color="error" variant="tonal" size="x-small" class="font-weight-black uppercase">
-              Sin ubicación
-            </VChip>
+            <span class="text-error font-weight-medium">Sin ubicación</span>
           </template>
         </template>
 
@@ -199,31 +207,16 @@ const handleLocationSearch = (search) => {
             <template v-if="editingLotId === item.id">
               <VBtn
                 icon="tabler-check"
-                size="x-small"
+                size="small"
                 color="success"
-                variant="elevated"
-                class="shadow-sm"
                 @click="saveInlineEdit(item)"
               />
-              <VBtn 
-                icon="tabler-x" 
-                size="x-small" 
-                color="error" 
-                variant="tonal"
-                @click="cancelEdit" 
-              />
+              <VBtn icon="tabler-x" size="small" color="error" @click="cancelEdit" />
             </template>
             <template v-else>
-              <VBtn
-                icon
-                size="small"
-                variant="tonal"
-                color="warning"
-                class="rounded-lg"
-                @click="startEdit(item)"
-              >
-                <VIcon icon="tabler-edit" size="18" />
-              </VBtn>
+              <IconBtn @click="startEdit(item)" color="warning">
+                <VIcon icon="tabler-edit" />
+              </IconBtn>
             </template>
           </div>
         </template>
@@ -241,27 +234,31 @@ const handleLocationSearch = (search) => {
           v-for="item in lots"
           :key="item.id"
           variant="flat"
-          class="lot-mobile-card border mb-3 overflow-hidden rounded-xl shadow-sm bg-white"
+          class="lot-mobile-card border mb-2 overflow-hidden"
         >
-          <div class="pa-4">
-            <div class="d-flex justify-space-between align-start mb-3">
+          <div class="pa-3">
+            <div class="d-flex gap-3 align-start mb-2">
+              <VAvatar
+                v-if="item.product?.photo_url"
+                size="44"
+                variant="tonal"
+                rounded
+                :image="item.product.photo_url"
+                class="flex-shrink-0 mt-1"
+              />
               <div class="flex-grow-1 min-width-0">
-                <div class="d-flex align-center gap-2 mb-1">
-                  <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2 shadow-sm">
-                    ID: {{ item.id }}
-                  </VChip>
-                  <div class="header-indicator primary"></div>
-                </div>
-                <h3 class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase leading-tight mb-1">
-                  {{ item.product?.name || 'SIN NOMBRE' }}
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                  <span class="text-primary mr-1">#{{ item.id }}</span>
+                  <span class="mx-1 text-disabled">|</span>
+                  {{ item.product?.name || 'S/N' }}
                 </h3>
-                <div class="d-flex align-center gap-x-2 text-super-xs">
-                  <span class="text-primary font-weight-bold uppercase">{{ item.product?.laboratory?.name || 'S/L' }}</span>
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
+                  <span class="text-primary font-weight-bold">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
             </div>
 
-            <VDivider class="my-3 border-opacity-10" />
+            <VDivider class="my-2 border-opacity-10" />
 
             <div class="d-flex justify-space-between align-center px-1 mb-2">
               <div class="d-flex flex-column">
@@ -278,7 +275,7 @@ const handleLocationSearch = (search) => {
               </div>
             </div>
 
-            <div class="bg-light pa-3 rounded-lg mt-3 border-dashed-1 shadow-inner">
+            <div class="bg-var-theme-background pa-2 rounded mt-2 text-center">
               <!-- Edit Mode inside Card -->
               <div v-if="editingLotId === item.id">
                 <VAutocomplete
@@ -286,26 +283,26 @@ const handleLocationSearch = (search) => {
                   :items="locationsList"
                   item-title="name"
                   item-value="name"
-                  label="Ubicación"
-                  density="comfortable"
+                  label="Asignar Ubicación"
+                  density="compact"
                   variant="outlined"
-                  class="mb-3 premium-textfield shadow-sm"
+                  class="mb-2"
                   hide-details="auto"
                   placeholder="Seleccionar..."
                   :loading="loadingLocations"
                   @update:search="handleLocationSearch"
                   @keydown.enter.prevent="saveInlineEdit(item)"
                 />
-                <div class="d-flex gap-3 justify-center mt-2">
-                  <VBtn variant="tonal" color="secondary" size="small" class="flex-grow-1 font-weight-black" @click="cancelEdit">CANCELAR</VBtn>
-                  <VBtn color="primary" size="small" class="flex-grow-1 font-weight-black shadow-sm" @click="saveInlineEdit(item)">GUARDAR</VBtn>
+                <div class="d-flex gap-2 justify-center mt-2">
+                  <VBtn variant="tonal" color="secondary" size="small" class="flex-grow-1" @click="cancelEdit">Cancelar</VBtn>
+                  <VBtn color="primary" size="small" class="flex-grow-1" @click="saveInlineEdit(item)">Guardar</VBtn>
                 </div>
               </div>
 
               <!-- Display Mode -->
-              <div v-else class="d-flex justify-center align-center py-2">
-                <VIcon icon="tabler-map-pin-off" size="16" color="error" class="me-2" />
-                <span class="text-xs font-weight-black text-error text-uppercase letter-spacing-05">Ubicación Pendiente</span>
+              <div v-else class="d-flex justify-center align-center py-1">
+                <VIcon icon="tabler-map-pin-off" size="14" color="error" class="me-2" />
+                <span class="text-xs font-weight-black text-error text-uppercase">Sin ubicación asignada</span>
               </div>
             </div>
           </div>
@@ -315,9 +312,9 @@ const handleLocationSearch = (search) => {
             <VBtn
               block
               color="warning"
-              variant="flat"
-              class="rounded-0 font-weight-black"
-              height="44"
+              variant="text"
+              class="rounded-0"
+              height="40"
               prepend-icon="tabler-map-pin"
               @click="startEdit(item)"
             >
@@ -344,38 +341,15 @@ const handleLocationSearch = (search) => {
 
 <style scoped>
 .lot-mobile-card {
-  border-radius: 16px !important;
+  border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  line-height: normal;
 }
 
-.letter-spacing-05 { letter-spacing: 0.5px !important; }
-
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
-.shadow-inner {
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 6%) !important;
-}
-
-.premium-textfield :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.1 !important;
-}
-
-.header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 4px;
-}
-
-.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
-
-.border-dashed-1 {
-  border: 1px dashed rgba(var(--v-border-color), 20%) !important;
+.bg-var-theme-background {
+  background-color: rgba(var(--v-theme-primary), 0.05);
 }
 </style>
