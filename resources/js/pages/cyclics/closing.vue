@@ -2,18 +2,20 @@
 import CashCloseTable from "@/components/CashCloseTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatDate, formatPrice } from "@/utils/formatters";
 import Swal from "sweetalert2";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { onMounted, reactive, ref, watch, computed } from "vue";
 
 const counts = ref([]);
 const totalCounts = ref(0);
 const loading = ref(false);
 const isClosing = ref(false);
 const page = ref(1);
-const itemsPerPage = ref(25);
+const itemsPerPage = ref(10);
 const sortBy = ref("product.name");
 const orderBy = ref("asc");
+const isAdvancedFiltersVisible = ref(false);
+
 const filters = reactive({
   searchQuery: "",
   startDate: null,
@@ -41,7 +43,6 @@ const fetchData = async () => {
     orderBy: orderBy.value,
   };
   
-  // Remover parámetros null o vacíos
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "" || params[key] === undefined) && delete params[key]
   );
@@ -74,7 +75,6 @@ const fetchData = async () => {
     }));
     totalCounts.value = response.data.total || 0;
     
-    // Actualizar totales globales desde el backend
     if (response.data.totals) {
       globalTotals.value = {
         surplus: response.data.totals.surplus || 0,
@@ -134,19 +134,6 @@ const updateTableOptions = (options) => {
   }
 };
 
-const totals = computed(() => {
-  // Usar los totales globales del backend en lugar de calcular solo de la página actual
-  return globalTotals.value;
-});
-
-/*const formatCurrency = (value) => {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-  }).format(value || 0);
-};*/
-
 const handleCashClose = async () => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
@@ -156,22 +143,6 @@ const handleCashClose = async () => {
     confirmButtonText: "Sí, cerrar ciclo",
     cancelButtonText: "Cancelar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
   });
 
   if (!result.isConfirmed) return;
@@ -179,22 +150,13 @@ const handleCashClose = async () => {
   isClosing.value = true;
 
   try {
-    // Paso 1: Cerrar el ciclo actual
     const closeResponse = await axios.post("/inventory/cycle/close");
-
-    // Mostrar mensaje de éxito del cierre
     toast.success(closeResponse.data.message);
 
-    // Paso 2: Crear automáticamente un nuevo ciclo
     try {
       const createResponse = await axios.post("/inventory/cycle/create");
-
-      // Mostrar mensaje de éxito de la creación del nuevo ciclo
-      toast.success(
-        `Nuevo ciclo creado automáticamente: ${createResponse.data.message}`
-      );
+      toast.success(`Nuevo ciclo creado automáticamente: ${createResponse.data.message}`);
     } catch (createError) {
-      // Si falla la creación del nuevo ciclo, mostrar error específico
       console.error("Error al crear el nuevo ciclo:", createError);
       toast.error(
         createError.response?.data?.message ||
@@ -202,14 +164,10 @@ const handleCashClose = async () => {
       );
     }
 
-    // Paso 3: Actualizar los datos y estado del ciclo
     await Promise.all([fetchData(), fetchCycleStatus()]);
   } catch (closeError) {
-    // Si falla el cierre del ciclo
     console.error("Error al cerrar el ciclo:", closeError);
-    toast.error(
-      closeError.response?.data?.message || "Error al cerrar el ciclo."
-    );
+    toast.error(closeError.response?.data?.message || "Error al cerrar el ciclo.");
   } finally {
     isClosing.value = false;
   }
@@ -224,22 +182,6 @@ const handleCreateCycle = async () => {
     confirmButtonText: "Sí, crear ciclo",
     cancelButtonText: "Cancelar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
   });
 
   if (!result.isConfirmed) return;
@@ -262,14 +204,13 @@ const handleClearFilters = () => {
   filters.endDate = null;
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString("es-ES", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  });
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
 };
+
+const hasActiveAdvancedFilters = computed(() => {
+  return filters.startDate || filters.endDate;
+});
 
 const handleDeleteItem = async (item) => {
   const result = await Swal.fire({
@@ -300,121 +241,171 @@ const handleDeleteItem = async (item) => {
 
 <template>
   <div>
-    <VRow>
-      <VCol cols="12">
-        <VCard class="mb-6">
-          <VCardText>
-            <VRow>
-              <VCol cols="12" sm="6" md="4">
-                <AppTextField
-                  v-model="filters.searchQuery"
-                  placeholder="Buscar por Producto, Usuario..."
-                  clearable
-                />
-              </VCol>
+    <!-- Resumen de Ciclo Superior -->
+    <VCard v-if="hasActiveCycle && activeCycle" class="mb-4 border-dashed border-primary">
+      <VCardText class="pa-3 d-flex align-center flex-wrap gap-x-6 gap-y-2">
+        <div class="d-flex align-center gap-2">
+          <VAvatar color="primary" variant="tonal" size="32">
+            <VIcon icon="tabler-refresh-dot" size="18" />
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <span class="text-xs text-disabled text-uppercase font-weight-black">Ciclo Activo</span>
+            <span class="text-sm font-weight-bold">Desde: {{ formatDate(activeCycle.start_date) }}</span>
+          </div>
+        </div>
 
-              <VCol cols="12" sm="6" md="4">
+        <VDivider vertical class="d-none d-md-block" />
+
+        <div class="d-flex align-center gap-4 flex-grow-1 justify-space-between">
+          <div class="d-flex align-center gap-4">
+            <div class="d-flex flex-column">
+              <span class="text-xs text-disabled text-uppercase font-weight-black">Sobrante</span>
+              <span class="text-sm font-weight-bold text-success">{{ formatPrice(globalTotals.surplus) }}</span>
+            </div>
+            <div class="d-flex flex-column">
+              <span class="text-xs text-disabled text-uppercase font-weight-black">Faltante</span>
+              <span class="text-sm font-weight-bold text-error">{{ formatPrice(globalTotals.shortage) }}</span>
+            </div>
+            <div class="d-flex flex-column">
+              <span class="text-xs text-disabled text-uppercase font-weight-black">Balance Neto</span>
+              <span 
+                class="text-sm font-weight-black"
+                :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
+              >
+                {{ formatPrice(globalTotals.netTotal) }}
+              </span>
+            </div>
+          </div>
+
+          <VBtn
+            color="success"
+            variant="elevated"
+            :disabled="loading || isClosing"
+            :loading="isClosing"
+            prepend-icon="tabler-lock-check"
+            @click="handleCashClose"
+          >
+            GENERAR CIERRE
+          </VBtn>
+        </div>
+      </VCardText>
+    </VCard>
+
+    <VBtn
+      v-else-if="!loading"
+      block
+      color="primary"
+      variant="tonal"
+      class="mb-4 py-6"
+      prepend-icon="tabler-plus"
+      :loading="isCreatingCycle"
+      @click="handleCreateCycle"
+    >
+      CREAR NUEVO CICLO DE INVENTARIO
+    </VBtn>
+
+    <!-- Filtros Colapsables -->
+    <VCard class="mb-6">
+      <VCardText class="pa-3">
+        <VRow align="center" no-gutters class="gap-2">
+          <VCol cols="12" md="4">
+            <AppTextField
+              v-model="filters.searchQuery"
+              placeholder="Buscar producto, usuario..."
+              prepend-inner-icon="tabler-search"
+              clearable
+              density="compact"
+              hide-details
+            />
+          </VCol>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-1">
+            <VBtn
+              icon
+              variant="tonal"
+              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+              size="38"
+              @click="toggleAdvancedFilters"
+            >
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+              <VBadge
+                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+                color="error"
+                dot
+                offset-x="3"
+                offset-y="-3"
+              />
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2" />
+
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
+          </div>
+        </VRow>
+
+        <VExpandTransition>
+          <div v-show="isAdvancedFiltersVisible">
+            <VDivider class="my-3 border-opacity-10" />
+            <VRow dense>
+              <VCol cols="12" sm="6">
                 <AppDateTimePicker
                   v-model="filters.startDate"
-                  placeholder="Desde"
+                  placeholder="Fecha Inicio"
                   clearable
-                  :config="{
-                    altInput: true,
-                    altFormat: 'Y-m-d',
-                    dateFormat: 'Y-m-d',
-                  }"
+                  density="compact"
+                  hide-details
+                  prepend-inner-icon="tabler-calendar-plus"
+                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 />
               </VCol>
-              <VCol cols="12" sm="6" md="4">
+              <VCol cols="12" sm="6">
                 <AppDateTimePicker
                   v-model="filters.endDate"
-                  placeholder="Hasta"
+                  placeholder="Fecha Fin"
                   clearable
-                  :config="{
-                    altInput: true,
-                    altFormat: 'Y-m-d',
-                    dateFormat: 'Y-m-d',
-                  }"
+                  density="compact"
+                  hide-details
+                  prepend-inner-icon="tabler-calendar-check"
+                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 />
               </VCol>
             </VRow>
-          </VCardText>
+          </div>
+        </VExpandTransition>
+      </VCardText>
+    </VCard>
 
-          <VDivider />
-
-          <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              @click="handleClearFilters"
-            >
-              Limpiar Filtros
-            </VBtn>
-
-            <VSpacer />
-
-            <div class="d-flex align-center gap-2">
-              <VChip
-                v-if="hasActiveCycle && activeCycle"
-                color="info"
-                variant="tonal"
-                size="default"
-                label
-              >
-                <VIcon icon="tabler-refresh-dot" start />
-                Ciclo Activo: {{ formatDate(activeCycle.start_date) }} →   
-                
-                <span class="text-h6 font-weight-medium text-success">
-                  &nbsp+&nbsp{{ formatCurrency(totals.surplus) }} 
-                </span>
-                <span class="text-h6 font-weight-medium text-error">
-                    &nbsp-&nbsp{{ formatCurrency(totals.shortage) }}
-                </span>&nbsp=&nbsp
-                <span
-                        class="text-h6 font-weight-bold"
-                        :class="
-                          totals.netTotal >= 0 ? 'text-primary' : 'text-warning'
-                        "
-                      >
-                        {{ formatCurrency(totals.netTotal) }}
-                      </span>
-              </VChip>
-
-              <VBtn
-                v-else
-                color="success"
-                prepend-icon="tabler-plus"
-                :loading="isCreatingCycle"
-                @click="handleCreateCycle"
-              >
-                Crear Nuevo Ciclo
-              </VBtn>
-
-              <VBtn
-                color="success"
-                :disabled="loading || isClosing || !hasActiveCycle"
-                :loading="isClosing"
-                prepend-icon="tabler-lock"
-                @click="handleCashClose"
-              >
-                Generar cierre
-              </VBtn>
-            </div>
-          </VCardActions>
-        </VCard>
-      </VCol>
-
-      <VCol cols="12">
-        <CashCloseTable 
-          :items="counts" 
-          :loading="loading"
-          :total-items="totalCounts"
-          :items-per-page="itemsPerPage"
-          :page="page"
-          @update:options="updateTableOptions"
-          @delete="handleDeleteItem"
-        />
-      </VCol>
-    </VRow>
+    <!-- Tabla / Vista de Cierre -->
+    <CashCloseTable 
+      :items="counts" 
+      :loading="loading"
+      :total-items="totalCounts"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptions"
+      @delete="handleDeleteItem"
+    />
   </div>
 </template>
+
+<style scoped>
+.border-dashed {
+  border: 1px dashed rgba(var(--v-border-color), 0.5) !important;
+}
+
+.gap-x-6 {
+  column-gap: 24px !important;
+}
+</style>

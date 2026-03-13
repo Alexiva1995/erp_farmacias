@@ -1,5 +1,5 @@
 <script setup>
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatDate, formatPrice } from "@/utils/formatters";
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -9,38 +9,11 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options"]);
-
-const formatEmployeeName = (user) => {
-  if (!user) return "N/A";
-  
-  // Si tiene employee con name y last_name, usar esos
-  if (user.employee_name && user.employee_last_name) {
-    const name = user.employee_name.trim();
-    const lastName = user.employee_last_name.trim();
-    // Capitalize: primera letra mayúscula, resto minúsculas
-    const formattedName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-    const formattedLastName = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
-    return `${formattedName} ${formattedLastName}`;
-  }
-  
-  // Si solo tiene employee.name
-  if (user.employee_name) {
-    const name = user.employee_name.trim();
-    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-  }
-  
-  // Fallback a name (username o email)
-  if (user.name) {
-    return user.name;
-  }
-  
-  return "N/A";
-};
+const emit = defineEmits(["update:options", "delete"]);
 
 const headers = [
   { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
-  { title: "Producto", key: "product.name", sortable: true, width: "320px", maxWidth: "320px" },
+  { title: "Producto", key: "product.name", sortable: true, width: "320px" },
   { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
   { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
   { title: "Usuario", key: "user.name", sortable: true },
@@ -49,97 +22,250 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
-/*const formatCurrency = (value) => {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-  }).format(value);
-};*/
-
 const handleDelete = (item) => {
   emit("delete", item);
+};
+
+const handleMobilePageChange = (newPage) => {
+  emit('update:options', {
+    page: newPage,
+    itemsPerPage: props.itemsPerPage,
+    sortBy: [],
+  });
 };
 </script>
 
 <template>
   <VCard>
-    <VDataTableServer
-      :headers="headers"
-      :items="props.items"
-      :items-length="props.totalItems"
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :loading="props.loading"
-      item-value="id"
-      no-data-text="No hay diferencias registradas para el cierre."
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #item.discrepancy="{ item }">
-        <VChip
-          :color="item.discrepancy > 0 ? 'success' : 'error'"
-          label
-          size="small"
+    <!-- Vista de Escritorio (Tabla) -->
+    <div class="d-none d-md-block">
+      <VDataTableServer
+        :headers="headers"
+        :items="props.items"
+        :items-length="props.totalItems"
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :loading="props.loading"
+        item-value="id"
+        density="compact"
+        class="text-no-wrap"
+        no-data-text="No hay diferencias registradas para el cierre."
+        @update:options="(options) => emit('update:options', options)"
+      >
+        <template #item.product_id="{ item }">
+          <span class="text-xs font-weight-medium">{{ item.productId || item.product_id || "—" }}</span>
+        </template>
+
+        <template #item.product.name="{ item }">
+          <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
+            <span class="text-sm font-weight-black text-high-emphasis text-truncate" :title="item.product.name">
+              {{ item.product.name }}
+            </span>
+            <span class="text-xs text-primary font-weight-bold">
+              {{ item.product.laboratory?.name }}
+            </span>
+          </div>
+        </template>
+
+        <template #item.discrepancy="{ item }">
+          <VChip
+            :color="item.discrepancy > 0 ? 'success' : 'error'"
+            label
+            size="x-small"
+            variant="tonal"
+            class="font-weight-black"
+          >
+            {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+          </VChip>
+        </template>
+
+        <template #item.product.unit_cost="{ item }">
+          <span class="text-sm font-weight-medium">
+            {{ formatPrice(item.product.unit_cost) }}
+          </span>
+        </template>
+
+        <template #item.user.name="{ item }">
+          <span class="text-xs text-capitalize">
+            {{ (item.user?.employee_name || '') + (item.user?.employee_last_name ? ` ${item.user.employee_last_name}` : '') || item.user?.name || '—' }}
+          </span>
+        </template>
+
+        <template #item.supervisor.name="{ item }">
+          <span class="text-xs text-capitalize">
+            {{ (item.supervisor?.employee_name || '') + (item.supervisor?.employee_last_name ? ` ${item.supervisor.employee_last_name}` : '') || '—' }}
+          </span>
+        </template>
+
+        <template #item.amount="{ item }">
+          <span
+            :class="item.discrepancy > 0 ? 'text-success' : 'text-error'"
+            class="text-sm font-weight-black"
+          >
+            {{ formatPrice(item.product.sale_price * item.discrepancy) }}
+          </span>
+        </template>
+
+        <template #item.actions="{ item }">
+          <IconBtn
+            v-if="!item.hasTraceability"
+            color="error"
+            size="small"
+            @click="handleDelete(item)"
+          >
+            <VIcon icon="tabler-trash" />
+            <VTooltip activator="parent">Eliminar registro</VTooltip>
+          </IconBtn>
+          <VIcon v-else icon="tabler-info-circle" size="small" color="secondary">
+            <VTooltip activator="parent">Tiene movimientos en trazabilidad</VTooltip>
+          </VIcon>
+        </template>
+      </VDataTableServer>
+    </div>
+
+    <!-- Vista de Móvil (Cards) -->
+    <div class="d-block d-md-none pa-2">
+      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
+      
+      <div v-if="props.items.length === 0 && !props.loading" class="text-center py-8 text-disabled text-sm">
+        No hay diferencias registradas.
+      </div>
+
+      <div class="d-flex flex-column gap-2">
+        <VCard
+          v-for="item in props.items"
+          :key="item.id"
+          variant="flat"
+          class="cash-close-mobile-card border mb-1"
         >
-          <VIcon
-            :icon="item.discrepancy > 0 ? 'tabler-plus' : 'tabler-minus'"
-            start
-          />
-          {{ Math.abs(item.discrepancy) }}
-        </VChip>
-      </template>
-
-      <template #item.amount="{ item }">
-        <span
-          :class="item.discrepancy > 0 ? 'text-success' : 'text-error'"
-          class="font-weight-medium"
-        >
-          {{ formatCurrency(item.product.sale_price * item.discrepancy) }}
-        </span>
-      </template>
-
-      <template #item.product_id="{ item }">
-        <span class="font-weight-medium">{{ item.productId || item.product_id || "—" }}</span>
-      </template>
-
-      <template #item.product.name="{ item }">
-        <span class="font-weight-medium text-truncate d-inline-block" style="max-inline-size: 320px;" :title="item.product.name">
-          {{ item.product.name }}
-        </span>
-      </template>
-
-      <template #item.product.unit_cost="{ item }">
-        <span class="font-weight-medium">
-          {{ formatCurrency(parseFloat(item.product.unit_cost || 0)) }}
-        </span>
-      </template>
-
-      <template #item.user.name="{ item }">
-        <span>{{ formatEmployeeName(item.user) }}</span>
-      </template>
-
-      <template #item.supervisor.name="{ item }">
-        <span>{{ formatEmployeeName(item.supervisor) }}</span>
-      </template>
-
-      <template #item.actions="{ item }">
-        <VTooltip v-if="can('manage', 'admin')" :text="item.hasTraceability ? 'Tiene movimientos en trazabilidad' : 'Eliminar registro'">
-          <template #activator="{ props }">
-            <span v-bind="props">
-              <VBtn
-                icon
-                variant="text"
-                :color="item.hasTraceability ? 'default' : 'error'"
-                size="small"
-                :disabled="item.hasTraceability"
+          <div class="pa-3">
+            <!-- Cabecera: Producto | Acciones -->
+            <div class="d-flex align-start justify-space-between mb-3">
+              <div class="d-flex flex-column min-width-0">
+                <span class="text-sm font-weight-black text-primary text-truncate-1">
+                  {{ item.product.name.toUpperCase() }}
+                </span>
+                <span class="text-super-xs text-medium-emphasis font-weight-bold">
+                  {{ item.product.laboratory?.name }}
+                </span>
+              </div>
+              <IconBtn
+                v-if="!item.hasTraceability"
+                variant="tonal"
+                color="error"
+                size="32"
+                class="rounded"
                 @click="handleDelete(item)"
               >
-                <VIcon icon="tabler-trash" />
-              </VBtn>
-            </span>
-          </template>
-        </VTooltip>
-      </template>
-    </VDataTableServer>
+                <VIcon icon="tabler-trash" size="18" />
+              </IconBtn>
+            </div>
+
+            <VDivider class="my-3 border-opacity-10" />
+
+            <!-- Resumen de Cantidades y Montos -->
+            <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Diferencia</span>
+                <VChip
+                  :color="item.discrepancy > 0 ? 'success' : 'error'"
+                  size="x-small"
+                  label
+                  variant="flat"
+                  class="text-super-xs font-weight-black mt-1"
+                >
+                  {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+                </VChip>
+              </div>
+              <div class="d-flex flex-column text-center px-2">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Costo U.</span>
+                <span class="text-xs font-weight-medium">
+                  {{ formatPrice(item.product.unit_cost) }}
+                </span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Monto Total</span>
+                <span 
+                  class="text-sm font-weight-black"
+                  :class="item.discrepancy > 0 ? 'text-success' : 'text-error'"
+                >
+                  {{ formatPrice(item.product.sale_price * item.discrepancy) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Usuarios Responsables -->
+            <div class="mt-3 d-flex align-center justify-space-between text-capitalize">
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-user" size="12" class="text-disabled" />
+                <span class="text-super-xs font-weight-medium">
+                  {{ (item.user?.employee_name || '').split(' ')[0] }} {{ (item.user?.employee_last_name || '').split(' ')[0] }}
+                </span>
+              </div>
+              <div v-if="item.supervisor" class="d-flex align-center gap-1">
+                <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
+                <span class="text-super-xs font-weight-medium">
+                  {{ (item.supervisor?.employee_name || '').split(' ')[0] }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </VCard>
+      </div>
+
+      <!-- Paginación Móvil -->
+      <div class="d-flex justify-center mt-4">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalItems / props.itemsPerPage)"
+          :total-visible="3"
+          density="compact"
+          size="small"
+          @update:model-value="handleMobilePageChange"
+        />
+      </div>
+    </div>
   </VCard>
 </template>
+
+<style scoped>
+.cash-close-mobile-card {
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
+}
+
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.text-truncate-1 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+:deep(.v-data-table) {
+  font-size: 0.8125rem;
+}
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+</style>
