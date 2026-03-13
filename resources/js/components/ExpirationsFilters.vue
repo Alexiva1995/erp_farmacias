@@ -76,6 +76,7 @@ const isStrictSearchModel = computed({
 const hasSelectedLots = computed(() => props.selectedLots.length > 0);
 
 const quickFilters = [
+  { label: "Vencidos", range: -1 },
   { label: "Este mes", range: 0 },
   { label: "60 Días", range: 60 },
   { label: "90 Días", range: 90 },
@@ -86,6 +87,14 @@ const quickFilters = [
 const isFilterActive = (filter) => {
   const today = new Date().toISOString().split('T')[0];
   const targetDate = new Date();
+
+  if (filter.range === -1) {
+    targetDate.setDate(targetDate.getDate() - 1);
+    const yesterdayStr = targetDate.toISOString().split('T')[0];
+
+    return props.startDate === null && props.endDate === yesterdayStr;
+  }
+
   if (filter.range === 0) {
     targetDate.setMonth(targetDate.getMonth() + 1);
     targetDate.setDate(0); // Último día del mes
@@ -101,6 +110,17 @@ const applyQuickFilter = (filter) => {
   const today = new Date().toISOString().split('T')[0];
   const targetDate = new Date();
   
+  if (filter.range === -1) {
+    // Vencidos: Hasta ayer
+    targetDate.setDate(targetDate.getDate() - 1);
+    const yesterdayStr = targetDate.toISOString().split('T')[0];
+
+    emit("update:startDate", null);
+    emit("update:endDate", yesterdayStr);
+
+    return;
+  }
+
   if (filter.range === 0) {
     targetDate.setMonth(targetDate.getMonth() + 1);
     targetDate.setDate(0);
