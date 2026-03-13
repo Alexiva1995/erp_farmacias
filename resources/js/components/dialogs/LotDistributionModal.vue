@@ -303,11 +303,11 @@ const handleScan = (code) => {
         </VCard>
 
         <!-- Resumen de Stock Premium Estilo Bloques -->
-        <VRow dense class="mb-3">
+        <VRow dense class="mb-2">
           <VCol cols="4">
-            <VCard variant="flat" border class="pa-3 bg-white text-center rounded-lg elevation-1 transition-all h-100 border-l-primary">
+            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1 transition-all h-100 border-l-primary">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">OBJETIVO</span>
-              <div class="text-h6 font-weight-black text-primary leading-none">
+              <div class="text-h6 font-weight-950 text-primary leading-none">
                 {{ formatNumber(objective) }}
               </div>
             </VCard>
@@ -316,7 +316,7 @@ const handleScan = (code) => {
           <VCol cols="4">
             <VCard variant="flat" border class="pa-3 bg-white text-center rounded-lg elevation-1 transition-all h-100">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">ASIGNADO</span>
-              <div class="text-h6 font-weight-black text-info leading-none">
+              <div class="text-h6 font-weight-950 text-info leading-none">
                 {{ formatNumber(totalDistributed) }}
               </div>
             </VCard>
@@ -326,7 +326,7 @@ const handleScan = (code) => {
             <VCard variant="flat" border class="pa-3 bg-white text-center rounded-lg elevation-1 transition-all h-100">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">DIFERENCIA</span>
               <div 
-                class="text-h6 font-weight-black leading-none"
+                class="text-h6 font-weight-950 leading-none"
                 :class="discrepancy === 0 ? 'text-success' : 'text-error'"
               >
                 {{ discrepancy > 0 ? '+' : '' }}{{ formatNumber(discrepancy) }}
