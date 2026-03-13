@@ -74,20 +74,12 @@ const handleMobilePageChange = (newPage) => {
 
         <template #item.product.name="{ item }">
           <div class="d-flex align-center gap-x-4 py-2">
-            <VAvatar
-              v-if="item.product?.photo_url"
-              size="44"
-              variant="tonal"
-              rounded
-              :image="item.product.photo_url"
-              class="border elevation-1"
-            />
             <div class="d-flex flex-column text-normal-white">
               <span
                 class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase"
                 :class="{ 'text-warning': item.product.psychotropic }"
               >
-                {{ item.product.name }}
+                {{ item.product.name.toUpperCase() }}
                 <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
               </span>
               <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.product.active_ingredient }}</span>
@@ -141,14 +133,6 @@ const handleMobilePageChange = (newPage) => {
         >
           <div class="pa-4">
             <div class="d-flex gap-3 align-start mb-3">
-              <VAvatar
-                v-if="item.product?.photo_url"
-                size="48"
-                variant="tonal"
-                rounded
-                :image="item.product.photo_url"
-                class="flex-shrink-0 border"
-              />
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center justify-space-between mb-1">
                   <span class="text-primary font-weight-black text-xs">

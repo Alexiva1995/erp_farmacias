@@ -147,233 +147,286 @@ const handleSave = async () => {
 </script>
 
 <template>
-  <div>
-    <VDialog v-model="isVisible" max-width="500" persistent>
-      <VCard class="inventory-count-dialog">
-        <VCardTitle class="d-flex align-center gap-2 pa-4 bg-primary">
-          <VAvatar size="32" variant="tonal" color="white" class="me-2">
-            <VIcon icon="tabler-scan" size="18" />
-          </VAvatar>
-          <span class="text-h6 text-white font-weight-bold">Conteo de Inventario</span>
+  <VDialog
+    v-model="isVisible"
+    max-width="550"
+    persistent
+    class="premium-dialog"
+  >
+    <VCard class="detail-dialog-card overflow-hidden rounded-xl border-0 elevation-24">
+      <!-- Cabecera Premium Estilo Trazabilidad -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-lg">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-scan" color="primary" />
+            </VAvatar>
+            <div>
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Conteo de Inventario</h2>
+              <span class="text-caption text-white opacity-75 letter-spacing-1 uppercase font-weight-bold" style="font-size: 0.65rem;">
+                Validación física de existencias
+              </span>
+            </div>
+          </div>
           <VSpacer />
-          <VBtn icon variant="text" color="white" size="small" @click="handleCancel">
+          <VBtn icon variant="tonal" color="white" size="small" @click="handleCancel">
             <VIcon>tabler-x</VIcon>
           </VBtn>
-        </VCardTitle>
+        </div>
+      </VCardTitle>
 
-        <VCardText class="pa-6">
-          <!-- Info del Producto -->
-          <VCard variant="flat" border class="mb-6 pa-4 bg-var-theme-background border-dashed-thin">
-            <div class="d-flex align-start gap-4">
-              <VAvatar
-                size="48"
-                variant="tonal"
-                rounded
-                color="primary"
-                class="flex-shrink-0"
-              >
-                <VIcon icon="tabler-package" size="24" />
-              </VAvatar>
-              <div class="d-flex flex-column min-width-0">
-                <span class="text-h6 font-weight-black text-high-emphasis text-uppercase line-height-1 mb-1 truncate-2-lines">
-                  {{ product.name }}
-                </span>
-                <span class="text-sm text-primary font-weight-bold mb-1">
-                  {{ product.laboratory?.name || 'S/L' }}
-                </span>
-                <div class="d-flex align-center gap-1 text-super-xs text-disabled font-weight-medium">
-                  <VIcon icon="tabler-flask" size="12" />
-                  <span class="text-truncate">{{ product.active_ingredient }}</span>
-                </div>
-              </div>
-            </div>
-          </VCard>
-
-          <VForm @submit.prevent="handleSave">
-            <!-- Selección de Modo sin Código -->
-            <VCard
-              variant="tonal"
-              :color="allowWithoutBarcode ? 'warning' : 'info'"
-              class="pa-3 mb-6 border-dashed-thin"
-              :class="{ 'opacity-100': allowWithoutBarcode, 'opacity-70': !allowWithoutBarcode }"
+      <VCardText class="pa-4 pa-sm-6 bg-light inventory-count-content">
+        <!-- Perfil del Producto Estilo Trazabilidad -->
+        <VCard variant="flat" class="border pa-4 mb-6 bg-white elevation-1 rounded-xl">
+          <div class="d-flex align-start gap-4">
+            <VAvatar
+              size="56"
+              variant="flat"
+              rounded="lg"
+              class="border-2 elevation-2"
+              color="primary"
             >
-              <VCheckbox
-                v-model="allowWithoutBarcode"
-                color="primary"
-                hide-details
-                density="compact"
-              >
-                <template #label>
-                  <div class="d-flex align-center gap-2">
-                    <VIcon 
-                      :icon="allowWithoutBarcode ? 'tabler-barcode-off' : 'tabler-barcode'" 
-                      size="20" 
-                      :color="allowWithoutBarcode ? 'warning' : 'info'" 
-                    />
-                    <span class="text-sm font-weight-bold">
-                      Permitir conteo sin código de barras
-                    </span>
-                  </div>
-                </template>
-              </VCheckbox>
-              <div v-if="allowWithoutBarcode" class="text-super-xs font-weight-medium mt-2 ms-8 d-flex align-center gap-1">
-                <VIcon icon="tabler-alert-triangle" size="14" class="text-warning" />
-                <span>El sistema permitirá registrar el conteo sin validación de código.</span>
+              <VIcon icon="tabler-package" size="28" color="white" />
+            </VAvatar>
+            <div class="d-flex flex-column min-width-0">
+              <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-1">
+                {{ product.name }}
+              </h3>
+              <div class="d-flex align-center gap-2 mb-1">
+                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
+                  {{ product.laboratory?.name || 'S/L' }}
+                </VChip>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Laboratorio</span>
               </div>
-            </VCard>
-            
-            <!-- Campo de Código de Barras -->
-            <div class="mb-4">
-              <AppTextField
-                id="barcode-input"
-                v-model="barcodeInput"
-                label="Validación de Código"
-                placeholder="Escanea o ingresa el código"
-                :error-messages="barcodeError"
-                :disabled="allowWithoutBarcode"
-                @keyup.enter="handleBarcodeEnter"
-              >
-                <template #append-inner>
-                  <div class="d-flex align-center h-100">
-                    <VBtn
-                      icon
-                      variant="text"
-                      size="small"
-                      color="info"
-                      :disabled="allowWithoutBarcode || !product.barcode"
-                      @click="fillBarcode"
-                    >
-                      <VIcon icon="tabler-wand" size="20" />
-                      <VTooltip activator="parent" location="top">Cargar código del sistema</VTooltip>
-                    </VBtn>
-
-                    <VDivider vertical class="mx-1 my-2" />
-                    
-                    <VBtn
-                      icon
-                      variant="text"
-                      size="small"
-                      color="primary"
-                      :disabled="allowWithoutBarcode"
-                      @click="isScannerVisible = true"
-                    >
-                      <VIcon icon="tabler-camera" size="22" />
-                      <VTooltip activator="parent" location="top">Escanear con cámara</VTooltip>
-                    </VBtn>
-                  </div>
-                </template>
-              </AppTextField>
+              <div class="d-flex align-center gap-1 text-super-xs text-disabled font-weight-medium">
+                <VIcon icon="tabler-flask" size="12" />
+                <span class="text-truncate">{{ product.active_ingredient }}</span>
+              </div>
             </div>
+          </div>
+        </VCard>
 
-            <!-- Campo de Cantidad -->
-            <div>
-              <AppTextField
+        <VForm @submit.prevent="handleSave">
+          <!-- Banner de Selección de Modo -->
+          <VCard
+            variant="flat"
+            :color="allowWithoutBarcode ? 'warning' : 'primary'"
+            class="pa-3 mb-6 rounded-xl border-dashed-2 transition-all"
+            :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
+          >
+            <VCheckbox
+              v-model="allowWithoutBarcode"
+              :color="allowWithoutBarcode ? 'warning' : 'primary'"
+              hide-details
+              density="compact"
+            >
+              <template #label>
+                <div class="d-flex align-center gap-2">
+                  <VIcon 
+                    :icon="allowWithoutBarcode ? 'tabler-barcode-off' : 'tabler-barcode'" 
+                    size="20" 
+                    :color="allowWithoutBarcode ? 'warning' : 'primary'" 
+                  />
+                  <span class="text-sm font-weight-black uppercase letter-spacing-05" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
+                    Permitir conteo sin código
+                  </span>
+                </div>
+              </template>
+            </VCheckbox>
+            <VExpandTransition>
+              <div v-if="allowWithoutBarcode" class="text-super-xs font-weight-bold mt-2 ms-8 d-flex align-center gap-1 text-warning uppercase">
+                <VIcon icon="tabler-alert-triangle" size="14" />
+                <span>Saltando validación de código de barras</span>
+              </div>
+            </VExpandTransition>
+          </VCard>
+          
+          <!-- Campo de Código de Barras Premium -->
+          <div class="mb-4">
+            <AppTextField
+              id="barcode-input"
+              v-model="barcodeInput"
+              label="Escanear Código"
+              placeholder="Escanea el código de barras"
+              :error-messages="barcodeError"
+              :disabled="allowWithoutBarcode"
+              class="premium-input"
+              @keyup.enter="handleBarcodeEnter"
+            >
+              <template #append-inner>
+                <div class="d-flex align-center gap-1 pe-1">
+                  <VBtn
+                    icon
+                    variant="tonal"
+                    size="small"
+                    color="info"
+                    :disabled="allowWithoutBarcode || !product.barcode"
+                    @click="fillBarcode"
+                  >
+                    <VIcon icon="tabler-wand" size="18" />
+                    <VTooltip activator="parent" location="top">Cargar sugerencia</VTooltip>
+                  </VBtn>
+                  
+                  <VBtn
+                    icon
+                    variant="flat"
+                    size="small"
+                    color="primary"
+                    :disabled="allowWithoutBarcode"
+                    class="shadow-sm"
+                    @click="isScannerVisible = true"
+                  >
+                    <VIcon icon="tabler-camera" size="20" />
+                    <VTooltip activator="parent" location="top">Usar Cámara</VTooltip>
+                  </VBtn>
+                </div>
+              </template>
+            </AppTextField>
+          </div>
+
+          <!-- Input de Cantidad Inspirado en Trazabilidad -->
+          <VCard variant="flat" border class="pa-4 rounded-xl mb-2 bg-white border-dashed-2">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Cantidad Contada</span>
+              <VChip 
+                size="x-small" 
+                color="primary" 
+                variant="flat" 
+                class="font-weight-black shadow-sm"
+              >
+                UNIDADES
+              </VChip>
+            </div>
+            
+            <div class="d-flex justify-center align-center py-2">
+              <input
                 id="quantity-input"
                 v-model="countedQuantity"
-                label="Cantidad Física Contada"
                 type="number"
                 min="0"
                 placeholder="0"
+                class="ultra-huge-input"
                 :disabled="!allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
-                class="text-h6 font-weight-black"
                 @keyup.enter="handleSave"
-              >
-                <template #prepend-inner>
-                  <VIcon icon="tabler-hash" class="text-disabled" />
-                </template>
-              </AppTextField>
+              />
             </div>
-          </VForm>
-        </VCardText>
+          </VCard>
+        </VForm>
+      </VCardText>
 
-        <VDivider />
+      <VDivider />
 
-        <VCardActions class="pa-4 bg-var-theme-background">
-          <VRow class="w-100 mx-0">
-            <VCol cols="6" class="ps-0">
-              <VBtn
-                color="secondary"
-                variant="outlined"
-                block
-                @click="handleCancel"
-              >
-                Cancelar
-              </VBtn>
-            </VCol>
-            <VCol cols="6" class="pe-0">
-              <VBtn
-                color="primary"
-                variant="flat"
-                block
-                :disabled="!canSave"
-                class="font-weight-black"
-                @click="handleSave"
-              >
-                GUARDAR
-              </VBtn>
-            </VCol>
-          </VRow>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+      <VCardActions class="pa-4 pa-sm-6 bg-light">
+        <div class="d-flex flex-column flex-sm-row gap-3 w-100">
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            size="large"
+            block
+            height="48"
+            class="flex-grow-1 font-weight-black rounded-lg"
+            @click="handleCancel"
+          >
+            CANCELAR
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            size="large"
+            block
+            height="48"
+            class="flex-grow-1 font-weight-black rounded-lg shadow-lg"
+            :disabled="!canSave"
+            @click="handleSave"
+          >
+            CONFIRMAR CONTEO
+          </VBtn>
+        </div>
+      </VCardActions>
+    </VCard>
 
-    <!-- Scanner Dialog Integrado -->
     <BarcodeScannerDialog
       v-model="isScannerVisible"
       @scan="onBarcodeScanned"
     />
-  </div>
+  </VDialog>
 </template>
 
 <style scoped>
-.inventory-count-dialog {
-  border-radius: 12px !important;
-  overflow: hidden;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.bg-light {
+  background-color: #f8fafc !important;
 }
 
-.bg-var-theme-background {
-  background-color: rgba(var(--v-border-color), 0.05);
+.border-dashed-2 {
+  border: 2px dashed rgba(var(--v-border-color), 15%) !important;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.05) !important;
+}
+
+.bg-warning-lighten-5 {
+  background-color: rgba(var(--v-theme-warning), 0.05) !important;
+}
+
+.ultra-huge-input {
+  inline-size: 100%;
+  border: none;
+  background: transparent;
+  color: rgb(var(--v-theme-primary));
+  font-size: 4.5rem;
+  font-weight: 900;
+  line-height: 1;
+  outline: none;
+  text-align: center;
+}
+
+.ultra-huge-input::placeholder {
+  color: rgba(var(--v-theme-primary), 10%);
+}
+
+.ultra-huge-input::-webkit-outer-spin-button,
+.ultra-huge-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  line-height: 1.2;
+  line-height: normal;
 }
+
+.letter-spacing-1 { letter-spacing: 1.5px !important; }
+.letter-spacing-05 { letter-spacing: 0.5px !important; }
+.leading-tight { line-height: 1.25 !important; }
 
 .truncate-2-lines {
   display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.line-height-1 {
-  line-height: 1.1 !important;
+.shadow-lg {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%) !important;
 }
 
-.gap-1 { gap: 4px !important; }
-.gap-2 { gap: 8px !important; }
-.gap-3 { gap: 12px !important; }
-
-:deep(.v-field__input) {
-  font-size: 1rem;
+.transition-all {
+  transition: all 0.3s ease;
 }
 
-#quantity-input :deep(.v-field__input) {
-  font-size: 1.25rem !important;
-  font-weight: 800;
-  color: rgb(var(--v-theme-primary));
+:deep(.v-btn.v-btn--size-large) {
+  font-size: 0.875rem !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase;
 }
 
-.opacity-70 {
-  opacity: 0.7;
-}
-
-.opacity-100 {
-  opacity: 1;
+.premium-input :deep(.v-field__input) {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
 }
 </style>
