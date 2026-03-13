@@ -380,6 +380,9 @@
     "watchThrottled": true,
     "watchTriggerable": true,
     "watchWithFilter": true,
-    "whenever": true
+    "whenever": true,
+    "calculateStock": true,
+    "formatPrice": true,
+    "formatMonth": true
   }
 }

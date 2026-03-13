@@ -10,6 +10,7 @@ import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
 import ExpirationsFilters from "@/components/ExpirationsFilters.vue";
 import ExpirationsTable from "@/components/ExpirationsTable.vue";
 import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
+import { formatMonth, formatPrice as formatCurrency } from "@/utils/formatters";
 
 const lots = ref([]);
 const totalLots = ref(0);
@@ -541,22 +542,8 @@ onMounted(() => {
   fetchLaboratories();
 });
 
-const formatMonth = (monthStr) => {
-  if (!monthStr) return "";
-  const [year, month] = monthStr.split("-");
-  return new Date(year, month - 1).toLocaleString("es-CO", {
-    month: "long",
-    year: "numeric",
-  });
-};
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 2,
-  }).format(value);
-};
+// Las funciones de formateo ahora se manejan centralizadamente en @/utils/formatters.js
+// y son utilizadas directamente por los componentes ExpirationsTable y ExpirationsFilters.
 </script>
 
 <template>

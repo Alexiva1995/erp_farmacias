@@ -16,6 +16,7 @@ declare global {
   const autoResetRef: typeof import('@vueuse/core')['autoResetRef']
   const avatarText: typeof import('./resources/js/@core/utils/formatters.js')['avatarText']
   const betweenValidator: typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']
+  const calculateStock: typeof import('./resources/js/utils/formatters.js')['calculateStock']
   const capitalizeFirstAndLastName: typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']
   const computed: typeof import('vue')['computed']
   const computedAsync: typeof import('@vueuse/core')['computedAsync']
@@ -51,9 +52,11 @@ declare global {
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const formatAmountOnly: typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']
   const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
-  const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
+  const formatDate: typeof import('./resources/js/utils/formatters.js')['formatDate']
   const formatDateTime: typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
+  const formatMonth: typeof import('./resources/js/utils/formatters.js')['formatMonth']
+  const formatPrice: typeof import('./resources/js/utils/formatters.js')['formatPrice']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
@@ -396,6 +399,7 @@ declare module 'vue' {
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
     readonly avatarText: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['avatarText']>
     readonly betweenValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']>
+    readonly calculateStock: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['calculateStock']>
     readonly capitalizeFirstAndLastName: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly computedAsync: UnwrapRef<typeof import('@vueuse/core')['computedAsync']>
@@ -432,8 +436,11 @@ declare module 'vue' {
     readonly formatAmountOnly: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']>
     readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
+    readonly formatDate: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatDate']>
     readonly formatDateTime: UnwrapRef<typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
+    readonly formatMonth: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatMonth']>
+    readonly formatPrice: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatPrice']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
@@ -454,7 +461,6 @@ declare module 'vue' {
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
     readonly isToday: UnwrapRef<typeof import('./resources/js/@core/utils/helpers.js')['isToday']>
-    readonly kFormatter: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['kFormatter']>
     readonly lengthValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['lengthValidator']>
     readonly logicAnd: UnwrapRef<typeof import('@vueuse/math')['logicAnd']>
     readonly logicNot: UnwrapRef<typeof import('@vueuse/math')['logicNot']>
