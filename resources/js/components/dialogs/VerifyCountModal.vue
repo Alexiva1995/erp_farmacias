@@ -135,39 +135,22 @@ const handleClose = () => {
         </div>
 
         <div v-else class="d-flex flex-column gap-4">
-          <!-- Información del Producto Estilo Trazabilidad -->
-          <VCard variant="flat" class="border pa-4 bg-white elevation-1 rounded-xl">
-            <div class="d-flex align-center mb-4">
-              <VIcon icon="tabler-package" size="20" class="text-primary me-2" />
-              <span class="text-subtitle-2 font-weight-black text-uppercase">Información del Producto</span>
-            </div>
-
-            <div class="d-flex gap-3 align-start">
-              <VAvatar
-                v-if="countRecord.product?.photo_url"
-                size="60"
-                variant="flat"
-                rounded="lg"
-                :image="countRecord.product.photo_url"
-                class="border elevation-2"
-              />
-              <div v-else class="header-icon-box bg-light-primary text-primary rounded-lg border">
-                <VIcon icon="tabler-pill" size="32" />
-              </div>
-              
-              <div class="flex-grow-1 min-width-0">
-                <div class="text-primary font-weight-black text-xs mb-1 uppercase letter-spacing-1 opacity-70">
+          <VCard variant="flat" class="border pa-5 bg-white elevation-1 rounded-xl">
+            <div class="d-flex flex-column min-width-0">
+              <div class="d-flex align-center gap-2 mb-2">
+                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
                   ID: {{ countRecord.product?.id || countRecord.product_id }}
-                </div>
-                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight mb-1 truncate uppercase">
-                  {{ countRecord.product?.name }}
-                </h3>
-                <div class="d-flex align-center gap-1 opacity-80">
-                  <VIcon icon="tabler-user-edit" size="14" class="text-primary" />
-                  <span class="text-super-xs font-weight-black text-medium-emphasis uppercase truncate letter-spacing-05">
-                    Contado por {{ countRecord.user?.username || 'Sistema' }}
-                  </span>
-                </div>
+                </VChip>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Referencia</span>
+              </div>
+              <h3 class="text-h5 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-2">
+                {{ countRecord.product?.name }}
+              </h3>
+              <div class="d-flex align-center gap-1 opacity-80">
+                <VIcon icon="tabler-user-edit" size="14" class="text-primary" />
+                <span class="text-super-xs font-weight-black text-medium-emphasis uppercase truncate letter-spacing-05">
+                  Contado por {{ countRecord.user?.username || 'Sistema' }}
+                </span>
               </div>
             </div>
           </VCard>
@@ -381,9 +364,11 @@ const handleClose = () => {
   100% { opacity: 1; transform: scale(1); }
 }
 
-:deep(.v-btn.v-btn--size-large) {
-  font-size: 0.875rem !important;
-  letter-spacing: 1px !important;
-  text-transform: uppercase;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

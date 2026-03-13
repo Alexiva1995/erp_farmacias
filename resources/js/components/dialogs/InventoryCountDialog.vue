@@ -177,31 +177,20 @@ const handleSave = async () => {
 
       <VCardText class="pa-4 pa-sm-6 bg-light inventory-count-content">
         <!-- Perfil del Producto Estilo Trazabilidad -->
-        <VCard variant="flat" class="border pa-4 mb-6 bg-white elevation-1 rounded-xl">
-          <div class="d-flex align-start gap-4">
-            <VAvatar
-              size="56"
-              variant="flat"
-              rounded="lg"
-              class="border-2 elevation-2"
-              color="primary"
-            >
-              <VIcon icon="tabler-package" size="28" color="white" />
-            </VAvatar>
-            <div class="d-flex flex-column min-width-0">
-              <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-1">
-                {{ product.name }}
-              </h3>
-              <div class="d-flex align-center gap-2 mb-1">
-                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
-                  {{ product.laboratory?.name || 'S/L' }}
-                </VChip>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">Laboratorio</span>
-              </div>
-              <div class="d-flex align-center gap-1 text-super-xs text-disabled font-weight-medium">
-                <VIcon icon="tabler-flask" size="12" />
-                <span class="text-truncate">{{ product.active_ingredient }}</span>
-              </div>
+        <VCard variant="flat" class="border pa-5 mb-6 bg-white elevation-1 rounded-xl">
+          <div class="d-flex flex-column min-width-0">
+            <div class="d-flex align-center gap-2 mb-2">
+              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
+                {{ product.laboratory?.name || 'S/L' }}
+              </VChip>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Laboratorio</span>
+            </div>
+            <h3 class="text-h5 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-2">
+              {{ product.name }}
+            </h3>
+            <div class="d-flex align-center gap-1 text-xs text-disabled font-weight-medium">
+              <VIcon icon="tabler-flask" size="14" />
+              <span class="text-truncate">{{ product.active_ingredient }}</span>
             </div>
           </div>
         </VCard>
@@ -316,32 +305,34 @@ const handleSave = async () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 pa-sm-6 bg-light">
-        <div class="d-flex flex-column flex-sm-row gap-3 w-100">
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            size="large"
-            block
-            height="48"
-            class="flex-grow-1 font-weight-black rounded-lg"
-            @click="handleCancel"
-          >
-            CANCELAR
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            size="large"
-            block
-            height="48"
-            class="flex-grow-1 font-weight-black rounded-lg shadow-lg"
-            :disabled="!canSave"
-            @click="handleSave"
-          >
-            CONFIRMAR CONTEO
-          </VBtn>
-        </div>
+      <VCardActions class="pa-4 pa-sm-6 bg-light border-t">
+        <VRow dense class="w-100">
+          <VCol cols="12" sm="6">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              class="font-weight-black rounded-lg"
+              @click="handleCancel"
+            >
+              CANCELAR
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="6">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              class="font-weight-black rounded-lg shadow-primary elevation-2"
+              :disabled="!canSave"
+              @click="handleSave"
+            >
+              CONFIRMAR
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
 
@@ -411,22 +402,11 @@ const handleSave = async () => {
   overflow: hidden;
 }
 
-.shadow-lg {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%) !important;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
-.transition-all {
-  transition: all 0.3s ease;
-}
-
-:deep(.v-btn.v-btn--size-large) {
-  font-size: 0.875rem !important;
-  letter-spacing: 1px !important;
-  text-transform: uppercase;
-}
-
-.premium-input :deep(.v-field__input) {
-  font-size: 1.15rem !important;
-  font-weight: 700 !important;
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>
