@@ -1,4 +1,5 @@
 <script setup>
+import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
@@ -12,6 +13,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const router = useRouter();
+const { mobile } = useDisplay();
 const loading = ref(false);
 const movementDetails = ref(null);
 
@@ -28,7 +30,7 @@ const fetchMovementDetails = async (id) => {
   if (!id) return;
 
   loading.value = true;
-  movementDetails.value = null; // Limpiar antes de cargar
+  movementDetails.value = null;
   try {
     const response = await axios.get(`/sales/report/movement/${id}`);
     if (response.data && response.data.data) {
@@ -62,47 +64,32 @@ watch(
   }
 );
 
-watch(
-  () => props.movementId,
-  (newId) => {
-    if (props.modelValue && newId) {
-      fetchMovementDetails(newId);
-    }
-  }
-);
-
 const closeDialog = () => {
   emit("update:modelValue", false);
   movementDetails.value = null;
 };
 
 const handleViewOrder = (orderId) => {
-  const route = router.resolve({
-    path: '/tpv/order-general',
-    query: { orderId },
-  });
+  const route = router.resolve({ path: '/tpv/order-general', query: { orderId } });
   const url = route.href.startsWith('http') ? route.href : `${window.location.origin}${route.href}`;
-  const newWindow = window.open(url, '_blank');
-  if (!newWindow) {
-    toast.error('No se pudo abrir la ventana. Por favor, verifica que los pop-ups no estén bloqueados.');
-  }
+  window.open(url, '_blank');
 };
 
 const handleViewInvoice = (invoiceId) => {
-  const route = router.resolve({
-    name: 'invoice-invoice-ordered',
-    query: { invoiceId },
-  });
+  const route = router.resolve({ name: 'invoice-invoice-ordered', query: { invoiceId } });
   const url = route.href.startsWith('http') ? route.href : `${window.location.origin}${route.href}`;
-  const newWindow = window.open(url, '_blank');
-  if (!newWindow) {
-    toast.error('No se pudo abrir la ventana. Por favor, verifica que los pop-ups no estén bloqueados.');
-  }
+  window.open(url, '_blank');
 };
 
 const formatDate = (date) => {
   if (!date) return "N/A";
-  return new Date(date).toLocaleDateString();
+  return new Date(date).toLocaleString('es-ES', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 };
 
 const getStatusLabel = (status) => {
@@ -118,366 +105,304 @@ const getStatusLabel = (status) => {
 
 const getUserDisplayName = (user) => {
   if (!user) return "N/A";
-  
-  // Si tiene employee con name y last_name, usar esos
   if (user.employee?.name && user.employee?.last_name) {
     return `${user.employee.name} ${user.employee.last_name}`;
   }
-  
-  // Si solo tiene employee.name
-  if (user.employee?.name) {
-    return user.employee.name;
-  }
-  
-  // Fallback a username o email
-  return user.username || user.email || "N/A";
+  return user.employee?.name || user.username || user.email || "N/A";
 };
 </script>
 
 <template>
   <VDialog
-    :model-value="isDialogVisible"
-    max-width="900px"
+    v-model="isDialogVisible"
+    :max-width="mobile ? '100%' : '800px'"
+    :fullscreen="mobile"
     persistent
-    @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
+    transition="dialog-bottom-transition"
+    scrollable
   >
-    <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
-        <VIcon 
-          icon="tabler-info-circle" 
-          size="24" 
-          color="white" 
-          class="me-2" 
-        />
-        <span class="text-h5 font-weight-bold text-white">Detalles del Movimiento</span>
-        <VSpacer />
-        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+    <VCard class="detail-dialog-card overflow-hidden">
+      <!-- Cabecera Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-history" color="primary" />
+            </VAvatar>
+            <div>
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Detalles del Movimiento</h2>
+              <span class="text-caption text-white opacity-75" v-if="movementDetails">
+                ID Movimiento: #{{ props.movementId }}
+              </span>
+            </div>
+          </div>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" size="small" @click="closeDialog">
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
+        </div>
       </VCardTitle>
 
-      <VDivider />
-
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;" v-if="loading">
-        <div class="d-flex justify-center align-center py-12">
-          <VProgressCircular indeterminate color="primary" size="64" />
-        </div>
-      </VCardText>
-
-      <VCardText
-        class="flex-grow-1 pa-4"
-        style="overflow-y: auto;"
-        v-else-if="movementDetails"
-      >
-        <!-- Tipo de Movimiento - Destacado -->
-        <div class="mb-4">
-          <div class="d-flex align-center mb-2">
-            <VIcon icon="tabler-tag" size="20" class="me-2 text-primary" />
-            <p class="text-h6 font-weight-medium mb-0">Tipo de Movimiento</p>
-          </div>
-          <VChip 
-            color="primary" 
-            size="large" 
-            variant="flat"
-            class="font-weight-medium"
-          >
-            {{ movementDetails.display_type }}
-          </VChip>
+      <VCardText class="pa-4 bg-light">
+        <!-- Loader Cargando -->
+        <div v-if="loading" class="d-flex flex-column align-center justify-center py-12">
+          <VProgressCircular indeterminate color="primary" size="64" width="6" />
+          <p class="mt-4 text-medium-emphasis font-weight-medium">Cargando detalles...</p>
         </div>
 
-        <VDivider class="my-3" />
+        <div v-else-if="movementDetails" class="d-flex flex-column gap-4">
+          <!-- Banner de Tipo de Movimiento -->
+          <VCard variant="flat" class="type-banner elevation-1">
+            <div class="pa-4 d-flex align-center justify-space-between">
+              <div class="d-flex align-center">
+                <VIcon icon="tabler-arrows-left-right" size="24" class="text-primary me-3" />
+                <div>
+                  <span class="text-overline font-weight-black text-disabled leading-none">Tipo de Movimiento</span>
+                  <p class="text-h6 font-weight-black mb-0 text-uppercase">{{ movementDetails.display_type }}</p>
+                </div>
+              </div>
+              <VChip 
+                :color="movementDetails.movement?.quantity > 0 ? 'success' : 'error'" 
+                variant="flat" 
+                class="font-weight-black elevation-1"
+                size="large"
+              >
+                {{ movementDetails.movement?.quantity > 0 ? '+' : '' }}{{ movementDetails.movement?.quantity }} UNID.
+              </VChip>
+            </div>
+          </VCard>
 
-        <!-- Información General -->
-        <div class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-file-info" size="20" class="me-2 text-primary" />
-            <p class="text-h6 font-weight-medium mb-0">Información General</p>
-          </div>
           <VRow dense>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Producto</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ movementDetails.movement?.product?.name || "N/A" }}
-                </span>
-              </div>
+            <!-- Columna Izquierda: Info Producto & Stock -->
+            <VCol cols="12" md="7">
+              <VCard variant="flat" class="border pa-4 h-100">
+                <div class="d-flex align-center mb-4">
+                  <VIcon icon="tabler-package" size="20" class="text-primary me-2" />
+                  <span class="text-subtitle-2 font-weight-black text-uppercase">Información del Producto</span>
+                </div>
+
+                <div class="d-flex gap-3 align-start mb-6">
+                  <VAvatar
+                    v-if="movementDetails.movement?.product?.photo_url"
+                    size="60"
+                    variant="tonal"
+                    rounded
+                    :image="movementDetails.movement.product.photo_url"
+                    class="border"
+                  />
+                  <div class="flex-grow-1 min-width-0">
+                    <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight mb-1 truncate">
+                      {{ movementDetails.movement?.product?.name?.toUpperCase() }}
+                    </h3>
+                    <div class="d-flex flex-wrap gap-x-2 text-caption">
+                      <span class="text-primary font-weight-bold">{{ movementDetails.movement?.product?.laboratory?.name }}</span>
+                      <VDivider vertical class="mx-1" />
+                      <span class="text-medium-emphasis">ID: {{ movementDetails.movement?.product_id }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="stock-impact pa-3 rounded-lg d-flex justify-space-around align-center">
+                  <div class="text-center">
+                    <span class="text-overline font-weight-bold text-disabled">Antes</span>
+                    <p class="text-h5 font-weight-black mb-0">{{ movementDetails.movement?.stock_before }}</p>
+                  </div>
+                  <VIcon icon="tabler-arrow-narrow-right" color="disabled" size="32" />
+                  <div class="text-center">
+                    <span class="text-overline font-weight-bold text-disabled">Después</span>
+                    <p class="text-h5 font-weight-black mb-0 text-primary">{{ movementDetails.movement?.stock_after }}</p>
+                  </div>
+                </div>
+              </VCard>
             </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Cantidad</span>
-                <span
-                  class="text-body-1 font-weight-bold"
-                  :class="{
-                    'text-success': movementDetails.movement?.quantity > 0,
-                    'text-error': movementDetails.movement?.quantity < 0,
-                  }"
-                >
-                  {{ movementDetails.movement?.quantity > 0 ? "+" : "" }}
-                  {{ movementDetails.movement?.quantity }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Fecha</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ formatDate(movementDetails.movement?.movement_date) }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Operador</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.movement?.user) }}
-                </span>
-              </div>
+
+            <!-- Columna Derecha: Trazabilidad & Usuario -->
+            <VCol cols="12" md="5">
+              <VCard variant="flat" class="border pa-4 h-100">
+                <div class="d-flex align-center mb-4">
+                  <VIcon icon="tabler-user-check" size="20" class="text-primary me-2" />
+                  <span class="text-subtitle-2 font-weight-black text-uppercase">Responsable & Fecha</span>
+                </div>
+
+                <div class="d-flex flex-column gap-y-4">
+                  <div class="info-item">
+                    <span class="text-super-xs text-disabled text-uppercase font-weight-black">Operador</span>
+                    <div class="d-flex align-center mt-1">
+                      <VAvatar size="28" color="primary" variant="tonal" class="me-2 text-xs font-weight-bold">
+                        {{ getUserDisplayName(movementDetails.movement?.user).charAt(0).toUpperCase() }}
+                      </VAvatar>
+                      <span class="text-body-2 font-weight-bold">{{ getUserDisplayName(movementDetails.movement?.user) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="info-item">
+                    <span class="text-super-xs text-disabled text-uppercase font-weight-black">Fecha y Hora</span>
+                    <div class="d-flex align-center mt-1">
+                      <VIcon icon="tabler-calendar" size="18" class="text-medium-emphasis me-2" />
+                      <span class="text-body-2 font-weight-medium">{{ formatDate(movementDetails.movement?.movement_date) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="info-item" v-if="movementDetails.movement?.product_lot_id">
+                    <span class="text-super-xs text-disabled text-uppercase font-weight-black">Lote Afectado</span>
+                    <div class="d-flex align-center mt-1">
+                      <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black">
+                        {{ movementDetails.movement?.product_lot?.lot_number || 'N/A' }}
+                      </VChip>
+                    </div>
+                  </div>
+                </div>
+              </VCard>
             </VCol>
           </VRow>
-        </div>
 
-        <!-- Detalles según el tipo -->
-        <VDivider class="my-3" v-if="movementDetails.type !== 'general'" />
+          <!-- Sección de Referencia (Contextual) -->
+          <VCard variant="flat" class="border elevation-0 overflow-hidden shadow-sm" v-if="movementDetails.type !== 'general'">
+            <div class="bg-primary-lighten-5 pa-3 border-b d-flex align-center">
+              <VIcon icon="tabler-link" size="20" class="text-primary me-2" />
+              <span class="text-subtitle-2 font-weight-black text-uppercase">Documento de Referencia</span>
+            </div>
 
-        <!-- Devolución -->
-        <div v-if="movementDetails.type === 'return'" class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-arrow-back" size="20" class="me-2 text-primary" />
-            <p class="text-h6 font-weight-medium mb-0">Información de Devolución</p>
-          </div>
-          <VRow dense>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Orden Original</span>
-                <VBtn
-                  v-if="movementDetails.original_order"
-                  variant="text"
-                  color="primary"
-                  size="small"
-                  class="justify-start pa-0 text-none"
-                  @click="handleViewOrder(movementDetails.original_order.id)"
+            <div class="pa-4">
+              <!-- Caso Venta / Devolución -->
+              <div v-if="movementDetails.type === 'sale' || movementDetails.type === 'return'" class="d-flex align-center justify-space-between flex-wrap gap-3">
+                <div class="d-flex align-center">
+                  <VIcon 
+                    :icon="movementDetails.type === 'sale' ? 'tabler-shopping-cart' : 'tabler-arrow-back'" 
+                    size="40" 
+                    :color="movementDetails.type === 'sale' ? 'primary' : 'warning'" 
+                    class="me-3 opacity-75"
+                  />
+                  <div>
+                    <p class="text-subtitle-1 font-weight-black mb-0">
+                      {{ movementDetails.type === 'sale' ? 'Orden de Venta' : 'Solicitud de Devolución' }}
+                    </p>
+                    <span class="text-body-2 text-medium-emphasis" v-if="movementDetails.order || movementDetails.original_order">
+                      Referencia: #{{ movementDetails.order?.id || movementDetails.original_order?.id }}
+                    </span>
+                  </div>
+                </div>
+                <VBtn 
+                  variant="flat" 
+                  color="primary" 
+                  size="small" 
+                  prepend-icon="tabler-eye"
+                  @click="handleViewOrder(movementDetails.order?.id || movementDetails.original_order?.id)"
+                  class="elevation-1"
                 >
-                  Orden #{{ movementDetails.original_order.id }}
-                  <VIcon icon="tabler-external-link" class="ms-2" size="16" />
-                </VBtn>
-                <span v-else class="text-body-1">N/A</span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Procesada por</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.processed_by) }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Estado</span>
-                <VChip
-                  :color="movementDetails.status === 'Approved' ? 'success' : 'error'"
-                  size="small"
-                  variant="flat"
-                >
-                  {{ getStatusLabel(movementDetails.status) }}
-                </VChip>
-              </div>
-            </VCol>
-          </VRow>
-        </div>
-
-        <!-- Venta -->
-        <div v-if="movementDetails.type === 'sale'" class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-shopping-cart" size="20" class="me-2 text-primary" />
-            <p class="text-h6 font-weight-medium mb-0">Información de Venta</p>
-          </div>
-          <VRow dense>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Cajero</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.seller) }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Orden</span>
-                <VBtn
-                  v-if="movementDetails.order"
-                  variant="text"
-                  color="primary"
-                  size="small"
-                  class="justify-start pa-0 text-none"
-                  @click="handleViewOrder(movementDetails.order.id)"
-                >
-                  #{{ movementDetails.order.id }}
-                  <VIcon icon="tabler-external-link" class="ms-2" size="16" />
-                </VBtn>
-                <span v-else class="text-body-1">N/A</span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1" v-if="movementDetails.order?.url_recipe">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Recipe</span>
-                <VBtn
-                  variant="text"
-                  color="info"
-                  size="small"
-                  class="justify-start pa-0 text-none"
-                  @click="() => {
-                    const newWindow = window.open(movementDetails.order.url_recipe, '_blank');
-                    if (!newWindow) {
-                      toast.error('No se pudo abrir la ventana. Por favor, verifica que los pop-ups no estén bloqueados.');
-                    }
-                  }"
-                >
-                  Ver Recipe
-                  <VIcon icon="tabler-external-link" class="ms-2" size="16" />
+                  Ver Documento
                 </VBtn>
               </div>
-            </VCol>
-          </VRow>
-        </div>
 
-        <!-- Compra -->
-        <div v-if="movementDetails.type === 'purchase'" class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-shopping-bag" size="20" class="me-2 text-primary" />
-            <p class="text-h6 font-weight-medium mb-0">Información de Compra</p>
-          </div>
-          <VRow dense>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Número de Factura</span>
-                <VBtn
-                  v-if="movementDetails.invoice && movementDetails.invoice.id"
-                  variant="text"
-                  color="primary"
-                  size="small"
-                  class="justify-start pa-0 text-none"
+              <!-- Caso Compra -->
+              <div v-else-if="movementDetails.type === 'purchase'" class="d-flex align-center justify-space-between flex-wrap gap-3">
+                <div class="d-flex align-center">
+                  <VIcon icon="tabler-receipt" size="40" color="success" class="me-3 opacity-75" />
+                  <div>
+                    <p class="text-subtitle-1 font-weight-black mb-0">Factura de Compra</p>
+                    <span class="text-body-2 text-medium-emphasis">
+                       Distribuidor: {{ movementDetails.supplier?.name || movementDetails.invoice?.supplier?.name || "N/A" }}
+                    </span>
+                  </div>
+                </div>
+                <VBtn 
+                  v-if="movementDetails.invoice?.id"
+                  variant="flat" 
+                  color="success" 
+                  size="small" 
+                  prepend-icon="tabler-file-text"
                   @click="handleViewInvoice(movementDetails.invoice.id)"
+                  class="elevation-1"
                 >
-                  {{ movementDetails.invoice.invoice_number ? movementDetails.invoice.invoice_number : movementDetails.invoice.id }}
-                  <VIcon icon="tabler-external-link" class="ms-2" size="16" />
+                  Ver Factura
                 </VBtn>
-                <span v-else class="text-body-1">N/A</span>
               </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-2">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Proveedor</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ movementDetails.supplier?.name || movementDetails.invoice?.supplier?.name || "N/A" }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-2" v-if="movementDetails.invoice?.control_number">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Número de Control</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ movementDetails.invoice.control_number }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-2" v-if="movementDetails.invoice?.total_amount">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Monto Total</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ new Intl.NumberFormat('es-VE', { style: 'currency', currency: movementDetails.invoice.currency || 'USD' }).format(movementDetails.invoice.total_amount) }}
-                </span>
-              </div>
-            </VCol>
-          </VRow>
-        </div>
 
-        <!-- Ajuste -->
-        <div v-if="movementDetails.type === 'adjustment'" class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-adjustments" size="20" class="me-2 text-primary" />
-            <p class="text-h6 font-weight-medium mb-0">Información de Ajuste</p>
-          </div>
-          <VRow dense>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Usuario que hizo el conteo</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.counted_by) }}
-                </span>
+              <!-- Casos de Auditoría (Ajuste, Pérdida) -->
+              <div v-else-if="['adjustment', 'loss'].includes(movementDetails.type)" class="d-flex flex-column gap-2">
+                <div class="d-flex align-center justify-space-between border-b pb-2 mb-2">
+                  <span class="text-caption font-weight-bold text-disabled">Auditado por:</span>
+                  <span class="text-body-2 font-weight-black text-primary">{{ getUserDisplayName(movementDetails.counted_by) }}</span>
+                </div>
+                <div class="d-flex align-center justify-space-between">
+                  <span class="text-caption font-weight-bold text-disabled">Aprobado por:</span>
+                  <span class="text-body-2 font-weight-black text-success">{{ getUserDisplayName(movementDetails.approved_by) }}</span>
+                </div>
               </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Usuario que aprobó</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.approved_by) }}
-                </span>
-              </div>
-            </VCol>
-          </VRow>
-        </div>
-
-        <!-- Pérdida -->
-        <div v-if="movementDetails.type === 'loss'" class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-alert-triangle" size="20" class="me-2 text-error" />
-            <p class="text-h6 font-weight-medium mb-0">Información de Pérdida</p>
-          </div>
-          <VRow dense>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Usuario que hizo el conteo</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.counted_by) }}
-                </span>
-              </div>
-            </VCol>
-            <VCol cols="12" md="6" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Usuario que aprobó</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.approved_by) }}
-                </span>
-              </div>
-            </VCol>
-          </VRow>
-        </div>
-
-        <!-- Caducado -->
-        <div v-if="movementDetails.type === 'expired'" class="mb-4">
-          <div class="d-flex align-center mb-3">
-            <VIcon icon="tabler-clock-exclamation" size="20" class="me-2 text-warning" />
-            <p class="text-h6 font-weight-medium mb-0">Información de Caducidad</p>
-          </div>
-          <VRow dense>
-            <VCol cols="12" class="pb-1">
-              <div class="d-flex flex-column">
-                <span class="text-caption text-medium-emphasis mb-1">Usuario que caducó</span>
-                <span class="text-body-1 font-weight-medium">
-                  {{ getUserDisplayName(movementDetails.expired_by) }}
-                </span>
-              </div>
-            </VCol>
-          </VRow>
+            </div>
+          </VCard>
         </div>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4">
+      <VCardActions class="pa-4 bg-light">
         <VBtn
           color="secondary"
-          variant="outlined"
+          variant="tonal"
           @click="closeDialog"
           block
+          class="font-weight-black py-3"
+          height="44"
         >
-          Cerrar
+          CERRAR DETALLES
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.detail-dialog-card {
+  border-radius: 16px !important;
+}
+
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.05) !important;
+}
+
+.type-banner {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-border-color), 0.5);
+}
+
+.stock-impact {
+  background-color: rgba(var(--v-theme-primary), 0.04);
+  border: 1px dashed rgba(var(--v-theme-primary), 0.2);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.5px;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gap-3 { gap: 12px !important; }
+.gap-4 { gap: 16px !important; }
+
+/* Transiciones */
+.dialog-bottom-transition-enter-active,
+.dialog-bottom-transition-leave-active {
+  transition: transform 0.3s ease-in-out;
+}
+</style>
 
