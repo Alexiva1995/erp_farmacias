@@ -56,3 +56,36 @@ export const formatMonth = (monthStr) => {
     year: "numeric",
   });
 };
+
+/**
+ * Calcula el stock válido excluyendo lotes vencidos.
+ * @param {Object} product 
+ * @returns {number}
+ */
+export const calculateValidStock = (product) => {
+  if (!product.lots || !Array.isArray(product.lots)) return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return product.lots
+    .filter((lot) => lot.expiration_date && new Date(lot.expiration_date) >= today)
+    .reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
+};
+
+/**
+ * Obtiene la fecha de próximo vencimiento válida.
+ * @param {Object} product 
+ * @returns {string} (YYYY-MM-DD o mensaje informativo)
+ */
+export const nextExpirationDate = (product) => {
+  if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const validLots = product.lots.filter((lot) => {
+    if (!lot.expiration_date) return false;
+    const expirationDate = new Date(lot.expiration_date);
+    return !isNaN(expirationDate.getTime()) && expirationDate >= today;
+  });
+  if (validLots.length === 0) return "Todos expiraron";
+  validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+  return validLots[0].expiration_date;
+};

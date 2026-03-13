@@ -17,6 +17,7 @@ declare global {
   const avatarText: typeof import('./resources/js/@core/utils/formatters.js')['avatarText']
   const betweenValidator: typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']
   const calculateStock: typeof import('./resources/js/utils/formatters.js')['calculateStock']
+  const calculateValidStock: typeof import('./resources/js/utils/formatters.js')['calculateValidStock']
   const capitalizeFirstAndLastName: typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']
   const computed: typeof import('vue')['computed']
   const computedAsync: typeof import('@vueuse/core')['computedAsync']
@@ -89,6 +90,7 @@ declare global {
   const mapStores: typeof import('pinia')['mapStores']
   const mapWritableState: typeof import('pinia')['mapWritableState']
   const markRaw: typeof import('vue')['markRaw']
+  const nextExpirationDate: typeof import('./resources/js/utils/formatters.js')['nextExpirationDate']
   const nextTick: typeof import('vue')['nextTick']
   const onActivated: typeof import('vue')['onActivated']
   const onBeforeMount: typeof import('vue')['onBeforeMount']
@@ -400,6 +402,7 @@ declare module 'vue' {
     readonly avatarText: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['avatarText']>
     readonly betweenValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']>
     readonly calculateStock: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['calculateStock']>
+    readonly calculateValidStock: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['calculateValidStock']>
     readonly capitalizeFirstAndLastName: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly computedAsync: UnwrapRef<typeof import('@vueuse/core')['computedAsync']>
@@ -472,6 +475,7 @@ declare module 'vue' {
     readonly mapStores: UnwrapRef<typeof import('pinia')['mapStores']>
     readonly mapWritableState: UnwrapRef<typeof import('pinia')['mapWritableState']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
+    readonly nextExpirationDate: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['nextExpirationDate']>
     readonly nextTick: UnwrapRef<typeof import('vue')['nextTick']>
     readonly onActivated: UnwrapRef<typeof import('vue')['onActivated']>
     readonly onBeforeMount: UnwrapRef<typeof import('vue')['onBeforeMount']>

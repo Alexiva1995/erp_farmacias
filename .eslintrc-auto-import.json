@@ -383,6 +383,8 @@
     "whenever": true,
     "calculateStock": true,
     "formatPrice": true,
-    "formatMonth": true
+    "formatMonth": true,
+    "calculateValidStock": true,
+    "nextExpirationDate": true
   }
 }

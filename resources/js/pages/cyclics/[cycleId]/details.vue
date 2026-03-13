@@ -390,16 +390,17 @@ const handleMobilePageChange = (newPage) => {
           </template>
 
           <template #item.user.email="{ item }">
-            <span class="text-xs">{{
-              (item.user?.employee_name ? `${item.user.employee_name.split(' ')[0]}` : '') +
-                (item.user?.employee_last_name ? ` ${item.user.employee_last_name.split(' ')[0]}` : '') ||
+            <span class="text-xs text-capitalize">{{
+              (item.user?.employee_name || '') +
+                (item.user?.employee_last_name ? ` ${item.user.employee_last_name}` : '') ||
                 item.user?.email || '—'
             }}</span>
           </template>
 
           <template #item.supervisor.email="{ item }">
-            <span class="text-xs">{{
-              (item.supervisor?.employee_name ? `${item.supervisor.employee_name.split(' ')[0]}` : '') || '—'
+            <span class="text-xs text-capitalize">{{
+              (item.supervisor?.employee_name || '') +
+                (item.supervisor?.employee_last_name ? ` ${item.supervisor.employee_last_name}` : '') || '—'
             }}</span>
           </template>
         </VDataTableServer>
@@ -473,17 +474,17 @@ const handleMobilePageChange = (newPage) => {
               </div>
 
               <!-- Info Usuario -->
-              <div class="mt-3 d-flex align-center justify-space-between">
+              <div class="mt-3 d-flex align-center justify-space-between text-capitalize">
                 <div class="d-flex align-center gap-1">
                   <VIcon icon="tabler-user" size="12" class="text-disabled" />
                   <span class="text-super-xs font-weight-medium">
-                    {{ item.user?.employee_name?.split(' ')[0] }} {{ item.user?.employee_last_name?.split(' ')[0] }}
+                    {{ item.user?.employee_name }} {{ item.user?.employee_last_name }}
                   </span>
                 </div>
                 <div v-if="item.supervisor" class="d-flex align-center gap-1">
                   <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
                   <span class="text-super-xs font-weight-medium">
-                    {{ item.supervisor?.employee_name?.split(' ')[0] }}
+                    {{ item.supervisor?.employee_name }} {{ item.supervisor?.employee_last_name }}
                   </span>
                 </div>
               </div>
