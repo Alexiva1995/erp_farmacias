@@ -21,6 +21,11 @@ const originalLots = ref([]);
 const isScannerVisible = ref(false);
 const activeScannerLot = ref(null);
 
+const isVisible = computed({
+  get: () => props.modelValue,
+  set: (value) => emit("update:modelValue", value),
+});
+
 let tempIdCounter = 0;
 
 const formatDateForInput = (dateString) => {
@@ -230,79 +235,87 @@ const handleScan = (code) => {
     persistent
     class="premium-dialog"
   >
-    <VCard class="overflow-hidden rounded-xl border-0 elevation-24">
-      <!-- Header Premium -->
+    <VCard class="detail-dialog-card overflow-hidden rounded-xl border-0 elevation-24">
+      <!-- Cabecera Premium Estilo Trazabilidad -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center justify-space-between text-white">
-          <div class="d-flex align-center gap-3">
-            <div class="header-icon-box shadow-sm">
-              <VIcon icon="tabler-package" size="24" />
-            </div>
+        <div class="header-gradient pa-4 d-flex align-center shadow-lg">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-package" color="primary" />
+            </VAvatar>
             <div>
-              <div class="text-h6 font-weight-black leading-tight">Ajustar Stock por Lotes</div>
-              <div class="text-super-xs font-weight-bold uppercase opacity-80">Distribución de inventario físico</div>
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Ajustar Stock por Lotes</h2>
+              <span class="text-caption text-white opacity-75 letter-spacing-1 uppercase font-weight-bold" style="font-size: 0.65rem;">
+                Distribución de inventario físico
+              </span>
             </div>
           </div>
-          <IconBtn color="white" variant="tonal" size="small" @click="closeDialog">
-            <VIcon icon="tabler-x" />
-          </IconBtn>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" size="small" @click="closeDialog">
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-surface lot-distribution-content">
-        <!-- Perfil del Producto Premium -->
-        <div class="product-profile-box pa-4 rounded-lg mb-6 border d-flex flex-column flex-sm-row align-center gap-4">
-          <div class="d-flex align-center gap-4 flex-grow-1">
-            <VAvatar
-              v-if="props.productPhoto"
-              size="64"
-              variant="tonal"
-              rounded="lg"
-              class="border elevation-2"
-              :image="props.productPhoto"
-            />
-            <VAvatar v-else size="64" variant="tonal" border color="primary" rounded="lg">
-              <VIcon icon="tabler-pill" size="32" />
-            </VAvatar>
-            <div class="min-width-0">
-              <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase truncate">
-                {{ props.productName }}
-              </h3>
-              <div class="text-super-xs font-weight-bold text-disabled uppercase mt-1">
-                Ajuste en modo {{ props.mode === 'adjustment' ? 'Cíclico' : 'Retorno' }}
+      <VCardText class="pa-4 pa-sm-6 bg-light lot-distribution-content">
+        <!-- Perfil del Producto Estilo Trazabilidad -->
+        <VCard variant="flat" class="border pa-4 mb-6 bg-white elevation-1 rounded-xl">
+          <div class="d-flex flex-column flex-sm-row align-center gap-4">
+            <div class="d-flex align-center gap-4 flex-grow-1">
+              <VAvatar
+                v-if="props.productPhoto"
+                size="64"
+                variant="flat"
+                rounded="lg"
+                class="border-2 elevation-2"
+                :image="props.productPhoto"
+              />
+              <VAvatar v-else size="64" variant="tonal" color="primary" rounded="lg" class="border-2 shadow-sm">
+                <VIcon icon="tabler-pill" size="32" />
+              </VAvatar>
+              <div class="min-width-0">
+                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase truncate">
+                  {{ props.productName }}
+                </h3>
+                <div class="d-flex align-center gap-2 mt-1">
+                  <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
+                    Modo {{ props.mode === 'adjustment' ? 'Cíclico' : 'Retorno' }}
+                  </VChip>
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase">Referencia de Ajuste</span>
+                </div>
               </div>
             </div>
+            <VBtn
+              color="success"
+              prepend-icon="tabler-plus"
+              variant="flat"
+              class="font-weight-black rounded-lg w-100 w-sm-auto shadow-sm"
+              @click="handleAddNewLot"
+            >
+              AÑADIR LOTE
+            </VBtn>
           </div>
-          <VBtn
-            color="success"
-            prepend-icon="tabler-plus"
-            variant="flat"
-            class="font-weight-black rounded-lg w-100 w-sm-auto shadow-sm"
-            @click="handleAddNewLot"
-          >
-            AÑADIR LOTE
-          </VBtn>
-        </div>
+        </VCard>
 
-        <!-- Grid de Sumario Premium -->
+        <!-- Banners de Resumen Estilo Trazabilidad -->
         <div class="d-grid summary-grid gap-4 mb-6">
-          <VCard variant="flat" border class="pa-4 rounded-xl bg-light-primary border-opacity-20 text-center">
+          <VCard variant="flat" border class="pa-4 rounded-xl bg-white elevation-1 border-opacity-10 border-primary">
             <div class="d-flex align-center justify-center gap-2 mb-2">
               <VIcon icon="tabler-target" size="18" class="text-primary" />
-              <span class="text-super-xs font-weight-black text-primary uppercase">Stock Objetivo</span>
+              <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Stock Objetivo</span>
             </div>
-            <div class="text-h4 font-weight-black text-primary leading-none">
+            <div class="text-h4 font-weight-black text-primary leading-none text-center">
               {{ formatNumber(objective) }}
               <span class="text-xs font-weight-bold opacity-70">UNDS</span>
             </div>
           </VCard>
 
-          <VCard variant="flat" border class="pa-4 rounded-xl bg-light-info border-opacity-20 text-center">
+          <VCard variant="flat" border class="pa-4 rounded-xl bg-white elevation-1 border-opacity-10 border-info">
             <div class="d-flex align-center justify-center gap-2 mb-2">
               <VIcon icon="tabler-package-import" size="18" class="text-info" />
-              <span class="text-super-xs font-weight-black text-info uppercase">Total Distribuido</span>
+              <span class="text-super-xs font-weight-black text-info uppercase letter-spacing-1">Total Distribuido</span>
             </div>
-            <div class="text-h4 font-weight-black text-info leading-none">
+            <div class="text-h4 font-weight-black text-info leading-none text-center">
               {{ formatNumber(totalDistributed) }}
               <span class="text-xs font-weight-bold opacity-70">UNDS</span>
             </div>
@@ -311,14 +324,14 @@ const handleScan = (code) => {
           <VCard 
             variant="flat" 
             border 
-            class="pa-4 rounded-xl border-opacity-20 text-center"
-            :class="discrepancy === 0 ? 'bg-light-success' : 'bg-light-error'"
+            class="pa-4 rounded-xl bg-white elevation-1 border-opacity-10"
+            :class="discrepancy === 0 ? 'border-success' : 'border-error'"
           >
             <div class="d-flex align-center justify-center gap-2 mb-2">
               <VIcon :icon="discrepancy === 0 ? 'tabler-circle-check' : 'tabler-scale'" size="18" :class="discrepancy === 0 ? 'text-success' : 'text-error'" />
-              <span class="text-super-xs font-weight-black uppercase" :class="discrepancy === 0 ? 'text-success' : 'text-error'">Diferencia</span>
+              <span class="text-super-xs font-weight-black uppercase letter-spacing-1" :class="discrepancy === 0 ? 'text-success' : 'text-error'">Diferencia</span>
             </div>
-            <div class="text-h4 font-weight-black leading-none" :class="discrepancy === 0 ? 'text-success' : 'text-error'">
+            <div class="text-h4 font-weight-black leading-none text-center" :class="discrepancy === 0 ? 'text-success' : 'text-error'">
               {{ discrepancy > 0 ? '+' : '' }}{{ formatNumber(discrepancy) }}
               <span class="text-xs font-weight-bold opacity-70">UNDS</span>
             </div>
@@ -337,7 +350,7 @@ const handleScan = (code) => {
             :items="distributedLots"
             :item-value="item => item.isNew ? item.temp_id : item.id"
             density="comfortable"
-            class="premium-table border rounded-xl overflow-hidden"
+            class="premium-table border rounded-xl overflow-hidden bg-white elevation-1"
           >
             <template #item.info="{ item }">
               <VRow dense class="py-2">
@@ -377,7 +390,7 @@ const handleScan = (code) => {
               <VChip v-if="!item.isNew" color="primary" variant="tonal" size="small" class="font-weight-black">
                 {{ formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0) }}
               </VChip>
-              <VChip v-else color="success" variant="flat" size="x-small" class="font-weight-black uppercase">
+              <VChip v-else color="success" variant="flat" size="x-small" class="font-weight-black uppercase shadow-sm">
                 Nuevo
               </VChip>
             </template>
@@ -387,7 +400,7 @@ const handleScan = (code) => {
                 v-model.number="item.quantity"
                 type="number"
                 min="0"
-                class="text-center font-weight-black"
+                class="text-center font-weight-black huge-lot-input-wrapper"
                 hide-details
               />
             </template>
@@ -416,19 +429,21 @@ const handleScan = (code) => {
           </VDataTable>
         </div>
 
-        <!-- Vista Móvil de Tarjetas Premium -->
+        <!-- Vista Móvil de Tarjetas Estilo Trazabilidad -->
         <div class="d-block d-md-none d-flex flex-column gap-3 overflow-y-auto" style="max-block-size: 50vh;">
           <VCard
             v-for="item in distributedLots"
             :key="item.isNew ? item.temp_id : item.id"
             variant="flat"
             border
-            class="rounded-xl premium-lot-card overflow-hidden"
+            class="rounded-xl premium-lot-card overflow-hidden bg-white elevation-1"
           >
             <div class="pa-4">
               <div class="d-flex justify-space-between align-center mb-4">
                 <div class="d-flex align-center gap-2">
-                  <VIcon :icon="item.isNew ? 'tabler-plus' : 'tabler-package'" size="18" :class="item.isNew ? 'text-success' : 'text-primary'" />
+                  <VAvatar :color="item.isNew ? 'success' : 'primary'" variant="tonal" size="24">
+                    <VIcon :icon="item.isNew ? 'tabler-plus' : 'tabler-package'" size="14" />
+                  </VAvatar>
                   <span class="text-super-xs font-weight-black uppercase" :class="item.isNew ? 'text-success' : 'text-primary'">
                     {{ item.isNew ? 'Lote Nuevo' : `Stock Sistema: ${formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0)}` }}
                   </span>
@@ -473,7 +488,7 @@ const handleScan = (code) => {
                   />
                 </VCol>
                 <VCol cols="12">
-                  <div class="quantity-input-box mt-2 pa-2 rounded-lg border-dashed-2">
+                  <div class="quantity-input-box mt-2 pa-2 rounded-lg border-dashed-2 bg-light">
                     <div class="d-flex align-center justify-space-between w-100">
                       <span class="text-super-xs font-weight-black text-disabled uppercase">Nueva Cantidad</span>
                       <div class="flex-grow-1 ml-4">
@@ -498,7 +513,9 @@ const handleScan = (code) => {
         </div>
       </VCardText>
 
-      <VCardActions class="pa-4 pa-sm-6 pt-0 bg-surface">
+      <VDivider />
+
+      <VCardActions class="pa-4 pa-sm-6 bg-light">
         <div class="d-flex flex-column flex-sm-row gap-3 w-100">
           <VBtn
             color="secondary"
@@ -517,7 +534,7 @@ const handleScan = (code) => {
             size="large"
             block
             height="48"
-            class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
+            class="flex-grow-1 font-weight-black rounded-lg shadow-lg elevation-2"
             :disabled="!canSave"
             @click="handleSave"
           >
@@ -536,25 +553,11 @@ const handleScan = (code) => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), rgb(var(--v-theme-primary-darken-1)));
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.header-icon-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 20%);
-}
-
-.product-profile-box {
-  display: flex;
-  align-items: center;
-  padding: 16px;
-  gap: 16px;
-  border: 1px solid rgba(var(--v-border-color), 12%) !important;
-  background-color: rgba(var(--v-theme-surface-variant), 3%);
+.bg-light {
+  background-color: #f8fafc !important;
 }
 
 .summary-grid {
@@ -569,17 +572,8 @@ const handleScan = (code) => {
   }
 }
 
-.bg-light-primary { background-color: rgba(var(--v-theme-primary), 5%) !important; }
-.bg-light-info { background-color: rgba(var(--v-theme-info), 5%) !important; }
-.bg-light-success { background-color: rgba(var(--v-theme-success), 5%) !important; }
-.bg-light-error { background-color: rgba(var(--v-theme-error), 5%) !important; }
-
 .premium-lot-card {
-  transition: transform 0.2s ease;
-}
-
-.premium-lot-card:active {
-  transform: scale(0.98);
+  transition: all 0.2s ease;
 }
 
 .border-dashed-2 {
@@ -587,11 +581,11 @@ const handleScan = (code) => {
 }
 
 .huge-lot-input :deep(input) {
-  height: 40px !important;
+  block-size: 40px !important;
+  color: rgb(var(--v-theme-primary)) !important;
   font-size: 1.5rem !important;
   font-weight: 900 !important;
-  text-align: right !important;
-  color: rgb(var(--v-theme-primary)) !important;
+  text-align: end !important;
 }
 
 .text-super-xs {
@@ -599,22 +593,40 @@ const handleScan = (code) => {
   line-height: normal;
 }
 
+.letter-spacing-1 { letter-spacing: 1.5px !important; }
 .leading-none { line-height: 1 !important; }
 .leading-tight { line-height: 1.25 !important; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shadow-lg {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%) !important;
+}
 
 :deep(.v-btn.v-btn--size-large) {
   font-size: 0.875rem !important;
-  letter-spacing: 0.5px !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase;
 }
 
 :deep(.v-data-table__td) {
   padding-block: 12px !important;
 }
 
-@media (max-width: 600px) {
-  .lot-distribution-content {
-    padding: 16px !important;
-  }
+:deep(.huge-lot-input-wrapper input) {
+  font-weight: 900 !important;
+  text-align: center !important;
+}
+
+.header-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 60px;
+  inline-size: 60px;
 }
 </style>

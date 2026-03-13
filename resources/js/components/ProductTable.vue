@@ -160,16 +160,9 @@ const handleMobilePageChange = (newPage) => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3 py-2">
-            <VAvatar
-              v-if="item.photo_url"
-              size="38"
-              variant="tonal"
-              rounded
-              :image="item.photo_url"
-            />
             <div class="d-flex flex-column min-width-0">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-truncate"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 
                   'text-warning': item.psychotropic == 1 || item.psychotropic === true
                 }"
@@ -292,14 +285,6 @@ const handleMobilePageChange = (newPage) => {
         >
           <div class="pa-3">
             <div class="d-flex gap-3 align-start">
-              <VAvatar
-                v-if="item.photo_url"
-                size="44"
-                variant="tonal"
-                rounded
-                :image="item.photo_url"
-                class="flex-shrink-0 mt-1"
-              />
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">

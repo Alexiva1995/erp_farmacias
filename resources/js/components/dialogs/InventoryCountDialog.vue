@@ -164,24 +164,15 @@ const handleSave = async () => {
         <VCardText class="pa-6">
           <!-- Info del Producto -->
           <VCard variant="flat" border class="mb-6 pa-4 bg-var-theme-background border-dashed-thin">
-            <div class="d-flex align-start gap-3">
+            <div class="d-flex align-start gap-4">
               <VAvatar
-                v-if="product.photo_url"
-                size="64"
-                variant="tonal"
-                rounded
-                :image="product.photo_url"
-                class="flex-shrink-0"
-              />
-              <VAvatar
-                v-else
-                size="64"
+                size="48"
                 variant="tonal"
                 rounded
                 color="primary"
                 class="flex-shrink-0"
               >
-                <VIcon icon="tabler-package" size="32" />
+                <VIcon icon="tabler-package" size="24" />
               </VAvatar>
               <div class="d-flex flex-column min-width-0">
                 <span class="text-h6 font-weight-black text-high-emphasis text-uppercase line-height-1 mb-1 truncate-2-lines">
@@ -190,7 +181,7 @@ const handleSave = async () => {
                 <span class="text-sm text-primary font-weight-bold mb-1">
                   {{ product.laboratory?.name || 'S/L' }}
                 </span>
-                <div class="d-flex align-center gap-1 text-super-xs text-disabled">
+                <div class="d-flex align-center gap-1 text-super-xs text-disabled font-weight-medium">
                   <VIcon icon="tabler-flask" size="12" />
                   <span class="text-truncate">{{ product.active_ingredient }}</span>
                 </div>
