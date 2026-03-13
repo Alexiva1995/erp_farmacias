@@ -357,6 +357,13 @@ class PayslipRepository
                ->where('pd.payslip_id', '=', $payslip->id);
       })
       ->where('employees.is_active', 1)
+      ->whereExists(function ($query) use ($payslip) {
+          $query->select(DB::raw(1))
+                ->from('payslip_details')
+                ->join('users_salary_details', 'users_salary_details.id', '=', 'payslip_details.users_salary_details_id')
+                ->whereColumn('users_salary_details.user_id', 'users.id')
+                ->where('payslip_details.payslip_id', $payslip->id);
+      })
       ->groupBy(
         'employees.id',
         'employees.name',
