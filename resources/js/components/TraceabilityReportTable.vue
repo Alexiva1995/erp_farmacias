@@ -74,7 +74,7 @@ const headers = [
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="font-weight-medium">#{{ item.product_id }}</span>
+          <span class="font-weight-medium">{{ item.product_id }}</span>
         </template>
 
         <template #item.product.name="{ item }">
@@ -180,7 +180,7 @@ const headers = [
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                    <span class="text-primary">#{{ item.product_id }}</span>
+                    <span class="text-primary">{{ item.product_id }}</span>
                     <span class="mx-1 text-disabled">|</span>
                     {{ item.product?.name }}
                   </h3>

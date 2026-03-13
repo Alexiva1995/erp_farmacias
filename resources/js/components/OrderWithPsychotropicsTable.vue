@@ -74,7 +74,7 @@ const handleMobilePageChange = (newPage) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.product_id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.product_id }}</span>
+          <span class="font-weight-black text-primary">{{ item.product_id }}</span>
         </template>
 
         <template #item.user.username="{ item }">
@@ -178,7 +178,7 @@ const handleMobilePageChange = (newPage) => {
             <div class="bg-var-theme-background-light rounded border-s-4 border-primary pa-3 mb-3">
               <div class="d-flex align-center gap-2 mb-1">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Producto</span>
-                <span class="text-body-2 font-weight-black text-primary">#{{ item.product_id }}</span>
+                <span class="text-body-2 font-weight-black text-primary">{{ item.product_id }}</span>
               </div>
               <div class="text-sm font-weight-black text-high-emphasis truncate uppercase">
                 {{ item.product?.name }}

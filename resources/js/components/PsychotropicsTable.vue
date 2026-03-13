@@ -43,7 +43,7 @@ const handleMobilePageChange = (newPage) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.id }}</span>
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
@@ -130,7 +130,7 @@ const handleMobilePageChange = (newPage) => {
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                    <span class="text-primary">#{{ item.id }}</span>
+                    <span class="text-primary">{{ item.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
                     {{ item.name }}
                   </h3>

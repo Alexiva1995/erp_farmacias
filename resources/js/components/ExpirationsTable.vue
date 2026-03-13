@@ -185,7 +185,7 @@ const handleMobilePageChange = (newPage) => {
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                    <span class="text-primary">#{{ item.product?.id }}</span>
+                    <span class="text-primary">{{ item.product?.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
                     {{ item.product?.name }}
                   </h3>

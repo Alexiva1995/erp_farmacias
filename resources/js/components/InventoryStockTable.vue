@@ -64,7 +64,7 @@ const getDiffColor = (val) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.id }}</span>
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
@@ -160,7 +160,7 @@ const getDiffColor = (val) => {
               />
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center justify-space-between mb-1">
-                  <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
+                  <span class="text-primary font-weight-black text-xs">{{ item.id }}</span>
                   <VChip
                     :color="getDiffColor(item.diferencia_product)"
                     size="x-small"
