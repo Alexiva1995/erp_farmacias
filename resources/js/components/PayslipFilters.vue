@@ -71,6 +71,14 @@ const handleManualPayment = async () => {
       >
         Pagar Nómina Manual
       </VBtn>
+      <VBtn
+        color="success"
+        variant="tonal"
+        prepend-icon="ri-download-line"
+        @click="emit('download-bulk')"
+      >
+        Descargar Todo 2025
+      </VBtn>
     </VCardActions>
   </VCard>
 </template>
