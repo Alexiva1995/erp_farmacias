@@ -291,36 +291,32 @@ const handleSave = async () => {
 
       <VDivider />
 
-      <VCardActions class="pa-3 bg-light border-t">
-        <VRow dense class="w-100">
-          <VCol cols="6">
-            <VBtn
-              color="secondary"
-              variant="tonal"
-              size="small"
-              block
-              height="40"
-              class="font-weight-black rounded-lg"
-              @click="handleCancel"
-            >
-              CANCELAR
-            </VBtn>
-          </VCol>
-          <VCol cols="6">
-            <VBtn
-              color="primary"
-              variant="flat"
-              size="small"
-              block
-              height="40"
-              class="font-weight-black rounded-lg shadow-sm"
-              :disabled="!canSave"
-              @click="handleSave"
-            >
-              GUARDAR
-            </VBtn>
-          </VCol>
-        </VRow>
+      <VCardActions class="pa-2 bg-light border-t">
+        <div class="d-flex flex-column gap-2 w-100">
+          <VBtn
+            color="primary"
+            variant="flat"
+            size="small"
+            block
+            height="36"
+            class="font-weight-black rounded-lg shadow-sm"
+            :disabled="!canSave"
+            @click="handleSave"
+          >
+            GUARDAR CONTEO
+          </VBtn>
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            size="small"
+            block
+            height="32"
+            class="font-weight-black rounded-lg"
+            @click="handleCancel"
+          >
+            CANCELAR
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
 
@@ -349,8 +345,8 @@ const handleSave = async () => {
   background-color: #f8fafc !important;
 }
 
-.border-dashed-2 {
-  border: 2px dashed rgba(var(--v-border-color), 15%) !important;
+.border-dashed-1 {
+  border: 1px dashed rgba(var(--v-border-color), 20%) !important;
 }
 
 .bg-primary-lighten-5 {
@@ -364,10 +360,10 @@ const handleSave = async () => {
 .ultra-huge-input-text :deep(input) {
   border: none;
   background: transparent;
-  inline-size: 100%;
   color: rgb(var(--v-theme-primary)) !important;
-  font-size: 3rem !important;
-  font-weight: 900 !important;
+  font-size: 2rem !important;
+  font-weight: 950 !important;
+  inline-size: 100%;
   line-height: 1;
   outline: none;
   text-align: center !important;
