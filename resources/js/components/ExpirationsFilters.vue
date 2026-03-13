@@ -77,7 +77,10 @@ const hasSelectedLots = computed(() => props.selectedLots.length > 0);
 
 const quickFilters = [
   { label: "Este mes", range: 0 },
-  { label: "Próximos 90 días", range: 90 },
+  { label: "60 Días", range: 60 },
+  { label: "90 Días", range: 90 },
+  { label: "120 Días", range: 120 },
+  { label: "150 Días", range: 150 },
 ];
 
 const isFilterActive = (filter) => {
