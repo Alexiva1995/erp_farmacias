@@ -187,15 +187,16 @@ const handleClose = () => {
             </div>
 
             <div class="huge-input-wrapper mx-auto mb-2">
-              <input
+              <AppTextField
                 v-model.number="newCountedQuantity"
                 type="number"
                 min="0"
                 placeholder="0"
-                class="ultra-huge-input"
+                variant="plain"
+                class="ultra-huge-input-text"
                 autofocus
                 @wheel="$event.target.blur()"
-              >
+              />
             </div>
 
             <!-- Feedback de Diferencia -->
@@ -287,34 +288,29 @@ const handleClose = () => {
   background-color: rgba(var(--v-theme-primary), 0.02);
 }
 
-.ultra-huge-input {
+.ultra-huge-input-text :deep(input) {
+  block-size: auto;
   inline-size: 100%;
   border: none;
   background: transparent;
-  color: rgb(var(--v-theme-primary));
-  font-size: 4rem;
-  font-weight: 900;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 3rem !important;
+  font-weight: 900 !important;
   line-height: 1;
   outline: none;
-  text-align: center;
+  text-align: center !important;
 }
 
-.ultra-huge-input::placeholder {
-  color: rgba(var(--v-theme-primary), 10%);
-}
-
-.ultra-huge-input::-webkit-outer-spin-button,
-.ultra-huge-input::-webkit-inner-spin-button {
-  margin: 0;
-  appearance: none;
+.ultra-huge-input-text :deep(.v-field__input) {
+  padding: 0 !important;
 }
 
 .header-icon-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  inline-size: 60px;
   block-size: 60px;
+  inline-size: 60px;
 }
 
 .icon-circle {
@@ -359,9 +355,20 @@ const handleClose = () => {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.1); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .shadow-primary {

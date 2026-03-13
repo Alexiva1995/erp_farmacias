@@ -177,19 +177,19 @@ const handleSave = async () => {
 
       <VCardText class="pa-4 pa-sm-6 bg-light inventory-count-content">
         <!-- Perfil del Producto Estilo Trazabilidad -->
-        <VCard variant="flat" class="border pa-5 mb-6 bg-white elevation-1 rounded-xl">
+        <VCard variant="flat" class="border pa-4 mb-4 bg-white elevation-1 rounded-xl">
           <div class="d-flex flex-column min-width-0">
-            <div class="d-flex align-center gap-2 mb-2">
+            <div class="d-flex align-center gap-2 mb-1">
               <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
                 {{ product.laboratory?.name || 'S/L' }}
               </VChip>
               <span class="text-super-xs font-weight-bold text-disabled uppercase">Laboratorio</span>
             </div>
-            <h3 class="text-h5 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-2">
+            <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-1">
               {{ product.name }}
             </h3>
-            <div class="d-flex align-center gap-1 text-xs text-disabled font-weight-medium">
-              <VIcon icon="tabler-flask" size="14" />
+            <div class="d-flex align-center gap-1 text-super-xs text-disabled font-weight-medium">
+              <VIcon icon="tabler-flask" size="12" />
               <span class="text-truncate">{{ product.active_ingredient }}</span>
             </div>
           </div>
@@ -287,14 +287,15 @@ const handleSave = async () => {
               </VChip>
             </div>
             
-            <div class="d-flex justify-center align-center py-2">
-              <input
+            <div class="d-flex justify-center align-center">
+              <AppTextField
                 id="quantity-input"
-                v-model="countedQuantity"
+                v-model.number="countedQuantity"
                 type="number"
                 min="0"
                 placeholder="0"
-                class="ultra-huge-input"
+                variant="plain"
+                class="ultra-huge-input-text"
                 :disabled="!allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
                 @keyup.enter="handleSave"
               />
@@ -364,26 +365,20 @@ const handleSave = async () => {
   background-color: rgba(var(--v-theme-warning), 0.05) !important;
 }
 
-.ultra-huge-input {
+.ultra-huge-input-text :deep(input) {
   inline-size: 100%;
   border: none;
   background: transparent;
-  color: rgb(var(--v-theme-primary));
-  font-size: 4.5rem;
-  font-weight: 900;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 3rem !important;
+  font-weight: 900 !important;
   line-height: 1;
   outline: none;
-  text-align: center;
+  text-align: center !important;
 }
 
-.ultra-huge-input::placeholder {
-  color: rgba(var(--v-theme-primary), 10%);
-}
-
-.ultra-huge-input::-webkit-outer-spin-button,
-.ultra-huge-input::-webkit-inner-spin-button {
-  margin: 0;
-  appearance: none;
+.ultra-huge-input-text :deep(.v-field__input) {
+  padding: 0 !important;
 }
 
 .text-super-xs {
