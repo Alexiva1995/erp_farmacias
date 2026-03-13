@@ -314,7 +314,6 @@ const handleSave = async () => {
             </VCol>
           </VRow>
         </VCardActions>
-        </VCardActions>
       </VCard>
     </VDialog>
 
