@@ -24,16 +24,23 @@ const isDialogVisible = computed({
   },
 });
 
-const fetchMovementDetails = async () => {
-  if (!props.movementId) return;
+const fetchMovementDetails = async (id) => {
+  if (!id) return;
 
   loading.value = true;
+  movementDetails.value = null; // Limpiar antes de cargar
   try {
-    const response = await axios.get(`/sales/report/movement/${props.movementId}`);
-    movementDetails.value = response.data.data;
+    const response = await axios.get(`/sales/report/movement/${id}`);
+    if (response.data && response.data.data) {
+      movementDetails.value = response.data.data;
+    } else {
+      toast.error("No se encontraron detalles para este movimiento.");
+      closeDialog();
+    }
   } catch (error) {
     console.error("Error al cargar los detalles del movimiento:", error);
     toast.error("Error al cargar los detalles del movimiento.");
+    closeDialog();
   } finally {
     loading.value = false;
   }
@@ -42,20 +49,24 @@ const fetchMovementDetails = async () => {
 watch(
   () => props.modelValue,
   (isVisible) => {
-    if (isVisible && props.movementId) {
-      fetchMovementDetails();
-    } else if (!isVisible) {
+    if (isVisible) {
+      if (props.movementId) {
+        fetchMovementDetails(props.movementId);
+      } else {
+        toast.error("ID de movimiento no válido.");
+        closeDialog();
+      }
+    } else {
       movementDetails.value = null;
     }
-  },
-  { immediate: true }
+  }
 );
 
 watch(
   () => props.movementId,
-  () => {
-    if (props.modelValue && props.movementId) {
-      fetchMovementDetails();
+  (newId) => {
+    if (props.modelValue && newId) {
+      fetchMovementDetails(newId);
     }
   }
 );

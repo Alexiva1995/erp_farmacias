@@ -324,38 +324,42 @@ const hasActiveAdvancedFilters = computed(() => {
           <VDivider class="my-4 border-opacity-10" />
           
           <VRow>
-            <!-- Grupos de Filtros -->
-            <VCol cols="12" sm="6" md="3">
+            <!-- Primera Fila: Selectores Principales -->
+            <VCol cols="12" sm="6" md="4">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
                 :loading="props.loading"
                 label="Laboratorio"
-                placeholder="Seleccionar"
+                placeholder="Seleccionar Laboratorio"
                 item-title="name"
                 item-value="id"
                 clearable
                 density="compact"
+                hide-details="auto"
+                prepend-inner-icon="tabler-flask"
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="6" md="4">
               <VAutocomplete
                 :model-value="props.selectedOrigin"
                 :items="props.origins"
                 :loading="props.loading"
                 label="Origen"
-                placeholder="Seleccionar"
+                placeholder="Seleccionar Origen"
                 item-title="name"
                 item-value="id"
                 clearable
                 density="compact"
+                hide-details="auto"
+                prepend-inner-icon="tabler-world"
                 @update:model-value="emit('update:selectedOrigin', $event)"
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="6" md="4">
               <VSelect
                 :model-value="props.stockStatusFilter"
                 label="Estado Stock"
@@ -363,18 +367,23 @@ const hasActiveAdvancedFilters = computed(() => {
                 placeholder="Todos"
                 clearable
                 density="compact"
+                hide-details="auto"
+                prepend-inner-icon="tabler-package"
                 @update:model-value="emit('update:stockStatusFilter', $event)"
               />
             </VCol>
 
+            <!-- Segunda Fila: Fechas y Resto -->
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.startDate"
                 label="Desde"
-                placeholder="YYYY-MM-DD"
+                placeholder="Seleccionar Fecha"
                 clearable
                 density="compact"
+                hide-details="auto"
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:startDate', $event)"
               />
             </VCol>
@@ -383,16 +392,17 @@ const hasActiveAdvancedFilters = computed(() => {
               <AppDateTimePicker
                 :model-value="props.endDate"
                 label="Hasta"
-                placeholder="YYYY-MM-DD"
+                placeholder="Seleccionar Fecha"
                 clearable
                 density="compact"
+                hide-details="auto"
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:endDate', $event)"
               />
             </VCol>
 
-            <!-- Checkboxes -->
-            <VCol cols="12" md="6" class="d-flex align-center">
+            <VCol cols="12" sm="6" md="4" class="d-flex align-center">
               <VCheckbox
                 :model-value="props.isStrictSearch"
                 label="Búsqueda Estricta"
@@ -403,12 +413,14 @@ const hasActiveAdvancedFilters = computed(() => {
               />
             </VCol>
 
-            <VCol cols="12" class="d-flex justify-end gap-2 mt-2">
+            <!-- Botones de Acción Internos -->
+            <VCol cols="12" sm="6" md="2" class="d-flex align-center justify-end">
               <VBtn 
                 color="secondary" 
                 variant="outlined" 
                 size="small" 
                 prepend-icon="tabler-eraser"
+                block
                 @click="handleClear"
               >
                 Limpiar
