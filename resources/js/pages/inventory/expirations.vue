@@ -742,40 +742,47 @@ onMounted(() => {
                       </span>
                     </div>
 
-                    <div class="d-flex gap-2">
-                      <VBtn 
-                        flex-grow-1 
-                        variant="flat" 
-                        color="info" 
-                        prepend-icon="tabler-eye" 
-                        @click="showDetailView(item.month)"
-                      >
-                        VER DETALLE
-                      </VBtn>
-                      
-                      <div class="d-flex gap-1">
+                    <VRow no-gutters class="border-t">
+                      <VCol cols="4" class="border-e">
                         <VBtn
-                          icon
-                          variant="tonal"
+                          block
+                          variant="text"
+                          color="info"
+                          height="48"
+                          class="rounded-0"
+                          @click="showDetailView(item.month)"
+                        >
+                          <VIcon icon="tabler-eye" size="22" />
+                        </VBtn>
+                      </VCol>
+                      <VCol cols="4" class="border-e">
+                        <VBtn
+                          block
+                          variant="text"
                           color="primary"
+                          height="48"
+                          class="rounded-0"
                           :disabled="item.donation_count === 0"
                           @click="handlePrintDonation(item.month)"
                         >
-                          <VIcon icon="tabler-printer" />
+                          <VIcon icon="tabler-printer" size="22" />
                         </VBtn>
-
+                      </VCol>
+                      <VCol cols="4">
                         <VBtn
-                          icon
-                          variant="tonal"
+                          block
+                          variant="text"
                           color="warning"
+                          height="48"
+                          class="rounded-0"
                           :disabled="item.has_price_adjustment"
                           :loading="loadingAdjustmentForMonth === item.month"
                           @click="handlePriceAdjustmentExpired(item.month)"
                         >
-                          <VIcon :icon="item.has_price_adjustment ? 'tabler-currency-dollar-off' : 'tabler-currency-dollar'" />
+                          <VIcon :icon="item.has_price_adjustment ? 'tabler-currency-dollar-off' : 'tabler-currency-dollar'" size="22" />
                         </VBtn>
-                      </div>
-                    </div>
+                      </VCol>
+                    </VRow>
                   </div>
                 </VCard>
               </div>
