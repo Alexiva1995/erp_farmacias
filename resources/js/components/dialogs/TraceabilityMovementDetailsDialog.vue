@@ -149,7 +149,7 @@ const getUserDisplayName = (user) => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto" v-if="loading">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;" v-if="loading">
         <div class="d-flex justify-center align-center py-12">
           <VProgressCircular indeterminate color="primary" size="64" />
         </div>
@@ -157,7 +157,7 @@ const getUserDisplayName = (user) => {
 
       <VCardText
         class="flex-grow-1 pa-4"
-        style="overflow-y: auto"
+        style="overflow-y: auto;"
         v-else-if="movementDetails"
       >
         <!-- Tipo de Movimiento - Destacado -->

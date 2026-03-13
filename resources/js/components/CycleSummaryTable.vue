@@ -207,14 +207,16 @@ const viewCycleDetails = (cycleId) => {
 }
 
 :deep(.v-data-table td) {
-  padding: 8px 16px !important;
-  height: auto !important;
+  block-size: auto !important;
+  padding-block: 8px !important;
+  padding-inline: 16px !important;
 }
 
 :deep(.v-data-table th) {
-  padding: 10px 16px !important;
   font-size: 0.75rem !important;
   font-weight: 600 !important;
+  padding-block: 10px !important;
+  padding-inline: 16px !important;
 }
 
 :deep(.v-data-table__wrapper) {
@@ -222,7 +224,7 @@ const viewCycleDetails = (cycleId) => {
 }
 
 :deep(.v-chip) {
-  height: 20px !important;
+  block-size: 20px !important;
   font-size: 0.7rem !important;
 }
 </style>

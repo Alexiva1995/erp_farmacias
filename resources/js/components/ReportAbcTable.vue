@@ -92,7 +92,7 @@ const getClassColor = (cls) => {
           height="6"
           rounded
           class="mb-1"
-          style="width: 100px; display: inline-block; margin-right: 8px"
+          style=" display: inline-block;inline-size: 100px; margin-inline-end: 8px;"
         />
         <span class="text-caption">{{
           formatPercent(item.accumulated_percentage)

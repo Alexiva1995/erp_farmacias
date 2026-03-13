@@ -117,11 +117,11 @@ const handleSubmit = async () => {
                 :src="props.qrCodeUrl"
                 alt="Código QR de autenticación"
                 style="
-                  width: 200px;
-                  height: 200px;
-                  border: 1px solid #ddd;
                   padding: 5px;
-                "
+                  border: 1px solid #ddd;
+                  block-size: 200px;
+                  inline-size: 200px;
+"
               />
             </VCol>
           </VRow>

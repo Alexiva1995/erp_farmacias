@@ -3,17 +3,17 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
-import ProductLotDialog from "@/components/dialogs/ProductLotDialog.vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
+import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
 import { useAuthStore } from "@/stores/auth";
 
-const productLots = ref([]);
-const totalProductLots = ref(0);
+const products = ref([]);
+const totalProducts = ref(0);
 const loading = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref("product.name");
+const sortBy = ref("name");
 const orderBy = ref("asc");
 
 const searchQuery = ref("");
@@ -25,16 +25,12 @@ const endDate = ref(null);
 
 const laboratories = ref([]);
 const origins = ref([]);
+const locations = ref([]);
 const isLoadingFilters = ref(false);
 
-const isLotDialogVisible = ref(false);
-const availableProducts = ref([]);
-const availableSuppliers = ref([]);
-const availableOrigins = ref([]);
+const isDistributionModalVisible = ref(false);
+const currentProductForDistribution = ref(null);
 const isLoadingDialogData = ref(false);
-
-const isEditingMode = ref(false);
-const currentLotToEdit = ref(null);
 
 const isStrictSearch = ref(false);
 
@@ -43,12 +39,14 @@ const { isAdmin } = useAuthStore();
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse] = await Promise.all([
+    const [labResponse, originResponse, locationResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
+      axios.get("/locations"),
     ]);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
+    locations.value = locationResponse.data.data || locationResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -57,14 +55,14 @@ const fetchSelectOptions = async () => {
   }
 };
 
-const fetchProductLots = async () => {
+const fetchProducts = async () => {
   loading.value = true;
   const params = {
-    search: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
+    q: searchQuery.value,
+    laboratory_id: selectedLaboratory.value,
+    origin_id: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
-      hasStock: stockStatusFilter.value,
+      has_stock: stockStatusFilter.value,
     }),
     startDate: startDate.value,
     endDate: endDate.value,
@@ -75,26 +73,15 @@ const fetchProductLots = async () => {
     isStrictSearch: isStrictSearch.value,
   };
 
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
-
   try {
-    const response = await axios.get("/product-lots", { params });
-    // La respuesta tiene estructura: { data: { data: [...], total: ... } }
-    if (response.data?.data) {
-      productLots.value = response.data.data.data || response.data.data || [];
-      totalProductLots.value = response.data.data.total || 0;
-    } else {
-      productLots.value = [];
-      totalProductLots.value = 0;
+    const response = await axios.get("/products", { params });
+    if (response.data) {
+      products.value = response.data.data || [];
+      totalProducts.value = response.data.total || 0;
     }
   } catch (error) {
-    console.error("Error al obtener los lotes:", error);
-    const errorMessage = error.response?.data?.message || error.message || "No se pudieron cargar los lotes.";
-    toast.error(errorMessage);
-    productLots.value = [];
-    totalProductLots.value = 0;
+    console.error("Error al obtener los productos:", error);
+    toast.error("No se pudieron cargar los productos.");
   } finally {
     loading.value = false;
   }
@@ -117,7 +104,7 @@ watch(
   ],
   () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProductLots(), 300);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
   { deep: true }
 );
@@ -131,13 +118,13 @@ watch(
 
 onMounted(() => {
   fetchSelectOptions();
-  fetchProductLots();
+  fetchProducts();
 });
 
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key || "product.name";
+  sortBy.value = options.sortBy[0]?.key || "name";
   orderBy.value = options.sortBy[0]?.order || "asc";
 };
 
@@ -145,95 +132,54 @@ const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
 };
-
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
-  selectedOrigin.value=null;
+  selectedOrigin.value = null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
-  // sortBy.value = "id";
-  // orderBy.value = "desc";
 };
 
-const handleAddLot = async () => {
-  isLoadingDialogData.value = true;
-  try {
-    const [productsResponse, suppliersResponse, originsResponse] = await Promise.all([
-      axios.get("/products/all"),
-      axios.get("/available-suppliers"),
-      axios.get("/origins"),
-    ]);
-
-    availableProducts.value = productsResponse.data;
-    availableSuppliers.value = suppliersResponse.data.data;
-    availableOrigins.value = originsResponse.data;
-
-    isEditingMode.value = false;
-    currentLotToEdit.value = null;
-    isLotDialogVisible.value = true;
-  } catch (error) {
-    console.error("Error al obtener datos para el modal:", error);
-    toast.error("No se pudieron cargar los datos para crear el lote.");
-  } finally {
-    isLoadingDialogData.value = false;
-  }
+const handleAdjustLots = (product) => {
+  currentProductForDistribution.value = product;
+  isDistributionModalVisible.value = true;
 };
 
-const handleEditLot = async (lotToEdit) => {
-  isLoadingDialogData.value = true;
-  try {
-    const suppliersResponse = await axios.get("/available-suppliers");
-    const originsResponse = await axios.get("/origins");
-    availableSuppliers.value = suppliersResponse.data.data;
-    availableOrigins.value = originsResponse.data;
+const handleSaveLots = async (distributionData) => {
+  if (!currentProductForDistribution.value) return;
 
-    isEditingMode.value = true;
-    currentLotToEdit.value = lotToEdit;
-    isLotDialogVisible.value = true;
-  } catch (error) {
-    console.error("Error al obtener datos para el modal:", error);
-    toast.error("No se pudieron cargar los datos para editar el lote.");
-  } finally {
-    isLoadingDialogData.value = false;
-  }
-};
-
-const handleCreateLot = async (lotData) => {
   try {
-    await axios.post("/product-lots", lotData);
-    toast.success("Lote creado con éxito.");
-    isLotDialogVisible.value = false;
-    fetchProductLots();
+    const payload = {
+      product_id: currentProductForDistribution.value.id,
+      lots: [
+        ...distributionData.updatedLots.map(l => ({
+          ...l,
+          id: l.id,
+          lot_number: l.lot_number,
+          expiration_date: l.expiration_date,
+          quantity: l.quantity,
+          location: l.location,
+        })),
+        ...distributionData.newLots.map(l => ({
+          ...l,
+          lot_number: l.lot_number,
+          expiration_date: l.expiration_date,
+          quantity: l.quantity,
+          location: l.location,
+        }))
+      ]
+    };
+
+    await axios.post("/product-lots/batch-update", payload);
+    toast.success("Lotes actualizados con éxito.");
+    isDistributionModalVisible.value = false;
+    fetchProducts();
   } catch (error) {
-    console.error("Error al crear el lote:", error);
-    const errorMessage =
-      error.response?.data?.message || "No se pudo crear el lote.";
+    console.error("Error al actualizar lotes:", error);
+    const errorMessage = error.response?.data?.message || "Error al actualizar los lotes.";
     toast.error(errorMessage);
-  }
-};
-
-const handleUpdateLot = async (lotData) => {
-  try {
-    await axios.put(`/product-lots/${lotData.id}`, lotData);
-    toast.success("Lote actualizado con éxito.");
-    isLotDialogVisible.value = false;
-    fetchProductLots();
-  } catch (error) {
-    console.error("Error al actualizar el lote:", error);
-    const errorMessage =
-      error.response?.data?.message || "No se pudo actualizar el lote.";
-    toast.error(errorMessage);
-  }
-};
-
-const handleSaveLot = (lotData) => {
-  if (isEditingMode.value) {
-    handleUpdateLot(lotData);
-  } else {
-    handleCreateLot(lotData);
   }
 };
 
@@ -269,7 +215,7 @@ const handleCleanZeroQuantity = async () => {
     try {
       const response = await axios.delete("/product-lots/clean-zero-quantity");
       toast.success(response.data.message || "Lotes eliminados con éxito.");
-      fetchProductLots();
+      fetchProducts();
     } catch (error) {
       console.error("Error al eliminar lotes:", error);
       const errorMessage =
@@ -297,30 +243,28 @@ const handleCleanZeroQuantity = async () => {
       :add-lot-loading="isLoadingDialogData"
       :is-admin="isAdmin"
       @clear="handleClearFilters"
-      @add-lot="handleAddLot"
       @sort="handleSort"
       @clean-zero-quantity="handleCleanZeroQuantity"
     />
 
     <ProductLotsTable
-      :lots="productLots"
-      :total-lots="totalProductLots"
+      :products="products"
+      :total-products="totalProducts"
       :loading="loading"
       :items-per-page="itemsPerPage"
       :page="page"
       @update:options="updateTableOptions"
-      @edit-lot="handleEditLot"
+      @adjust-lots="handleAdjustLots"
     />
 
-    <ProductLotDialog
-      v-model="isLotDialogVisible"
-      :loading="isLoadingDialogData"
-      :products="availableProducts"
-      :suppliers="availableSuppliers"
-      :origins="availableOrigins"
-      :is-editing="isEditingMode"
-      :lot-to-edit="currentLotToEdit"
-      @save="handleSaveLot"
+    <LotDistributionModal
+      v-model="isDistributionModalVisible"
+      :product-name="currentProductForDistribution?.name || ''"
+      :lots="currentProductForDistribution?.lots || []"
+      :target-quantity="currentProductForDistribution?.stock_calculado || 0"
+      :locations="locations"
+      mode="adjustment"
+      @save="handleSaveLots"
     />
   </div>
 </template>

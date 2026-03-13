@@ -1693,9 +1693,9 @@ const getAvailableMethodsForCurrency = (currency) => {
           <p class="mt-4">Cargando tasas de cambio. Por favor, espere...</p>
         </div>
 
-        <div v-else class="d-flex gap-4" style="min-height: 500px">
+        <div v-else class="d-flex gap-4" style="min-block-size: 500px;">
           <!-- COLUMNA IZQUIERDA: Productos (Arriba) y Métodos de Pago (Abajo) -->
-          <div class="flex-grow-1" style="flex: 1; overflow-y: auto">
+          <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
             <div class="pa-4">
               <!-- Lista de Productos (Arriba - Expandida por defecto) -->
               <VExpansionPanels
@@ -1732,10 +1732,10 @@ const getAvailableMethodsForCurrency = (currency) => {
                     <VTable density="compact" lines="none" class="py-2">
                       <thead>
                         <tr>
-                          <th class="text-left" style="width: 40%">Producto</th>
-                          <th class="text-right" style="width: 20%">Precio</th>
-                          <th class="text-right" style="width: 20%">IVA</th>
-                          <th class="text-right" style="width: 20%">Total</th>
+                          <th class="text-left" style="inline-size: 40%;">Producto</th>
+                          <th class="text-right" style="inline-size: 20%;">Precio</th>
+                          <th class="text-right" style="inline-size: 20%;">IVA</th>
+                          <th class="text-right" style="inline-size: 20%;">Total</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1752,7 +1752,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                               </span>
                               <span
                                 class="text-sm"
-                                style="color: rgba(0, 0, 0, 0.6)"
+                                style="color: rgba(0, 0, 0, 60%);"
                               >
                                 {{ product.active_ingredient }}
                                 {{
@@ -1915,21 +1915,21 @@ const getAvailableMethodsForCurrency = (currency) => {
           <!-- COLUMNA DERECHA: Resumen de Pago (Sticky) -->
           <div
             style="
-              width: 400px;
               position: sticky;
-              top: 0;
-              align-self: flex-start;
-              max-height: calc(100vh - 200px);
               display: flex;
               flex-direction: column;
-            "
+              align-self: flex-start;
+              inline-size: 400px;
+              inset-block-start: 0;
+              max-block-size: calc(100vh - 200px);
+"
           >
             <VCard
               variant="outlined"
               class="flex-grow-1"
-              style="display: flex; flex-direction: column"
+              style="display: flex; flex-direction: column;"
             >
-              <VCardText style="flex: 1; overflow-y: auto">
+              <VCardText style="flex: 1; overflow-y: auto;">
                 <div class="text-h6 font-weight-bold mb-4">Resumen de Pago</div>
 
                 <!-- Descuentos -->
@@ -1997,7 +1997,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                     v-for="(payment, idx) in payments.filter((p) => p.method)"
                     :key="idx"
                     class="d-flex justify-space-between align-center mb-3 payment-row"
-                    style="min-height: 32px"
+                    style="min-block-size: 32px;"
                   >
                     <span class="text-body-1">
                       {{
@@ -2009,7 +2009,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                     <div
                       v-if="payment._isInputActive"
                       class="d-flex align-center gap-2 fade-in"
-                      style="flex: 0 0 auto"
+                      style="flex: 0 0 auto;"
                     >
                       <input
                         :ref="
@@ -2155,7 +2155,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                     <div
                       v-else
                       class="d-flex flex-column align-end gap-1 fade-in"
-                      style="flex: 0 0 auto"
+                      style="flex: 0 0 auto;"
                     >
                       <div class="d-flex align-center gap-2">
                         <span class="text-body-1 font-weight-medium text-error">
@@ -2205,7 +2205,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                           payment.reference
                         "
                         class="text-caption text-medium-emphasis"
-                        style="font-size: 11px"
+                        style="font-size: 11px;"
                       >
                         Ref: {{ payment.reference }}
                       </div>
@@ -2537,7 +2537,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                       <span
                         v-if="activeDiscountDisplay"
                         class="text-caption text-decoration-line-through text-error"
-                        style="margin-top: -4px"
+                        style="margin-block-start: -4px;"
                       >
                         {{
                           formatCurrency(
@@ -2703,7 +2703,7 @@ const getAvailableMethodsForCurrency = (currency) => {
 
 <style scoped>
 .v-table__wrapper > table > tbody > tr > td {
-  border-bottom: none !important;
+  border-block-end: none !important;
 }
 
 .payment-input {
@@ -2711,8 +2711,8 @@ const getAvailableMethodsForCurrency = (currency) => {
 }
 
 .payment-input:focus {
-  border-bottom-color: rgb(var(--v-theme-primary)) !important;
   background: rgba(var(--v-theme-primary), 0.04) !important;
+  border-block-end-color: rgb(var(--v-theme-primary)) !important;
 }
 
 .fade-in {
@@ -2724,6 +2724,7 @@ const getAvailableMethodsForCurrency = (currency) => {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2735,11 +2736,11 @@ const getAvailableMethodsForCurrency = (currency) => {
 }
 
 .payment-method-card {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 8%);
 }
 
 .payment-method-card:hover:not(.payment-method-card--add) {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 12%);
   transform: translateY(-2px);
 }
 
@@ -2755,8 +2756,8 @@ const getAvailableMethodsForCurrency = (currency) => {
 }
 
 .payment-method-card:disabled {
-  opacity: 0.5;
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .payment-method-btn {
@@ -2768,8 +2769,8 @@ const getAvailableMethodsForCurrency = (currency) => {
 }
 
 .payment-method-btn--added {
-  opacity: 0.6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .payment-method-btn--added:hover {

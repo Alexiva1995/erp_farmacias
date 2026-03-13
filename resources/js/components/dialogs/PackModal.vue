@@ -576,7 +576,7 @@ watch(
                 :max="item.product?.stock || 9999"
                 :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
                 :disabled="loading || !item.product"
-                style="max-width: 100px"
+                style="max-inline-size: 100px;"
                 class="mx-auto"
                 @update:model-value="calculateTotalPrice()"
               />
@@ -592,7 +592,7 @@ watch(
                 max="100"
                 suffix="%"
                 :disabled="loading || !item.product"
-                style="max-width: 100px"
+                style="max-inline-size: 100px;"
                 class="mx-auto"
                 @update:model-value="calculateTotalPrice()"
               />
@@ -680,13 +680,14 @@ watch(
 }
 
 :deep(.v-data-table th) {
-  font-weight: 600;
   font-size: 0.75rem;
-  text-transform: uppercase;
+  font-weight: 600;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 :deep(.v-data-table td) {
-  padding: 12px 16px;
+  padding-block: 12px;
+  padding-inline: 16px;
 }
 </style>

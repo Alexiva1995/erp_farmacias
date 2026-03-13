@@ -170,7 +170,7 @@ const handleFailures = (product) => {
             variant="outlined"
             hide-details
             single-line
-            style="max-width: 90px; min-width: 90px"
+            style="max-inline-size: 90px; min-inline-size: 90px;"
             class="my-2 quantity-input-field"
             :disabled="item.valid_stock_sum === 0"
           />

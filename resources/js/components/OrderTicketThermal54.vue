@@ -194,154 +194,189 @@ const clientDisplayLine = computed(() => {
 
 <style scoped>
 .thermal-54-ticket {
-  width: 54mm;
-  max-width: 54mm;
-  min-width: 54mm;
+  box-sizing: border-box;
   padding: 2mm;
   margin: 0;
-  background: #ffffff;
-  color: #000000;
+  background: #fff;
+  color: #000;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 10px;
+  inline-size: 54mm;
   line-height: 1.25;
-  box-sizing: border-box;
+  max-inline-size: 54mm;
+  min-inline-size: 54mm;
   text-transform: uppercase;
 }
+
 .thermal-54-ticket * {
-  color: #000000 !important;
-  background: transparent !important;
   box-sizing: border-box;
+  background: transparent !important;
+  color: #000 !important;
   text-transform: uppercase !important;
 }
+
 .thermal-header {
+  border-block-end: 1px dashed #000;
+  margin-block-end: 2mm;
+  padding-block-end: 2mm;
   text-align: center;
-  margin-bottom: 2mm;
-  padding-bottom: 2mm;
-  border-bottom: 1px dashed #000000;
 }
+
 .thermal-logo {
   display: block;
-  margin: 0 auto 1mm;
-  max-width: 40mm;
-  height: auto;
+  block-size: auto;
   filter: grayscale(100%) contrast(1.1);
+  margin-block: 0 1mm;
+  margin-inline: auto;
+  max-inline-size: 40mm;
 }
+
 .thermal-rif {
   font-size: 9px;
   font-weight: bold;
-  margin: 0 0 0.5mm;
+  margin-block: 0 0.5mm;
+  margin-inline: 0;
 }
+
 .thermal-company {
   font-size: 10px;
   font-weight: bold;
-  margin: 0 0 0.5mm;
+  margin-block: 0 0.5mm;
+  margin-inline: 0;
 }
+
 .thermal-address {
-  font-size: 9px;
   margin: 0;
+  font-size: 9px;
   line-height: 1.15;
 }
+
 .thermal-data {
-  margin-bottom: 2mm;
+  margin-block-end: 2mm;
 }
+
 .thermal-data-row {
   display: flex;
   justify-content: space-between;
-  margin: 0.5mm 0;
   font-size: 10px;
+  margin-block: 0.5mm;
+  margin-inline: 0;
 }
+
 .thermal-label {
-  font-weight: bold;
   flex-shrink: 0;
+  font-weight: bold;
 }
+
 .thermal-value {
-  text-align: right;
+  margin-inline-start: 2mm;
+  text-align: end;
   word-break: break-word;
-  margin-left: 2mm;
 }
+
 .thermal-value-cliente {
-  text-align: right;
+  text-align: end;
   word-break: break-word;
 }
+
 .thermal-data-row-tel {
-  margin-top: 0.25mm;
   font-size: 9px;
+  margin-block-start: 0.25mm;
 }
+
 .thermal-products {
-  margin-bottom: 2mm;
-  border-top: 1px dashed #000000;
-  padding-top: 1mm;
+  border-block-start: 1px dashed #000;
   font-size: 10px;
+  margin-block-end: 2mm;
+  padding-block-start: 1mm;
 }
+
 .thermal-products-head {
   display: flex;
+  border-block-end: 1px dashed #000;
   font-size: 10px;
   font-weight: bold;
-  padding: 0.4mm 0;
-  border-bottom: 1px dashed #000000;
+  padding-block: 0.4mm;
+  padding-inline: 0;
 }
+
 .thermal-col-desc {
   flex: 1;
-  min-width: 0;
-  padding: 0 1.5mm 0 0;
+  min-inline-size: 0;
+  padding-block: 0;
+  padding-inline: 0 1.5mm;
 }
+
 .thermal-col-amount {
-  width: 16mm;
   flex-shrink: 0;
-  text-align: right;
+  inline-size: 16mm;
+  text-align: end;
 }
+
 .thermal-product-row {
   display: flex;
   align-items: flex-start;
-  padding: 0.5mm 0;
+  border-block-end: 1px solid #000;
   font-size: 10px;
   line-height: 1.2;
-  border-bottom: 1px solid #000000;
+  padding-block: 0.5mm;
+  padding-inline: 0;
 }
+
 .thermal-product-row .thermal-col-desc {
   display: flex;
   flex-direction: column;
 }
+
 /* Producto: 2pt más pequeño que el resto (8px vs 10px base) - !important evita que otra regla lo sobrescriba */
 .thermal-product-name {
   font-size: 8px !important;
-  word-wrap: break-word;
   overflow-wrap: break-word;
   text-transform: uppercase;
+  word-wrap: break-word;
 }
+
 .thermal-product-meta {
+  color: #000;
   font-size: 8px;
-  margin-top: 0.2mm;
+  margin-block-start: 0.2mm;
   opacity: 1;
-  color: #000000;
   text-transform: uppercase;
 }
+
 .thermal-totals {
-  margin-top: 2mm;
-  padding-top: 1mm;
   font-size: 10px;
+  margin-block-start: 2mm;
+  padding-block-start: 1mm;
 }
+
 .thermal-total-row {
   display: flex;
   justify-content: space-between;
-  margin: 0.5mm 0;
+  margin-block: 0.5mm;
+  margin-inline: 0;
 }
+
 .thermal-total-block {
-  border-top: 2px solid #000000;
-  border-bottom: 2px solid #000000;
-  padding: 1.5mm 0;
-  margin: 1mm 0;
+  border-block-end: 2px solid #000;
+  border-block-start: 2px solid #000;
+  margin-block: 1mm;
+  margin-inline: 0;
+  padding-block: 1.5mm;
+  padding-inline: 0;
 }
+
 .thermal-total-main {
   font-size: 11px;
   font-weight: bold;
 }
+
 .thermal-footer {
-  text-align: center;
+  border-block-start: 1px dashed #000;
   font-size: 11px;
   font-weight: bold;
-  margin-top: 3mm;
-  padding-top: 2mm;
-  border-top: 1px dashed #000000;
+  margin-block-start: 3mm;
+  padding-block-start: 2mm;
+  text-align: center;
 }
 </style>

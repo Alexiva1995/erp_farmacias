@@ -348,27 +348,28 @@ watch(
 
 <style scoped>
 .price-summary {
-  padding-left: 16px;
-  border-left: 3px solid rgb(var(--v-theme-success));
+  border-inline-start: 3px solid rgb(var(--v-theme-success));
+  padding-inline-start: 16px;
 }
 
 .price-summary-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
+  padding-block: 4px;
+  padding-inline: 0;
 }
 
 .price-final {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(var(--v-border-color), 0.2);
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.2);
+  margin-block-start: 8px;
+  padding-block-start: 8px;
 }
 
 .price-summary-savings {
-  margin-top: 12px;
-  font-size: 0.75rem;
   color: rgb(var(--v-theme-success));
+  font-size: 0.75rem;
   font-weight: 500;
+  margin-block-start: 12px;
 }
 </style>

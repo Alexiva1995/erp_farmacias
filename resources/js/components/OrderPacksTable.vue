@@ -187,7 +187,7 @@ watch(
             variant="outlined"
             hide-details
             single-line
-            style="max-width: 70px; min-width: 70px"
+            style="max-inline-size: 70px; min-inline-size: 70px;"
             class="my-1 text-center"
             :disabled="!item.is_active"
           />

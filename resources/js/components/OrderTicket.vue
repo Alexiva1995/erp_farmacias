@@ -267,7 +267,7 @@ onMounted(() => {
        <span 
         v-if="activeDiscountDisplay && item.discount_type !== 'expiration'" 
         class="text-caption text-decoration-line-through text-error"
-        style="font-size:0.65rem; color: #ff5252; line-height: 1;"
+        style=" color: #ff5252;font-size: 0.65rem; line-height: 1;"
       >
         {{ formatCurrency(item.price_before_discount, selectedCurrency) }}
       </span>

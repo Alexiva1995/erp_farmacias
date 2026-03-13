@@ -17,13 +17,13 @@ const props = defineProps({
 <template>
   <template v-if="references.length > 0">
     <div style="text-align: center;">
-      <span style="padding: 0 10px; display: inline-block; vertical-align: middle;">{{ title }}</span>
+      <span style=" display: inline-block;padding-block: 0; padding-inline: 10px; vertical-align: middle;">{{ title }}</span>
     </div>
-    <table style="width: 100%;">
+    <table style="inline-size: 100%;">
       <tbody>
         <tr v-for="ref in references" :key="ref.referencia">
-          <td style="text-align: left;"><span>{{ ref.referencia }}</span></td>
-          <td style="text-align: right;"><span>{{ formatCurrency(ref.monto, ref.currency) }}</span></td>
+          <td style="text-align: start;"><span>{{ ref.referencia }}</span></td>
+          <td style="text-align: end;"><span>{{ formatCurrency(ref.monto, ref.currency) }}</span></td>
         </tr>
       </tbody>
     </table>

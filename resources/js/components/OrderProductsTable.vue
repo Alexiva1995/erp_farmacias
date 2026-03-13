@@ -332,11 +332,11 @@ const getRowClass = (item) => {
       </template>
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column" style="min-width: 0; width: 100%;">
+          <div class="d-flex flex-column" style=" inline-size: 100%;min-inline-size: 0;">
             <span
               class="text-body-1 font-weight-medium text-high-emphasis"
               :class="{ 'text-primary': item.psychotropic == 1 }"
-              style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;"
+              style=" overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
             >
               {{ item.name }}
               <span v-if="item.iva == 1"> (G)</span>
@@ -353,13 +353,13 @@ const getRowClass = (item) => {
             </span>
             <span 
               class="text-sm text-disabled"
-              style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;"
+              style=" overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
             >
               {{ item.active_ingredient }}
             </span>
             <span 
               class="text-sm text-disabled"
-              style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;"
+              style=" overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
             >
               {{ item.origin?.name }}
             </span>
@@ -420,7 +420,7 @@ const getRowClass = (item) => {
             variant="outlined"
             hide-details
             single-line
-            style="max-width: 90px; min-width: 90px"
+            style="max-inline-size: 90px; min-inline-size: 90px;"
             class="my-2 quantity-input-field"
             :disabled="(item.valid_stock_sum ?? 0) <= 0"
           />
@@ -544,7 +544,7 @@ const getRowClass = (item) => {
 :deep(.row-zero-stock .precio-tachado),
 :deep(.row-zero-stock .precio-oferta),
 :deep(.row-zero-stock .precio-expira) {
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(255, 255, 255, 95%) !important;
 }
 
 /* Inputs y botones en fila sin stock: legibles sobre fondo rojo */
@@ -560,7 +560,7 @@ const getRowClass = (item) => {
 }
 
 :deep(.row-zero-stock .v-chip) {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 20%) !important;
   color: white !important;
 }
 
@@ -572,8 +572,8 @@ const getRowClass = (item) => {
 /* Precio original tachado (cuando hay oferta) */
 .precio-tachado {
   color: #a0a0a0;
-  text-decoration: line-through;
   font-size: 0.75rem;
+  text-decoration: line-through;
 }
 
 /* Precio con oferta individual/categoría */

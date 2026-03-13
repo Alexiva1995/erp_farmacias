@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, ref, watch } from "vue";
+import { formatDate } from "@/utils/formatters";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -100,14 +100,28 @@ const submitForm = () => {
 };
 
 const productHeaders = [
-  { title: "id", key: "id", sortable: true },
+  { 
+    title: "id", 
+    key: "id", 
+    sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell"
+  },
   { title: "Producto", key: "name", sortable: true, width: "40%" },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
+  { 
+    title: "Laboratorio", 
+    key: "laboratory.name", 
+    sortable: true,
+    cellClass: "d-none d-md-table-cell",
+    headerClass: "d-none d-md-table-cell"
+  },
   {
     title: "Stock",
     key: "valid_stock",
     visible: true,
     sortable: true,
+    cellClass: "d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
     value: (item) => {
       return item.stock_calculado;
     },
@@ -117,25 +131,21 @@ const productHeaders = [
 ];
 
 const nextExpirationDate = (product) => {
-  if (
-    !product.lots ||
-    !Array.isArray(product.lots) ||
-    product.lots.length === 0
-  )
-    return "N/A";
+  if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  
   const validLots = product.lots.filter((lot) => {
     if (!lot.expiration_date) return false;
     const expirationDate = new Date(lot.expiration_date);
     return !isNaN(expirationDate.getTime()) && expirationDate >= today;
   });
+  
   if (validLots.length === 0) return product.ultima_fecha_vencimiento || "N/A";
-  validLots.sort(
-    (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
-  );
-  const closestDate = new Date(validLots[0].expiration_date);
-  return closestDate.toISOString().split("T")[0];
+  
+  validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+  return validLots[0].expiration_date;
 };
 </script>
 
@@ -167,7 +177,7 @@ const nextExpirationDate = (product) => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <VForm @submit.prevent="submitForm">
           <div class="mb-3">
             <p class="text-h6 font-weight-medium mb-1">Información del Grupo</p>
@@ -220,9 +230,13 @@ const nextExpirationDate = (product) => {
                       'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
                     }"
                   >
+                    <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
                     {{ item.name.toUpperCase() }}
                     <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
                     <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+                    <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
+                      {{ item.laboratory.name }}
+                    </div>
                   </span>
                   <span class="text-sm text-disabled">{{
                     item.active_ingredient
@@ -240,7 +254,7 @@ const nextExpirationDate = (product) => {
             </template>
 
             <template #item.next_expiration="{ item }">
-              <span>{{ nextExpirationDate(item) }}</span>
+              <span>{{ formatDate(nextExpirationDate(item)) }}</span>
             </template>
 
             <template #item.actions="{ item }">
@@ -269,7 +283,7 @@ const nextExpirationDate = (product) => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style=" flex: 1 1 50%;max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -278,7 +292,7 @@ const nextExpirationDate = (product) => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style=" flex: 1 1 50%;max-inline-size: 50%;"
         >
           Guardar
         </VBtn>

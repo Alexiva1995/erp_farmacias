@@ -319,7 +319,7 @@ const getFieldError = (field, index) => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto">
+      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
         <VAlert
           v-if="hasStockDiscrepancy"
           :type="currentLotsSum > props.productStock ? 'error' : 'warning'"
@@ -480,7 +480,7 @@ const getFieldError = (field, index) => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Cancelar
         </VBtn>
@@ -490,7 +490,7 @@ const getFieldError = (field, index) => {
           @click="onSave"
           :disabled="!canSave"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-width: 50%;"
+          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
           Guardar Cambios
         </VBtn>

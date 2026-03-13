@@ -91,5 +91,5 @@ onUnmounted(stopPolling);
 
 <template>
   <!-- Este componente no renderiza nada visible -->
-  <div style="display: none" />
+  <div style="display: none;" />
 </template>
