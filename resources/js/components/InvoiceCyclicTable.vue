@@ -188,18 +188,18 @@ const handleMobilePageChange = (newPage) => {
               </div>
             </div>
 
-            <VBtn 
-              block 
-              color="primary" 
-              variant="flat" 
-              size="small"
-              height="40"
-              prepend-icon="tabler-clipboard-check" 
-              class="font-weight-black shadow-sm"
-              @click="handleVerifyProduct(item)"
-            >
-              VERIFICAR CONTEO
-            </VBtn>
+            <div class="d-flex justify-end">
+              <IconBtn 
+                color="primary" 
+                variant="tonal" 
+                size="small"
+                class="rounded shadow-sm"
+                @click="handleVerifyProduct(item)"
+              >
+                <VIcon icon="tabler-clipboard-check" />
+                <VTooltip activator="parent" location="top">VERIFICAR CONTEO</VTooltip>
+              </IconBtn>
+            </div>
           </div>
         </VCard>
       </div>
