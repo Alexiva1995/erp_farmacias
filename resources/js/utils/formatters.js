@@ -89,3 +89,18 @@ export const nextExpirationDate = (product) => {
   validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
   return validLots[0].expiration_date;
 };
+
+/**
+ * Formatea un número con separadores de miles y decimales configurables.
+ * @param {number|string} value 
+ * @param {number} decimals 
+ * @returns {string}
+ */
+export const formatNumber = (value, decimals = 0) => {
+  const num = Number(value);
+  if (isNaN(num)) return "0";
+  return new Intl.NumberFormat("es-CO", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(num);
+};

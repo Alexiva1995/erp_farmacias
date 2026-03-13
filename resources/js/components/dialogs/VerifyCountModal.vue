@@ -105,119 +105,93 @@ const handleClose = () => {
     persistent
     class="premium-dialog"
   >
-    <VCard class="detail-dialog-card overflow-hidden rounded-xl border-0 elevation-24">
-      <!-- Cabecera Premium Estilo Trazabilidad -->
+    <VCard class="detail-dialog-card overflow-hidden rounded-lg border-0 elevation-12">
+      <!-- Cabecera Compacta Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-lg">
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
           <div class="d-flex align-center">
-            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-              <VIcon icon="tabler-clipboard-check" color="primary" />
+            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
+              <VIcon icon="tabler-clipboard-check" color="primary" size="18" />
             </VAvatar>
             <div>
-              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Verificar Conteo</h2>
-              <span class="text-caption text-white opacity-75 letter-spacing-1 uppercase font-weight-bold" style="font-size: 0.65rem;">
-                Validación de inventario físico
+              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0">Verificar Conteo</h2>
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem;">
+                Validación física
               </span>
             </div>
           </div>
           <VSpacer />
-          <VBtn icon variant="tonal" color="white" size="small" @click="handleClose">
-            <VIcon>tabler-x</VIcon>
+          <VBtn icon variant="tonal" color="white" size="x-small" @click="handleClose">
+            <VIcon size="18">tabler-x</VIcon>
           </VBtn>
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
+      <VCardText class="pa-2 pa-sm-3 bg-light d-flex flex-column gap-2">
         <!-- Loader Cargando -->
-        <div v-if="!countRecord || isLoading" class="d-flex flex-column align-center justify-center py-12">
-          <VProgressCircular indeterminate color="primary" size="64" width="6" />
-          <p class="mt-4 text-medium-emphasis font-weight-medium uppercase letter-spacing-1 text-xs">Sincronizando stock...</p>
+        <div v-if="!countRecord || isLoading" class="d-flex flex-column align-center justify-center py-6">
+          <VProgressCircular indeterminate color="primary" size="32" width="3" />
+          <p class="mt-2 text-super-xs font-weight-medium uppercase opacity-60">Sincronizando...</p>
         </div>
 
-        <div v-else class="d-flex flex-column gap-4">
-          <VCard variant="flat" class="border pa-5 bg-white elevation-1 rounded-xl">
-            <div class="d-flex flex-column min-width-0">
-              <div class="d-flex align-center gap-2 mb-2">
-                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black uppercase">
+        <template v-else>
+          <!-- Info Producto + Comparación Unificados -->
+          <VCard variant="flat" class="border bg-white rounded-lg overflow-hidden">
+            <div class="pa-3 border-b bg-primary-lighten-5">
+              <div class="d-flex align-center gap-2 mb-1">
+                <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2" style="font-size: 0.55rem;">
                   ID: {{ countRecord.product?.id || countRecord.product_id }}
                 </VChip>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">Referencia</span>
+                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase truncate">
+                  {{ countRecord.product?.name }}
+                </h3>
               </div>
-              <h3 class="text-h5 font-weight-black text-high-emphasis leading-tight uppercase truncate-2-lines mb-2">
-                {{ countRecord.product?.name }}
-              </h3>
-              <div class="d-flex align-center gap-1 opacity-80">
-                <VIcon icon="tabler-user-edit" size="14" class="text-primary" />
-                <span class="text-super-xs font-weight-black text-medium-emphasis uppercase truncate letter-spacing-05">
-                  Contado por {{ countRecord.user?.username || 'Sistema' }}
-                </span>
-              </div>
-            </div>
-          </VCard>
-
-          <!-- Banner Comparación Estilo Trazabilidad -->
-          <VCard variant="flat" class="border overflow-hidden elevation-1 rounded-xl bg-white">
-            <div class="bg-primary-lighten-5 pa-3 border-b d-flex align-center">
-              <VIcon icon="tabler-arrows-left-right" size="20" class="text-primary me-2" />
-              <span class="text-subtitle-2 font-weight-black text-uppercase">Comparación de Stock</span>
             </div>
             
-            <div class="pa-4 stock-impact d-flex justify-space-around align-center">
+            <div class="pa-3 d-flex justify-space-around align-center stock-impact">
               <div class="text-center">
-                <span class="text-overline font-weight-black text-disabled leading-none mb-2 d-xl-block">Stock Sistema</span>
-                <p class="text-h5 font-weight-black mb-0 text-high-emphasis">{{ formatNumber(currentStock) }}</p>
-                <span class="text-super-xs font-weight-bold text-disabled">UNDS</span>
+                <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1" style="font-size: 0.55rem;">Sistema</span>
+                <p class="text-h6 font-weight-black mb-0 text-high-emphasis leading-none">{{ formatNumber(currentStock) }}</p>
               </div>
               
-              <VIcon icon="tabler-arrow-narrow-right" color="primary" size="32" class="opacity-50" />
+              <VIcon icon="tabler-arrow-narrow-right" color="primary" size="20" class="opacity-30" />
 
               <div class="text-center">
-                <span class="text-overline font-weight-black text-disabled leading-none mb-2 d-xl-block">Conteo Operador</span>
-                <p class="text-h5 font-weight-black mb-0 text-warning">{{ formatNumber(countRecord.system_quantity + countRecord.discrepancy) }}</p>
-                <span class="text-super-xs font-weight-bold text-disabled">UNDS</span>
+                <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1" style="font-size: 0.55rem;">Operador</span>
+                <p class="text-h6 font-weight-black mb-0 text-warning leading-none">{{ formatNumber(countRecord.system_quantity + countRecord.discrepancy) }}</p>
               </div>
             </div>
           </VCard>
 
-          <!-- Sección de Re-conteo -->
-          <VCard variant="flat" class="pa-6 rounded-xl border-dashed-2 bg-white text-center shadow-sm">
-            <div class="mb-4">
-              <div class="text-xs font-weight-black text-high-emphasis leading-none mb-1 uppercase letter-spacing-1">Re-conteo de Confirmación</div>
-              <div class="text-super-xs font-weight-bold text-disabled uppercase">Determine la cantidad física definitiva</div>
+          <!-- Sección de Re-conteo Ultra-Compacta -->
+          <VCard variant="flat" class="pa-3 rounded-lg border-dashed-1 bg-white text-center shadow-sm d-flex flex-column gap-2">
+            <div>
+              <div class="text-super-xs font-weight-black text-medium-emphasis uppercase mb-1" style="font-size: 0.55rem;">Re-conteo Definitivo</div>
+              <div class="huge-input-wrapper mx-auto">
+                <AppTextField
+                  v-model.number="newCountedQuantity"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  variant="plain"
+                  class="ultra-huge-input-text h-auto"
+                  autofocus
+                  hide-details
+                  @wheel="$event.target.blur()"
+                />
+              </div>
             </div>
 
-            <div class="huge-input-wrapper mx-auto mb-2">
-              <AppTextField
-                v-model.number="newCountedQuantity"
-                type="number"
-                min="0"
-                placeholder="0"
-                variant="plain"
-                class="ultra-huge-input-text"
-                autofocus
-                @wheel="$event.target.blur()"
-              />
-            </div>
-
-            <!-- Feedback de Diferencia -->
+            <!-- Feedback de Diferencia Minimalista -->
             <VExpandTransition>
-              <div v-if="difference !== null" class="mt-4 pt-4 border-t border-opacity-10">
-                <div 
-                  class="d-flex align-center justify-center gap-4 pa-4 rounded-xl elevation-1 transition-all bg-white border"
-                  :class="[`border-${differenceColor} border-opacity-30`]"
-                >
-                  <div class="icon-circle shadow-sm" :class="`bg-${differenceColor}`">
-                    <VIcon :icon="differenceIcon" size="20" color="white" />
-                  </div>
-                  <div class="text-start flex-grow-1">
-                    <div class="text-sm font-weight-black uppercase leading-tight" :class="`text-${differenceColor}`">
-                      {{ differenceText }}
-                    </div>
-                    <div class="text-super-xs font-weight-bold text-medium-emphasis uppercase letter-spacing-05">
-                      {{ difference === 0 ? 'Los niveles coinciden perfectamente' : 'Se requiere distribución de lotes' }}
-                    </div>
-                  </div>
-                </div>
+              <div v-if="difference !== null" class="mt-1 pt-2 border-t border-opacity-10 d-flex align-center justify-center gap-2">
+                <VIcon :icon="differenceIcon" size="14" :color="differenceColor" />
+                <span class="text-super-xs font-weight-black uppercase" :class="`text-${differenceColor}`">
+                  {{ differenceText }}
+                </span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase" style="font-size: 0.55rem;">
+                  ({{ difference === 0 ? 'Sin ajuste' : 'Requiere ajuste' }})
+                </span>
               </div>
             </VExpandTransition>
           </VCard>
@@ -228,37 +202,37 @@ const handleClose = () => {
             variant="tonal"
             density="compact"
             icon="tabler-alert-triangle"
-            class="mt-2 rounded-xl font-weight-black text-xs uppercase"
+            class="rounded-lg font-weight-black text-xs py-1"
           >
             {{ loadError }}
           </VAlert>
-        </div>
+        </template>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 bg-light">
-        <div class="d-flex flex-column gap-3 w-100">
+      <VCardActions class="pa-2 bg-light border-t">
+        <div class="d-flex flex-column gap-2 w-100">
           <VBtn
             :color="difference === 0 ? 'success' : 'primary'"
             variant="flat"
-            size="large"
+            size="small"
             block
-            height="48"
-            class="font-weight-black rounded-lg shadow-lg elevation-2"
+            height="36"
+            class="font-weight-black rounded-lg shadow-sm"
             :disabled="!canVerify"
             :loading="isProcessing"
             @click="handleVerify"
           >
-            <VIcon :icon="difference === 0 ? 'tabler-circle-check' : 'tabler-adjustments-horizontal'" class="me-2" />
-            {{ difference === 0 ? "CONFIRMAR SIN AJUSTE" : "IR A AJUSTE DE LOTES" }}
+            <VIcon :icon="difference === 0 ? 'tabler-circle-check' : 'tabler-adjustments-horizontal'" size="16" class="me-2" />
+            {{ difference === 0 ? "CONFIRMAR" : "IR A AJUSTE" }}
           </VBtn>
           <VBtn
             color="secondary"
             variant="tonal"
-            size="large"
+            size="small"
             block
-            height="44"
+            height="32"
             class="font-weight-black rounded-lg"
             @click="handleClose"
             :disabled="isProcessing"
@@ -289,13 +263,13 @@ const handleClose = () => {
 }
 
 .ultra-huge-input-text :deep(input) {
-  block-size: auto;
-  inline-size: 100%;
   border: none;
   background: transparent;
+  block-size: auto;
   color: rgb(var(--v-theme-primary)) !important;
-  font-size: 3rem !important;
-  font-weight: 900 !important;
+  font-size: 2rem !important;
+  font-weight: 950 !important;
+  inline-size: 100%;
   line-height: 1;
   outline: none;
   text-align: center !important;
@@ -318,12 +292,12 @@ const handleClose = () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  block-size: 40px;
-  inline-size: 40px;
+  block-size: 32px;
+  inline-size: 32px;
 }
 
-.border-dashed-2 {
-  border: 2px dashed rgba(var(--v-border-color), 15%) !important;
+.border-dashed-1 {
+  border: 1px dashed rgba(var(--v-border-color), 20%) !important;
 }
 
 .text-super-xs {

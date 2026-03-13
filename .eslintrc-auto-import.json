@@ -385,6 +385,7 @@
     "formatPrice": true,
     "formatMonth": true,
     "calculateValidStock": true,
-    "nextExpirationDate": true
+    "nextExpirationDate": true,
+    "formatNumber": true
   }
 }
