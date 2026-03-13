@@ -74,81 +74,114 @@ const handleClear = () => {
 
 <template>
   <VCard class="mb-6 overflow-visible" variant="flat" border>
-    <VCardText class="pa-4">
-      <VRow align="center" no-gutters class="gap-3">
-        <!-- Buscador Principal (Siempre visible) -->
-        <VCol cols="12" md="4" lg="5">
+    <VCardText class="pa-3">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="4" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Producto, C. Activo..."
+            placeholder="ID, Producto, C. Activo..."
             prepend-inner-icon="tabler-search"
             clearable
+            density="compact"
             persistent-placeholder
+            hide-details
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
 
-        <VCol class="d-flex gap-2 flex-wrap flex-md-nowrap align-center">
-          <!-- Botón de Filtros Avanzados -->
+        <!-- Búsqueda Estricta (Ahora afuera) -->
+        <VCol cols="auto" class="d-none d-sm-flex">
+          <VCheckbox
+            :model-value="props.isStrictSearch"
+            label="Estricta"
+            color="primary"
+            density="compact"
+            hide-details
+            @update:model-value="emit('update:isStrictSearch', $event)"
+          />
+        </VCol>
+
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
+            icon
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            :prepend-icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'"
+            size="38"
             @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
           >
-            Filtros
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
           </VBtn>
 
-          <VSpacer class="d-none d-md-block" />
-
-          <!-- Acciones de Exportación -->
+          <!-- Exportar (Menú Icono) -->
           <VMenu>
             <template #activator="{ props: menuProps }">
               <VBtn
-                color="success"
-                variant="flat"
-                prepend-icon="tabler-file-export"
                 v-bind="menuProps"
+                icon
+                color="success"
+                variant="tonal"
+                size="38"
               >
-                Exportar
+                <VIcon icon="tabler-file-export" />
+                <VTooltip activator="parent" location="top">Exportar Stock</VTooltip>
               </VBtn>
             </template>
-            <VList>
+            <VList density="compact">
               <VListItem @click="emit('export-excel', 'xlsx')">
                 <template #prepend>
-                  <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+                  <VIcon icon="tabler-file-type-csv" size="18" color="success" />
                 </template>
-                <VListItemTitle class="text-success">Excel</VListItemTitle>
+                <VListItemTitle>Excel</VListItemTitle>
               </VListItem>
               <VListItem @click="emit('export-pdf')">
                 <template #prepend>
-                  <VIcon icon="tabler-file-type-pdf" class="me-2" />
+                  <VIcon icon="tabler-file-type-pdf" size="18" color="error" />
                 </template>
                 <VListItemTitle>PDF</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
-        </VCol>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Limpiar Filtros (Solo Icono) -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="handleClear"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
 
-      <!-- Panel de Filtros Avanzados (Colapsable) -->
+      <!-- Panel de Filtros Colapsable -->
       <VExpandTransition>
         <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-4 border-opacity-10" />
+          <VDivider class="my-3 border-opacity-10" />
           
-          <VRow>
-            <!-- Grupos de Filtros -->
+          <VRow dense class="mb-2">
             <VCol cols="12" sm="6" md="3">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
                 :loading="props.loading"
-                label="Laboratorio"
-                placeholder="Seleccionar"
+                placeholder="Laboratorio"
                 item-title="name"
                 item-value="id"
                 clearable
                 density="compact"
+                hide-details
+                prepend-inner-icon="tabler-flask"
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
             </VCol>
@@ -156,11 +189,12 @@ const handleClear = () => {
             <VCol cols="12" sm="6" md="3">
               <VSelect
                 :model-value="props.stockStatusFilter"
-                label="Estado de Stock"
+                placeholder="Estado Stock"
                 :items="stockOptions"
-                placeholder="Todos"
                 clearable
                 density="compact"
+                hide-details
+                prepend-inner-icon="tabler-package"
                 @update:model-value="emit('update:stockStatusFilter', $event)"
               />
             </VCol>
@@ -168,11 +202,12 @@ const handleClear = () => {
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.startDate"
-                label="Desde"
-                placeholder="YYYY-MM-DD"
+                placeholder="Fecha Inicial"
                 clearable
                 density="compact"
+                hide-details
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:startDate', $event)"
               />
             </VCol>
@@ -180,23 +215,27 @@ const handleClear = () => {
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.endDate"
-                label="Hasta"
-                placeholder="YYYY-MM-DD"
+                placeholder="Fecha Final"
                 clearable
                 density="compact"
+                hide-details
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:endDate', $event)"
               />
             </VCol>
+          </VRow>
 
-            <!-- Filtros de Proyección de Stock -->
+          <VRow dense align="center">
             <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.stock"
-                label="Stock Nivel"
+                placeholder="Nivel Stock"
                 :items="stockOptionsList"
                 clearable
                 density="compact"
+                hide-details
+                prepend-inner-icon="tabler-chart-bar"
                 @update:model-value="emit('update:stock', $event)"
               />
             </VCol>
@@ -204,9 +243,11 @@ const handleClear = () => {
             <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.days"
-                label="Días Proyección"
+                placeholder="Días Proyección"
                 :items="diasVencimientos"
                 density="compact"
+                hide-details
+                prepend-inner-icon="tabler-clock"
                 @update:model-value="emit('update:days', $event)"
               />
             </VCol>
@@ -214,15 +255,16 @@ const handleClear = () => {
             <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.tipoFiltracion"
-                label="Cálculo Por"
+                placeholder="Cálculo Por"
                 :items="tipoFiltracionOpcion"
                 density="compact"
+                hide-details
+                prepend-inner-icon="tabler-calculator"
                 @update:model-value="emit('update:tipoFiltracion', $event)"
               />
             </VCol>
 
-            <!-- Checkboxes de Configuración -->
-            <VCol cols="12" md="6" class="d-flex flex-wrap align-center gap-x-4">
+            <VCol cols="12" md="6" class="d-flex flex-wrap align-center gap-x-3 ps-4">
               <VCheckbox
                 :model-value="props.expProd"
                 label="Próximos a Expirar"
@@ -239,26 +281,6 @@ const handleClear = () => {
                 hide-details
                 @update:model-value="emit('update:isColombian', $event)"
               />
-              <VCheckbox
-                :model-value="props.isStrictSearch"
-                label="Búsqueda Estricta"
-                color="primary"
-                density="compact"
-                hide-details
-                @update:model-value="emit('update:isStrictSearch', $event)"
-              />
-            </VCol>
-
-            <VCol cols="12" class="d-flex justify-end gap-2 mt-2">
-              <VBtn 
-                color="secondary" 
-                variant="outlined" 
-                size="small" 
-                prepend-icon="tabler-eraser"
-                @click="handleClear"
-              >
-                Limpiar
-              </VBtn>
             </VCol>
           </VRow>
         </div>

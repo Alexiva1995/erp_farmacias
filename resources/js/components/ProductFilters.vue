@@ -212,49 +212,69 @@ const hasActiveAdvancedFilters = computed(() => {
 
 <template>
   <VCard :class="{ 'mb-6': !flat, 'elevation-0': flat }">
-    <VCardText class="pa-4">
-      <!-- Fila Principal: Búsqueda y Botones de Acción -->
-      <VRow align="center" no-gutters class="gap-3">
-        <!-- Buscador -->
-        <VCol cols="12" md="4" lg="5">
+    <VCardText class="pa-3">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="4" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Producto, C. Activo..."
+            placeholder="ID, Producto, C. Activo..."
             prepend-inner-icon="tabler-search"
             clearable
+            density="compact"
             persistent-placeholder
+            hide-details
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
 
-        <VCol class="d-flex gap-2 flex-wrap flex-md-nowrap align-center">
+        <!-- Búsqueda Estricta (Ahora afuera) -->
+        <VCol cols="auto" class="d-none d-sm-flex">
+          <VCheckbox
+            :model-value="props.isStrictSearch"
+            label="Estricta"
+            color="primary"
+            density="compact"
+            hide-details
+            @update:model-value="emit('update:isStrictSearch', $event)"
+          />
+        </VCol>
+
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
           <!-- Toggle Filtros -->
           <VBtn
+            icon
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            :prepend-icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'"
+            size="38"
             @click="toggleAdvancedFilters"
           >
-            Filtros
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             <VBadge
               v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
               color="error"
               dot
-              offset-x="10"
-              offset-y="-5"
+              offset-x="3"
+              offset-y="-3"
             />
           </VBtn>
 
-          <!-- Ordenar Por (Ahora en la principal) -->
+          <!-- Ordenar Por (Solo Icono) -->
           <VMenu>
             <template #activator="{ props: menuProps }">
               <VBtn 
                 v-bind="menuProps" 
+                icon
                 variant="tonal" 
                 color="secondary"
-                :prepend-icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'"
+                size="38"
               >
-                {{ selectedSort ? getSelectedSortTitle() : 'Ordenar' }}
+                <VIcon :icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'" />
+                <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
               </VBtn>
             </template>
             <VList density="compact">
@@ -273,115 +293,125 @@ const hasActiveAdvancedFilters = computed(() => {
             </VList>
           </VMenu>
 
-          <VSpacer class="d-none d-md-block" />
-
-          <!-- Exportar (Menú unificado) -->
+          <!-- Exportar (Menú Icono) -->
           <VMenu v-if="mode === 'products'">
             <template #activator="{ props: menuProps }">
               <VBtn
-                color="success"
-                variant="flat"
-                prepend-icon="tabler-file-export"
                 v-bind="menuProps"
+                icon
+                color="success"
+                variant="tonal"
+                size="38"
               >
-                Exportar
+                <VIcon icon="tabler-file-export" />
+                <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
               </VBtn>
             </template>
-            <VList>
+            <VList density="compact">
               <VListItem @click="emit('export', 'xlsx')">
                 <template #prepend>
-                  <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+                  <VIcon icon="tabler-file-type-csv" size="18" color="success" />
                 </template>
-                <VListItemTitle class="text-success">Excel</VListItemTitle>
+                <VListItemTitle>Excel</VListItemTitle>
               </VListItem>
               <VListItem @click="emit('export', 'pdf')">
                 <template #prepend>
-                  <VIcon icon="tabler-file-type-pdf" class="me-2" />
+                  <VIcon icon="tabler-file-type-pdf" size="18" color="error" />
                 </template>
                 <VListItemTitle>PDF</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
 
-          <!-- Añadir Producto -->
+          <!-- Añadir Producto (Solo Icono) -->
           <template v-if="mode === 'products' || mode === 'minimal'">
             <VBtn
               v-if="props.showAddButton"
+              icon
               color="primary"
               variant="flat"
-              prepend-icon="tabler-plus"
+              size="38"
               @click="emit('add-product')"
             >
-              {{ props.addButtonText }}
+              <VIcon icon="tabler-plus" />
+              <VTooltip activator="parent" location="top">{{ props.addButtonText }}</VTooltip>
             </VBtn>
           </template>
-        </VCol>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Limpiar Filtros (Solo Icono) -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="handleClear"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
 
-      <!-- Panel de Filtros Colapsable -->
+      <!-- Panel de Filtros Colapsable (5 en una fila) -->
       <VExpandTransition>
         <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-4 border-opacity-10" />
+          <VDivider class="my-3 border-opacity-10" />
           
-          <VRow>
-            <!-- Primera Fila: Selectores Principales -->
-            <VCol cols="12" sm="6" md="4">
+          <VRow dense>
+            <VCol cols="12" sm="6" md="2">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
                 :loading="props.loading"
-                label="Laboratorio"
-                placeholder="Seleccionar Laboratorio"
+                placeholder="Laboratorio"
                 item-title="name"
                 item-value="id"
                 clearable
                 density="compact"
-                hide-details="auto"
+                hide-details
                 prepend-inner-icon="tabler-flask"
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="6" md="2">
               <VAutocomplete
                 :model-value="props.selectedOrigin"
                 :items="props.origins"
                 :loading="props.loading"
-                label="Origen"
-                placeholder="Seleccionar Origen"
+                placeholder="Origen"
                 item-title="name"
                 item-value="id"
                 clearable
                 density="compact"
-                hide-details="auto"
+                hide-details
                 prepend-inner-icon="tabler-world"
                 @update:model-value="emit('update:selectedOrigin', $event)"
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.stockStatusFilter"
-                label="Estado Stock"
+                placeholder="Estado Stock"
                 :items="stockOptions"
-                placeholder="Todos"
                 clearable
                 density="compact"
-                hide-details="auto"
+                hide-details
                 prepend-inner-icon="tabler-package"
                 @update:model-value="emit('update:stockStatusFilter', $event)"
               />
             </VCol>
 
-            <!-- Segunda Fila: Fechas y Resto -->
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.startDate"
-                label="Desde"
-                placeholder="Seleccionar Fecha"
+                placeholder="Fecha Inicial"
                 clearable
                 density="compact"
-                hide-details="auto"
+                hide-details
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:startDate', $event)"
@@ -391,40 +421,14 @@ const hasActiveAdvancedFilters = computed(() => {
             <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.endDate"
-                label="Hasta"
-                placeholder="Seleccionar Fecha"
+                placeholder="Fecha Final"
                 clearable
                 density="compact"
-                hide-details="auto"
+                hide-details
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:endDate', $event)"
               />
-            </VCol>
-
-            <VCol cols="12" sm="6" md="4" class="d-flex align-center">
-              <VCheckbox
-                :model-value="props.isStrictSearch"
-                label="Búsqueda Estricta"
-                color="primary"
-                density="compact"
-                hide-details
-                @update:model-value="emit('update:isStrictSearch', $event)"
-              />
-            </VCol>
-
-            <!-- Botones de Acción Internos -->
-            <VCol cols="12" sm="6" md="2" class="d-flex align-center justify-end">
-              <VBtn 
-                color="secondary" 
-                variant="outlined" 
-                size="small" 
-                prepend-icon="tabler-eraser"
-                block
-                @click="handleClear"
-              >
-                Limpiar
-              </VBtn>
             </VCol>
           </VRow>
         </div>
