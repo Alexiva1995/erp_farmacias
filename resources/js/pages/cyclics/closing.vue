@@ -242,42 +242,38 @@ const handleDeleteItem = async (item) => {
 <template>
   <div>
     <!-- Resumen de Ciclo Superior -->
-    <VCard v-if="hasActiveCycle && activeCycle" class="mb-4 border-dashed border-primary">
-      <VCardText class="pa-3 d-flex align-center flex-wrap gap-x-6 gap-y-2">
-        <div class="d-flex align-center gap-2">
-          <VAvatar color="primary" variant="tonal" size="32">
-            <VIcon icon="tabler-refresh-dot" size="18" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-xs text-disabled text-uppercase font-weight-black">Ciclo Activo</span>
-            <span class="text-sm font-weight-bold">Desde: {{ formatDate(activeCycle.start_date) }}</span>
+    <VCard v-if="hasActiveCycle && activeCycle" class="mb-4 border-dashed border-primary overflow-hidden">
+      <VCardText class="pa-3">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+          <!-- Info Ciclo -->
+          <div class="d-flex align-center gap-2">
+            <VAvatar color="primary" variant="tonal" size="32">
+              <VIcon icon="tabler-refresh-dot" size="18" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-xs text-disabled text-uppercase font-weight-black line-height-1">Ciclo Activo</span>
+              <span class="text-sm font-weight-bold">Desde: {{ formatDate(activeCycle.start_date) }}</span>
+            </div>
           </div>
-        </div>
 
-        <VDivider vertical class="d-none d-md-block" />
-
-        <div class="d-flex align-center gap-4 flex-grow-1 justify-space-between">
-          <div class="d-flex align-center gap-4">
-            <div class="d-flex flex-column">
-              <span class="text-xs text-disabled text-uppercase font-weight-black">Sobrante</span>
-              <span class="text-sm font-weight-bold text-success">{{ formatPrice(globalTotals.surplus) }}</span>
-            </div>
-            <div class="d-flex flex-column">
-              <span class="text-xs text-disabled text-uppercase font-weight-black">Faltante</span>
-              <span class="text-sm font-weight-bold text-error">{{ formatPrice(globalTotals.shortage) }}</span>
-            </div>
-            <div class="d-flex flex-column">
-              <span class="text-xs text-disabled text-uppercase font-weight-black">Balance Neto</span>
-              <span 
-                class="text-sm font-weight-black"
-                :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
-              >
-                {{ formatPrice(globalTotals.netTotal) }}
-              </span>
-            </div>
+          <!-- Botón Generar Cierre (Móvil/Desktop) -->
+          <div class="d-flex d-md-none">
+            <VBtn
+              color="success"
+              variant="elevated"
+              icon
+              size="small"
+              :disabled="loading || isClosing"
+              :loading="isClosing"
+              @click="handleCashClose"
+            >
+              <VIcon icon="tabler-lock-check" size="20" />
+              <VTooltip activator="parent">GENERAR CIERRE</VTooltip>
+            </VBtn>
           </div>
 
           <VBtn
+            class="d-none d-md-flex"
             color="success"
             variant="elevated"
             :disabled="loading || isClosing"
@@ -287,6 +283,31 @@ const handleDeleteItem = async (item) => {
           >
             GENERAR CIERRE
           </VBtn>
+        </div>
+
+        <VDivider class="my-3 border-opacity-10" />
+
+        <!-- Totales -->
+        <div class="d-flex align-center justify-space-between flex-wrap gap-x-6 gap-y-2">
+          <div class="d-flex flex-column">
+            <span class="text-super-xs text-disabled text-uppercase font-weight-black">Sobrante</span>
+            <span class="text-sm font-weight-bold text-success">{{ formatPrice(globalTotals.surplus) }}</span>
+          </div>
+          <VDivider vertical class="mx-1 d-none d-sm-block" />
+          <div class="d-flex flex-column">
+            <span class="text-super-xs text-disabled text-uppercase font-weight-black">Faltante</span>
+            <span class="text-sm font-weight-bold text-error">{{ formatPrice(globalTotals.shortage) }}</span>
+          </div>
+          <VDivider vertical class="mx-1 d-none d-sm-block" />
+          <div class="d-flex flex-column flex-grow-1 text-right text-sm-left">
+            <span class="text-super-xs text-disabled text-uppercase font-weight-black">Balance Neto</span>
+            <span 
+              class="text-sm font-weight-black"
+              :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
+            >
+              {{ formatPrice(globalTotals.netTotal) }}
+            </span>
+          </div>
         </div>
       </VCardText>
     </VCard>
