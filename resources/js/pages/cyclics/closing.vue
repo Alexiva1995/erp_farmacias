@@ -429,4 +429,13 @@ const handleDeleteItem = async (item) => {
 .gap-x-6 {
   column-gap: 24px !important;
 }
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.line-height-1 {
+  line-height: 1 !important;
+}
 </style>
