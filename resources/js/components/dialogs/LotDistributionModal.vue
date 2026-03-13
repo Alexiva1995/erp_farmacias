@@ -7,7 +7,8 @@ import { computed, ref, watch } from "vue";
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   productName: { type: String, default: "" },
-  productPhoto: { type: String, default: "" }, // Nueva prop para el avatar
+  productId: { type: [String, Number], default: "" },
+  laboratory: { type: String, default: "" },
   lots: { type: Array, default: () => [] },
   targetQuantity: { type: Number, required: true },
   mode: { type: String, default: "adjustment", validator: (v) => ["return", "adjustment"].includes(v) },
@@ -259,24 +260,29 @@ const handleScan = (code) => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-2 pa-sm-3 bg-light d-flex flex-column gap-2">
+      <VCardText class="pa-2 pa-sm-3 bg-light d-flex flex-column gap-2 overflow-hidden" style="block-size: calc(100vh - 140px); overflow-y: hidden !important;">
         <!-- Perfil del Producto Premium -->
         <VCard variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 transition-all mb-3 border-l-primary">
           <div class="d-flex align-center justify-space-between gap-3">
             <div class="d-flex align-center gap-3 min-width-0">
-              <VAvatar size="48" variant="tonal" color="primary" rounded="lg" class="border shadow-sm">
-                <VIcon icon="tabler-pill" size="24" />
+              <VAvatar size="44" variant="tonal" color="primary" rounded="lg" class="border shadow-sm">
+                <VIcon icon="tabler-pill" size="22" />
               </VAvatar>
               <div class="min-width-0">
-                <div class="d-flex align-center gap-2 mb-1">
+                <div class="d-flex align-center gap-2 mb-0">
                   <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2 shadow-sm">
                     {{ props.mode === 'adjustment' ? 'MODO CÍCLICO' : 'MODO RETORNO' }}
                   </VChip>
-                  <div class="header-indicator primary"></div>
+                  <span v-if="props.productId" class="text-super-xs font-weight-black text-primary bg-primary-subtle px-1 rounded">
+                    ID: {{ props.productId }}
+                  </span>
                 </div>
-                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-0 truncate">
+                <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-0 truncate">
                   {{ props.productName }}
                 </h3>
+                <div v-if="props.laboratory" class="text-super-xs font-weight-bold text-disabled uppercase truncate">
+                  LAB: {{ props.laboratory }}
+                </div>
               </div>
             </div>
             <VBtn
@@ -303,7 +309,7 @@ const handleScan = (code) => {
         </VCard>        <!-- Resumen de Stock Premium Compacto -->
         <VRow dense class="mb-2 flex-shrink-0">
           <VCol cols="4">
-            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1 border-l-primary">
+            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1 border-l-primary h-100">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">OBJETIVO</span>
               <div class="text-h6 font-weight-950 text-primary leading-none">
                 {{ formatNumber(objective) }}
@@ -345,7 +351,7 @@ const handleScan = (code) => {
         </div>
 
         <!-- Tabla Escritorio con Scroll -->
-        <div class="d-none d-md-block flex-grow-1 overflow-y-auto pr-1" style="min-height: 0;">
+        <div class="d-none d-md-block flex-grow-1 overflow-y-auto pr-1" style="min-block-size: 0;">
           <VDataTable
             :headers="[
               { title: 'Información del Lote', key: 'info', sortable: false },
@@ -363,9 +369,8 @@ const handleScan = (code) => {
                 <VCol cols="4">
                   <AppTextField
                     v-model="item.lot_number"
-                    label="Lote"
                     density="comfortable"
-                    placeholder="Nº Lote"
+                    placeholder="Lote"
                     class="premium-textfield shadow-sm"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                   />
@@ -373,9 +378,9 @@ const handleScan = (code) => {
                 <VCol cols="4">
                   <AppTextField
                     v-model="item.expiration_date"
-                    label="Vencimiento"
                     density="comfortable"
                     type="date"
+                    placeholder="Vencimiento"
                     class="premium-textfield shadow-sm"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
                   />
@@ -385,8 +390,7 @@ const handleScan = (code) => {
                     v-model="item.location"
                     label="Ubicación"
                     density="comfortable"
-                    placeholder="Seleccionar..."
-                    variant="outlined"
+                    placeholder="Sel..."
                     class="premium-textfield shadow-sm"
                     :items="props.locations"
                     item-title="name"
@@ -445,7 +449,7 @@ const handleScan = (code) => {
         </div>
 
         <!-- Vista Móvil de Tarjetas con Scroll -->
-        <div class="d-block d-md-none flex-grow-1 overflow-y-auto pr-1" style="min-height: 0;">
+        <div class="d-block d-md-none flex-grow-1 overflow-y-auto pr-1" style="min-block-size: 0;">
           <div class="d-flex flex-column gap-2" style="padding-block-end: 80px;">
             <VCard
               v-for="item in distributedLots"
@@ -478,8 +482,8 @@ const handleScan = (code) => {
                 <VCol cols="12">
                   <AppTextField
                     v-model="item.lot_number"
-                    label="Nº Lote"
                     density="comfortable"
+                    placeholder="Nº Lote"
                     class="premium-textfield shadow-sm"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                   />
@@ -487,9 +491,9 @@ const handleScan = (code) => {
                 <VCol cols="6">
                   <AppTextField
                     v-model="item.expiration_date"
-                    label="Vencimiento"
                     density="comfortable"
                     type="date"
+                    placeholder="Vencimiento"
                     class="premium-textfield shadow-sm"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
                   />
@@ -500,7 +504,6 @@ const handleScan = (code) => {
                     label="Ubicación"
                     density="comfortable"
                     placeholder="Ubicación"
-                    variant="outlined"
                     class="premium-textfield shadow-sm"
                     :items="props.locations"
                     item-title="name"
@@ -532,7 +535,8 @@ const handleScan = (code) => {
             No hay lotes para mostrar
           </div>
         </div>
-      </VCardText>
+      </div>
+    </VCardText>
 
       <VDivider />
 

@@ -274,26 +274,6 @@ const handleSave = async () => {
               @keyup.enter="handleBarcodeEnter"
             >
               <template #append-inner>
-                <div class="d-flex align-center gap-2 px-1">
-                  <VBtn
-                    v-tooltip="'Llenar código del producto'"
-                    icon
-                    variant="tonal"
-                    size="small"
-                    color="secondary"
-                    class="rounded-lg"
-                    @click="fillBarcode"
-                  >
-                    <VIcon icon="tabler-key" size="18" />
-                  </VBtn>
-                  
-                  <VBtn
-                    v-tooltip="'Escanear con cámara'"
-                    icon
-                    variant="elevated"
-                    size="small"
-                    color="primary"
-                    class="rounded-lg shadow-sm"
                     @click="isScannerVisible = true"
                   >
                     <VIcon icon="tabler-camera" size="18" />
@@ -339,32 +319,35 @@ const handleSave = async () => {
       <VDivider />
 
       <VCardActions class="pa-4 bg-light border-t">
-        <div class="d-flex flex-column gap-3 w-100">
-          <VBtn
-            color="primary"
-            variant="flat"
-            size="large"
-            block
-            height="50"
-            class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-            :disabled="!canSave"
-            @click="handleSave"
-          >
-            <VIcon icon="tabler-cloud-upload" class="me-2" />
-            Guardar Conteo
-          </VBtn>
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            size="large"
-            block
-            height="44"
-            class="font-weight-black rounded-lg text-button uppercase"
-            @click="handleCancel"
-          >
-            Cancelar
-          </VBtn>
-        </div>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="handleCancel"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :disabled="!canSave"
+              @click="handleSave"
+            >
+              Guardar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
 
