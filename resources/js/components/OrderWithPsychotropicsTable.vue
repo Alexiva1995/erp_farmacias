@@ -170,7 +170,8 @@ const handleMobilePageChange = (newPage) => {
                 size="small"
                 label
                 variant="flat"
-                class="font-weight-black px-3"
+              >
+                {{ item.quantity > 0 ? `+${item.quantity}` : item.quantity }}
               </VChip>
             </div>
 
