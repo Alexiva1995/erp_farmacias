@@ -101,9 +101,23 @@ class GeneratePayroll2025 extends Command
                             $concept = SalaryConcept::where('name', $c['name'])->first();
                             if (!$concept) continue;
 
-                            $usd = UsersSalaryDetails::firstOrCreate(
+                            // El monto en users_salary_details debe ser el monto base (mensual para el salario)
+                            $usdAmount = 0;
+                            if ($c['name'] === 'Salario Básico Mensual') {
+                                $usdAmount = $baseSalaryUsd;
+                            } elseif ($c['name'] === 'Bono de Alimentación') {
+                                $usdAmount = 40.00;
+                            } elseif (strpos($c['name'], 'IVSS') !== false) {
+                                $usdAmount = round($baseSalaryUsd * 0.04, 2);
+                            } elseif (strpos($c['name'], 'RPE') !== false) {
+                                $usdAmount = round($baseSalaryUsd * 0.005, 2);
+                            } elseif (strpos($c['name'], 'FAOV') !== false) {
+                                $usdAmount = round($baseSalaryUsd * 0.01, 2);
+                            }
+
+                            $usd = UsersSalaryDetails::updateOrCreate(
                                 ['user_id' => $employee->user_id, 'salary_concept_id' => $concept->id],
-                                ['amount' => 0]
+                                ['amount' => $usdAmount]
                             );
 
                             PayslipDetails::create([
