@@ -275,4 +275,3 @@ function formatearFechaCompleta(fechaInput) {
   letter-spacing: 1px !important;
 }
 </style>
-</template>
