@@ -3,7 +3,7 @@ import axiosInstance from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -201,10 +201,6 @@ const getBestDiscountForProduct = (product) => {
   const prescriptionDiscount = parseFloat(
     props.prescriptionDiscountPercentage || 0,
   );
-
-  // Need to consider how prescription discount interacts. Assuming it's part of the global discount strategy passed in,
-  // but if passed separately, we should maximize.
-  // Generally, globalDiscountPercentage prop in quotation.vue seems to aggregate the "selected" discount.
 
   return Math.max(itemDiscount, globalDiscount, prescriptionDiscount);
 };
@@ -408,25 +404,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <VCard min-height="280" class="d-flex flex-column">
+  <VCard min-height="280" class="d-flex flex-column rounded-xl elevation-2">
     <VCardText class="d-flex flex-column pb-0 mb-4">
       <VRow>
         <VCol cols="12">
-          <h3>
+          <h3 class="d-flex align-center gap-2 text-h5 font-weight-black text-primary">
+            <VIcon icon="tabler-receipt" size="28" />
             Cotización #{{ lastNumber }}
             <template v-if="props.selectedClient && props.selectedClient.id">
-              <span class="text-medium-emphasis font-weight-normal ms-2">
+              <span class="text-medium-emphasis font-weight-normal text-subtitle-1 ms-2">
                 — {{ props.selectedClient.name }} {{ props.selectedClient.last_name }}
-                ({{ props.selectedClient.identification_type }}{{ props.selectedClient.identification }})
               </span>
             </template>
           </h3>
         </VCol>
-        <VCol cols="12" sm="12" md="12">
+        <VCol cols="12">
           <div class="d-flex align-center gap-4 flex-wrap">
             <AppTextField
               :model-value="props.searchQuery"
-              placeholder="Código de Barra"
+              placeholder="Escanear Código de Barra..."
+              prepend-inner-icon="tabler-barcode"
               clearable
               @update:model-value="emit('update:searchQuery', $event)"
               class="flex-grow-1"
@@ -434,47 +431,47 @@ onMounted(() => {
 
             <VChip
               label
-              :color="chipColor"
-              variant="tonal"
-              density="default"
-              size="small"
-              draggable="false"
-              class="ms-auto"
+              color="primary"
+              variant="flat"
+              class="font-weight-black px-4"
+              size="large"
             >
-              <span class="font-weight-medium">{{
-                totalSelectedQuantity
-              }}</span>
+              <VIcon start icon="tabler-shopping-cart" size="18" />
+              {{ totalSelectedQuantity }}
             </VChip>
           </div>
         </VCol>
       </VRow>
       <VRow v-if="!props.selectedClient || !props.selectedClient.id">
-        <VCol cols="12" sm="12" md="12">
-          <div class="d-flex align-center gap-4 flex-wrap">
+        <VCol cols="12">
+          <div class="d-flex align-center gap-2 flex-wrap">
             <AppTextField
               :model-value="props.clientIdentification"
-              placeholder="Cédula del Cliente"
+              placeholder="Cédula del Cliente..."
+              prepend-inner-icon="tabler-id"
               clearable
+              hide-details
               @update:model-value="emit('update:clientIdentification', $event)"
               class="flex-grow-1"
             />
 
-            <IconBtn
-              size="small"
-              rounded
+            <VBtn
               variant="tonal"
-              color="default"
+              color="primary"
+              size="40"
+              icon
+              class="rounded-lg"
               @click="emit('search-client')"
             >
-              <VIcon icon="tabler-search" />
-            </IconBtn>
+              <VIcon icon="tabler-search" size="20" />
+            </VBtn>
           </div>
         </VCol>
       </VRow>
     </VCardText>
 
     <VCardText class="pb-2 pt-0">
-      <div class="d-flex align-center gap-2 flex-wrap">
+      <div class="d-flex align-center gap-2 flex-wrap bg-primary-lighten-5 pa-2 rounded-lg">
         <VSelect
           :model-value="props.selectedDiscountType"
           :items="discountOptions"
@@ -484,6 +481,7 @@ onMounted(() => {
           style="inline-size: 140px;"
           placeholder="Descuento"
           clearable
+          class="bg-white rounded-lg"
           @update:model-value="emit('update:selectedDiscountType', $event)"
         />
         <VSelect
@@ -498,6 +496,7 @@ onMounted(() => {
           item-title="title"
           item-value="value"
           clearable
+          class="bg-white rounded-lg"
         />
         <VSelect
           v-if="props.selectedDiscountType === 'Medico'"
@@ -511,6 +510,7 @@ onMounted(() => {
           item-title="title"
           item-value="value"
           clearable
+          class="bg-white rounded-lg"
         />
         <VFileInput
           v-if="props.selectedDiscountType === 'Recipe'"
@@ -524,177 +524,197 @@ onMounted(() => {
           prepend-icon=""
           append-inner-icon="tabler-upload"
           clearable
+          class="bg-white rounded-lg"
         />
-        <span
-          v-if="
-            props.selectedDiscountType === 'Recipe' &&
-            props.prescriptionDiscountPercentage > 0
-          "
-          class="text-body-2 text-success font-weight-bold"
-          style="white-space: nowrap;"
+        <VChip
+          v-if="props.selectedDiscountType === 'Recipe' && props.prescriptionDiscountPercentage > 0"
+          color="success"
+          variant="flat"
+          size="small"
+          class="font-weight-black"
         >
-          {{ props.prescriptionDiscountPercentage }}% Descuento
-        </span>
+          {{ props.prescriptionDiscountPercentage }}% OFF
+        </VChip>
       </div>
     </VCardText>
 
     <VCardText class="d-flex flex-column pb-0 flex-grow-1">
-      <div
-        class="scrollable-list-container"
-        :class="{ 'show-scroll': props.quotationProducts.length > 2 }"
-      >
-        <VList class="card-list" density="compact" nav>
-          <VListItem v-if="props.quotationProducts.length === 0">
-            <VListItemTitle class="text-center text-medium-emphasis"
-              >No hay productos en la cotización.</VListItemTitle
-            >
-          </VListItem>
-
-          <VListItem
-            v-for="product in props.quotationProducts"
-            :key="product.id"
-            class="rounded-0"
-          >
-            <template #prepend>
-              <div class="d-flex align-center" style="inline-size: 60px;">
-                <VTextField
-                  v-model.number="product.selectedQuantity"
-                  type="number"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  single-line
-                  class="cost-input-field text-center"
-                  min="1"
-                  :max="product.availableQuantity"
-                >
-                </VTextField>
-              </div>
-            </template>
-
-            <VListItemTitle class="font-weight-medium me-4 mx-2">
-              <div class="d-flex align-center flex-wrap gap-2">
-                <span>
-                  {{ product.title }}
-                  <template
-                    v-if="product.laboratory && product.laboratory !== 'N/A'"
-                  >
-                    - {{ product.laboratory }}
-                  </template>
-                </span>
-                <VChip
-                  v-if="product.discount_percentage > 0"
-                  color="error"
-                  size="x-small"
-                  variant="flat"
-                  class="font-weight-bold"
-                >
-                  {{ parseFloat(product.discount_percentage) }}%
-                  {{
-                    product.discount_type ? `(${product.discount_type})` : ""
-                  }}
-                </VChip>
-                <VChip
-                  v-if="
-                    getBestDiscountForProduct(product) > 0 &&
-                    Math.abs(
-                      getBestDiscountForProduct(product) -
-                        parseFloat(product.discount_percentage || 0),
-                    ) > 0.01
-                  "
-                  color="warning"
-                  size="x-small"
-                  variant="tonal"
-                >
-                  Aplicado: {{ getBestDiscountForProduct(product) }}%
-                </VChip>
-              </div>
+      <div class="scrollable-list-container flex-grow-1">
+        <VList class="card-list bg-transparent" density="compact" nav>
+          <VListItem v-if="props.quotationProducts.length === 0" class="text-center py-8">
+            <VIcon icon="tabler-shopping-cart-off" size="48" color="medium-emphasis" class="mb-2" />
+            <VListItemTitle class="text-medium-emphasis font-weight-medium">
+              No hay productos en la cotización.
             </VListItemTitle>
-            <VListItemSubtitle class="mx-2">
-              <template
-                v-if="
-                  product.active_ingredient &&
-                  product.active_ingredient !== 'N/A'
-                "
-              >
-                {{ product.active_ingredient }}
-              </template>
-            </VListItemSubtitle>
-
-            <template #append>
-              <div class="d-flex align-center">
-                <span class="text-body-1 me-2">{{
-                  formatCurrency(
-                    getProductPrice(product, props.selectedDisplayCurrency) *
-                      product.selectedQuantity,
-                    props.selectedDisplayCurrency,
-                  )
-                }}</span>
-                <VBtn
-                  icon="tabler-trash"
-                  variant="text"
-                  color="error"
-                  @click="removeQuotationProduct(product.id)"
-                />
-              </div>
-            </template>
           </VListItem>
+
+          <TransitionGroup name="list-transition">
+            <VListItem
+              v-for="product in props.quotationProducts"
+              :key="product.id"
+              class="rounded-lg mb-1 product-item-transition border-opacity-10 bg-white"
+            >
+              <template #prepend>
+                <div class="d-flex align-center" style="inline-size: 65px;">
+                  <VTextField
+                    v-model.number="product.selectedQuantity"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    single-line
+                    class="cost-input-field text-center font-weight-black"
+                    min="1"
+                    :max="product.availableQuantity"
+                  />
+                </div>
+              </template>
+
+              <VListItemTitle class="font-weight-medium mx-3">
+                <div class="d-flex align-center flex-wrap gap-2">
+                  <span class="text-subtitle-2 font-weight-950 text-high-emphasis">
+                    {{ product.title }}
+                  </span>
+                  <VChip
+                    v-if="product.discount_percentage > 0"
+                    color="error"
+                    size="x-small"
+                    variant="flat"
+                    class="font-weight-black"
+                  >
+                    {{ parseFloat(product.discount_percentage) }}%
+                    {{ product.discount_type ? `(${product.discount_type})` : "" }}
+                  </VChip>
+                </div>
+                <div class="text-super-xs text-medium-emphasis font-weight-bold">
+                  {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
+                </div>
+              </VListItemTitle>
+
+              <template #append>
+                <div class="d-flex align-center">
+                  <div class="d-flex flex-column align-end me-2">
+                    <span class="text-subtitle-2 font-weight-black text-primary">
+                      {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity, props.selectedDisplayCurrency) }}
+                    </span>
+                    <span class="text-super-xs text-medium-emphasis">
+                      {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }} c/u
+                    </span>
+                  </div>
+                  <VBtn
+                    icon="tabler-trash-x"
+                    size="32"
+                    color="error"
+                    variant="tonal"
+                    class="rounded-lg"
+                    @click="removeQuotationProduct(product.id)"
+                  />
+                </div>
+              </template>
+            </VListItem>
+          </TransitionGroup>
         </VList>
       </div>
     </VCardText>
 
-    <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
-      <VTooltip text="Cancelar" location="top">
-        <template #activator="{ props }">
-          <IconBtn v-bind="props" class="text-secondary" @click="remove()">
-            <VIcon icon="tabler-trash" />
-          </IconBtn>
-        </template>
-      </VTooltip>
-      <VTooltip text="Imprimir" location="top">
-        <template #activator="{ props }">
-          <IconBtn
-            v-bind="props"
-            class="text-primary"
-            @click="handlePrintButtonClick"
-          >
-            <VIcon icon="tabler-printer" />
-          </IconBtn>
-        </template>
-      </VTooltip>
-      <VTooltip text="Culminar" location="top">
-        <template #activator="{ props }">
-          <IconBtn
-            v-bind="props"
-            class="text-default"
+    <VCardActions class="pa-4 bg-primary-lighten-5 border-t border-opacity-10">
+      <div class="d-flex justify-space-between w-100 gap-2">
+        <VTooltip text="Limpiar Cotización" location="top">
+          <template #activator="{ props: tProps }">
+            <VBtn v-bind="tProps" icon variant="tonal" color="error" class="rounded-lg" @click="remove">
+              <VIcon icon="tabler-trash" />
+            </VBtn>
+          </template>
+        </VTooltip>
+
+        <div class="d-flex gap-2">
+          <VTooltip text="Imprimir Ticket" location="top">
+            <template #activator="{ props: tProps }">
+              <VBtn v-bind="tProps" icon variant="tonal" color="primary" class="rounded-lg" @click="handlePrintButtonClick">
+                <VIcon icon="tabler-printer" />
+              </VBtn>
+            </template>
+          </VTooltip>
+          
+          <VTooltip text="Copiar Mensaje" location="top">
+            <template #activator="{ props: tProps }">
+              <VBtn v-bind="tProps" icon variant="tonal" color="info" class="rounded-lg" @click="handleCopyWhatsappMessage">
+                <VIcon icon="tabler-copy" />
+              </VBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Enviar WhatsApp" location="top">
+            <template #activator="{ props: tProps }">
+              <VBtn v-bind="tProps" icon variant="tonal" color="success" class="rounded-lg" @click="handleShareButtonClick">
+                <VIcon icon="tabler-brand-whatsapp" />
+              </VBtn>
+            </template>
+          </VTooltip>
+
+          <VBtn 
+            variant="flat" 
+            color="primary" 
+            prepend-icon="tabler-circle-check"
+            class="rounded-lg px-6 font-weight-black"
             @click="handleSaveQuotation"
           >
-            <VIcon icon="tabler-check" />
-          </IconBtn>
-        </template>
-      </VTooltip>
-      <VTooltip text="Compartir" location="top">
-        <template #activator="{ props }">
-          <IconBtn
-            v-bind="props"
-            class="text-success"
-            @click="handleShareButtonClick"
-          >
-            <VIcon icon="tabler-share" />
-          </IconBtn>
-        </template>
-      </VTooltip>
-      <VTooltip text="Copiar" location="top">
-        <template #activator="{ props }">
-          <IconBtn
-            v-bind="props"
-            class="text-info"
-            @click="handleCopyWhatsappMessage"
-          >
-            <VIcon icon="tabler-copy" />
-          </IconBtn>
-        </template>
-      </VTooltip>
+            Finalizar
+          </VBtn>
+        </div>
+      </div>
     </VCardActions>
   </VCard>
 </template>
+
+<style scoped>
+.scrollable-list-container {
+  max-block-size: 400px;
+  overflow-y: auto;
+  padding-inline-end: 4px;
+}
+
+.scrollable-list-container::-webkit-scrollbar {
+  inline-size: 4px;
+}
+
+.scrollable-list-container::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-primary), 0.2);
+  border-radius: 10px;
+}
+
+.text-super-xs {
+  font-size: 0.7rem !important;
+}
+
+/* Animaciones */
+.list-transition-enter-active,
+.list-transition-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.list-transition-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.list-transition-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+  transform: translateX(-30px);
+}
+
+.product-item-transition {
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.product-item-transition:hover {
+  border-color: rgba(var(--v-theme-primary), 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important;
+  transform: translateY(-2px);
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-4 { gap: 16px !important; }
+</style>

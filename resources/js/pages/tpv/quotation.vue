@@ -58,6 +58,27 @@ const clientSearchQuery = ref("");
 const clientIdentification = ref("");
 const selectedClient = ref(null);
 const showRegisterClientModal = ref(false);
+
+// Persistencia de Cotización
+const saveQuotationToLocalStorage = () => {
+  localStorage.setItem("tpv_current_quotation", JSON.stringify(quotationItems.value));
+};
+
+const loadQuotationFromLocalStorage = () => {
+  const saved = localStorage.getItem("tpv_current_quotation");
+  if (saved) {
+    try {
+      quotationItems.value = JSON.parse(saved);
+    } catch (e) {
+      console.error("Error al cargar cotización guardada:", e);
+    }
+  }
+};
+
+watch(quotationItems, () => {
+  saveQuotationToLocalStorage();
+}, { deep: true });
+
 const barcodeSearchQuery = ref("");
 const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -541,7 +562,9 @@ onMounted(() => {
   fetchDoctorOffers();
   fetchPrescriptionOffers();
   fetchCompanyOffers();
+  loadQuotationFromLocalStorage();
 });
+
 
 const updateTableOptions = (options) => {
   page.value = options.page;
