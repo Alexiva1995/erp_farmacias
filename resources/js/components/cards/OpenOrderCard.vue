@@ -900,6 +900,8 @@ const getIva = (product, currency) => {
             </div>
           </div>
         </div>
+      </div>
+    </VCardText>
 
     <!-- Footer Unificado: Totales y Acciones -->
     <VCardText class="pa-2 bg-grey-lighten-5 border-t">
