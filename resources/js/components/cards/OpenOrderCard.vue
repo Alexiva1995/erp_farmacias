@@ -671,13 +671,24 @@ const specialTaxAmount = computed(() => {
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardItem class="py-2">
-      <VCardTitle class="text-h4">
-        {{ clientName }} {{ Identidad }}
-      </VCardTitle>
-      <template #append>
+  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-sm">
+    <VCardItem class="py-3 px-5">
+      <div class="d-flex align-center flex-wrap gap-4">
         <div class="d-flex align-center">
+          <VAvatar color="primary" variant="tonal" size="40" class="me-3 rounded-lg">
+            <VIcon icon="tabler-user" size="20" />
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <VCardTitle class="text-h6 font-weight-black leading-none mb-1">
+              {{ clientName }}
+            </VCardTitle>
+            <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">{{ Identidad }}</span>
+          </div>
+        </div>
+
+        <VSpacer class="d-none d-md-block" />
+
+        <div class="d-flex align-center flex-wrap gap-2 ms-auto">
           <VSelect
             :model-value="props.selectedDiscountType"
             :items="discountOptions"
@@ -685,7 +696,7 @@ const specialTaxAmount = computed(() => {
             variant="outlined"
             hide-details
             style="inline-size: 140px"
-            class="me-2"
+            class="rounded-lg font-weight-black"
             placeholder="Descuento"
             clearable
             @update:model-value="emit('update:selectedDiscountType', $event)"
@@ -697,8 +708,8 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="inline-size: 250px"
-            class="me-2"
+            style="inline-size: 200px"
+            class="rounded-lg font-weight-black"
             placeholder="Seleccione Empresa"
             item-title="title"
             item-value="value"
@@ -711,8 +722,8 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="inline-size: 250px"
-            class="me-2"
+            style="inline-size: 200px"
+            class="rounded-lg font-weight-black"
             placeholder="Seleccione Médico"
             item-title="title"
             item-value="value"
@@ -724,53 +735,41 @@ const specialTaxAmount = computed(() => {
             density="compact"
             variant="outlined"
             hide-details
-            style="inline-size: 250px"
-            class="me-2"
+            style="inline-size: 200px"
+            class="rounded-lg font-weight-black"
             placeholder="Subir Recipe"
             accept="image/*"
             prepend-icon=""
             append-inner-icon="tabler-upload"
             clearable
           />
-          <span
-            v-if="
-              props.selectedDiscountType === 'Recipe' &&
-              props.prescriptionDiscountPercentage > 0
-            "
-            class="text-body-2 text-success font-weight-bold"
-            style="white-space: nowrap;"
-          >
-            {{ props.prescriptionDiscountPercentage }}% Descuento
-          </span>
+          
           <VMenu>
             <template #activator="{ props: menuProps }">
               <VBtn
-                type="button"
                 variant="tonal"
-                density="default"
+                color="secondary"
                 size="small"
-                class="ms-2"
+                class="rounded-lg px-4"
                 v-bind="menuProps"
               >
-                <span>{{ props.selectedDisplayCurrency }}</span>
-                <template #append>
-                  <VIcon icon="tabler-chevron-down" size="16" />
-                </template>
+                <span class="font-weight-black">{{ props.selectedDisplayCurrency }}</span>
+                <VIcon end icon="tabler-chevron-down" size="14" />
               </VBtn>
             </template>
-            <VList>
+            <VList density="compact" class="rounded-xl mt-1 py-1 shadow-lg border">
               <VListItem
                 v-for="currencyOption in availableCurrency"
                 :key="currencyOption"
-                :value="currencyOption"
+                :active="props.selectedDisplayCurrency === currencyOption"
                 @click="selectCurrency(currencyOption)"
               >
-                <VListItemTitle>{{ currencyOption }}</VListItemTitle>
+                <VListItemTitle class="font-weight-black text-caption">{{ currencyOption }}</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
         </div>
-      </template>
+      </div>
     </VCardItem>
 
     <VCardText class="py-2">
@@ -1166,40 +1165,52 @@ const specialTaxAmount = computed(() => {
       </div>
     </VCardActions>
   </VCard>
+  </VCard>
 </template>
 
 <style scoped>
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 80%) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
 .v-table__wrapper > table > tbody > tr > td {
   border-block-end: none !important;
 }
 
-/* Precio normal (sin oferta): color negro */
 .precio-normal {
   color: #000;
 }
 
-/* Precio original tachado (base sin IVA) cuando hay descuento */
 .precio-tachado {
   color: #a0a0a0;
   font-size: 0.75rem;
   text-decoration: line-through;
 }
 
-/* Precio con oferta/descuento - destaca (tono chocolate/dorado) */
 .precio-oferta {
   color: rgb(var(--v-theme-success));
   font-weight: 600;
 }
 
-/* Chip de oferta individual - más atractivo (verde) */
-.chip-oferta {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 8%);
-  font-weight: 600;
-}
-
-/* Chip de oferta por categoría - color distinto (azul/info) */
+.chip-oferta,
 .chip-categoria {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 8%);
   font-weight: 600;
 }
+
+.gap-4 { gap: 16px !important; }
 </style>

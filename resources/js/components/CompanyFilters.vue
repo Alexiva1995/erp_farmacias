@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from 'vue';
+
 const props = defineProps({
   buscador: String,
   tipo_empresa_filtro: String,
@@ -16,98 +18,121 @@ const emit = defineEmits([
   "export-pdf",
   "export-excel",
 ]);
+
+const isFiltersVisible = ref(false);
 </script>
 
 <template>
   <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="3">
+    <VCardText class="pa-4">
+      <VRow align="center">
+        <VCol cols="12" md="4">
           <AppTextField
             :model-value="props.buscador"
-            placeholder="Buscar..."
+            placeholder="Buscar por nombre, RIF o dirección..."
+            prepend-inner-icon="tabler-search"
             clearable
             @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.tipo_empresa_filtro"
-            label="Tipo de Empresa"
-            :items="['Empresa', 'Clinica']"
-            clearable
-            @update:model-value="emit('update:tipo_empresa_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            :model-value="props.fechaDesde_filtro"
-            placeholder="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaDesde_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            :model-value="props.fechaHasta_filtro"
-            placeholder="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaHasta_filtro', $event)"
-          />
+        
+        <VCol cols="12" md="8" class="d-flex justify-md-end gap-2">
+          <VBtn
+            :color="isFiltersVisible ? 'primary' : 'secondary'"
+            variant="tonal"
+            prepend-icon="tabler-filter"
+            @click="isFiltersVisible = !isFiltersVisible"
+          >
+            Filtros {{ isFiltersVisible ? 'Ocultar' : 'Mostrar' }}
+          </VBtn>
+          <VBtn
+            color="primary"
+            prepend-icon="tabler-plus"
+            @click="emit('add-company')"
+          >
+            Nueva Empresa
+          </VBtn>
         </VCol>
       </VRow>
+
+      <VExpandTransition>
+        <div v-show="isFiltersVisible">
+          <VDivider class="my-4" />
+          <VRow>
+            <VCol cols="12" sm="6" md="3">
+              <VSelect
+                :model-value="props.tipo_empresa_filtro"
+                label="Tipo de Empresa"
+                :items="['Empresa', 'Clinica']"
+                variant="outlined"
+                density="compact"
+                clearable
+                @update:model-value="emit('update:tipo_empresa_filtro', $event)"
+              />
+            </VCol>
+            
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                :model-value="props.fechaDesde_filtro"
+                label="Fecha Desde"
+                placeholder="Seleccionar"
+                clearable
+                @update:model-value="emit('update:fechaDesde_filtro', $event)"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                :model-value="props.fechaHasta_filtro"
+                label="Fecha Hasta"
+                placeholder="Seleccionar"
+                clearable
+                @update:model-value="emit('update:fechaHasta_filtro', $event)"
+              />
+            </VCol>
+
+             <VCol cols="12" sm="6" md="3" class="d-flex align-center">
+              <VBtn 
+                color="secondary" 
+                variant="text" 
+                size="small" 
+                prepend-icon="tabler-refresh"
+                @click="emit('clear')"
+              >
+                Resetear Filtros
+              </VBtn>
+            </VCol>
+            
+            <VCol cols="12" class="d-flex justify-end pt-2">
+              <VMenu>
+                <template #activator="{ props: menuProps }">
+                  <VBtn
+                    color="success"
+                    variant="tonal"
+                    prepend-icon="tabler-download"
+                    v-bind="menuProps"
+                  >
+                    Exportar
+                  </VBtn>
+                </template>
+                <VList>
+                  <VListItem @click="emit('export-excel', 'xlsx')">
+                    <template #prepend>
+                      <VIcon icon="tabler-file-spreadsheet" color="success" />
+                    </template>
+                    <VListItemTitle>Excel</VListItemTitle>
+                  </VListItem>
+                  <VListItem @click="emit('export-pdf')">
+                    <template #prepend>
+                      <VIcon icon="tabler-file-type-pdf" color="error" />
+                    </template>
+                    <VListItemTitle>PDF</VListItemTitle>
+                  </VListItem>
+                </VList>
+              </VMenu>
+            </VCol>
+          </VRow>
+        </div>
+      </VExpandTransition>
     </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
-      <VSpacer />
-      <VMenu>
-        <template #activator="{ props: menuProps }">
-          <VBtn
-            color="success"
-            variant="flat"
-            prepend-icon="tabler-upload"
-            v-bind="menuProps"
-          >
-            Exportar
-          </VBtn>
-        </template>
-        <VList>
-          <VListItem @click="emit('export-excel', 'xlsx')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
-            </template>
-            <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem>
-          <VListItem @click="emit('export-pdf')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-pdf" class="me-2" />
-            </template>
-            <VListItemTitle>PDF</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VMenu>
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-plus"
-        @click="emit('add-company')"
-      >
-        Agregar Empresa
-      </VBtn>
-    </VCardActions>
   </VCard>
 </template>

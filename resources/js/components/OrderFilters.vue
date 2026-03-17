@@ -1,5 +1,5 @@
 <script setup>
-import { computed, defineProps } from "vue";
+import { computed, defineProps, ref } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -11,6 +11,7 @@ const props = defineProps({
   isStrictSearch: Boolean,
   sortBy: { type: [String, undefined], default: undefined },
   orderBy: { type: String, default: "asc" },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -25,6 +26,8 @@ const emit = defineEmits([
   "sort",
 ]);
 
+const isAdvancedFiltersVisible = ref(false);
+
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
@@ -32,63 +35,32 @@ const stockOptions = [
 ];
 
 const sortOptions = [
-  {
-    title: "Precio mayor",
-    icon: "tabler-arrow-up",
-    key: "sale_price",
-    order: "desc",
-  },
-  {
-    title: "Precio Menor",
-    icon: "tabler-arrow-down",
-    key: "sale_price",
-    order: "asc",
-  },
-  {
-    title: "Más Unidades",
-    icon: "tabler-plus",
-    key: "valid_stock",
-    order: "desc",
-  },
-  {
-    title: "Menos Unidades",
-    icon: "tabler-minus",
-    key: "valid_stock",
-    order: "asc",
-  },
-  {
-    title: "Más Vendidos",
-    icon: "tabler-plus",
-    key: "sales_average",
-    order: "desc",
-  },
-  {
-    title: "Menos Vendidos",
-    icon: "tabler-minus",
-    key: "sales_average",
-    order: "asc",
-  },
-  {
-    title: "Fecha pronto a Vencer",
-    icon: "tabler-calendar-time",
-    key: "next_expiration",
-    order: "asc",
-  },
+  { title: "Precio mayor", icon: "tabler-arrow-up", key: "sale_price", order: "desc" },
+  { title: "Precio Menor", icon: "tabler-arrow-down", key: "sale_price", order: "asc" },
+  { title: "Más Unidades", icon: "tabler-plus", key: "valid_stock", order: "desc" },
+  { title: "Menos Unidades", icon: "tabler-minus", key: "valid_stock", order: "asc" },
+  { title: "Más Vendidos", icon: "tabler-plus", key: "sales_average", order: "desc" },
+  { title: "Menos Vendidos", icon: "tabler-minus", key: "sales_average", order: "asc" },
+  { title: "Fecha pronto a Vencer", icon: "tabler-calendar-time", key: "next_expiration", order: "asc" },
 ];
 
 const selectedSort = computed(() => {
   if (!props.sortBy) return null;
-  return sortOptions.find(
-    (o) => o.key === props.sortBy && o.order === props.orderBy,
-  ) || { key: props.sortBy, order: props.orderBy, title: props.sortBy, icon: "tabler-arrow-up" };
+  return sortOptions.find(o => o.key === props.sortBy && o.order === props.orderBy) || 
+         { key: props.sortBy, order: props.orderBy, title: props.sortBy, icon: "tabler-arrow-up" };
 });
 
-const isOptionSelected = (option) =>
-  props.sortBy === option.key && props.orderBy === option.order;
-
+const isOptionSelected = (option) => props.sortBy === option.key && props.orderBy === option.order;
 const getSelectedSortTitle = () => selectedSort.value?.title || props.sortBy;
-
 const getSelectedSortIcon = () => selectedSort.value?.icon || "tabler-arrow-up";
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
+
+const clearFilters = () => {
+  emit('clear');
+};
 
 const clearSortFilter = () => emit("clear-sort");
 
@@ -102,138 +74,191 @@ const handleBack = () => {
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            :items="stockOptions"
-            clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.selectedLaboratory"
-            label="Laboratorio"
-            :items="props.laboratories"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedLaboratory', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            :model-value="props.selectedOrigin"
-            label="Origen"
-            :items="props.origins"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedOrigin', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="3">
+  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden shadow-sm">
+    <VCardText class="pa-4">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-3">
+        <VCol class="flex-grow-1">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
+            prepend-inner-icon="tabler-search"
             clearable
+            hide-details
+            density="compact"
+            class="filter-search-input font-weight-bold"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
+
+        <VCol cols="auto" class="d-flex gap-2">
+          <VBtn
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+            variant="tonal"
+            density="comfortable"
+            class="rounded-lg"
+            @click="toggleAdvancedFilters"
+          >
+            <VIcon icon="tabler-filter" class="me-1" size="18" />
+            <span class="d-none d-sm-inline">Filtros</span>
+          </VBtn>
+
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn 
+                v-bind="menuProps" 
+                variant="tonal" 
+                color="secondary" 
+                density="comfortable"
+                class="rounded-lg"
+              >
+                <VIcon icon="tabler-sort-ascending" class="me-1" size="18" />
+                <span class="d-none d-sm-inline">Ordenar</span>
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-xl mt-1 py-2 shadow-lg border">
+              <VListItem
+                v-for="(option, index) in sortOptions"
+                :key="index"
+                :active="isOptionSelected(option)"
+                color="primary"
+                @click="handleSortClick(option)"
+              >
+                <template #prepend>
+                  <VIcon :icon="option.icon" size="18" class="me-3" />
+                </template>
+                <VListItemTitle class="font-weight-bold text-caption uppercase">{{ option.title }}</VListItemTitle>
+                <template #append v-if="isOptionSelected(option)">
+                  <VIcon icon="tabler-check" size="16" color="primary" />
+                </template>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            density="comfortable"
+            class="rounded-lg"
+            @click="clearFilters"
+          >
+            <VIcon icon="tabler-trash" class="me-1" size="18" />
+            <span class="d-none d-sm-inline">Limpiar</span>
+          </VBtn>
+
+          <VBtn
+            color="primary"
+            variant="tonal"
+            density="comfortable"
+            class="rounded-lg"
+            @click="handleBack"
+          >
+            <VIcon icon="tabler-arrow-back" class="me-1" size="18" />
+            <span class="d-none d-sm-inline">Volver</span>
+          </VBtn>
+        </VCol>
       </VRow>
-    </VCardText>
 
-    <VDivider />
+      <!-- Panel de Filtros Avanzados -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VDivider class="my-4 border-opacity-10" />
+          <VRow>
+            <VCol cols="12" sm="4">
+              <VSelect
+                :model-value="props.stockStatusFilter"
+                label="Estado de Stock"
+                :items="stockOptions"
+                density="compact"
+                variant="outlined"
+                clearable
+                hide-details
+                prepend-inner-icon="tabler-box"
+                class="font-weight-bold"
+                @update:model-value="emit('update:stockStatusFilter', $event)"
+              />
+            </VCol>
+            <VCol cols="12" sm="4">
+              <VSelect
+                :model-value="props.selectedLaboratory"
+                label="Laboratorio"
+                :items="props.laboratories"
+                item-title="name"
+                item-value="id"
+                density="compact"
+                variant="outlined"
+                clearable
+                hide-details
+                prepend-inner-icon="tabler-flask"
+                class="font-weight-bold"
+                @update:model-value="emit('update:selectedLaboratory', $event)"
+              />
+            </VCol>
+            <VCol cols="12" sm="4">
+              <VSelect
+                :model-value="props.selectedOrigin"
+                label="Origen"
+                :items="props.origins"
+                item-title="name"
+                item-value="id"
+                density="compact"
+                variant="outlined"
+                clearable
+                hide-details
+                prepend-inner-icon="tabler-world"
+                class="font-weight-bold"
+                @update:model-value="emit('update:selectedOrigin', $event)"
+              />
+            </VCol>
+          </VRow>
 
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
-
-      <div class="d-flex align-center gap-2">
-        <VCheckbox
-          :model-value="props.isStrictSearch"
-          @update:model-value="emit('update:isStrictSearch', $event)"
-          color="primary"
-          class="me-2"
-        >
-          <template #label>
-            <div class="d-flex align-center">
-              <VIcon icon="tabler-search" class="me-2" size="20" />
-              <span class="text-subtitle-1 font-weight-medium">
-                Búsqueda Estricta
-              </span>
+          <div class="mt-4 d-flex align-center gap-4">
+            <div class="d-flex align-center gap-2">
+              <VSwitch
+                :model-value="props.isStrictSearch"
+                density="compact"
+                color="primary"
+                hide-details
+                @update:model-value="emit('update:isStrictSearch', $event)"
+              />
+              <span class="text-caption font-weight-black uppercase letter-spacing-1">Búsqueda Estricta</span>
             </div>
-          </template>
-        </VCheckbox>
-        <VChip
-          v-if="props.isStrictSearch"
-          color="primary"
-          size="small"
-          class="ms-2"
-        >
-          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
-          Activo
-        </VChip>
-      </div>
 
-      <VSpacer />
-
-      <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
-
-        <VChip
-          v-if="selectedSort"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click:close="clearSortFilter"
-        >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
-        </VChip>
-      </div>
-
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-arrow-back"
-        @click="handleBack"
-      >
-        Volver
-      </VBtn>
-    </VCardActions>
+            <VChipGroup v-if="selectedSort" class="ms-auto" selected-class="text-primary">
+              <VChip
+                color="primary"
+                variant="tonal"
+                size="small"
+                closable
+                label
+                class="font-weight-black uppercase"
+                @click:close="clearSortFilter"
+              >
+                <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
+                {{ getSelectedSortTitle() }}
+              </VChip>
+            </VChipGroup>
+          </div>
+        </div>
+      </VExpandTransition>
+    </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.filter-search-input :deep(.v-field__input) {
+  font-size: 0.875rem !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+.gap-4 { gap: 16px !important; }
+
+.text-caption {
+  font-size: 0.7rem !important;
+}
+</style>

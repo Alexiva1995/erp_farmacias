@@ -87,6 +87,7 @@ function formatearFechaCompleta(fechaInput) {
     persistent
     scrollable
     :retain-focus="false"
+    :fullscreen="$vuetify.display.xs"
     @click:outside.prevent
     @keydown.esc.prevent="close"
   >
@@ -101,7 +102,7 @@ function formatearFechaCompleta(fechaInput) {
         </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
+      <VCardText class="pa-5" style="max-block-size: 70vh;">
         <VRow>
           <VCol cols="12" sm="6" md="6">
             <VSelect

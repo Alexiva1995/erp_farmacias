@@ -36,64 +36,33 @@ const options = ref({
   sortBy: [],
 });
 
-
 const headers = [
-  { title: "id", key: "id", sortable: true },
-  { title: "Stock", key: "valid_stock_sum", sortable: true, maxWidth: "55px" },
+  { title: "ID", key: "id", sortable: true, maxWidth: "50px" },
+  { title: "Stock", key: "valid_stock_sum", sortable: true, width: "80px" },
   { title: "Producto", key: "name", sortable: true },
   { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "USD", key: "sale_price", sortable: true, align: "end" },
   { title: "Bs", key: "price_bs", sortable: true, align: "end" },
   { title: "COP", key: "price_cop", sortable: true, align: "end" },
-  {
-    title: "Añadir",
-    key: "add_action_with_quantity",
-    sortable: false,
-    maxWidth: "130px",
-  },
-  { title: "Acción", key: "actions", sortable: false, maxWidth: "95px" },
+  { title: "Añadir", key: "add_action_with_quantity", sortable: false, width: "150px" },
+  { title: "Acción", key: "actions", sortable: false, width: "100px" },
 ];
 
-// Calcular total de productos en el carrito (sumando los productos en la tabla)
 const totalProductsInCart = computed(() => {
   let total = 0;
-
-  // Sumar productos que ya están en el carrito
-  total += props.orderItems.reduce((sum, item) => {
-    return sum + (item.selectedQuantity || 0);
-  }, 0);
-
-  // Sumar productos que están en los inputs de la tabla
-  props.products.forEach((product) => {
-    const quantityInInput = inputQuantities.value.get(product.id) || 0;
-    total += quantityInInput;
-  });
-
+  total += props.orderItems.reduce((sum, item) => sum + (item.selectedQuantity || 0), 0);
   return total;
 });
 
-// Determinar si aplicar descuento basado en el total de productos
 const shouldApplyDiscount = computed(() => {
   if (props.currentDiscount <= 0) return false;
-
-  // Si no hay límites configurados, aplicar siempre
-  if (props.discountMinProducts === 0 && props.discountMaxProducts === 0) {
-    return true;
-  }
-
-  // Verificar si el total de productos está dentro del rango
-  return (
-    totalProductsInCart.value >= props.discountMinProducts &&
-    totalProductsInCart.value <= props.discountMaxProducts
-  );
+  if (props.discountMinProducts === 0 && props.discountMaxProducts === 0) return true;
+  return totalProductsInCart.value >= props.discountMinProducts && totalProductsInCart.value <= props.discountMaxProducts;
 });
 
-// Regla de descuento prevalente: solo se aplica el que da mayor ahorro (mayor %)
-// Individual, Categoría, Vencimiento y Volume/Empresa no son acumulables
 const calculatePriceWithDiscount = (basePrice, product = null) => {
   const price = parseFloat(basePrice) || 0;
   const discountPcts = [];
-
   if (product?.discount_percentage > 0 && (product?.discount_type === "individual" || product?.discount_type === "category" || product?.discount_type === "expiration")) {
     discountPcts.push(parseFloat(product.discount_percentage));
   }
@@ -104,193 +73,89 @@ const calculatePriceWithDiscount = (basePrice, product = null) => {
   return bestPct > 0 ? price * (1 - bestPct / 100) : price;
 };
 
-// Calcular precio con IVA y descuento (si aplica)
 const calculatePriceWithIVAAndDiscount = (basePrice, product) => {
   let effectivePrice = calculatePriceWithDiscount(basePrice, product);
   let taxRate = product.iva == 1 ? 0.16 : 0;
-
-  if (taxRate > 0) {
-    return effectivePrice * (1 + taxRate);
-  }
-
-  return effectivePrice;
+  return taxRate > 0 ? effectivePrice * (1 + taxRate) : effectivePrice;
 };
 
-// Formatear precio COP con redondeo y descuento (si aplica)
 const calculateAndFormatCopPriceWithIVAAndDiscount = (basePrice, product) => {
   const priceWithIVA = calculatePriceWithIVAAndDiscount(basePrice, product);
-  return formatCurrency(roundUpToNearestHundred(priceWithIVA));
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA), "COP");
 };
 
 const handleAddProduct = (productId) => {
   const quantityToAdd = inputQuantities.value.get(productId);
-  if (
-    quantityToAdd === null ||
-    quantityToAdd === undefined ||
-    quantityToAdd <= 0
-  ) {
-    console.error(
-      `La cantidad para el producto ${productId} no es válida (${quantityToAdd}). Debe ser un número positivo para añadir.`
-    );
-    return;
-  }
+  if (quantityToAdd === null || quantityToAdd === undefined || quantityToAdd <= 0) return;
   emit("add-product", { productId, quantity: quantityToAdd });
-
-  // Resetear la cantidad del input después de agregar
   inputQuantities.value.set(productId, 1);
 };
 
-watch(
-  () => props.products,
-  (newProducts) => {
-    const newOrderMap = new Map();
-    newProducts.forEach((product) => {
-      let currentQty;
-      if (product.valid_stock_sum === 0) {
-        currentQty = 0;
-      } else {
-        let previousQty = inputQuantities.value.get(product.id);
-        if (
-          previousQty === undefined ||
-          previousQty === null ||
-          previousQty < 1
-        ) {
-          currentQty = 1;
-        } else {
-          currentQty = previousQty;
-        }
-        if (currentQty > product.valid_stock_sum) {
-          currentQty = product.valid_stock_sum;
-        }
-      }
-      newOrderMap.set(product.id, currentQty);
-    });
-    inputQuantities.value = newOrderMap;
-  },
-  { immediate: true }
-);
+const handleAddPack = (packId) => {
+  const quantityToAdd = inputQuantities.value.get(packId);
+  if (quantityToAdd === null || quantityToAdd === undefined || quantityToAdd <= 0) return;
+  const pack = props.products.find((p) => p.id === packId);
+  if (pack) emit("add-pack", { pack, quantity: quantityToAdd });
+  inputQuantities.value.set(packId, 1);
+};
+
+watch(() => props.products, (newProducts) => {
+  const newOrderMap = new Map();
+  newProducts.forEach((product) => {
+    let currentQty = product.valid_stock_sum === 0 ? 0 : (inputQuantities.value.get(product.id) || 1);
+    if (currentQty > product.valid_stock_sum && product.valid_stock_sum > 0) currentQty = product.valid_stock_sum;
+    newOrderMap.set(product.id, currentQty);
+  });
+  inputQuantities.value = newOrderMap;
+}, { immediate: true });
 
 const handleInputOrderChange = (productId, val) => {
   let cleanVal = parseInt(val);
-  const maxQty =
-    props.products.find((p) => p.id === productId)?.valid_stock_sum ?? 0;
-  if (isNaN(cleanVal) || cleanVal < 0) {
-    cleanVal = 0;
-  }
-  if (maxQty === 0) {
-    cleanVal = 0;
-  } else if (cleanVal > maxQty) {
-    cleanVal = maxQty;
-  }
+  const maxQty = props.products.find((p) => p.id === productId)?.valid_stock_sum ?? 0;
+  if (isNaN(cleanVal) || cleanVal < 0) cleanVal = 0;
+  if (maxQty === 0) cleanVal = 0;
+  else if (cleanVal > maxQty) cleanVal = maxQty;
   inputQuantities.value.set(productId, cleanVal);
 };
 
-const handleViewGroupProducts = (product) => {
-  emit("view-group-products", product.group_id);
-};
+const handleViewGroupProducts = (product) => emit("view-group-products", product.group_id);
+const handleFailures = (product) => emit("failures-products", product.id);
+const handleViewPack = (pack) => emit("view-pack-details", pack);
 
-const handleFailures = (product) => {
-  emit("failures-products", product.id);
-};
-
-// Función para calcular precio con IVA (sin descuento)
 const calculatePriceWithIVA = (basePrice, product) => {
   const price = parseFloat(basePrice) || 0;
   let taxRate = product.iva == 1 ? 0.16 : 0;
-  if (taxRate > 0) {
-    return price * (1 + taxRate);
-  }
-  return price;
+  return taxRate > 0 ? price * (1 + taxRate) : price;
 };
 
-// Función para formatear precio COP (sin descuento)
 const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
   const priceWithIVA = calculatePriceWithIVA(basePrice, product);
-  return formatCurrency(roundUpToNearestHundred(priceWithIVA));
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA), "COP");
 };
 
-// Función de redondeo para COP
-const roundUpToNearestHundred = (value) => {
-  return Math.ceil(value / 100) * 100;
-};
-
-// Calcular el total del descuento que se aplicaría
-const totalDiscountPreview = computed(() => {
-  if (!shouldApplyDiscount.value || props.currentDiscount <= 0) return 0;
-
-  let subtotalWithoutDiscount = 0;
-
-  // Sumar productos en el carrito
-  props.orderItems.forEach((item) => {
-    // Necesitarías obtener el precio aquí - puedes ajustar según tus datos
-    const price = item.price || item.sale_price || 0;
-    const quantity = item.selectedQuantity || 0;
-    subtotalWithoutDiscount += price * quantity;
-  });
-
-  // Sumar productos en los inputs de la tabla
-  props.products.forEach((product) => {
-    const quantityInInput = inputQuantities.value.get(product.id) || 0;
-    if (quantityInInput > 0) {
-      const price = product.sale_price || 0;
-      subtotalWithoutDiscount += price * quantityInInput;
-    }
-  });
-
-  return subtotalWithoutDiscount * (props.currentDiscount / 100);
-});
-
-const handleViewPack = (pack) => {
-  emit("view-pack-details", pack);
-};
+const roundUpToNearestHundred = (value) => Math.ceil(value / 100) * 100;
 
 onMounted(async () => {
   try {
     const { data } = await axios.get('/user/config');
-    // data suele ser el usuario, y el usuario tiene 'config'
     const config = data.config; 
-    
     if (config && config.sort_products_orders) {
       const [key, order] = config.sort_products_orders.split('|');
-      
-      // IMPORTANTE: Esto dispara handleUpdateOptions automáticamente
       options.value.sortBy = [{ key, order }];
     }
   } catch (error) {
     console.error("Error cargando config inicial");
   } finally {
-    // Damos un margen pequeño para que ignore el primer disparo automático
     setTimeout(() => { isInitialLoad.value = false; }, 1000);
   }
 });
 
 const handleUpdateOptions = (newOptions) => {
-  // Sincronizar con las props del padre si es necesario
   emit('update:page', newOptions.page);
   emit('update:itemsPerPage', newOptions.itemsPerPage);
-  // Emitir el evento completo al padre para el fetch de datos
   emit('update:options', newOptions);
 };
 
-
-const handleAddPack = (packId) => {
-  const quantityToAdd = inputQuantities.value.get(packId);
-  if (
-    quantityToAdd === null ||
-    quantityToAdd === undefined ||
-    quantityToAdd <= 0
-  ) {
-    return;
-  }
-  const pack = props.products.find((p) => p.id === packId);
-  if (pack) {
-    emit("add-pack", { pack, quantity: quantityToAdd });
-  }
-  // Reset input
-  inputQuantities.value.set(packId, 1);
-};
-
-// Oferta por expiración: precio rojo. Otras ofertas: verde. Sin oferta: normal
 const getPriceClass = (item) => {
   const hasDiscount = item.discount_percentage > 0 || (shouldApplyDiscount.value && props.currentDiscount > 0);
   if (!hasDiscount) return 'precio-normal';
@@ -298,18 +163,12 @@ const getPriceClass = (item) => {
   return 'precio-oferta';
 };
 
-// Función para determinar el estilo de la fila: stock <= 0 -> fila roja con letras blancas
-const getRowClass = (item) => {
-  const stock = item.valid_stock_sum ?? 0;
-  if (stock <= 0) {
-    return 'row-zero-stock';
-  }
-  return '';
-};
+const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock' : '';
 </script>
 
 <template>
-  <VCard>
+  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm">
+    <!-- Vista Escritorio -->
     <VDataTableServer
       v-model:options="options"
       :items-per-page="props.itemsPerPage"
@@ -318,96 +177,88 @@ const getRowClass = (item) => {
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="text-no-wrap premium-table d-none d-md-block"
       :row-props="(data) => ({ class: getRowClass(data.item) })"
-      @update:options="handleUpdateOptions" >
-
+      @update:options="handleUpdateOptions"
+    >
       <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
+        <span class="font-weight-black text-disabled">{{ item.id }}</span>
       </template>
+
       <template #item.valid_stock_sum="{ item }">
-        <span class="font-weight-medium text-no-wrap">{{
-          item.valid_stock_sum
-        }}</span>
+        <VChip
+          :color="item.valid_stock_sum > 0 ? 'success' : 'error'"
+          size="small"
+          variant="tonal"
+          class="font-weight-black"
+        >
+          {{ item.valid_stock_sum }}
+        </VChip>
       </template>
+
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column" style=" inline-size: 100%;min-inline-size: 0;">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{ 'text-primary': item.psychotropic == 1 }"
-              style=" overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
+        <div class="d-flex flex-column py-2" style="max-inline-size: 300px;">
+          <span
+            class="text-body-1 font-weight-black text-high-emphasis leading-tight"
+            :class="{ 'text-primary': item.psychotropic == 1 }"
+            style="white-space: normal;"
+          >
+            {{ item.name }}
+            <span v-if="item.iva == 1" class="text-xs text-disabled">(G)</span>
+            <VChip
+              v-if="item.discount_type === 'expiration' && item.discount_percentage > 0"
+              color="error"
+              size="x-small"
+              class="ms-1 font-weight-black uppercase"
+              label
             >
-              {{ item.name }}
-              <span v-if="item.iva == 1"> (G)</span>
-              <span v-if="item.is_colombian_origin == 1"> (COL)</span>
-              <VChip
-                v-if="item.discount_type === 'expiration' && item.discount_percentage > 0"
-                color="error"
-                size="x-small"
-                class="ms-1"
-                label
-              >
-                Expira (-{{ item.discount_percentage }}%)
-              </VChip>
-            </span>
-            <span 
-              class="text-sm text-disabled"
-              style=" overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
-            >
-              {{ item.active_ingredient }}
-            </span>
-            <span 
-              class="text-sm text-disabled"
-              style=" overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
-            >
-              {{ item.origin?.name }}
-            </span>
-          </div>
+              Expira (-{{ item.discount_percentage }}%)
+            </VChip>
+          </span>
+          <span class="text-xs font-weight-bold text-disabled uppercase mt-1" style="white-space: normal;">
+            {{ item.active_ingredient }}
+            {{ item.origin?.name ? `• ${item.origin.name}` : '' }}
+          </span>
         </div>
       </template>
+
       <template #item.laboratory_name="{ item }">
-        <span class="font-weight-medium">{{ item.laboratory_name }}</span>
+        <span class="text-caption font-weight-black uppercase text-disabled">{{ item.laboratory_name }}</span>
       </template>
+
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="((item.discount_type === 'individual' || item.discount_type === 'category' || item.discount_type === 'expiration') && item.discount_percentage > 0) || (shouldApplyDiscount && currentDiscount > 0)" class="precio-tachado">
+          <del v-if="calculatePriceWithIVA(item.sale_price, item) > calculatePriceWithIVAAndDiscount(item.sale_price, item)" class="precio-tachado">
             {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
           </del>
-          <span
-            :class="getPriceClass(item)"
-            class="font-weight-medium"
-          >
+          <span :class="getPriceClass(item)" class="font-weight-black">
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
           </span>
         </div>
       </template>
+
       <template #item.price_bs="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="((item.discount_type === 'individual' || item.discount_type === 'category' || item.discount_type === 'expiration') && item.discount_percentage > 0) || (shouldApplyDiscount && currentDiscount > 0)" class="precio-tachado">
-            {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item)) }}
+          <del v-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="precio-tachado">
+            {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), "BS") }}
           </del>
-          <span
-            :class="getPriceClass(item)"
-            class="font-weight-medium"
-          >
-            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item)) }}
+          <span :class="getPriceClass(item)" class="font-weight-black">
+            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item), "BS") }}
           </span>
         </div>
       </template>
+
       <template #item.price_cop="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="((item.discount_type === 'individual' || item.discount_type === 'category' || item.discount_type === 'expiration') && item.discount_percentage > 0) || (shouldApplyDiscount && currentDiscount > 0)" class="precio-tachado">
+          <del v-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="precio-tachado">
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </del>
-          <span
-            :class="getPriceClass(item)"
-            class="font-weight-medium"
-          >
+          <span :class="getPriceClass(item)" class="font-weight-black">
             {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
           </span>
         </div>
       </template>
+
       <template #item.add_action_with_quantity="{ item }">
         <div class="d-flex align-center gap-2">
           <VTextField
@@ -419,105 +270,210 @@ const getRowClass = (item) => {
             density="compact"
             variant="outlined"
             hide-details
-            single-line
-            style="max-inline-size: 90px; min-inline-size: 90px;"
-            class="my-2 quantity-input-field"
+            class="rounded-lg font-weight-black quantity-input"
+            style="inline-size: 70px;"
             :disabled="(item.valid_stock_sum ?? 0) <= 0"
           />
-          <IconBtn
-            @click="handleAddProduct(item.id)"
-             v-if="item.item_type === 'product'"
-            :disabled="
-              (inputQuantities.get(item.id) ?? 0) <= 0 ||
-              (inputQuantities.get(item.id) ?? 0) > (item.valid_stock_sum ?? 0) ||
-              (item.valid_stock_sum ?? 0) <= 0
-            "
-          >
-            <VIcon icon="tabler-plus" />
-          </IconBtn>
-           <IconBtn
-            @click="handleAddPack(item.id)"
-            v-else="item.item_type === 'pack'"
-            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0"
+          <VBtn
+            v-if="item.item_type === 'product'"
             color="primary"
             variant="tonal"
+            icon="tabler-shopping-cart-plus"
             size="small"
-          >
-            <VIcon icon="tabler-plus" />
-          </IconBtn>
+            class="rounded-lg"
+            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0 || (item.valid_stock_sum ?? 0) <= 0"
+            @click="handleAddProduct(item.id)"
+          />
+          <VBtn
+            v-else
+            color="primary"
+            variant="flat"
+            icon="tabler-package-import"
+            size="small"
+            class="rounded-lg"
+            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0"
+            @click="handleAddPack(item.id)"
+          />
         </div>
       </template>
-      <template #item.actions="{ item }">
-        <IconBtn
-          @click="handleViewGroupProducts(item)"
-          v-if="item.item_type === 'product'"
-          color="info"
-        >
-          <VIcon icon="tabler-eye" />
-        </IconBtn>
-        <VBtn
-          v-else-if="item.item_type === 'pack'"
-          icon
-          variant="text"
-          size="small"
-          color="info"
-          @click="handleViewPack(item)"
-        >
-          <VIcon>tabler-eye</VIcon>
-        </VBtn>
 
-        <IconBtn
-          @click="handleFailures(item)"
-          color="error"
-          :disabled="item.item_type === 'pack'"
-        >
-          <VIcon icon="tabler-alert-triangle" />
-        </IconBtn>
+      <template #item.actions="{ item }">
+        <div class="d-flex gap-1">
+          <VBtn
+            icon="tabler-eye"
+            variant="text"
+            color="info"
+            size="small"
+            @click="item.item_type === 'product' ? handleViewGroupProducts(item) : handleViewPack(item)"
+          />
+          <VBtn
+            icon="tabler-alert-triangle"
+            variant="text"
+            color="error"
+            size="small"
+            :disabled="item.item_type === 'pack'"
+            @click="handleFailures(item)"
+          />
+        </div>
       </template>
     </VDataTableServer>
 
-    <!-- Información del descuento -->
-    <VCardText v-if="currentDiscount > 0" class="pa-4">
-      <div class="d-flex flex-column gap-2">
-        <!-- Total de productos -->
-        <div class="d-flex justify-space-between align-center">
-          <span class="text-sm">Total de productos seleccionados:</span>
-          <span class="font-weight-bold">{{ totalProductsInCart }}</span>
-        </div>
-
-        <!-- Rango de descuento -->
-        <div class="d-flex justify-space-between align-center">
-          <span class="text-sm">Rango para descuento:</span>
-          <span class="font-weight-bold">
-            {{ discountMinProducts }} - {{ discountMaxProducts }} unidades
-          </span>
-        </div>
-
-        <!-- Estado del descuento -->
-        <div class="d-flex justify-space-between align-center">
-          <span class="text-sm">Descuento aplicable:</span>
-          <span
-            :class="{
-              'text-success font-weight-bold': shouldApplyDiscount,
-              'text-disabled': !shouldApplyDiscount,
-            }"
-          >
-            {{ shouldApplyDiscount ? "SÍ" : "NO" }}
-            <span v-if="shouldApplyDiscount"> ({{ currentDiscount }}%)</span>
-          </span>
-        </div>
-
-        <!-- Vista previa del descuento -->
-        <div
-          v-if="shouldApplyDiscount"
-          class="d-flex justify-space-between align-center bg-success-lighten-5 pa-2 rounded"
+    <!-- Vista Móvil (Cards) -->
+    <div class="d-md-none pa-4 bg-grey-lighten-4">
+      <div v-if="props.loading" class="text-center py-8">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+      <div v-else-if="props.products.length === 0" class="text-center py-8 text-disabled font-weight-black uppercase">
+        No se encontraron productos
+      </div>
+      <div v-else class="d-flex flex-column gap-4">
+        <VCard
+          v-for="item in props.products"
+          :key="item.id"
+          variant="flat"
+          border
+          class="rounded-xl premium-mobile-card shadow-sm"
+          :class="{ 'border-error border-opacity-50': (item.valid_stock_sum ?? 0) <= 0 }"
         >
-          <span class="text-sm text-success font-weight-bold"
-            >Descuento estimado:</span
+          <VCardText class="pa-4">
+            <div class="d-flex justify-space-between align-start mb-2">
+              <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                <span 
+                  class="text-body-1 font-weight-black leading-tight mb-1"
+                  :class="{ 'text-primary': item.psychotropic == 1 }"
+                >
+                  {{ item.name }}
+                  <span v-if="item.iva == 1" class="text-xs text-disabled">(G)</span>
+                </span>
+                <span class="text-super-xs font-weight-black text-disabled uppercase">
+                  {{ item.active_ingredient }} • {{ item.laboratory_name }}
+                </span>
+              </div>
+              <VChip
+                :color="item.valid_stock_sum > 0 ? 'success' : 'error'"
+                size="small"
+                variant="flat"
+                class="font-weight-black ms-2 px-3"
+              >
+                Stock: {{ item.valid_stock_sum }}
+              </VChip>
+            </div>
+
+            <VDivider class="my-3 border-opacity-10" />
+
+            <div class="grid-prices mb-4">
+              <div class="price-box">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">USD</span>
+                <div class="d-flex flex-column">
+                  <del v-if="calculatePriceWithIVA(item.sale_price, item) > calculatePriceWithIVAAndDiscount(item.sale_price, item)" class="text-xs text-disabled text-decoration-line-through">
+                    {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
+                  </del>
+                  <span class="text-body-2 font-weight-black" :class="getPriceClass(item)">
+                    {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
+                  </span>
+                </div>
+              </div>
+              <div class="price-box">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">BS</span>
+                <div class="d-flex flex-column">
+                  <del v-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="text-xs text-disabled text-decoration-line-through">
+                    {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), "BS") }}
+                  </del>
+                  <span class="text-body-2 font-weight-black" :class="getPriceClass(item)">
+                    {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item), "BS") }}
+                  </span>
+                </div>
+              </div>
+              <div class="price-box">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">COP</span>
+                <div class="d-flex flex-column">
+                  <del v-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="text-xs text-disabled text-decoration-line-through">
+                    {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
+                  </del>
+                  <span class="text-body-2 font-weight-black" :class="getPriceClass(item)">
+                    {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-center gap-2">
+              <VBtn
+                icon="tabler-eye"
+                variant="tonal"
+                color="info"
+                size="small"
+                class="rounded-lg"
+                @click="item.item_type === 'product' ? handleViewGroupProducts(item) : handleViewPack(item)"
+              />
+              <VBtn
+                icon="tabler-alert-triangle"
+                variant="tonal"
+                color="error"
+                size="small"
+                class="rounded-lg"
+                :disabled="item.item_type === 'pack'"
+                @click="handleFailures(item)"
+              />
+              <VSpacer />
+              <div class="d-flex align-center bg-grey-lighten-4 rounded-lg px-2 py-1 shadow-inner">
+                <VTextField
+                  :model-value="inputQuantities.get(item.id) ?? 0"
+                  @update:model-value="(val) => handleInputOrderChange(item.id, val)"
+                  type="number"
+                  min="0"
+                  density="compact"
+                  variant="plain"
+                  hide-details
+                  class="font-weight-black text-center"
+                  style="inline-size: 50px;"
+                />
+                <VBtn
+                  color="primary"
+                  variant="flat"
+                  :icon="item.item_type === 'product' ? 'tabler-shopping-cart-plus' : 'tabler-package-import'"
+                  size="small"
+                  class="rounded-lg ms-2"
+                  :disabled="(inputQuantities.get(item.id) ?? 0) <= 0 || (item.item_type === 'product' && (item.valid_stock_sum ?? 0) <= 0)"
+                  @click="item.item_type === 'product' ? handleAddProduct(item.id) : handleAddPack(item.id)"
+                />
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </div>
+
+      <!-- Paginación Móvil -->
+      <div class="mt-6 d-flex justify-center flex-wrap gap-2">
+        <VPagination
+          v-model="options.page"
+          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
+          :total-visible="3"
+          density="compact"
+          active-color="primary"
+          class="premium-pagination"
+          @update:model-value="(p) => handleUpdateOptions({ ...options, page: p })"
+        />
+      </div>
+    </div>
+
+    <!-- Información del descuento -->
+    <VCardText v-if="currentDiscount > 0" class="pa-4 bg-primary-lighten-5 border-t">
+      <div class="d-flex flex-column gap-1">
+        <div class="d-flex justify-space-between align-center">
+          <span class="text-xs font-weight-black uppercase text-disabled">Productos seleccionados:</span>
+          <VChip size="x-small" color="primary" class="font-weight-black">{{ totalProductsInCart }}</VChip>
+        </div>
+        <div class="d-flex justify-space-between align-center">
+          <span class="text-xs font-weight-black uppercase text-disabled">Estado de descuento:</span>
+          <VChip 
+            size="x-small" 
+            :color="shouldApplyDiscount ? 'success' : 'secondary'" 
+            variant="flat"
+            class="font-weight-black"
           >
-          <span class="text-success font-weight-bold">
-            {{ formatCurrency(totalDiscountPreview) }}
-          </span>
+            {{ shouldApplyDiscount ? `ACTIVO (-${currentDiscount}%)` : "INACTIVO" }}
+          </VChip>
         </div>
       </div>
     </VCardText>
@@ -525,66 +481,82 @@ const getRowClass = (item) => {
 </template>
 
 <style scoped>
-/* 1. Resaltado de productos sin stock: fondo rojo #d32f2f, letras blancas */
-:deep(.row-zero-stock) {
-  background-color: #d32f2f !important;
-  color: white !important;
+.premium-table :deep(th) {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  text-transform: uppercase !important;
+  font-size: 0.7rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 1px !important;
+  color: rgb(var(--v-theme-on-surface), 0.6) !important;
 }
 
-:deep(.row-zero-stock td),
-:deep(.row-zero-stock th) {
-  color: white !important;
+.premium-table :deep(tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
 }
 
-/* Prioridad: si no hay stock, TODO el texto es blanco (incluye precios de oferta por vencimiento) */
-:deep(.row-zero-stock .text-disabled),
-:deep(.row-zero-stock .text-black),
-:deep(.row-zero-stock .text-high-emphasis),
-:deep(.row-zero-stock .precio-normal),
-:deep(.row-zero-stock .precio-tachado),
-:deep(.row-zero-stock .precio-oferta),
-:deep(.row-zero-stock .precio-expira) {
-  color: rgba(255, 255, 255, 95%) !important;
+.row-zero-stock {
+  background-color: rgba(var(--v-theme-error), 0.05) !important;
 }
 
-/* Inputs y botones en fila sin stock: legibles sobre fondo rojo */
-:deep(.row-zero-stock .quantity-input-field input),
-:deep(.row-zero-stock .quantity-input-field .v-field__input),
-:deep(.row-zero-stock input) {
-  color: white !important;
-  -webkit-text-fill-color: white !important;
-}
-
-:deep(.row-zero-stock .v-field) {
-  --v-field-border-opacity: 0.4;
-}
-
-:deep(.row-zero-stock .v-chip) {
-  background-color: rgba(255, 255, 255, 20%) !important;
-  color: white !important;
-}
-
-/* Precio normal (sin oferta): hereda color del tema como /inventory/products */
 .precio-normal {
-  /* Sin color explícito - igual que ProductTable */
+  color: rgb(var(--v-theme-on-surface));
 }
 
-/* Precio original tachado (cuando hay oferta) */
 .precio-tachado {
   color: #a0a0a0;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-decoration: line-through;
+  line-height: 1;
 }
 
-/* Precio con oferta individual/categoría */
 .precio-oferta {
   color: rgb(var(--v-theme-success));
-  font-weight: 600;
 }
 
-/* 2. Precios en rojo para ofertas por vencimiento (USD, BS, COP) - solo cuando la fila NO es sin stock */
 .precio-expira {
-  color: #d32f2f;
-  font-weight: 600;
+  color: rgb(var(--v-theme-error));
 }
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.text-super-xs {
+  font-size: 10px !important;
+  line-height: 1;
+}
+
+.premium-mobile-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  background: white !important;
+}
+
+.premium-mobile-card:active {
+  transform: scale(0.98);
+}
+
+.grid-prices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.price-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.shadow-inner {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-4 { gap: 16px !important; }
+
+.font-weight-950 { font-weight: 950 !important; }
 </style>
