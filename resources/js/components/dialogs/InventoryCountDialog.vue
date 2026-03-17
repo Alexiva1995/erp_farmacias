@@ -274,6 +274,12 @@ const handleSave = async () => {
               @keyup.enter="handleBarcodeEnter"
             >
               <template #append-inner>
+                <div class="d-flex align-center">
+                  <VBtn
+                    icon
+                    variant="tonal"
+                    color="primary"
+                    size="x-small"
                     @click="isScannerVisible = true"
                   >
                     <VIcon icon="tabler-camera" size="18" />

@@ -41,7 +41,6 @@ class ExpirationActionService
             $totalLostValue = $quantityToExpire * $costPerUnit;
 
             $lot->quantity = 0;
-            $lot->save();
 
             ExpiredLog::create([
                 'lot_id' => $lot->id,
@@ -52,6 +51,8 @@ class ExpirationActionService
                 'cost_per_unit' => $costPerUnit,
                 'total_lost_value' => $totalLostValue,
             ]);
+
+            $lot->save();
 
             DB::commit();
 
