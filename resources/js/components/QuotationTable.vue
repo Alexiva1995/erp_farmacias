@@ -226,10 +226,13 @@ const handleMobilePageChange = (newPage) => {
               {{ item.name }}
             </h3>
             
+            <div class="text-super-xs text-disabled font-weight-bold uppercase mb-3">
+              {{ item.active_ingredient }} <span class="mx-1">•</span> {{ item.laboratory?.name || 'GENÉRICO' }}
+            </div>
+            
             <div class="d-flex gap-1 mb-3">
               <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="flat" class="font-weight-black">IVA</VChip>
               <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="flat" class="font-weight-black">COL</VChip>
-              <span class="text-super-xs text-disabled font-weight-bold uppercase ms-auto">{{ item.laboratory?.name || 'GENÉRICO' }}</span>
             </div>
 
             <VDivider class="my-3 border-opacity-10" />
@@ -249,7 +252,16 @@ const handleMobilePageChange = (newPage) => {
               </div>
             </div>
 
-            <div class="d-flex align-center gap-2">
+            <div class="d-flex gap-2 mb-3">
+              <VBtn variant="tonal" color="info" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="handleViewGroupProducts(item)">
+                <VIcon start icon="tabler-eye" size="16" /> GRUPO
+              </VBtn>
+              <VBtn variant="tonal" color="error" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="handleFailures(item)">
+                <VIcon start icon="tabler-alert-triangle" size="16" /> FALLA
+              </VBtn>
+            </div>
+
+            <div class="d-flex align-center gap-2 mt-2">
               <VTextField
                 :model-value="inputQuantities.get(item.id) ?? 0"
                 @update:model-value="(val) => handleInputQuantityChange(item.id, val)"
@@ -264,20 +276,11 @@ const handleMobilePageChange = (newPage) => {
               <VBtn
                 color="primary"
                 height="40"
-                class="rounded-lg font-weight-black px-6"
+                class="rounded-lg font-weight-black px-4"
                 @click="handleAddProduct(item.id)"
                 :disabled="(inputQuantities.get(item.id) ?? 0) <= 0 || item.valid_stock_sum === 0"
               >
-                AGREGAR
-              </VBtn>
-            </div>
-            
-            <div class="d-flex gap-2 mt-3">
-              <VBtn block variant="tonal" color="info" size="small" class="rounded-lg flex-grow-1" @click="handleViewGroupProducts(item)">
-                <VIcon start icon="tabler-eye" size="16" /> GRUPO
-              </VBtn>
-              <VBtn block variant="tonal" color="error" size="small" class="rounded-lg flex-grow-1" @click="handleFailures(item)">
-                <VIcon start icon="tabler-alert-triangle" size="16" /> FALLA
+                <VIcon icon="tabler-shopping-cart-plus" />
               </VBtn>
             </div>
           </div>
@@ -310,9 +313,9 @@ const handleMobilePageChange = (newPage) => {
 }
 
 .premium-mobile-card {
+  background: white;
   border-radius: 16px !important;
   transition: all 0.2s ease;
-  background: white;
 }
 
 .mobile-price-grid {
@@ -326,11 +329,11 @@ const handleMobilePageChange = (newPage) => {
 }
 
 .price-box .label {
+  color: rgba(var(--v-theme-on-surface), 0.4);
   font-size: 0.6rem;
   font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.4);
-  text-transform: uppercase;
   margin-block-end: 2px;
+  text-transform: uppercase;
 }
 
 .price-box .value {
@@ -343,10 +346,10 @@ const handleMobilePageChange = (newPage) => {
 
 .quotation-table-premium :deep(thead th) {
   background-color: rgba(var(--v-theme-primary), 0.02) !important;
-  text-transform: uppercase;
   font-size: 0.75rem !important;
   font-weight: 900 !important;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .leading-tight {
