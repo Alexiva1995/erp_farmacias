@@ -1165,7 +1165,6 @@ const specialTaxAmount = computed(() => {
       </div>
     </VCardActions>
   </VCard>
-  </VCard>
 </template>
 
 <style scoped>

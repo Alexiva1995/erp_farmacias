@@ -172,4 +172,5 @@ const handleClear = () => {
 <style scoped>
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 </style>

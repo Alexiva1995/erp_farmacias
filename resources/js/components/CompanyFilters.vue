@@ -24,41 +24,99 @@ const isFiltersVisible = ref(false);
 
 <template>
   <VCard class="mb-6">
-    <VCardText class="pa-4">
-      <VRow align="center">
-        <VCol cols="12" md="4">
+    <VCardText class="pa-3">
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="6" lg="5">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, RIF o dirección..."
             prepend-inner-icon="tabler-search"
             clearable
+            density="compact"
+            persistent-placeholder
+            hide-details
             @update:model-value="emit('update:buscador', $event)"
           />
         </VCol>
         
-        <VCol cols="12" md="8" class="d-flex justify-md-end gap-2">
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
-            :color="isFiltersVisible ? 'primary' : 'secondary'"
+            icon
             variant="tonal"
-            prepend-icon="tabler-filter"
+            :color="isFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
             @click="isFiltersVisible = !isFiltersVisible"
           >
-            Filtros {{ isFiltersVisible ? 'Ocultar' : 'Mostrar' }}
+            <VIcon :icon="isFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
           </VBtn>
+
+          <!-- Exportar (Menú Icono) -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                color="success"
+                variant="tonal"
+                size="38"
+              >
+                <VIcon icon="tabler-file-export" />
+                <VTooltip activator="parent" location="top">Exportar</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact">
+              <VListItem @click="emit('export-excel', 'xlsx')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-spreadsheet" size="18" color="success" />
+                </template>
+                <VListItemTitle>Excel</VListItemTitle>
+              </VListItem>
+              <VListItem @click="emit('export-pdf')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-pdf" size="18" color="error" />
+                </template>
+                <VListItemTitle>PDF</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <!-- Añadir Empresa (Solo Icono) -->
           <VBtn
+            icon
             color="primary"
-            prepend-icon="tabler-plus"
+            variant="flat"
+            size="38"
             @click="emit('add-company')"
           >
-            Nueva Empresa
+            <VIcon icon="tabler-plus" />
+            <VTooltip activator="parent" location="top">Nueva Empresa</VTooltip>
           </VBtn>
-        </VCol>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Resetear Filtros -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="emit('clear')"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
 
       <VExpandTransition>
         <div v-show="isFiltersVisible">
-          <VDivider class="my-4" />
-          <VRow>
+          <VDivider class="my-3 border-opacity-10" />
+          <VRow dense>
             <VCol cols="12" sm="6" md="3">
               <VSelect
                 :model-value="props.tipo_empresa_filtro"
@@ -66,6 +124,7 @@ const isFiltersVisible = ref(false);
                 :items="['Empresa', 'Clinica']"
                 variant="outlined"
                 density="compact"
+                hide-details
                 clearable
                 @update:model-value="emit('update:tipo_empresa_filtro', $event)"
               />
@@ -77,6 +136,10 @@ const isFiltersVisible = ref(false);
                 label="Fecha Desde"
                 placeholder="Seleccionar"
                 clearable
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-calendar-event"
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:fechaDesde_filtro', $event)"
               />
             </VCol>
@@ -86,49 +149,12 @@ const isFiltersVisible = ref(false);
                 label="Fecha Hasta"
                 placeholder="Seleccionar"
                 clearable
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-calendar-event"
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:fechaHasta_filtro', $event)"
               />
-            </VCol>
-
-             <VCol cols="12" sm="6" md="3" class="d-flex align-center">
-              <VBtn 
-                color="secondary" 
-                variant="text" 
-                size="small" 
-                prepend-icon="tabler-refresh"
-                @click="emit('clear')"
-              >
-                Resetear Filtros
-              </VBtn>
-            </VCol>
-            
-            <VCol cols="12" class="d-flex justify-end pt-2">
-              <VMenu>
-                <template #activator="{ props: menuProps }">
-                  <VBtn
-                    color="success"
-                    variant="tonal"
-                    prepend-icon="tabler-download"
-                    v-bind="menuProps"
-                  >
-                    Exportar
-                  </VBtn>
-                </template>
-                <VList>
-                  <VListItem @click="emit('export-excel', 'xlsx')">
-                    <template #prepend>
-                      <VIcon icon="tabler-file-spreadsheet" color="success" />
-                    </template>
-                    <VListItemTitle>Excel</VListItemTitle>
-                  </VListItem>
-                  <VListItem @click="emit('export-pdf')">
-                    <template #prepend>
-                      <VIcon icon="tabler-file-type-pdf" color="error" />
-                    </template>
-                    <VListItemTitle>PDF</VListItemTitle>
-                  </VListItem>
-                </VList>
-              </VMenu>
             </VCol>
           </VRow>
         </div>
