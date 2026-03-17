@@ -386,6 +386,8 @@
     "formatMonth": true,
     "calculateValidStock": true,
     "nextExpirationDate": true,
-    "formatNumber": true
+    "formatNumber": true,
+    "applyFooter": true,
+    "applyPremiumHeader": true
   }
 }

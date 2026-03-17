@@ -12,6 +12,8 @@ declare global {
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const alphaDashValidator: typeof import('./resources/js/@core/utils/validators.js')['alphaDashValidator']
   const alphaValidator: typeof import('./resources/js/@core/utils/validators.js')['alphaValidator']
+  const applyFooter: typeof import('./resources/js/utils/pdfBaseStyles.js')['applyFooter']
+  const applyPremiumHeader: typeof import('./resources/js/utils/pdfBaseStyles.js')['applyPremiumHeader']
   const asyncComputed: typeof import('@vueuse/core')['asyncComputed']
   const autoResetRef: typeof import('@vueuse/core')['autoResetRef']
   const avatarText: typeof import('./resources/js/@core/utils/formatters.js')['avatarText']
@@ -398,6 +400,8 @@ declare module 'vue' {
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly alphaDashValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['alphaDashValidator']>
     readonly alphaValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['alphaValidator']>
+    readonly applyFooter: UnwrapRef<typeof import('./resources/js/utils/pdfBaseStyles.js')['applyFooter']>
+    readonly applyPremiumHeader: UnwrapRef<typeof import('./resources/js/utils/pdfBaseStyles.js')['applyPremiumHeader']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
     readonly avatarText: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['avatarText']>

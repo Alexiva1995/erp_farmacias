@@ -60,6 +60,8 @@ const selectedClient = ref(null);
 const showRegisterClientModal = ref(false);
 
 // Persistencia de Cotización
+const quotationItems = ref([]);
+
 const saveQuotationToLocalStorage = () => {
   localStorage.setItem("tpv_current_quotation", JSON.stringify(quotationItems.value));
 };
@@ -89,7 +91,6 @@ const laboratories = ref([]);
 const origins = ref([]);
 
 const isLoadingFilters = ref(false);
-const quotationItems = ref([]);
 const selectedDisplayCurrency = ref("USD");
 
 const quotationDetails = ref(null);
