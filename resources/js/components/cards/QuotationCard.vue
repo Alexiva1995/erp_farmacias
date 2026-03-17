@@ -196,10 +196,10 @@ const formattedTotalQuotation = computed(() => {
 
       <VSpacer />
       
-      <div class="total-section mt-4 pa-4 rounded-xl shadow-primary-glass transition-all">
+      <div class="total-section mt-4 pa-5 rounded-xl shadow-primary-glass transition-all">
         <div class="d-flex align-center justify-space-between">
           <div class="d-flex flex-column">
-            <span class="text-super-xs font-weight-black text-primary-lighten-2 uppercase letter-spacing-1">Total a Pagar</span>
+            <span class="text-super-xs font-weight-black text-white-opacity-70 uppercase letter-spacing-1">Total a Pagar</span>
             <h4 class="text-h4 font-weight-950 text-white leading-none mt-1">Total</h4>
           </div>
           <div class="text-h3 font-weight-950 text-white text-shadow-sm">
@@ -232,9 +232,13 @@ const formattedTotalQuotation = computed(() => {
   background: rgba(255, 255, 255, 50%) !important;
 }
 
+.text-white-opacity-70 {
+  color: rgba(255, 255, 255, 70%) !important;
+}
+
 .total-section {
   position: relative;
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173f1f 100%);
   overflow: hidden;
 }
 
