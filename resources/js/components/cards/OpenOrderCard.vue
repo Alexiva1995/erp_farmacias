@@ -634,84 +634,116 @@ const getIva = (product, currency) => {
 <template>
   <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-lg elevation-2">
     <!-- Header estilo Cotización -->
-    <VCardItem class="py-4 px-6 border-b bg-surface">
-      <div class="d-flex align-center flex-wrap gap-4">
-        <div class="d-flex align-center">
-          <VIcon icon="tabler-file-invoice" size="32" color="primary" class="me-3" />
-          <div class="d-flex flex-column">
-            <h2 class="text-h6 font-weight-950 text-high-emphasis leading-none mb-1 text-uppercase">
-              Orden de Venta
+    <VCardItem class="pa-3 border-b bg-surface">
+      <div class="d-flex align-center justify-space-between w-100 gap-3">
+        <div class="d-flex align-center min-width-0">
+          <VIcon icon="tabler-file-invoice" size="24" color="primary" class="me-2" />
+          <div class="d-flex flex-column min-width-0">
+            <h2 class="text-subtitle-1 font-weight-950 text-high-emphasis leading-none mb-1 text-uppercase truncate">
+              Orden
             </h2>
-            <div class="d-flex align-center">
-              <span class="text-subtitle-2 font-weight-bold text-primary me-2">{{ clientName }}</span>
+            <div class="d-flex align-center gap-2">
+              <span class="text-caption font-weight-bold text-primary truncate">{{ clientName }}</span>
               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">{{ Identidad }}</span>
             </div>
           </div>
         </div>
 
-        <VSpacer />
+        <div class="d-flex align-center gap-2 flex-shrink-0">
+          <!-- Selector de Descuento (VMenu Style) -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                variant="tonal"
+                color="primary"
+                size="small"
+                class="rounded-lg font-weight-black text-uppercase"
+              >
+                <span>{{ props.selectedDiscountType || 'Descuento' }}</span>
+                <VIcon end icon="tabler-chevron-down" size="14" />
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-lg shadow-lg">
+              <VListItem
+                v-for="option in discountOptions"
+                :key="option"
+                :value="option"
+                :active="props.selectedDiscountType === option"
+                color="primary"
+                @click="emit('update:selectedDiscountType', option)"
+              >
+                <VListItemTitle class="font-weight-bold text-uppercase text-caption">{{ option }}</VListItemTitle>
+              </VListItem>
+              <VDivider v-if="props.selectedDiscountType" />
+              <VListItem v-if="props.selectedDiscountType" color="error" @click="emit('update:selectedDiscountType', null)">
+                <VListItemTitle class="font-weight-bold text-uppercase text-caption text-error">Quitar</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
-        <div class="d-flex align-center gap-2">
-          <!-- Selector de Descuento Refinado -->
-          <VSelect
-            :model-value="props.selectedDiscountType"
-            :items="discountOptions"
-            density="compact"
-            variant="flat"
-            bg-color="grey-lighten-4"
-            hide-details
-            placeholder="Descuento"
-            style="inline-size: 140px;"
-            class="rounded-lg font-weight-black text-center custom-select-premium"
-            @update:model-value="emit('update:selectedDiscountType', $event)"
-          />
+          <!-- Selector de Moneda (VMenu Style) -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                variant="tonal"
+                color="primary"
+                size="small"
+                class="rounded-lg font-weight-black"
+              >
+                <span>{{ props.selectedDisplayCurrency }}</span>
+                <VIcon end icon="tabler-chevron-down" size="14" />
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-lg shadow-lg">
+              <VListItem
+                v-for="currencyOption in availableCurrency"
+                :key="currencyOption"
+                :value="currencyOption"
+                :active="props.selectedDisplayCurrency === currencyOption"
+                color="primary"
+                @click="selectCurrency(currencyOption)"
+              >
+                <VListItemTitle class="font-weight-bold text-caption">{{ currencyOption }}</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
-          <!-- Selector de Moneda Refinado -->
-          <VSelect
-            :model-value="props.selectedDisplayCurrency"
-            :items="availableCurrency"
-            density="compact"
-            variant="flat"
-            bg-color="grey-lighten-4"
-            hide-details
-            style="inline-size: 80px;"
-            class="rounded-lg font-weight-black text-center custom-select-premium"
-            @update:model-value="selectCurrency"
-          />
           <VBtn
             icon="tabler-trash"
             variant="tonal"
             color="error"
-            size="small"
-            class="rounded-lg shadow-sm"
+            size="x-small"
+            class="rounded-lg"
             @click="handleCancelarOrder"
           />
         </div>
       </div>
     </VCardItem>
 
-    <VCardText class="pa-6">
-      <!-- Lista de Productos Premium -->
-      <div v-if="props.orderProducts.length === 0" class="text-center py-12 text-disabled bg-grey-lighten-5 rounded-xl border border-dashed mx-6">
-        <VIcon icon="tabler-shopping-cart-off" size="64" class="mb-4 opacity-20" />
-        <p class="text-h6 font-weight-950 uppercase opacity-60">La orden está vacía</p>
-        <p class="text-caption">Use el buscador de productos para comenzar su venta</p>
+    <VCardText class="pa-3">
+      <!-- Lista de Productos Premium (Minimalista) -->
+      <div v-if="props.orderProducts.length === 0" class="text-center py-8 text-disabled bg-grey-lighten-5 rounded-xl border border-dashed mx-3">
+        <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-3 opacity-20" />
+        <p class="text-subtitle-2 font-weight-950 uppercase opacity-60">La orden está vacía</p>
+        <p class="text-super-xs">Use el buscador de productos para comenzar su venta</p>
       </div>
 
       <div v-else class="mt-2">
         <!-- Barra de búsqueda compacta encima de la lista -->
-        <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4 px-2">
+        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2 px-1">
            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-list-details" color="primary" class="opacity-80" />
-              <span class="text-subtitle-1 font-weight-950 text-primary uppercase letter-spacing-1">Detalle de Productos</span>
-              <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-3">{{ totalSelectedQuantity }} ÍTEMS</VChip>
+              <VIcon icon="tabler-list-details" color="primary" size="18" class="opacity-80" />
+              <span class="text-caption font-weight-950 text-primary uppercase letter-spacing-1">Ítems</span>
+              <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ totalSelectedQuantity }}</VChip>
            </div>
 
            <!-- Buscador Refinado y Compacto -->
-           <div class="d-flex align-center gap-2 flex-grow-1 flex-md-grow-0" style="max-inline-size: 400px;">
+           <div class="d-flex align-center gap-2 flex-grow-1 flex-md-grow-0" style="max-inline-size: 320px;">
               <AppTextField
                 v-model="quotationId"
-                placeholder="Escanear o buscar producto..."
+                placeholder="Buscar producto..."
                 density="compact"
                 variant="flat"
                 bg-color="grey-lighten-4"
@@ -725,8 +757,8 @@ const getIva = (product, currency) => {
                       icon="tabler-plus"
                       variant="text"
                       color="primary"
-                      size="small"
-                      class="me-n2"
+                      size="x-small"
+                      class="me-n1"
                       :disabled="!quotationId"
                       @click="fetchQuotationProducts(quotationId)"
                    />
@@ -736,61 +768,54 @@ const getIva = (product, currency) => {
         </div>
 
         <!-- Lista de Productos Premium -->
-        <div class="mt-6">
-          <div class="d-flex flex-column gap-3 overflow-y-auto" style="max-block-size: 400px; padding-inline-end: 4px;">
+        <div class="mt-2">
+          <div class="d-flex flex-column gap-2 overflow-y-auto" style="max-block-size: 380px; padding-inline-end: 4px;">
             <div 
               v-for="(product, index) in props.orderProducts" 
               :key="product.id" 
-              class="product-row pa-4 rounded-xl border elevation-1 bg-white shadow-sm d-flex align-center gap-4"
+              class="product-row pa-2 rounded-lg border bg-surface d-flex align-center gap-3"
             >
               <!-- Cantidad Box -->
-              <div class="d-flex flex-column align-center">
-                <div class="quantity-display-box font-weight-950 text-primary mb-1">
+              <div class="d-flex align-center gap-2">
+                <div class="quantity-display-box font-weight-950 text-primary">
                   {{ product.selectedQuantity }}
                 </div>
-                <div class="d-flex gap-1" v-if="!product.pack_id">
-                  <VBtn icon="tabler-minus" size="20" variant="tonal" color="primary" class="rounded-sm" @click="handleDecrement(product)" :disabled="product.selectedQuantity <= 1" />
-                  <VBtn icon="tabler-plus" size="20" variant="tonal" color="primary" class="rounded-sm" @click="handleIncrement(product)" :disabled="product.selectedQuantity >= product.availableQuantity" />
+                <div class="d-flex flex-column gap-0" v-if="!product.pack_id">
+                  <VBtn icon="tabler-plus" size="18" variant="text" color="primary" class="pa-0" style="block-size: 18px; inline-size: 18px;" @click="handleIncrement(product)" :disabled="product.selectedQuantity >= product.availableQuantity" />
+                  <VBtn icon="tabler-minus" size="18" variant="text" color="primary" class="pa-0" style="block-size: 18px; inline-size: 18px;" @click="handleDecrement(product)" :disabled="product.selectedQuantity <= 1" />
                 </div>
               </div>
 
               <!-- Información del Producto -->
               <div class="flex-grow-1 overflow-hidden">
-                <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-1 truncate">
+                <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight truncate">
                   {{ product.title }}
-                  <VIcon v-if="product.pack_id" icon="tabler-lock" size="14" color="warning" class="ms-1" />
                 </h3>
-                <div class="text-super-xs text-disabled font-weight-black uppercase">
-                  {{ product.active_ingredient }} • {{ product.laboratory || 'GENÉRICO' }}
-                </div>
-                <div class="d-flex gap-1 mt-1">
-                  <template v-if="!product.pack_id">
-                    <VChip v-if="product.discount_type === 'expiration' && product.discount_percentage > 0" color="error" size="x-small" variant="flat" class="font-weight-black uppercase">Expira</VChip>
-                    <VChip v-else-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="font-weight-black uppercase">Oferta</VChip>
-                  </template>
+                <div class="d-flex gap-2 mt-0 align-center">
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">
+                    {{ product.active_ingredient }}
+                  </span>
+                  <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1" style="block-size: 14px;">%</VChip>
                 </div>
               </div>
 
               <!-- Precios -->
-              <div class="text-right d-flex flex-column align-end" style="min-inline-size: 100px;">
-                <span class="text-h6 font-weight-950 text-primary leading-tight">
+              <div class="text-right d-flex flex-column align-end" style="min-inline-size: 80px;">
+                <span class="text-caption font-weight-950 text-primary leading-tight">
                   {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                 </span>
-                <span class="text-super-xs text-disabled font-weight-black uppercase mt-1">
-                  {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }} c/u
+                <span class="text-super-xs text-disabled font-weight-black uppercase">
+                  {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                 </span>
-                <div v-if="getIva(product, props.selectedDisplayCurrency) > 0" class="text-super-xs text-success font-weight-black mt-1">
-                  IVA: {{ formatCurrency(getIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
-                </div>
               </div>
 
               <!-- Acción Eliminar -->
               <VBtn 
                 icon="tabler-x" 
-                variant="tonal" 
+                variant="text" 
                 color="error" 
-                size="small" 
-                class="rounded-lg shadow-sm"
+                size="x-small" 
+                class="opacity-60"
                 @click="handleClickProductItem(product)"
               />
             </div>
@@ -803,56 +828,39 @@ const getIva = (product, currency) => {
           
           <VRow justify="end">
             <VCol cols="12" md="6" lg="5">
-              <div class="d-flex flex-column gap-2 breakdown-container pa-4 rounded-xl">
+              <div class="d-flex flex-column gap-1 breakdown-container pa-3 rounded-lg border bg-grey-lighten-5">
                 <!-- Subtotal -->
                 <div class="d-flex justify-space-between align-center">
-                  <span class="text-caption font-weight-black text-disabled uppercase">Subtotal Base</span>
-                  <span class="text-subtitle-2 font-weight-black text-high-emphasis">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase">Subtotal</span>
+                  <span class="text-caption font-weight-black text-high-emphasis">
                     {{ formatCurrency(props.totalProductsAmount, props.selectedDisplayCurrency) }}
                   </span>
                 </div>
 
                 <!-- Descuentos -->
                 <div v-if="activeDiscountDisplay" class="d-flex justify-space-between align-center">
-                  <span class="text-caption font-weight-black text-error uppercase">{{ activeDiscountDisplay.label }}</span>
-                  <span class="text-subtitle-2 font-weight-black text-error">
+                  <span class="text-super-xs font-weight-black text-error uppercase">{{ activeDiscountDisplay.label }}</span>
+                  <span class="text-caption font-weight-black text-error">
                     - {{ activeDiscountDisplay.formatted }}
-                  </span>
-                </div>
-
-                <div v-if="props.expirationDiscountTotal > 0" class="d-flex justify-space-between align-center">
-                  <span class="text-caption font-weight-black text-error uppercase">Oferta por Vencimiento</span>
-                  <span class="text-subtitle-2 font-weight-black text-error">
-                    - {{ formatCurrency(props.expirationDiscountTotal, props.selectedDisplayCurrency) }}
                   </span>
                 </div>
 
                 <!-- IVA -->
                 <div class="d-flex justify-space-between align-center">
-                  <span class="text-caption font-weight-black text-disabled uppercase">IVA Total (16%)</span>
-                  <span class="text-subtitle-2 font-weight-black text-success">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase">IVA (16%)</span>
+                  <span class="text-caption font-weight-black text-success">
                     + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
                   </span>
                 </div>
 
-                <!-- IGTF / SPE -->
-                <div v-if="appliesSpecialTax" class="d-flex justify-space-between align-center">
-                  <span class="text-caption font-weight-black text-error uppercase">Recargo SPE (3%)</span>
-                  <span class="text-subtitle-2 font-weight-black text-error">
-                    + {{ formatCurrency(specialTaxAmount, props.selectedDisplayCurrency) }}
-                  </span>
-                </div>
-
-                <VDivider class="my-2" />
+                <VDivider class="my-1" />
 
                 <!-- TOTAL FINAL -->
-                <div class="d-flex justify-space-between align-end">
-                  <span class="text-h6 font-weight-950 text-high-emphasis uppercase leading-none">Total</span>
-                  <div class="d-flex flex-column align-end">
-                    <span class="text-h4 font-weight-950 text-primary leading-none">
-                      {{ formattedTotalQuotation }}
-                    </span>
-                  </div>
+                <div class="d-flex justify-space-between align-end mt-1">
+                  <span class="text-subtitle-2 font-weight-950 text-high-emphasis uppercase leading-none">Total</span>
+                  <span class="text-h5 font-weight-950 text-primary leading-none">
+                    {{ formattedTotalQuotation }}
+                  </span>
                 </div>
               </div>
             </VCol>
