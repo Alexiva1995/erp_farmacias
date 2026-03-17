@@ -839,35 +839,52 @@ const getIva = (product, currency) => {
                 </div>
               </div>
 
-              <!-- Información del Producto -->
+              <!-- Información del Producto y Desglose Inline -->
               <div class="flex-grow-1 overflow-hidden">
-                <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight truncate">
+                <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight truncate mb-1">
                   {{ product.title }}
                 </h3>
-                <div class="d-flex gap-2 mt-0 align-center">
-                  <span class="text-super-xs text-disabled font-weight-black uppercase">
-                    {{ product.active_ingredient }}
-                  </span>
-                  <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1" style="block-size: 14px;">%</VChip>
+                
+                <!-- Desglose de Precios Inline -->
+                <div class="d-flex align-center gap-2 flex-wrap min-width-0">
+                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-2 rounded border" style="block-size: 18px;">
+                     <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
+                     <span class="text-super-xs font-weight-black text-secondary">
+                       {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+                     </span>
+                  </div>
+                  
+                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-2 rounded border" style="block-size: 18px;">
+                     <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
+                     <span class="text-super-xs font-weight-black text-high-emphasis">
+                       {{ formatCurrency(getProductPriceSinIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+                     </span>
+                  </div>
+
+                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-2 rounded border" style="block-size: 18px;">
+                     <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
+                     <span class="text-super-xs font-weight-black text-success">
+                       {{ formatCurrency(getIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+                     </span>
+                  </div>
+
+                  <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1" style="block-size: 14px;">-{{ product.discount_percentage }}%</VChip>
                 </div>
               </div>
 
-              <!-- Precios -->
-              <div class="text-right d-flex flex-column align-end" style="min-inline-size: 85px;">
+              <!-- Precio Total Ítem -->
+              <div class="text-right d-flex flex-column align-end" style="min-inline-size: 100px;">
                 <!-- Precio Tachado (Original) -->
                 <span 
                   v-if="product.discount_percentage > 0 || activeDiscountDisplay" 
                   class="text-super-xs text-disabled font-weight-black text-decoration-line-through uppercase leading-none mb-1"
                 >
-                  {{ formatCurrency(getProductPriceOriginalSinIva(product, props.selectedDisplayCurrency) / product.selectedQuantity, props.selectedDisplayCurrency) }}
+                  {{ formatCurrency(getProductPriceOriginalSinIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                 </span>
                 
-                <!-- Precio Actual (Con Descuento) -->
-                <span class="text-caption font-weight-950 text-primary leading-tight">
+                <!-- Precio Actual (Con Descuento + IVA) -->
+                <span class="text-subtitle-2 font-weight-950 text-primary leading-tight">
                   {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
-                </span>
-                <span class="text-super-xs text-disabled font-weight-black uppercase">
-                  {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                 </span>
               </div>
 
@@ -884,106 +901,90 @@ const getIva = (product, currency) => {
           </div>
         </div>
 
-        <!-- Footer Action Bar & Detailed Breakdown -->
-        <div class="mt-8 px-2">
-          <VDivider class="mb-6" />
-          
-          <VRow justify="end">
-            <VCol cols="12" md="6" lg="5">
-              <div class="d-flex flex-column gap-1 breakdown-container pa-3 rounded-lg border bg-grey-lighten-5">
-                <!-- Subtotal -->
-                <div class="d-flex justify-space-between align-center">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">Subtotal</span>
-                  <span class="text-caption font-weight-black text-high-emphasis">
-                    {{ formatCurrency(props.totalProductsAmount, props.selectedDisplayCurrency) }}
-                  </span>
-                </div>
+    <!-- Footer Unificado: Totales y Acciones -->
+    <VCardText class="pa-2 bg-grey-lighten-5 border-t">
+       <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-2">
+          <!-- Desglose Horizontal de Totales -->
+          <div class="d-flex align-center gap-4 flex-grow-1 overflow-x-auto py-1">
+             <!-- Subtotal -->
+             <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">Subtotal</span>
+                <span class="text-caption font-weight-black text-high-emphasis leading-none">
+                   {{ formatCurrency(props.totalProductsAmount, props.selectedDisplayCurrency) }}
+                </span>
+             </div>
 
-                <!-- Descuentos -->
-                <div v-if="activeDiscountDisplay" class="d-flex justify-space-between align-center">
-                  <span class="text-super-xs font-weight-black text-error uppercase">{{ activeDiscountDisplay.label }}</span>
-                  <span class="text-caption font-weight-black text-error">
-                    - {{ activeDiscountDisplay.formatted }}
-                  </span>
-                </div>
+             <!-- Descuento Activo -->
+             <div v-if="activeDiscountDisplay" class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-error uppercase leading-none mb-1">{{ activeDiscountDisplay.label }}</span>
+                <span class="text-caption font-weight-black text-error leading-none">
+                   - {{ activeDiscountDisplay.formatted }}
+                </span>
+             </div>
 
-                <!-- IVA -->
-                <div class="d-flex justify-space-between align-center">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">IVA (16%)</span>
-                  <span class="text-caption font-weight-black text-success">
-                    + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
-                  </span>
-                </div>
+             <!-- IVA -->
+             <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">IVA (16%)</span>
+                <span class="text-caption font-weight-black text-success leading-none">
+                   + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
+                </span>
+             </div>
 
-                <VDivider class="my-1" />
+             <VDivider vertical class="mx-2" style="block-size: 32px;" />
 
-                <!-- TOTAL FINAL -->
-                <div class="d-flex justify-space-between align-end mt-1">
-                  <span class="text-subtitle-2 font-weight-950 text-high-emphasis uppercase leading-none">Total</span>
-                  <span class="text-h5 font-weight-950 text-primary leading-none">
-                    {{ formattedTotalQuotation }}
-                  </span>
-                </div>
-              </div>
-            </VCol>
-          </VRow>
-        </div>
-      </div>
+             <!-- TOTAL -->
+             <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-primary uppercase leading-none mb-1">Total Final</span>
+                <span class="text-h6 font-weight-950 text-primary leading-none">
+                   {{ formattedTotalQuotation }}
+                </span>
+             </div>
+          </div>
+
+          <!-- Acciones Rápidas -->
+          <div class="d-flex align-center gap-2">
+             <VBtn
+                v-if="!props.orderReserved"
+                color="warning"
+                variant="tonal"
+                height="44"
+                class="rounded-lg font-weight-950 px-4"
+                @click="handleReserveOrder"
+             >
+                <VIcon start icon="tabler-hourglass" size="18" />
+                <span class="d-none d-sm-inline">RESERVAR</span>
+             </VBtn>
+             
+             <VBtn
+                color="primary"
+                variant="flat"
+                height="44"
+                min-inline-size="160"
+                class="rounded-lg font-weight-950 px-6 elevation-2"
+                @click="handleCompleteOrder"
+             >
+                <VIcon start icon="tabler-circle-check" size="20" />
+                COBRAR AHORA
+             </VBtn>
+
+             <VMenu location="top end">
+                <template #activator="{ props: menuProps }">
+                  <VBtn icon="tabler-dots-vertical" variant="tonal" color="secondary" size="small" v-bind="menuProps" class="rounded-lg" />
+                </template>
+                <VList density="compact" class="rounded-lg shadow-lg">
+                   <VListItem @click="null">
+                      <template #prepend><VIcon icon="tabler-printer" size="18" class="me-2" /></template>
+                      <VListItemTitle class="font-weight-bold text-caption">Imprimir Ticket</VListItemTitle>
+                   </VListItem>
+                   <VListItem @click="null">
+                      <template #prepend><VIcon icon="tabler-brand-whatsapp" size="18" class="me-2 text-success" /></template>
+                      <VListItemTitle class="font-weight-bold text-caption">WhatsApp</VListItemTitle>
+                   </VListItem>
+                </VList>
+             </VMenu>
+          </div>
+       </div>
     </VCardText>
-
-    <VCardActions class="pa-6 bg-surface d-flex align-center flex-wrap gap-4 border-t">
-      <div class="d-flex gap-2">
-        <VTooltip text="Imprimir Ticket">
-          <template #activator="{ props }">
-            <VBtn v-bind="props" icon="tabler-printer" variant="tonal" color="secondary" size="large" class="rounded-xl" />
-          </template>
-        </VTooltip>
-        <VTooltip text="Compartir por WhatsApp">
-          <template #activator="{ props }">
-            <VBtn v-bind="props" icon="tabler-brand-whatsapp" variant="tonal" color="success" size="large" class="rounded-xl" />
-          </template>
-        </VTooltip>
-      </div>
-
-      <VSpacer />
-
-      <div class="d-flex gap-3">
-        <VBtn
-          v-if="!props.orderReserved"
-          color="warning"
-          variant="tonal"
-          height="56"
-          class="rounded-xl font-weight-950 px-6"
-          @click="handleReserveOrder"
-        >
-          <VIcon start icon="tabler-hourglass" />
-          RESERVAR
-        </VBtn>
-        <VBtn
-          v-if="props.orderReserved"
-          color="warning"
-          variant="flat"
-          height="56"
-          class="rounded-xl font-weight-950 px-6"
-          @click="handleReserved"
-        >
-          <VIcon start icon="tabler-lock-check" />
-          RESERVADA
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          height="56"
-          min-inline-size="200"
-          class="rounded-xl font-weight-950 px-8 elevation-4"
-          @click="handleCompleteOrder"
-        >
-          <VIcon start icon="tabler-circle-check" />
-          COBRAR AHORA
-        </VBtn>
-      </div>
-    </VCardActions>
-  </VCard>
 </template>
 
 <style scoped>
