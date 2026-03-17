@@ -313,8 +313,8 @@ const handleMobilePageChange = (newPage) => {
 }
 
 .premium-mobile-card {
-  background: white;
   border-radius: 16px !important;
+  background: white;
   transition: all 0.2s ease;
 }
 
