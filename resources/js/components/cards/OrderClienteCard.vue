@@ -149,8 +149,8 @@ const loadQuotation = () => {
 
 .client-alert-premium {
   position: relative;
-  background: rgba(var(--v-theme-primary), 0.05);
   overflow: hidden;
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 
 .leading-none {

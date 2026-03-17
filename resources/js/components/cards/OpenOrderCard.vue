@@ -430,7 +430,7 @@ const handleClickProductItem = (product) => {
   });
 };
 
-const hadleCancelarOrder = () => {
+const handleCancelarOrder = () => {
   Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea Cancelar la Orden!",
@@ -451,7 +451,7 @@ const handleCompleteOrder = () => {
   emit("open-buys-modal");
 };
 
-const handleTReserveOrder = () => {
+const handleReserveOrder = () => {
   Swal.fire({
     title: "¿Estás seguro?",
     text: "¡Desea Reservar la Orden!",
@@ -601,6 +601,34 @@ const specialTaxAmount = computed(() => {
   }
   return tax;
 });
+
+const getIva = (product, currency) => {
+  const taxRate = product.taxRate || 0;
+  let basePrice = 0;
+  if (product.discountApplied) {
+    basePrice =
+      currency === "BS"
+        ? product.price_bs || 0
+        : currency === "COP"
+          ? product.price_cop || 0
+          : product.price || 0;
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice =
+      getOriginalBasePrice(product, currency) * getDiscountFactor(product);
+  } else {
+    basePrice =
+      currency === "BS"
+        ? product.price_bs || 0
+        : currency === "COP"
+          ? product.price_cop || 0
+          : product.price || 0;
+  }
+  let ivaAmount = basePrice * product.selectedQuantity * taxRate;
+  if (currency === "COP") {
+    ivaAmount = roundUpToNearestHundred(ivaAmount);
+  }
+  return ivaAmount;
+};
 </script>
 
 <template>
@@ -641,7 +669,7 @@ const specialTaxAmount = computed(() => {
             color="error"
             size="small"
             class="rounded-lg"
-            @click="hadleCancelarOrder"
+            @click="handleCancelarOrder"
           />
         </div>
       </div>
@@ -851,7 +879,7 @@ const specialTaxAmount = computed(() => {
             variant="tonal"
             height="56"
             class="rounded-xl font-weight-950 px-6"
-            @click="handleTReserveOrder"
+            @click="handleReserveOrder"
           >
             <VIcon start icon="tabler-hourglass" />
             RESERVAR
