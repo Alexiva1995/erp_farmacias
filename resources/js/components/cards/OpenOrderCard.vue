@@ -178,7 +178,6 @@ const Identidad = computed(() => {
 });
 
 const availableCurrency = ref(["USD", "BS", "COP"]);
-const chipColor = "primary";
 
 const breakdownItems = computed(() => {
   let ivaAmount = props.totalIvaAmount;
@@ -224,8 +223,6 @@ const totalSelectedQuantity = computed(() => {
   return total;
 });
 
-// Factor: Precio = Original * (1 - Max(Global, Individual/Expiration) / 100)
-// Evita doble descuento: NUNCA aplicar % sobre un precio ya descontado
 const getDiscountFactor = (product) => {
   if (product.pack_id) return 1;
 
@@ -241,7 +238,6 @@ const getDiscountFactor = (product) => {
   return 1;
 };
 
-// Precio original de lista (para aplicar descuento una sola vez)
 const getOriginalBasePrice = (product, currency) => {
   if (currency === "BS") {
     return (
@@ -268,7 +264,35 @@ const getOriginalBasePrice = (product, currency) => {
   );
 };
 
-// Base con descuento aplicado; usa precio ORIGINAL * factor único para evitar doble descuento
+// Precio unitario con descuento e IVA para mostrar "c/u"
+const getPricePerUnit = (product, currency) => {
+  let basePrice = 0;
+  if (product.discountApplied) {
+    basePrice =
+      currency === "BS"
+        ? product.price_bs || 0
+        : currency === "COP"
+          ? product.price_cop || 0
+          : product.price || 0;
+  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
+    basePrice =
+      getOriginalBasePrice(product, currency) * getDiscountFactor(product);
+  } else {
+    basePrice =
+      currency === "BS"
+        ? product.price_bs || 0
+        : currency === "COP"
+          ? product.price_cop || 0
+          : product.price || 0;
+  }
+  const taxRate = product.taxRate || 0;
+  let price = basePrice * (1 + taxRate);
+  if (currency === "COP") {
+    price = roundUpToNearestHundred(price);
+  }
+  return price;
+};
+
 const getProductPriceSinIva = (product, currency) => {
   let basePrice = 0;
   if (product.discountApplied) {
@@ -296,7 +320,6 @@ const getProductPriceSinIva = (product, currency) => {
   return priceSinIva;
 };
 
-// Precio original sin IVA (para mostrar tachado): producto/pack o Empresa
 const getProductPriceOriginalSinIva = (product, currency) => {
   let basePrice = 0;
   const hasProductDiscount =
@@ -338,41 +361,6 @@ const getProductPriceOriginalSinIva = (product, currency) => {
   return priceSinIva;
 };
 
-const getProductPriceSinDescuento = (product, currency) => {
-  const taxRate = product.taxRate || 0;
-  let basePrice = 0;
-
-  // Precio original cuando hay descuento (pack, individual, vencimiento, categoría)
-  if (
-    (product.has_pack_discount && product.pack_id) ||
-    product.discount_percentage > 0
-  ) {
-    if (currency === "BS") {
-      basePrice = product.original_price_bs || product.price_bs || 0;
-    } else if (currency === "COP") {
-      basePrice = product.original_price_cop || product.price_cop || 0;
-    } else {
-      basePrice =
-        product.original_price_usd || product.basePrice || product.price || 0;
-    }
-  } else {
-    if (currency === "BS") {
-      basePrice = product.price_bs || 0;
-    } else if (currency === "COP") {
-      basePrice = product.price_cop || 0;
-    } else {
-      basePrice = product.price || 0;
-    }
-  }
-
-  let priceWithIva = basePrice * product.selectedQuantity * (1 + taxRate);
-  if (currency === "COP") {
-    priceWithIva = roundUpToNearestHundred(priceWithIva);
-  }
-
-  return priceWithIva;
-};
-
 const getProductPrice = (product, currency) => {
   const taxRate = product.taxRate || 0;
   let basePrice = 0;
@@ -401,49 +389,7 @@ const getProductPrice = (product, currency) => {
   return priceWithIva;
 };
 
-const getIva = (product, currency) => {
-  const taxRate = product.taxRate || 0;
-  let basePrice = 0;
-  if (product.discountApplied) {
-    basePrice =
-      currency === "BS"
-        ? product.price_bs || 0
-        : currency === "COP"
-          ? product.price_cop || 0
-          : product.price || 0;
-  } else if (activeDiscountDisplay.value != null && !product.pack_id) {
-    basePrice =
-      getOriginalBasePrice(product, currency) * getDiscountFactor(product);
-  } else {
-    basePrice =
-      currency === "BS"
-        ? product.price_bs || 0
-        : currency === "COP"
-          ? product.price_cop || 0
-          : product.price || 0;
-  }
-  let Iva = basePrice * product.selectedQuantity * taxRate;
-  if (currency === "COP") {
-    Iva = roundUpToNearestHundred(Iva);
-  }
-  return Iva;
-};
-
-/*const handleClickProductItem = (product) => {
-  if (product.selectedQuantity > 1) {
-    emit("update-quantity", {
-      productId: product.product_id,
-      quantity: product.selectedQuantity - 1,
-      orderDetailId: product.order_detail_id,
-    });
-  } else {
-    emit("remove-item", product.product_id);
-  }
-};*/
-
 const handleClickProductItem = (product) => {
-  // 1. Verificar si el producto pertenece a un pack
-
   if (product.pack_id) {
     Swal.fire({
       title: "¿Eliminar pack completo?",
@@ -459,40 +405,29 @@ const handleClickProductItem = (product) => {
         const packItems = props.orderProducts.filter(
           (p) => p.pack_id === product.pack_id,
         );
-        console.log(packItems);
         packItems.forEach((item) => {
           emit("remove-item", item.product_id);
         });
-
         toast.success("Pack eliminado de la orden");
       }
     });
     return;
   }
 
-  // 2. Lógica normal para productos que NO son pack
-  if (product.selectedQuantity > 1) {
-    emit("update-quantity", {
-      productId: product.product_id,
-      quantity: product.selectedQuantity - 1,
-      orderDetailId: product.order_detail_id,
-    });
-  } else {
-    Swal.fire({
-      title: "¿Estás seguro?",
-      text: "¡Desea eliminar el producto!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Continuar",
-      cancelButtonText: "Cancelar",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        emit("remove-item", product.product_id);
-      }
-    });
-  }
+  Swal.fire({
+    title: "¿Estás seguro?",
+    text: "¡Desea eliminar el producto!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      emit("remove-item", product.product_id);
+    }
+  });
 };
 
 const hadleCancelarOrder = () => {
@@ -538,14 +473,12 @@ const fetchQuotationProducts = async (id) => {
   try {
     const response = await axios.get(`/tpv/quotations/${id}/products`);
     const quotationData = response.data;
-
     emit("add-quotation-products", quotationData.products);
     toast.success("Productos de la cotización cargados exitosamente.");
   } catch (error) {
     const errorMessage =
       error.response?.data?.message ||
       "Error de red o cotización no encontrada.";
-
     toast.error(errorMessage);
     console.error("Error fetching quotation:", error);
   } finally {
@@ -575,15 +508,10 @@ watch(
   { deep: true },
 );
 
-// Watcher para detectar si el cliente tiene empresa y autoseleccionar
 watch(
   () => props.cliente,
   (newCliente, oldCliente) => {
-    // Prevent reset if it's the same client (e.g. during reload/currency change)
-    if (newCliente?.id === oldCliente?.id) {
-      return;
-    }
-
+    if (newCliente?.id === oldCliente?.id) return;
     if (
       newCliente &&
       newCliente.company_id !== null &&
@@ -627,9 +555,7 @@ const activeDiscountDisplay = computed(() => {
     },
   };
   const current = config[type];
-  if (current && current.amount > 0) {
-    return current;
-  }
+  if (current && current.amount > 0) return current;
   return null;
 });
 
@@ -639,14 +565,21 @@ const handleIncrement = (product) => {
       id: product.pack_id,
       pack_config: product.original_pack_config || null,
     };
-    emit("add-pack", {
-      pack: packSimulado,
-      quantity: 1,
-    });
+    emit("add-pack", { pack: packSimulado, quantity: 1 });
   } else {
     emit("update-quantity", {
       productId: product.product_id,
       quantity: product.selectedQuantity + 1,
+      orderDetailId: product.order_detail_id,
+    });
+  }
+};
+
+const handleDecrement = (product) => {
+  if (product.selectedQuantity > 1 && !product.pack_id) {
+    emit("update-quantity", {
+      productId: product.product_id,
+      quantity: product.selectedQuantity - 1,
       orderDetailId: product.order_detail_id,
     });
   }
@@ -671,497 +604,280 @@ const specialTaxAmount = computed(() => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-sm">
-    <VCardItem class="py-3 px-5">
+  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-lg elevation-2">
+    <!-- Header estilo Cotización -->
+    <VCardItem class="py-4 px-6 border-b bg-surface">
       <div class="d-flex align-center flex-wrap gap-4">
         <div class="d-flex align-center">
-          <VAvatar color="primary" variant="tonal" size="40" class="me-3 rounded-lg">
-            <VIcon icon="tabler-user" size="20" />
-          </VAvatar>
+          <VIcon icon="tabler-file-invoice" size="32" color="primary" class="me-3" />
           <div class="d-flex flex-column">
-            <VCardTitle class="text-h6 font-weight-black leading-none mb-1">
-              {{ clientName }}
-            </VCardTitle>
-            <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">{{ Identidad }}</span>
+            <h2 class="text-h6 font-weight-950 text-high-emphasis leading-none mb-1 text-uppercase">
+              Orden de Venta
+            </h2>
+            <div class="d-flex align-center">
+              <span class="text-subtitle-2 font-weight-bold text-primary me-2">{{ clientName }}</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">{{ Identidad }}</span>
+            </div>
           </div>
         </div>
 
-        <VSpacer class="d-none d-md-block" />
+        <VSpacer />
 
-        <div class="d-flex align-center flex-wrap gap-2 ms-auto">
+        <div class="d-flex align-center gap-2">
           <VSelect
-            :model-value="props.selectedDiscountType"
-            :items="discountOptions"
+            :model-value="props.selectedDisplayCurrency"
+            :items="availableCurrency"
             density="compact"
-            variant="outlined"
+            variant="flat"
+            bg-color="grey-lighten-4"
             hide-details
-            style="inline-size: 140px"
-            class="rounded-lg font-weight-black"
-            placeholder="Descuento"
-            clearable
-            @update:model-value="emit('update:selectedDiscountType', $event)"
+            style="inline-size: 80px"
+            class="rounded-lg font-weight-black text-center"
+            @update:model-value="selectCurrency"
           />
-          <VSelect
-            v-if="props.selectedDiscountType === 'Empresa'"
-            v-model="selectedCompany"
-            :items="props.activeCompanyOffers"
-            density="compact"
-            variant="outlined"
-            hide-details
-            style="inline-size: 200px"
-            class="rounded-lg font-weight-black"
-            placeholder="Seleccione Empresa"
-            item-title="title"
-            item-value="value"
-            clearable
+          <VBtn
+            icon="tabler-trash"
+            variant="tonal"
+            color="error"
+            size="small"
+            class="rounded-lg"
+            @click="hadleCancelarOrder"
           />
-          <VSelect
-            v-if="props.selectedDiscountType === 'Medico'"
-            v-model="selectedDoctor"
-            :items="props.activeDoctorOffers"
-            density="compact"
-            variant="outlined"
-            hide-details
-            style="inline-size: 200px"
-            class="rounded-lg font-weight-black"
-            placeholder="Seleccione Médico"
-            item-title="title"
-            item-value="value"
-            clearable
-          />
-          <VFileInput
-            v-if="props.selectedDiscountType === 'Recipe'"
-            v-model="prescriptionFile"
-            density="compact"
-            variant="outlined"
-            hide-details
-            style="inline-size: 200px"
-            class="rounded-lg font-weight-black"
-            placeholder="Subir Recipe"
-            accept="image/*"
-            prepend-icon=""
-            append-inner-icon="tabler-upload"
-            clearable
-          />
-          
-          <VMenu>
-            <template #activator="{ props: menuProps }">
-              <VBtn
-                variant="tonal"
-                color="secondary"
-                size="small"
-                class="rounded-lg px-4"
-                v-bind="menuProps"
-              >
-                <span class="font-weight-black">{{ props.selectedDisplayCurrency }}</span>
-                <VIcon end icon="tabler-chevron-down" size="14" />
-              </VBtn>
-            </template>
-            <VList density="compact" class="rounded-xl mt-1 py-1 shadow-lg border">
-              <VListItem
-                v-for="currencyOption in availableCurrency"
-                :key="currencyOption"
-                :active="props.selectedDisplayCurrency === currencyOption"
-                @click="selectCurrency(currencyOption)"
-              >
-                <VListItemTitle class="font-weight-black text-caption">{{ currencyOption }}</VListItemTitle>
-              </VListItem>
-            </VList>
-          </VMenu>
         </div>
       </div>
     </VCardItem>
 
-    <VCardText class="py-2">
+    <VCardText class="pa-6">
+      <!-- Filtros y Selectores Staked -->
       <VRow>
-        <VCol cols="12" md="6" class="d-flex align-center">
-          <VCardItem class="py-2 px-0">
-            <VCardTitle class="text-h6"> Productos </VCardTitle>
-            <template #append>
-              <VChip
-                label
-                :color="chipColor"
-                variant="tonal"
-                density="default"
-                size="small"
-                :draggable="false"
-              >
-                <span class="font-weight-medium">
-                  {{ totalSelectedQuantity }}</span
+        <VCol cols="12" md="6">
+          <div class="d-flex flex-column gap-3">
+            <AppTextField
+              v-model="quotationId"
+              placeholder="Escanear Código de Barra..."
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              prepend-inner-icon="tabler-scan"
+            >
+              <template #append-inner>
+                <VBtn
+                  color="primary"
+                  variant="flat"
+                  size="small"
+                  class="rounded-lg px-4"
+                  :disabled="!quotationId"
+                  @click="fetchQuotationProducts(quotationId)"
                 >
-              </VChip>
-            </template>
-          </VCardItem>
+                  <VIcon icon="tabler-shopping-cart" />
+                  <span class="ms-1 font-weight-black">{{ totalSelectedQuantity }}</span>
+                </VBtn>
+              </template>
+            </AppTextField>
+
+            <AppTextField
+              :model-value="props.searchQuery"
+              placeholder="Cédula del Cliente..."
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              prepend-inner-icon="tabler-id"
+              @update:model-value="emit('update:searchQuery', $event)"
+            >
+              <template #append-inner>
+                <VBtn icon="tabler-search" variant="tonal" color="primary" size="small" class="rounded-lg" />
+              </template>
+            </AppTextField>
+          </div>
         </VCol>
-        <VCol cols="12" md="6" class="d-flex align-center">
-          <VRow class="flex-grow-1">
-            <VCol cols="12" sm="6">
-              <AppTextField
-                v-model="quotationId"
-                placeholder="ID de la cotización"
-                clearable
-                class="py-1"
-              >
-                <template #append-inner>
-                  <VBtn
-                    icon
-                    variant="text"
-                    color="primary"
-                    size="small"
-                    :disabled="!quotationId"
-                    @click="fetchQuotationProducts(quotationId)"
-                  >
-                    <VIcon icon="tabler-plus" />
-                  </VBtn>
-                </template>
-              </AppTextField>
-            </VCol>
-            <VCol cols="12" sm="6" class="d-flex justify-end">
-              <AppTextField
-                :model-value="props.searchQuery"
-                placeholder="Código de Barra"
-                clearable
-                class="py-1"
-                style="max-inline-size: 240px"
-                @update:model-value="emit('update:searchQuery', $event)"
-              />
-            </VCol>
-          </VRow>
+
+        <VCol cols="12" md="6">
+          <div class="d-flex flex-column gap-3">
+            <VSelect
+              :model-value="props.selectedDiscountType"
+              :items="discountOptions"
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              placeholder="Aplicar Descuento..."
+              clearable
+              class="rounded-lg font-weight-black"
+              @update:model-value="emit('update:selectedDiscountType', $event)"
+            />
+
+            <VSelect
+              v-if="props.selectedDiscountType === 'Empresa'"
+              v-model="selectedCompany"
+              :items="props.activeCompanyOffers"
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              placeholder="Seleccione Empresa"
+              item-title="title"
+              item-value="value"
+              clearable
+              class="rounded-lg font-weight-black"
+            />
+            <VSelect
+              v-if="props.selectedDiscountType === 'Medico'"
+              v-model="selectedDoctor"
+              :items="props.activeDoctorOffers"
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              placeholder="Seleccione Médico"
+              item-title="title"
+              item-value="value"
+              clearable
+              class="rounded-lg font-weight-black"
+            />
+            <VFileInput
+              v-if="props.selectedDiscountType === 'Recipe'"
+              v-model="prescriptionFile"
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              placeholder="Subir Imagen del Recipe"
+              accept="image/*"
+              prepend-icon=""
+              append-inner-icon="tabler-upload"
+              clearable
+              class="rounded-lg font-weight-black"
+            />
+          </div>
         </VCol>
       </VRow>
+
+      <!-- Lista de Productos Premium -->
+      <div class="mt-6">
+        <div v-if="props.orderProducts.length === 0" class="text-center py-10 text-disabled">
+          <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-2" />
+          <div class="font-weight-bold uppercase">La orden está vacía</div>
+        </div>
+        
+        <div v-else class="d-flex flex-column gap-3 overflow-y-auto" style="max-height: 400px; padding-right: 4px;">
+          <div 
+            v-for="(product, index) in props.orderProducts" 
+            :key="product.id" 
+            class="product-row pa-4 rounded-xl border elevation-1 bg-white transition-all shadow-sm d-flex align-center gap-4"
+          >
+            <!-- Cantidad Box -->
+            <div class="d-flex flex-column align-center">
+              <div class="quantity-display-box font-weight-950 text-primary mb-1">
+                {{ product.selectedQuantity }}
+              </div>
+              <div class="d-flex gap-1" v-if="!product.pack_id">
+                <VBtn icon="tabler-minus" size="20" variant="tonal" color="primary" class="rounded-sm" @click="handleDecrement(product)" :disabled="product.selectedQuantity <= 1" />
+                <VBtn icon="tabler-plus" size="20" variant="tonal" color="primary" class="rounded-sm" @click="handleIncrement(product)" :disabled="product.selectedQuantity >= product.availableQuantity" />
+              </div>
+            </div>
+
+            <!-- Información del Producto -->
+            <div class="flex-grow-1 overflow-hidden">
+              <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-1 truncate">
+                {{ product.title }}
+                <VIcon v-if="product.pack_id" icon="tabler-lock" size="14" color="warning" class="ms-1" />
+              </h3>
+              <div class="text-super-xs text-disabled font-weight-black uppercase">
+                {{ product.active_ingredient }} • {{ product.laboratory || 'GENÉRICO' }}
+              </div>
+              <div class="d-flex gap-1 mt-1">
+                <template v-if="!product.pack_id">
+                  <VChip v-if="product.discount_type === 'expiration' && product.discount_percentage > 0" color="error" size="x-small" variant="flat" class="font-weight-black uppercase">Expira</VChip>
+                  <VChip v-else-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="font-weight-black uppercase">Oferta</VChip>
+                </template>
+              </div>
+            </div>
+
+            <!-- Precios -->
+            <div class="text-right d-flex flex-column align-end" style="min-inline-size: 100px;">
+              <span class="text-h6 font-weight-950 text-primary leading-tight">
+                {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+              </span>
+              <span class="text-super-xs text-disabled font-weight-black uppercase mt-1">
+                {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }} c/u
+              </span>
+              <div v-if="getIva(product, props.selectedDisplayCurrency) > 0" class="text-super-xs text-success font-weight-black mt-1">
+                IVA: {{ formatCurrency(getIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+              </div>
+            </div>
+
+            <!-- Acción Eliminar -->
+            <VBtn 
+              icon="tabler-x" 
+              variant="tonal" 
+              color="error" 
+              size="small" 
+              class="rounded-lg shadow-sm"
+              @click="handleClickProductItem(product)"
+            />
+          </div>
+        </div>
+      </div>
     </VCardText>
+
     <VDivider />
 
-    <VCardText class="py-2 bg-grey-lighten-4">
-      <VTable density="compact" lines="none">
-        <tbody>
-          <tr v-for="(product, index) in props.orderProducts" :key="product.id">
-            <td
-              style="
-                max-inline-size: none;
-                white-space: normal;
-                word-wrap: break-word;
-              "
-            >
-              <div class="d-flex flex-column">
-                <span
-                  class="text-body-1 font-weight-medium text-high-emphasis"
-                  style="white-space: normal; word-wrap: break-word;"
-                >
-                  {{ product.title }}
-                  <VIcon
-                    v-if="product.pack_id"
-                    icon="tabler-lock"
-                    size="x-small"
-                    color="warning"
-                    class="ms-1"
-                    title="Pack Item (Cantidad Fija)"
-                  />
-                  <!-- Logic for determining which badge to show -->
-                  <template v-if="!product.pack_id">
-                    <!-- EXPIRATION: Wins if type is 'expiration' AND % >= Global -->
-                    <VChip
-                      v-if="
-                        product.discount_type === 'expiration' &&
-                        product.discount_percentage > 0 &&
-                        (!props.globalDiscount ||
-                          parseFloat(product.discount_percentage) >=
-                            parseFloat(props.globalDiscount.percentage))
-                      "
-                      color="error"
-                      size="x-small"
-                      class="ms-1"
-                      label
-                    >
-                      Expira (-{{ product.discount_percentage }}%)
-                    </VChip>
-
-                    <!-- INDIVIDUAL: Wins if type is 'individual' AND % >= Global -->
-                    <VChip
-                      v-else-if="
-                        product.discount_type === 'individual' &&
-                        product.discount_percentage > 0 &&
-                        (!props.globalDiscount ||
-                          parseFloat(product.discount_percentage) >=
-                            parseFloat(props.globalDiscount.percentage))
-                      "
-                      color="success"
-                      variant="flat"
-                      size="x-small"
-                      class="ms-1 chip-oferta"
-                      label
-                    >
-                      Oferta (-{{ product.discount_percentage }}%)
-                    </VChip>
-
-                    <!-- CATEGORY: Wins if type is 'category' AND % >= Global -->
-                    <VChip
-                      v-else-if="
-                        product.discount_type === 'category' &&
-                        product.discount_percentage > 0 &&
-                        (!props.globalDiscount ||
-                          parseFloat(product.discount_percentage) >=
-                            parseFloat(props.globalDiscount.percentage))
-                      "
-                      color="info"
-                      variant="flat"
-                      size="x-small"
-                      class="ms-1 chip-categoria"
-                      label
-                    >
-                      Cat (-{{ product.discount_percentage }}%)
-                    </VChip>
-
-                    <!-- GLOBAL: Wins if Global > Product Discount (whatever type it is) -->
-                    <VChip
-                      v-else-if="
-                        props.globalDiscount &&
-                        props.globalDiscount.percentage > 0 &&
-                        (!product.discount_percentage ||
-                          parseFloat(props.globalDiscount.percentage) >
-                            parseFloat(product.discount_percentage))
-                      "
-                      color="primary"
-                      size="x-small"
-                      class="ms-1"
-                      label
-                    >
-                      {{ props.globalDiscount.label }} (-{{
-                        props.globalDiscount.percentage
-                      }}%)
-                    </VChip>
-                  </template>
-                </span>
-
-                <span class="text-sm text-disabled">
-                  {{ product.active_ingredient }}
-                  {{ product.laboratory ? `- ${product.laboratory}` : "" }}
-                </span>
-              </div>
-            </td>
-            <td>
-              <div class="d-flex align-center">
-                <VBtn
-                  icon
-                  size="x-small"
-                  variant="text"
-                  @click="handleClickProductItem(product)"
-                >
-                  <VIcon icon="tabler-minus" />
-                </VBtn>
-                <VTextField
-                  v-model.number="product.selectedQuantity"
-                  variant="outlined"
-                  density="compact"
-                  single-line
-                  hide-details
-                  class="mx-1"
-                  style="inline-size: 50px; text-align: center;"
-                  :disabled="!!product.pack_id"
-                  @change="
-                    $emit('update-quantity', {
-                      productId: product.product_id,
-                      quantity: product.selectedQuantity,
-                      orderDetailId: product.order_detail_id,
-                    })
-                  "
-                />
-                <VBtn
-                  icon
-                  size="x-small"
-                  variant="text"
-                  @click="handleIncrement(product)"
-                  :disabled="
-                    product.selectedQuantity >= product.availableQuantity ||
-                    !!product.pack_id
-                  "
-                >
-                  <VIcon icon="tabler-plus" />
-                </VBtn>
-              </div>
-            </td>
-            <td class="text-right">
-              <div class="d-flex flex-column align-end me-4">
-                <span
-                  v-if="index === 0"
-                  class="text-caption text-medium-emphasis"
-                  >Precio</span
-                >
-                <div class="d-flex flex-column align-end">
-                  <del
-                    v-if="
-                      product.discount_percentage > 0 ||
-                      product.has_pack_discount ||
-                      (activeDiscountDisplay &&
-                        !product.pack_id &&
-                        product.discount_type !== 'expiration')
-                    "
-                    class="precio-tachado"
-                  >
-                    {{
-                      formatCurrency(
-                        getProductPriceOriginalSinIva(
-                          product,
-                          props.selectedDisplayCurrency,
-                        ),
-                        props.selectedDisplayCurrency,
-                      )
-                    }}
-                  </del>
-                  <span
-                    :class="
-                      product.discount_percentage > 0 ||
-                      product.has_pack_discount ||
-                      (activeDiscountDisplay &&
-                        !product.pack_id &&
-                        product.discount_type !== 'expiration')
-                        ? 'precio-oferta'
-                        : 'precio-normal'
-                    "
-                    class="text-body-1 font-weight-regular"
-                  >
-                    {{
-                      formatCurrency(
-                        getProductPriceSinIva(
-                          product,
-                          props.selectedDisplayCurrency,
-                        ),
-                        props.selectedDisplayCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-              </div>
-            </td>
-            <td class="text-right">
-              <div class="d-flex flex-column align-end me-4">
-                <span
-                  v-if="index === 0"
-                  class="text-caption text-medium-emphasis"
-                  >IVA</span
-                >
-                <span class="text-body-1 font-weight-regular precio-normal">
-                  {{
-                    formatCurrency(
-                      getIva(product, props.selectedDisplayCurrency),
-                      props.selectedDisplayCurrency,
-                    )
-                  }}
-                </span>
-              </div>
-            </td>
-
-            <td class="text-right">
-              <div class="d-flex flex-column align-end">
-                <span
-                  v-if="index === 0"
-                  class="text-caption text-medium-emphasis"
-                  >Total</span
-                >
-                <div class="d-flex align-center">
-                  <!-- Solo monto final: (Base con descuento) + IVA. Sin tachados -->
-                  <span
-                    :class="
-                      activeDiscountDisplay ||
-                      (product.has_pack_discount && product.pack_id) ||
-                      product.discount_percentage > 0
-                        ? 'precio-oferta'
-                        : 'precio-normal'
-                    "
-                    class="text-body-1 font-weight-bold"
-                  >
-                    {{
-                      formatCurrency(
-                        getProductPrice(product, props.selectedDisplayCurrency),
-                        props.selectedDisplayCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </VTable>
-    </VCardText>
-    <VDivider class="mt-auto" />
-
-    <div v-if="appliesSpecialTax">
-      <VCardText class="py-2 bg-grey-lighten-4">
-        <VTable density="compact" lines="none">
-          <tbody>
-            <tr>
-              <td>
-                <div class="d-flex flex-column">
-                  <span
-                    class="text-subtitle-1 me-2 text-error font-weight-medium"
-                  >
-                    Incluye Recargo Sujeto Pasivo Especial (3%):
-                  </span>
-                </div>
-              </td>
-              <td><div class="d-flex align-center"></div></td>
-              <td class="text-right"></td>
-              <td class="text-right"></td>
-              <td class="text-right">
-                <div class="d-flex flex-column align-end">
-                  <span class="text-body-1 font-weight-bold text-error"
-                    >{{
-                      formatCurrency(
-                        specialTaxAmount,
-                        props.selectedDisplayCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
-      </VCardText>
-      <VDivider class="mt-auto" />
+    <!-- Recargo Especial -->
+    <div v-if="appliesSpecialTax" class="pa-4 bg-error-lighten-5 d-flex justify-space-between align-center border-b">
+        <span class="text-caption font-weight-black text-error uppercase">Recargo Sujeto Pasivo Especial (3%)</span>
+        <span class="text-subtitle-2 font-weight-black text-error">
+          {{ formatCurrency(specialTaxAmount, props.selectedDisplayCurrency) }}
+        </span>
     </div>
 
-    <VCardActions class="pa-4 d-flex flex-wrap justify-space-between">
-      <div class="d-flex flex-wrap gap-4 flex-grow-1">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          class="flex-grow-1"
-          @click="hadleCancelarOrder"
-        >
-          CANCELAR
-        </VBtn>
-        <VBtn
-          v-if="!props.orderReserved"
-          color="warning"
-          variant="flat"
-          class="flex-grow-1"
-          @click="handleTReserveOrder"
-        >
-          RESERVAR
-        </VBtn>
-        <VBtn
-          v-if="props.orderReserved"
-          color="warning"
-          variant="flat"
-          class="flex-grow-1"
-          @click="handleReserved"
-        >
-          RESERVADA
-        </VBtn>
-        <VBtn
-          color="success"
-          variant="flat"
-          class="flex-grow-1"
-          @click="handleCompleteOrder"
-        >
-          COMPLETAR
-        </VBtn>
+    <!-- Footer Action Bar -->
+    <VCardActions class="pa-6 bg-surface d-flex align-center flex-wrap gap-4">
+      <div class="d-flex gap-2">
+        <VBtn icon="tabler-printer" variant="tonal" color="secondary" size="large" class="rounded-xl" />
+        <VBtn icon="tabler-copy" variant="tonal" color="secondary" size="large" class="rounded-xl" />
+        <VBtn icon="tabler-brand-whatsapp" variant="tonal" color="secondary" size="large" class="rounded-xl" />
       </div>
-      <div class="d-flex align-center">
-        <h4 class="text-h4 me-2">Monto Total</h4>
-        <span class="text-h4 text-success"> {{ formattedTotalQuotation }}</span>
+
+      <VSpacer />
+
+      <div class="d-flex align-center gap-6 flex-wrap justify-end flex-grow-1">
+        <div class="d-flex flex-column align-end">
+          <span class="text-super-xs font-weight-950 text-disabled uppercase letter-spacing-1 mb-1">Monto Total</span>
+          <span class="text-h4 font-weight-950 text-success leading-none">
+            {{ formattedTotalQuotation }}
+          </span>
+        </div>
+
+        <div class="d-flex gap-2">
+           <VBtn
+            v-if="!props.orderReserved"
+            color="warning"
+            variant="tonal"
+            height="56"
+            class="rounded-xl font-weight-950 px-6"
+            @click="handleTReserveOrder"
+          >
+            <VIcon start icon="tabler-hourglass" />
+            RESERVAR
+          </VBtn>
+          <VBtn
+            v-if="props.orderReserved"
+            color="warning"
+            variant="flat"
+            height="56"
+            class="rounded-xl font-weight-950 px-6"
+            @click="handleReserved"
+          >
+            <VIcon start icon="tabler-lock-check" />
+            RESERVADA
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            height="56"
+            class="rounded-xl font-weight-950 px-8 elevation-4"
+            @click="handleCompleteOrder"
+          >
+            <VIcon start icon="tabler-circle-check" />
+            FINALIZAR
+          </VBtn>
+        </div>
       </div>
     </VCardActions>
   </VCard>
@@ -1170,46 +886,62 @@ const specialTaxAmount = computed(() => {
 <style scoped>
 .glass-card {
   backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 80%) !important;
+  background: rgba(255, 255, 255, 95%) !important;
+}
+
+.product-row {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.08) !important;
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+.quantity-display-box {
+  background: rgba(var(--v-theme-primary), 0.05);
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+  border-radius: 8px;
+  inline-size: 40px;
+  block-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  line-height: 1;
+  line-height: normal;
 }
 
 .letter-spacing-1 {
   letter-spacing: 1px !important;
 }
 
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
 .leading-none {
   line-height: 1 !important;
 }
 
-.v-table__wrapper > table > tbody > tr > td {
-  border-block-end: none !important;
+.font-weight-950 {
+  font-weight: 950 !important;
 }
 
-.precio-normal {
-  color: #000;
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.precio-tachado {
-  color: #a0a0a0;
-  font-size: 0.75rem;
-  text-decoration: line-through;
+.shadow-inner {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-.precio-oferta {
-  color: rgb(var(--v-theme-success));
-  font-weight: 600;
-}
-
-.chip-oferta,
-.chip-categoria {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 8%);
-  font-weight: 600;
-}
-
-.gap-4 { gap: 16px !important; }
+.gap-3 { gap: 12px !important; }
+.gap-6 { gap: 24px !important; }
 </style>
