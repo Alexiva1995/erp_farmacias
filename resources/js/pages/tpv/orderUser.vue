@@ -1116,7 +1116,7 @@ const verifyClient = async (identification) => {
 
   if (!identification) {
     toast.warning("Por favor, ingrese un número de identificación.");
-    return;
+    return false;
   }
 
   try {
@@ -1130,6 +1130,7 @@ const verifyClient = async (identification) => {
         identification: identification,
       };
       showRegisterClientModal.value = true;
+      return false;
     } else {
       const clientData = responseData.client;
 
@@ -1167,23 +1168,23 @@ const verifyClient = async (identification) => {
           pendingQuotationProducts.value = [];
         }
       }
+      return true;
     }
   } catch (error) {
     console.error("Error al verificar cliente:", error);
-    console.log(error.message);
     toast.error("Error al verificar el cliente.");
+    return false;
   }
 };
 
 const handleLoadQuotation = async (quotationId) => {
-  if (!quotationId?.trim()) return;
+  if (!quotationId?.trim()) return false;
   try {
     const response = await axios.get(`/tpv/quotations/${quotationId}/products`);
     const { products, client } = response.data;
 
     if (!products || products.length === 0) {
-      toast.info("La cotización no tiene productos o está vacía.");
-      return;
+      return false;
     }
 
     if (client && client.id) {
@@ -1192,19 +1193,30 @@ const handleLoadQuotation = async (quotationId) => {
         selectedClient.value = order.client;
         await handleAddQuotationProducts(products);
         toast.success("Cotización cargada. Productos agregados al pedido.");
+        return true;
       }
     } else {
       pendingQuotationProducts.value = products;
       toast.warning(
         "La cotización no tiene cliente. Ingrese la cédula del cliente.",
       );
+      return true;
     }
+    return false;
   } catch (error) {
-    const msg =
-      error.response?.data?.message || "Error al cargar la cotización.";
-    toast.error(msg);
-    console.error("Error loading quotation:", error);
+    return false;
   }
+};
+
+const handleIdentifyAndStart = async (value) => {
+  if (!value) return;
+  
+  // Primero intentamos como cotización (si tiene éxito, termina)
+  const isQuotation = await handleLoadQuotation(value);
+  if (isQuotation) return;
+  
+  // Si no fue cotización, intentamos verificar como cliente
+  await verifyClient(value);
 };
 
 const reservedOrderCliente = async () => {
@@ -3100,6 +3112,7 @@ onUnmounted(() => {
         :buttons-icon-only="true"
         :show-quotation-input="true"
         @verify-client="verifyClient"
+        @identify-and-start="handleIdentifyAndStart"
         @reserved-order-cliente="reservedOrderCliente"
         @load-quotation="handleLoadQuotation"
       />

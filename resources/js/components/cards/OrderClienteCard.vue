@@ -22,8 +22,17 @@ watch(identificationInput, (newVal) => {
   emit('update:modelValue', newVal);
 });
 
-const handleRealizarPedido = () => {
-  emit('verify-client', identificationInput.value);
+const handleSearch = () => {
+  const value = identificationInput.value?.trim();
+  if (!value) {
+    emit('verify-client', ''); // Para disparar la advertencia
+    return;
+  }
+  
+  // Si parece una cotización (por ejemplo, valor numérico pero nosotros decidimos según el backend)
+  // Por ahora emitimos un evento unificado o probamos ambos.
+  // El usuario dice "que sea cedula o también la cotización".
+  emit('identify-and-start', value);
 };
 
 const reservadaPedido = () => {
@@ -42,77 +51,39 @@ const loadQuotation = () => {
 <template>
   <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-sm">
     <VCardText class="pa-5">
-      <VRow v-if="!props.selectedClient || !props.selectedClient.id" align="center">
-        <VCol cols="12" :md="props.showQuotationInput ? 6 : 12">
+      <VRow v-if="!props.selectedClient || !props.selectedClient.id" align="center" justify="center">
+        <VCol cols="12" md="8">
           <div class="d-flex align-center gap-3">
             <AppTextField
-              placeholder="Identificación del cliente..."
+              placeholder="Cédula del Cliente o ID de Cotización..."
               clearable
               hide-details
               v-model="identificationInput"
-              class="flex-grow-1 font-weight-black"
-              prepend-inner-icon="tabler-id"
-              @keyup.enter="handleRealizarPedido"
+              class="flex-grow-1 font-weight-black custom-input-start"
+              prepend-inner-icon="tabler-scan"
+              @keyup.enter="handleSearch"
             />
-            <template v-if="showButton">
-              <VBtn
-                v-if="props.buttonsIconOnly"
-                icon="tabler-search"
-                color="success"
-                variant="tonal"
-                class="rounded-lg"
-                @click="handleRealizarPedido"
-              />
-              <VBtn
-                v-else
-                color="success"
-                prepend-icon="tabler-search"
-                variant="tonal"
-                class="rounded-lg font-weight-black"
-                @click="handleRealizarPedido"
-              >
-                {{ buttonText }}
-              </VBtn>
-              
-              <VBtn
-                v-if="showReservedButton"
-                :icon="props.buttonsIconOnly ? 'tabler-archive' : undefined"
-                :color="props.buttonsIconOnly ? 'warning' : 'warning'"
-                variant="tonal"
-                class="rounded-lg font-weight-black"
-                @click="reservadaPedido"
-              >
-                <VIcon v-if="props.buttonsIconOnly" icon="tabler-archive" />
-                <template v-else>
-                  <VIcon start icon="tabler-archive" />
-                  Reservada
-                </template>
-              </VBtn>
-            </template>
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="56"
+              class="rounded-xl font-weight-950 px-8 shadow-sm"
+              @click="handleSearch"
+            >
+              <VIcon start icon="tabler-rocket" />
+              EMPEZAR
+            </VBtn>
+            
+            <VBtn
+              v-if="showReservedButton"
+              icon="tabler-archive"
+              color="warning"
+              variant="tonal"
+              height="56"
+              class="rounded-xl"
+              @click="reservadaPedido"
+            />
           </div>
-        </VCol>
-        
-        <VCol v-if="props.showQuotationInput" cols="12" md="6">
-          <AppTextField
-            v-model="quotationIdInput"
-            placeholder="ID de cotización..."
-            clearable
-            hide-details
-            class="flex-grow-1 font-weight-black"
-            prepend-inner-icon="tabler-file-invoice"
-            @keyup.enter="loadQuotation"
-          >
-            <template #append-inner>
-              <VBtn
-                icon="tabler-file-import"
-                variant="text"
-                color="primary"
-                size="small"
-                :disabled="!quotationIdInput?.trim()"
-                @click="loadQuotation"
-              />
-            </template>
-          </AppTextField>
         </VCol>
       </VRow>
 
@@ -161,5 +132,10 @@ const loadQuotation = () => {
 
 .text-subtitle-1 {
   letter-spacing: 0.5px;
+}
+
+:deep(.custom-input-start .v-field__input) {
+  font-size: 1.1rem !important;
+  padding-block: 12px;
 }
 </style>
