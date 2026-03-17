@@ -262,12 +262,9 @@ const handleScan = (code) => {
 
       <VCardText class="pa-2 pa-sm-3 bg-light d-flex flex-column gap-2 overflow-hidden" style="block-size: calc(100vh - 140px); overflow-y: hidden !important;">
         <!-- Perfil del Producto Premium -->
-        <VCard variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 transition-all mb-3 border-l-primary">
+        <VCard variant="flat" class="border pa-3 bg-white rounded-lg elevation-1 transition-all mb-3 border-l-primary">
           <div class="d-flex align-center justify-space-between gap-3">
             <div class="d-flex align-center gap-3 min-width-0">
-              <VAvatar size="44" variant="tonal" color="primary" rounded="lg" class="border shadow-sm">
-                <VIcon icon="tabler-pill" size="22" />
-              </VAvatar>
               <div class="min-width-0">
                 <div class="d-flex align-center gap-2 mb-0">
                   <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2 shadow-sm">
@@ -286,22 +283,13 @@ const handleScan = (code) => {
               </div>
             </div>
             <VBtn
-              color="success"
-              variant="elevated"
-              size="large"
-              class="rounded-lg shadow-primary animate-pulse d-none d-sm-flex"
-              @click="handleAddNewLot"
-            >
-              <VIcon icon="tabler-plus" class="me-2" />
-              NUEVO LOTE
-            </VBtn>
-            <VBtn
-              color="success"
+              color="primary"
               icon
               variant="elevated"
               size="small"
-              class="rounded-lg shadow-primary animate-pulse d-flex d-sm-none"
+              class="rounded-circle shadow-primary"
               @click="handleAddNewLot"
+              title="Agregar Lote"
             >
               <VIcon icon="tabler-plus" size="20" />
             </VBtn>
