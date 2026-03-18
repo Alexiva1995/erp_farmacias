@@ -12,9 +12,14 @@ import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import { nextTick, onMounted, ref, watch } from "vue";
+import { nextTick, onMounted, ref, watch, computed } from "vue";
+import { useDisplay } from "vuetify";
 
 const { isVendedor } = useAuthStore();
+const { mobile } = useDisplay();
+
+const activeTab = ref(0);
+const isAdvancedFiltersVisible = ref(false);
 
 const credits = ref([]);
 const totalCredits = ref(0);
@@ -79,7 +84,7 @@ const fetchCreditPayments = async () => {
   paymentsLoading.value = true;
   const params = {
     page: paymentsPage.value,
-    items_per_psage: paymentsItemsPerPage.value,
+    items_per_page: paymentsItemsPerPage.value,
     sort_by: paymentsSortBy.value,
     order_by: paymentsOrderBy.value,
     client: clientFilter.value,
@@ -395,50 +400,147 @@ watch(
 );
 </script>
 
-<template>
-  <CreditFilters
-    :search-query="searchQuery"
-    @update:search-query="searchQuery = $event"
-    @clear="clearFilters"
-  />
+  <!-- Contenedor Premium de Filtros -->
+  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden shadow-sm bg-surface">
+    <VCardText class="pa-4">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-3 flex-nowrap">
+        <VCol class="flex-grow-1">
+          <AppTextField
+            v-model="searchQuery"
+            placeholder="Buscar por Identificación, Nombre o Documento..."
+            prepend-inner-icon="tabler-search"
+            clearable
+            hide-details
+            density="compact"
+            class="filter-search-input font-weight-bold"
+          />
+        </VCol>
 
-  <CreditTable
-    :credits="credits"
-    :loading="loading"
-    :total-credits="totalCredits"
-    :items-per-page="itemsPerPage"
-    :page="page"
-    @update:options="updateTableOptions"
-    @open-payment-modal="openCreditsModal"
-    @reload="fetchCredits"
-    @view-order-modal="viewOrderCreditsModal"
-    @print-order="printCreditOrders"
-    @delete-credit="handleDeleteCredit"
-  />
+        <VCol cols="auto" class="d-flex gap-2">
+          <VTooltip location="top" text="Filtros Avanzados">
+            <template #activator="{ props: tooltipProps }">
+              <VBtn
+                v-bind="tooltipProps"
+                :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+                variant="tonal"
+                density="comfortable"
+                class="rounded-lg"
+                icon="tabler-filter"
+                @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
+              />
+            </template>
+          </VTooltip>
 
-  <VSpacer v-if="!isVendedor" class="my-6" />
+          <VTooltip location="top" text="Limpiar Filtros">
+            <template #activator="{ props: tooltipProps }">
+              <VBtn
+                v-bind="tooltipProps"
+                color="secondary"
+                variant="tonal"
+                density="comfortable"
+                class="rounded-lg"
+                icon="tabler-trash"
+                @click="clearPaymentFilters"
+              />
+            </template>
+          </VTooltip>
+        </VCol>
+      </VRow>
 
-  <CreditPaymentsFilters
-    v-if="!isVendedor"
-    :client="clientFilter"
-    :date="dateFilter"
-    :currency="currencyFilter"
-    @update:client="clientFilter = $event"
-    @update:date="dateFilter = $event"
-    @update:currency="currencyFilter = $event"
-    @clear="clearPaymentFilters"
-  />
+      <!-- Panel de Filtros Avanzados (Colapsable) -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VRow class="mt-4 px-1 gap-y-4">
+            <VCol cols="12" sm="3">
+              <AppDateTimePicker
+                v-model="dateFilter"
+                placeholder="Fecha"
+                prepend-inner-icon="tabler-calendar"
+                clearable
+                hide-details
+                density="compact"
+                :config="{
+                  altInput: true,
+                  altFormat: 'Y-m-d',
+                  dateFormat: 'Y-m-d',
+                }"
+              />
+            </VCol>
+            <VCol cols="12" sm="3">
+              <VSelect
+                v-model="currencyFilter"
+                placeholder="Moneda"
+                prepend-inner-icon="tabler-coin"
+                :items="['COP', 'USD', 'BS']"
+                clearable
+                hide-details
+                density="compact"
+                variant="outlined"
+              />
+            </VCol>
+            <VCol v-if="activeTab === 1 && !isVendedor" cols="12" sm="3">
+               <AppTextField
+                v-model="clientFilter"
+                placeholder="Filtro ID Cliente"
+                prepend-inner-icon="tabler-user-search"
+                clearable
+                hide-details
+                density="compact"
+              />
+            </VCol>
+          </VRow>
+        </div>
+      </VExpandTransition>
+    </VCardText>
+  </VCard>
 
-  <CreditPaymentsTable
-    v-if="!isVendedor"
-    :payments="payments"
-    :loading="paymentsLoading"
-    :total-payments="totalPayments"
-    :items-per-page="paymentsItemsPerPage"
-    :page="page"
-    @update:options="updatePaymentsTableOptions"
-  />
+  <!-- Pestañas de Navegación -->
+  <VTabs v-model="activeTab" class="mb-4 credits-tabs" density="comfortable">
+    <VTab :value="0">
+      <VIcon start icon="tabler-credit-card" />
+      Créditos Pendientes
+    </VTab>
+    <VTab v-if="!isVendedor" :value="1">
+      <VIcon start icon="tabler-history" />
+      Historial de Pagos
+    </VTab>
+  </VTabs>
 
+  <VWindow v-model="activeTab" class="disable-tab-transition">
+    <!-- Pestaña 0: Créditos -->
+    <VWindowItem :value="0">
+      <CreditTable
+        :credits="credits"
+        :loading="loading"
+        :total-credits="totalCredits"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :mobile="mobile"
+        @update:options="updateTableOptions"
+        @open-payment-modal="openCreditsModal"
+        @reload="fetchCredits"
+        @view-order-modal="viewOrderCreditsModal"
+        @print-order="printCreditOrders"
+        @delete-credit="handleDeleteCredit"
+      />
+    </VWindowItem>
+
+    <!-- Pestaña 1: Pagos (Solo Admin/Vendedor específico) -->
+    <VWindowItem v-if="!isVendedor" :value="1">
+      <CreditPaymentsTable
+        :payments="payments"
+        :loading="paymentsLoading"
+        :total-payments="totalPayments"
+        :items-per-page="paymentsItemsPerPage"
+        :page="paymentsPage"
+        :mobile="mobile"
+        @update:options="updatePaymentsTableOptions"
+      />
+    </VWindowItem>
+  </VWindow>
+
+  <!-- Modales -->
   <CreditsModal
     v-if="showCreditsModal && creditsData"
     v-model:is-dialog-visible="showCreditsModal"
@@ -447,6 +549,14 @@ watch(
     @purchase-completed="handleCreditsCompletion"
   />
 
+  <CreditsViewOrderModal
+    v-if="showViewOrderModal && creditsData"
+    v-model:is-dialog-visible="showViewOrderModal"
+    :credits-data="creditsData"
+    @modal-closed="closeViewOrderCreditsModal"
+  />
+
+  <!-- Impresión -->
   <div
     id="CreditPrint"
     :class="{ 'd-none': !isPrinting, 'print-container': true }"
@@ -469,11 +579,24 @@ watch(
       :credits-data="creditsData"
     />
   </div>
-
-  <CreditsViewOrderModal
-    v-if="showViewOrderModal && creditsData"
-    v-model:is-dialog-visible="showViewOrderModal"
-    :credits-data="creditsData"
-    @modal-closed="closeViewOrderCreditsModal"
-  />
 </template>
+
+<style scoped>
+.credits-tabs :deep(.v-tab) {
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.filter-search-input :deep(.v-field__input) {
+  font-size: 0.8125rem !important;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+.disable-tab-transition :deep(.v-window__container) {
+  transition: none !important;
+}
+</style>

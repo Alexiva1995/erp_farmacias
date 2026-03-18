@@ -8,6 +8,7 @@ const props = defineProps({
   totalCredits: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  mobile: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -32,8 +33,129 @@ const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.user?.role_id === 1);
 </script>
 <template>
-  <VCard>
+  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm">
+    <template v-if="props.mobile">
+      <VDataIterator
+        :items="props.credits"
+        :items-per-page="props.itemsPerPage"
+        :loading="props.loading"
+      >
+        <template v-slot:default="{ items }">
+          <div class="pa-4 d-flex flex-column gap-4">
+            <VCard
+              v-for="item in items"
+              :key="item.raw.id"
+              variant="flat"
+              border
+              class="rounded-lg pa-4"
+            >
+              <div class="d-flex justify-space-between align-center mb-2">
+                <span class="text-caption font-weight-bold text-primary">
+                  {{ item.raw.client.identification_type }}{{ item.raw.client.identification }}
+                </span>
+                <VChip
+                  size="x-small"
+                  :color="
+                    item.raw.status === 0
+                      ? 'error'
+                      : item.raw.status === 1
+                      ? 'info'
+                      : 'success'
+                  "
+                  variant="tonal"
+                  class="font-weight-bold text-uppercase"
+                >
+                  {{
+                    item.raw.status === 0
+                      ? 'DEBE'
+                      : item.raw.status === 1
+                      ? 'PARCIAL'
+                      : 'PAGADO'
+                  }}
+                </VChip>
+              </div>
+
+              <div class="mb-3">
+                <div class="text-body-2 font-weight-bold mb-1">
+                  {{ item.raw.client.name }} {{ item.raw.client.last_name }}
+                </div>
+                <div class="d-flex align-center gap-2 text-medium-emphasis">
+                  <VIcon size="14">tabler-calendar</VIcon>
+                  <span class="text-caption">{{ item.raw.credit_date ? item.raw.credit_date.split(" ")[0] : "N/A" }}</span>
+                </div>
+              </div>
+
+              <VDivider class="border-dashed mb-3" />
+
+              <div class="d-flex justify-space-between align-center">
+                <div>
+                  <div class="text-caption text-medium-emphasis mb-n1">Pendiente</div>
+                  <div class="text-h6 font-weight-black text-error">
+                    {{ item.raw.total_pending_amount }}
+                  </div>
+                </div>
+                <div class="d-flex gap-1">
+                   <VTooltip text="Pagar Deuda" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <VBtn
+                        v-bind="tooltipProps"
+                        icon="tabler-wallet"
+                        variant="tonal"
+                        color="success"
+                        size="small"
+                        :disabled="item.raw.status === 2"
+                        @click="emit('open-payment-modal', item.raw)"
+                      />
+                    </template>
+                  </VTooltip>
+                  <VBtn
+                    icon="tabler-eye"
+                    variant="tonal"
+                    color="info"
+                    size="small"
+                    @click="emit('view-order-modal', item.raw)"
+                  />
+                  <VBtn
+                    icon="tabler-printer"
+                    variant="tonal"
+                    color="secondary"
+                    size="small"
+                    @click="emit('print-order', item.raw)"
+                  />
+                  <VBtn
+                    v-if="isAdmin"
+                    icon="tabler-trash"
+                    variant="tonal"
+                    color="error"
+                    size="small"
+                    @click="emit('delete-credit', item.raw)"
+                  />
+                </div>
+              </div>
+            </VCard>
+          </div>
+        </template>
+        <template v-slot:no-data>
+          <div class="pa-8 text-center text-medium-emphasis">
+            No hay créditos registrados
+          </div>
+        </template>
+      </VDataIterator>
+
+       <!-- Paginación Móvil -->
+      <div class="pa-4 border-t d-flex justify-center">
+        <VPagination
+          v-model="props.page"
+          :length="Math.ceil(props.totalCredits / props.itemsPerPage)"
+          size="small"
+          total-visible="5"
+          @update:model-value="(p) => emit('update:options', { ...props, page: p })"
+        />
+      </div>
+    </template>
+
     <VDataTableServer
+      v-else
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
@@ -45,6 +167,16 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
       height="auto"
       @update:options="(options) => emit('update:options', options)"
     >
+      <!-- Skeleton Loader -->
+      <template v-slot:loading>
+        <VSkeletonLoader
+          v-for="n in 5"
+          :key="n"
+          type="table-row"
+          class="border-b"
+        />
+      </template>
+
       <template v-slot:item.credit_date="{ item }">
         <span>{{
           item.credit_date ? item.credit_date.split(" ")[0] : "N/A"
@@ -52,55 +184,82 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
       </template>
 
       <template v-slot:item.client_identification="{ item }">
-        {{ item.client.identification_type }}{{ item.client.identification }}
+        <span class="font-weight-medium">{{ item.client.identification_type }}{{ item.client.identification }}</span>
       </template>
 
       <template v-slot:item.client_full_name="{ item }">
         {{ item.client.name }} {{ item.client.last_name }}
       </template>
 
+      <template v-slot:item.total_pending_amount="{ item }">
+        <span class="font-weight-black text-error">{{ item.total_pending_amount }}</span>
+      </template>
+
       <template v-slot:item.status="{ item }">
-        <span
-          :class="
+        <VChip
+          size="small"
+          :color="
             item.status === 0
-              ? 'text-error'
+              ? 'error'
               : item.status === 1
-              ? 'text-info'
-              : 'text-success'
+              ? 'info'
+              : 'success'
           "
-          class="font-weight-medium text-uppercase"
+          variant="tonal"
+          class="font-weight-bold text-uppercase"
         >
           {{
             item.status === 0
               ? "DEBE"
               : item.status === 1
-              ? "PARCIALMENTE PAGADO"
+              ? "PARCIAL"
               : "PAGADO"
           }}
-        </span>
+        </VChip>
       </template>
 
       <template v-slot:item.action="{ item }">
         <div class="d-flex align-center gap-2">
-          <IconBtn
-            @click="emit('open-payment-modal', item)"
-            :disabled="item.status === 2"
-          >
-            <VIcon icon="tabler-wallet"
-          /></IconBtn>
-          <IconBtn @click="emit('view-order-modal', item)" color="info">
-            <VIcon icon="tabler-eye"
-          /></IconBtn>
-          <IconBtn @click="emit('print-order', item)">
-            <VIcon icon="tabler-printer" />
-          </IconBtn>
-          <IconBtn
-            v-if="isAdmin"
-            color="error"
-            @click="emit('delete-credit', item)"
-          >
-            <VIcon icon="tabler-trash" />
-          </IconBtn>
+          <VTooltip text="Registrar Pago" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn
+                v-bind="tooltipProps"
+                @click="emit('open-payment-modal', item)"
+                :disabled="item.status === 2"
+                color="success"
+              >
+                <VIcon icon="tabler-wallet" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Ver Detalles" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn v-bind="tooltipProps" @click="emit('view-order-modal', item)" color="info">
+                <VIcon icon="tabler-eye" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Imprimir Ticket" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn v-bind="tooltipProps" @click="emit('print-order', item)">
+                <VIcon icon="tabler-printer" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip v-if="isAdmin" text="Eliminar Crédito" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn
+                v-bind="tooltipProps"
+                color="error"
+                @click="emit('delete-credit', item)"
+              >
+                <VIcon icon="tabler-trash" />
+              </IconBtn>
+            </template>
+          </VTooltip>
         </div>
       </template>
     </VDataTableServer>
