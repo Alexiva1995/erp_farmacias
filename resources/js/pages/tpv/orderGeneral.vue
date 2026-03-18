@@ -76,7 +76,7 @@ const orderData = ref(null);
 const orderItems = ref([]);
 
 const viewModal = ref(false);
-
+const isFiltersExpanded = ref([0]); // Expandido por defecto
 const activeTab = ref(0);
 
 // Rango de fechas global: por defecto primer día del mes actual (evita tabla vacía por zona horaria o sin ventas hoy)
@@ -833,102 +833,113 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 </script>
 <template>
   <div>
-    <!-- Filtros: mismo diseño que /inventory/products (incl. fecha) -->
-    <VCard class="mb-6">
-      <VCardText>
-        <VRow>
-          <VCol cols="12" sm="3" md="2">
-            <AppDateTimePicker
-              v-model="globalStartDate"
-              placeholder="Desde"
-              clearable
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <AppDateTimePicker
-              v-model="globalEndDate"
-              placeholder="Hasta"
-              clearable
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <AppTextField
-              v-model="filterSearchQueryId"
-              placeholder="ID"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <AppTextField
-              v-model="filterSearchQuery"
-              placeholder="Identificación, Vendedor"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <VSelect
-              v-model="currencyFilter"
-              label="Moneda"
-              :items="currencyOptions"
-              clearable
-            />
-          </VCol>
-          <VCol v-if="!isVendedor" cols="12" sm="3" md="2">
-            <VSelect
-              v-model="sellerFilter"
-              label="Vendedor"
-              :items="sellers"
-              :item-title="sellerDisplayName"
-              item-value="id"
-              clearable
-            />
-          </VCol>
-          <VCol v-if="activeTab === 1" cols="12" sm="3" md="2">
-            <VSelect
-              v-model="stateFilterAll"
-              label="Estado"
-              :items="stateOptions"
-              clearable
-            />
-          </VCol>
-        </VRow>
-      </VCardText>
+    <!-- Filtros Colapsables -->
+    <VExpansionPanels v-model="isFiltersExpanded" class="mb-6 custom-expansion-panel">
+      <VExpansionPanel>
+        <VExpansionPanelTitle>
+          <div class="d-flex align-center gap-2">
+            <VIcon size="20" color="primary">tabler-filter</VIcon>
+            <span class="text-h6 font-weight-bold">Filtros de Búsqueda</span>
+          </div>
+        </VExpansionPanelTitle>
 
-      <VDivider />
+        <VExpansionPanelText>
+          <VCardText class="pt-2">
+            <VRow>
+              <VCol cols="12" sm="3" md="2">
+                <AppDateTimePicker
+                  v-model="globalStartDate"
+                  label="Desde"
+                  placeholder="Y-M-D"
+                  clearable
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <AppDateTimePicker
+                  v-model="globalEndDate"
+                  label="Hasta"
+                  placeholder="Y-M-D"
+                  clearable
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <AppTextField
+                  v-model="filterSearchQueryId"
+                  label="ID Orden"
+                  placeholder="Buscar ID..."
+                  clearable
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <AppTextField
+                  v-model="filterSearchQuery"
+                  label="Búsqueda General"
+                  placeholder="Cliente, Vendedor..."
+                  clearable
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <VSelect
+                  v-model="currencyFilter"
+                  label="Moneda"
+                  placeholder="Seleccionar..."
+                  :items="currencyOptions"
+                  clearable
+                />
+              </VCol>
+              <VCol v-if="!isVendedor" cols="12" sm="3" md="2">
+                <VSelect
+                  v-model="sellerFilter"
+                  label="Vendedor"
+                  placeholder="Seleccionar..."
+                  :items="sellers"
+                  :item-title="sellerDisplayName"
+                  item-value="id"
+                  clearable
+                />
+              </VCol>
+              <VCol v-if="activeTab === 1" cols="12" sm="3" md="2">
+                <VSelect
+                  v-model="stateFilterAll"
+                  label="Estado"
+                  placeholder="Seleccionar..."
+                  :items="stateOptions"
+                  clearable
+                />
+              </VCol>
+            </VRow>
+          </VCardText>
 
-      <VCardActions class="pa-4 px-6 d-flex flex-wrap align-center gap-2">
-        <VBtn color="secondary" variant="outlined" @click="handleClearFilters">
-          Limpiar Filtros
-        </VBtn>
-        <VDivider vertical class="my-0" />
-        <span class="text-body-2 text-medium-emphasis mr-1">Rango rápido:</span>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateHoy">
-          Hoy
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateAyer">
-          Ayer
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateSemana">
-          Semana
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateMes">
-          Mes
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateAno">
-          Año
-        </VBtn>
-      </VCardActions>
-    </VCard>
+          <VDivider />
+
+          <VCardActions class="pa-4 px-6 d-flex flex-wrap align-center gap-2">
+            <VBtn color="secondary" variant="outlined" rounded="lg" @click="handleClearFilters">
+              <VIcon start size="18">tabler-trash</VIcon>
+              Limpiar
+            </VBtn>
+            <VSpacer />
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Rápido:</span>
+              <VBtn color="primary" variant="tonal" size="small" rounded="pill" @click="setDateHoy">Hoy</VBtn>
+              <VBtn color="primary" variant="tonal" size="small" rounded="pill" @click="setDateAyer">Ayer</VBtn>
+              <VBtn color="primary" variant="tonal" size="small" rounded="pill" @click="setDateSemana">Semana</VBtn>
+              <VBtn color="primary" variant="tonal" size="small" rounded="pill" @click="setDateMes">Mes</VBtn>
+              <VBtn color="primary" variant="tonal" size="small" rounded="pill" @click="setDateAno">Año</VBtn>
+            </div>
+          </VCardActions>
+        </VExpansionPanelText>
+      </VExpansionPanel>
+    </VExpansionPanels>
 
     <!-- Pestañas con badge de cantidad por tipo -->
     <VTabs v-model="activeTab" class="mb-4 orders-tabs" density="comfortable">
@@ -1169,5 +1180,13 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
   justify-content: center;
   font-weight: 600;
   font-size: 0.7rem;
+}
+
+.custom-expansion-panel :deep(.v-expansion-panel-title) {
+  padding: 12px 24px;
+}
+
+.custom-expansion-panel :deep(.v-expansion-panel-text__wrapper) {
+  padding: 0;
 }
 </style>
