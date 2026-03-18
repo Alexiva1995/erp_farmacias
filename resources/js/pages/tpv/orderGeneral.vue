@@ -58,6 +58,7 @@ const pageQuotations = ref(1);
 const itemsPerPageQuotations = ref(25);
 
 const sellers = ref([]);
+const users = ref([]);
 
 // Filtros unificados para todas las pestañas (un solo card de filtros)
 const filterSearchQueryId = ref("");
@@ -892,6 +893,37 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 
           <VSpacer />
 
+          <div class="d-flex align-center gap-2">
+            <VTooltip location="top" text="Exportar a Excel">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  color="success"
+                  variant="tonal"
+                  size="small"
+                  rounded="lg"
+                  icon="tabler-file-spreadsheet"
+                  class="rounded-lg"
+                />
+              </template>
+            </VTooltip>
+            <VTooltip location="top" text="Descargar PDF">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  color="error"
+                  variant="tonal"
+                  size="small"
+                  rounded="lg"
+                  icon="tabler-file-type-pdf"
+                  class="rounded-lg"
+                />
+              </template>
+            </VTooltip>
+          </div>
+
+          <VDivider vertical class="mx-2" />
+
           <div class="d-flex align-center gap-2 text-caption font-weight-medium text-medium-emphasis">
             <span>{{ globalStartDate || '—' }}</span>
             <VIcon size="14">tabler-arrow-right</VIcon>
@@ -1222,18 +1254,20 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 }
 
 .tab-with-badge .tab-count {
-  min-width: 1.5rem;
+  font-size: 0.7rem;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.7rem;
+  min-inline-size: 1.5rem;
 }
 
 .custom-expansion-panel :deep(.v-expansion-panel-title) {
-  padding: 0.75rem 1.5rem;
+  padding-block: 0.75rem;
+  padding-inline: 1.5rem;
 }
 
 .custom-expansion-panel :deep(.v-expansion-panel-text__wrapper) {
-  padding: 0;
+  padding-block: 0;
+  padding-inline: 0;
 }
 
 .filter-search-input :deep(.v-field__input) {
