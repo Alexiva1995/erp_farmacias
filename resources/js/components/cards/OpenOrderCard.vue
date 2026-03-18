@@ -963,36 +963,37 @@ const getIva = (product, currency) => {
                 </span>
              </div>
           </div>
+           
+           <VSpacer />
 
-       </div>
-
-       <!-- Acciones Rápidas (Separadas de la línea de totales) -->
-       <div class="d-flex align-center justify-end gap-3 px-2 mt-4 pt-2 border-t border-dashed">
-          <VBtn
-            v-if="!props.orderReserved"
-            color="warning"
-            variant="tonal"
-            height="48"
-            class="rounded-lg font-weight-950 px-6"
-            @click="handleReserveOrder"
-          >
-            <VIcon start icon="tabler-hourglass" size="18" />
-            <span class="d-none d-sm-inline">RESERVAR</span>
-          </VBtn>
-          
-          <VBtn
-            color="primary"
-            variant="flat"
-            height="48"
-            min-inline-size="180"
-            class="rounded-lg font-weight-950 px-8 elevation-3"
-            @click="handleCompleteOrder"
-          >
-            <VIcon start icon="tabler-circle-check" size="22" />
-            COBRAR AHORA
-          </VBtn>
-       </div>
-    </VCardText>
+           <!-- Acciones Rápidas (En la misma línea) -->
+           <div class="d-flex align-center gap-2">
+              <VBtn
+                v-if="!props.orderReserved"
+                color="warning"
+                variant="tonal"
+                height="40"
+                class="rounded-lg font-weight-950 px-4"
+                @click="handleReserveOrder"
+              >
+                <VIcon start icon="tabler-hourglass" size="18" />
+                <span class="d-none d-sm-inline">RESERVAR</span>
+              </VBtn>
+              
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="40"
+                min-inline-size="160"
+                class="rounded-lg font-weight-950 px-6 elevation-2"
+                @click="handleCompleteOrder"
+              >
+                <VIcon start icon="tabler-circle-check" size="20" />
+                COBRAR AHORA
+              </VBtn>
+           </div>
+        </div>
+     </VCardText>
   </VCard>
 </template>
 
