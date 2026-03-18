@@ -902,12 +902,12 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
         <!-- Panel de Filtros Avanzados (Colapsable) -->
         <VExpandTransition>
           <div v-show="isAdvancedFiltersVisible">
-            <VRow class="mt-4 px-1">
+            <VRow class="mt-4 px-1 gap-y-4">
               <VCol cols="12" sm="3" md="2">
                 <AppDateTimePicker
                   v-model="globalStartDate"
-                  label="Desde"
-                  placeholder="Y-M-D"
+                  placeholder="Fecha Inicial"
+                  prepend-inner-icon="tabler-calendar"
                   clearable
                   hide-details
                   density="compact"
@@ -921,8 +921,8 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
               <VCol cols="12" sm="3" md="2">
                 <AppDateTimePicker
                   v-model="globalEndDate"
-                  label="Hasta"
-                  placeholder="Y-M-D"
+                  placeholder="Fecha Final"
+                  prepend-inner-icon="tabler-calendar"
                   clearable
                   hide-details
                   density="compact"
@@ -936,8 +936,8 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
               <VCol cols="12" sm="3" md="2">
                 <AppTextField
                   v-model="filterSearchQueryId"
-                  label="ID Orden"
-                  placeholder="ID..."
+                  placeholder="ID Orden"
+                  prepend-inner-icon="tabler-hash"
                   clearable
                   hide-details
                   density="compact"
@@ -946,36 +946,39 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
               <VCol cols="12" sm="3" md="2">
                 <VSelect
                   v-model="currencyFilter"
-                  label="Moneda"
-                  placeholder="Sel..."
+                  placeholder="Moneda"
+                  prepend-inner-icon="tabler-coin"
                   :items="currencyOptions"
                   clearable
                   hide-details
                   density="compact"
+                  variant="outlined"
                 />
               </VCol>
               <VCol v-if="!isVendedor" cols="12" sm="3" md="2">
                 <VSelect
                   v-model="sellerFilter"
-                  label="Vendedor"
-                  placeholder="Sel..."
+                  placeholder="Vendedor"
+                  prepend-inner-icon="tabler-user-check"
                   :items="sellers"
                   :item-title="sellerDisplayName"
                   item-value="id"
                   clearable
                   hide-details
                   density="compact"
+                  variant="outlined"
                 />
               </VCol>
               <VCol v-if="activeTab === 1" cols="12" sm="3" md="2">
                 <VSelect
                   v-model="stateFilterAll"
-                  label="Estado"
-                  placeholder="Sel..."
+                  placeholder="Estado"
+                  prepend-inner-icon="tabler-adjustments-horizontal"
                   :items="stateOptions"
                   clearable
                   hide-details
                   density="compact"
+                  variant="outlined"
                 />
               </VCol>
             </VRow>
