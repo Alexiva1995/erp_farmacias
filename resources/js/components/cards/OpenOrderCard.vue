@@ -792,8 +792,8 @@ const getIva = (product, currency) => {
               <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ totalSelectedQuantity }}</VChip>
            </div>
 
-           <!-- Buscador Refinado y Compacto -->
-           <div class="d-flex align-center gap-2 flex-grow-1 flex-md-grow-0" style="max-inline-size: 320px;">
+           <!-- Buscador Refinado y Compacto (Ampliado) -->
+           <div class="d-flex align-center gap-2 flex-grow-1 flex-md-grow-0" style="max-inline-size: 500px;">
               <AppTextField
                 v-model="quotationId"
                 placeholder="Buscar producto..."
