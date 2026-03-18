@@ -943,7 +943,6 @@ const getIva = (product, currency) => {
              </div>
           </div>
 
-          </div>
        </div>
 
        <!-- Acciones Rápidas (Separadas de la línea de totales) -->
