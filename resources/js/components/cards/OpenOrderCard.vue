@@ -833,9 +833,9 @@ const getIva = (product, currency) => {
                 <div class="quantity-display-box font-weight-950 text-primary">
                   {{ product.selectedQuantity }}
                 </div>
-                <div class="d-flex flex-column gap-0" v-if="!product.pack_id">
-                  <VBtn icon="tabler-plus" size="18" variant="text" color="primary" class="pa-0" style="block-size: 18px; inline-size: 18px;" @click="handleIncrement(product)" :disabled="product.selectedQuantity >= product.availableQuantity" />
-                  <VBtn icon="tabler-minus" size="18" variant="text" color="primary" class="pa-0" style="block-size: 18px; inline-size: 18px;" @click="handleDecrement(product)" :disabled="product.selectedQuantity <= 1" />
+                <div class="d-flex align-center gap-1 ms-2" v-if="!product.pack_id">
+                  <VBtn icon="tabler-plus" size="20" variant="tonal" color="primary" class="rounded-sm" style="block-size: 20px; inline-size: 20px;" @click="handleIncrement(product)" :disabled="product.selectedQuantity >= product.availableQuantity" />
+                  <VBtn icon="tabler-minus" size="20" variant="tonal" color="primary" class="rounded-sm" style="block-size: 20px; inline-size: 20px;" @click="handleDecrement(product)" :disabled="product.selectedQuantity <= 1" />
                 </div>
               </div>
 
@@ -904,7 +904,7 @@ const getIva = (product, currency) => {
     </VCardText>
 
     <!-- Footer Unificado: Totales y Acciones -->
-    <VCardText class="pa-2 bg-grey-lighten-5 border-t">
+    <VCardText class="pa-3 bg-grey-lighten-5 border-t mt-4">
        <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-2">
           <!-- Desglose Horizontal de Totales -->
           <div class="d-flex align-center gap-4 flex-grow-1 overflow-x-auto py-1">
@@ -943,48 +943,34 @@ const getIva = (product, currency) => {
              </div>
           </div>
 
-          <!-- Acciones Rápidas -->
-          <div class="d-flex align-center gap-2">
-             <VBtn
-                v-if="!props.orderReserved"
-                color="warning"
-                variant="tonal"
-                height="44"
-                class="rounded-lg font-weight-950 px-4"
-                @click="handleReserveOrder"
-             >
-                <VIcon start icon="tabler-hourglass" size="18" />
-                <span class="d-none d-sm-inline">RESERVAR</span>
-             </VBtn>
-             
-             <VBtn
-                color="primary"
-                variant="flat"
-                height="44"
-                min-inline-size="160"
-                class="rounded-lg font-weight-950 px-6 elevation-2"
-                @click="handleCompleteOrder"
-             >
-                <VIcon start icon="tabler-circle-check" size="20" />
-                COBRAR AHORA
-             </VBtn>
-
-             <VMenu location="top end">
-                <template #activator="{ props: menuProps }">
-                  <VBtn icon="tabler-dots-vertical" variant="tonal" color="secondary" size="small" v-bind="menuProps" class="rounded-lg" />
-                </template>
-                <VList density="compact" class="rounded-lg shadow-lg">
-                   <VListItem @click="null">
-                      <template #prepend><VIcon icon="tabler-printer" size="18" class="me-2" /></template>
-                      <VListItemTitle class="font-weight-bold text-caption">Imprimir Ticket</VListItemTitle>
-                   </VListItem>
-                   <VListItem @click="null">
-                      <template #prepend><VIcon icon="tabler-brand-whatsapp" size="18" class="me-2 text-success" /></template>
-                      <VListItemTitle class="font-weight-bold text-caption">WhatsApp</VListItemTitle>
-                   </VListItem>
-                </VList>
-             </VMenu>
           </div>
+       </div>
+
+       <!-- Acciones Rápidas (Separadas de la línea de totales) -->
+       <div class="d-flex align-center justify-end gap-3 px-2 mt-4 pt-2 border-t border-dashed">
+          <VBtn
+            v-if="!props.orderReserved"
+            color="warning"
+            variant="tonal"
+            height="48"
+            class="rounded-lg font-weight-950 px-6"
+            @click="handleReserveOrder"
+          >
+            <VIcon start icon="tabler-hourglass" size="18" />
+            <span class="d-none d-sm-inline">RESERVAR</span>
+          </VBtn>
+          
+          <VBtn
+            color="primary"
+            variant="flat"
+            height="48"
+            min-inline-size="180"
+            class="rounded-lg font-weight-950 px-8 elevation-3"
+            @click="handleCompleteOrder"
+          >
+            <VIcon start icon="tabler-circle-check" size="22" />
+            COBRAR AHORA
+          </VBtn>
        </div>
     </VCardText>
   </VCard>
