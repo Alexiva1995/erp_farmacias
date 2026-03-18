@@ -49,8 +49,8 @@ const loadQuotation = () => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-sm">
-    <VCardText class="pa-5">
+  <VCard variant="flat" border class="mb-4 rounded-xl overflow-hidden glass-card shadow-sm">
+    <VCardText class="pa-3">
       <VRow v-if="!props.selectedClient || !props.selectedClient.id" align="center" justify="center">
         <VCol cols="12" md="8">
           <div class="d-flex align-center gap-3">
@@ -66,11 +66,11 @@ const loadQuotation = () => {
             <VBtn
               color="primary"
               variant="flat"
-              height="56"
-              class="rounded-xl font-weight-950 px-8 shadow-sm"
+              height="44"
+              class="rounded-lg font-weight-bold px-6 shadow-sm"
               @click="handleSearch"
             >
-              <VIcon start icon="tabler-rocket" />
+              <VIcon start icon="tabler-rocket" size="18" />
               EMPEZAR
             </VBtn>
             
@@ -79,8 +79,9 @@ const loadQuotation = () => {
               icon="tabler-archive"
               color="warning"
               variant="tonal"
-              height="56"
-              class="rounded-xl"
+              height="44"
+              width="44"
+              class="rounded-lg"
               @click="reservadaPedido"
             />
           </div>
@@ -135,7 +136,7 @@ const loadQuotation = () => {
 }
 
 :deep(.custom-input-start .v-field__input) {
-  font-size: 1.1rem !important;
-  padding-block: 12px;
+  font-size: 0.95rem !important;
+  padding-block: 8px;
 }
 </style>
