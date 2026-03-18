@@ -828,47 +828,68 @@ const getIva = (product, currency) => {
               :key="product.id" 
               class="product-row pa-2 rounded-lg border bg-surface d-flex align-center gap-3"
             >
-              <!-- Cantidad Box -->
-              <div class="d-flex align-center gap-2">
-                <div class="quantity-display-box font-weight-950 text-primary">
+              <!-- Cantidad Selector Estilo Premium -->
+              <div class="d-flex align-center gap-1 bg-grey-lighten-4 rounded-lg px-1 border" style="block-size: 36px;">
+                <VBtn 
+                  icon="tabler-minus" 
+                  size="24" 
+                  variant="text" 
+                  color="primary" 
+                  class="rounded-sm" 
+                  @click="handleDecrement(product)" 
+                  :disabled="product.selectedQuantity <= 1 || !!product.pack_id" 
+                />
+                
+                <div class="px-2 font-weight-950 text-primary text-body-2 min-width-24 text-center">
                   {{ product.selectedQuantity }}
                 </div>
-                <div class="d-flex align-center gap-1 ms-2" v-if="!product.pack_id">
-                  <VBtn icon="tabler-plus" size="20" variant="tonal" color="primary" class="rounded-sm" style="block-size: 20px; inline-size: 20px;" @click="handleIncrement(product)" :disabled="product.selectedQuantity >= product.availableQuantity" />
-                  <VBtn icon="tabler-minus" size="20" variant="tonal" color="primary" class="rounded-sm" style="block-size: 20px; inline-size: 20px;" @click="handleDecrement(product)" :disabled="product.selectedQuantity <= 1" />
-                </div>
+
+                <VBtn 
+                  icon="tabler-plus" 
+                  size="24" 
+                  variant="text" 
+                  color="primary" 
+                  class="rounded-sm" 
+                  @click="handleIncrement(product)" 
+                  :disabled="product.selectedQuantity >= product.availableQuantity || !!product.pack_id" 
+                />
               </div>
 
               <!-- Información del Producto y Desglose Inline -->
               <div class="flex-grow-1 overflow-hidden">
-                <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight truncate mb-1">
-                  {{ product.title }}
-                </h3>
-                
-                <!-- Desglose de Precios Inline -->
-                <div class="d-flex align-center gap-2 flex-wrap min-width-0">
-                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-2 rounded border" style="block-size: 18px;">
-                     <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
-                     <span class="text-super-xs font-weight-black text-secondary">
-                       {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
-                     </span>
-                  </div>
-                  
-                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-2 rounded border" style="block-size: 18px;">
-                     <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
-                     <span class="text-super-xs font-weight-black text-high-emphasis">
-                       {{ formatCurrency(getProductPriceSinIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
-                     </span>
-                  </div>
+                <div class="d-flex align-center gap-2 flex-wrap">
+                  <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
+                    {{ product.title }} 
+                    <span v-if="product.laboratory && product.laboratory !== 'N/A'" class="text-disabled font-weight-bold ml-1">
+                      - {{ product.laboratory }}
+                    </span>
+                  </h3>
 
-                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-2 rounded border" style="block-size: 18px;">
-                     <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
-                     <span class="text-super-xs font-weight-black text-success">
-                       {{ formatCurrency(getIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
-                     </span>
-                  </div>
+                  <!-- Desglose de Precios Inline (Inmediatamente después del título) -->
+                  <div class="d-flex align-center gap-1 flex-wrap">
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
+                       <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
+                       <span class="text-super-xs font-weight-black text-secondary">
+                         {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+                       </span>
+                    </div>
+                    
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
+                       <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
+                       <span class="text-super-xs font-weight-black text-high-emphasis">
+                         {{ formatCurrency(getProductPriceSinIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+                       </span>
+                    </div>
 
-                  <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1" style="block-size: 14px;">-{{ product.discount_percentage }}%</VChip>
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
+                       <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
+                       <span class="text-super-xs font-weight-black text-success">
+                         {{ formatCurrency(getIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
+                       </span>
+                    </div>
+
+                    <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1" style="block-size: 14px;">-{{ product.discount_percentage }}%</VChip>
+                  </div>
                 </div>
               </div>
 
