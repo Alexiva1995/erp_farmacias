@@ -4,6 +4,10 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import CheckoutPaymentMethods from "@/components/dialogs/checkout/CheckoutPaymentMethods.vue";
+import CheckoutProductList from "@/components/dialogs/checkout/CheckoutProductList.vue";
+import CheckoutReceipt from "@/components/dialogs/checkout/CheckoutReceipt.vue";
+import CheckoutSummary from "@/components/dialogs/checkout/CheckoutSummary.vue";
 import {
   computed,
   defineEmits,
@@ -374,7 +378,6 @@ const roundedTotalAmountToPay = computed(() => {
 });*/
 
 const remainingAmount = computed(() => {
-  // Aplicamos el descuento aquí también
   let totalWithDiscount = props.totalAmount;
 
   if (appliesSpecialTax.value) {
@@ -382,6 +385,9 @@ const remainingAmount = computed(() => {
   }
 
   const rawDifference = totalWithDiscount - totalPaidAmount.value;
+
+  // El monto restante no debe ser negativo. Si se paga de más, el excedente va a devolución.
+  if (rawDifference < 0) return 0;
 
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(rawDifference);
@@ -424,20 +430,6 @@ const getPlaceholderText = (index, payment) => {
 };
 
 // Esta función ya no se usa, pero la mantenemos por compatibilidad
-const addPaymentBlock = () => {
-  // Ya no se usa, los métodos se agregan automáticamente al seleccionar
-};
-
-const removeLastPayment = () => {
-  if (payments.value.length > 1) {
-    const lastPayment = payments.value[payments.value.length - 1];
-    // Limpiar timeout si existe
-    if (lastPayment.debounceTimeout) {
-      clearTimeout(lastPayment.debounceTimeout);
-    }
-    payments.value.pop();
-  }
-};
 
 const canAddPaymentBlock = computed(() => {
   const lastPayment = payments.value[payments.value.length - 1];
@@ -964,28 +956,20 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 
 // ACTUALIZADO: Eliminar lógica SPE adicional en changeAmount
 const changeAmount = computed(() => {
-  //let totalToPay = props.totalAmount;
   let totalToPay = props.totalAmount;
 
   if (appliesSpecialTax.value) {
     totalToPay += specialTaxAmount.value;
   }
 
-  // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
-  // El descuento SPE ya está incluido en props.totalAmount
-
   if (props.selectedCurrency === "COP") {
-    const totalToPayRounded = roundUpToNearestHundred(totalToPay);
-    return Math.max(
-      0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPayRounded),
-    );
+    totalToPay = roundUpToNearestHundred(totalToPay);
   } else {
-    return Math.max(
-      0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPay),
-    );
+    totalToPay = roundToTwoDecimalPlaces(totalToPay);
   }
+
+  const diff = totalPaidAmount.value - totalToPay;
+  return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
 const changeAmountInUSD = computed(() => {
@@ -1699,468 +1683,94 @@ const getAvailableMethodsForCurrency = (currency) => {
       </VCardTitle>
       <VDivider />
       <VCardText v-if="currentProgress === 0" class="pa-0 bg-light-grey">
-        <div v-if="!ratesLoaded" class="pa-12 text-center">
-          <VProgressCircular indeterminate color="primary" size="64" />
-          <div class="mt-4 text-h6 font-weight-bold uppercase letter-spacing-1">Cargando Tasas de Cambio...</div>
-          <div class="text-caption">Por favor, espere un momento</div>
+        <div v-if="!ratesLoaded" class="pa-10 text-center">
+          <VProgressCircular indeterminate color="primary" size="48" />
+          <div class="mt-3 text-subtitle-2 font-weight-bold uppercase letter-spacing-1">Cargando Tasas...</div>
         </div>
+        
         <VRow v-else no-gutters>
-          <!-- COLUMNA IZQUIERDA: Productos y Métodos -->
-          <VCol cols="12" md="7" lg="8" class="pa-4 border-e">
-            <div class="d-flex flex-column gap-6">
-              <!-- Vista de Productos -->
-              <VCard variant="flat" border class="rounded-xl overflow-hidden glass-card">
-                <VCardTitle class="pa-4 border-b d-flex align-center">
-                  <VIcon icon="tabler-package" class="me-2" color="primary" />
-                  <span class="text-subtitle-1 font-weight-black uppercase">Detalle de Productos</span>
-                </VCardTitle>
-                <VCardText class="pa-0">
-                  <VTable v-if="$vuetify.display.mdAndUp" density="compact" hover>
-                    <thead>
-                      <tr class="bg-light">
-                        <th class="text-left py-3">Producto</th>
-                        <th class="text-right py-3">Precio</th>
-                        <th class="text-right py-3">IVA</th>
-                        <th class="text-right py-3">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="product in props.orderProducts" :key="product.id">
-                        <td class="py-3">
-                          <div class="d-flex flex-column">
-                            <span class="font-weight-bold text-high-emphasis">{{ product.title }}</span>
-                            <span class="text-caption text-medium-emphasis">{{ product.laboratory }} • {{ product.selectedQuantity }} UNID</span>
-                          </div>
-                        </td>
-                        <td class="text-right py-3">{{ formatCurrency(getProductPriceSinIva(product, props.selectedCurrency) * product.selectedQuantity, props.selectedCurrency) }}</td>
-                        <td class="text-right py-3 text-medium-emphasis">{{ formatCurrency(getIva(product, props.selectedCurrency), props.selectedCurrency) }}</td>
-                        <td class="text-right py-3 font-weight-black text-primary">{{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}</td>
-                      </tr>
-                    </tbody>
-                  </VTable>
+          <!-- Columna Izquierda: Detalle y Métodos (Compacto) -->
+          <VCol cols="12" md="7" lg="8" class="pa-3 border-e">
+            <div class="d-flex flex-column gap-3">
+              <CheckoutProductList 
+                :products="orderProducts" 
+                :selected-currency="selectedCurrency"
+                :get-product-price="getProductPrice"
+                :get-product-price-sin-iva="getProductPriceSinIva"
+                :get-iva="getIva"
+              />
 
-                  <!-- Vista Mobile: Cards -->
-                  <div v-else class="pa-4 d-flex flex-column gap-3">
-                    <div v-for="product in props.orderProducts" :key="product.id" class="pa-3 border rounded-lg bg-surface product-card">
-                      <div class="d-flex justify-space-between mb-1">
-                        <span class="text-body-2 font-weight-black uppercase line-clamp-1">{{ product.title }}</span>
-                        <VChip size="x-small" color="primary" variant="tonal" label class="font-weight-black">{{ product.selectedQuantity }} UNID</VChip>
-                      </div>
-                      <div class="d-flex justify-space-between align-end">
-                        <span class="text-caption text-medium-emphasis">{{ product.laboratory }}</span>
-                        <span class="text-body-1 font-weight-black text-primary">{{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </VCardText>
-              </VCard>
-
-              <!-- Métodos de Pago -->
-              <VCard variant="flat" border class="rounded-xl overflow-hidden glass-card">
-                <VCardTitle class="pa-4 border-b d-flex align-center">
-                  <VIcon icon="tabler-wallet" class="me-2" color="primary" />
-                  <span class="text-subtitle-1 font-weight-black uppercase">Seleccionar Pago</span>
-                </VCardTitle>
-                <VCardText class="pa-4">
-                  <VTabs v-model="selectedCurrencyTab" color="primary" grow class="mb-4">
-                    <VTab v-for="currency in currencies" :key="currency.value" :value="currency.value">
-                      {{ currency.value }}
-                    </VTab>
-                  </VTabs>
-
-                  <VTabsWindow v-model="selectedCurrencyTab">
-                    <VTabsWindowItem v-for="currency in currencies" :key="currency.value" :value="currency.value">
-                      <div class="d-flex flex-wrap gap-2 mt-2">
-                        <VBtn
-                          v-for="method in getAvailableMethodsForCurrency(currency.value)"
-                          :key="method.value"
-                          :variant="isPaymentMethodActive(method.value, currency.value) ? 'flat' : 'outlined'"
-                          :color="isPaymentMethodActive(method.value, currency.value) ? 'primary' : 'secondary'"
-                          :disabled="remainingAmount <= 0.01 || isPaymentMethodAdded(method.value, currency.value)"
-                          size="small"
-                          class="rounded-lg"
-                          @click="selectPaymentMethod(method.value, currency.value)"
-                        >
-                          <VIcon :icon="getPaymentMethodIcon(method.value)" class="me-1" />
-                          {{ method.label }}
-                        </VBtn>
-                      </div>
-                    </VTabsWindowItem>
-                  </VTabsWindow>
-                </VCardText>
-              </VCard>
+              <CheckoutPaymentMethods 
+                v-model:selectedCurrencyTab="selectedCurrencyTab"
+                :currencies="[{value: 'USD'}, {value: 'COP'}, {value: 'BS'}]"
+                :payment-methods-by-currency="paymentMethodsByCurrency"
+                :remaining-amount="remainingAmount"
+                :is-payment-method-active="isPaymentMethodActive"
+                :is-payment-method-added="isPaymentMethodAdded"
+                :get-payment-method-icon="getPaymentMethodIcon"
+                :get-available-methods-for-currency="getAvailableMethodsForCurrency"
+                @select-payment-method="selectPaymentMethod"
+              />
             </div>
           </VCol>
 
-          <!-- COLUMNA DERECHA: Resumen -->
-          <VCol cols="12" md="5" lg="4" class="pa-4 bg-surface">
-            <div class="sticky-summary">
-              <VCard variant="flat" border class="rounded-xl glass-card highlight-border mb-4">
-                <VCardText class="pa-6">
-                  <div class="text-h6 font-weight-black mb-6 uppercase letter-spacing-1 border-b pb-2">Resumen de Pago</div>
-
-                  <!-- Descuentos -->
-                  <div v-if="activeDiscountDisplay" class="d-flex justify-space-between mb-2">
-                    <span class="text-body-1">{{ activeDiscountDisplay.label }}:</span>
-                    <span class="text-body-1 font-weight-medium text-error">- {{ activeDiscountDisplay.formatted }}</span>
-                  </div>
-
-                  <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between mb-2">
-                    <span class="text-body-1">Descuento Vencimiento:</span>
-                    <span class="text-body-1 font-weight-medium text-error">- {{ formatCurrency(expirationDiscountTotal, props.selectedCurrency) }}</span>
-                  </div>
-
-                  <div v-if="appliesSpecialTax" class="d-flex justify-space-between mb-2">
-                    <span class="text-body-1">Recargo SPE (3%):</span>
-                    <span class="text-body-1 font-weight-medium">{{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}</span>
-                  </div>
-
-                  <VDivider class="my-4" />
-
-                  <div class="d-flex justify-space-between mb-4">
-                    <span class="text-h6 font-weight-black">Total Compra:</span>
-                    <span class="text-h6 font-weight-black">{{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}</span>
-                  </div>
-
-                  <!-- Lista de Pagos Agregados -->
-                  <div v-if="payments.filter(p => p.method).length > 0" class="mb-6">
-                    <div v-for="(payment, idx) in payments.filter(p => p.method)" :key="idx" class="d-flex justify-space-between align-center mb-4 payment-row pb-2 border-b-dashed">
-                      <div class="d-flex flex-column">
-                        <span class="text-caption font-weight-bold uppercase">{{ getPaymentMethodLabel(payment.method, payment.currency) }}</span>
-                        <span v-if="payment.reference" class="text-caption text-medium-emphasis">Ref: {{ payment.reference }}</span>
-                      </div>
-
-                      <div class="d-flex align-center gap-2">
-                        <div v-if="payment._isInputActive" class="d-flex align-center gap-1">
-                          <input
-                            v-model="payment.inputAmount"
-                            class="payment-input text-right pa-1 border rounded"
-                            style="inline-size: 80px;"
-                            @keydown.enter="handlePaymentEnter($event, payment)"
-                          />
-                          <VBtn icon="tabler-check" size="x-small" color="success" variant="text" @click="confirmPaymentComplete(payment)" />
-                        </div>
-                        <template v-else>
-                          <span class="text-body-1 font-weight-black text-error">-{{ formatCurrency(payment.amount || 0, payment.currency) }}</span>
-                          <VBtn icon="tabler-pencil" size="x-small" color="primary" variant="text" @click="editPaymentAmount(payment)" />
-                          <VBtn icon="tabler-x" size="x-small" color="error" variant="text" :disabled="!isLastPaymentAdded(payment)" @click="removePaymentFromSummary(payments.indexOf(payment))" />
-                        </template>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="d-flex justify-space-between mb-2">
-                    <span class="text-h6 font-weight-black">Restante:</span>
-                    <span class="text-h6 font-weight-black" :class="remainingAmount <= 0.01 ? 'text-success' : 'text-error'">
-                      {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
-                    </span>
-                  </div>
-
-                  <div v-if="showChangeAmount" class="d-flex justify-space-between mb-4">
-                    <span class="text-body-1 font-weight-bold">Devolución:</span>
-                    <span class="text-body-1 font-weight-black text-success">{{ formatCurrency(changeAmountInCOP, 'COP') }}</span>
-                  </div>
-
-                  <VDivider class="my-6" />
-
-                  <VCardActions class="pa-0 d-flex flex-column gap-3">
-                    <VBtn variant="flat" block size="large" class="rounded-lg font-weight-black uppercase py-4"
-                      :style="remainingAmount <= 0.01 && !hasMissingReferences() ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;' : ''"
-                      :disabled="issubmitting || props.isExternalLoading || (remainingAmount > 0.01 || hasMissingReferences())"
-                      @click="handleCompletePurchase"
-                    >
-                      <VIcon icon="tabler-circle-check" class="me-2" />
-                      {{ continueButtonText }}
-                    </VBtn>
-                    <VBtn color="secondary" variant="tonal" block size="large" class="rounded-lg font-weight-bold" @click="closeModal">
-                      Regresar al Pedido
-                    </VBtn>
-                  </VCardActions>
-                </VCardText>
-              </VCard>
-
-              <!-- Información SPE -->
-              <div v-if="props.orderData?.client?.is_spe" class="bg-success-lighten-4 pa-4 rounded-xl border border-success border-opacity-25">
-                <div class="d-flex align-center mb-2 text-success-darken-2">
-                  <VIcon icon="tabler-discount-check" class="me-2" />
-                  <span class="font-weight-black uppercase text-caption">Beneficio SPE Aplicado</span>
-                </div>
-                <div class="text-caption text-success-darken-1">
-                  El cliente <strong>{{ props.orderData.client.name }}</strong> califica para un descuento del 75% en el IVA de esta transacción.
-                </div>
-              </div>
-            </div>
+          <!-- Columna Derecha: Resumen -->
+          <VCol cols="12" md="5" lg="4" class="pa-3 bg-surface">
+            <CheckoutSummary 
+              :selected-currency="selectedCurrency"
+              :selected-currency-tab="selectedCurrencyTab"
+              :active-discount-display="activeDiscountDisplay"
+              :expiration-discount-total="expirationDiscountTotal"
+              :applies-special-tax="appliesSpecialTax"
+              :special-tax-amount="specialTaxAmount"
+              :rounded-total-amount-to-pay="roundedTotalAmountToPay"
+              :payments="payments"
+              :remaining-amount="remainingAmount"
+              :show-change-amount="showChangeAmount"
+              :change-amount-in-cop="changeAmountInCOP"
+              :get-converted-remaining-amount="getConvertedRemainingAmount"
+              :get-payment-method-label="getPaymentMethodLabel"
+              :edit-payment-amount="editPaymentAmount"
+              :remove-payment-from-summary="removePaymentFromSummary"
+              :is-last-payment-added="isLastPaymentAdded"
+              :handle-payment-enter="handlePaymentEnter"
+              :confirm-payment-complete="confirmPaymentComplete"
+              :continue-button-text="'Completar Venta'"
+              :issubmitting="issubmitting"
+              :is-external-loading="isExternalLoading"
+              :has-missing-references="hasMissingReferences"
+              :order-data="orderData"
+              @complete-purchase="handleCompletePurchase"
+              @close-modal="closeModal"
+              @confirm-payment="confirmPaymentComplete"
+              @handle-payment-enter="handlePaymentEnter"
+              @remove-payment="removePaymentFromSummary"
+            />
           </VCol>
         </VRow>
       </VCardText>
 
-      <!-- Ticket de impresión (sin cambios mayores) -->
-      <VCardText v-else-if="currentProgress === 100">
-        <div class="d-flex justify-center">
-          <div style="width: &quot;50%&quot;">
-            <div class="text-center">
-              <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-            </div>
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6 mt-4">
-                Orden N° {{ props.orderData?.id }}
-              </span>
-              <div class="text-end">
-                <span class="d-block font-weight-bold text-h6 mt-4">
-                  {{ formatDateTime(props.orderData?.created_at, "date") }}
-                  {{ formatDateTime(props.orderData?.created_at, "time") }}
-                </span>
-              </div>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6"> Cajero </span>
-              <span class="font-weight-bold text-h6">
-                {{ props.orderData?.seller?.username || "N/A" }}
-              </span>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6"> Cedula </span>
-              <span class="font-weight-bold text-h6">
-                {{ props.orderData?.client?.identification_type || "N/A" }}
-                {{ props.orderData?.client?.identification || "N/A" }}
-              </span>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6"> Cliente </span>
-              <span class="font-weight-bold text-h6">
-                {{ props.orderData?.client?.name }}
-                {{ props.orderData?.client?.last_name }}
-                <span
-                  v-if="props.orderData?.client?.is_spe"
-                  class="text-success"
-                  >(SPE)</span
-                >
-              </span>
-            </div>
-
-            <div
-              v-if="validPaymentsForTicket.length > 0"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6">Métodos de Pago</p>
-              <div class="text-end">
-                <p
-                  v-for="(payment, pIndex) in validPaymentsForTicket"
-                  :key="`ticket-payment-method-${pIndex}`"
-                  class="font-weight-bold my-1"
-                >
-                  <span
-                    >{{
-                      getPaymentMethodLabel(payment.method, payment.currency)
-                    }}
-                    ({{ payment.currency }})</span
-                  >
-                </p>
-              </div>
-            </div>
-
-            <!-- Lista de productos en el ticket -->
-            <div>
-              <VList class="card-list" density="compact" nav>
-                <VListItem
-                  v-for="product in props.orderProducts"
-                  :key="product.id"
-                  class="rounded-0"
-                >
-                  <template #prepend>
-                    <span>{{ product.selectedQuantity }} x</span>
-                  </template>
-
-                  <VListItemTitle class="font-weight-medium me-4 mx-2">
-                    {{ product.title }}
-                    <span
-                      v-if="props.orderData?.client?.is_spe"
-                      class="text-success text-caption"
-                    >
-                      (SPE)
-                    </span>
-                  </VListItemTitle>
-                  <VListItemSubtitle class="mx-2"
-                    >{{ product.active_ingredient }}
-                    {{ product.laboratory }}</VListItemSubtitle
-                  >
-
-                  <template #append>
-                    <div class="d-flex flex-column align-end">
-                      <span class="text-body-1 font-weight-bold">
-                        {{
-                          formatCurrency(
-                            getProductPrice(product, props.selectedCurrency),
-                            props.selectedCurrency,
-                          )
-                        }}
-                      </span>
-
-                      <span
-                        v-if="activeDiscountDisplay"
-                        class="text-caption text-decoration-line-through text-error"
-                        style="margin-block-start: -4px;"
-                      >
-                        {{
-                          formatCurrency(
-                            getProductPriceSinDescuento(
-                              product,
-                              props.selectedCurrency,
-                            ),
-                            props.selectedCurrency,
-                          )
-                        }}
-                      </span>
-                    </div>
-                  </template>
-                </VListItem>
-              </VList>
-            </div>
-
-            <!-- Totales en el ticket -->
-            <div
-              v-if="activeDiscountDisplay"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                {{ activeDiscountDisplay.label }}:
-              </p>
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                - {{ activeDiscountDisplay.formatted }}
-              </p>
-            </div>
-            <div
-              v-if="expirationDiscountTotal > 0"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                Descuento Vencimiento:
-              </p>
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                -
-                {{
-                  formatCurrency(
-                    expirationDiscountTotal,
-                    props.selectedCurrency,
-                  )
-                }}
-              </p>
-            </div>
-
-            <div
-              v-if="appliesSpecialTax"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                Recargo Sujeto Pasivo Especial (3%):
-              </p>
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                {{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}
-              </p>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
-              <p class="font-weight-bold text-h6 mt-2">
-                {{
-                  formatCurrency(
-                    roundedTotalAmountToPay,
-                    props.selectedCurrency,
-                  )
-                }}
-              </p>
-            </div>
-
-            <!-- Mostrar ahorro SPE en el ticket -->
-            <div
-              v-if="props.orderData?.client?.is_spe"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6 text-success">
-                Descuento SPE:
-              </p>
-              <p class="font-weight-bold text-h6 text-success">
-                -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
-              </p>
-            </div>
-
-            <div
-              v-if="validPaymentsForTicket.length > 0"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6 mt-2">Pago:</p>
-              <div class="text-end">
-                <p
-                  v-for="(payment, pIndex) in validPaymentsForTicket"
-                  :key="`ticket-payment-amount-${pIndex}`"
-                  class="font-weight-bold my-1"
-                >
-                  <span>
-                    {{
-                      getPaymentMethodLabel(payment.method, payment.currency)
-                    }}:
-                    {{ formatCurrency(payment.amount || 0, payment.currency) }}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div
-              v-if="hasCreditPayment"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6">Crédito:</p>
-              <p class="font-weight-bold text-h6">
-                {{
-                  formatCurrency(
-                    roundedTotalAmountToPay,
-                    props.selectedCurrency,
-                  )
-                }}
-              </p>
-            </div>
-
-            <div
-              v-if="showChangeAmount"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
-              <p class="font-weight-bold text-h6 mt-2">
-                {{ formatCurrency(changeAmountInCOP, "COP") }}
-              </p>
-            </div>
-
-            <p class="font-weight-bold text-center text-success">
-              ¡GRACIAS POR SU COMPRA!
-            </p>
-          </div>
-        </div>
-
-        <!-- Botones de Imprimir y Cancelar después del ticket -->
-        <VDivider class="my-4" />
-        <VCardActions class="pa-4 d-flex flex-column gap-2">
-          <VBtn
-            color="primary"
-            variant="flat"
-            @click="handlePrintTicket"
-            block
-            size="large"
-          >
-            <VIcon icon="tabler-printer" class="me-2" />
-            Imprimir
-          </VBtn>
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            @click="handleCancelAfterTicket"
-            block
-          >
-            Cancelar
-          </VBtn>
-        </VCardActions>
+      <!-- Ticket Final -->
+      <VCardText v-else class="pa-0">
+        <CheckoutReceipt 
+          :order-data="orderData"
+          :order-products="orderProducts"
+          :selected-currency="selectedCurrency"
+          :get-payment-method-label="getPaymentMethodLabel"
+          :payments="payments"
+          :get-product-price="getProductPrice"
+          :active-discount-display="activeDiscountDisplay"
+          :expiration-discount-total="expirationDiscountTotal"
+          :applies-special-tax="appliesSpecialTax"
+          :special-tax-amount="specialTaxAmount"
+          :rounded-total-amount-to-pay="roundedTotalAmountToPay"
+          :total-s-p-e-savings="totalSPESavings"
+          :has-credit-payment="hasCreditPayment"
+          :show-change-amount="showChangeAmount"
+          :change-amount-in-cop="changeAmountInCOP"
+          @print="handlePrintTicket"
+          @cancel="handleCancelAfterTicket"
+        />
       </VCardText>
     </VCard>
   </VDialog>

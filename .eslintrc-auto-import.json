@@ -388,6 +388,7 @@
     "nextExpirationDate": true,
     "formatNumber": true,
     "applyFooter": true,
-    "applyPremiumHeader": true
+    "applyPremiumHeader": true,
+    "useCheckout": true
   }
 }
