@@ -967,7 +967,7 @@ const getIva = (product, currency) => {
            <VSpacer />
 
            <!-- Acciones Rápidas (En la misma línea) -->
-           <div class="d-flex align-center gap-2">
+           <div class="d-flex align-center gap-2 mt-1">
               <VBtn
                 v-if="!props.orderReserved"
                 color="warning"

@@ -91,30 +91,35 @@ const handleBack = () => {
           />
         </VCol>
 
-        <VCol cols="auto" class="d-flex gap-2">
-          <VBtn
-            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            variant="tonal"
-            density="comfortable"
-            class="rounded-lg"
-            @click="toggleAdvancedFilters"
-          >
-            <VIcon icon="tabler-filter" class="me-1" size="18" />
-            <span class="d-none d-sm-inline">Filtros</span>
-          </VBtn>
+        <VCol cols="auto" class="d-flex gap-1 mt-1">
+          <VTooltip location="top" text="Filtros Avanzados">
+            <template #activator="{ props: tooltipProps }">
+              <VBtn
+                v-bind="tooltipProps"
+                :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+                variant="tonal"
+                density="comfortable"
+                class="rounded-lg"
+                icon="tabler-filter"
+                @click="toggleAdvancedFilters"
+              />
+            </template>
+          </VTooltip>
 
           <VMenu>
             <template #activator="{ props: menuProps }">
-              <VBtn 
-                v-bind="menuProps" 
-                variant="tonal" 
-                color="secondary" 
-                density="comfortable"
-                class="rounded-lg"
-              >
-                <VIcon icon="tabler-sort-ascending" class="me-1" size="18" />
-                <span class="d-none d-sm-inline">Ordenar</span>
-              </VBtn>
+              <VTooltip location="top" text="Ordenar Resultados">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn 
+                    v-bind="{ ...menuProps, ...tooltipProps }" 
+                    variant="tonal" 
+                    color="secondary" 
+                    density="comfortable"
+                    class="rounded-lg"
+                    icon="tabler-sort-ascending"
+                  />
+                </template>
+              </VTooltip>
             </template>
             <VList density="compact" class="rounded-xl mt-1 py-2 shadow-lg border">
               <VListItem
@@ -135,27 +140,33 @@ const handleBack = () => {
             </VList>
           </VMenu>
 
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            density="comfortable"
-            class="rounded-lg"
-            @click="clearFilters"
-          >
-            <VIcon icon="tabler-trash" class="me-1" size="18" />
-            <span class="d-none d-sm-inline">Limpiar</span>
-          </VBtn>
+          <VTooltip location="top" text="Limpiar Filtros">
+            <template #activator="{ props: tooltipProps }">
+              <VBtn
+                v-bind="tooltipProps"
+                color="secondary"
+                variant="tonal"
+                density="comfortable"
+                class="rounded-lg"
+                icon="tabler-trash"
+                @click="clearFilters"
+              />
+            </template>
+          </VTooltip>
 
-          <VBtn
-            color="primary"
-            variant="tonal"
-            density="comfortable"
-            class="rounded-lg"
-            @click="handleBack"
-          >
-            <VIcon icon="tabler-arrow-back" class="me-1" size="18" />
-            <span class="d-none d-sm-inline">Volver</span>
-          </VBtn>
+          <VTooltip location="top" text="Volver">
+            <template #activator="{ props: tooltipProps }">
+              <VBtn
+                v-bind="tooltipProps"
+                color="primary"
+                variant="tonal"
+                density="comfortable"
+                class="rounded-lg"
+                icon="tabler-arrow-back"
+                @click="handleBack"
+              />
+            </template>
+          </VTooltip>
         </VCol>
       </VRow>
 
