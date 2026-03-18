@@ -987,6 +987,7 @@ const getIva = (product, currency) => {
           </div>
        </div>
     </VCardText>
+  </VCard>
 </template>
 
 <style scoped>
