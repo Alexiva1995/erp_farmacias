@@ -1670,11 +1670,22 @@ const getAvailableMethodsForCurrency = (currency) => {
 };
 </script>
 <template>
-  <VDialog v-model="dialogVisible">
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold pr-1">Compra </span>
-        <VSwitch v-model="invoiceSwitch" />
+  <VDialog
+    v-model="dialogVisible"
+    :fullscreen="$vuetify.display.xs"
+    transition="dialog-bottom-transition"
+    class="buys-modal-dialog"
+  >
+    <VCard class="rounded-xl overflow-hidden glass-card elevation-4">
+      <VCardTitle class="d-flex align-center pa-4 border-b bg-surface">
+        <div class="d-flex align-center">
+          <VIcon icon="tabler-shopping-cart-check" color="primary" class="me-3" size="28" />
+          <span class="text-h5 font-weight-black uppercase letter-spacing-1">Finalizar Compra</span>
+        </div>
+        <div class="ms-6 d-flex align-center">
+          <span class="text-caption font-weight-bold me-2 uppercase">Factura</span>
+          <VSwitch v-model="invoiceSwitch" density="compact" color="primary" hide-details />
+        </div>
         <VSpacer />
         <VBtn
           icon
@@ -1697,133 +1708,80 @@ const getAvailableMethodsForCurrency = (currency) => {
           <!-- COLUMNA IZQUIERDA: Productos (Arriba) y Métodos de Pago (Abajo) -->
           <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
             <div class="pa-4">
-              <!-- Lista de Productos (Arriba - Expandida por defecto) -->
-              <VExpansionPanels
-                v-model="productsPanelExpanded"
-                variant="accordion"
-                class="mb-4"
-              >
-                <VExpansionPanel>
-                  <VExpansionPanelTitle>
-                    <div
-                      class="d-flex align-center justify-space-between w-100"
-                    >
-                      <div class="d-flex align-center">
-                        <VIcon icon="tabler-package" class="me-2" size="20" />
-                        <span class="font-weight-medium text-body-1"
-                          >Ver detalle de productos</span
-                        >
+              <!-- Vista de Productos (Adaptativa) -->
+              <div class="mb-6">
+                <!-- Desktop: Tabla Tradicional -->
+                <VTable v-if="!$vuetify.display.xs" density="compact" hover class="border rounded-lg overflow-hidden shadow-sm">
+                  <thead>
+                    <tr class="bg-light">
+                      <th class="text-left font-weight-black uppercase py-3" style="inline-size: 45%;">Producto</th>
+                      <th class="text-right font-weight-black uppercase py-3" style="inline-size: 15%;">Precio</th>
+                      <th class="text-right font-weight-black uppercase py-3" style="inline-size: 15%;">IVA</th>
+                      <th class="text-right font-weight-black uppercase py-3" style="inline-size: 25%;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="product in props.orderProducts" :key="product.id" class="product-row">
+                      <td class="py-3">
+                        <div class="d-flex flex-column">
+                          <span class="text-body-1 font-weight-bold text-high-emphasis">
+                            {{ product.title }}
+                          </span>
+                          <span class="text-caption text-medium-emphasis">
+                            {{ product.laboratory || 'N/A' }} • Cant: {{ product.selectedQuantity }}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="text-right py-3">
+                        {{ formatCurrency(getProductPriceSinIva(product, props.selectedCurrency) * product.selectedQuantity, props.selectedCurrency) }}
+                      </td>
+                      <td class="text-right py-3 text-medium-emphasis">
+                        {{ formatCurrency(getIva(product, props.selectedCurrency), props.selectedCurrency) }}
+                      </td>
+                      <td class="text-right py-3">
+                        <div class="d-flex flex-column align-end">
+                          <span v-if="activeDiscountDisplay" class="text-caption text-error text-decoration-line-through">
+                            {{ formatCurrency(getProductPriceSinDescuento(product, props.selectedCurrency), props.selectedCurrency) }}
+                          </span>
+                          <span class="text-body-1 font-weight-black text-primary">
+                            {{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </VTable>
+
+                <!-- Mobile: Lista de Tarjetas (Cards) -->
+                <div v-else class="d-flex flex-column gap-3">
+                  <VCard v-for="product in props.orderProducts" :key="product.id" variant="flat" border class="rounded-lg pa-3 bg-surface product-card">
+                    <div class="d-flex justify-space-between align-start mb-2">
+                      <div class="flex-grow-1 pr-2">
+                        <div class="text-body-2 font-weight-black text-uppercase line-clamp-2">{{ product.title }}</div>
+                        <div class="text-caption text-medium-emphasis">{{ product.laboratory }}</div>
                       </div>
-                      <VChip
-                        label
-                        :color="chipColor"
-                        variant="tonal"
-                        density="compact"
-                        size="small"
-                        class="ms-auto me-2"
-                      >
-                        <span class="font-weight-medium"
-                          >{{ totalSelectedQuantity }} productos</span
-                        >
+                      <VChip size="x-small" color="primary" variant="tonal" label class="font-weight-black">
+                        {{ product.selectedQuantity }} UNID
                       </VChip>
                     </div>
-                  </VExpansionPanelTitle>
-                  <VExpansionPanelText>
-                    <VTable density="compact" lines="none" class="py-2">
-                      <thead>
-                        <tr>
-                          <th class="text-left" style="inline-size: 40%;">Producto</th>
-                          <th class="text-right" style="inline-size: 20%;">Precio</th>
-                          <th class="text-right" style="inline-size: 20%;">IVA</th>
-                          <th class="text-right" style="inline-size: 20%;">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="(product, index) in props.orderProducts"
-                          :key="product.id"
-                        >
-                          <td>
-                            <div class="d-flex flex-column">
-                              <span
-                                class="text-body-1 font-weight-medium text-high-emphasis"
-                              >
-                                {{ product.title }}
-                              </span>
-                              <span
-                                class="text-sm"
-                                style="color: rgba(0, 0, 0, 60%);"
-                              >
-                                {{ product.active_ingredient }}
-                                {{
-                                  product.laboratory
-                                    ? `- ${product.laboratory}`
-                                    : ""
-                                }}
-                                {{ product.selectedQuantity }} x
-                              </span>
-                            </div>
-                          </td>
-                          <td class="text-right">
-                            <span class="text-body-1 font-weight-regular">
-                              {{
-                                formatCurrency(
-                                  getProductPriceSinIva(
-                                    product,
-                                    props.selectedCurrency,
-                                  ) * product.selectedQuantity,
-                                  props.selectedCurrency,
-                                )
-                              }}
-                            </span>
-                          </td>
-                          <td class="text-right">
-                            <span class="text-body-1 font-weight-regular">
-                              {{
-                                formatCurrency(
-                                  getIva(product, props.selectedCurrency),
-                                  props.selectedCurrency,
-                                )
-                              }}
-                            </span>
-                          </td>
-                          <td class="text-right">
-                            <div class="d-flex align-center gap-1 justify-end">
-                              <span
-                                v-if="activeDiscountDisplay"
-                                class="text-caption text-disabled text-decoration-line-through text-error"
-                              >
-                                {{
-                                  formatCurrency(
-                                    getProductPriceSinDescuento(
-                                      product,
-                                      props.selectedCurrency,
-                                    ),
-                                    props.selectedCurrency,
-                                  )
-                                }}
-                              </span>
-                              <span
-                                class="text-body-1 font-weight-bold text-black"
-                              >
-                                {{
-                                  formatCurrency(
-                                    getProductPrice(
-                                      product,
-                                      props.selectedCurrency,
-                                    ),
-                                    props.selectedCurrency,
-                                  )
-                                }}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </VTable>
-                  </VExpansionPanelText>
-                </VExpansionPanel>
-              </VExpansionPanels>
+                    
+                    <div class="d-flex justify-space-between align-end">
+                      <div class="d-flex flex-column">
+                        <span class="text-caption text-medium-emphasis">Unitario: {{ formatCurrency(getProductPriceSinIva(product, props.selectedCurrency), props.selectedCurrency) }}</span>
+                        <span class="text-caption text-medium-emphasis">IVA: {{ formatCurrency(getIva(product, props.selectedCurrency) / product.selectedQuantity, props.selectedCurrency) }}</span>
+                      </div>
+                      <div class="text-right">
+                        <div v-if="activeDiscountDisplay" class="text-caption text-error text-decoration-line-through">
+                          {{ formatCurrency(getProductPriceSinDescuento(product, props.selectedCurrency), props.selectedCurrency) }}
+                        </div>
+                        <div class="text-h6 font-weight-black text-primary">
+                          {{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}
+                        </div>
+                      </div>
+                    </div>
+                  </VCard>
+                </div>
+              </div>
 
               <!-- Selección de Métodos de Pago (Abajo - Con Pestañas) -->
               <div class="mt-4">
@@ -1914,6 +1872,7 @@ const getAvailableMethodsForCurrency = (currency) => {
 
           <!-- COLUMNA DERECHA: Resumen de Pago (Sticky) -->
           <div
+            class="payment-summary-col"
             style="
               position: sticky;
               display: flex;
@@ -1921,16 +1880,17 @@ const getAvailableMethodsForCurrency = (currency) => {
               align-self: flex-start;
               inline-size: 400px;
               inset-block-start: 0;
-              max-block-size: calc(100vh - 200px);
-"
+              max-block-size: calc(100vh - 120px);
+            "
           >
             <VCard
-              variant="outlined"
-              class="flex-grow-1"
+              variant="flat"
+              border
+              class="flex-grow-1 rounded-xl glass-card highlight-border"
               style="display: flex; flex-direction: column;"
             >
-              <VCardText style="flex: 1; overflow-y: auto;">
-                <div class="text-h6 font-weight-bold mb-4">Resumen de Pago</div>
+              <VCardText style="flex: 1; overflow-y: auto;" class="pa-6">
+                <div class="text-h6 font-weight-black mb-6 uppercase letter-spacing-1 border-b pb-2">Resumen de Pago</div>
 
                 <!-- Descuentos -->
                 <div
@@ -2249,25 +2209,29 @@ const getAvailableMethodsForCurrency = (currency) => {
 
               <!-- Botones fijos en la parte inferior -->
               <VDivider />
-              <VCardActions class="pa-4 d-flex flex-column gap-2">
+              <VCardActions class="pa-6 d-flex flex-column gap-3">
                 <VBtn
                   color="secondary"
-                  variant="outlined"
+                  variant="tonal"
                   @click="closeModal"
                   block
+                  size="large"
+                  class="rounded-lg font-weight-bold"
                 >
-                  Cancelar
+                  Regresar al Pedido
                 </VBtn>
                 <VBtn
-                  :style="
-                    remainingAmount <= 0 && !hasMissingReferences()
-                      ? 'background-color: #28C76F; color: white;'
-                      : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'
-                  "
                   variant="flat"
                   @click="handleCompletePurchase"
                   :loading="issubmitting || props.isExternalLoading"
                   block
+                  size="large"
+                  class="rounded-lg font-weight-black uppercase py-4"
+                  :style="
+                    remainingAmount <= 0 && !hasMissingReferences()
+                      ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;'
+                      : 'background-color: rgba(var(--v-border-color), 0.12); color: rgba(var(--v-theme-on-surface), 0.38);'
+                  "
                   :disabled="
                     issubmitting ||
                     props.isExternalLoading ||
@@ -2275,6 +2239,7 @@ const getAvailableMethodsForCurrency = (currency) => {
                       (remainingAmount > 0.01 || hasMissingReferences()))
                   "
                 >
+                  <VIcon icon="tabler-circle-check" class="me-2" />
                   {{ continueButtonText }}
                 </VBtn>
               </VCardActions>
@@ -2716,10 +2681,10 @@ const getAvailableMethodsForCurrency = (currency) => {
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease-in;
+  animation: fade-in 0.3s ease-in;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -2739,6 +2704,11 @@ const getAvailableMethodsForCurrency = (currency) => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 8%);
 }
 
+.payment-method-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .payment-method-card:hover:not(.payment-method-card--add) {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 12%);
   transform: translateY(-2px);
@@ -2753,11 +2723,6 @@ const getAvailableMethodsForCurrency = (currency) => {
 .payment-method-card--add:hover {
   border-color: rgb(var(--v-theme-primary)) !important;
   background-color: rgba(var(--v-theme-primary), 0.02);
-}
-
-.payment-method-card:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .payment-method-btn {
@@ -2775,5 +2740,31 @@ const getAvailableMethodsForCurrency = (currency) => {
 
 .payment-method-btn--added:hover {
   transform: none;
+}
+
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(var(--v-theme-surface), 0.8) !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.highlight-border {
+  border: 1px solid rgba(var(--v-theme-primary), 0.1) !important;
+}
+
+/* Responsividad para móviles */
+@media (max-width: 600px) {
+  .payment-summary-col {
+    position: relative !important;
+    inline-size: 100% !important;
+    max-block-size: none !important;
+  }
 }
 </style>
