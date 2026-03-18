@@ -1698,700 +1698,200 @@ const getAvailableMethodsForCurrency = (currency) => {
         </VBtn>
       </VCardTitle>
       <VDivider />
-      <VCardText v-if="currentProgress === 0" class="pa-0">
-        <div v-if="!ratesLoaded" class="text-center py-10">
-          <VProgressCircular indeterminate color="primary"></VProgressCircular>
-          <p class="mt-4">Cargando tasas de cambio. Por favor, espere...</p>
+      <VCardText v-if="currentProgress === 0" class="pa-0 bg-light-grey">
+        <div v-if="!ratesLoaded" class="pa-12 text-center">
+          <VProgressCircular indeterminate color="primary" size="64" />
+          <div class="mt-4 text-h6 font-weight-bold uppercase letter-spacing-1">Cargando Tasas de Cambio...</div>
+          <div class="text-caption">Por favor, espere un momento</div>
         </div>
+        <VRow v-else no-gutters>
+          <!-- COLUMNA IZQUIERDA: Productos y Métodos -->
+          <VCol cols="12" md="7" lg="8" class="pa-4 border-e">
+            <div class="d-flex flex-column gap-6">
+              <!-- Vista de Productos -->
+              <VCard variant="flat" border class="rounded-xl overflow-hidden glass-card">
+                <VCardTitle class="pa-4 border-b d-flex align-center">
+                  <VIcon icon="tabler-package" class="me-2" color="primary" />
+                  <span class="text-subtitle-1 font-weight-black uppercase">Detalle de Productos</span>
+                </VCardTitle>
+                <VCardText class="pa-0">
+                  <VTable v-if="$vuetify.display.mdAndUp" density="compact" hover>
+                    <thead>
+                      <tr class="bg-light">
+                        <th class="text-left py-3">Producto</th>
+                        <th class="text-right py-3">Precio</th>
+                        <th class="text-right py-3">IVA</th>
+                        <th class="text-right py-3">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="product in props.orderProducts" :key="product.id">
+                        <td class="py-3">
+                          <div class="d-flex flex-column">
+                            <span class="font-weight-bold text-high-emphasis">{{ product.title }}</span>
+                            <span class="text-caption text-medium-emphasis">{{ product.laboratory }} • {{ product.selectedQuantity }} UNID</span>
+                          </div>
+                        </td>
+                        <td class="text-right py-3">{{ formatCurrency(getProductPriceSinIva(product, props.selectedCurrency) * product.selectedQuantity, props.selectedCurrency) }}</td>
+                        <td class="text-right py-3 text-medium-emphasis">{{ formatCurrency(getIva(product, props.selectedCurrency), props.selectedCurrency) }}</td>
+                        <td class="text-right py-3 font-weight-black text-primary">{{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}</td>
+                      </tr>
+                    </tbody>
+                  </VTable>
 
-        <div v-else class="d-flex gap-4" style="min-block-size: 500px;">
-          <!-- COLUMNA IZQUIERDA: Productos (Arriba) y Métodos de Pago (Abajo) -->
-          <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
-            <div class="pa-4">
-              <!-- Vista de Productos (Adaptativa) -->
-              <div class="mb-6">
-                <!-- Desktop: Tabla Tradicional -->
-                <VTable v-if="!$vuetify.display.xs" density="compact" hover class="border rounded-lg overflow-hidden shadow-sm">
-                  <thead>
-                    <tr class="bg-light">
-                      <th class="text-left font-weight-black uppercase py-3" style="inline-size: 45%;">Producto</th>
-                      <th class="text-right font-weight-black uppercase py-3" style="inline-size: 15%;">Precio</th>
-                      <th class="text-right font-weight-black uppercase py-3" style="inline-size: 15%;">IVA</th>
-                      <th class="text-right font-weight-black uppercase py-3" style="inline-size: 25%;">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="product in props.orderProducts" :key="product.id" class="product-row">
-                      <td class="py-3">
-                        <div class="d-flex flex-column">
-                          <span class="text-body-1 font-weight-bold text-high-emphasis">
-                            {{ product.title }}
-                          </span>
-                          <span class="text-caption text-medium-emphasis">
-                            {{ product.laboratory || 'N/A' }} • Cant: {{ product.selectedQuantity }}
-                          </span>
-                        </div>
-                      </td>
-                      <td class="text-right py-3">
-                        {{ formatCurrency(getProductPriceSinIva(product, props.selectedCurrency) * product.selectedQuantity, props.selectedCurrency) }}
-                      </td>
-                      <td class="text-right py-3 text-medium-emphasis">
-                        {{ formatCurrency(getIva(product, props.selectedCurrency), props.selectedCurrency) }}
-                      </td>
-                      <td class="text-right py-3">
-                        <div class="d-flex flex-column align-end">
-                          <span v-if="activeDiscountDisplay" class="text-caption text-error text-decoration-line-through">
-                            {{ formatCurrency(getProductPriceSinDescuento(product, props.selectedCurrency), props.selectedCurrency) }}
-                          </span>
-                          <span class="text-body-1 font-weight-black text-primary">
-                            {{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </VTable>
-
-                <!-- Mobile: Lista de Tarjetas (Cards) -->
-                <div v-else class="d-flex flex-column gap-3">
-                  <VCard v-for="product in props.orderProducts" :key="product.id" variant="flat" border class="rounded-lg pa-3 bg-surface product-card">
-                    <div class="d-flex justify-space-between align-start mb-2">
-                      <div class="flex-grow-1 pr-2">
-                        <div class="text-body-2 font-weight-black text-uppercase line-clamp-2">{{ product.title }}</div>
-                        <div class="text-caption text-medium-emphasis">{{ product.laboratory }}</div>
+                  <!-- Vista Mobile: Cards -->
+                  <div v-else class="pa-4 d-flex flex-column gap-3">
+                    <div v-for="product in props.orderProducts" :key="product.id" class="pa-3 border rounded-lg bg-surface product-card">
+                      <div class="d-flex justify-space-between mb-1">
+                        <span class="text-body-2 font-weight-black uppercase line-clamp-1">{{ product.title }}</span>
+                        <VChip size="x-small" color="primary" variant="tonal" label class="font-weight-black">{{ product.selectedQuantity }} UNID</VChip>
                       </div>
-                      <VChip size="x-small" color="primary" variant="tonal" label class="font-weight-black">
-                        {{ product.selectedQuantity }} UNID
-                      </VChip>
-                    </div>
-                    
-                    <div class="d-flex justify-space-between align-end">
-                      <div class="d-flex flex-column">
-                        <span class="text-caption text-medium-emphasis">Unitario: {{ formatCurrency(getProductPriceSinIva(product, props.selectedCurrency), props.selectedCurrency) }}</span>
-                        <span class="text-caption text-medium-emphasis">IVA: {{ formatCurrency(getIva(product, props.selectedCurrency) / product.selectedQuantity, props.selectedCurrency) }}</span>
-                      </div>
-                      <div class="text-right">
-                        <div v-if="activeDiscountDisplay" class="text-caption text-error text-decoration-line-through">
-                          {{ formatCurrency(getProductPriceSinDescuento(product, props.selectedCurrency), props.selectedCurrency) }}
-                        </div>
-                        <div class="text-h6 font-weight-black text-primary">
-                          {{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}
-                        </div>
-                      </div>
-                    </div>
-                  </VCard>
-                </div>
-              </div>
-
-              <!-- Selección de Métodos de Pago (Abajo - Con Pestañas) -->
-              <div class="mt-4">
-                <div class="d-flex align-center mb-3">
-                  <VIcon icon="tabler-credit-card" class="me-2" size="20" />
-                  <p class="font-weight-medium text-h6 mb-0">Métodos de Pago</p>
-                </div>
-
-                <!-- Pestañas de Monedas -->
-                <VTabs v-model="selectedCurrencyTab" class="mb-3">
-                  <VTab
-                    v-for="currency in currencies"
-                    :key="currency.value"
-                    :value="currency.value"
-                    class="text-capitalize"
-                  >
-                    {{ currency.label }}
-                  </VTab>
-                </VTabs>
-
-                <!-- Contenido de cada pestaña -->
-                <VTabsWindow v-model="selectedCurrencyTab">
-                  <VTabsWindowItem
-                    v-for="currency in currencies"
-                    :key="currency.value"
-                    :value="currency.value"
-                  >
-                    <!-- Métodos de pago para esta moneda -->
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                      <VBtn
-                        v-for="method in getAvailableMethodsForCurrency(
-                          currency.value,
-                        )"
-                        :key="method.value"
-                        :class="[
-                          'payment-method-btn',
-                          {
-                            'payment-method-btn--active': isPaymentMethodActive(
-                              method.value,
-                              currency.value,
-                            ),
-                            'payment-method-btn--added': isPaymentMethodAdded(
-                              method.value,
-                              currency.value,
-                            ),
-                          },
-                        ]"
-                        :variant="
-                          isPaymentMethodActive(method.value, currency.value)
-                            ? 'flat'
-                            : 'outlined'
-                        "
-                        :color="
-                          isPaymentMethodActive(method.value, currency.value)
-                            ? 'primary'
-                            : 'default'
-                        "
-                        :disabled="
-                          remainingAmount <= 0 ||
-                          isPaymentMethodAdded(method.value, currency.value)
-                        "
-                        @click="
-                          selectPaymentMethod(method.value, currency.value)
-                        "
-                        size="small"
-                      >
-                        <VIcon
-                          :icon="getPaymentMethodIcon(method.value)"
-                          size="18"
-                          class="me-1"
-                        />
-                        {{ method.label }}
-                        <VIcon
-                          v-if="
-                            isPaymentMethodActive(method.value, currency.value)
-                          "
-                          icon="tabler-check"
-                          size="16"
-                          class="ms-1"
-                        />
-                      </VBtn>
-                    </div>
-                  </VTabsWindowItem>
-                </VTabsWindow>
-              </div>
-            </div>
-          </div>
-
-          <!-- COLUMNA DERECHA: Resumen de Pago (Sticky) -->
-          <div
-            class="payment-summary-col"
-            style="
-              position: sticky;
-              display: flex;
-              flex-direction: column;
-              align-self: flex-start;
-              inline-size: 400px;
-              inset-block-start: 0;
-              max-block-size: calc(100vh - 120px);
-            "
-          >
-            <VCard
-              variant="flat"
-              border
-              class="flex-grow-1 rounded-xl glass-card highlight-border"
-              style="display: flex; flex-direction: column;"
-            >
-              <VCardText style="flex: 1; overflow-y: auto;" class="pa-6">
-                <div class="text-h6 font-weight-black mb-6 uppercase letter-spacing-1 border-b pb-2">Resumen de Pago</div>
-
-                <!-- Descuentos -->
-                <div
-                  v-if="activeDiscountDisplay"
-                  class="d-flex justify-space-between mb-2"
-                >
-                  <span class="text-body-1"
-                    >{{ activeDiscountDisplay.label }}:</span
-                  >
-                  <span class="text-body-1 font-weight-medium text-error">
-                    - {{ activeDiscountDisplay.formatted }}
-                  </span>
-                </div>
-
-                <div
-                  v-if="expirationDiscountTotal > 0"
-                  class="d-flex justify-space-between mb-2"
-                >
-                  <span class="text-body-1">Descuento Vencimiento:</span>
-                  <span class="text-body-1 font-weight-medium text-error">
-                    -
-                    {{
-                      formatCurrency(
-                        expirationDiscountTotal,
-                        props.selectedCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-
-                <div
-                  v-if="appliesSpecialTax"
-                  class="d-flex justify-space-between mb-2"
-                >
-                  <span class="text-body-1">Recargo SPE (3%):</span>
-                  <span class="text-body-1 font-weight-medium">
-                    {{
-                      formatCurrency(specialTaxAmount, props.selectedCurrency)
-                    }}
-                  </span>
-                </div>
-
-                <VDivider class="my-3" />
-
-                <!-- Total Compra -->
-                <div class="d-flex justify-space-between mb-3">
-                  <span class="text-h6 font-weight-bold">Total Compra:</span>
-                  <span class="text-h6 font-weight-bold">
-                    {{
-                      formatCurrency(
-                        roundedTotalAmountToPay,
-                        props.selectedCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-
-                <!-- Lista de Pagos con Inputs Integrados (Tipo Recibo) -->
-                <div
-                  v-if="payments.filter((p) => p.method).length > 0"
-                  class="mb-3"
-                >
-                  <div
-                    v-for="(payment, idx) in payments.filter((p) => p.method)"
-                    :key="idx"
-                    class="d-flex justify-space-between align-center mb-3 payment-row"
-                    style="min-block-size: 32px;"
-                  >
-                    <span class="text-body-1">
-                      {{
-                        getPaymentMethodLabel(payment.method, payment.currency)
-                      }}:
-                    </span>
-
-                    <!-- Input activo (cuando _isInputActive es true) -->
-                    <div
-                      v-if="payment._isInputActive"
-                      class="d-flex align-center gap-2 fade-in"
-                      style="flex: 0 0 auto;"
-                    >
-                      <input
-                        :ref="
-                          (el) => {
-                            if (
-                              el &&
-                              payment._isInputActive &&
-                              !payment._isReferenceActive &&
-                              !payment._amountConfirmed
-                            ) {
-                              nextTick(() => {
-                                el.focus();
-                              });
-                            }
-                          }
-                        "
-                        :value="payment.inputAmount || ''"
-                        @input="
-                          updatePaymentAmountLive(payment, $event.target.value)
-                        "
-                        @keydown.enter="handlePaymentEnter($event, payment)"
-                        @keyup.tab="handlePaymentTab(payment)"
-                        @blur="confirmPaymentAmount(payment)"
-                        @focus="
-                          $event.target.style.borderBottomColor =
-                            'rgb(var(--v-theme-primary))'
-                        "
-                        :readonly="payment._amountConfirmed"
-                        type="text"
-                        inputmode="decimal"
-                        class="payment-input"
-                        :data-payment-index="payments.indexOf(payment)"
-                        :placeholder="
-                          formatCurrency(
-                            getConvertedRemainingAmount(payment.currency),
-                            payment.currency,
-                          )
-                        "
-                        :style="{
-                          border: 'none',
-                          borderBottom: payment._amountError
-                            ? '2px solid rgb(var(--v-theme-error))'
-                            : '1px solid rgba(0, 0, 0, 0.42)',
-                          background: payment._amountConfirmed
-                            ? 'rgba(0, 0, 0, 0.04)'
-                            : 'rgba(0, 0, 0, 0.02)',
-                          padding: '4px 8px',
-                          width: '120px',
-                          textAlign: 'right',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease',
-                          cursor: payment._amountConfirmed ? 'default' : 'text',
-                        }"
-                      />
-                      <span class="text-caption text-medium-emphasis">{{
-                        payment.currency
-                      }}</span>
-
-                      <!-- Input de Referencia (si es requerido) -->
-                      <input
-                        v-if="
-                          requiresReference(payment.method, payment.currency) &&
-                          payment._isReferenceActive
-                        "
-                        :ref="
-                          (el) => {
-                            if (el && payment._isReferenceActive) {
-                              nextTick(() => {
-                                el.focus();
-                              });
-                            }
-                          }
-                        "
-                        :value="payment.reference || ''"
-                        @input="
-                          payment.reference = $event.target.value;
-                          payment._referenceError = false;
-                        "
-                        @keydown.enter.prevent="confirmPaymentComplete(payment)"
-                        @blur="
-                          if (
-                            payment.reference &&
-                            payment.reference.trim() !== ''
-                          ) {
-                            payment._referenceError = false;
-                          }
-                        "
-                        @focus="
-                          $event.target.style.borderBottomColor =
-                            'rgb(var(--v-theme-primary))'
-                        "
-                        type="text"
-                        class="payment-reference-input"
-                        :data-payment-index="payments.indexOf(payment)"
-                        placeholder="Referencia"
-                        :style="{
-                          border: 'none',
-                          borderBottom: payment._referenceError
-                            ? '2px solid rgb(var(--v-theme-error))'
-                            : '1px solid rgba(0, 0, 0, 0.42)',
-                          background: 'rgba(0, 0, 0, 0.02)',
-                          padding: '4px 8px',
-                          width: '90px',
-                          fontSize: '13px',
-                          transition: 'all 0.2s ease',
-                        }"
-                      />
-
-                      <VBtn
-                        icon
-                        variant="text"
-                        size="x-small"
-                        color="success"
-                        @click="confirmPaymentComplete(payment)"
-                      >
-                        <VIcon icon="tabler-check" size="16" />
-                        <VTooltip activator="parent" location="top"
-                          >Confirmar</VTooltip
-                        >
-                      </VBtn>
-                      <VBtn
-                        icon
-                        variant="text"
-                        size="x-small"
-                        color="error"
-                        :disabled="!isLastPaymentAdded(payment)"
-                        @click="
-                          removePaymentFromSummary(payments.indexOf(payment))
-                        "
-                      >
-                        <VIcon icon="tabler-x" size="16" />
-                        <VTooltip activator="parent" location="top">
-                          {{
-                            isLastPaymentAdded(payment)
-                              ? "Eliminar"
-                              : "Solo se puede eliminar el último método agregado"
-                          }}
-                        </VTooltip>
-                      </VBtn>
-                    </div>
-
-                    <!-- Texto fijo con icono de editar (cuando _isInputActive es false) -->
-                    <div
-                      v-else
-                      class="d-flex flex-column align-end gap-1 fade-in"
-                      style="flex: 0 0 auto;"
-                    >
-                      <div class="d-flex align-center gap-2">
-                        <span class="text-body-1 font-weight-medium text-error">
-                          -{{
-                            formatCurrency(
-                              payment.amount || 0,
-                              payment.currency,
-                            )
-                          }}
-                        </span>
-                        <VBtn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          color="primary"
-                          @click="editPaymentAmount(payment)"
-                        >
-                          <VIcon icon="tabler-pencil" size="16" />
-                          <VTooltip activator="parent" location="top"
-                            >Editar</VTooltip
-                          >
-                        </VBtn>
-                        <VBtn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          color="error"
-                          :disabled="!isLastPaymentAdded(payment)"
-                          @click="
-                            removePaymentFromSummary(payments.indexOf(payment))
-                          "
-                        >
-                          <VIcon icon="tabler-x" size="16" />
-                          <VTooltip activator="parent" location="top">
-                            {{
-                              isLastPaymentAdded(payment)
-                                ? "Eliminar"
-                                : "Solo se puede eliminar el último método agregado"
-                            }}
-                          </VTooltip>
-                        </VBtn>
-                      </div>
-                      <!-- Mostrar referencia si existe y es requerida -->
-                      <div
-                        v-if="
-                          requiresReference(payment.method, payment.currency) &&
-                          payment.reference
-                        "
-                        class="text-caption text-medium-emphasis"
-                        style="font-size: 11px;"
-                      >
-                        Ref: {{ payment.reference }}
+                      <div class="d-flex justify-space-between align-end">
+                        <span class="text-caption text-medium-emphasis">{{ product.laboratory }}</span>
+                        <span class="text-body-1 font-weight-black text-primary">{{ formatCurrency(getProductPrice(product, props.selectedCurrency), props.selectedCurrency) }}</span>
                       </div>
                     </div>
                   </div>
+                </VCardText>
+              </VCard>
+
+              <!-- Métodos de Pago -->
+              <VCard variant="flat" border class="rounded-xl overflow-hidden glass-card">
+                <VCardTitle class="pa-4 border-b d-flex align-center">
+                  <VIcon icon="tabler-wallet" class="me-2" color="primary" />
+                  <span class="text-subtitle-1 font-weight-black uppercase">Seleccionar Pago</span>
+                </VCardTitle>
+                <VCardText class="pa-4">
+                  <VTabs v-model="selectedCurrencyTab" color="primary" grow class="mb-4">
+                    <VTab v-for="currency in currencies" :key="currency.value" :value="currency.value">
+                      {{ currency.value }}
+                    </VTab>
+                  </VTabs>
+
+                  <VTabsWindow v-model="selectedCurrencyTab">
+                    <VTabsWindowItem v-for="currency in currencies" :key="currency.value" :value="currency.value">
+                      <div class="d-flex flex-wrap gap-2 mt-2">
+                        <VBtn
+                          v-for="method in getAvailableMethodsForCurrency(currency.value)"
+                          :key="method.value"
+                          :variant="isPaymentMethodActive(method.value, currency.value) ? 'flat' : 'outlined'"
+                          :color="isPaymentMethodActive(method.value, currency.value) ? 'primary' : 'secondary'"
+                          :disabled="remainingAmount <= 0.01 || isPaymentMethodAdded(method.value, currency.value)"
+                          size="small"
+                          class="rounded-lg"
+                          @click="selectPaymentMethod(method.value, currency.value)"
+                        >
+                          <VIcon :icon="getPaymentMethodIcon(method.value)" class="me-1" />
+                          {{ method.label }}
+                        </VBtn>
+                      </div>
+                    </VTabsWindowItem>
+                  </VTabsWindow>
+                </VCardText>
+              </VCard>
+            </div>
+          </VCol>
+
+          <!-- COLUMNA DERECHA: Resumen -->
+          <VCol cols="12" md="5" lg="4" class="pa-4 bg-surface">
+            <div class="sticky-summary">
+              <VCard variant="flat" border class="rounded-xl glass-card highlight-border mb-4">
+                <VCardText class="pa-6">
+                  <div class="text-h6 font-weight-black mb-6 uppercase letter-spacing-1 border-b pb-2">Resumen de Pago</div>
+
+                  <!-- Descuentos -->
+                  <div v-if="activeDiscountDisplay" class="d-flex justify-space-between mb-2">
+                    <span class="text-body-1">{{ activeDiscountDisplay.label }}:</span>
+                    <span class="text-body-1 font-weight-medium text-error">- {{ activeDiscountDisplay.formatted }}</span>
+                  </div>
+
+                  <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between mb-2">
+                    <span class="text-body-1">Descuento Vencimiento:</span>
+                    <span class="text-body-1 font-weight-medium text-error">- {{ formatCurrency(expirationDiscountTotal, props.selectedCurrency) }}</span>
+                  </div>
+
+                  <div v-if="appliesSpecialTax" class="d-flex justify-space-between mb-2">
+                    <span class="text-body-1">Recargo SPE (3%):</span>
+                    <span class="text-body-1 font-weight-medium">{{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}</span>
+                  </div>
+
+                  <VDivider class="my-4" />
+
+                  <div class="d-flex justify-space-between mb-4">
+                    <span class="text-h6 font-weight-black">Total Compra:</span>
+                    <span class="text-h6 font-weight-black">{{ formatCurrency(roundedTotalAmountToPay, props.selectedCurrency) }}</span>
+                  </div>
+
+                  <!-- Lista de Pagos Agregados -->
+                  <div v-if="payments.filter(p => p.method).length > 0" class="mb-6">
+                    <div v-for="(payment, idx) in payments.filter(p => p.method)" :key="idx" class="d-flex justify-space-between align-center mb-4 payment-row pb-2 border-b-dashed">
+                      <div class="d-flex flex-column">
+                        <span class="text-caption font-weight-bold uppercase">{{ getPaymentMethodLabel(payment.method, payment.currency) }}</span>
+                        <span v-if="payment.reference" class="text-caption text-medium-emphasis">Ref: {{ payment.reference }}</span>
+                      </div>
+
+                      <div class="d-flex align-center gap-2">
+                        <div v-if="payment._isInputActive" class="d-flex align-center gap-1">
+                          <input
+                            v-model="payment.inputAmount"
+                            class="payment-input text-right pa-1 border rounded"
+                            style="inline-size: 80px;"
+                            @keydown.enter="handlePaymentEnter($event, payment)"
+                          />
+                          <VBtn icon="tabler-check" size="x-small" color="success" variant="text" @click="confirmPaymentComplete(payment)" />
+                        </div>
+                        <template v-else>
+                          <span class="text-body-1 font-weight-black text-error">-{{ formatCurrency(payment.amount || 0, payment.currency) }}</span>
+                          <VBtn icon="tabler-pencil" size="x-small" color="primary" variant="text" @click="editPaymentAmount(payment)" />
+                          <VBtn icon="tabler-x" size="x-small" color="error" variant="text" :disabled="!isLastPaymentAdded(payment)" @click="removePaymentFromSummary(payments.indexOf(payment))" />
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex justify-space-between mb-2">
+                    <span class="text-h6 font-weight-black">Restante:</span>
+                    <span class="text-h6 font-weight-black" :class="remainingAmount <= 0.01 ? 'text-success' : 'text-error'">
+                      {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
+                    </span>
+                  </div>
+
+                  <div v-if="showChangeAmount" class="d-flex justify-space-between mb-4">
+                    <span class="text-body-1 font-weight-bold">Devolución:</span>
+                    <span class="text-body-1 font-weight-black text-success">{{ formatCurrency(changeAmountInCOP, 'COP') }}</span>
+                  </div>
+
+                  <VDivider class="my-6" />
+
+                  <VCardActions class="pa-0 d-flex flex-column gap-3">
+                    <VBtn variant="flat" block size="large" class="rounded-lg font-weight-black uppercase py-4"
+                      :style="remainingAmount <= 0.01 && !hasMissingReferences() ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;' : ''"
+                      :disabled="issubmitting || props.isExternalLoading || (remainingAmount > 0.01 || hasMissingReferences())"
+                      @click="handleCompletePurchase"
+                    >
+                      <VIcon icon="tabler-circle-check" class="me-2" />
+                      {{ continueButtonText }}
+                    </VBtn>
+                    <VBtn color="secondary" variant="tonal" block size="large" class="rounded-lg font-weight-bold" @click="closeModal">
+                      Regresar al Pedido
+                    </VBtn>
+                  </VCardActions>
+                </VCardText>
+              </VCard>
+
+              <!-- Información SPE -->
+              <div v-if="props.orderData?.client?.is_spe" class="bg-success-lighten-4 pa-4 rounded-xl border border-success border-opacity-25">
+                <div class="d-flex align-center mb-2 text-success-darken-2">
+                  <VIcon icon="tabler-discount-check" class="me-2" />
+                  <span class="font-weight-black uppercase text-caption">Beneficio SPE Aplicado</span>
                 </div>
-
-                <VDivider class="my-3" />
-
-                <!-- Monto Restante (convertido a la moneda de la pestaña seleccionada) -->
-                <div class="d-flex justify-space-between mb-4">
-                  <span class="text-h6 font-weight-bold">Restante:</span>
-                  <span
-                    class="text-h6 font-weight-bold"
-                    :class="
-                      remainingAmount <= 0 ? 'text-success' : 'text-error'
-                    "
-                  >
-                    {{
-                      formatCurrency(
-                        getConvertedRemainingAmount(selectedCurrencyTab),
-                        selectedCurrencyTab,
-                      )
-                    }}
-                  </span>
+                <div class="text-caption text-success-darken-1">
+                  El cliente <strong>{{ props.orderData.client.name }}</strong> califica para un descuento del 75% en el IVA de esta transacción.
                 </div>
-
-                <!-- Monto Devuelto -->
-                <div
-                  v-if="showChangeAmount"
-                  class="d-flex justify-space-between mb-4"
-                >
-                  <span class="text-body-1 font-weight-medium"
-                    >Monto Devuelto:</span
-                  >
-                  <span class="text-body-1 font-weight-bold text-success">
-                    {{ formatCurrency(changeAmountInCOP, "COP") }}
-                  </span>
-                </div>
-              </VCardText>
-
-              <!-- Botones fijos en la parte inferior -->
-              <VDivider />
-              <VCardActions class="pa-6 d-flex flex-column gap-3">
-                <VBtn
-                  color="secondary"
-                  variant="tonal"
-                  @click="closeModal"
-                  block
-                  size="large"
-                  class="rounded-lg font-weight-bold"
-                >
-                  Regresar al Pedido
-                </VBtn>
-                <VBtn
-                  variant="flat"
-                  @click="handleCompletePurchase"
-                  :loading="issubmitting || props.isExternalLoading"
-                  block
-                  size="large"
-                  class="rounded-lg font-weight-black uppercase py-4"
-                  :style="
-                    remainingAmount <= 0 && !hasMissingReferences()
-                      ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;'
-                      : 'background-color: rgba(var(--v-border-color), 0.12); color: rgba(var(--v-theme-on-surface), 0.38);'
-                  "
-                  :disabled="
-                    issubmitting ||
-                    props.isExternalLoading ||
-                    (currentProgress === 0 &&
-                      (remainingAmount > 0.01 || hasMissingReferences()))
-                  "
-                >
-                  <VIcon icon="tabler-circle-check" class="me-2" />
-                  {{ continueButtonText }}
-                </VBtn>
-              </VCardActions>
-            </VCard>
-
-            <!-- Información SPE (si aplica) -->
-            <div
-              v-if="props.orderData?.client?.is_spe"
-              class="bg-success-lighten-4 pa-3 rounded mt-3"
-            >
-              <div
-                class="text-subtitle-2 font-weight-bold text-success-darken-2 mb-2"
-              >
-                <VIcon icon="tabler-discount-check" class="me-1" size="16" />
-                Cliente SPE - Descuento aplicado:
-              </div>
-
-              <div class="d-flex justify-space-between">
-                <span class="text-body-2">IVA Original (sin descuento):</span>
-                <span class="text-body-2 font-weight-medium text-disabled">
-                  {{
-                    formatCurrency(
-                      props.orderProducts.reduce((sum, product) => {
-                        const taxRate = product.taxRate || 0;
-                        let basePrice = 0;
-                        if (props.selectedCurrency === "BS") {
-                          basePrice = product.price_bs || 0;
-                        } else if (props.selectedCurrency === "COP") {
-                          basePrice = product.price_cop || 0;
-                        } else {
-                          basePrice = product.price || 0;
-                        }
-                        return (
-                          sum + basePrice * taxRate * product.selectedQuantity
-                        );
-                      }, 0),
-                      props.selectedCurrency,
-                    )
-                  }}
-                </span>
-              </div>
-
-              <div class="d-flex justify-space-between">
-                <span class="text-body-2 text-success-darken-2"
-                  >Descuento SPE (75%):</span
-                >
-                <span
-                  class="text-body-2 font-weight-bold text-success-darken-2"
-                >
-                  -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
-                </span>
-              </div>
-
-              <VDivider class="my-2" />
-
-              <div class="d-flex justify-space-between">
-                <span class="text-body-2 font-weight-medium"
-                  >IVA Final a pagar:</span
-                >
-                <span
-                  class="text-body-2 font-weight-bold text-success-darken-2"
-                >
-                  {{
-                    formatCurrency(
-                      props.orderProducts.reduce((sum, product) => {
-                        return sum + getIva(product, props.selectedCurrency);
-                      }, 0),
-                      props.selectedCurrency,
-                    )
-                  }}
-                </span>
-              </div>
-
-              <div class="text-caption text-success-darken-2 mt-2">
-                <VIcon icon="tabler-user-check" class="me-1" size="14" />
-                {{ props.orderData.client.name }}
-                {{ props.orderData.client.last_name }}
-                tiene descuento SPE del 75% en IVA
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- NUEVA sección de información SPE mejorada -->
-        <div
-          v-if="props.orderData?.client?.is_spe"
-          class="bg-success-lighten-4 pa-3 rounded mt-3"
-        >
-          <div
-            class="text-subtitle-2 font-weight-bold text-success-darken-2 mb-2"
-          >
-            <VIcon icon="tabler-discount-check" class="me-1" size="16" />
-            Cliente SPE - Descuento aplicado:
-          </div>
-
-          <div class="d-flex justify-space-between">
-            <span class="text-body-2">IVA Original (sin descuento):</span>
-            <span class="text-body-2 font-weight-medium text-disabled">
-              {{
-                formatCurrency(
-                  props.orderProducts.reduce((sum, product) => {
-                    const taxRate = product.taxRate || 0;
-                    let basePrice = 0;
-                    if (props.selectedCurrency === "BS") {
-                      basePrice = product.price_bs || 0;
-                    } else if (props.selectedCurrency === "COP") {
-                      basePrice = product.price_cop || 0;
-                    } else {
-                      basePrice = product.price || 0;
-                    }
-                    return sum + basePrice * taxRate * product.selectedQuantity;
-                  }, 0),
-                  props.selectedCurrency,
-                )
-              }}
-            </span>
-          </div>
-
-          <div class="d-flex justify-space-between">
-            <span class="text-body-2 text-success-darken-2"
-              >Descuento SPE (75%):</span
-            >
-            <span class="text-body-2 font-weight-bold text-success-darken-2">
-              -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
-            </span>
-          </div>
-
-          <VDivider class="my-2" />
-
-          <div class="d-flex justify-space-between">
-            <span class="text-body-2 font-weight-medium"
-              >IVA Final a pagar:</span
-            >
-            <span class="text-body-2 font-weight-bold text-success-darken-2">
-              {{
-                formatCurrency(
-                  props.orderProducts.reduce((sum, product) => {
-                    return sum + getIva(product, props.selectedCurrency);
-                  }, 0),
-                  props.selectedCurrency,
-                )
-              }}
-            </span>
-          </div>
-
-          <div class="text-caption text-success-darken-2 mt-2">
-            <VIcon icon="tabler-user-check" class="me-1" size="14" />
-            {{ props.orderData.client.name }}
-            {{ props.orderData.client.last_name }}
-            tiene descuento SPE del 75% en IVA
-          </div>
-        </div>
+          </VCol>
+        </VRow>
       </VCardText>
 
       <!-- Ticket de impresión (sin cambios mayores) -->
