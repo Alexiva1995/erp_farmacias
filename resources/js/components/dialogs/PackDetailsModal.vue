@@ -211,6 +211,7 @@ const calculatePriceWithDiscount = (item) => {
             </div>
 
             <VDataTable
+              v-if="!mobile"
               :headers="[
                 { title: 'CANT', key: 'quantity', align: 'center', width: '80px', sortable: false },
                 { title: 'PRODUCTO', key: 'name', sortable: false },
@@ -267,6 +268,67 @@ const calculatePriceWithDiscount = (item) => {
                 </span>
               </template>
             </VDataTable>
+
+            <!-- Vista de Tarjetas en Móvil -->
+            <div v-else class="mobile-details-list">
+              <div v-if="packProducts.length === 0" class="text-center pa-8 rounded-xl border-dashed border-2 text-disabled">
+                No hay productos en este pack
+              </div>
+              <div v-else class="d-flex flex-column gap-4">
+                <VCard
+                  v-for="(item, index) in packProducts"
+                  :key="index"
+                  variant="outlined"
+                  class="product-detail-card rounded-xl border-opacity-25 shadow-none"
+                >
+                  <VCardText class="pa-4">
+                    <div class="d-flex align-center gap-3 mb-3">
+                      <VAvatar v-if="item.photo_url" size="40" :image="item.photo_url" variant="tonal" class="rounded-lg shadow-sm" />
+                      <VAvatar v-else size="40" color="primary" variant="tonal" class="rounded-lg">
+                        <VIcon icon="tabler-package" size="20" />
+                      </VAvatar>
+                      <div class="d-flex flex-column flex-grow-1">
+                        <span class="text-body-2 font-weight-black text-high-emphasis leading-tight mb-1">{{ item.name }}</span>
+                        <div class="d-flex align-center gap-2">
+                          <VChip color="primary" variant="flat" size="x-small" class="font-weight-black px-2">
+                            {{ item.quantity }} UND
+                          </VChip>
+                          <span v-if="item.active_ingredient" class="text-super-xs text-medium-emphasis uppercase font-weight-medium truncate" style="max-inline-size: 150px;">
+                            {{ item.active_ingredient }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <VDivider class="border-dashed my-3" />
+
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <span class="text-super-xs font-weight-bold text-low-emphasis uppercase">Precio Base</span>
+                      <span class="text-caption font-weight-medium text-medium-emphasis">{{ formatCurrency(item.unit_price) }}</span>
+                    </div>
+
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <span class="text-super-xs font-weight-black text-primary uppercase">Precio Pack</span>
+                      <div class="d-flex align-center gap-2">
+                        <span v-if="item.discount_percentage > 0" class="text-super-xs text-disabled text-decoration-line-through">
+                          {{ formatCurrency(item.unit_price) }}
+                        </span>
+                        <span class="text-caption font-weight-black text-primary">
+                          {{ formatCurrency(calculatePriceWithDiscount(item)) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-space-between align-center mt-3 pt-3 border-top-dashed">
+                      <span class="text-super-xs font-weight-black text-success uppercase">Subtotal</span>
+                      <span class="text-subtitle-1 font-weight-950 text-success">
+                        {{ formatCurrency(calculatePriceWithDiscount(item) * item.quantity) }}
+                      </span>
+                    </div>
+                  </VCardText>
+                </VCard>
+              </div>
+            </div>
           </div>
 
           <!-- Pie de página con información adicional -->
@@ -320,6 +382,10 @@ const calculatePriceWithDiscount = (item) => {
 
 .border-dashed {
   border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.border-top-dashed {
+  border-block-start: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
 .card-icon-bg {

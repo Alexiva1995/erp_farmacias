@@ -543,13 +543,20 @@ watch(
               >
                 Añadir Producto
               </VBtn>
-              <VChip variant="tonal" color="primary" size="small" class="font-weight-black px-4">
+              <VChip
+                variant="tonal"
+                color="primary"
+                size="small"
+                class="font-weight-black px-4"
+              >
                 {{ formData.pack_products.length }} ITEMS
               </VChip>
             </div>
           </div>
 
+          <!-- Tabla en Desktop -->
           <VDataTable
+            v-if="!mobile"
             :headers="[
               { title: 'PRODUCTO', key: 'product', sortable: false, width: '35%' },
               { title: 'CANT.', key: 'quantity', sortable: false, width: '12%', align: 'center' },
@@ -585,11 +592,24 @@ watch(
                 @update:model-value="calculateTotalPrice()"
               >
                 <template #item="{ props: itemProps, item: productItem }">
-                  <VListItem v-bind="{ ...itemProps, title: '' }" density="compact">
-                    <template v-if="productItem.raw.photo_url" #prepend>
-                      <VAvatar size="32" :image="productItem.raw.photo_url" variant="tonal" class="me-2" />
+                  <VListItem
+                    v-bind="{ ...itemProps, title: '' }"
+                    density="compact"
+                  >
+                    <template
+                      v-if="productItem.raw.photo_url"
+                      #prepend
+                    >
+                      <VAvatar
+                        size="32"
+                        :image="productItem.raw.photo_url"
+                        variant="tonal"
+                        class="me-2"
+                      />
                     </template>
-                    <VListItemTitle class="text-caption font-weight-bold">{{ productItem.raw.name }}</VListItemTitle>
+                    <VListItemTitle class="text-caption font-weight-bold">
+                      {{ productItem.raw.name }}
+                    </VListItemTitle>
                     <VListItemSubtitle class="text-super-xs">
                       ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | ${{ productItem.raw.sale_price }}
                     </VListItemSubtitle>
@@ -631,17 +651,29 @@ watch(
             </template>
 
             <template #item.unit_price="{ item }">
-              <span v-if="item.product" class="text-caption font-weight-bold">
+              <span
+                v-if="item.product"
+                class="text-caption font-weight-bold"
+              >
                 ${{ (item.product.sale_price * (1 - (item.discount_percentage || 0) / 100)).toFixed(2) }}
               </span>
-              <span v-else class="text-disabled">—</span>
+              <span
+                v-else
+                class="text-disabled"
+              >—</span>
             </template>
 
             <template #item.subtotal="{ item }">
-              <span v-if="item.product" class="text-caption font-weight-black text-success">
+              <span
+                v-if="item.product"
+                class="text-caption font-weight-black text-success"
+              >
                 ${{ calculateProductPrice(item).toFixed(2) }}
               </span>
-              <span v-else class="text-disabled">—</span>
+              <span
+                v-else
+                class="text-disabled"
+              >—</span>
             </template>
 
             <template #item.actions="{ index }">
@@ -649,13 +681,188 @@ watch(
                 icon="tabler-trash"
                 variant="tonal"
                 color="error"
-                size="30"
+                size="x-small"
                 class="rounded-lg"
-                :disabled="loading || formData.pack_products.length <= 1"
-                @click="removeProductRow(index)"
+                @click="formData.pack_products.splice(index, 1); calculateTotalPrice()"
               />
             </template>
           </VDataTable>
+
+          <!-- Lista de Tarjetas en Móvil -->
+          <div
+            v-else
+            class="mobile-products-list"
+          >
+            <div
+              v-if="formData.pack_products.length === 0"
+              class="text-center pa-8 rounded-lg border-dashed border-2 text-disabled mb-4"
+            >
+              <VIcon
+                icon="tabler-package-off"
+                size="48"
+                class="mb-2 opacity-25"
+              />
+              <p>No hay productos agregados</p>
+            </div>
+
+            <div
+              v-else
+              class="d-flex flex-column gap-4"
+            >
+              <VCard
+                v-for="(item, index) in formData.pack_products"
+                :key="index"
+                variant="flat"
+                class="product-card-item rounded-lg border shadow-xs"
+              >
+                <VCardText class="pa-4">
+                  <!-- Cabecera de Tarjeta: # y Eliminar -->
+                  <div class="d-flex align-center justify-space-between mb-3">
+                    <div class="d-flex align-center gap-2">
+                      <VAvatar
+                        size="24"
+                        color="primary"
+                        variant="tonal"
+                        class="text-super-xs font-weight-black"
+                      >
+                        {{ index + 1 }}
+                      </VAvatar>
+                      <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Producto</span>
+                    </div>
+                    <VBtn
+                      icon="tabler-trash"
+                      variant="tonal"
+                      color="error"
+                      size="x-small"
+                      density="comfortable"
+                      class="rounded-lg"
+                      @click="formData.pack_products.splice(index, 1); calculateTotalPrice()"
+                    />
+                  </div>
+
+                  <!-- Selector de Producto -->
+                  <div class="mb-3">
+                    <VAutocomplete
+                      v-model="item.product"
+                      :items="availableProducts"
+                      item-title="name"
+                      item-value="id"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      :loading="loadingProducts"
+                      :error-messages="formErrors[`product_${index}`]"
+                      return-object
+                      clearable
+                      :disabled="loading"
+                      placeholder="Seleccionar producto..."
+                      class="compact-autocomplete"
+                      no-filter
+                      @update:search="handleProductSearch"
+                      @update:model-value="calculateTotalPrice()"
+                    >
+                      <template #item="{ props: itemProps, item: productItem }">
+                        <VListItem
+                          v-bind="{ ...itemProps, title: '' }"
+                          density="compact"
+                        >
+                          <template
+                            v-if="productItem.raw.photo_url"
+                            #prepend
+                          >
+                            <VAvatar
+                              size="32"
+                              :image="productItem.raw.photo_url"
+                              variant="tonal"
+                              class="me-2"
+                            />
+                          </template>
+                          <VListItemTitle class="text-caption font-weight-bold">
+                            {{ productItem.raw.name }}
+                          </VListItemTitle>
+                          <VListItemSubtitle class="text-super-xs">
+                            ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | ${{ productItem.raw.sale_price }}
+                          </VListItemSubtitle>
+                        </VListItem>
+                      </template>
+                    </VAutocomplete>
+                  </div>
+
+                  <!-- Grid de Inputs para Móvil -->
+                  <VRow dense>
+                    <VCol cols="6">
+                      <div class="d-flex flex-column gap-1">
+                        <span class="text-super-xs font-weight-bold text-medium-emphasis ms-1 uppercase">Cantidad</span>
+                        <AppTextField
+                          v-model.number="item.quantity"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          min="1"
+                          :max="item.product?.stock || 9999"
+                          :error-messages="formErrors[`quantity_${index}`]"
+                          :disabled="loading || !item.product"
+                          class="premium-input-small"
+                          @update:model-value="calculateTotalPrice()"
+                        />
+                      </div>
+                    </VCol>
+                    <VCol cols="6">
+                      <div class="d-flex flex-column gap-1">
+                        <span class="text-super-xs font-weight-bold text-medium-emphasis ms-1 uppercase">Desc. %</span>
+                        <AppTextField
+                          v-model.number="item.discount_percentage"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          min="0"
+                          max="100"
+                          suffix="%"
+                          :disabled="loading || !item.product"
+                          class="premium-input-small"
+                          @update:model-value="calculateTotalPrice()"
+                        />
+                      </div>
+                    </VCol>
+                  </VRow>
+
+                  <VDivider class="my-3 border-dashed" />
+
+                  <!-- Resumen Financiero de la Tarjeta -->
+                  <div class="d-flex justify-space-between align-center">
+                    <div class="d-flex flex-column">
+                      <span class="text-super-xs font-weight-black text-low-emphasis uppercase">Unitario</span>
+                      <span
+                        v-if="item.product"
+                        class="text-caption font-weight-bold text-high-emphasis"
+                      >
+                        ${{ (item.product.sale_price * (1 - (item.discount_percentage || 0) / 100)).toFixed(2) }}
+                      </span>
+                      <span
+                        v-else
+                        class="text-disabled"
+                      >—</span>
+                    </div>
+                    <div class="d-flex flex-column align-end">
+                      <span class="text-super-xs font-weight-black text-primary uppercase">Subtotal</span>
+                      <span
+                        v-if="item.product"
+                        class="text-subtitle-2 font-weight-950 text-success"
+                      >
+                        ${{ calculateProductPrice(item).toFixed(2) }}
+                      </span>
+                      <span
+                        v-else
+                        class="text-disabled"
+                      >—</span>
+                    </div>
+                  </div>
+                </VCardText>
+              </VCard>
+            </div>
+          </div>
         </div>
       </VCardText>
 
