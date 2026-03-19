@@ -1357,39 +1357,71 @@ const confirmPaymentAmount = (payment) => {
 
 // Función para confirmar el pago completo (monto + referencia si aplica)
 const confirmPaymentComplete = (payment) => {
-  // Validar monto primero
+  // 1. Sincronizar inputAmount con amount si el input está activo
+  if (payment._isInputActive) {
+    const numValue = parseFloat(payment.inputAmount);
+    if (isNaN(numValue) || numValue <= 0) {
+      toast.error("Por favor ingrese un monto válido.");
+      payment._amountError = true;
+      return;
+    }
+
+    // Validación: métodos no-efectivo no pueden exceder el monto restante
+    if (!isCashMethod(payment.method)) {
+      const previousAmount = payment._previousAmount !== undefined ? payment._previousAmount : (payment.amount || 0);
+      let remainingInPaymentCurrency = getConvertedRemainingAmount(payment.currency);
+
+      if (previousAmount > 0) {
+        if (payment.currency === props.selectedCurrency) {
+          remainingInPaymentCurrency += previousAmount;
+        } else {
+          const rateToBase = exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+          const rateToPayment = exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
+          if (rateToBase && rateToPayment) {
+            const previousInBase = previousAmount * rateToBase;
+            remainingInPaymentCurrency += previousInBase * rateToPayment;
+          }
+        }
+      }
+
+      if (numValue > remainingInPaymentCurrency) {
+        toast.error(`El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`);
+        return;
+      }
+    }
+
+    // Actualizar el monto oficial
+    payment.amount = numValue;
+    payment.inputAmount = numValue.toString();
+  }
+
+  // 2. Validar que tengamos un monto válido asignado
   if (!payment.amount || payment.amount <= 0) {
     toast.error("Por favor ingrese un monto válido.");
-    // Si estamos en modo edición, mantener el input activo
     if (payment._isInputActive) {
       payment._amountError = true;
       nextTick(() => {
         const paymentIndex = payments.value.indexOf(payment);
-        const input = document.querySelector(
-          `.payment-input[data-payment-index="${paymentIndex}"]`,
-        );
-        if (input) {
-          input.focus();
-        }
+        const input = document.querySelector(`.payment-input[data-payment-index="${paymentIndex}"]`);
+        if (input) input.focus();
       });
     }
     return;
   }
 
-  // Validar referencia si es requerida
+  // 3. Validar referencia si es requerida
   if (requiresReference(payment.method, payment.currency)) {
     if (!payment.reference || payment.reference.trim() === "") {
       toast.error("Por favor ingrese la referencia del pago.");
       payment._referenceError = true;
-      // Activar el input de referencia para que el usuario pueda escribir
       payment._isReferenceActive = true;
+      payment._amountConfirmed = true; // El monto ya está validado y asignado
       nextTick(() => {
         const paymentIndex = payments.value.indexOf(payment);
-        const referenceInput = document.querySelector(
-          `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
-        );
+        const referenceInput = document.querySelector(`.payment-reference-input[data-payment-index="${paymentIndex}"]`);
         if (referenceInput) {
           referenceInput.focus();
+          referenceInput.select();
         }
       });
       return;
@@ -1397,93 +1429,19 @@ const confirmPaymentComplete = (payment) => {
     payment._referenceError = false;
   }
 
-  // Si todo está bien, desactivar inputs y limpiar estados
+  // 4. Si todo está bien, cerrar estados
   payment._isInputActive = false;
   payment._isReferenceActive = false;
   payment._referenceError = false;
   payment._amountError = false;
   payment._amountConfirmed = false;
   payment._previousAmount = undefined;
-
-  // El monto restante se actualizará automáticamente porque payment.amount ya está actualizado
 };
 
 // Función helper para manejar Enter en el input de monto
 const handlePaymentEnter = (event, payment) => {
-  // Prevenir el comportamiento por defecto del Enter
   event.preventDefault();
-
-  // Primero confirmar el monto
-  if (
-    payment.inputAmount !== null &&
-    payment.inputAmount !== "" &&
-    payment.inputAmount !== undefined
-  ) {
-    const numValue = parseFloat(payment.inputAmount);
-    if (!isNaN(numValue) && numValue > 0) {
-      // Validación: métodos no-efectivo no pueden exceder el monto restante
-      if (!isCashMethod(payment.method)) {
-        const previousAmount = payment.amount || 0;
-        let remainingInPaymentCurrency = getConvertedRemainingAmount(
-          payment.currency,
-        );
-
-        if (previousAmount > 0) {
-          if (payment.currency === props.selectedCurrency) {
-            remainingInPaymentCurrency += previousAmount;
-          } else {
-            const rateToBase =
-              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment =
-              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-            if (rateToBase && rateToPayment) {
-              const previousInBase = previousAmount * rateToBase;
-              remainingInPaymentCurrency += previousInBase * rateToPayment;
-            }
-          }
-        }
-
-        if (numValue > remainingInPaymentCurrency) {
-          toast.error(
-            `El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`,
-          );
-          return;
-        }
-      }
-
-      // Confirmar el monto
-      payment.amount = numValue;
-      payment.inputAmount = numValue.toString();
-      payment._previousAmount = undefined;
-
-      // Si requiere referencia, mantener el bloque activo y activar el input de referencia automáticamente
-      if (requiresReference(payment.method, payment.currency)) {
-        // Mantener _isInputActive = true para que se muestre el bloque de inputs
-        payment._isReferenceActive = true;
-        payment._amountConfirmed = true; // Marcar que el monto ya está confirmado
-        nextTick(() => {
-          const paymentIndex = payments.value.indexOf(payment);
-          const referenceInput = document.querySelector(
-            `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
-          );
-          if (referenceInput) {
-            referenceInput.focus();
-            referenceInput.select();
-          }
-        });
-      } else {
-        // Si no requiere referencia, confirmar el pago completo directamente
-        payment._isInputActive = false;
-        payment._isReferenceActive = false;
-        payment._amountConfirmed = false;
-        confirmPaymentComplete(payment);
-      }
-    } else {
-      toast.error("Por favor ingrese un monto válido.");
-    }
-  } else {
-    toast.error("Por favor ingrese un monto válido.");
-  }
+  confirmPaymentComplete(payment);
 };
 
 // Función helper para manejar Tab en el input de monto
