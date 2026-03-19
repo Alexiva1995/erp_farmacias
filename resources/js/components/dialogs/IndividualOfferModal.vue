@@ -1,5 +1,6 @@
 <script setup>
 import { computed, watch, ref } from "vue";
+import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 
@@ -37,6 +38,8 @@ const defaultIndividualOffer = {
 const localFormData = ref({ ...defaultIndividualOffer });
 const availableProducts = ref([]);
 const loadingProducts = ref(false);
+
+const { mobile } = useDisplay();
 
 const dialogTitle = computed(() => {
   return props.isEditing ? "Editar Oferta" : "Nueva Oferta Individual";
@@ -199,10 +202,11 @@ watch(
     scrollable
     transition="dialog-bottom-transition"
     class="premium-dialog"
+    :fullscreen="mobile"
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard v-if="props.modelValue" class="rounded-xl overflow-hidden border-0 elevation-24">
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
       <!-- Header Premium con Gradiente -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-5 d-flex align-center shadow-sm">

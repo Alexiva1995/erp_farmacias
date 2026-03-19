@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: {
@@ -21,6 +22,7 @@ const defaultOfferData = {
 
 const offerData = ref({ ...defaultOfferData });
 const formErrors = ref({});
+const { mobile } = useDisplay();
 
 const dialogTitle = computed(() => {
   return props.isEditing ? "Editar Oferta" : "Crear Nueva Oferta";
@@ -108,11 +110,13 @@ watch(
     persistent
     scrollable
     :retain-focus="false"
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
     @update:model-value="onCancel"
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard :loading="props.loading">
+    <VCard :loading="props.loading" :class="mobile ? 'rounded-0' : 'rounded-lg overflow-hidden border-0 elevation-12'">
       <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
         <div class="d-flex align-center gap-3">
           <VIcon icon="tabler-clock" size="24" color="white" />

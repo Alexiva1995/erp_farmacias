@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, defineProps, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: {
@@ -41,6 +42,7 @@ const scalesData = ref([
 
 const loading = ref(false);
 const formErrors = ref({});
+const { mobile } = useDisplay();
 
 // Opciones para el select de estatus
 const statusOptions = [
@@ -260,11 +262,13 @@ const formatDateForInput = (dateString) => {
     persistent
     scrollable
     :retain-focus="false"
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
     @update:model-value="onCancel"
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard :loading="loading" class="d-flex flex-column">
+    <VCard :loading="loading" :class="mobile ? 'rounded-0' : 'd-flex flex-column rounded-lg overflow-hidden border-0 elevation-12'">
       <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
         <div class="d-flex align-center gap-3">
           <VIcon icon="tabler-building" size="24" color="white" />
