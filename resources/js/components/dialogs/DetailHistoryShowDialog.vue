@@ -1,6 +1,7 @@
 <script setup>
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import { computed } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -12,6 +13,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue"]);
+
+const { mobile } = useDisplay();
 
 const isDialogVisible = computed({
   get() {
@@ -30,7 +33,7 @@ const orderData = computed(() => ({
   },
   client: {
     name: props.histories?.business_name || "N/A",
-    last_name: "", // History often stores simple name
+    last_name: "",
     identification_type: "",
     identification: props.histories?.identification || "N/A",
   },
@@ -41,24 +44,20 @@ const orderProducts = computed(() => {
     id: detail.id,
     selectedQuantity: detail.quantity,
     title: detail.product_name,
-    laboratory: "", // details commonly lack this in history view unless joined
-    // Calculate unit price from total / quantity for display
+    laboratory: "",
     fixed_price:
       parseFloat(detail.total_amount || 0) / (parseFloat(detail.quantity) || 1),
-    taxRate: 0, // already included in total usually
+    taxRate: 0,
   }));
 });
 
 const totalAmount = computed(() => {
-  // Sum up total_amounts
   return props.details.reduce(
     (sum, d) => sum + parseFloat(d.total_amount || 0),
     0
   );
 });
 
-// Assume currency. If histories has currency, use it. Default BS if not present?
-// History table usually handles BS.
 const selectedCurrency = computed(() => {
   return props.histories?.currency || "BS";
 });
@@ -75,5 +74,6 @@ const selectedCurrency = computed(() => {
     :change-amount="0"
     :credit-amount="0"
     :credit="false"
+    :fullscreen="mobile"
   />
 </template>
