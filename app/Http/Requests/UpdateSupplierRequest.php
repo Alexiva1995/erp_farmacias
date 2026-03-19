@@ -30,7 +30,7 @@ class UpdateSupplierRequest extends FormRequest
             'address' => 'sometimes|nullable|string',
             'sales_phone' => 'sometimes|string|max:50|regex:/^\+?\d{7,15}$/',
             'collections_phone' => 'sometimes|string|max:50|regex:/^\+?\d{7,15}$/',
-            'credit_days' => 'sometimes|numeric|min:0',
+            'credit_days' => 'required|numeric',
             'dispatch_days' => 'sometimes|array|min:1',
             'dispatch_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
             'order_days' => 'required|array|min:1',
@@ -43,8 +43,8 @@ class UpdateSupplierRequest extends FormRequest
             //'supplier_payment_days' => 'sometimes|numeric|min:0',
             'payment_due_type' => 'sometimes|in:invoice_date,early_payment,custom',
             'custom_due_days' => 'nullable|integer|min:1',
-            'payment_due_reference' => 'sometimes|in:receipt_date,issue_date',
-            'invoice_date_reference' => 'required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date,issue_date',
+            'payment_due_reference' => 'nullable|in:receipt_date,issue_date',
+            'invoice_date_reference' => 'nullable|in:receipt_date,expiration_date,issue_date',
         ];
     }
 
