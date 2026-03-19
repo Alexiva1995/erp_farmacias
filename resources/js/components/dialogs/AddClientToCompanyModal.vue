@@ -237,4 +237,3 @@ watch(
   white-space: nowrap;
 }
 </style>
-</template>

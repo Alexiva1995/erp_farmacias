@@ -78,6 +78,7 @@ const isSpecialTaxpayer = ref(false);
 
 const exchangeRates = ref({});
 const ratesLoaded = ref(false);
+const isCurrencyChanging = ref(false);
 
 const fetchExchangeRates = async () => {
   ratesLoaded.value = false;
@@ -1405,6 +1406,7 @@ const clearFormErrors = () => {
 };
 
 const handleCurrencyChanged = async (newCurrency) => {
+  isCurrencyChanging.value = true;
   try {
     if (hasOpenOrder.value && openOrderData.value?.id) {
       // Calculate totals for the new currency to satisfy backend validation
@@ -2032,22 +2034,11 @@ watch(
 );
 
 const getItemPriceByCurrency = (item, currency) => {
-  // REGLA NEGOCIO: Si estamos en USD y el producto tiene precio en COP,
-  // recalcular el USD dinámicamente usando la tasa COPC si está disponible.
-  if (currency === "USD" && (item.price_cop || item.original_price_cop)) {
-    const rate = getEffectiveRate("USD", "COP");
-    if (rate > 0) {
-      const priceCop = item.price_cop || item.original_price_cop;
-      return priceCop / rate;
-    }
-  }
-
   if (currency === "BS") {
     return item.price_bs || 0;
   } else if (currency === "COP") {
     return item.price_cop || 0;
   } else {
-    // Si no es BS o COP, y no pudimos calcular dinámicamente arriba, usar precio base
     return item.price || item.sale_price || 0;
   }
 };
