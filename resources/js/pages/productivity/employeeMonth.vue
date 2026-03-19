@@ -279,7 +279,7 @@ const formatCurrency = (amount) =>
             >
               <VIcon start icon="tabler-lock" size="18" />
               <span class="d-none d-sm-inline">CERRAR MES</span>
-              <VIcon v-else icon="tabler-lock" size="18" class="d-sm-none" />
+              <VIcon icon="tabler-lock" size="18" class="d-sm-none" />
             </VBtn>
             <VChip v-else color="success" variant="elevated" class="rounded-lg px-4 h-38 font-weight-black" prepend-icon="tabler-lock-check">
               HISTÓRICO
