@@ -14,8 +14,13 @@
   <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png') }}" />
   <link rel="manifest" href="{{ asset('site.webmanifest') }}" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Vuexy - Vuejs Admin Dashboard Template</title>
+  <style>
+    html {
+      touch-action: manipulation;
+    }
+  </style>
   <link rel="stylesheet" type="text/css" href="{{ asset('loader.css') }}" />
   @vite(['resources/js/main.js'])
 </head>

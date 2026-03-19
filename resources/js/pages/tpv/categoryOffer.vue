@@ -273,20 +273,17 @@ onMounted(async () => {
       @add-categories="handleAddCategoriesOfferModal"
     />
 
-    <VCard title="Ofertas por Categoría">
-      <div class="mb-2" />
-      <CategoryOfferTable
-        :categories-offer="offerData.data || []"
-        :loading="loadingCategories"
-        :total-offer="offerData.total || 0"
-        :discount="discount"
-        :items-per-page="offerData.per_page || 10"
-        :page="offerData.current_page || 1"
-        @update:options="updateTableOptionsCategories"
-        @edit-offer="handleEditOffer"
-        @delete-offer="handleDeleteOffer"
-      />
-    </VCard>
+    <CategoryOfferTable
+      :categories-offer="offerData.data || []"
+      :loading="loadingCategories"
+      :total-offer="offerData.total || 0"
+      :discount="discount"
+      :items-per-page="offerData.per_page || 10"
+      :page="offerData.current_page || 1"
+      @update:options="updateTableOptionsCategories"
+      @edit-offer="handleEditOffer"
+      @delete-offer="handleDeleteOffer"
+    />
 
     <CategoryCreateOffer
       v-model="isOfferDialogVisible"
