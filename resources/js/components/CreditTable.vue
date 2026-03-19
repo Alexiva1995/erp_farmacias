@@ -41,18 +41,24 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
         :loading="props.loading"
       >
         <template v-slot:default="{ items }">
-          <div class="pa-4 d-flex flex-column gap-4">
+          <div class="pa-2 d-flex flex-column gap-2">
             <VCard
               v-for="item in items"
               :key="item.raw.id"
               variant="flat"
               border
-              class="rounded-lg pa-4"
+              class="rounded-lg pa-3"
             >
-              <div class="d-flex justify-space-between align-center mb-2">
-                <span class="text-caption font-weight-bold text-primary">
-                  {{ item.raw.client.identification_type }}{{ item.raw.client.identification }}
-                </span>
+              <div class="d-flex justify-space-between align-start mb-1">
+                <div class="d-flex flex-column">
+                  <span class="text-caption font-weight-bold text-primary leading-tight">
+                    {{ item.raw.client.identification_type }}{{ item.raw.client.identification }}
+                  </span>
+                  <div class="d-flex align-center gap-1 text-medium-emphasis mt-n1">
+                    <VIcon size="12">tabler-calendar</VIcon>
+                    <span style="font-size: 0.65rem;">{{ item.raw.credit_date ? item.raw.credit_date.split(" ")[0] : "N/A" }}</span>
+                  </div>
+                </div>
                 <VChip
                   size="x-small"
                   :color="
@@ -63,7 +69,8 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                       : 'success'
                   "
                   variant="tonal"
-                  class="font-weight-bold text-uppercase"
+                  class="font-weight-bold text-uppercase px-1"
+                  style="block-size: 18px; font-size: 0.6rem;"
                 >
                   {{
                     item.raw.status === 0
@@ -75,24 +82,18 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                 </VChip>
               </div>
 
-              <div class="mb-3">
-                <div class="text-body-2 font-weight-bold mb-1">
-                  {{ item.raw.client.name }} {{ item.raw.client.last_name }}
-                </div>
-                <div class="d-flex align-center gap-2 text-medium-emphasis">
-                  <VIcon size="14">tabler-calendar</VIcon>
-                  <span class="text-caption">{{ item.raw.credit_date ? item.raw.credit_date.split(" ")[0] : "N/A" }}</span>
-                </div>
+              <div class="text-body-2 font-weight-bold mb-2 truncate">
+                {{ item.raw.client.name }} {{ item.raw.client.last_name }}
               </div>
 
-              <VDivider class="border-dashed mb-3" />
+              <VDivider class="border-dashed mb-2" />
 
               <div class="d-flex justify-space-between align-center">
-                <div>
-                  <div class="text-caption text-medium-emphasis mb-n1">Pendiente</div>
-                  <div class="text-h6 font-weight-black text-error">
+                <div class="d-flex flex-column">
+                  <span style="font-size: 0.6rem;" class="text-medium-emphasis text-uppercase font-weight-bold mb-n1">Pendiente</span>
+                  <span class="text-subtitle-1 font-weight-black text-error">
                     {{ item.raw.total_pending_amount }}
-                  </div>
+                  </span>
                 </div>
                 <div class="d-flex gap-1">
                    <VTooltip text="Pagar Deuda" location="top">
@@ -102,7 +103,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                         icon="tabler-wallet"
                         variant="tonal"
                         color="success"
-                        size="small"
+                        size="32"
                         :disabled="item.raw.status === 2"
                         @click="emit('open-payment-modal', item.raw)"
                       />
@@ -112,14 +113,14 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                     icon="tabler-eye"
                     variant="tonal"
                     color="info"
-                    size="small"
+                    size="32"
                     @click="emit('view-order-modal', item.raw)"
                   />
                   <VBtn
                     icon="tabler-printer"
                     variant="tonal"
                     color="secondary"
-                    size="small"
+                    size="32"
                     @click="emit('print-order', item.raw)"
                   />
                   <VBtn
@@ -127,7 +128,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                     icon="tabler-trash"
                     variant="tonal"
                     color="error"
-                    size="small"
+                    size="32"
                     @click="emit('delete-credit', item.raw)"
                   />
                 </div>

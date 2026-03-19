@@ -31,47 +31,49 @@ const headers = [
         :loading="props.loading"
       >
         <template v-slot:default="{ items }">
-          <div class="pa-4 d-flex flex-column gap-4">
+          <div class="pa-2 d-flex flex-column gap-2">
             <VCard
               v-for="item in items"
               :key="item.raw.id"
               variant="flat"
               border
-              class="rounded-lg pa-4"
+              class="rounded-lg pa-3"
             >
-              <div class="d-flex justify-space-between align-center mb-2">
-                <span class="text-caption font-weight-bold text-primary">ID: #{{ item.raw.id }}</span>
-                <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-bold">
+              <div class="d-flex justify-space-between align-start mb-1">
+                <div class="d-flex flex-column">
+                  <span class="text-caption font-weight-bold text-primary leading-tight">ID: #{{ item.raw.id }}</span>
+                  <div class="d-flex align-center gap-1 text-medium-emphasis mt-n1">
+                    <VIcon size="12">tabler-calendar</VIcon>
+                    <span style="font-size: 0.65rem;">{{ item.raw.date ? item.raw.date.split(" ")[0] : "N/A" }}</span>
+                  </div>
+                </div>
+                <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1" style="block-size: 18px; font-size: 0.6rem;">
                   {{ item.raw.currency }}
                 </VChip>
               </div>
 
-              <div class="mb-3">
-                <div class="text-body-2 font-weight-bold mb-1">
+              <div class="mb-2">
+                <div class="text-body-2 font-weight-bold truncate">
                   {{ item.raw.client?.name }} {{ item.raw.client?.last_name }}
                 </div>
-                <div class="d-flex align-center gap-2 mb-1 text-medium-emphasis">
-                  <VIcon size="14">tabler-user-check</VIcon>
-                  <span class="text-caption">{{ item.raw.seller?.username }}</span>
-                </div>
-                <div class="d-flex align-center gap-2 text-medium-emphasis">
-                  <VIcon size="14">tabler-calendar</VIcon>
-                  <span class="text-caption">{{ item.raw.date ? item.raw.date.split(" ")[0] : "N/A" }}</span>
+                <div class="d-flex align-center gap-1 text-medium-emphasis" style="font-size: 0.7rem;">
+                  <VIcon size="12">tabler-user-check</VIcon>
+                  <span>{{ item.raw.seller?.username }}</span>
                 </div>
               </div>
 
-              <VDivider class="border-dashed mb-3" />
+              <VDivider class="border-dashed mb-2" />
 
               <div class="d-flex justify-space-between align-center">
-                <div>
-                  <div class="text-caption text-medium-emphasis mb-n1">Monto Pagado</div>
-                  <div class="text-h6 font-weight-black text-success">
+                <div class="d-flex flex-column">
+                  <span style="font-size: 0.6rem;" class="text-medium-emphasis text-uppercase font-weight-bold mb-n1">Monto Pagado</span>
+                  <span class="text-subtitle-1 font-weight-black text-success">
                     {{ item.raw.amount }}
-                  </div>
+                  </span>
                 </div>
                 <div class="text-end">
-                   <div class="text-caption text-medium-emphasis mb-n1">Método</div>
-                  <div class="text-body-2 font-weight-bold">
+                   <div style="font-size: 0.6rem;" class="text-medium-emphasis text-uppercase font-weight-bold mb-n1">Método</div>
+                  <div class="text-caption font-weight-bold">
                     {{ translateMethod(item.raw.method) }}
                   </div>
                 </div>
