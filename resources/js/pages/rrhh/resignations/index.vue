@@ -41,19 +41,31 @@ const headers = [
 const fetchResignations = async () => {
   loading.value = true;
   try {
-    const params = {
-      search: search.value,
-      ...filters.value
-    };
-    
-    const { data } = await axios.get("/api/rrhh/resignations", { params });
+    const hasFilters = search.value || Object.values(filters.value).some(v => v !== null && v !== "");
+    let response;
+
+    if (hasFilters) {
+      const params = {};
+      if (search.value) params.search = search.value;
+      if (filters.value.resignation_type) params.resignation_type = filters.value.resignation_type;
+      if (filters.value.date_from) params.date_from = filters.value.date_from;
+      if (filters.value.date_to) params.date_to = filters.value.date_to;
+      
+      response = await axios.get("/api/rrhh/resignations", { params });
+    } else {
+      response = await axios.get("/api/rrhh/resignations");
+    }
+
+    const { data } = response;
 
     if (data.success) {
-      resignations.value = data.data;
+      // Intentar extraer de data.data o directamente de data
+      resignations.value = data.data || [];
     } else {
       toast.error("Error en la respuesta del servidor");
     }
   } catch (error) {
+    console.error("Error al cargar renuncias:", error);
     toast.error(`Error al cargar las renuncias: ${error.response?.data?.message || error.message}`);
   } finally {
     loading.value = false;
@@ -356,7 +368,7 @@ const handleResignationGenerated = () => {
         :headers="headers"
         :items="resignations"
         :loading="loading"
-        items-per-page="10"
+        :items-per-page="10"
         class="premium-table text-no-wrap"
       >
         <!-- Empleado -->
