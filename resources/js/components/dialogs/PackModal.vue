@@ -1,7 +1,5 @@
 <script setup>
-import axios from "@/plugins/axios";
-import { computed, nextTick, ref, watch } from "vue";
-import { toast } from "@/plugins/sweetalert";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   isDialogVisible: {
@@ -19,6 +17,8 @@ const emit = defineEmits([
   "modal-closed",
   "pack-saved",
 ]);
+
+const { mobile } = useDisplay();
 
 const formData = ref({
   id: null,
@@ -61,8 +61,6 @@ const loadAvailableProducts = async (search = "") => {
       params.product_id = parseInt(trimmedSearch, 10);
     }
     Object.keys(params).forEach((k) => params[k] === undefined && delete params[k]);
-
-    console.log("Enviando búsqueda:", params);
 
     const response = await axios.get("/products", { params });
     const items = Array.isArray(response.data?.data) ? response.data.data : [];
@@ -270,9 +268,6 @@ const savePack = async () => {
       return;
     }
 
-    console.log("Datos a enviar:", packData);
-    
-    // Emitir evento - el componente padre manejará el guardado
     emit("pack-saved", packData);
     
   } catch (error) {
@@ -426,113 +421,152 @@ watch(
 <template>
   <VDialog
     :model-value="dialogVisible"
-    max-width="1000px"
+    :max-inline-size="mobile ? '100%' : '1000px'"
+    :fullscreen="mobile"
     persistent
     scrollable
     :retain-focus="false"
+    transition="dialog-bottom-transition"
     @click:outside.prevent
     @keydown.esc.prevent="closeModal"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-package" size="24" color="white" />
-          <span class="text-h6 text-white">
-            {{ isEditing ? "Editar Pack" : "Crear Pack" }}
-          </span>
+    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
+      <!-- Header Premium con Degradado -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-5 d-flex align-center justify-space-between text-white">
+          <div class="d-flex align-center gap-3">
+            <VAvatar size="42" color="rgba(255,255,255,0.2)" class="backdrop-blur">
+              <VIcon icon="tabler-package" size="24" color="white" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-h6 font-weight-black leading-tight">
+                {{ isEditing ? "EDITAR PACK" : "NUEVO PACK" }}
+              </span>
+              <span class="text-super-xs font-weight-medium opacity-90 uppercase letter-spacing-1">
+                Configuración de Oferta
+              </span>
+            </div>
+          </div>
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeModal"
+            :disabled="loading"
+          />
         </div>
-        <VBtn icon variant="text" color="white" size="small" @click="closeModal" :disabled="loading">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
+      <VCardText class="pa-0 bg-light">
         <!-- Información del Pack -->
-        <div class="mb-6">
+        <div class="pa-5 pb-2">
           <VRow>
             <VCol cols="12" sm="6" md="4">
-              <AppTextField
-                v-model="formData.name"
-                label="Nombre del Pack *"
-                variant="outlined"
-                :error-messages="formErrors.name"
-                placeholder="Ej: Pack Familiar..."
-                :disabled="loading"
-              />
+              <div class="d-flex flex-column gap-1">
+                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Nombre del Pack</span>
+                <AppTextField
+                  v-model="formData.name"
+                  variant="outlined"
+                  density="compact"
+                  :error-messages="formErrors.name"
+                  placeholder="Ej: Pack Especial Invierno..."
+                  :disabled="loading"
+                  class="premium-input shadow-sm"
+                />
+              </div>
             </VCol>
             <VCol cols="12" sm="6" md="2">
-              <AppTextField
-                v-model.number="formData.products_count"
-                label="Cant. Productos *"
-                variant="outlined"
-                type="number"
-                min="1"
-                max="10"
-                :error-messages="formErrors.products_count"
-                :disabled="loading"
-              />
+              <div class="d-flex flex-column gap-1">
+                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Prods en Pack</span>
+                <AppTextField
+                  v-model.number="formData.products_count"
+                  variant="outlined"
+                  density="compact"
+                  type="number"
+                  min="1"
+                  max="10"
+                  :error-messages="formErrors.products_count"
+                  :disabled="loading"
+                  class="premium-input shadow-sm text-center"
+                />
+              </div>
             </VCol>
             <VCol cols="12" sm="6" md="2">
-              <AppSelect
-                v-model="formData.is_active"
-                label="Estado"
-                :items="[
-                  { title: 'Activo', value: true },
-                  { title: 'Inactivo', value: false },
-                ]"
-                item-title="title"
-                item-value="value"
-                :disabled="loading"
-              />
+              <div class="d-flex flex-column gap-1">
+                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Estado</span>
+                <AppSelect
+                  v-model="formData.is_active"
+                  density="compact"
+                  variant="outlined"
+                  :items="[
+                    { title: 'Activo', value: true },
+                    { title: 'Inactivo', value: false },
+                  ]"
+                  item-title="title"
+                  item-value="value"
+                  :disabled="loading"
+                  class="premium-input shadow-sm"
+                />
+              </div>
             </VCol>
             <VCol cols="12" sm="6" md="2">
-              <AppTextField
-                v-model.number="formData.max_quantity"
-                label="Cant. Máx. Ventas"
-                variant="outlined"
-                type="number"
-                min="1"
-                placeholder="Ilimitado si vacío"
-                :disabled="loading"
-              />
+              <div class="d-flex flex-column gap-1">
+                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Máx. Ventas</span>
+                <AppTextField
+                  v-model.number="formData.max_quantity"
+                  variant="outlined"
+                  density="compact"
+                  type="number"
+                  min="1"
+                  placeholder="Ilimitado"
+                  :disabled="loading"
+                  class="premium-input shadow-sm"
+                />
+              </div>
             </VCol>
-            <VCol cols="12" sm="6" md="2" class="date-input-compact">
-              <AppTextField
-                v-model="formData.max_sale_date"
-                label="Fecha Máx. Venta"
-                variant="outlined"
-                type="date"
-                density="compact"
-                hide-details
-                :disabled="loading"
-              />
+            <VCol cols="12" sm="6" md="2">
+              <div class="d-flex flex-column gap-1">
+                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Fecha Máx</span>
+                <AppTextField
+                  v-model="formData.max_sale_date"
+                  variant="outlined"
+                  type="date"
+                  density="compact"
+                  hide-details
+                  :disabled="loading"
+                  class="premium-input shadow-sm date-compact"
+                />
+              </div>
             </VCol>
           </VRow>
         </div>
 
-        <VDivider class="my-4" />
+        <VDivider class="border-dashed my-2" />
 
         <!-- Productos del Pack -->
-        <div>
+        <div class="pa-5 pt-2">
           <div class="d-flex align-center justify-space-between mb-4">
-            <h3 class="text-h6 font-weight-medium">Productos del Pack</h3>
-            <VChip variant="outlined" color="primary" size="small">
-              {{ formData.products_count }} producto(s)
+            <h3 class="text-subtitle-1 font-weight-950 text-high-emphasis flex-grow-1">PRODUCTOS INCLUIDOS</h3>
+            <VChip variant="tonal" color="primary" size="small" class="font-weight-black">
+              {{ formData.products_count }} ITEMS
             </VChip>
           </div>
 
           <VDataTable
             :headers="[
-              { title: 'Producto', key: 'product', sortable: false, width: '35%' },
-              { title: 'Cantidad', key: 'quantity', sortable: false, width: '15%', align: 'center' },
-              { title: 'Descuento %', key: 'discount', sortable: false, width: '15%', align: 'center' },
-              { title: 'Precio Unit.', key: 'unit_price', sortable: false, width: '15%', align: 'end' },
-              { title: 'Subtotal', key: 'subtotal', sortable: false, width: '20%', align: 'end' },
+              { title: 'PRODUCTO', key: 'product', sortable: false, width: '35%' },
+              { title: 'CANT.', key: 'quantity', sortable: false, width: '15%', align: 'center' },
+              { title: 'DESC. %', key: 'discount', sortable: false, width: '15%', align: 'center' },
+              { title: 'UNITARIO', key: 'unit_price', sortable: false, width: '15%', align: 'end' },
+              { title: 'SUBTOTAL', key: 'subtotal', sortable: false, width: '20%', align: 'end' },
             ]"
             :items="formData.pack_products"
             density="comfortable"
-            class="rounded-lg"
+            class="rounded-lg border-0 bg-transparent internal-table"
             no-data-text="No hay productos agregados"
+            hide-default-footer
           >
             <template #item.product="{ item, index }">
               <VAutocomplete
@@ -541,25 +575,27 @@ watch(
                 item-title="name"
                 item-value="id"
                 variant="outlined"
+                density="compact"
+                hide-details
                 :loading="loadingProducts"
                 :error-messages="formErrors[`product_${index}`]"
                 return-object
                 clearable
                 :disabled="loading"
-                placeholder="Buscar por ID, Producto, C. Activo..."
+                placeholder="Buscar..."
+                class="compact-autocomplete"
                 :custom-filter="() => true"
                 @update:search="handleProductSearch"
                 @update:model-value="calculateTotalPrice()"
               >
                 <template #item="{ props: itemProps, item: productItem }">
-                  <VListItem v-bind="{ ...itemProps, title: '' }">
+                  <VListItem v-bind="{ ...itemProps, title: '' }" density="compact">
                     <template v-if="productItem.raw.photo_url" #prepend>
-                      <VAvatar size="40" :image="productItem.raw.photo_url" variant="tonal" />
+                      <VAvatar size="32" :image="productItem.raw.photo_url" variant="tonal" class="me-2" />
                     </template>
-                    <VListItemTitle>{{ productItem.raw.name }}</VListItemTitle>
-                    <VListItemSubtitle>
-                      ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | Precio: ${{ productItem.raw.sale_price }}
-                      <span v-if="productItem.raw.barcode"> | Código: {{ productItem.raw.barcode }}</span>
+                    <VListItemTitle class="text-caption font-weight-bold">{{ productItem.raw.name }}</VListItemTitle>
+                    <VListItemSubtitle class="text-super-xs">
+                      ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | ${{ productItem.raw.sale_price }}
                     </VListItemSubtitle>
                   </VListItem>
                 </template>
@@ -567,127 +603,172 @@ watch(
             </template>
 
             <template #item.quantity="{ item, index }">
-              <VTextField
+              <AppTextField
                 v-model.number="item.quantity"
                 type="number"
                 variant="outlined"
+                density="compact"
                 hide-details
                 min="1"
                 :max="item.product?.stock || 9999"
-                :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
+                :error-messages="formErrors[`quantity_${index}`]"
                 :disabled="loading || !item.product"
-                style="max-inline-size: 100px;"
-                class="mx-auto"
+                class="mx-auto compact-input-field text-center"
                 @update:model-value="calculateTotalPrice()"
               />
             </template>
 
             <template #item.discount="{ item, index }">
-              <VTextField
+              <AppTextField
                 v-model.number="item.discount_percentage"
                 type="number"
                 variant="outlined"
+                density="compact"
                 hide-details
                 min="0"
                 max="100"
                 suffix="%"
                 :disabled="loading || !item.product"
-                style="max-inline-size: 100px;"
-                class="mx-auto"
+                class="mx-auto compact-input-field text-center"
                 @update:model-value="calculateTotalPrice()"
               />
             </template>
 
             <template #item.unit_price="{ item }">
-              <span v-if="item.product" class="text-body-2">
-                ${{
-                  (
-                    (item.product.sale_price *
-                      (1 - (item.discount_percentage || 0) / 100)) /
-                    1
-                  ).toFixed(2)
-                }}
+              <span v-if="item.product" class="text-caption font-weight-bold">
+                ${{ (item.product.sale_price * (1 - (item.discount_percentage || 0) / 100)).toFixed(2) }}
               </span>
               <span v-else class="text-disabled">—</span>
             </template>
 
             <template #item.subtotal="{ item }">
-              <span v-if="item.product" class="text-body-1 font-weight-medium text-success">
+              <span v-if="item.product" class="text-caption font-weight-black text-success">
                 ${{ calculateProductPrice(item).toFixed(2) }}
               </span>
               <span v-else class="text-disabled">—</span>
             </template>
           </VDataTable>
-
-          <!-- Precio Total -->
-          <VCard
-            v-if="formData.pack_products.some((p) => p.product)"
-            color="primary"
-            variant="flat"
-            class="mt-4"
-          >
-            <VCardText class="d-flex align-center justify-space-between">
-              <span class="text-h6 font-weight-bold text-white">Precio Total del Pack:</span>
-              <span class="text-h5 font-weight-bold text-white">
-                ${{ formData.total_price.toFixed(2) }}
-              </span>
-            </VCardText>
-          </VCard>
         </div>
       </VCardText>
 
-      <VDivider />
+      <VDivider class="border-dashed" />
 
-      <VCardActions class="pa-4 px-5">
-        <VRow class="w-100 ma-0">
-          <VCol cols="6" class="pa-2">
+      <VCardActions class="pa-5 bg-white overflow-visible">
+        <div class="d-flex align-center flex-grow-1">
+          <div v-if="formData.pack_products.some((p) => p.product)" class="d-flex flex-column">
+            <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold leading-none mb-1">Total a Pagar</span>
+            <span class="text-h4 font-weight-950 text-primary leading-none">
+              ${{ formData.total_price.toFixed(2) }}
+            </span>
+          </div>
+          <VSpacer />
+          <div class="d-flex gap-3">
             <VBtn
               color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
-              block
+              variant="tonal"
+              class="rounded-lg font-weight-bold px-6"
               @click="closeModal"
               :disabled="loading"
             >
-              Cancelar
+              CANCELAR
             </VBtn>
-          </VCol>
-          <VCol cols="6" class="pa-2">
             <VBtn
               color="primary"
               variant="flat"
-              prepend-icon="tabler-check"
-              block
+              class="rounded-lg font-weight-black shadow-primary-lg px-8"
               @click="savePack"
               :loading="loading"
             >
-              {{ isEditing ? "Actualizar" : "Guardar" }}
+              <VIcon start>tabler-check</VIcon>
+              {{ isEditing ? "ACTUALIZAR" : "GUARDAR PACK" }}
             </VBtn>
-          </VCol>
-        </VRow>
+          </div>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.date-input-compact :deep(input) {
-  font-size: 0.8rem;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2f3349 100%);
 }
 
-:deep(.v-data-table) {
-  border-radius: 8px;
+.backdrop-blur {
+  backdrop-filter: blur(8px);
 }
 
-:deep(.v-data-table th) {
-  font-size: 0.75rem;
-  font-weight: 600;
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.border-dashed {
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.premium-input :deep(.v-field__outline__start),
+.premium-input :deep(.v-field__outline__end),
+.premium-input :deep(.v-field__outline__notch) {
+  border-color: rgba(var(--v-border-color), 0.5) !important;
+}
+
+.premium-input :deep(.v-field--focused .v-field__outline__start),
+.premium-input :deep(.v-field--focused .v-field__outline__end),
+.premium-input :deep(.v-field--focused .v-field__outline__notch) {
+  border-width: 2px !important;
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+
+.internal-table :deep(th) {
+  background-color: rgba(var(--v-theme-primary), 0.05) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 0.65rem !important;
+  font-weight: 950 !important;
   letter-spacing: 0.5px;
-  text-transform: uppercase;
+  text-transform: uppercase !important;
 }
 
-:deep(.v-data-table td) {
-  padding-block: 12px;
-  padding-inline: 16px;
+.internal-table :deep(td) {
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  padding-block: 8px !important;
+}
+
+.compact-autocomplete :deep(.v-field__input) {
+  font-size: 0.75rem !important;
+  padding-inline: 4px !important;
+}
+
+.compact-input-field :deep(input) {
+  padding: 4px !important;
+  font-size: 0.75rem !important;
+  text-align: center !important;
+}
+
+.date-compact :deep(input) {
+  font-size: 0.75rem !important;
+}
+
+.text-super-xs {
+  font-size: 0.68rem !important;
+  line-height: normal;
+}
+
+.font-weight-950 { font-weight: 950 !important; }
+.leading-tight { line-height: 1.25 !important; }
+.leading-none { line-height: 1 !important; }
+.letter-spacing-1 { letter-spacing: 1.5px !important; }
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
+}
+
+.shadow-primary-lg {
+  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 25%) !important;
+}
+
+@media (max-width: 600px) {
+  .v-btn {
+    padding-inline: 12px !important;
+  }
 }
 </style>
