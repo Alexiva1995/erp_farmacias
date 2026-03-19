@@ -2,6 +2,7 @@
 import { useAuthStore } from "@/stores/auth";
 import { storeToRefs } from "pinia";
 import Swal from "sweetalert2";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   employees: { type: Array, required: true },
@@ -11,13 +12,14 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
+const { mobile } = useDisplay();
+
 const headers = [
-  { title: "ID", key: "id", sortable: false },
-  { title: "Nombre", key: "name", sortable: false },
-  { title: "Apellido", key: "last_name", sortable: false },
-  { title: "Identificación", key: "identification", sortable: false },
-  { title: "Correo", key: "email", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "EMPLEADO", key: "name", sortable: false },
+  { title: "IDENTIFICACIÓN", key: "identification", sortable: false },
+  { title: "CONTACTO", key: "email", sortable: false },
+  { title: "ESTADO", key: "is_active", sortable: false, align: 'center' },
+  { title: "ACCIONES", key: "actions", sortable: false, align: 'end' },
 ];
 
 const emit = defineEmits([
@@ -124,9 +126,12 @@ const confirmGenerateResignation = async (employee) => {
   }
 };
 </script>
+
 <template>
-  <VCard>
+  <VCard class="employee-table-card border-0 shadow-none bg-transparent">
+    <!-- Vista Desktop -->
     <VDataTableServer
+      v-if="!mobile"
       :headers="headers"
       :items-per-page="props.itemsPerPage"
       :items="props.employees"
@@ -134,76 +139,230 @@ const confirmGenerateResignation = async (employee) => {
       :loading="loading"
       :loading-text="'Cargando empleados...'"
       :page="props.page"
+      class="rounded-xl overflow-hidden premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.name="{ item }">
+        <div class="d-flex align-center gap-3 py-2">
+          <VAvatar size="38" :color="item.is_active ? 'primary' : 'secondary'" variant="tonal" class="rounded-lg">
+            <span class="text-xs font-weight-bold">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <span class="text-body-2 font-weight-black text-high-emphasis leading-tight">{{ item.name }} {{ item.last_name }}</span>
+            <span class="text-super-xs text-medium-emphasis uppercase font-weight-medium letter-spacing-05">ID: {{ item.id }}</span>
+          </div>
+        </div>
+      </template>
+
+      <template #item.identification="{ item }">
+        <span class="text-caption font-weight-bold text-medium-emphasis">{{ item.identification }}</span>
+      </template>
+
+      <template #item.email="{ item }">
+        <div class="d-flex flex-column">
+          <span class="text-caption font-weight-medium text-high-emphasis leading-tight">{{ item.email }}</span>
+          <span v-if="item.phone" class="text-super-xs text-disabled">{{ item.phone }}</span>
+        </div>
+      </template>
+
+      <template #item.is_active="{ item }">
+        <VChip
+          :color="item.is_active ? 'success' : 'error'"
+          size="x-small"
+          variant="tonal"
+          class="font-weight-black"
+        >
+          {{ item.is_active ? 'ACTIVO' : 'INACTIVO' }}
+        </VChip>
+      </template>
+
       <template #item.actions="{ item }">
-        <VTooltip
-          text="Editar empleado"
-          location="top"
-          v-if="user?.role_id !== 2 && user?.role_id !== 3"
-        >
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('edit-employee', item)" color="warning">
-              <VIcon icon="tabler-edit" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          text="Ver empleado"
-          location="top"
-          v-if="user?.role_id !== 2 && user?.role_id !== 3"
-        >
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" icon :href="'/rrhh/employees/' + item.id" color="info">
-              <VIcon icon="tabler-eye" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip text="Generar Renuncia" location="top">
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              @click="confirmGenerateResignation(item)"
-              color="warning"
-            >
-              <VIcon icon="tabler-file-text" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          text="Despedir empleado"
-          location="top"
-          v-if="user?.role_id !== 2 && user?.role_id !== 3"
-        >
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('fire-employee', item)">
-              <VIcon icon="tabler-cancel" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          text="Reiniciar autenticación"
-          location="top"
-          v-if="user?.role_id !== 3"
-        >
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('reset-2fa', item.id)">
-              <VIcon icon="tabler-auth-2fa" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-        <VTooltip
-          text="Eliminar empleado"
-          location="top"
-          v-if="user?.role_id == 1"
-        >
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-employee', item)" color="error">
-              <VIcon icon="tabler-trash" />
-            </IconBtn>
-          </template>
-        </VTooltip>
+        <div class="d-flex justify-end gap-1">
+          <VTooltip text="Ver Ficha" location="top">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" :href="'/rrhh/employees/' + item.id" color="info" size="small">
+                <VIcon icon="tabler-eye" size="18" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VTooltip text="Generar Renuncia" location="top">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" @click="confirmGenerateResignation(item)" color="warning" size="small">
+                <VIcon icon="tabler-file-text" size="18" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
+          <VMenu location="bottom end" transition="slide-y-transition">
+            <template #activator="{ props }">
+              <IconBtn v-bind="props" variant="text" color="secondary" size="small">
+                <VIcon icon="tabler-dots-vertical" size="18" />
+              </IconBtn>
+            </template>
+            
+            <VList density="comfortable" class="premium-menu-list py-1">
+              <VListItem
+                v-if="user?.role_id !== 2 && user?.role_id !== 3"
+                prepend-icon="tabler-edit"
+                title="Editar Información"
+                @click="emit('edit-employee', item)"
+              />
+              <VListItem
+                v-if="user?.role_id !== 2 && user?.role_id !== 3"
+                prepend-icon="tabler-cancel"
+                title="Despedir Empleado"
+                @click="emit('fire-employee', item)"
+              />
+              <VListItem
+                v-if="user?.role_id !== 3"
+                prepend-icon="tabler-auth-2fa"
+                title="Reiniciar 2FA"
+                @click="emit('reset-2fa', item.id)"
+              />
+              <VDivider v-if="user?.role_id == 1" class="my-1" />
+              <VListItem
+                v-if="user?.role_id == 1"
+                prepend-icon="tabler-trash"
+                title="Eliminar Registro"
+                color="error"
+                class="text-error"
+                @click="emit('delete-employee', item)"
+              />
+            </VList>
+          </VMenu>
+        </div>
       </template>
     </VDataTableServer>
+
+    <!-- Vista Móvil (Cards) -->
+    <div v-else class="mobile-employee-list">
+      <div v-if="loading" class="text-center pa-8">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+      
+      <div v-else-if="props.employees.length === 0" class="text-center pa-8 text-disabled font-weight-bold">
+        No se encontraron empleados
+      </div>
+
+      <div v-else class="d-flex flex-column gap-4">
+        <VCard
+          v-for="item in props.employees"
+          :key="item.id"
+          class="employee-mobile-card rounded-xl border-0"
+        >
+          <VCardText class="pa-4">
+            <div class="d-flex align-center justify-space-between mb-4">
+              <div class="d-flex align-center gap-3">
+                <VAvatar size="48" :color="item.is_active ? 'primary' : 'secondary'" variant="tonal" class="rounded-xl">
+                  <span class="text-h6 font-weight-black">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-body-1 font-weight-950 text-high-emphasis leading-tight">{{ item.name }} {{ item.last_name }}</span>
+                  <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">ID: {{ item.identification }}</span>
+                </div>
+              </div>
+              
+              <VMenu location="bottom end">
+                <template #activator="{ props }">
+                  <IconBtn v-bind="props" variant="text" color="secondary" size="small">
+                    <VIcon icon="tabler-dots-vertical" size="18" />
+                  </IconBtn>
+                </template>
+                <VList density="comfortable" class="premium-menu-list py-1">
+                  <VListItem
+                    v-if="user?.role_id !== 2 && user?.role_id !== 3"
+                    prepend-icon="tabler-edit"
+                    title="Editar Información"
+                    @click="emit('edit-employee', item)"
+                  />
+                  <VListItem
+                    v-if="user?.role_id !== 2 && user?.role_id !== 3"
+                    prepend-icon="tabler-cancel"
+                    title="Despedir Empleado"
+                    @click="emit('fire-employee', item)"
+                  />
+                  <VListItem
+                    v-if="user?.role_id !== 3"
+                    prepend-icon="tabler-auth-2fa"
+                    title="Reiniciar 2FA"
+                    @click="emit('reset-2fa', item.id)"
+                  />
+                  <VDivider v-if="user?.role_id == 1" class="my-1" />
+                  <VListItem
+                    v-if="user?.role_id == 1"
+                    prepend-icon="tabler-trash"
+                    title="Eliminar Registro"
+                    color="error"
+                    class="text-error"
+                    @click="emit('delete-employee', item)"
+                  />
+                </VList>
+              </VMenu>
+            </div>
+
+            <VDivider class="border-dashed mb-4" />
+
+            <div class="d-flex flex-column gap-2 mb-4">
+              <div class="d-flex align-center gap-2">
+                <VIcon icon="tabler-mail" size="16" color="secondary" />
+                <span class="text-caption text-medium-emphasis">{{ item.email }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex align-center justify-space-between">
+              <VChip :color="item.is_active ? 'success' : 'error'" size="x-small" variant="flat" class="font-weight-black">
+                {{ item.is_active ? 'ACTIVO' : 'INACTIVO' }}
+              </VChip>
+              
+              <div class="d-flex gap-2">
+                <VBtn :href="'/rrhh/employees/' + item.id" color="info" variant="tonal" size="small" class="rounded-lg">
+                  Ficha
+                </VBtn>
+                <VBtn @click="confirmGenerateResignation(item)" color="warning" variant="tonal" size="small" class="rounded-lg">
+                  Renuncia
+                </VBtn>
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </div>
+    </div>
   </VCard>
 </template>
+
+<style scoped>
+.premium-table :deep(th) {
+  background-color: #f8fafc !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  color: #64748b !important;
+  font-size: 0.7rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 1px;
+  text-transform: uppercase !important;
+}
+
+.premium-table :deep(td) {
+  padding-block: 12px !important;
+}
+
+.employee-mobile-card {
+  border: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  background: white !important;
+  box-shadow: 0 4px 12px rgba(var(--v-shadow-key-umbra-color), 0.03) !important;
+}
+
+.border-dashed {
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+}
+
+.leading-tight { line-height: 1.25 !important; }
+.font-weight-950 { font-weight: 950 !important; }
+.text-super-xs { font-size: 0.65rem !important; }
+.letter-spacing-05 { letter-spacing: 0.5px !important; }
+
+.premium-menu-list {
+  border: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  border-radius: 12px !important;
+}
+</style>
