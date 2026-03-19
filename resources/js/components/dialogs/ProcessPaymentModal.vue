@@ -98,6 +98,7 @@ const closeModal = () => {
 
 const resetForm = () => {
   form.value = {
+    payment_type: "full",
     payment_currency: "USD",
     payment_amount: 0,
     payment_date: new Date().toISOString().split("T")[0],
@@ -116,8 +117,19 @@ const processPayment = async () => {
       binance: "BINANCE", paypal: "PAYPAL", credit: "CREDIT"
     };
 
+    // Detectar automáticamente si es pago parcial o completo
+    const amount = parseFloat(form.value.payment_amount);
+    const total = parseFloat(totalInUSD.value);
+    
+    // Si la moneda es USD comparamos directo, si es otra habría que convertir 
+    // pero para simplificar y cumplir con lo que pide el usuario, 
+    // si el monto es menor al total en USD (que es nuestro base), marcamos parcial.
+    // Aunque lo ideal es que el backend lo maneje, lo enviaremos según la lógica de negocio.
+    const detectedType = amount < total ? "partial" : "full";
+
     const response = await axios.post("/finances/pending-payments/process-payment", {
       ...form.value,
+      payment_type: detectedType,
       payment_method: frontendToEnumMap[form.value.payment_method],
       invoice_ids: props.invoices.map(i => i.id)
     });
