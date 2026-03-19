@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -10,6 +11,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
+
+const { mobile } = useDisplay();
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const dialogTitle = computed(() =>
@@ -154,7 +157,9 @@ const getLaboratoryColor = (index) => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="600"
+    :max-width="mobile ? undefined : '600'"
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
     persistent
     @update:model-value="closeDialog"
   >
