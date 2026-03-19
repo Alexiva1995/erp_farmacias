@@ -13,6 +13,7 @@ const props = defineProps({
   orderProducts: { type: Array, default: () => [] },
   payments: { type: Array, default: () => [] },
   changeAmount: { type: Number, default: 0 },
+  changeAmountOrigin: { type: Number, default: 0 },
   creditAmount: { type: Number, default: 0 },
   credit: { type: Boolean, default: false },
   companyDiscountTotal: { type: Number, default: 0 },
@@ -179,8 +180,12 @@ const clientDisplayLine = computed(() => {
       </template>
       <template v-if="changeAmount > 0">
         <div class="thermal-total-row">
-          <span>Devolución</span>
+          <span>Devolución (COP)</span>
           <span>{{ formatCurrency(changeAmount, "COP") }}</span>
+        </div>
+        <div v-if="selectedCurrency !== 'COP' && changeAmountOrigin > 0" class="thermal-total-row" style="font-size: 8px;">
+          <span>Vuelto ({{ selectedCurrency }})</span>
+          <span>{{ formatCurrency(changeAmountOrigin, selectedCurrency) }}</span>
         </div>
       </template>
     </div>

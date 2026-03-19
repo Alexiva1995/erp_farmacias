@@ -687,6 +687,7 @@ const handleCompletePurchase = () => {
             props.orderData?.client?.is_spe ||
             false,
         },
+        changeAmount.value,
       );
     } catch (error) {
       console.error("Error al completar la compra:", error);

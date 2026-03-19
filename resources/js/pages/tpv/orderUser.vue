@@ -131,6 +131,7 @@ const showBuysModal = ref(false);
 
 const paymentsForPrint = ref([]);
 const changeAmountForPrint = ref(0);
+const changeAmountOriginForPrint = ref(0);
 const creditAmountForPrint = ref(0);
 const creditForPrint = ref(false);
 
@@ -2157,6 +2158,7 @@ const closeBuysModal = () => {
       toast.success("¡Compra finalizada y registrada con éxito!");
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
+      changeAmountOriginForPrint.value = changeAmountOrigin;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
@@ -2283,6 +2285,7 @@ const handleBuysCompletion = async (
   changeAmount,
   changeAmountUSD,
   switchStates,
+  changeAmountOrigin = 0,
 ) => {
   try {
     isFinishingOrder.value = true;
@@ -2479,6 +2482,7 @@ const handleBuysCompletion = async (
       toast.success("¡Compra finalizada y registrada con éxito!");
       prescriptionFile.value = null;
       changeAmountForPrint.value = changeAmount;
+      changeAmountOriginForPrint.value = changeAmountOrigin;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
       expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
@@ -3230,6 +3234,7 @@ onUnmounted(() => {
         :selected-currency="selectedDisplayCurrency || 'USD'"
         :payments="paymentsForPrint || []"
         :change-amount="changeAmountForPrint || 0"
+        :change-amount-origin="changeAmountOriginForPrint || 0"
         :credit-amount="creditAmountForPrint || 0"
         :credit="creditForPrint || false"
         :company-discount-total="companyDiscountForPrint || 0"
