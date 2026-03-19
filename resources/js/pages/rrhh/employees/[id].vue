@@ -565,8 +565,8 @@ watch(activeView, (view) => {
                     { label: 'Unidades Totales', value: performanceData.salesMetrics.historical.totalUnits.toLocaleString() },
                     { label: 'Ticket Prom. Hist', value: formatCurrency(performanceData.salesMetrics.historical.ticketAverage) },
                     { label: 'Unds. Prom. Hist', value: performanceData.salesMetrics.historical.unitsAverage.toFixed(1) }
-                  ]" :key="idx" cols="6" md="3" :class="idx < 3 ? 'border-r d-none d-sm-block' : ''">
-                    <div class="pa-5 text-center">
+                  ]" :key="idx" cols="6" md="3">
+                    <div class="pa-4 text-center" :class="idx < 3 ? 'border-r-sm' : ''">
                       <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">{{ metric.label }}</div>
                       <div class="text-subtitle-1 font-weight-black text-high-emphasis tabular-nums">{{ metric.value }}</div>
                     </div>
