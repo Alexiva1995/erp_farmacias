@@ -129,8 +129,8 @@ const clientTypeOptions = [
       <VExpandTransition>
         <div v-show="isFiltersVisible">
           <VDivider class="my-3 border-opacity-10" />
-          <VRow dense>
-            <VCol cols="12" sm="6" md="3">
+          <VRow dense align="center">
+            <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.tipo_identificacion_filtro"
                 label="Tipo ID"
@@ -139,6 +139,7 @@ const clientTypeOptions = [
                 density="compact"
                 hide-details
                 clearable
+                prepend-inner-icon="tabler-id"
                 @update:model-value="emit('update:tipo_identificacion_filtro', $event)"
               />
             </VCol>
@@ -153,41 +154,43 @@ const clientTypeOptions = [
                 density="compact"
                 hide-details
                 clearable
+                prepend-inner-icon="tabler-building"
                 @update:model-value="emit('update:company_id_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.client_type_filtro"
-                label="Tipo de Cliente"
+                label="Categoría"
                 :items="clientTypeOptions"
                 variant="outlined"
                 density="compact"
                 hide-details
                 clearable
+                prepend-inner-icon="tabler-user-check"
                 @update:model-value="emit('update:client_type_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="6" md="2.5">
               <AppDateTimePicker
                 :model-value="props.fechaDesde_filtro"
-                placeholder="Fecha Inicial"
+                placeholder="Desde"
                 clearable
                 density="compact"
                 hide-details
-                prepend-inner-icon="tabler-calendar-event"
+                prepend-inner-icon="tabler-calendar"
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:fechaDesde_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="6" md="2.5">
               <AppDateTimePicker
                 :model-value="props.fechaHasta_filtro"
-                placeholder="Fecha Final"
+                placeholder="Hasta"
                 clearable
                 density="compact"
                 hide-details
-                prepend-inner-icon="tabler-calendar-event"
+                prepend-inner-icon="tabler-calendar"
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:fechaHasta_filtro', $event)"
               />
