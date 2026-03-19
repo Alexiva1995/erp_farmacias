@@ -136,7 +136,7 @@ const roleItems = computed(() =>
 
 const fetchRoles = async () => {
   try {
-    const response = await axios.get('/api/roles');
+    const response = await axios.get('roles');
     roles.value = response.data?.data ?? [];
   } catch (error) {
     roles.value = [];
@@ -171,29 +171,42 @@ const avatarDisplaySrc = computed(() => {
   return employeePhotoUrl.value;
 });
 
+const getEmployeeFromResponse = (response) => {
+  const d = response?.data?.data;
+  if (!d || typeof d !== 'object') return null;
+  if (d.data && typeof d.data === 'object' && 'id' in d.data) return d.data;
+  return d;
+};
+
 const fetchEmployee = async () => {
   try {
-    const response = await axios.get(`/api/rrhh/employees/${route.params.id}`);
-    const emp = response?.data?.data;
-    if (emp?.id) {
+    loading.value = true;
+    const response = await axios.get(`rrhh/employees/${route.params.id}`);
+    const emp = getEmployeeFromResponse(response) ?? response?.data?.data;
+    if (emp && emp.id) {
       employee.value = emp;
     }
   } catch (error) {
     employee.value = { id: route.params.id, name: 'Error', last_name: '', user: { role: {} } };
+  } finally {
+    loading.value = false;
   }
 };
 
 const fetchPerformanceData = async () => {
   try {
-    const response = await axios.get(`/api/rrhh/employees/${route.params.id}/performance`);
-    const data = response.data?.data;
+    const response = await axios.get(`rrhh/employees/${route.params.id}/performance`);
+    const rawData = response.data?.data;
+    // Manejar posible anidación data.data
+    const data = (rawData?.data && typeof rawData.data === 'object' && !Array.isArray(rawData.data)) ? rawData.data : rawData;
+    
     if (data) {
       performanceData.value = { 
         ...performanceData.value, 
         ...data,
         salesMetrics: {
           ...performanceData.value.salesMetrics,
-          ...data.salesMetrics
+          ...(data.salesMetrics || {})
         }
       };
     }
@@ -213,7 +226,7 @@ const handleReset2FA = async () => {
   });
   if (!result.isConfirmed) return;
   try {
-    await axios.put(`/api/rrhh/employees/${employee.value.id}/reset-2fa`);
+    await axios.put(`rrhh/employees/${employee.value.id}/reset-2fa`);
     toast.success("2FA reiniciado correctamente");
   } catch (error) {
     toast.error("Error al reiniciar 2FA");
@@ -224,11 +237,11 @@ const saveProfileChanges = async () => {
   try {
     loading.value = true;
     const roleId = employee.value.user?.role_id ?? employee.value.user?.role?.id;
-    await axios.put(`/api/rrhh/employees/${employee.value.id}`, {
+    await axios.put(`rrhh/employees/${employee.value.id}`, {
       name: employee.value.name,
       last_name: employee.value.last_name,
       identification: employee.value.identification,
-      email: employee.value.user?.email,
+      email: employee.value.email || employee.value.user?.email,
       role: roleId,
     });
     toast.success("Perfil actualizado");
@@ -247,7 +260,7 @@ const fetchPayments = async () => {
   try {
     const now = new Date();
     const params = { month: now.getMonth() + 1, year: now.getFullYear() };
-    const { data } = await axios.get(`/api/rrhh/employees/${employee.value.id}/payments`, { params });
+    const { data } = await axios.get(`rrhh/employees/${employee.value.id}/payments`, { params });
     const res = data?.data;
     paymentHistory.value = res.history ?? [];
     payrollEmployee.value = res.employee ?? { total_package_usd: null, saldo_deuda: 0 };
@@ -265,7 +278,7 @@ const savePackage = async () => {
   if (!pkg) return;
   savingPackage.value = true;
   try {
-    await axios.put(`/api/rrhh/employees/${employee.value.id}/payroll-settings`, { total_package_usd: Number(pkg) });
+    await axios.put(`rrhh/employees/${employee.value.id}/payroll-settings`, { total_package_usd: Number(pkg) });
     toast.success("Paquete actualizado");
     fetchPayments();
   } catch {
@@ -281,7 +294,7 @@ const handleRefreshTable = async () => {
 
 const handleDownloadFile = async (file) => {
   try {
-    const response = await axios.get(`/api/rrhh/employees/${employee.value.id}/download/${file}`, { responseType: "blob" });
+    const response = await axios.get(`rrhh/employees/${employee.value.id}/download/${file}`, { responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -303,7 +316,7 @@ const handleUpdateEmployeeDocument = async (photoOnly = false) => {
 
   try {
     photoUploading.value = true;
-    await axios.post(`/api/rrhh/employees/${employee.value.id}/documents`, formData);
+    await axios.post(`rrhh/employees/${employee.value.id}/documents`, formData);
     toast.success(photoOnly ? "Foto actualizada" : "Documentos actualizados");
     await fetchEmployee();
     return true;
@@ -410,9 +423,9 @@ watch(activeView, (view) => {
               <div class="info-group">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Correo Electrónico</span>
                 <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis lowercase">
-                  {{ employee.user?.email || '—' }}
+                  {{ employee.user?.email || employee.email || '—' }}
                 </div>
-                <VTextField v-else v-model="employee.user.email" density="compact" hide-details class="premium-input-compact" />
+                <VTextField v-else v-model="employee.email" density="compact" hide-details class="premium-input-compact" />
               </div>
             </div>
 
@@ -553,15 +566,15 @@ watch(activeView, (view) => {
                   </div>
                   <VCardText class="pa-2">
                     <VList density="compact" class="ranking-list">
-                      <VListItem v-for="(product, i) in performanceData.rankings.topProductsByUnits.slice(0, 10)" :key="i" class="rounded-lg mb-1">
+                      <VListItem v-for="(product, i) in performanceData.topProducts.slice(0, 10)" :key="i" class="rounded-lg mb-1">
                         <template #prepend>
                           <div :class="`rank-number rank-${i+1} font-weight-black text-xs me-3`">{{ i + 1 }}</div>
                         </template>
-                        <VListItemTitle class="text-xs font-weight-black text-high-emphasis uppercase">{{ product.name }}</VListItemTitle>
+                        <VListItemTitle class="text-xs font-weight-black text-high-emphasis uppercase">{{ product.name || product.product_name }}</VListItemTitle>
                         <template #append>
                           <div class="text-right d-flex flex-column align-end">
-                            <span class="text-xs font-weight-black text-primary">{{ product.units }} unds</span>
-                            <span class="text-super-xs text-disabled">{{ formatCurrency(product.amount) }}</span>
+                            <span class="text-xs font-weight-black text-primary">{{ product.units || product.total_units }} unds</span>
+                            <span class="text-super-xs text-disabled">{{ formatCurrency(product.amount || product.total_amount) }}</span>
                           </div>
                         </template>
                       </VListItem>
@@ -577,16 +590,15 @@ watch(activeView, (view) => {
                     <VIcon icon="tabler-flask" size="18" color="info" />
                   </div>
                   <VCardText class="pa-4 text-center d-flex flex-column gap-3">
-                    <div v-for="(lab, i) in performanceData.rankings.topLabsByUnits.slice(0, 5)" :key="i" class="lab-row rounded-lg pa-3 border d-flex align-center justify-space-between shadow-xs transition-all">
+                    <div v-for="(lab, i) in performanceData.topLaboratories.slice(0, 5)" :key="i" class="lab-row rounded-lg pa-3 border d-flex align-center justify-space-between shadow-xs transition-all">
                       <div class="d-flex align-center gap-3">
                          <VAvatar :color="i < 2 ? 'primary' : 'secondary'" variant="tonal" size="32" class="rounded font-weight-black text-xs">
                            {{ i + 1 }}
                          </VAvatar>
-                         <span class="text-xs font-weight-black text-high-emphasis uppercase">{{ lab.name }}</span>
+                         <span class="text-xs font-weight-black text-high-emphasis uppercase">{{ lab.name || lab.laboratory }}</span>
                       </div>
                       <div class="text-right">
-                         <div class="text-xs font-weight-black text-high-emphasis">{{ lab.units }} UNIDADES</div>
-                         <div class="text-super-xs text-primary font-weight-bold">{{ formatCurrency(lab.amount) }}</div>
+                        <div class="text-xs font-weight-black text-primary">{{ lab.units || lab.total_units }} unds</div>
                       </div>
                     </div>
                   </VCardText>
