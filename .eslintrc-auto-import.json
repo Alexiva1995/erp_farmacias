@@ -380,6 +380,15 @@
     "watchThrottled": true,
     "watchTriggerable": true,
     "watchWithFilter": true,
-    "whenever": true
+    "whenever": true,
+    "calculateStock": true,
+    "formatPrice": true,
+    "formatMonth": true,
+    "calculateValidStock": true,
+    "nextExpirationDate": true,
+    "formatNumber": true,
+    "applyFooter": true,
+    "applyPremiumHeader": true,
+    "useCheckout": true
   }
 }

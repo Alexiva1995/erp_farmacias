@@ -56,7 +56,7 @@ class ClassifyClients extends Command
                 : null;
 
             // Determinar tipo de cliente
-            $newType = $this->determineClientType($totalOrders, $totalSpent, $daysSinceLastPurchase);
+            $newType = $this->determineClientType($client, $totalOrders, $daysSinceLastPurchase);
 
             // Solo actualizar si cambió
             if ($client->client_type !== $newType) {
@@ -73,31 +73,38 @@ class ClassifyClients extends Command
     }
 
     /**
-     * Determina el tipo de cliente según sus estadísticas.
+     * Determina el tipo de cliente según sus estadísticas y las nuevas reglas estratégicas.
      */
-    private function determineClientType(int $totalOrders, float $totalSpent, ?int $daysSinceLastPurchase): string
+    private function determineClientType(Client $client, int $totalOrders, ?int $daysSinceLastPurchase): string
     {
-        // Sin compras = Nuevo
+        $now = Carbon::now();
+        $daysSinceCreated = $client->created_at ? $client->created_at->diffInDays($now) : 0;
+
+        // 1. Casos de 0 compras
         if ($totalOrders === 0) {
-            return Client::CLIENT_TYPE_NUEVO;
+            return ($daysSinceCreated <= 30) 
+                ? Client::CLIENT_TYPE_NUEVO 
+                : Client::CLIENT_TYPE_INACTIVO;
         }
 
-        // Tiene compras pero no compra hace más de 30 días = En Riesgo
-        if ($daysSinceLastPurchase !== null && $daysSinceLastPurchase > 30) {
+        // A partir de aquí, tiene al menos 1 compras
+        
+        // 2. En Riesgo (Inactividad prolongada tras haber comprado)
+        if ($daysSinceLastPurchase !== null && $daysSinceLastPurchase > 60) {
             return Client::CLIENT_TYPE_EN_RIESGO;
         }
 
-        // Alto gasto o muchas compras = VIP
-        if ($totalSpent >= 500 || $totalOrders >= 20) {
+        // 3. VIP (10+ compras y actividad reciente < 30 días)
+        if ($totalOrders >= 10 && $daysSinceLastPurchase !== null && $daysSinceLastPurchase <= 30) {
             return Client::CLIENT_TYPE_VIP;
         }
 
-        // Compras moderadas = Frecuente
-        if ($totalOrders >= 5) {
+        // 4. Frecuente (3+ compras y activo < 60 días)
+        if ($totalOrders >= 3 && $daysSinceLastPurchase !== null && $daysSinceLastPurchase <= 60) {
             return Client::CLIENT_TYPE_FRECUENTE;
         }
 
-        // Pocas compras = Ocasional
+        // 5. Ocasional (1 a 2 compras y activo < 60 días)
         return Client::CLIENT_TYPE_OCASIONAL;
     }
 }

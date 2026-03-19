@@ -12,10 +12,14 @@ declare global {
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const alphaDashValidator: typeof import('./resources/js/@core/utils/validators.js')['alphaDashValidator']
   const alphaValidator: typeof import('./resources/js/@core/utils/validators.js')['alphaValidator']
+  const applyFooter: typeof import('./resources/js/utils/pdfBaseStyles.js')['applyFooter']
+  const applyPremiumHeader: typeof import('./resources/js/utils/pdfBaseStyles.js')['applyPremiumHeader']
   const asyncComputed: typeof import('@vueuse/core')['asyncComputed']
   const autoResetRef: typeof import('@vueuse/core')['autoResetRef']
   const avatarText: typeof import('./resources/js/@core/utils/formatters.js')['avatarText']
   const betweenValidator: typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']
+  const calculateStock: typeof import('./resources/js/utils/formatters.js')['calculateStock']
+  const calculateValidStock: typeof import('./resources/js/utils/formatters.js')['calculateValidStock']
   const capitalizeFirstAndLastName: typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']
   const computed: typeof import('vue')['computed']
   const computedAsync: typeof import('@vueuse/core')['computedAsync']
@@ -51,9 +55,12 @@ declare global {
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const formatAmountOnly: typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']
   const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
-  const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
+  const formatDate: typeof import('./resources/js/utils/formatters.js')['formatDate']
   const formatDateTime: typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
+  const formatMonth: typeof import('./resources/js/utils/formatters.js')['formatMonth']
+  const formatNumber: typeof import('./resources/js/utils/formatters.js')['formatNumber']
+  const formatPrice: typeof import('./resources/js/utils/formatters.js')['formatPrice']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
@@ -86,6 +93,7 @@ declare global {
   const mapStores: typeof import('pinia')['mapStores']
   const mapWritableState: typeof import('pinia')['mapWritableState']
   const markRaw: typeof import('vue')['markRaw']
+  const nextExpirationDate: typeof import('./resources/js/utils/formatters.js')['nextExpirationDate']
   const nextTick: typeof import('vue')['nextTick']
   const onActivated: typeof import('vue')['onActivated']
   const onBeforeMount: typeof import('vue')['onBeforeMount']
@@ -201,6 +209,7 @@ declare global {
   const useBrowserLocation: typeof import('@vueuse/core')['useBrowserLocation']
   const useCached: typeof import('@vueuse/core')['useCached']
   const useCeil: typeof import('@vueuse/math')['useCeil']
+  const useCheckout: typeof import('./resources/js/composables/useCheckout.js')['useCheckout']
   const useClamp: typeof import('@vueuse/math')['useClamp']
   const useClipboard: typeof import('@vueuse/core')['useClipboard']
   const useClipboardItems: typeof import('@vueuse/core')['useClipboardItems']
@@ -392,10 +401,14 @@ declare module 'vue' {
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly alphaDashValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['alphaDashValidator']>
     readonly alphaValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['alphaValidator']>
+    readonly applyFooter: UnwrapRef<typeof import('./resources/js/utils/pdfBaseStyles.js')['applyFooter']>
+    readonly applyPremiumHeader: UnwrapRef<typeof import('./resources/js/utils/pdfBaseStyles.js')['applyPremiumHeader']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
     readonly avatarText: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['avatarText']>
     readonly betweenValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['betweenValidator']>
+    readonly calculateStock: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['calculateStock']>
+    readonly calculateValidStock: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['calculateValidStock']>
     readonly capitalizeFirstAndLastName: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['capitalizeFirstAndLastName']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly computedAsync: UnwrapRef<typeof import('@vueuse/core')['computedAsync']>
@@ -432,8 +445,12 @@ declare module 'vue' {
     readonly formatAmountOnly: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']>
     readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
+    readonly formatDate: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatDate']>
     readonly formatDateTime: UnwrapRef<typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
+    readonly formatMonth: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatMonth']>
+    readonly formatNumber: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatNumber']>
+    readonly formatPrice: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatPrice']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
@@ -454,7 +471,6 @@ declare module 'vue' {
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
     readonly isToday: UnwrapRef<typeof import('./resources/js/@core/utils/helpers.js')['isToday']>
-    readonly kFormatter: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['kFormatter']>
     readonly lengthValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['lengthValidator']>
     readonly logicAnd: UnwrapRef<typeof import('@vueuse/math')['logicAnd']>
     readonly logicNot: UnwrapRef<typeof import('@vueuse/math')['logicNot']>
@@ -466,6 +482,7 @@ declare module 'vue' {
     readonly mapStores: UnwrapRef<typeof import('pinia')['mapStores']>
     readonly mapWritableState: UnwrapRef<typeof import('pinia')['mapWritableState']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
+    readonly nextExpirationDate: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['nextExpirationDate']>
     readonly nextTick: UnwrapRef<typeof import('vue')['nextTick']>
     readonly onActivated: UnwrapRef<typeof import('vue')['onActivated']>
     readonly onBeforeMount: UnwrapRef<typeof import('vue')['onBeforeMount']>
@@ -581,6 +598,7 @@ declare module 'vue' {
     readonly useBrowserLocation: UnwrapRef<typeof import('@vueuse/core')['useBrowserLocation']>
     readonly useCached: UnwrapRef<typeof import('@vueuse/core')['useCached']>
     readonly useCeil: UnwrapRef<typeof import('@vueuse/math')['useCeil']>
+    readonly useCheckout: UnwrapRef<typeof import('./resources/js/composables/useCheckout.js')['useCheckout']>
     readonly useClamp: UnwrapRef<typeof import('@vueuse/math')['useClamp']>
     readonly useClipboard: UnwrapRef<typeof import('@vueuse/core')['useClipboard']>
     readonly useClipboardItems: UnwrapRef<typeof import('@vueuse/core')['useClipboardItems']>

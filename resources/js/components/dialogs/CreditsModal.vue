@@ -742,7 +742,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible">
+  <VDialog v-model="dialogVisible" fullscreen transition="dialog-bottom-transition">
     <VCard>
       <VCardTitle class="d-flex align-center">
         <span class="text-h5 font-weight-bold pr-1">Pago de Créditos</span>
@@ -1346,19 +1346,21 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
   border-block-end-color: rgb(var(--v-theme-primary)) !important;
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in;
+.ticket-header {
+  animation: fade-in 0.5s ease-out;
 }
 
-@keyframes fadeIn {
+.fade-in {
+  animation: fade-in 0.3s ease-in;
+}
+
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(-4px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

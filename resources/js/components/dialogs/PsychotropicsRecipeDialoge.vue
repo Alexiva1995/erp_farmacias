@@ -12,7 +12,7 @@ function close(){
 }
 </script>
 <template>
-  <VDialog :model-value="props.modalFormulario" max-width="800px" persistent>
+  <VDialog :model-value="props.modalFormulario" max-width="800px" persistent :fullscreen="$vuetify.display.xs">
     <VCard>
       <VCardTitle class="d-flex align-center">
         <span class="headline">{{ props.titulo }}</span>

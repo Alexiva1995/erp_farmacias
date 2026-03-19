@@ -427,13 +427,18 @@ class OrderController extends Controller
             }
 
             $result = DB::transaction(function () use ($sellerId) {
-                $hasPending = Order::where('seller_id', $sellerId)
+                $pendingOrder = Order::where('seller_id', $sellerId)
                     ->where('status', Order::PENDING)
-                    ->lockForUpdate()
-                    ->exists();
+                    ->withCount('details')
+                    ->first();
 
-                if ($hasPending) {
-                    return ['success' => false, 'message' => 'Ya tienes una orden pendiente activa.', 'status' => 400];
+                if ($pendingOrder && $pendingOrder->details_count > 0) {
+                    return ['success' => false, 'message' => 'Ya tienes una orden pendiente activa con productos.', 'status' => 400];
+                }
+
+                // Si hay una orden pendiente pero está vacía, la eliminamos para cargar la nueva
+                if ($pendingOrder) {
+                    $pendingOrder->delete();
                 }
 
                 $order = Order::where('seller_id', $sellerId)

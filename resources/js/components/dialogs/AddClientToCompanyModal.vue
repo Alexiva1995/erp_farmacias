@@ -87,93 +87,153 @@ watch(
     max-width="650px"
     scrollable
     :retain-focus="false"
+    :fullscreen="$vuetify.display.xs"
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
     @click:outside="onClose"
     @keydown.esc="onClose"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-user-plus" size="24" color="white" />
-          <span class="text-h6 text-white">Añadir Cliente a {{ companyName }}</span>
+    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12 rounded-lg">
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
+              <VIcon icon="tabler-user-plus" color="primary" size="18" />
+            </VAvatar>
+            <div>
+              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0 uppercase">VINCULAR CLIENTE</h2>
+              <div class="d-flex align-center gap-1 mt-0">
+                <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold truncate">
+                  AÑADIR A: {{ companyName }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" size="x-small" @click="onClose">
+            <VIcon size="18">tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VBtn icon variant="text" color="white" size="small" @click="onClose">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
+      <VCardText class="pa-4 bg-light" style="max-block-size: 80vh;">
         <AppTextField
           v-model="searchQuery"
-          placeholder="Buscar cliente por nombre o identificación..."
+          placeholder="BUSCAR CLIENTE POR NOMBRE O IDENTIFICACIÓN..."
           prepend-inner-icon="tabler-search"
           clearable
           autofocus
-          class="mb-4"
+          density="compact"
+          class="mb-4 premium-input"
         />
 
         <div v-if="loading" class="d-flex justify-center py-6">
-          <VProgressCircular indeterminate color="info" size="40" />
+          <VProgressCircular indeterminate color="primary" size="40" />
         </div>
 
         <div v-else-if="clients.length === 0 && searchQuery.length >= 2" class="text-center py-6">
-          <VIcon icon="tabler-users-minus" size="48" color="secondary" class="mb-2" />
-          <div class="text-body-1 text-medium-emphasis">No se encontraron clientes disponibles</div>
+          <VIcon icon="tabler-users-minus" size="48" color="secondary" class="mb-2 opacity-50" />
+          <div class="text-sm font-weight-black text-medium-emphasis uppercase">No se encontraron clientes disponibles</div>
         </div>
 
         <div v-else-if="searchQuery.length < 2 && searchQuery.length > 0" class="text-center py-6">
-          <div class="text-body-2 text-medium-emphasis">Escribe al menos 2 caracteres para buscar</div>
+          <div class="text-xs font-weight-bold text-medium-emphasis uppercase">Escribe al menos 2 caracteres para buscar</div>
         </div>
 
-        <VList v-if="clients.length > 0" lines="two" density="compact" class="rounded border">
+        <VList v-if="clients.length > 0" lines="two" density="compact" class="rounded-lg border bg-white ma-1">
           <template v-for="(client, index) in clients" :key="client.id">
-            <VListItem>
+            <VListItem class="pa-3">
               <template #prepend>
-                <VAvatar color="primary" variant="tonal" size="40">
+                <VAvatar color="primary" variant="tonal" size="40" class="rounded">
                   <VIcon icon="tabler-user" size="20" />
                 </VAvatar>
               </template>
-              <VListItemTitle class="text-body-2 font-weight-medium">
+              <VListItemTitle class="text-body-2 font-weight-black uppercase">
                 {{ client.name }} {{ client.last_name || '' }}
               </VListItemTitle>
-              <VListItemSubtitle class="text-caption">
-                {{ client.identification_type }}{{ client.identification }}
-                <span v-if="client.company" class="ms-2">· {{ client.company.name }}</span>
+              <VListItemSubtitle class="text-caption font-weight-bold">
+                <span class="text-primary">{{ client.identification_type }}{{ client.identification }}</span>
+                <span v-if="client.company" class="ms-2 text-disabled uppercase">· {{ client.company.name }}</span>
               </VListItemSubtitle>
               <template #append>
                 <VBtn
-                  color="info"
-                  variant="tonal"
+                  color="primary"
+                  variant="flat"
                   size="small"
                   prepend-icon="tabler-plus"
+                  class="font-weight-black shadow-sm"
                   :loading="assigning"
                   @click="assignClient(client.id)"
                 >
-                  Añadir
+                  VINCULAR
                 </VBtn>
               </template>
             </VListItem>
-            <VDivider v-if="index < clients.length - 1" />
+            <VDivider v-if="index < clients.length - 1" class="border-opacity-10" />
           </template>
         </VList>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-5">
-        <VRow class="w-100 ma-0">
-          <VCol cols="12" class="pa-2">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
-              block
-              @click="onClose"
-            >
-              Cerrar
-            </VBtn>
-          </VCol>
-        </VRow>
+      <VCardActions class="pa-4 bg-light">
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          block
+          height="48"
+          class="font-weight-black rounded-lg text-button uppercase"
+          @click="onClose"
+        >
+          CERRAR VENTANA
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173b1f 100%);
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.premium-input :deep(.v-field__input) {
+  font-size: 0.8rem !important;
+  font-weight: 600;
+}
+
+.premium-input :deep(.v-label) {
+  font-size: 0.7rem !important;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.text-button {
+  font-size: 0.875rem !important;
+  letter-spacing: 1px !important;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

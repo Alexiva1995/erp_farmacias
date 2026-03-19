@@ -42,6 +42,10 @@ class TraceabilityQueryService
             $query->whereDate('movement_date', '>=', $request->input('startDate'));
         }
 
+        if ($request->filled('movement_type')) {
+            $query->where('movement_type', $request->input('movement_type'));
+        }
+
         if ($request->filled('is_psychotropic')) {
             $query->whereHas('product', function ($product) use ($request) {
                 $product->where('psychotropic', "=", $request->is_psychotropic);
@@ -53,10 +57,27 @@ class TraceabilityQueryService
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
-            $query->orderBy($request->input('sortBy'), $request->input('orderBy'));
+            $sortBy = $request->input('sortBy');
+            $orderBy = $request->input('orderBy');
+
+            if ($sortBy === 'reference') {
+                $query->orderBy('order_id', $orderBy)
+                    ->orderBy('invoice_id', $orderBy)
+                    ->orderBy('id', $orderBy);
+            } elseif ($sortBy === 'product.name') {
+                $query->join('products', 'inventory_movements.product_id', '=', 'products.id')
+                    ->select('inventory_movements.*')
+                    ->orderBy('products.name', $orderBy);
+            } elseif ($sortBy === 'user.email') {
+                $query->join('users', 'inventory_movements.user_id', '=', 'users.id')
+                    ->select('inventory_movements.*')
+                    ->orderBy('users.email', $orderBy);
+            } else {
+                $query->orderBy($sortBy, $orderBy);
+            }
         } else {
             // Ordenar por id de creación del movimiento (más nuevo primero)
-            $query->orderBy('id', 'desc');
+            $query->orderBy('inventory_movements.id', 'desc');
         }
 
         return $query;
@@ -120,10 +141,27 @@ class TraceabilityQueryService
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
-            $query->orderBy($request->input('sortBy'), $request->input('orderBy'));
+            $sortBy = $request->input('sortBy');
+            $orderBy = $request->input('orderBy');
+
+            if ($sortBy === 'reference') {
+                $query->orderBy('order_id', $orderBy)
+                    ->orderBy('invoice_id', $orderBy)
+                    ->orderBy('id', $orderBy);
+            } elseif ($sortBy === 'product.name') {
+                $query->join('products', 'inventory_movements.product_id', '=', 'products.id')
+                    ->select('inventory_movements.*')
+                    ->orderBy('products.name', $orderBy);
+            } elseif ($sortBy === 'user.email') {
+                $query->join('users', 'inventory_movements.user_id', '=', 'users.id')
+                    ->select('inventory_movements.*')
+                    ->orderBy('users.email', $orderBy);
+            } else {
+                $query->orderBy($sortBy, $orderBy);
+            }
         } else {
             // Ordenar por id de creación del movimiento (más nuevo primero)
-            $query->orderBy('id', 'desc');
+            $query->orderBy('inventory_movements.id', 'desc');
         }
 
         return $query;

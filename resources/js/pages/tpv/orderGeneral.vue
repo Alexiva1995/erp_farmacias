@@ -58,6 +58,7 @@ const pageQuotations = ref(1);
 const itemsPerPageQuotations = ref(25);
 
 const sellers = ref([]);
+const users = ref([]);
 
 // Filtros unificados para todas las pestañas (un solo card de filtros)
 const filterSearchQueryId = ref("");
@@ -76,7 +77,7 @@ const orderData = ref(null);
 const orderItems = ref([]);
 
 const viewModal = ref(false);
-
+const isAdvancedFiltersVisible = ref(false); // Cambiado para usar VExpandTransition o similar
 const activeTab = ref(0);
 
 // Rango de fechas global: por defecto primer día del mes actual (evita tabla vacía por zona horaria o sin ventas hoy)
@@ -833,101 +834,189 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 </script>
 <template>
   <div>
-    <!-- Filtros: mismo diseño que /inventory/products (incl. fecha) -->
-    <VCard class="mb-6">
-      <VCardText>
-        <VRow>
-          <VCol cols="12" sm="3" md="2">
-            <AppDateTimePicker
-              v-model="globalStartDate"
-              placeholder="Desde"
-              clearable
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <AppDateTimePicker
-              v-model="globalEndDate"
-              placeholder="Hasta"
-              clearable
-              :config="{
-                altInput: true,
-                altFormat: 'Y-m-d',
-                dateFormat: 'Y-m-d',
-              }"
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <AppTextField
-              v-model="filterSearchQueryId"
-              placeholder="ID"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="3" md="2">
+    <!-- Contenedor Premium de Filtros -->
+    <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden shadow-sm bg-surface">
+      <VCardText class="pa-4">
+        <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+        <VRow align="center" no-gutters class="gap-3 flex-nowrap">
+          <VCol class="flex-grow-1">
             <AppTextField
               v-model="filterSearchQuery"
-              placeholder="Identificación, Vendedor"
+              placeholder="Buscar por Identificación, Vendedor o Cliente..."
+              prepend-inner-icon="tabler-search"
               clearable
+              hide-details
+              density="compact"
+              class="filter-search-input font-weight-bold"
             />
           </VCol>
-          <VCol cols="12" sm="3" md="2">
-            <VSelect
-              v-model="currencyFilter"
-              label="Moneda"
-              :items="currencyOptions"
-              clearable
-            />
-          </VCol>
-          <VCol v-if="!isVendedor" cols="12" sm="3" md="2">
-            <VSelect
-              v-model="sellerFilter"
-              label="Vendedor"
-              :items="sellers"
-              :item-title="sellerDisplayName"
-              item-value="id"
-              clearable
-            />
-          </VCol>
-          <VCol v-if="activeTab === 1" cols="12" sm="3" md="2">
-            <VSelect
-              v-model="stateFilterAll"
-              label="Estado"
-              :items="stateOptions"
-              clearable
-            />
+
+          <VCol cols="auto" class="d-flex gap-2">
+            <VTooltip location="top" text="Filtros Avanzados">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+                  variant="tonal"
+                  density="comfortable"
+                  class="rounded-lg"
+                  icon="tabler-filter"
+                  @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
+                />
+              </template>
+            </VTooltip>
+
+            <VTooltip location="top" text="Limpiar Filtros">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  color="secondary"
+                  variant="tonal"
+                  density="comfortable"
+                  class="rounded-lg"
+                  icon="tabler-trash"
+                  @click="handleClearFilters"
+                />
+              </template>
+            </VTooltip>
           </VCol>
         </VRow>
+
+        <!-- Accesos Rápidos de Fecha (Siempre Visibles) -->
+        <div class="d-flex align-center gap-2 flex-wrap mt-4 py-1 border-t border-b border-opacity-10 border-dashed">
+          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis me-2">Rango Rápido:</span>
+          <VBtn color="primary" variant="tonal" size="x-small" rounded="pill" class="px-4" @click="setDateHoy">Hoy</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" rounded="pill" class="px-4" @click="setDateAyer">Ayer</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" rounded="pill" class="px-4" @click="setDateSemana">Semana</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" rounded="pill" class="px-4" @click="setDateMes">Mes</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" rounded="pill" class="px-4" @click="setDateAno">Año</VBtn>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-2">
+            <VTooltip location="top" text="Exportar a Excel">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  color="success"
+                  variant="tonal"
+                  size="small"
+                  rounded="lg"
+                  icon="tabler-file-spreadsheet"
+                  class="rounded-lg"
+                />
+              </template>
+            </VTooltip>
+            <VTooltip location="top" text="Descargar PDF">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  color="error"
+                  variant="tonal"
+                  size="small"
+                  rounded="lg"
+                  icon="tabler-file-type-pdf"
+                  class="rounded-lg"
+                />
+              </template>
+            </VTooltip>
+          </div>
+
+          <VDivider vertical class="mx-2" />
+
+          <div class="d-flex align-center gap-2 text-caption font-weight-medium text-medium-emphasis">
+            <span>{{ globalStartDate || '—' }}</span>
+            <VIcon size="14">tabler-arrow-right</VIcon>
+            <span>{{ globalEndDate || '—' }}</span>
+          </div>
+        </div>
+
+        <!-- Panel de Filtros Avanzados (Colapsable) -->
+        <VExpandTransition>
+          <div v-show="isAdvancedFiltersVisible">
+            <VRow class="mt-4 px-1 gap-y-4">
+              <VCol cols="12" sm="3" md="2">
+                <AppDateTimePicker
+                  v-model="globalStartDate"
+                  placeholder="Fecha Inicial"
+                  prepend-inner-icon="tabler-calendar"
+                  clearable
+                  hide-details
+                  density="compact"
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <AppDateTimePicker
+                  v-model="globalEndDate"
+                  placeholder="Fecha Final"
+                  prepend-inner-icon="tabler-calendar"
+                  clearable
+                  hide-details
+                  density="compact"
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <AppTextField
+                  v-model="filterSearchQueryId"
+                  placeholder="ID Orden"
+                  prepend-inner-icon="tabler-hash"
+                  clearable
+                  hide-details
+                  density="compact"
+                />
+              </VCol>
+              <VCol cols="12" sm="3" md="2">
+                <VSelect
+                  v-model="currencyFilter"
+                  placeholder="Moneda"
+                  prepend-inner-icon="tabler-coin"
+                  :items="currencyOptions"
+                  clearable
+                  hide-details
+                  density="compact"
+                  variant="outlined"
+                />
+              </VCol>
+              <VCol v-if="!isVendedor" cols="12" sm="3" md="2">
+                <VSelect
+                  v-model="sellerFilter"
+                  placeholder="Vendedor"
+                  prepend-inner-icon="tabler-user-check"
+                  :items="sellers"
+                  :item-title="sellerDisplayName"
+                  item-value="id"
+                  clearable
+                  hide-details
+                  density="compact"
+                  variant="outlined"
+                />
+              </VCol>
+              <VCol v-if="activeTab === 1" cols="12" sm="3" md="2">
+                <VSelect
+                  v-model="stateFilterAll"
+                  placeholder="Estado"
+                  prepend-inner-icon="tabler-adjustments-horizontal"
+                  :items="stateOptions"
+                  clearable
+                  hide-details
+                  density="compact"
+                  variant="outlined"
+                />
+              </VCol>
+            </VRow>
+          </div>
+        </VExpandTransition>
       </VCardText>
-
-      <VDivider />
-
-      <VCardActions class="pa-4 px-6 d-flex flex-wrap align-center gap-2">
-        <VBtn color="secondary" variant="outlined" @click="handleClearFilters">
-          Limpiar Filtros
-        </VBtn>
-        <VDivider vertical class="my-0" />
-        <span class="text-body-2 text-medium-emphasis mr-1">Rango rápido:</span>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateHoy">
-          Hoy
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateAyer">
-          Ayer
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateSemana">
-          Semana
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateMes">
-          Mes
-        </VBtn>
-        <VBtn color="secondary" variant="tonal" size="small" @click="setDateAno">
-          Año
-        </VBtn>
-      </VCardActions>
     </VCard>
 
     <!-- Pestañas con badge de cantidad por tipo -->
@@ -1165,9 +1254,30 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 }
 
 .tab-with-badge .tab-count {
-  min-width: 1.5rem;
+  font-size: 0.7rem;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.7rem;
+  min-inline-size: 1.5rem;
+}
+
+.custom-expansion-panel :deep(.v-expansion-panel-title) {
+  padding-block: 0.75rem;
+  padding-inline: 1.5rem;
+}
+
+.custom-expansion-panel :deep(.v-expansion-panel-text__wrapper) {
+  padding-block: 0;
+  padding-inline: 0;
+}
+
+.filter-search-input :deep(.v-field__input) {
+  font-size: 0.8125rem !important;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+.border-t.border-b {
+  border-color: rgba(var(--v-border-color), 0.1) !important;
 }
 </style>

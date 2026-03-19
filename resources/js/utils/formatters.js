@@ -25,18 +25,82 @@ export const formatDate = (dateString) => {
 export const formatPrice = (price) => {
   const numPrice = Number(price);
   if (isNaN(numPrice)) return "0,00";
-  return new Intl.NumberFormat("es-VE", {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numPrice);
 };
 
 /**
- * Calcula el stock total sumando las cantidades de los lotes.
+ * Formatea un stock total sumando las cantidades de los lotes.
  * @param {Object} product 
  * @returns {number}
  */
 export const calculateStock = (product) => {
   if (!product.lots || !Array.isArray(product.lots)) return 0;
   return product.lots.reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
+};
+
+/**
+ * Formatea un string de mes YYYY-MM a "Mes Año" (ej. "Enero 2025").
+ * @param {string} monthStr 
+ * @returns {string}
+ */
+export const formatMonth = (monthStr) => {
+  if (!monthStr) return "";
+  const [year, month] = monthStr.split("-");
+  return new Date(year, month - 1).toLocaleString("es-CO", {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+/**
+ * Calcula el stock válido excluyendo lotes vencidos.
+ * @param {Object} product 
+ * @returns {number}
+ */
+export const calculateValidStock = (product) => {
+  if (!product.lots || !Array.isArray(product.lots)) return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return product.lots
+    .filter((lot) => lot.expiration_date && new Date(lot.expiration_date) >= today)
+    .reduce((sum, lot) => sum + Number(lot.quantity || 0), 0);
+};
+
+/**
+ * Obtiene la fecha de próximo vencimiento válida.
+ * @param {Object} product 
+ * @returns {string} (YYYY-MM-DD o mensaje informativo)
+ */
+export const nextExpirationDate = (product) => {
+  if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const validLots = product.lots.filter((lot) => {
+    if (!lot.expiration_date) return false;
+    const expirationDate = new Date(lot.expiration_date);
+    return !isNaN(expirationDate.getTime()) && expirationDate >= today;
+  });
+  if (validLots.length === 0) return "Todos expiraron";
+  validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+  return validLots[0].expiration_date;
+};
+
+/**
+ * Formatea un número con separadores de miles y decimales configurables.
+ * @param {number|string} value 
+ * @param {number} decimals 
+ * @returns {string}
+ */
+export const formatNumber = (value, decimals = 0) => {
+  const num = Number(value);
+  if (isNaN(num)) return "0";
+  return new Intl.NumberFormat("es-CO", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(num);
 };

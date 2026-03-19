@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { ref, computed } from "vue";
 
 const props = defineProps({
   searchQuery: {
@@ -46,6 +46,8 @@ const emit = defineEmits([
   "expire-selected",
 ]);
 
+const isExpanded = ref(false);
+
 const searchQueryModel = computed({
   get: () => props.searchQuery,
   set: (value) => emit("update:searchQuery", value),
@@ -72,116 +74,221 @@ const isStrictSearchModel = computed({
 });
 
 const hasSelectedLots = computed(() => props.selectedLots.length > 0);
-</script>
 
-<template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="4">
+const quickFilters = [
+  { label: "Vencidos", range: -1 },
+  { label: "Este mes", range: 0 },
+  { label: "60 Días", range: 60 },
+  { label: "90 Días", range: 90 },
+  { label: "120 Días", range: 120 },
+  { label: "150 Días", range: 150 },
+];
+
+const isFilterActive = (filter) => {
+  const today = new Date().toISOString().split('T')[0];
+  const targetDate = new Date();
+
+  if (filter.range === -1) {
+    targetDate.setDate(targetDate.getDate() - 1);
+    const yesterdayStr = targetDate.toISOString().split('T')[0];
+
+    return props.startDate === null && props.endDate === yesterdayStr;
+  }
+
+  if (filter.range === 0) {
+    targetDate.setMonth(targetDate.getMonth() + 1);
+    targetDate.setDate(0); // Último día del mes
+  } else {
+    targetDate.setDate(targetDate.getDate() + filter.range);
+  }
+  const targetStr = targetDate.toISOString().split('T')[0];
+
+  return props.startDate === today && props.endDate === targetStr;
+};
+
+const applyQuickFilter = (filter) => {
+  const today = new Date().toISOString().split('T')[0];
+  const targetDate = new Date();
+  
+  if (filter.range === -1) {
+    // Vencidos: Hasta ayer
+    targetDate.setDate(targetDate.getDate() - 1);
+    const yesterdayStr = targetDate.toISOString().split('T')[0];
+
+    emit("update:startDate", null);
+    emit("update:endDate", yesterdayStr);
+
+    return;
+  }
+
+  if (filter.range === 0) {
+    targetDate.setMonth(targetDate.getMonth() + 1);
+    targetDate.setDate(0);
+  } else {
+    targetDate.setDate(targetDate.getDate() + filter.range);
+  }
+
+  const targetStr = targetDate.toISOString().split('T')[0];
+  
+  emit("update:startDate", today);
+  emit("update:endDate", targetStr);
+};
+</script><template>
+  <VCard class="mb-6 overflow-visible" variant="flat" border>
+    <VCardText class="pa-3">
+      <!-- Fila Principal: Búsqueda y Filtros Rápidos -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="4" lg="4">
           <AppTextField
             v-model="searchQueryModel"
             placeholder="Buscar por Producto, Lote..."
+            prepend-inner-icon="tabler-search"
             clearable
+            density="compact"
+            persistent-placeholder
+            hide-details
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="2">
-          <VAutocomplete
-            v-model="laboratoryModel"
-            :items="props.laboratories"
-            :loading="props.loading"
-            label="Laboratorio"
-            placeholder="Buscar un laboratorio"
-            item-title="name"
-            item-value="id"
-            clearable
+        <!-- Filtros Rápidos (Chips) -->
+        <VCol cols="auto" class="d-none d-lg-flex align-center gap-1">
+          <VChip
+            v-for="filter in quickFilters"
+            :key="filter.label"
+            :color="isFilterActive(filter) ? 'primary' : 'secondary'"
+            :variant="isFilterActive(filter) ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-bold"
+            @click="applyQuickFilter(filter)"
+          >
+            {{ filter.label }}
+          </VChip>
+        </VCol>
+
+        <!-- Búsqueda Estricta -->
+        <VCol cols="auto" class="d-none d-sm-flex">
+          <VCheckbox
+            v-model="isStrictSearchModel"
+            label="Estricta"
+            color="primary"
+            density="compact"
+            hide-details
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            v-model="startDateModel"
-            placeholder="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-          />
-        </VCol>
+        <VSpacer />
 
-        <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            v-model="endDateModel"
-            placeholder="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-          />
-        </VCol>
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="isExpanded ? 'primary' : 'secondary'"
+            size="38"
+            @click="isExpanded = !isExpanded"
+          >
+            <VIcon :icon="isExpanded ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+          </VBtn>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Limpiar Filtros -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="emit('clear')"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
-    </VCardText>
 
-    <VDivider />
+      <!-- Panel de Filtros Colapsable -->
+      <VExpandTransition>
+        <div v-show="isExpanded">
+          <VDivider class="my-3 border-opacity-10" />
+          
+          <VRow dense>
+            <VCol cols="12" sm="6" md="4">
+              <VAutocomplete
+                v-model="laboratoryModel"
+                :items="props.laboratories"
+                :loading="props.loading"
+                placeholder="Laboratorio"
+                item-title="name"
+                item-value="id"
+                clearable
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-flask"
+              />
+            </VCol>
 
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
+            <VCol cols="12" sm="6" md="4">
+              <AppDateTimePicker
+                v-model="startDateModel"
+                placeholder="Vence Desde"
+                clearable
+                density="compact"
+                hide-details
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
+              />
+            </VCol>
 
-      <div class="d-flex align-center gap-2">
-        <VCheckbox
-          v-model="isStrictSearchModel"
-          color="primary"
-          class="me-2"
-        >
-          <template #label>
-            <div class="d-flex align-center">
-              <VIcon icon="tabler-search" class="me-2" size="20" />
-              <span class="text-subtitle-1 font-weight-medium">
-                ¿Búsqueda Estricta?
+            <VCol cols="12" sm="6" md="4">
+              <AppDateTimePicker
+                v-model="endDateModel"
+                placeholder="Vence Hasta"
+                clearable
+                density="compact"
+                hide-details
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
+              />
+            </VCol>
+          </VRow>
+        </div>
+      </VExpandTransition>
+
+      <!-- Barra de Acciones de Selección -->
+      <VExpandTransition>
+        <div v-if="hasSelectedLots">
+          <VDivider class="my-3 border-opacity-10" />
+          <div class="d-flex align-center justify-space-between bg-error-lighten-5 pa-2 rounded">
+            <div class="d-flex align-center gap-2">
+              <VIcon icon="tabler-alert-circle" color="error" size="20" />
+              <span class="text-caption font-weight-black text-error">
+                {{ props.selectedLots.length }} SELECCIONADOS
               </span>
             </div>
-          </template>
-        </VCheckbox>
 
-        <VChip
-          v-if="isStrictSearchModel"
-          color="primary"
-          size="small"
-          class="ms-2"
-        >
-          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
-          Modo Estricto Activo
-        </VChip>
-      </div>
-
-      <VSpacer />
-
-      <!-- Botones de acciones para productos seleccionados -->
-      <div v-if="hasSelectedLots" class="d-flex align-center gap-x-3">
-        <div class="text-body-2 text-medium-emphasis">
-          <span class="font-weight-medium">{{ props.selectedLots.length }}</span>
-          lote(s) seleccionado(s)
-        </div>
-
-        <VTooltip text="Caducar Seleccionados" location="top">
-          <template #activator="{ props: tooltipProps }">
-            <IconBtn
-              v-bind="tooltipProps"
+            <VBtn
               color="error"
+              variant="flat"
+              size="small"
+              prepend-icon="tabler-calendar-off"
               @click="emit('expire-selected')"
             >
-              <VIcon icon="tabler-calendar-off" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-      </div>
-    </VCardActions>
+              MARCAR CADUCADOS
+            </VBtn>
+          </div>
+        </div>
+      </VExpandTransition>
+    </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.bg-error-lighten-5 {
+  background-color: rgba(var(--v-theme-error), 0.08) !important;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-4 { gap: 16px !important; }
+</style>

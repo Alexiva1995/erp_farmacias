@@ -98,4 +98,27 @@ class PayslipController extends Controller
 
         return $pdf->download($filename);
     }
+
+    public function downloadBulkPdf(Request $request)
+    {
+        $year = $request->input('year', 2025);
+        $type = in_array($request->input('type', 'legal'), ['full', 'legal']) ? $request->input('type', 'legal') : 'legal';
+        
+        $payslips = Payslip::whereYear('payslip_date', $year)
+            ->orderBy('payslip_date', 'asc')
+            ->get();
+
+        $allData = [];
+        foreach ($payslips as $payslip) {
+            $allData[] = $this->payslipServices->getData($payslip, $type);
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.payslip_bulk', [
+            'payrolls' => $allData,
+        ])->setPaper('letter', 'landscape');
+
+        $filename = "nominas_consolidadas_{$year}.pdf";
+
+        return $pdf->download($filename);
+    }
 }

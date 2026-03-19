@@ -10,6 +10,7 @@ import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
 import ExpirationsFilters from "@/components/ExpirationsFilters.vue";
 import ExpirationsTable from "@/components/ExpirationsTable.vue";
 import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
+import { formatMonth, formatPrice as formatCurrency } from "@/utils/formatters";
 
 const lots = ref([]);
 const totalLots = ref(0);
@@ -541,22 +542,8 @@ onMounted(() => {
   fetchLaboratories();
 });
 
-const formatMonth = (monthStr) => {
-  if (!monthStr) return "";
-  const [year, month] = monthStr.split("-");
-  return new Date(year, month - 1).toLocaleString("es-CO", {
-    month: "long",
-    year: "numeric",
-  });
-};
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 2,
-  }).format(value);
-};
+// Las funciones de formateo ahora se manejan centralizadamente en @/utils/formatters.js
+// y son utilizadas directamente por los componentes ExpirationsTable y ExpirationsFilters.
 </script>
 
 <template>
@@ -604,20 +591,33 @@ const formatCurrency = (value) => {
 
     <div>
       <VCard>
-        <VCardTitle class="d-flex align-center justify-space-between">
-          <h4 class="text-h4 text-capitalize">
-            {{ viewTitle }}
-          </h4>
+        <VCardTitle class="d-flex align-center justify-space-between pa-4">
+          <div class="d-flex align-center gap-x-3">
+            <VBtn
+              v-if="isDetailViewVisible"
+              icon
+              variant="tonal"
+              color="primary"
+              size="small"
+              @click="showSummaryView"
+            >
+              <VIcon icon="tabler-arrow-left" />
+            </VBtn>
+            <h4 class="text-h4 text-capitalize mb-0">
+              {{ viewTitle }}
+            </h4>
+          </div>
+          
           <VTooltip text="Volver a Resúmenes" location="top">
             <template #activator="{ props: tooltipProps }">
               <IconBtn
                 v-bind="tooltipProps"
                 v-if="isDetailViewVisible"
                 color="primary"
-                size="large"
+                class="d-none d-md-flex"
                 @click="showSummaryView"
               >
-                <VIcon icon="tabler-arrow-left" size="24" />
+                <VIcon icon="tabler-arrow-left" />
               </IconBtn>
             </template>
           </VTooltip>
@@ -625,94 +625,170 @@ const formatCurrency = (value) => {
 
         <VCardText class="pa-0">
           <div v-if="!isDetailViewVisible">
-            <VDataTable
-              v-if="monthlySummaries.length > 0"
-              :headers="headersSummaries"
-              :items="monthlySummaries"
-              :loading="loadingReports"
-              item-value="month"
-              class="text-no-wrap"
-            >
-              <template #item.month="{ item }">
-                <span class="text-capitalize font-weight-medium">{{
-                  formatMonth(item.month)
-                }}</span>
-              </template>
-              <template #item.total_cost="{ item }">
-                <span class="font-weight-medium">{{
-                  formatCurrency(item.total_cost)
-                }}</span>
-              </template>
-              <template #item.total_products="{ item }">
-                <span class="font-weight-medium">{{
-                  item.total_products
-                }}</span>
-              </template>
-              <template #item.actions="{ item }">
-                <VTooltip text="Ver Productos del Mes">
-                  <template #activator="{ props: tooltipProps }">
-                    <IconBtn
-                      v-bind="tooltipProps"
-                      color="info"
-                      @click="showDetailView(item.month)"
-                    >
-                      <VIcon icon="tabler-eye" />
-                    </IconBtn>
-                  </template>
-                </VTooltip>
-                <VTooltip text="Imprimir Carta(s) de Donación">
-                  <template #activator="{ props: tooltipProps }">
-                    <div v-bind="tooltipProps" class="d-inline-block">
+            <!-- Vista de Escritorio (Tabla) -->
+            <div class="d-none d-md-block">
+              <VDataTable
+                v-if="monthlySummaries.length > 0"
+                :headers="headersSummaries"
+                :items="monthlySummaries"
+                :loading="loadingReports"
+                item-value="month"
+                class="text-no-wrap"
+              >
+                <template #item.month="{ item }">
+                  <span class="text-capitalize font-weight-medium">{{
+                    formatMonth(item.month)
+                  }}</span>
+                </template>
+                <template #item.total_cost="{ item }">
+                  <span class="font-weight-medium">{{
+                    formatCurrency(item.total_cost)
+                  }}</span>
+                </template>
+                <template #item.total_products="{ item }">
+                  <span class="font-weight-medium">{{
+                    item.total_products
+                  }}</span>
+                </template>
+                <template #item.actions="{ item }">
+                  <VTooltip text="Ver Productos del Mes">
+                    <template #activator="{ props: tooltipProps }">
                       <IconBtn
-                        color="primary"
-                        :disabled="item.donation_count === 0"
-                        @click="handlePrintDonation(item.month)"
+                        v-bind="tooltipProps"
+                        color="info"
+                        @click="showDetailView(item.month)"
                       >
-                        <VIcon icon="tabler-printer" />
+                        <VIcon icon="tabler-eye" />
                       </IconBtn>
-                    </div>
-                  </template>
-                </VTooltip>
-                <VTooltip text="Reajustar Precios">
-                  <template #activator="{ props: tooltipProps }">
-                    <div
-                      v-bind="tooltipProps"
-                      class="d-inline-block"
-                      style="width: 36px; height: 36px; text-align: center"
-                    >
-                      <VProgressCircular
-                        v-if="loadingAdjustmentForMonth === item.month"
-                        indeterminate
-                        size="20"
-                        width="2"
-                        color="warning"
-                        class="mt-2"
-                      />
-
-                      <IconBtn
-                        v-else
-                        color="warning"
-                        :disabled="item.has_price_adjustment"
-                        @click="handlePriceAdjustmentExpired(item.month)"
+                    </template>
+                  </VTooltip>
+                  <VTooltip text="Imprimir Carta(s) de Donación">
+                    <template #activator="{ props: tooltipProps }">
+                      <div v-bind="tooltipProps" class="d-inline-block">
+                        <IconBtn
+                          color="primary"
+                          :disabled="item.donation_count === 0"
+                          @click="handlePrintDonation(item.month)"
+                        >
+                          <VIcon icon="tabler-printer" />
+                        </IconBtn>
+                      </div>
+                    </template>
+                  </VTooltip>
+                  <VTooltip text="Reajustar Precios">
+                    <template #activator="{ props: tooltipProps }">
+                      <div
+                        v-bind="tooltipProps"
+                        class="d-inline-block"
+                        style="width: 36px; height: 36px; text-align: center"
                       >
-                        <VIcon
-                          :icon="
-                            item.has_price_adjustment
-                              ? 'tabler-currency-dollar-off'
-                              : 'tabler-currency-dollar'
-                          "
-                          :class="
-                            item.has_price_adjustment ? 'text-disabled' : ''
-                          "
+                        <VProgressCircular
+                          v-if="loadingAdjustmentForMonth === item.month"
+                          indeterminate
+                          size="20"
+                          width="2"
+                          color="warning"
+                          class="mt-2"
                         />
-                      </IconBtn>
-                    </div>
-                  </template>
-                </VTooltip>
-              </template>
-            </VDataTable>
 
-            <div v-else-if="!loadingReports" class="pa-6">
+                        <IconBtn
+                          v-else
+                          color="warning"
+                          :disabled="item.has_price_adjustment"
+                          @click="handlePriceAdjustmentExpired(item.month)"
+                        >
+                          <VIcon
+                            :icon="
+                              item.has_price_adjustment
+                                ? 'tabler-currency-dollar-off'
+                                : 'tabler-currency-dollar'
+                            "
+                            :class="
+                              item.has_price_adjustment ? 'text-disabled' : ''
+                            "
+                          />
+                        </IconBtn>
+                      </div>
+                    </template>
+                  </VTooltip>
+                </template>
+              </VDataTable>
+            </div>
+
+            <!-- Vista de Móvil (Tarjetas de Resumen) -->
+            <div class="d-block d-md-none pa-4">
+              <div v-if="monthlySummaries.length > 0" class="d-flex flex-column gap-3">
+                <VCard
+                  v-for="item in monthlySummaries"
+                  :key="item.month"
+                  variant="outlined"
+                  class="bg-var-theme-background border-dashed-thin"
+                  style="border-radius: 12px !important;"
+                >
+                  <div class="pa-4">
+                    <div class="d-flex justify-space-between align-center mb-4">
+                      <h4 class="text-h5 text-capitalize text-primary font-weight-black">
+                        {{ formatMonth(item.month) }}
+                      </h4>
+                      <VChip color="error" size="small" label font-weight-bold>
+                        {{ item.total_products }} PRODS
+                      </VChip>
+                    </div>
+
+                    <div class="d-flex justify-space-between align-center py-2 px-3 rounded bg-white shadow-sm mb-4">
+                      <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Pérdida Total</span>
+                      <span class="text-lg font-weight-black text-error">
+                        {{ formatCurrency(item.total_cost) }}
+                      </span>
+                    </div>
+
+                    <VRow no-gutters class="border-t">
+                      <VCol cols="4" class="border-e">
+                        <VBtn
+                          block
+                          variant="text"
+                          color="info"
+                          height="48"
+                          class="rounded-0"
+                          @click="showDetailView(item.month)"
+                        >
+                          <VIcon icon="tabler-eye" size="22" />
+                        </VBtn>
+                      </VCol>
+                      <VCol cols="4" class="border-e">
+                        <VBtn
+                          block
+                          variant="text"
+                          color="primary"
+                          height="48"
+                          class="rounded-0"
+                          :disabled="item.donation_count === 0"
+                          @click="handlePrintDonation(item.month)"
+                        >
+                          <VIcon icon="tabler-printer" size="22" />
+                        </VBtn>
+                      </VCol>
+                      <VCol cols="4">
+                        <VBtn
+                          block
+                          variant="text"
+                          color="warning"
+                          height="48"
+                          class="rounded-0"
+                          :disabled="item.has_price_adjustment"
+                          :loading="loadingAdjustmentForMonth === item.month"
+                          @click="handlePriceAdjustmentExpired(item.month)"
+                        >
+                          <VIcon :icon="item.has_price_adjustment ? 'tabler-currency-dollar-off' : 'tabler-currency-dollar'" size="22" />
+                        </VBtn>
+                      </VCol>
+                    </VRow>
+                  </div>
+                </VCard>
+              </div>
+            </div>
+
+            <div v-if="monthlySummaries.length === 0 && !loadingReports" class="pa-6">
               <VAlert type="info" variant="tonal">
                 No se encontraron registros de lotes caducados.
               </VAlert>

@@ -84,14 +84,25 @@ const fetchSelectOptions = async () => {
     laboratories.value = labResponse.data || [];
 
     if (usersResponse.data && Array.isArray(usersResponse.data)) {
-      users.value = usersResponse.data.map(user => ({
-        ...user,
-        display_name: user.employee_name && user.employee_last_name
-          ? `${user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()} ${user.employee_last_name.charAt(0).toUpperCase() + user.employee_last_name.slice(1).toLowerCase()}`
-          : user.employee_name
-            ? user.employee_name.charAt(0).toUpperCase() + user.employee_name.slice(1).toLowerCase()
-            : user.username || user.email || `Usuario ${user.id}`
-      }));
+      users.value = usersResponse.data.map(user => {
+        const firstName = user.employee_name || '';
+        const lastName = user.employee_last_name || '';
+        
+        let displayName = '';
+        if (firstName || lastName) {
+          displayName = `${firstName} ${lastName}`.trim()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+        } else {
+          displayName = user.username || user.email || `Usuario ${user.id}`;
+        }
+
+        return {
+          ...user,
+          display_name: displayName
+        };
+      });
     } else {
       users.value = [];
     }

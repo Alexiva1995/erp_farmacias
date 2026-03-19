@@ -97,6 +97,7 @@ const isFormValid = computed(() => {
     persistent
     :scrollable="true"
     content-class="d-flex"
+    :fullscreen="$vuetify.display.xs"
   >
     <VCard class="d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-6">

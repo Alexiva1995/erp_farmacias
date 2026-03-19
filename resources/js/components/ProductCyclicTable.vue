@@ -1,5 +1,4 @@
 <script setup>
-
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -15,123 +14,254 @@ const emits = defineEmits([
 ]);
 
 const headers = [
-  { title: "#", key: "product_id", align: "center", width: "78px" },
-  { title: "Producto", key: "product.name", width: "300px" },
-  { title: "Stock Actual", key: "system_quantity", align: "center" },
-  { title: "Cant. Contada", key: "counted_quantity", align: "center" },
-  {
-    title: "Diferencia",
-    key: "discrepancy",
-    sortable: false,
-    align: "center",
-  },
-  { title: "Usuario", key: "user.email" },
-  { title: "Accion", key: "actions", sortable: false, align: "center" },
+  { title: "ID", key: "product_id", align: "center", width: "80px" },
+  { title: "Producto", key: "product.name", width: "350px" },
+  { title: "Stock Sistema", key: "system_quantity", align: "center" },
+  { title: "Contado", key: "counted_quantity", align: "center" },
+  { title: "Diferencia", key: "discrepancy", sortable: false, align: "center" },
+  { title: "Usuario", key: "user.username" },
+  { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
 
 const handleVerifyProduct = (product) => {
   emits("verify-product", product);
 };
+
+const getDiscrepancyColor = (val) => {
+  if (val === 0 || val === null) return 'secondary';
+  return val > 0 ? 'success' : 'error';
+};
+
+const handleMobilePageChange = (newPage) => {
+  emits('update:options', {
+    page: newPage,
+    itemsPerPage: props.itemsPerPage,
+    sortBy: [],
+  });
+};
 </script>
 
 <template>
-  <VCard>
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.products"
-      :items-length="props.totalProduct"
-      :loading="props.loading"
-      class="text-no-wrap"
-      @update:options="$emit('update:options', $event)"
-      item-value="id"
-      hover
-    >
-      <template #item.product_id="{ item }">
-        <span class="font-weight-medium text-high-emphasis">
-          {{ item.productId ?? item.product_id ?? "—" }}
-        </span>
-      </template>
+  <VCard variant="flat" border>
+    <VCardTitle class="d-flex align-center py-3 px-4">
+      <VIcon icon="tabler-package-search" class="me-2 text-primary" />
+      <span class="text-h6 font-weight-black uppercase">Productos en Conteo</span>
+      <VSpacer />
+      <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+        {{ props.totalProduct }} TOTAL
+      </VChip>
+    </VCardTitle>
 
-      <template #item.product.name="{ item }">
-        <div class="d-flex align-start gap-x-4" style=" inline-size: 100%;max-inline-size: 300px;">
-          <VAvatar
-            v-if="item.product?.photo_url"
-            size="38"
-            variant="tonal"
-            rounded
-            :image="item.product.photo_url"
-            style="flex-shrink: 0;"
-          />
-          <div class="d-flex flex-column" style=" flex: 1;min-inline-size: 0; overflow-wrap: break-word; word-wrap: break-word;">
-            <span
-              class="text-body-1 font-weight-medium text-high-emphasis"
-              :class="{
-                'text-primary': item.product.psychotropic == 1,
-                'text-warning font-weight-bold': item.product.psychotropic == 1 || item.product.psychotropic === true
-              }"
-              style=" line-height: 1.4; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
-            >
-              {{ item.product.name?.toUpperCase() || "N/A" }}
-              <span v-if="item.product.iva == 1"> (G)</span>
-              <span v-if="item.product.is_colombian_origin == 1"> (COL)</span>
-            </span>
-            <span
-              v-if="item.product.laboratory?.name"
-              class="text-sm text-disabled d-flex align-center gap-1"
-              style=" line-height: 1.3; overflow-wrap: break-word; white-space: normal;word-wrap: break-word;"
-            >
-              <VIcon icon="tabler-building" size="14" />
-              {{ item.product.laboratory.name }}
-            </span>
+    <!-- Vista de Escritorio -->
+    <div class="d-none d-md-block">
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="headers"
+        :items="props.products"
+        :items-length="props.totalProduct"
+        :loading="props.loading"
+        class="text-no-wrap"
+        @update:options="$emit('update:options', $event)"
+        item-value="id"
+        hover
+      >
+        <template #item.product_id="{ item }">
+          <span class="font-weight-black text-primary">
+            {{ item.productId ?? item.product_id ?? "—" }}
+          </span>
+        </template>
+
+        <template #item.product.name="{ item }">
+          <div class="d-flex align-center gap-x-4 py-2">
+            <div class="d-flex flex-column text-normal-white">
+              <span
+                class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase"
+                :class="{ 'text-warning': item.product.psychotropic }"
+              >
+                {{ item.product.name.toUpperCase() }}
+                <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
+              </span>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.product.active_ingredient }}</span>
+            </div>
           </div>
-        </div>
-      </template>
+        </template>
 
-      <template #item.discrepancy="{ item }">
-        <span
-          :class="{
-            'text-success': item.discrepancy > 0,
-            'text-error': item.discrepancy < 0,
-          }"
-          class="font-weight-medium"
-        >
-          {{ item.discrepancy > 0 ? "+" : "" }}{{ item.discrepancy }}
-        </span>
-      </template>
+        <template #item.discrepancy="{ item }">
+          <VChip
+            :color="getDiscrepancyColor(item.discrepancy)"
+            size="x-small"
+            variant="flat"
+            class="font-weight-black px-2 shadow-sm"
+          >
+            {{ item.discrepancy > 0 ? "+" : "" }}{{ item.discrepancy }}
+          </VChip>
+        </template>
 
-      <template #item.actions="{ item }">
-        <div class="d-flex justify-center">
-          <IconBtn @click="handleVerifyProduct(item)" size="small" color="primary">
+        <template #item.user.username="{ item }">
+          <div class="d-flex align-center gap-2">
+            <VAvatar size="24" color="primary" variant="tonal">
+              <span class="text-super-xs font-weight-black">{{ item.user?.username?.charAt(0).toUpperCase() }}</span>
+            </VAvatar>
+            <span class="text-caption font-weight-bold text-medium-emphasis">{{ item.user?.username || '—' }}</span>
+          </div>
+        </template>
+
+        <template #item.actions="{ item }">
+          <IconBtn @click="handleVerifyProduct(item)" size="small" color="primary" variant="tonal" class="rounded">
             <VIcon icon="tabler-clipboard-check" />
             <VTooltip activator="parent" location="top">Verificar conteo</VTooltip>
           </IconBtn>
-        </div>
-      </template>
-    </VDataTableServer>
+        </template>
+      </VDataTableServer>
+    </div>
+
+    <!-- Vista de Móvil -->
+    <div class="d-block d-md-none pa-2 bg-light">
+      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
+      
+      <div v-if="props.products.length === 0 && !props.loading" class="text-center py-8 text-disabled">
+        No se encontraron productos en conteo.
+      </div>
+
+      <div class="d-flex flex-column gap-3">
+        <VCard
+          v-for="item in props.products"
+          :key="item.id"
+          variant="flat"
+          class="border mb-1 overflow-hidden premium-card"
+        >
+          <div class="pa-4">
+            <div class="d-flex gap-3 align-start mb-3">
+              <div class="flex-grow-1 min-width-0">
+                <div class="d-flex align-center justify-space-between mb-1">
+                  <span class="text-primary font-weight-black text-xs">
+                    {{ item.productId ?? item.product_id }}
+                  </span>
+                  <VChip
+                    :color="getDiscrepancyColor(item.discrepancy)"
+                    size="x-small"
+                    variant="flat"
+                    class="font-weight-black"
+                  >
+                    DIF: {{ item.discrepancy > 0 ? "+" : "" }}{{ item.discrepancy }}
+                  </VChip>
+                </div>
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate mb-1">
+                  {{ item.product?.name }}
+                </h3>
+                <div class="text-super-xs text-disabled font-weight-bold uppercase truncate">
+                  {{ item.product?.active_ingredient }}
+                </div>
+              </div>
+            </div>
+
+            <VDivider class="my-3 border-opacity-10" />
+
+            <div class="d-grid mobile-stock-grid gap-3 mb-3">
+              <div class="stat-box">
+                <span class="label">Sistema</span>
+                <span class="value text-medium-emphasis">{{ item.system_quantity }} <small>UNDS</small></span>
+              </div>
+              <div class="stat-box text-center">
+                <span class="label">Contado</span>
+                <span class="value text-primary font-weight-black">{{ item.counted_quantity }} <small>UNDS</small></span>
+              </div>
+              <div class="stat-box text-right">
+                <span class="label">Operador</span>
+                <span class="value text-caption truncate">{{ item.user?.username || '—' }}</span>
+              </div>
+            </div>
+
+            <VBtn
+              block
+              color="primary"
+              variant="tonal"
+              size="small"
+              height="36"
+              class="rounded-lg shadow-sm"
+              @click="handleVerifyProduct(item)"
+            >
+              <VIcon icon="tabler-clipboard-check" />
+              <VTooltip activator="parent" location="top">VERIFICAR CONTEO</VTooltip>
+            </VBtn>
+          </div>
+        </VCard>
+      </div>
+
+      <div class="d-flex justify-center mt-4 pb-2">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
+          :total-visible="3"
+          density="compact"
+          size="small"
+          @update:model-value="handleMobilePageChange"
+        />
+      </div>
+    </div>
   </VCard>
 </template>
 
 <style scoped>
-::deep(.v-data-table td:nth-child(2)) {
-  overflow: hidden !important;
-  inline-size: 300px !important;
-  max-inline-size: 300px !important;
-  overflow-wrap: break-word !important;
-  padding-block: 12px !important;
-  vertical-align: top !important;
-  white-space: normal !important;
-  word-wrap: break-word !important;
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 
-::deep(.v-data-table th:nth-child(2)) {
-  inline-size: 300px !important;
-  max-inline-size: 300px !important;
-  white-space: normal !important;
+.bg-light {
+  background-color: #f8fafc !important;
 }
 
-::deep(.v-data-table__wrapper) {
-  overflow-x: auto;
+.premium-card {
+  border-radius: 12px !important;
+  transition: transform 0.2s ease;
+}
+
+.premium-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-stock-grid {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.stat-box .label {
+  display: block;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-size: 0.6rem;
+  font-weight: 900;
+  margin-block-end: 2px;
+  text-transform: uppercase;
+}
+
+.stat-box .value {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-normal-white {
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.leading.v-list-item {
+  min-block-size: 32px !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.gap-3 {
+  gap: 12px !important;
 }
 </style>

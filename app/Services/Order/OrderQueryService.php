@@ -507,29 +507,23 @@ class OrderQueryService
 
         switch ($sortBy) {
             case 'laboratory.name':
+            case 'laboratory_name':
                 return $query->orderBy('laboratory_name', $orderBy);
             case 'valid_stock':
             case 'lots_sum_quantity':
             case 'valid_stock_sum':
                 return $query->orderBy('valid_stock_sum', $orderBy);
             case 'name':
-                return $query->orderBy($sortBy, $orderBy);
+                return $query->orderBy('name', $orderBy);
             case 'sale_price':
             case 'price':
+            case 'unit_price_usd':
                 return $query->orderBy('sale_price', $orderBy);
             case 'sales_average':
                 return $query->orderBy('sales_average', $orderBy);
             case 'next_expiration':
                 return $query->orderBy('next_expiration', $orderBy);
-                /**
-                 * Nota: Para los packs, este valor será NULL o muy lejano.
-                 * El ordenamiento funcionará basándose en el alias que definas en el select
-                 * si decides agregar el vencimiento al UNION.
-                 */
-                return $query->orderBy('name', $orderBy); // Opcional: fallback por nombre
-
             default:
-                // Intentamos ordenar por la columna directa si existe en el resultado unificado
                 return $query->orderBy('name', 'asc');
         }
     }

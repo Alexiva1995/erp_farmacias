@@ -18,6 +18,7 @@ const orderBy = ref();
 const startDate = ref(null);
 const endDate = ref(null);
 const searchQuery = ref("");
+const movementType = ref(null);
 
 const fetchSales = async () => {
   loading.value = true;
@@ -29,6 +30,7 @@ const fetchSales = async () => {
     orderBy: orderBy.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    movement_type: movementType.value,
   };
 
   Object.keys(params).forEach(
@@ -66,7 +68,7 @@ const fetchSales = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery, startDate, endDate],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, startDate, endDate, movementType],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSales(), 300);
@@ -74,7 +76,7 @@ watch(
   { deep: true }
 );
 
-watch([searchQuery, startDate, endDate], () => {
+watch([searchQuery, startDate, endDate, movementType], () => {
   page.value = 1;
 });
 
@@ -96,6 +98,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   startDate.value = null;
   endDate.value = null;
+  movementType.value = null;
 };
 
 const registeringBaseline = ref(false);
@@ -118,6 +121,7 @@ const handleExport = async (format) => {
     q: searchQuery.value,
     startDate: startDate.value,
     endDate: endDate.value,
+    movement_type: movementType.value,
     format: format,
   };
 
@@ -163,11 +167,9 @@ const handleExport = async (format) => {
       v-model:searchQuery="searchQuery"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
-      :show-baseline-button="isAdmin"
-      :baseline-loading="registeringBaseline"
+      v-model:selectedMovementType="movementType"
       @clear="handleClearFilters"
       @export="handleExport"
-      @register-baseline="handleRegisterBaseline"
     />
 
     <TraceabilityReportTable

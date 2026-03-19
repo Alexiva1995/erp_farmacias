@@ -11,7 +11,7 @@ const props = defineProps({
   endDate: [String, null],
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  days: [String, null],
+  days: [String, Number, null],
   stock: [String, null],
   isStrictSearch: { type: Boolean, default: false },
   tipoFiltracion: { type: String, default: "average" },
@@ -28,6 +28,8 @@ const emit = defineEmits([
   "update:isStrictSearch",
   "update:tipoFiltracion",
   "update:isColombian",
+  "update:stock",
+  "update:days",
   "clear",
   "add-product",
   "sort",
@@ -35,23 +37,25 @@ const emit = defineEmits([
   "export-excel",
 ]);
 
+const isAdvancedFiltersVisible = ref(false);
+
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
 ];
 
-const stock = [
+const stockOptionsList = [
   { title: "Exceso", value: "exceso" },
   { title: "Fallas", value: "fallas" },
-  { title: "All", value: "all" },
+  { title: "Todos", value: "all" },
 ];
 
 const diasVencimientos = [
-  { title: "7", value: 7 },
-  { title: "15", value: 15 },
-  { title: "30", value: 30 },
-  { title: "60", value: 60 },
-  { title: "90", value: 90 },
+  { title: "7 días", value: 7 },
+  { title: "15 días", value: 15 },
+  { title: "30 días", value: 30 },
+  { title: "60 días", value: 60 },
+  { title: "90 días", value: 90 },
 ];
 
 const tipoFiltracionOpcion = [
@@ -60,67 +64,8 @@ const tipoFiltracionOpcion = [
   { title: "Combinado", value: "combinado" },
 ];
 
-// const sortOptions = [
-//   {
-//     title: "Precio mayor",
-//     icon: "tabler-arrow-up",
-//     key: "sale_price",
-//     order: "desc",
-//   },
-//   {
-//     title: "Precio Menor",
-//     icon: "tabler-arrow-down",
-//     key: "sale_price",
-//     order: "asc",
-//   },
-//   {
-//     title: "Más Unidades",
-//     icon: "tabler-plus",
-//     key: "valid_stock",
-//     order: "desc",
-//   },
-//   {
-//     title: "Menos Unidades",
-//     icon: "tabler-minus",
-//     key: "valid_stock",
-//     order: "asc",
-//   },
-//   {
-//     title: "Fecha pronto a Vencer",
-//     icon: "tabler-calendar-time",
-//     key: "next_expiration",
-//     order: "asc",
-//   },
-//   {
-//     title: "Más Vendidos",
-//     icon: "tabler-trending-up",
-//     key: "most_sold",
-//     order: "desc",
-//   },
-// ];
-
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
-
-const selectedSort = ref(null);
-
-const getStorageKey = () =>
-  `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
-
-const saveSortFilter = (sortFilter) => {
-  try {
-    localStorage.setItem(getStorageKey(), JSON.stringify(sortFilter));
-  } catch (error) {
-    console.error("Error al guardar el filtro:", error);
-  }
-};
-
-const handleSortClick = (option) => {
-  const sortFilter = { key: option.key, order: option.order };
-  selectedSort.value = sortFilter;
-  saveSortFilter(sortFilter);
-  emit("sort", sortFilter);
-};
 
 const handleClear = () => {
   emit("clear");
@@ -128,200 +73,224 @@ const handleClear = () => {
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="2">
+  <VCard class="mb-6 overflow-visible" variant="flat" border>
+    <VCardText class="pa-3">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="4" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Producto, C. Activo..."
+            placeholder="ID, Producto, C. Activo..."
+            prepend-inner-icon="tabler-search"
             clearable
+            density="compact"
+            persistent-placeholder
+            hide-details
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <VAutocomplete
-            :model-value="props.selectedLaboratory"
-            :items="props.laboratories"
-            :loading="props.loading"
-            label="Laboratorio"
-            placeholder="Buscar un laboratorio"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedLaboratory', $event)"
+
+        <!-- Búsqueda Estricta (Ahora afuera) -->
+        <VCol cols="auto" class="d-none d-sm-flex">
+          <VCheckbox
+            :model-value="props.isStrictSearch"
+            label="Estricta"
+            color="primary"
+            density="compact"
+            hide-details
+            @update:model-value="emit('update:isStrictSearch', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="2">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            placeholder="Stock"
-            :items="stockOptions"
-            clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
-          />
-        </VCol>
+        <VSpacer />
 
-        <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            :model-value="props.startDate"
-            placeholder="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:startDate', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="3">
-          <AppDateTimePicker
-            :model-value="props.endDate"
-            placeholder="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:endDate', $event)"
-          />
-        </VCol>
-      </VRow>
-    </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VSelect
-        :model-value="props.stock"
-        label="Stock"
-        :items="stock"
-        clearable
-        style="max-inline-size: 150px;"
-        @update:model-value="emit('update:stock', $event)"
-      />
-
-      <VSelect
-        :model-value="props.days"
-        label="Días"
-        :items="diasVencimientos"
-        style="max-inline-size: 150px;"
-        @update:model-value="emit('update:days', $event)"
-      />
-
-      <VSelect
-        :model-value="props.tipoFiltracion"
-        label="Calcular Por"
-        :items="tipoFiltracionOpcion"
-        style="max-inline-size: 150px;"
-        @update:model-value="emit('update:tipoFiltracion', $event)"
-      />
-
-      <VCheckbox
-        :model-value="props.expProd"
-        @update:model-value="emit('update:expProd', $event)"
-        color="error"
-        class="me-2"
-      >
-        <template #label>
-          <div class="d-flex align-center">
-            <VIcon icon="tabler-calendar-time" class="me-2" size="20" />
-            <span class="text-subtitle-1 font-weight-medium">
-              ¿Próximo a Expirar?
-            </span>
-          </div>
-        </template>
-      </VCheckbox>
-
-      <VChip v-if="props.expProd" color="error" size="small" class="ms-2">
-        <VIcon icon="tabler-alert-triangle" size="14" class="me-1" />
-        Filtrando por Expiración
-      </VChip>
-
-      <VCheckbox
-        :model-value="props.isColombian"
-        @update:model-value="emit('update:isColombian', $event)"
-        color="info"
-        class="me-2"
-      >
-        <template #label>
-          <div class="d-flex align-center">
-            <VIcon icon="tabler-flag" class="me-2" size="20" />
-            <span class="text-subtitle-1 font-weight-medium">
-              COL
-            </span>
-          </div>
-        </template>
-      </VCheckbox>
-
-      <VChip v-if="props.isColombian" color="info" size="small" class="ms-2">
-        <VIcon icon="tabler-flag" size="14" class="me-1" />
-        COL
-      </VChip>
-
-      <div class="d-flex align-center gap-2">
-        <VCheckbox
-          :model-value="props.isStrictSearch"
-          @update:model-value="emit('update:isStrictSearch', $event)"
-          color="primary"
-          class="me-2"
-        >
-          <template #label>
-            <div class="d-flex align-center">
-              <VIcon icon="tabler-search" class="me-2" size="20" />
-              <span class="text-subtitle-1 font-weight-medium">
-                ¿Búsqueda Estricta?
-              </span>
-            </div>
-          </template>
-        </VCheckbox>
-
-        <VChip
-          v-if="props.isStrictSearch"
-          color="primary"
-          size="small"
-          class="ms-2"
-        >
-          <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
-          Modo Estricto Activo
-        </VChip>
-      </div>
-
-      <VSpacer />
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
-        Limpiar Filtros
-      </VBtn>
-      <VMenu>
-        <template #activator="{ props: menuProps }">
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
-            color="success"
-            variant="flat"
-            prepend-icon="tabler-upload"
-            v-bind="menuProps"
+            icon
+            variant="tonal"
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
+            @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
           >
-            Exportar
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
           </VBtn>
-        </template>
-        <VList>
-          <VListItem @click="emit('export-excel', 'xlsx')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
+
+          <!-- Exportar (Menú Icono) -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                color="success"
+                variant="tonal"
+                size="38"
+              >
+                <VIcon icon="tabler-file-export" />
+                <VTooltip activator="parent" location="top">Exportar Stock</VTooltip>
+              </VBtn>
             </template>
-            <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem>
-          <VListItem @click="emit('export-pdf')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-pdf" class="me-2" />
-            </template>
-            <VListItemTitle>PDF</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VMenu>
-    </VCardActions>
+            <VList density="compact">
+              <VListItem @click="emit('export-excel', 'xlsx')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-csv" size="18" color="success" />
+                </template>
+                <VListItemTitle>Excel</VListItemTitle>
+              </VListItem>
+              <VListItem @click="emit('export-pdf')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-pdf" size="18" color="error" />
+                </template>
+                <VListItemTitle>PDF</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Limpiar Filtros (Solo Icono) -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="handleClear"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
+      </VRow>
+
+      <!-- Panel de Filtros Colapsable -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VDivider class="my-3 border-opacity-10" />
+          
+          <VRow dense class="mb-2">
+            <VCol cols="12" sm="6" md="3">
+              <VAutocomplete
+                :model-value="props.selectedLaboratory"
+                :items="props.laboratories"
+                :loading="props.loading"
+                placeholder="Laboratorio"
+                item-title="name"
+                item-value="id"
+                clearable
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-flask"
+                @update:model-value="emit('update:selectedLaboratory', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <VSelect
+                :model-value="props.stockStatusFilter"
+                placeholder="Estado Stock"
+                :items="stockOptions"
+                clearable
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-package"
+                @update:model-value="emit('update:stockStatusFilter', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                :model-value="props.startDate"
+                placeholder="Fecha Inicial"
+                clearable
+                density="compact"
+                hide-details
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
+                @update:model-value="emit('update:startDate', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <AppDateTimePicker
+                :model-value="props.endDate"
+                placeholder="Fecha Final"
+                clearable
+                density="compact"
+                hide-details
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                prepend-inner-icon="tabler-calendar-event"
+                @update:model-value="emit('update:endDate', $event)"
+              />
+            </VCol>
+          </VRow>
+
+          <VRow dense align="center">
+            <VCol cols="12" sm="6" md="2">
+              <VSelect
+                :model-value="props.stock"
+                placeholder="Nivel Stock"
+                :items="stockOptionsList"
+                clearable
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-chart-bar"
+                @update:model-value="emit('update:stock', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="2">
+              <VSelect
+                :model-value="props.days"
+                placeholder="Días Proyección"
+                :items="diasVencimientos"
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-clock"
+                @update:model-value="emit('update:days', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="2">
+              <VSelect
+                :model-value="props.tipoFiltracion"
+                placeholder="Cálculo Por"
+                :items="tipoFiltracionOpcion"
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-calculator"
+                @update:model-value="emit('update:tipoFiltracion', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" md="6" class="d-flex flex-wrap align-center gap-x-3 ps-4">
+              <VCheckbox
+                :model-value="props.expProd"
+                label="Próximos a Expirar"
+                color="error"
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:expProd', $event)"
+              />
+              <VCheckbox
+                :model-value="props.isColombian"
+                label="Solo COL"
+                color="info"
+                density="compact"
+                hide-details
+                @update:model-value="emit('update:isColombian', $event)"
+              />
+            </VCol>
+          </VRow>
+        </div>
+      </VExpandTransition>
+    </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-x-4 { column-gap: 16px; }
+</style>

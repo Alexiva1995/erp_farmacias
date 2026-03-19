@@ -25,7 +25,7 @@ const locationsList = ref([]);
 const loadingLocations = ref(false);
 
 const fetchLocations = async () => {
-  loadingLocations.ref = true;
+  loadingLocations.value = true;
   try {
     const response = await axios.get("/locations");
     locationsList.value = response.data;
@@ -84,7 +84,7 @@ const saveInlineEdit = async (lot) => {
 
   try {
     emit("update-lot", {
-      lot_id: lot.lot_id,
+      lot_id: lot.id,
       location: editingLocation.value.trim(),
     });
   } catch (err) {
@@ -93,7 +93,7 @@ const saveInlineEdit = async (lot) => {
 };
 
 const startEdit = (lot) => {
-  editingLotId.value = lot.lot_id;
+  editingLotId.value = lot.id;
   editingLocation.value = lot.location || "";
   currentEditingLot.value = lot;
   searchInput.value = "";
@@ -173,7 +173,7 @@ const handleLocationSearch = (search) => {
         </template>
 
         <template #item.location="{ item }">
-          <template v-if="editingLotId === item.lot_id">
+          <template v-if="editingLotId === item.id">
             <VAutocomplete
               v-model="editingLocation"
               :items="locationsList"
@@ -188,9 +188,9 @@ const handleLocationSearch = (search) => {
               clearable
               @keydown.enter.prevent="saveInlineEdit(item)"
               autofocus
-              :error="props.lotWithError === item.lot_id"
+              :error="props.lotWithError === item.id"
               :error-messages="
-                props.lotWithError === item.lot_id
+                props.lotWithError === item.id
                   ? props.errorMessage || 'Error al asignar ubicación'
                   : ''
               "
@@ -204,7 +204,7 @@ const handleLocationSearch = (search) => {
 
         <template #item.actions="{ item }">
           <div class="d-flex gap-2">
-            <template v-if="editingLotId === item.lot_id">
+            <template v-if="editingLotId === item.id">
               <VBtn
                 icon="tabler-check"
                 size="small"
@@ -232,7 +232,7 @@ const handleLocationSearch = (search) => {
       <div class="pa-2">
         <VCard
           v-for="item in lots"
-          :key="item.lot_id"
+          :key="item.id"
           variant="flat"
           class="lot-mobile-card border mb-2 overflow-hidden"
         >
@@ -277,7 +277,7 @@ const handleLocationSearch = (search) => {
 
             <div class="bg-var-theme-background pa-2 rounded mt-2 text-center">
               <!-- Edit Mode inside Card -->
-              <div v-if="editingLotId === item.lot_id">
+              <div v-if="editingLotId === item.id">
                 <VAutocomplete
                   v-model="editingLocation"
                   :items="locationsList"
@@ -308,7 +308,7 @@ const handleLocationSearch = (search) => {
           </div>
 
           <!-- Acciones Rectangulares Movil -->
-          <div v-if="editingLotId !== item.lot_id" class="d-flex border-t border-opacity-10">
+          <div v-if="editingLotId !== item.id" class="d-flex border-t border-opacity-10">
             <VBtn
               block
               color="warning"

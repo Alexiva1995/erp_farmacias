@@ -62,22 +62,30 @@ const updateTableOptions = (newOptions) => {
 
 const handleReturnProduct = async (items) => {
   const itemsArray = Array.isArray(items) ? items : [items];
+  loading.value = true;
   try {
-    for (const { product, order, returns_quantity } of itemsArray) {
-      await axios.post("/tpv/returns/product", {
+    const promises = itemsArray.map(({ product, order, returns_quantity }) =>
+      axios.post("/tpv/returns/product", {
         product,
         order,
         returns_quantity,
-      });
-    }
-    const msg = itemsArray.length === 1
-      ? `Devolución de ${itemsArray[0].product.name} registrada. Pendiente de aprobación del supervisor.`
-      : `${itemsArray.length} devoluciones registradas. Pendientes de aprobación del supervisor.`;
+      })
+    );
+
+    await Promise.all(promises);
+
+    const msg =
+      itemsArray.length === 1
+        ? `Devolución de ${itemsArray[0].product.name} registrada. Pendiente de aprobación del supervisor.`
+        : `${itemsArray.length} devoluciones registradas. Pendientes de aprobación del supervisor.`;
+
     toast.success(msg);
     handleClearSearch();
   } catch (error) {
     console.error("Error al devolver producto:", error.response?.data?.error);
     toast.error(error.response?.data?.error || "Error al devolver producto.");
+  } finally {
+    loading.value = false;
   }
 };
 
