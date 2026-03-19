@@ -198,20 +198,28 @@ const fetchEmployee = async () => {
 const fetchPerformanceData = async () => {
   try {
     const response = await axios.get(`rrhh/employees/${route.params.id}/performance`);
-    const rawData = response.data?.data;
-    const data = (rawData?.data && typeof rawData.data === 'object' && !Array.isArray(rawData.data)) ? rawData.data : rawData;
-    
+    // La API retorna ApiResponse::success que envuelve en data.data
+    const data = response.data?.data;
+
     if (data) {
-      performanceData.value = { 
-        ...performanceData.value, 
+      performanceData.value = {
+        ...performanceData.value,
         ...data,
         salesMetrics: {
           ...performanceData.value.salesMetrics,
-          ...(data.salesMetrics || {})
+          ...(data.salesMetrics || {}),
+          historical: {
+            ...performanceData.value.salesMetrics.historical,
+            ...(data.salesMetrics?.historical || {}),
+          },
+          currentMonth: {
+            ...performanceData.value.salesMetrics.currentMonth,
+            ...(data.salesMetrics?.currentMonth || {}),
+          },
         },
-        // Normalizar rankings desde multiples posibles estructuras de la API
-        topProducts: data.topProducts || data.rankings?.topProductsByUnits || [],
-        topLaboratories: data.topLaboratories || data.rankings?.topLabsByUnits || [],
+        // La API retorna data.rankings.topProductsByUnits y data.rankings.topLabsByUnits
+        topProducts: data.rankings?.topProductsByUnits ?? data.topProducts ?? [],
+        topLaboratories: data.rankings?.topLabsByUnits ?? data.topLaboratories ?? [],
       };
     }
   } catch (error) {
