@@ -1,29 +1,16 @@
 import dayjs from 'dayjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { applyPremiumHeader, applyFooter } from './pdfBaseStyles';
 
 export default function pdfGastos(data, nombreArchivo="gasto") {
-    console.log("datos recibidos => ", data);
-    
     // Crear documento en orientación horizontal (landscape)
     const doc = new jsPDF('landscape');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
     
-    // 1. Encabezado
-    const headerY = 15;
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('REPORTE DE GASTOS PENDIENTES', pageWidth / 2, headerY, { align: 'center' });
+    // Aplicar Encabezado Premium
+    const startY = applyPremiumHeader(doc, 'Reporte de Gastos Pendientes');
     
-    // 2. Fecha de generación
-    const today = new Date();
-    const dateStr = `Generado el: ${today.getDate()}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(dateStr, pageWidth - 15, headerY + 10, { align: 'right' });
-    
-    // 3. Configuración de la tabla
+    // Configuración de la tabla
     const headers = [
         [
             { content: '#', styles: { halign: 'center', fontStyle: 'bold' } },
@@ -65,58 +52,30 @@ export default function pdfGastos(data, nombreArchivo="gasto") {
         item.user?.username || 'N/A'
     ]);
     
-    // 4. Generar tabla
+    // Generar tabla
     autoTable(doc, {
-        startY: headerY + 15,
+        startY: startY,
         head: headers,
         body: rows,
         theme: 'grid',
         headStyles: { 
-            fillColor: [41, 128, 185],
-            textColor: 255,
-            halign: 'center'
-        },
-        alternateRowStyles: {
-            fillColor: [245, 245, 245]
+            fillColor: [240, 240, 240],
+            textColor: 0,
+            halign: 'center',
+            fontStyle: 'bold'
         },
         styles: {
-            fontSize: 8,
+            fontSize: 7,
             cellPadding: 2,
             overflow: 'linebreak'
         },
-        // Ajustar anchos de columna para mejor visualización en horizontal
-        columnStyles: {
-            0: { cellWidth: 10, halign: 'center' },   // #
-            1: { cellWidth: 20, halign: 'center' },   // ID
-            2: { cellWidth: 35 },                    // Nombre
-            3: { cellWidth: 30 },                    // Categoría
-            4: { cellWidth: 25, halign: 'center' },  // Monto
-            5: { cellWidth: 25, halign: 'center' },  // Monto USD
-            6: { cellWidth: 20, halign: 'center' },  // Moneda
-            7: { cellWidth: 20, halign: 'center' },  // Cuenta
-            8: { cellWidth: 20, halign: 'center' },  // Deducible
-            9: { cellWidth: 20, halign: 'center' },  // Estado
-            10: { cellWidth: 25, halign: 'center' }, // Fecha
-            11: { cellWidth: 25 }                    // Usuario
-        },
-        margin: { left: 10, right: 10 },
-        tableWidth: 'auto'
+        margin: { left: 10, right: 10 }
     });
     
-    // 5. Pie de página
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.text(
-            `Página ${i} de ${pageCount}`,
-            pageWidth / 2,
-            pageHeight - 10,
-            { align: 'center' }
-        );
-    }
+    // Aplicar Pie de Página
+    applyFooter(doc);
     
-    // 6. Guardar PDF
-    const fileName = `${nombreArchivo}_${today.toISOString().slice(0, 10)}.pdf`;
-    doc.save(fileName);
+    // Guardar PDF
+    const todayStr = new Date().toISOString().slice(0, 10);
+    doc.save(`${nombreArchivo}_${todayStr}.pdf`);
 }

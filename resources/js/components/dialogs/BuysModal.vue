@@ -4,6 +4,10 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import CheckoutPaymentMethods from "@/components/dialogs/checkout/CheckoutPaymentMethods.vue";
+import CheckoutProductList from "@/components/dialogs/checkout/CheckoutProductList.vue";
+import CheckoutReceipt from "@/components/dialogs/checkout/CheckoutReceipt.vue";
+import CheckoutSummary from "@/components/dialogs/checkout/CheckoutSummary.vue";
 import {
   computed,
   defineEmits,
@@ -242,23 +246,32 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
 
+/**
+ * Obtiene la tasa de cambio efectiva entre dos monedas.
+ * Aplica reglas de negocio especiales como la tasa COPC.
+ */
+const getEffectiveRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const rates = exchangeRates.value?.[fromCurrency];
+  if (!rates) return 0;
+
+  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
+  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
+    return rates["COPC"];
+  }
+
+  return rates[toCurrency] || 0;
+};
+
 const totalPaidAmount = computed(() => {
   let currentSum = 0;
-  payments.value.forEach((payment, index) => {
+  payments.value.forEach((payment) => {
     let amount = Number(payment.amount) || 0;
-    let amountToAdd = 0;
-
-    if (payment.currency === props.selectedCurrency) {
-      amountToAdd = amount;
-    } else {
-      const rate =
-        exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-      if (rate) {
-        let convertedAmount = amount * rate;
-        amountToAdd = convertedAmount;
-      }
+    const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
+    if (rate > 0 || payment.currency === props.selectedCurrency) {
+      currentSum = roundToTwoDecimalPlaces(currentSum + amount * rate);
     }
-    currentSum = roundToTwoDecimalPlaces(currentSum + amountToAdd);
   });
   return currentSum;
 });
@@ -268,19 +281,10 @@ const totalPaidAmountNonCash = computed(() => {
   payments.value.forEach((payment) => {
     if (!payment.method || !payment.method.startsWith("cash_")) {
       let amount = Number(payment.amount) || 0;
-      let amountToAdd = 0;
-
-      if (payment.currency === props.selectedCurrency) {
-        amountToAdd = amount;
-      } else {
-        const rate =
-          exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-        if (rate) {
-          let convertedAmount = amount * rate;
-          amountToAdd = convertedAmount;
-        }
+      const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
+      if (rate > 0 || payment.currency === props.selectedCurrency) {
+        currentSum = roundToTwoDecimalPlaces(currentSum + amount * rate);
       }
-      currentSum = roundToTwoDecimalPlaces(currentSum + amountToAdd);
     }
   });
   return currentSum;
@@ -374,7 +378,6 @@ const roundedTotalAmountToPay = computed(() => {
 });*/
 
 const remainingAmount = computed(() => {
-  // Aplicamos el descuento aquí también
   let totalWithDiscount = props.totalAmount;
 
   if (appliesSpecialTax.value) {
@@ -382,6 +385,9 @@ const remainingAmount = computed(() => {
   }
 
   const rawDifference = totalWithDiscount - totalPaidAmount.value;
+
+  // El monto restante no debe ser negativo. Si se paga de más, el excedente va a devolución.
+  if (rawDifference < 0) return 0;
 
   if (props.selectedCurrency === "COP") {
     return roundUpToNearestHundred(rawDifference);
@@ -402,12 +408,10 @@ const getConvertedRemainingAmount = (currency) => {
     return 0;
   }
 
-  const rate = exchangeRates.value[baseCurrency]?.[targetCurrency];
+  const rate = getEffectiveRate(baseCurrency, targetCurrency);
 
-  if (!rate) {
-    console.warn(
-      `No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`,
-    );
+  if (rate <= 0) {
+    console.warn(`No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`);
     return 0;
   }
 
@@ -424,20 +428,6 @@ const getPlaceholderText = (index, payment) => {
 };
 
 // Esta función ya no se usa, pero la mantenemos por compatibilidad
-const addPaymentBlock = () => {
-  // Ya no se usa, los métodos se agregan automáticamente al seleccionar
-};
-
-const removeLastPayment = () => {
-  if (payments.value.length > 1) {
-    const lastPayment = payments.value[payments.value.length - 1];
-    // Limpiar timeout si existe
-    if (lastPayment.debounceTimeout) {
-      clearTimeout(lastPayment.debounceTimeout);
-    }
-    payments.value.pop();
-  }
-};
 
 const canAddPaymentBlock = computed(() => {
   const lastPayment = payments.value[payments.value.length - 1];
@@ -491,7 +481,7 @@ const handleCompletePurchase = () => {
 
   payments.value.forEach((p) => {
     if (p.amount > 0 && p.currency && p.currency !== baseCurrency) {
-      const rate = exchangeRates.value?.[p.currency]?.[baseCurrency];
+      const rate = getEffectiveRate(p.currency, baseCurrency);
       if (!rate || rate === 0) {
         missingRates.push(`${p.currency} a ${baseCurrency}`);
       }
@@ -530,7 +520,7 @@ const handleCompletePurchase = () => {
         const baseCurrency = props.selectedCurrency;
         const targetCurrency = p.currency;
 
-        const rate = exchangeRates.value?.[baseCurrency]?.[targetCurrency];
+        const rate = getEffectiveRate(baseCurrency, targetCurrency);
         if (rate) {
           amountToAssign = amountToAssign * rate;
         } else {
@@ -686,8 +676,8 @@ const handleCompletePurchase = () => {
         props.orderData.id,
         validPayments,
         hasCreditPayment.value,
-        changeAmountInCOP.value,
-        changeAmountInUSD.value,
+        changeAmountInCop.value,
+        changeAmountInUsd.value,
         {
           invoice_switch: invoiceSwitch.value,
           spe:
@@ -695,6 +685,7 @@ const handleCompletePurchase = () => {
             props.orderData?.client?.is_spe ||
             false,
         },
+        changeAmount.value,
       );
     } catch (error) {
       console.error("Error al completar la compra:", error);
@@ -951,8 +942,7 @@ const totalCashPaidInUSDOrCOP = computed(() => {
       if (payment.currency === props.selectedCurrency) {
         cashAmount += Number(payment.amount);
       } else {
-        const rate =
-          exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+        const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
         if (rate) {
           cashAmount += Number(payment.amount) * rate;
         }
@@ -964,31 +954,23 @@ const totalCashPaidInUSDOrCOP = computed(() => {
 
 // ACTUALIZADO: Eliminar lógica SPE adicional en changeAmount
 const changeAmount = computed(() => {
-  //let totalToPay = props.totalAmount;
   let totalToPay = props.totalAmount;
 
   if (appliesSpecialTax.value) {
     totalToPay += specialTaxAmount.value;
   }
 
-  // ELIMINAR: La lógica SPE antigua que sumaba 75% adicional
-  // El descuento SPE ya está incluido en props.totalAmount
-
   if (props.selectedCurrency === "COP") {
-    const totalToPayRounded = roundUpToNearestHundred(totalToPay);
-    return Math.max(
-      0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPayRounded),
-    );
+    totalToPay = roundUpToNearestHundred(totalToPay);
   } else {
-    return Math.max(
-      0,
-      roundToTwoDecimalPlaces(totalPaidAmount.value - totalToPay),
-    );
+    totalToPay = roundToTwoDecimalPlaces(totalToPay);
   }
+
+  const diff = totalPaidAmount.value - totalToPay;
+  return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
-const changeAmountInUSD = computed(() => {
+const changeAmountInUsd = computed(() => {
   const cashPaymentsInUSD = payments.value.filter(
     (p) => p.method === "cash_usd" && p.currency === "USD",
   );
@@ -1006,10 +988,10 @@ const changeAmountInUSD = computed(() => {
   if (props.selectedCurrency === "USD") {
     totalOrdenEnUSD = props.totalAmount;
   } else {
-    const rate = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
-    if (!rate) {
+    const rate = getEffectiveRate("USD", props.selectedCurrency);
+    if (rate <= 0) {
       console.error(
-        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`,
+        `No se encontró la tasa de cambio de USD a ${props.selectedCurrency}.`,
       );
       return 0;
     }
@@ -1020,17 +1002,15 @@ const changeAmountInUSD = computed(() => {
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
-const changeAmountInCOP = computed(() => {
+const changeAmountInCop = computed(() => {
   const vueltoEnMonedaOrden = changeAmount.value;
   if (props.selectedCurrency === "COP") {
-    console.log(vueltoEnMonedaOrden);
     return vueltoEnMonedaOrden;
   }
 
-  const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
-  if (rate) {
+  const rate = getEffectiveRate(props.selectedCurrency, "COP");
+  if (rate > 0) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
-    console.log(roundUpToNearestHundred(vueltoConvertido));
     return roundUpToNearestHundred(vueltoConvertido);
   }
   return 0;
@@ -1040,6 +1020,7 @@ const showChangeAmount = computed(() => {
   const hasRelevantCashPayment = payments.value.some(
     (payment) =>
       (payment.method === "cash_usd" && payment.currency === "USD") ||
+      (payment.method === "cash_bs" && payment.currency === "BS") ||
       (payment.method === "cash_cop" && payment.currency === "COP"),
   );
   return hasRelevantCashPayment && changeAmount.value > 0;
@@ -1060,7 +1041,7 @@ watch(
       if (props.selectedCurrency === "USD") {
         rateToUSD = 1;
       } else {
-        rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+        rateToUSD = getEffectiveRate(props.selectedCurrency, "USD");
       }
 
       if (!rateToUSD) {
@@ -1235,7 +1216,7 @@ const selectPaymentMethod = (methodValue, currency = null) => {
     if (props.selectedCurrency === "USD") {
       rateToUSD = 1;
     } else {
-      rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+      rateToUSD = getEffectiveRate(props.selectedCurrency, "USD");
     }
     if (!rateToUSD) {
       toast.error("No se encontró la tasa de cambio.");
@@ -1301,11 +1282,9 @@ const confirmPaymentAmount = (payment) => {
             remainingInPaymentCurrency += previousAmount;
           } else {
             // Convertir el monto anterior a la moneda base y luego a la moneda del pago
-            const rateToBase =
-              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment =
-              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-            if (rateToBase && rateToPayment) {
+            const rateToBase = getEffectiveRate(payment.currency, props.selectedCurrency);
+            const rateToPayment = getEffectiveRate(props.selectedCurrency, payment.currency);
+            if (rateToBase > 0 && rateToPayment > 0) {
               const previousInBase = previousAmount * rateToBase;
               remainingInPaymentCurrency += previousInBase * rateToPayment;
             }
@@ -1371,39 +1350,71 @@ const confirmPaymentAmount = (payment) => {
 
 // Función para confirmar el pago completo (monto + referencia si aplica)
 const confirmPaymentComplete = (payment) => {
-  // Validar monto primero
+  // 1. Sincronizar inputAmount con amount si el input está activo
+  if (payment._isInputActive) {
+    const numValue = parseFloat(payment.inputAmount);
+    if (isNaN(numValue) || numValue <= 0) {
+      toast.error("Por favor ingrese un monto válido.");
+      payment._amountError = true;
+      return;
+    }
+
+    // Validación: métodos no-efectivo no pueden exceder el monto restante
+    if (!isCashMethod(payment.method)) {
+      const previousAmount = payment._previousAmount !== undefined ? payment._previousAmount : (payment.amount || 0);
+      let remainingInPaymentCurrency = getConvertedRemainingAmount(payment.currency);
+
+      if (previousAmount > 0) {
+        if (payment.currency === props.selectedCurrency) {
+          remainingInPaymentCurrency += previousAmount;
+        } else {
+          const rateToBase = getEffectiveRate(payment.currency, props.selectedCurrency);
+          const rateToPayment = getEffectiveRate(props.selectedCurrency, payment.currency);
+          if (rateToBase > 0 && rateToPayment > 0) {
+            const previousInBase = previousAmount * rateToBase;
+            remainingInPaymentCurrency += previousInBase * rateToPayment;
+          }
+        }
+      }
+
+      if (numValue > remainingInPaymentCurrency) {
+        toast.error(`El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`);
+        return;
+      }
+    }
+
+    // Actualizar el monto oficial
+    payment.amount = numValue;
+    payment.inputAmount = numValue.toString();
+  }
+
+  // 2. Validar que tengamos un monto válido asignado
   if (!payment.amount || payment.amount <= 0) {
     toast.error("Por favor ingrese un monto válido.");
-    // Si estamos en modo edición, mantener el input activo
     if (payment._isInputActive) {
       payment._amountError = true;
       nextTick(() => {
         const paymentIndex = payments.value.indexOf(payment);
-        const input = document.querySelector(
-          `.payment-input[data-payment-index="${paymentIndex}"]`,
-        );
-        if (input) {
-          input.focus();
-        }
+        const input = document.querySelector(`.payment-input[data-payment-index="${paymentIndex}"]`);
+        if (input) input.focus();
       });
     }
     return;
   }
 
-  // Validar referencia si es requerida
+  // 3. Validar referencia si es requerida
   if (requiresReference(payment.method, payment.currency)) {
     if (!payment.reference || payment.reference.trim() === "") {
       toast.error("Por favor ingrese la referencia del pago.");
       payment._referenceError = true;
-      // Activar el input de referencia para que el usuario pueda escribir
       payment._isReferenceActive = true;
+      payment._amountConfirmed = true; // El monto ya está validado y asignado
       nextTick(() => {
         const paymentIndex = payments.value.indexOf(payment);
-        const referenceInput = document.querySelector(
-          `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
-        );
+        const referenceInput = document.querySelector(`.payment-reference-input[data-payment-index="${paymentIndex}"]`);
         if (referenceInput) {
           referenceInput.focus();
+          referenceInput.select();
         }
       });
       return;
@@ -1411,93 +1422,19 @@ const confirmPaymentComplete = (payment) => {
     payment._referenceError = false;
   }
 
-  // Si todo está bien, desactivar inputs y limpiar estados
+  // 4. Si todo está bien, cerrar estados
   payment._isInputActive = false;
   payment._isReferenceActive = false;
   payment._referenceError = false;
   payment._amountError = false;
   payment._amountConfirmed = false;
   payment._previousAmount = undefined;
-
-  // El monto restante se actualizará automáticamente porque payment.amount ya está actualizado
 };
 
 // Función helper para manejar Enter en el input de monto
 const handlePaymentEnter = (event, payment) => {
-  // Prevenir el comportamiento por defecto del Enter
   event.preventDefault();
-
-  // Primero confirmar el monto
-  if (
-    payment.inputAmount !== null &&
-    payment.inputAmount !== "" &&
-    payment.inputAmount !== undefined
-  ) {
-    const numValue = parseFloat(payment.inputAmount);
-    if (!isNaN(numValue) && numValue > 0) {
-      // Validación: métodos no-efectivo no pueden exceder el monto restante
-      if (!isCashMethod(payment.method)) {
-        const previousAmount = payment.amount || 0;
-        let remainingInPaymentCurrency = getConvertedRemainingAmount(
-          payment.currency,
-        );
-
-        if (previousAmount > 0) {
-          if (payment.currency === props.selectedCurrency) {
-            remainingInPaymentCurrency += previousAmount;
-          } else {
-            const rateToBase =
-              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment =
-              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-            if (rateToBase && rateToPayment) {
-              const previousInBase = previousAmount * rateToBase;
-              remainingInPaymentCurrency += previousInBase * rateToPayment;
-            }
-          }
-        }
-
-        if (numValue > remainingInPaymentCurrency) {
-          toast.error(
-            `El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`,
-          );
-          return;
-        }
-      }
-
-      // Confirmar el monto
-      payment.amount = numValue;
-      payment.inputAmount = numValue.toString();
-      payment._previousAmount = undefined;
-
-      // Si requiere referencia, mantener el bloque activo y activar el input de referencia automáticamente
-      if (requiresReference(payment.method, payment.currency)) {
-        // Mantener _isInputActive = true para que se muestre el bloque de inputs
-        payment._isReferenceActive = true;
-        payment._amountConfirmed = true; // Marcar que el monto ya está confirmado
-        nextTick(() => {
-          const paymentIndex = payments.value.indexOf(payment);
-          const referenceInput = document.querySelector(
-            `.payment-reference-input[data-payment-index="${paymentIndex}"]`,
-          );
-          if (referenceInput) {
-            referenceInput.focus();
-            referenceInput.select();
-          }
-        });
-      } else {
-        // Si no requiere referencia, confirmar el pago completo directamente
-        payment._isInputActive = false;
-        payment._isReferenceActive = false;
-        payment._amountConfirmed = false;
-        confirmPaymentComplete(payment);
-      }
-    } else {
-      toast.error("Por favor ingrese un monto válido.");
-    }
-  } else {
-    toast.error("Por favor ingrese un monto válido.");
-  }
+  confirmPaymentComplete(payment);
 };
 
 // Función helper para manejar Tab en el input de monto
@@ -1670,11 +1607,22 @@ const getAvailableMethodsForCurrency = (currency) => {
 };
 </script>
 <template>
-  <VDialog v-model="dialogVisible">
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold pr-1">Compra </span>
-        <VSwitch v-model="invoiceSwitch" />
+  <VDialog
+    v-model="dialogVisible"
+    :fullscreen="$vuetify.display.xs"
+    transition="dialog-bottom-transition"
+    class="buys-modal-dialog"
+  >
+    <VCard class="rounded-xl overflow-hidden glass-card elevation-4">
+      <VCardTitle class="d-flex align-center pa-4 border-b bg-surface">
+        <div class="d-flex align-center">
+          <VIcon icon="tabler-shopping-cart-check" color="primary" class="me-3" size="28" />
+          <span class="text-h5 font-weight-black uppercase letter-spacing-1">Finalizar Compra</span>
+        </div>
+        <div class="ms-6 d-flex align-center">
+          <span class="text-caption font-weight-bold me-2 uppercase">Factura</span>
+          <VSwitch v-model="invoiceSwitch" density="compact" color="primary" hide-details />
+        </div>
         <VSpacer />
         <VBtn
           icon
@@ -1687,1015 +1635,97 @@ const getAvailableMethodsForCurrency = (currency) => {
         </VBtn>
       </VCardTitle>
       <VDivider />
-      <VCardText v-if="currentProgress === 0" class="pa-0">
-        <div v-if="!ratesLoaded" class="text-center py-10">
-          <VProgressCircular indeterminate color="primary"></VProgressCircular>
-          <p class="mt-4">Cargando tasas de cambio. Por favor, espere...</p>
+      <VCardText v-if="currentProgress === 0" class="pa-0 bg-light-grey">
+        <div v-if="!ratesLoaded" class="pa-10 text-center">
+          <VProgressCircular indeterminate color="primary" size="48" />
+          <div class="mt-3 text-subtitle-2 font-weight-bold uppercase letter-spacing-1">Cargando Tasas...</div>
         </div>
+        
+        <VRow v-else no-gutters>
+          <!-- Columna Izquierda: Detalle y Métodos (Compacto) -->
+          <VCol cols="12" md="7" lg="8" class="pa-3 border-e">
+            <div class="d-flex flex-column gap-3">
+              <CheckoutProductList 
+                :products="orderProducts" 
+                :selected-currency="selectedCurrency"
+                :get-product-price="getProductPrice"
+                :get-product-price-sin-iva="getProductPriceSinIva"
+                :get-iva="getIva"
+              />
 
-        <div v-else class="d-flex gap-4" style="min-block-size: 500px;">
-          <!-- COLUMNA IZQUIERDA: Productos (Arriba) y Métodos de Pago (Abajo) -->
-          <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
-            <div class="pa-4">
-              <!-- Lista de Productos (Arriba - Expandida por defecto) -->
-              <VExpansionPanels
-                v-model="productsPanelExpanded"
-                variant="accordion"
-                class="mb-4"
-              >
-                <VExpansionPanel>
-                  <VExpansionPanelTitle>
-                    <div
-                      class="d-flex align-center justify-space-between w-100"
-                    >
-                      <div class="d-flex align-center">
-                        <VIcon icon="tabler-package" class="me-2" size="20" />
-                        <span class="font-weight-medium text-body-1"
-                          >Ver detalle de productos</span
-                        >
-                      </div>
-                      <VChip
-                        label
-                        :color="chipColor"
-                        variant="tonal"
-                        density="compact"
-                        size="small"
-                        class="ms-auto me-2"
-                      >
-                        <span class="font-weight-medium"
-                          >{{ totalSelectedQuantity }} productos</span
-                        >
-                      </VChip>
-                    </div>
-                  </VExpansionPanelTitle>
-                  <VExpansionPanelText>
-                    <VTable density="compact" lines="none" class="py-2">
-                      <thead>
-                        <tr>
-                          <th class="text-left" style="inline-size: 40%;">Producto</th>
-                          <th class="text-right" style="inline-size: 20%;">Precio</th>
-                          <th class="text-right" style="inline-size: 20%;">IVA</th>
-                          <th class="text-right" style="inline-size: 20%;">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="(product, index) in props.orderProducts"
-                          :key="product.id"
-                        >
-                          <td>
-                            <div class="d-flex flex-column">
-                              <span
-                                class="text-body-1 font-weight-medium text-high-emphasis"
-                              >
-                                {{ product.title }}
-                              </span>
-                              <span
-                                class="text-sm"
-                                style="color: rgba(0, 0, 0, 60%);"
-                              >
-                                {{ product.active_ingredient }}
-                                {{
-                                  product.laboratory
-                                    ? `- ${product.laboratory}`
-                                    : ""
-                                }}
-                                {{ product.selectedQuantity }} x
-                              </span>
-                            </div>
-                          </td>
-                          <td class="text-right">
-                            <span class="text-body-1 font-weight-regular">
-                              {{
-                                formatCurrency(
-                                  getProductPriceSinIva(
-                                    product,
-                                    props.selectedCurrency,
-                                  ) * product.selectedQuantity,
-                                  props.selectedCurrency,
-                                )
-                              }}
-                            </span>
-                          </td>
-                          <td class="text-right">
-                            <span class="text-body-1 font-weight-regular">
-                              {{
-                                formatCurrency(
-                                  getIva(product, props.selectedCurrency),
-                                  props.selectedCurrency,
-                                )
-                              }}
-                            </span>
-                          </td>
-                          <td class="text-right">
-                            <div class="d-flex align-center gap-1 justify-end">
-                              <span
-                                v-if="activeDiscountDisplay"
-                                class="text-caption text-disabled text-decoration-line-through text-error"
-                              >
-                                {{
-                                  formatCurrency(
-                                    getProductPriceSinDescuento(
-                                      product,
-                                      props.selectedCurrency,
-                                    ),
-                                    props.selectedCurrency,
-                                  )
-                                }}
-                              </span>
-                              <span
-                                class="text-body-1 font-weight-bold text-black"
-                              >
-                                {{
-                                  formatCurrency(
-                                    getProductPrice(
-                                      product,
-                                      props.selectedCurrency,
-                                    ),
-                                    props.selectedCurrency,
-                                  )
-                                }}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </VTable>
-                  </VExpansionPanelText>
-                </VExpansionPanel>
-              </VExpansionPanels>
-
-              <!-- Selección de Métodos de Pago (Abajo - Con Pestañas) -->
-              <div class="mt-4">
-                <div class="d-flex align-center mb-3">
-                  <VIcon icon="tabler-credit-card" class="me-2" size="20" />
-                  <p class="font-weight-medium text-h6 mb-0">Métodos de Pago</p>
-                </div>
-
-                <!-- Pestañas de Monedas -->
-                <VTabs v-model="selectedCurrencyTab" class="mb-3">
-                  <VTab
-                    v-for="currency in currencies"
-                    :key="currency.value"
-                    :value="currency.value"
-                    class="text-capitalize"
-                  >
-                    {{ currency.label }}
-                  </VTab>
-                </VTabs>
-
-                <!-- Contenido de cada pestaña -->
-                <VTabsWindow v-model="selectedCurrencyTab">
-                  <VTabsWindowItem
-                    v-for="currency in currencies"
-                    :key="currency.value"
-                    :value="currency.value"
-                  >
-                    <!-- Métodos de pago para esta moneda -->
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                      <VBtn
-                        v-for="method in getAvailableMethodsForCurrency(
-                          currency.value,
-                        )"
-                        :key="method.value"
-                        :class="[
-                          'payment-method-btn',
-                          {
-                            'payment-method-btn--active': isPaymentMethodActive(
-                              method.value,
-                              currency.value,
-                            ),
-                            'payment-method-btn--added': isPaymentMethodAdded(
-                              method.value,
-                              currency.value,
-                            ),
-                          },
-                        ]"
-                        :variant="
-                          isPaymentMethodActive(method.value, currency.value)
-                            ? 'flat'
-                            : 'outlined'
-                        "
-                        :color="
-                          isPaymentMethodActive(method.value, currency.value)
-                            ? 'primary'
-                            : 'default'
-                        "
-                        :disabled="
-                          remainingAmount <= 0 ||
-                          isPaymentMethodAdded(method.value, currency.value)
-                        "
-                        @click="
-                          selectPaymentMethod(method.value, currency.value)
-                        "
-                        size="small"
-                      >
-                        <VIcon
-                          :icon="getPaymentMethodIcon(method.value)"
-                          size="18"
-                          class="me-1"
-                        />
-                        {{ method.label }}
-                        <VIcon
-                          v-if="
-                            isPaymentMethodActive(method.value, currency.value)
-                          "
-                          icon="tabler-check"
-                          size="16"
-                          class="ms-1"
-                        />
-                      </VBtn>
-                    </div>
-                  </VTabsWindowItem>
-                </VTabsWindow>
-              </div>
+              <CheckoutPaymentMethods 
+                v-model:selectedCurrencyTab="selectedCurrencyTab"
+                :currencies="[{value: 'USD'}, {value: 'COP'}, {value: 'BS'}]"
+                :payment-methods-by-currency="paymentMethodsByCurrency"
+                :remaining-amount="remainingAmount"
+                :is-payment-method-active="isPaymentMethodActive"
+                :is-payment-method-added="isPaymentMethodAdded"
+                :get-payment-method-icon="getPaymentMethodIcon"
+                :get-available-methods-for-currency="getAvailableMethodsForCurrency"
+                @select-payment-method="selectPaymentMethod"
+              />
             </div>
-          </div>
+          </VCol>
 
-          <!-- COLUMNA DERECHA: Resumen de Pago (Sticky) -->
-          <div
-            style="
-              position: sticky;
-              display: flex;
-              flex-direction: column;
-              align-self: flex-start;
-              inline-size: 400px;
-              inset-block-start: 0;
-              max-block-size: calc(100vh - 200px);
-"
-          >
-            <VCard
-              variant="outlined"
-              class="flex-grow-1"
-              style="display: flex; flex-direction: column;"
-            >
-              <VCardText style="flex: 1; overflow-y: auto;">
-                <div class="text-h6 font-weight-bold mb-4">Resumen de Pago</div>
-
-                <!-- Descuentos -->
-                <div
-                  v-if="activeDiscountDisplay"
-                  class="d-flex justify-space-between mb-2"
-                >
-                  <span class="text-body-1"
-                    >{{ activeDiscountDisplay.label }}:</span
-                  >
-                  <span class="text-body-1 font-weight-medium text-error">
-                    - {{ activeDiscountDisplay.formatted }}
-                  </span>
-                </div>
-
-                <div
-                  v-if="expirationDiscountTotal > 0"
-                  class="d-flex justify-space-between mb-2"
-                >
-                  <span class="text-body-1">Descuento Vencimiento:</span>
-                  <span class="text-body-1 font-weight-medium text-error">
-                    -
-                    {{
-                      formatCurrency(
-                        expirationDiscountTotal,
-                        props.selectedCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-
-                <div
-                  v-if="appliesSpecialTax"
-                  class="d-flex justify-space-between mb-2"
-                >
-                  <span class="text-body-1">Recargo SPE (3%):</span>
-                  <span class="text-body-1 font-weight-medium">
-                    {{
-                      formatCurrency(specialTaxAmount, props.selectedCurrency)
-                    }}
-                  </span>
-                </div>
-
-                <VDivider class="my-3" />
-
-                <!-- Total Compra -->
-                <div class="d-flex justify-space-between mb-3">
-                  <span class="text-h6 font-weight-bold">Total Compra:</span>
-                  <span class="text-h6 font-weight-bold">
-                    {{
-                      formatCurrency(
-                        roundedTotalAmountToPay,
-                        props.selectedCurrency,
-                      )
-                    }}
-                  </span>
-                </div>
-
-                <!-- Lista de Pagos con Inputs Integrados (Tipo Recibo) -->
-                <div
-                  v-if="payments.filter((p) => p.method).length > 0"
-                  class="mb-3"
-                >
-                  <div
-                    v-for="(payment, idx) in payments.filter((p) => p.method)"
-                    :key="idx"
-                    class="d-flex justify-space-between align-center mb-3 payment-row"
-                    style="min-block-size: 32px;"
-                  >
-                    <span class="text-body-1">
-                      {{
-                        getPaymentMethodLabel(payment.method, payment.currency)
-                      }}:
-                    </span>
-
-                    <!-- Input activo (cuando _isInputActive es true) -->
-                    <div
-                      v-if="payment._isInputActive"
-                      class="d-flex align-center gap-2 fade-in"
-                      style="flex: 0 0 auto;"
-                    >
-                      <input
-                        :ref="
-                          (el) => {
-                            if (
-                              el &&
-                              payment._isInputActive &&
-                              !payment._isReferenceActive &&
-                              !payment._amountConfirmed
-                            ) {
-                              nextTick(() => {
-                                el.focus();
-                              });
-                            }
-                          }
-                        "
-                        :value="payment.inputAmount || ''"
-                        @input="
-                          updatePaymentAmountLive(payment, $event.target.value)
-                        "
-                        @keydown.enter="handlePaymentEnter($event, payment)"
-                        @keyup.tab="handlePaymentTab(payment)"
-                        @blur="confirmPaymentAmount(payment)"
-                        @focus="
-                          $event.target.style.borderBottomColor =
-                            'rgb(var(--v-theme-primary))'
-                        "
-                        :readonly="payment._amountConfirmed"
-                        type="text"
-                        inputmode="decimal"
-                        class="payment-input"
-                        :data-payment-index="payments.indexOf(payment)"
-                        :placeholder="
-                          formatCurrency(
-                            getConvertedRemainingAmount(payment.currency),
-                            payment.currency,
-                          )
-                        "
-                        :style="{
-                          border: 'none',
-                          borderBottom: payment._amountError
-                            ? '2px solid rgb(var(--v-theme-error))'
-                            : '1px solid rgba(0, 0, 0, 0.42)',
-                          background: payment._amountConfirmed
-                            ? 'rgba(0, 0, 0, 0.04)'
-                            : 'rgba(0, 0, 0, 0.02)',
-                          padding: '4px 8px',
-                          width: '120px',
-                          textAlign: 'right',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease',
-                          cursor: payment._amountConfirmed ? 'default' : 'text',
-                        }"
-                      />
-                      <span class="text-caption text-medium-emphasis">{{
-                        payment.currency
-                      }}</span>
-
-                      <!-- Input de Referencia (si es requerido) -->
-                      <input
-                        v-if="
-                          requiresReference(payment.method, payment.currency) &&
-                          payment._isReferenceActive
-                        "
-                        :ref="
-                          (el) => {
-                            if (el && payment._isReferenceActive) {
-                              nextTick(() => {
-                                el.focus();
-                              });
-                            }
-                          }
-                        "
-                        :value="payment.reference || ''"
-                        @input="
-                          payment.reference = $event.target.value;
-                          payment._referenceError = false;
-                        "
-                        @keydown.enter.prevent="confirmPaymentComplete(payment)"
-                        @blur="
-                          if (
-                            payment.reference &&
-                            payment.reference.trim() !== ''
-                          ) {
-                            payment._referenceError = false;
-                          }
-                        "
-                        @focus="
-                          $event.target.style.borderBottomColor =
-                            'rgb(var(--v-theme-primary))'
-                        "
-                        type="text"
-                        class="payment-reference-input"
-                        :data-payment-index="payments.indexOf(payment)"
-                        placeholder="Referencia"
-                        :style="{
-                          border: 'none',
-                          borderBottom: payment._referenceError
-                            ? '2px solid rgb(var(--v-theme-error))'
-                            : '1px solid rgba(0, 0, 0, 0.42)',
-                          background: 'rgba(0, 0, 0, 0.02)',
-                          padding: '4px 8px',
-                          width: '90px',
-                          fontSize: '13px',
-                          transition: 'all 0.2s ease',
-                        }"
-                      />
-
-                      <VBtn
-                        icon
-                        variant="text"
-                        size="x-small"
-                        color="success"
-                        @click="confirmPaymentComplete(payment)"
-                      >
-                        <VIcon icon="tabler-check" size="16" />
-                        <VTooltip activator="parent" location="top"
-                          >Confirmar</VTooltip
-                        >
-                      </VBtn>
-                      <VBtn
-                        icon
-                        variant="text"
-                        size="x-small"
-                        color="error"
-                        :disabled="!isLastPaymentAdded(payment)"
-                        @click="
-                          removePaymentFromSummary(payments.indexOf(payment))
-                        "
-                      >
-                        <VIcon icon="tabler-x" size="16" />
-                        <VTooltip activator="parent" location="top">
-                          {{
-                            isLastPaymentAdded(payment)
-                              ? "Eliminar"
-                              : "Solo se puede eliminar el último método agregado"
-                          }}
-                        </VTooltip>
-                      </VBtn>
-                    </div>
-
-                    <!-- Texto fijo con icono de editar (cuando _isInputActive es false) -->
-                    <div
-                      v-else
-                      class="d-flex flex-column align-end gap-1 fade-in"
-                      style="flex: 0 0 auto;"
-                    >
-                      <div class="d-flex align-center gap-2">
-                        <span class="text-body-1 font-weight-medium text-error">
-                          -{{
-                            formatCurrency(
-                              payment.amount || 0,
-                              payment.currency,
-                            )
-                          }}
-                        </span>
-                        <VBtn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          color="primary"
-                          @click="editPaymentAmount(payment)"
-                        >
-                          <VIcon icon="tabler-pencil" size="16" />
-                          <VTooltip activator="parent" location="top"
-                            >Editar</VTooltip
-                          >
-                        </VBtn>
-                        <VBtn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          color="error"
-                          :disabled="!isLastPaymentAdded(payment)"
-                          @click="
-                            removePaymentFromSummary(payments.indexOf(payment))
-                          "
-                        >
-                          <VIcon icon="tabler-x" size="16" />
-                          <VTooltip activator="parent" location="top">
-                            {{
-                              isLastPaymentAdded(payment)
-                                ? "Eliminar"
-                                : "Solo se puede eliminar el último método agregado"
-                            }}
-                          </VTooltip>
-                        </VBtn>
-                      </div>
-                      <!-- Mostrar referencia si existe y es requerida -->
-                      <div
-                        v-if="
-                          requiresReference(payment.method, payment.currency) &&
-                          payment.reference
-                        "
-                        class="text-caption text-medium-emphasis"
-                        style="font-size: 11px;"
-                      >
-                        Ref: {{ payment.reference }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <VDivider class="my-3" />
-
-                <!-- Monto Restante (convertido a la moneda de la pestaña seleccionada) -->
-                <div class="d-flex justify-space-between mb-4">
-                  <span class="text-h6 font-weight-bold">Restante:</span>
-                  <span
-                    class="text-h6 font-weight-bold"
-                    :class="
-                      remainingAmount <= 0 ? 'text-success' : 'text-error'
-                    "
-                  >
-                    {{
-                      formatCurrency(
-                        getConvertedRemainingAmount(selectedCurrencyTab),
-                        selectedCurrencyTab,
-                      )
-                    }}
-                  </span>
-                </div>
-
-                <!-- Monto Devuelto -->
-                <div
-                  v-if="showChangeAmount"
-                  class="d-flex justify-space-between mb-4"
-                >
-                  <span class="text-body-1 font-weight-medium"
-                    >Monto Devuelto:</span
-                  >
-                  <span class="text-body-1 font-weight-bold text-success">
-                    {{ formatCurrency(changeAmountInCOP, "COP") }}
-                  </span>
-                </div>
-              </VCardText>
-
-              <!-- Botones fijos en la parte inferior -->
-              <VDivider />
-              <VCardActions class="pa-4 d-flex flex-column gap-2">
-                <VBtn
-                  color="secondary"
-                  variant="outlined"
-                  @click="closeModal"
-                  block
-                >
-                  Cancelar
-                </VBtn>
-                <VBtn
-                  :style="
-                    remainingAmount <= 0 && !hasMissingReferences()
-                      ? 'background-color: #28C76F; color: white;'
-                      : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'
-                  "
-                  variant="flat"
-                  @click="handleCompletePurchase"
-                  :loading="issubmitting || props.isExternalLoading"
-                  block
-                  :disabled="
-                    issubmitting ||
-                    props.isExternalLoading ||
-                    (currentProgress === 0 &&
-                      (remainingAmount > 0.01 || hasMissingReferences()))
-                  "
-                >
-                  {{ continueButtonText }}
-                </VBtn>
-              </VCardActions>
-            </VCard>
-
-            <!-- Información SPE (si aplica) -->
-            <div
-              v-if="props.orderData?.client?.is_spe"
-              class="bg-success-lighten-4 pa-3 rounded mt-3"
-            >
-              <div
-                class="text-subtitle-2 font-weight-bold text-success-darken-2 mb-2"
-              >
-                <VIcon icon="tabler-discount-check" class="me-1" size="16" />
-                Cliente SPE - Descuento aplicado:
-              </div>
-
-              <div class="d-flex justify-space-between">
-                <span class="text-body-2">IVA Original (sin descuento):</span>
-                <span class="text-body-2 font-weight-medium text-disabled">
-                  {{
-                    formatCurrency(
-                      props.orderProducts.reduce((sum, product) => {
-                        const taxRate = product.taxRate || 0;
-                        let basePrice = 0;
-                        if (props.selectedCurrency === "BS") {
-                          basePrice = product.price_bs || 0;
-                        } else if (props.selectedCurrency === "COP") {
-                          basePrice = product.price_cop || 0;
-                        } else {
-                          basePrice = product.price || 0;
-                        }
-                        return (
-                          sum + basePrice * taxRate * product.selectedQuantity
-                        );
-                      }, 0),
-                      props.selectedCurrency,
-                    )
-                  }}
-                </span>
-              </div>
-
-              <div class="d-flex justify-space-between">
-                <span class="text-body-2 text-success-darken-2"
-                  >Descuento SPE (75%):</span
-                >
-                <span
-                  class="text-body-2 font-weight-bold text-success-darken-2"
-                >
-                  -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
-                </span>
-              </div>
-
-              <VDivider class="my-2" />
-
-              <div class="d-flex justify-space-between">
-                <span class="text-body-2 font-weight-medium"
-                  >IVA Final a pagar:</span
-                >
-                <span
-                  class="text-body-2 font-weight-bold text-success-darken-2"
-                >
-                  {{
-                    formatCurrency(
-                      props.orderProducts.reduce((sum, product) => {
-                        return sum + getIva(product, props.selectedCurrency);
-                      }, 0),
-                      props.selectedCurrency,
-                    )
-                  }}
-                </span>
-              </div>
-
-              <div class="text-caption text-success-darken-2 mt-2">
-                <VIcon icon="tabler-user-check" class="me-1" size="14" />
-                {{ props.orderData.client.name }}
-                {{ props.orderData.client.last_name }}
-                tiene descuento SPE del 75% en IVA
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- NUEVA sección de información SPE mejorada -->
-        <div
-          v-if="props.orderData?.client?.is_spe"
-          class="bg-success-lighten-4 pa-3 rounded mt-3"
-        >
-          <div
-            class="text-subtitle-2 font-weight-bold text-success-darken-2 mb-2"
-          >
-            <VIcon icon="tabler-discount-check" class="me-1" size="16" />
-            Cliente SPE - Descuento aplicado:
-          </div>
-
-          <div class="d-flex justify-space-between">
-            <span class="text-body-2">IVA Original (sin descuento):</span>
-            <span class="text-body-2 font-weight-medium text-disabled">
-              {{
-                formatCurrency(
-                  props.orderProducts.reduce((sum, product) => {
-                    const taxRate = product.taxRate || 0;
-                    let basePrice = 0;
-                    if (props.selectedCurrency === "BS") {
-                      basePrice = product.price_bs || 0;
-                    } else if (props.selectedCurrency === "COP") {
-                      basePrice = product.price_cop || 0;
-                    } else {
-                      basePrice = product.price || 0;
-                    }
-                    return sum + basePrice * taxRate * product.selectedQuantity;
-                  }, 0),
-                  props.selectedCurrency,
-                )
-              }}
-            </span>
-          </div>
-
-          <div class="d-flex justify-space-between">
-            <span class="text-body-2 text-success-darken-2"
-              >Descuento SPE (75%):</span
-            >
-            <span class="text-body-2 font-weight-bold text-success-darken-2">
-              -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
-            </span>
-          </div>
-
-          <VDivider class="my-2" />
-
-          <div class="d-flex justify-space-between">
-            <span class="text-body-2 font-weight-medium"
-              >IVA Final a pagar:</span
-            >
-            <span class="text-body-2 font-weight-bold text-success-darken-2">
-              {{
-                formatCurrency(
-                  props.orderProducts.reduce((sum, product) => {
-                    return sum + getIva(product, props.selectedCurrency);
-                  }, 0),
-                  props.selectedCurrency,
-                )
-              }}
-            </span>
-          </div>
-
-          <div class="text-caption text-success-darken-2 mt-2">
-            <VIcon icon="tabler-user-check" class="me-1" size="14" />
-            {{ props.orderData.client.name }}
-            {{ props.orderData.client.last_name }}
-            tiene descuento SPE del 75% en IVA
-          </div>
-        </div>
+          <!-- Columna Derecha: Resumen -->
+          <VCol cols="12" md="5" lg="4" class="pa-3 bg-surface">
+            <CheckoutSummary 
+              :selected-currency="selectedCurrency"
+              :selected-currency-tab="selectedCurrencyTab"
+              :active-discount-display="activeDiscountDisplay"
+              :expiration-discount-total="expirationDiscountTotal"
+              :applies-special-tax="appliesSpecialTax"
+              :special-tax-amount="specialTaxAmount"
+              :rounded-total-amount-to-pay="roundedTotalAmountToPay"
+              :payments="payments"
+              :remaining-amount="remainingAmount"
+              :show-change-amount="showChangeAmount"
+              :change-amount="changeAmount"
+              :change-amount-in-cop="changeAmountInCop"
+              :get-converted-remaining-amount="getConvertedRemainingAmount"
+              :get-payment-method-label="getPaymentMethodLabel"
+              :edit-payment-amount="editPaymentAmount"
+              :remove-payment-from-summary="removePaymentFromSummary"
+              :is-last-payment-added="isLastPaymentAdded"
+              :handle-payment-enter="handlePaymentEnter"
+              :confirm-payment-complete="confirmPaymentComplete"
+              :continue-button-text="'Completar Venta'"
+              :issubmitting="issubmitting"
+              :is-external-loading="isExternalLoading"
+              :has-missing-references="hasMissingReferences"
+              :order-data="orderData"
+              @complete-purchase="handleCompletePurchase"
+              @close-modal="closeModal"
+              @confirm-payment="confirmPaymentComplete"
+              @handle-payment-enter="handlePaymentEnter"
+              @remove-payment="removePaymentFromSummary"
+            />
+          </VCol>
+        </VRow>
       </VCardText>
 
-      <!-- Ticket de impresión (sin cambios mayores) -->
-      <VCardText v-else-if="currentProgress === 100">
-        <div class="d-flex justify-center">
-          <div style="width: &quot;50%&quot;">
-            <div class="text-center">
-              <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-            </div>
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6 mt-4">
-                Orden N° {{ props.orderData?.id }}
-              </span>
-              <div class="text-end">
-                <span class="d-block font-weight-bold text-h6 mt-4">
-                  {{ formatDateTime(props.orderData?.created_at, "date") }}
-                  {{ formatDateTime(props.orderData?.created_at, "time") }}
-                </span>
-              </div>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6"> Cajero </span>
-              <span class="font-weight-bold text-h6">
-                {{ props.orderData?.seller?.username || "N/A" }}
-              </span>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6"> Cedula </span>
-              <span class="font-weight-bold text-h6">
-                {{ props.orderData?.client?.identification_type || "N/A" }}
-                {{ props.orderData?.client?.identification || "N/A" }}
-              </span>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <span class="font-weight-bold text-h6"> Cliente </span>
-              <span class="font-weight-bold text-h6">
-                {{ props.orderData?.client?.name }}
-                {{ props.orderData?.client?.last_name }}
-                <span
-                  v-if="props.orderData?.client?.is_spe"
-                  class="text-success"
-                  >(SPE)</span
-                >
-              </span>
-            </div>
-
-            <div
-              v-if="validPaymentsForTicket.length > 0"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6">Métodos de Pago</p>
-              <div class="text-end">
-                <p
-                  v-for="(payment, pIndex) in validPaymentsForTicket"
-                  :key="`ticket-payment-method-${pIndex}`"
-                  class="font-weight-bold my-1"
-                >
-                  <span
-                    >{{
-                      getPaymentMethodLabel(payment.method, payment.currency)
-                    }}
-                    ({{ payment.currency }})</span
-                  >
-                </p>
-              </div>
-            </div>
-
-            <!-- Lista de productos en el ticket -->
-            <div>
-              <VList class="card-list" density="compact" nav>
-                <VListItem
-                  v-for="product in props.orderProducts"
-                  :key="product.id"
-                  class="rounded-0"
-                >
-                  <template #prepend>
-                    <span>{{ product.selectedQuantity }} x</span>
-                  </template>
-
-                  <VListItemTitle class="font-weight-medium me-4 mx-2">
-                    {{ product.title }}
-                    <span
-                      v-if="props.orderData?.client?.is_spe"
-                      class="text-success text-caption"
-                    >
-                      (SPE)
-                    </span>
-                  </VListItemTitle>
-                  <VListItemSubtitle class="mx-2"
-                    >{{ product.active_ingredient }}
-                    {{ product.laboratory }}</VListItemSubtitle
-                  >
-
-                  <template #append>
-                    <div class="d-flex flex-column align-end">
-                      <span class="text-body-1 font-weight-bold">
-                        {{
-                          formatCurrency(
-                            getProductPrice(product, props.selectedCurrency),
-                            props.selectedCurrency,
-                          )
-                        }}
-                      </span>
-
-                      <span
-                        v-if="activeDiscountDisplay"
-                        class="text-caption text-decoration-line-through text-error"
-                        style="margin-block-start: -4px;"
-                      >
-                        {{
-                          formatCurrency(
-                            getProductPriceSinDescuento(
-                              product,
-                              props.selectedCurrency,
-                            ),
-                            props.selectedCurrency,
-                          )
-                        }}
-                      </span>
-                    </div>
-                  </template>
-                </VListItem>
-              </VList>
-            </div>
-
-            <!-- Totales en el ticket -->
-            <div
-              v-if="activeDiscountDisplay"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                {{ activeDiscountDisplay.label }}:
-              </p>
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                - {{ activeDiscountDisplay.formatted }}
-              </p>
-            </div>
-            <div
-              v-if="expirationDiscountTotal > 0"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                Descuento Vencimiento:
-              </p>
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                -
-                {{
-                  formatCurrency(
-                    expirationDiscountTotal,
-                    props.selectedCurrency,
-                  )
-                }}
-              </p>
-            </div>
-
-            <div
-              v-if="appliesSpecialTax"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                Recargo Sujeto Pasivo Especial (3%):
-              </p>
-              <p class="text-h6 font-weight-medium mt-2 mb-0">
-                {{ formatCurrency(specialTaxAmount, props.selectedCurrency) }}
-              </p>
-            </div>
-
-            <div class="d-flex flex-wrap justify-space-between">
-              <p class="font-weight-bold text-h6 mt-2">Total a pagar:</p>
-              <p class="font-weight-bold text-h6 mt-2">
-                {{
-                  formatCurrency(
-                    roundedTotalAmountToPay,
-                    props.selectedCurrency,
-                  )
-                }}
-              </p>
-            </div>
-
-            <!-- Mostrar ahorro SPE en el ticket -->
-            <div
-              v-if="props.orderData?.client?.is_spe"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6 text-success">
-                Descuento SPE:
-              </p>
-              <p class="font-weight-bold text-h6 text-success">
-                -{{ formatCurrency(totalSPESavings, props.selectedCurrency) }}
-              </p>
-            </div>
-
-            <div
-              v-if="validPaymentsForTicket.length > 0"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6 mt-2">Pago:</p>
-              <div class="text-end">
-                <p
-                  v-for="(payment, pIndex) in validPaymentsForTicket"
-                  :key="`ticket-payment-amount-${pIndex}`"
-                  class="font-weight-bold my-1"
-                >
-                  <span>
-                    {{
-                      getPaymentMethodLabel(payment.method, payment.currency)
-                    }}:
-                    {{ formatCurrency(payment.amount || 0, payment.currency) }}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div
-              v-if="hasCreditPayment"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6">Crédito:</p>
-              <p class="font-weight-bold text-h6">
-                {{
-                  formatCurrency(
-                    roundedTotalAmountToPay,
-                    props.selectedCurrency,
-                  )
-                }}
-              </p>
-            </div>
-
-            <div
-              v-if="showChangeAmount"
-              class="d-flex flex-wrap justify-space-between"
-            >
-              <p class="font-weight-bold text-h6 mt-2">Devolución:</p>
-              <p class="font-weight-bold text-h6 mt-2">
-                {{ formatCurrency(changeAmountInCOP, "COP") }}
-              </p>
-            </div>
-
-            <p class="font-weight-bold text-center text-success">
-              ¡GRACIAS POR SU COMPRA!
-            </p>
-          </div>
-        </div>
-
-        <!-- Botones de Imprimir y Cancelar después del ticket -->
-        <VDivider class="my-4" />
-        <VCardActions class="pa-4 d-flex flex-column gap-2">
-          <VBtn
-            color="primary"
-            variant="flat"
-            @click="handlePrintTicket"
-            block
-            size="large"
-          >
-            <VIcon icon="tabler-printer" class="me-2" />
-            Imprimir
-          </VBtn>
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            @click="handleCancelAfterTicket"
-            block
-          >
-            Cancelar
-          </VBtn>
-        </VCardActions>
+      <!-- Ticket Final -->
+      <VCardText v-else class="pa-0">
+        <CheckoutReceipt 
+          :order-data="orderData"
+          :order-products="orderProducts"
+          :selected-currency="selectedCurrency"
+          :get-payment-method-label="getPaymentMethodLabel"
+          :payments="payments"
+          :get-product-price="getProductPrice"
+          :active-discount-display="activeDiscountDisplay"
+          :expiration-discount-total="expirationDiscountTotal"
+          :applies-special-tax="appliesSpecialTax"
+          :special-tax-amount="specialTaxAmount"
+          :rounded-total-amount-to-pay="roundedTotalAmountToPay"
+          :total-s-p-e-savings="totalSPESavings"
+          :has-credit-payment="hasCreditPayment"
+          :show-change-amount="showChangeAmount"
+          :change-amount="changeAmount"
+          :change-amount-in-cop="changeAmountInCop"
+          @print="handlePrintTicket"
+          @cancel="handleCancelAfterTicket"
+        />
       </VCardText>
     </VCard>
   </VDialog>
@@ -2716,10 +1746,10 @@ const getAvailableMethodsForCurrency = (currency) => {
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease-in;
+  animation: fade-in 0.3s ease-in;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -2739,6 +1769,11 @@ const getAvailableMethodsForCurrency = (currency) => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 8%);
 }
 
+.payment-method-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .payment-method-card:hover:not(.payment-method-card--add) {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 12%);
   transform: translateY(-2px);
@@ -2753,11 +1788,6 @@ const getAvailableMethodsForCurrency = (currency) => {
 .payment-method-card--add:hover {
   border-color: rgb(var(--v-theme-primary)) !important;
   background-color: rgba(var(--v-theme-primary), 0.02);
-}
-
-.payment-method-card:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .payment-method-btn {
@@ -2775,5 +1805,31 @@ const getAvailableMethodsForCurrency = (currency) => {
 
 .payment-method-btn--added:hover {
   transform: none;
+}
+
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(var(--v-theme-surface), 0.8) !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.highlight-border {
+  border: 1px solid rgba(var(--v-theme-primary), 0.1) !important;
+}
+
+/* Responsividad para móviles */
+@media (max-width: 600px) {
+  .payment-summary-col {
+    position: relative !important;
+    inline-size: 100% !important;
+    max-block-size: none !important;
+  }
 }
 </style>

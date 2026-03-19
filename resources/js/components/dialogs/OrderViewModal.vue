@@ -69,8 +69,9 @@ const closeModal = () => {
 };
 
 const formattedOrderDate = computed(() => {
-  if (!props.orderData?.created_at) return "—";
-  return formatDateTime(props.orderData.created_at, "datetime");
+  const date = props.orderData?.order_date ?? props.orderData?.created_at;
+  if (!date) return "—";
+  return formatDateTime(date, "datetime");
 });
 
 const paymentBadge = computed(() => {

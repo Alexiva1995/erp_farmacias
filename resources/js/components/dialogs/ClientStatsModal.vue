@@ -22,7 +22,8 @@ const badgeConfig = computed(() => {
     Frecuente: { color: "success", icon: "tabler-heart", text: "Frecuente" },
     "En Riesgo": { color: "error", icon: "tabler-alert-triangle", text: "En Riesgo" },
     Ocasional: { color: "info", icon: "tabler-user", text: "Ocasional" },
-    Nuevo: { color: "secondary", icon: "tabler-user-plus", text: "Nuevo" },
+    Nuevo: { color: "primary", icon: "tabler-user-plus", text: "Nuevo" },
+    Inactivo: { color: "secondary", icon: "tabler-user-off", text: "Inactivo" },
   };
   return map[stats.value.badge] || map["Nuevo"];
 });
@@ -75,217 +76,245 @@ const onClose = () => {
   <VDialog
     :model-value="props.modelValue"
     max-width="750px"
+    persistent
     scrollable
     :retain-focus="false"
+    :fullscreen="$vuetify.display.xs"
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
     @click:outside="onClose"
     @keydown.esc="onClose"
   >
-    <VCard :loading="loading">
-      <!-- Header -->
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-chart-bar" size="24" color="white" />
-          <span class="text-h6 text-white">{{ dialogTitle }}</span>
-          <VChip
-            v-if="stats"
-            :color="badgeConfig.color"
-            :prepend-icon="badgeConfig.icon"
-            size="small"
-            variant="elevated"
-            class="ms-2"
-          >
-            {{ badgeConfig.text }}
-          </VChip>
+    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
+      <!-- Cabecera Compacta Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
+              <VIcon icon="tabler-chart-bar" color="primary" size="18" />
+            </VAvatar>
+            <div>
+              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0 uppercase">{{ dialogTitle }}</h2>
+              <div class="d-flex align-center gap-1 mt-0">
+                <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+                  Indicadores de Comportamiento
+                </span>
+                <VChip
+                  v-if="stats"
+                  :color="badgeConfig.color"
+                  :prepend-icon="badgeConfig.icon"
+                  size="x-small"
+                  variant="flat"
+                  class="font-weight-black px-2 py-0 h-auto"
+                  style="block-size: 14px !important; font-size: 0.55rem;"
+                >
+                  {{ badgeConfig.text.toUpperCase() }}
+                </VChip>
+              </div>
+            </div>
+          </div>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" size="x-small" @click="onClose">
+            <VIcon size="18">tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VBtn icon variant="text" color="white" size="small" @click="onClose">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
+      <VCardText class="pa-4 bg-light" style="max-block-size: 80vh;">
         <!-- Loading -->
-        <div v-if="loading" class="d-flex justify-center align-center py-10">
+        <div v-if="loading" class="d-flex flex-column justify-center align-center py-10 gap-3">
           <VProgressCircular indeterminate color="primary" size="48" />
+          <span class="text-super-xs text-disabled font-weight-black uppercase">Analizando datos del cliente...</span>
         </div>
 
         <template v-else-if="stats">
-          <!-- Info del cliente -->
-          <div v-if="clientData" class="mb-5">
-            <div class="d-flex align-center flex-wrap gap-x-4 gap-y-1 text-body-2 text-medium-emphasis">
-              <span class="d-flex align-center gap-1">
-                <VIcon icon="tabler-id" size="18" />
+          <!-- Datos Rápidos -->
+          <div v-if="clientData" class="mb-4">
+            <div class="d-flex align-center flex-wrap gap-x-4 gap-y-2 text-super-xs font-weight-bold text-medium-emphasis uppercase">
+              <span class="d-flex align-center gap-1 bg-white px-2 py-1 rounded border shadow-sm">
+                <VIcon icon="tabler-id" size="12" class="text-primary" />
                 {{ clientData.identification_type }}{{ clientData.identification }}
               </span>
-              <span v-if="clientData.company" class="d-flex align-center gap-1">
-                <VIcon icon="tabler-building" size="18" />
+              <span v-if="clientData.company" class="d-flex align-center gap-1 bg-white px-2 py-1 rounded border shadow-sm">
+                <VIcon icon="tabler-building" size="12" class="text-primary" />
                 {{ clientData.company }}
               </span>
-              <span v-if="clientData.phone" class="d-flex align-center gap-1">
-                <VIcon icon="tabler-phone" size="18" />
-                {{ clientData.phone }}
-              </span>
-              <span v-if="stats.last_purchase_date" class="d-flex align-center gap-1">
-                <VIcon icon="tabler-calendar-check" size="18" />
-                Última compra: {{ stats.last_purchase_date }}
+              <span v-if="stats.last_purchase_date" class="d-flex align-center gap-1 bg-white px-2 py-1 rounded border shadow-sm border-primary border-opacity-25">
+                <VIcon icon="tabler-calendar-check" size="12" class="text-primary" />
+                Última: {{ stats.last_purchase_date }}
               </span>
             </div>
           </div>
 
-          <VDivider class="mb-5" />
-
-          <!-- Stats Cards -->
-          <VRow>
-            <!-- Total Gastado -->
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="success" class="pa-4 text-center stat-card">
-                <VIcon icon="tabler-currency-dollar" size="32" color="success" class="mb-2" />
-                <div class="text-h6 font-weight-bold">${{ stats.total_spent?.toFixed(2) }}</div>
-                <div class="text-caption text-medium-emphasis">Total Gastado</div>
+          <!-- Grid de Métricas Premium -->
+          <VRow dense class="mb-4">
+            <VCol cols="6" sm="3">
+              <VCard variant="flat" border class="pa-3 text-center stat-box-premium h-100">
+                <div class="label-premium mb-1">Total Gastado</div>
+                <div class="text-subtitle-1 font-weight-black text-success leading-tight">${{ stats.total_spent?.toFixed(2) }}</div>
+                <VIcon icon="tabler-currency-dollar" size="14" class="text-disabled mt-1" />
               </VCard>
             </VCol>
 
-            <!-- Total Órdenes -->
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="primary" class="pa-4 text-center stat-card">
-                <VIcon icon="tabler-shopping-cart" size="32" color="primary" class="mb-2" />
-                <div class="text-h6 font-weight-bold">{{ stats.total_orders }}</div>
-                <div class="text-caption text-medium-emphasis">Compras</div>
+            <VCol cols="6" sm="3">
+              <VCard variant="flat" border class="pa-3 text-center stat-box-premium h-100">
+                <div class="label-premium mb-1">Compras</div>
+                <div class="text-subtitle-1 font-weight-black text-primary leading-tight">{{ stats.total_orders }}</div>
+                <VIcon icon="tabler-shopping-cart" size="14" class="text-disabled mt-1" />
               </VCard>
             </VCol>
 
-            <!-- Ticket Promedio -->
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="info" class="pa-4 text-center stat-card">
-                <VIcon icon="tabler-receipt" size="32" color="info" class="mb-2" />
-                <div class="text-h6 font-weight-bold">${{ stats.average_ticket?.toFixed(2) }}</div>
-                <div class="text-caption text-medium-emphasis">Ticket Promedio</div>
+            <VCol cols="6" sm="3">
+              <VCard variant="flat" border class="pa-3 text-center stat-box-premium h-100">
+                <div class="label-premium mb-1">Ticket Prom.</div>
+                <div class="text-subtitle-1 font-weight-black text-info leading-tight">${{ stats.average_ticket?.toFixed(2) }}</div>
+                <VIcon icon="tabler-receipt" size="14" class="text-disabled mt-1" />
               </VCard>
             </VCol>
 
-            <!-- Días sin comprar -->
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="6" sm="3">
               <VCard
-                variant="tonal"
-                :color="stats.days_since_last_purchase !== null && stats.days_since_last_purchase > 30 ? 'error' : 'warning'"
-                class="pa-4 text-center stat-card"
+                variant="flat"
+                border
+                class="pa-3 text-center stat-box-premium h-100"
+                :class="stats.days_since_last_purchase > 30 ? 'border-error border-opacity-25' : ''"
               >
-                <VIcon
-                  icon="tabler-calendar-time"
-                  size="32"
-                  :color="stats.days_since_last_purchase !== null && stats.days_since_last_purchase > 30 ? 'error' : 'warning'"
-                  class="mb-2"
-                />
-                <div class="text-h6 font-weight-bold">
-                  {{ stats.days_since_last_purchase !== null ? Number(stats.days_since_last_purchase).toFixed(0) : '—' }}
+                <div class="label-premium mb-1">Inactividad</div>
+                <div
+                  class="text-subtitle-1 font-weight-black leading-tight"
+                  :class="stats.days_since_last_purchase > 30 ? 'text-error' : 'text-warning'"
+                >
+                  {{ stats.days_since_last_purchase !== null ? Math.round(stats.days_since_last_purchase) : '0' }} <small class="text-xs">Días</small>
                 </div>
-                <div class="text-caption text-medium-emphasis">Días sin comprar</div>
+                <VIcon icon="tabler-clock-exclamation" size="14" class="text-disabled mt-1" />
               </VCard>
             </VCol>
           </VRow>
 
-          <!-- Top 5 Productos más comprados -->
-          <div v-if="topProducts.length > 0" class="mt-5">
-            <div class="d-flex align-center gap-2 mb-3">
-              <VIcon icon="tabler-star" size="20" color="warning" />
-              <span class="text-body-1 font-weight-medium">Top 5 Productos Favoritos</span>
-            </div>
+          <!-- Tops y Listados -->
+          <div class="d-flex flex-column gap-4">
+            <!-- Favoritos -->
+            <VCard v-if="topProducts.length > 0" variant="flat" border class="overflow-hidden">
+              <div class="bg-light pa-3 border-b d-flex align-center gap-2">
+                <VIcon icon="tabler-star-filled" size="16" color="warning" />
+                <span class="text-xs font-weight-black uppercase">Productos Favoritos</span>
+              </div>
+              <VList density="compact" class="pa-0">
+                <template v-for="(product, index) in topProducts" :key="'top-' + index">
+                  <VListItem class="py-2">
+                    <template #prepend>
+                      <div class="text-h6 font-weight-black text-primary opacity-25 me-3" style="inline-size: 24px;">{{ index + 1 }}</div>
+                    </template>
+                    <VListItemTitle class="text-super-xs font-weight-black uppercase truncate">{{ product.product_name }}</VListItemTitle>
+                    <VListItemSubtitle class="text-super-xs font-weight-bold text-disabled uppercase">
+                      {{ product.laboratory_name || 'Sin lab.' }} · {{ product.total_quantity }} Uds.
+                    </VListItemSubtitle>
+                  </VListItem>
+                  <VDivider v-if="index < topProducts.length - 1" class="border-opacity-10" />
+                </template>
+              </VList>
+            </VCard>
 
-            <VList lines="two" density="compact" class="rounded border">
-              <template v-for="(product, index) in topProducts" :key="'top-' + index">
-                <VListItem>
-                  <template #prepend>
-                    <VAvatar
-                      :color="index === 0 ? 'warning' : index === 1 ? 'secondary' : index === 2 ? 'info' : index === 3 ? 'success' : 'primary'"
-                      variant="tonal"
-                      size="36"
-                    >
-                      <span class="text-body-2 font-weight-bold">{{ index + 1 }}</span>
-                    </VAvatar>
+            <!-- Historial Reciente -->
+            <VCard v-if="lastProducts.length > 0" variant="flat" border class="overflow-hidden">
+              <div class="bg-light pa-3 border-b d-flex align-center gap-2">
+                <VIcon icon="tabler-history" size="16" color="primary" />
+                <span class="text-xs font-weight-black uppercase">Historial Reciente</span>
+              </div>
+              <div class="max-h-300 overflow-y-auto">
+                <VList density="compact" class="pa-0">
+                  <template v-for="(product, index) in lastProducts" :key="'last-' + index">
+                    <VListItem class="py-3">
+                      <div class="d-flex justify-space-between align-center w-100">
+                        <div class="min-width-0 me-2">
+                          <div class="text-super-xs font-weight-black uppercase truncate">{{ product.product_name }}</div>
+                          <div class="text-super-xs text-disabled font-weight-bold uppercase">
+                            {{ product.date }} · {{ product.quantity }} uds.
+                          </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                          <div class="text-xs font-weight-black text-primary">${{ product.total_usd?.toFixed(2) }}</div>
+                        </div>
+                      </div>
+                    </VListItem>
+                    <VDivider v-if="index < lastProducts.length - 1" class="border-opacity-10" />
                   </template>
-                  <VListItemTitle class="text-body-2 font-weight-medium">
-                    {{ product.product_name }}
-                  </VListItemTitle>
-                  <VListItemSubtitle class="text-caption">
-                    <span v-if="product.laboratory_name" class="font-weight-medium">{{ product.laboratory_name }} · </span>
-                    {{ product.total_quantity }} unidades compradas
-                  </VListItemSubtitle>
-                </VListItem>
-                <VDivider v-if="index < topProducts.length - 1" />
-              </template>
-            </VList>
+                </VList>
+              </div>
+            </VCard>
           </div>
 
-          <!-- Últimas 10 compras -->
-          <div v-if="lastProducts.length > 0" class="mt-5">
-            <div class="d-flex align-center gap-2 mb-3">
-              <VIcon icon="tabler-history" size="20" color="primary" />
-              <span class="text-body-1 font-weight-medium">Últimas 10 Compras</span>
-            </div>
-
-            <VList lines="two" density="compact" class="rounded border">
-              <template v-for="(product, index) in lastProducts" :key="'last-' + index">
-                <VListItem>
-                  <template #prepend>
-                    <VAvatar color="primary" variant="tonal" size="36">
-                      <VIcon icon="tabler-pill" size="18" />
-                    </VAvatar>
-                  </template>
-                  <VListItemTitle class="text-body-2 font-weight-medium">
-                    {{ product.product_name }}
-                    <span v-if="product.laboratory_name" class="text-caption text-medium-emphasis ms-1">({{ product.laboratory_name }})</span>
-                  </VListItemTitle>
-                  <VListItemSubtitle class="text-caption">
-                    {{ product.date }} · {{ product.quantity }} uds. · ${{ product.price_usd?.toFixed(2) }} c/u
-                  </VListItemSubtitle>
-                  <template #append>
-                    <span class="text-body-2 font-weight-medium text-success">
-                      ${{ product.total_usd?.toFixed(2) }}
-                    </span>
-                  </template>
-                </VListItem>
-                <VDivider v-if="index < lastProducts.length - 1" />
-              </template>
-            </VList>
+          <!-- Estado Vacío -->
+          <div v-if="stats.total_orders === 0" class="text-center py-10 opacity-50">
+            <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-3" />
+            <div class="text-xs font-weight-black uppercase">Sin historial comercial</div>
           </div>
-
-          <!-- Sin datos -->
-          <VCard v-if="stats.total_orders === 0" variant="tonal" color="secondary" class="mt-5 pa-5 text-center">
-            <VIcon icon="tabler-shopping-cart-off" size="48" color="secondary" class="mb-3" />
-            <div class="text-body-1 font-weight-medium">Sin compras registradas</div>
-            <div class="text-body-2 text-medium-emphasis">Este cliente aún no tiene órdenes completadas.</div>
-          </VCard>
         </template>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-5">
-        <VRow class="w-100 ma-0">
-          <VCol cols="12" class="pa-2">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
-              block
-              @click="onClose"
-            >
-              Cerrar
-            </VBtn>
-          </VCol>
-        </VRow>
+      <VCardActions class="pa-4 bg-light">
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          size="large"
+          block
+          block-size="52"
+          class="font-weight-black rounded-lg text-button uppercase"
+          @click="onClose"
+        >
+          CERRAR ANÁLISIS
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.stat-card {
-  border-radius: 12px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173b1f 100%);
 }
 
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%);
-  transform: translateY(-2px);
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.label-premium {
+  font-size: 0.55rem;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.stat-box-premium {
+  border-radius: 12px !important;
+  background: white !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 5%) !important;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leading-tight { line-height: 1.25 !important; }
+
+.uppercase { text-transform: uppercase; }
+
+.max-h-300 {
+  max-block-size: 300px;
+}
+
+.text-button {
+  font-size: 0.875rem !important;
+  letter-spacing: 1px !important;
 }
 </style>

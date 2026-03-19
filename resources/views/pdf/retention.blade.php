@@ -12,37 +12,27 @@
             font-family: 'Helvetica', 'Arial', sans-serif;
             font-size: 8.5pt;
             line-height: 1.15;
-            color: #000;
+            color: #111;
         }
-        .header-central {
-            text-align: center;
-            margin-bottom: 8px;
-        }
-        .logo-img {
-            max-width: 110px;
-            margin-bottom: 4px;
-        }
-        .company-header-name {
-            font-size: 13pt;
-            font-weight: bold;
-            display: block;
-            letter-spacing: 0.5px;
-        }
-        .company-header-rif {
-            font-size: 10pt;
-            font-weight: bold;
-            display: block;
-            margin-top: 2px;
-        }
+        /* CABECERA AL ESTILO NOMINA */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        .header-table td { vertical-align: top; }
+        .logo-cell { width: 120px; }
+        .logo-img { width: 108px; }
+        .company-cell { text-align: right; }
+        .company-name  { font-size: 12.5pt; font-weight: bold; letter-spacing: 0.4px; }
+        .company-sub   { font-size: 8.5pt; font-weight: bold; display: block; margin-top: 2px; }
+        .company-extra { font-size: 7.5pt; color: #444; display: block; margin-top: 1px; }
+
         .title-main {
             text-align: center;
-            font-size: 11.5pt;
+            font-size: 11pt;
             font-weight: bold;
-            margin: 12px 0 6px 0;
+            margin: 10px 0 6px 0;
             text-transform: uppercase;
-            border-top: 1px solid #000;
-            border-bottom: 1px solid #000;
-            padding: 4px 0;
+            border-top: 1.2px solid #111;
+            border-bottom: 1.2px solid #111;
+            padding: 5px 0;
         }
         .legal-base {
             font-size: 6.8pt;
@@ -116,17 +106,25 @@
     </style>
 </head>
 <body>
-    <div class="header-central">
-        @if(file_exists(public_path('images/logoDonative.png')))
-            <img src="{{ public_path('images/logoDonative.png') }}" class="logo-img">
-        @endif
-        <span class="company-header-name">FARMACIA BARRIO SUCRE 2024, C.A.</span>
-        <span class="company-header-rif">R.I.F. Nº {{ $company['rif'] }}</span>
-    </div>
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                @if(file_exists(public_path('images/logoDonative.png')))
+                    <img src="{{ public_path('images/logoDonative.png') }}" class="logo-img">
+                @endif
+            </td>
+            <td class="company-cell">
+                <span class="company-name">FARMACIA BARRIO SUCRE 2024, C.A.</span>
+                <span class="company-sub">R.I.F. Nº J-50540695-7</span>
+                <span class="company-extra">Calle Principal Local 05 (L3) Sector Barrio Sucre, La Fría, Táchira</span>
+                <span class="company-extra">Agente de Retención de I.V.A.</span>
+            </td>
+        </tr>
+    </table>
 
     <div class="title-main">COMPROBANTE DE RETENCIÓN DEL IMPUESTO AL VALOR AGREGADO</div>
 
-    <div class="legal-base">
+    <div class="legal-base" style="color: #555;">
         (Ley IVA - Art. 11. Gaceta Oficial 6.152 Extraordinario. "La Administración Tributaria podrá designar como responsables del pago del impuesto, en calidad de agentes de retención, a quienes por sus funciones públicas o por razón de sus actividades privadas intervengan en operaciones gravadas con el impuesto establecido en este Decreto con Rango, Valor y Fuerza de Ley")
     </div>
 

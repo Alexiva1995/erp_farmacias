@@ -27,13 +27,18 @@ class OrderActionService
         // DB::beginTransaction();
         try {
             return DB::transaction(function () use ($data) {
-                $existsPending = Order::where('seller_id', $data['seller_id'])
+                $pendingOrder = Order::where('seller_id', $data['seller_id'])
                     ->where('status', Order::PENDING)
-                    ->lockForUpdate()
-                    ->exists();
+                    ->withCount('details')
+                    ->first();
 
-                if ($existsPending) {
-                    throw new \Exception('Ya tienes una orden abierta. Procesa esa orden o resérvala antes de crear una nueva.');
+                if ($pendingOrder && $pendingOrder->details_count > 0) {
+                    throw new \Exception('Ya tienes una orden abierta con productos. Procesa esa orden o resérvala antes de crear una nueva.');
+                }
+
+                // Si hay una orden pendiente pero está vacía, la eliminamos antes de crear la nueva
+                if ($pendingOrder) {
+                    $pendingOrder->delete();
                 }
 
                 $openCashRegisterClosing = CashClosing::where('seller_id', $data['seller_id'])

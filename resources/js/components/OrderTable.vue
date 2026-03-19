@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { formatAmountOnly } from "@/utils/currencyFormatter";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -15,6 +16,8 @@ const props = defineProps({
   showThermalPrint: { type: Boolean, default: false },
   showPrintActions: { type: Boolean, default: true },
 });
+
+const { mobile } = useDisplay();
 
 const sortByModel = computed(() => {
   if (!props.sortBy) return [];
@@ -97,8 +100,106 @@ const renderSellerName = (item) => {
 };
 </script>
 <template>
-  <VCard>
+  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm">
+    <template v-if="mobile">
+      <VDataIterator
+        :items="props.orders"
+        :items-per-page="props.itemsPerPage"
+        :loading="props.loading"
+      >
+        <template v-slot:default="{ items }">
+          <div class="pa-4 d-flex flex-column gap-4">
+            <VCard
+              v-for="item in items"
+              :key="item.raw.id"
+              variant="flat"
+              border
+              class="rounded-lg pa-4"
+            >
+              <div class="d-flex justify-space-between align-center mb-2">
+                <span class="text-caption font-weight-bold text-primary">ID: #{{ item.raw.id }}</span>
+                <VChip
+                  size="x-small"
+                  :color="
+                    item.raw.status === 'Completed'
+                      ? 'success'
+                      : item.raw.status === 'Abandoned'
+                      ? 'warning'
+                      : 'error'
+                  "
+                  class="font-weight-bold text-uppercase"
+                >
+                  {{ item.raw.status === 'Completed' ? 'Completado' : item.raw.status }}
+                </VChip>
+              </div>
+
+              <div class="mb-3">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <VIcon size="16" color="secondary">tabler-user</VIcon>
+                  <span class="text-body-2 font-weight-bold">{{ renderUsername(item.raw) }}</span>
+                </div>
+                <div class="d-flex align-center gap-2 mb-1 text-medium-emphasis">
+                  <VIcon size="16">tabler-id</VIcon>
+                  <span class="text-caption">{{ renderIdentification(item.raw) }}</span>
+                </div>
+                <div class="d-flex align-center gap-2 text-medium-emphasis">
+                  <VIcon size="16">tabler-calendar</VIcon>
+                  <span class="text-caption">{{ date(item.raw.order_date) }}</span>
+                </div>
+              </div>
+
+              <VDivider class="border-dashed mb-3" />
+
+              <div class="d-flex justify-space-between align-center">
+                <div>
+                  <div class="text-caption text-medium-emphasis mb-n1">Total</div>
+                  <div class="text-h6 font-weight-black">
+                    {{ formatAmountOnly(Number(item.raw.total_amount) || 0, item.raw.currency || 'COP') }}
+                  </div>
+                </div>
+                <div class="d-flex gap-1">
+                  <VBtn
+                    icon="tabler-eye"
+                    variant="tonal"
+                    color="info"
+                    size="small"
+                    @click="handleView(item.raw.id)"
+                  />
+                  <VBtn
+                    v-if="showPrintActions"
+                    icon="tabler-printer"
+                    variant="tonal"
+                    color="secondary"
+                    size="small"
+                    @click="$emit('print-order', item.raw.id)"
+                  />
+                </div>
+              </div>
+            </VCard>
+          </div>
+        </template>
+
+        <template v-slot:no-data>
+          <div class="pa-8 text-center text-medium-emphasis">
+            No hay órdenes para mostrar
+          </div>
+        </template>
+      </VDataIterator>
+
+      <!-- Paginación Móvil -->
+      <div class="pa-4 border-t d-flex justify-center">
+        <VPagination
+          v-model="props.page"
+          :length="Math.ceil(props.totalOrders / props.itemsPerPage)"
+          size="small"
+          total-visible="5"
+          @update:model-value="(p) => emit('update:options', { ...props, page: p })"
+        />
+      </div>
+    </template>
+
     <VDataTableServer
+      v-else
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="props.headers"
@@ -110,6 +211,16 @@ const renderSellerName = (item) => {
       @update:options="(options) => emit('update:options', options)"
       :expanded="expandedRows"
     >
+      <!-- Skeleton Loader -->
+      <template v-slot:loading>
+        <VSkeletonLoader
+          v-for="n in 5"
+          :key="n"
+          type="table-row"
+          class="border-b"
+        />
+      </template>
+
       <template v-slot:item.identification="{ item }">
         {{ renderIdentification(item) }}
       </template>

@@ -76,6 +76,68 @@ const isFinishingOrder = ref(false);
 
 const isSpecialTaxpayer = ref(false);
 
+const exchangeRates = ref({});
+const ratesLoaded = ref(false);
+const isCurrencyChanging = ref(false);
+
+const fetchExchangeRates = async () => {
+  ratesLoaded.value = false;
+  try {
+    const response = await axios.get("/public/exchange-rates");
+    if (response.status != 200) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const apiRates = response.data;
+    const formattedRates = {};
+    apiRates.forEach((rateItem) => {
+      const currencyCode = rateItem.currency_code;
+      const rateValue = parseFloat(rateItem.rate);
+
+      if (!formattedRates["USD"]) {
+        formattedRates["USD"] = {};
+      }
+      formattedRates["USD"][currencyCode] = rateValue;
+      if (!formattedRates[currencyCode]) {
+        formattedRates[currencyCode] = {};
+      }
+      if (rateValue !== 0) {
+        formattedRates[currencyCode]["USD"] = 1 / rateValue;
+      }
+
+      if (formattedRates["COP"] && formattedRates["BS"]) {
+        formattedRates["COP"]["BS"] =
+          parseFloat(formattedRates["USD"]["BS"]) /
+          parseFloat(formattedRates["USD"]["COP"]);
+        formattedRates["BS"]["COP"] =
+          parseFloat(formattedRates["USD"]["COP"]) /
+          parseFloat(formattedRates["USD"]["BS"]);
+      }
+    });
+
+    exchangeRates.value = formattedRates;
+    ratesLoaded.value = true;
+    console.log("[ORDER_USER] Tasas de cambio cargadas:", exchangeRates.value);
+  } catch (error) {
+    console.error("[ORDER_USER] Error fetching exchange rates:", error);
+    toast.error("No se pudieron cargar las tasas de cambio.");
+  }
+};
+
+const getEffectiveRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const rates = exchangeRates.value?.[fromCurrency];
+  if (!rates) return 0;
+
+  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
+  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
+    return rates["COPC"];
+  }
+
+  return rates[toCurrency] || 0;
+};
+
 const newClientFormData = ref({
   id: null,
   identification_type: "",
@@ -131,6 +193,7 @@ const showBuysModal = ref(false);
 
 const paymentsForPrint = ref([]);
 const changeAmountForPrint = ref(0);
+const changeAmountOriginForPrint = ref(0);
 const creditAmountForPrint = ref(0);
 const creditForPrint = ref(false);
 
@@ -1013,6 +1076,13 @@ onMounted(async () => {
     }
 
     try {
+      console.log("[ORDER_USER] Cargando tasas de cambio...");
+      fetchExchangeRates();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar tasas", error);
+    }
+
+    try {
       console.log("[ORDER_USER] Cargando configuración general...");
       fetchGeneralSettings();
     } catch (error) {
@@ -1116,7 +1186,7 @@ const verifyClient = async (identification) => {
 
   if (!identification) {
     toast.warning("Por favor, ingrese un número de identificación.");
-    return;
+    return false;
   }
 
   try {
@@ -1130,6 +1200,7 @@ const verifyClient = async (identification) => {
         identification: identification,
       };
       showRegisterClientModal.value = true;
+      return false;
     } else {
       const clientData = responseData.client;
 
@@ -1167,23 +1238,23 @@ const verifyClient = async (identification) => {
           pendingQuotationProducts.value = [];
         }
       }
+      return true;
     }
   } catch (error) {
     console.error("Error al verificar cliente:", error);
-    console.log(error.message);
     toast.error("Error al verificar el cliente.");
+    return false;
   }
 };
 
 const handleLoadQuotation = async (quotationId) => {
-  if (!quotationId?.trim()) return;
+  if (!quotationId?.trim()) return false;
   try {
     const response = await axios.get(`/tpv/quotations/${quotationId}/products`);
     const { products, client } = response.data;
 
     if (!products || products.length === 0) {
-      toast.info("La cotización no tiene productos o está vacía.");
-      return;
+      return false;
     }
 
     if (client && client.id) {
@@ -1192,19 +1263,30 @@ const handleLoadQuotation = async (quotationId) => {
         selectedClient.value = order.client;
         await handleAddQuotationProducts(products);
         toast.success("Cotización cargada. Productos agregados al pedido.");
+        return true;
       }
     } else {
       pendingQuotationProducts.value = products;
       toast.warning(
         "La cotización no tiene cliente. Ingrese la cédula del cliente.",
       );
+      return true;
     }
+    return false;
   } catch (error) {
-    const msg =
-      error.response?.data?.message || "Error al cargar la cotización.";
-    toast.error(msg);
-    console.error("Error loading quotation:", error);
+    return false;
   }
+};
+
+const handleIdentifyAndStart = async (value) => {
+  if (!value) return;
+  
+  // Primero intentamos como cotización (si tiene éxito, termina)
+  const isQuotation = await handleLoadQuotation(value);
+  if (isQuotation) return;
+  
+  // Si no fue cotización, intentamos verificar como cliente
+  await verifyClient(value);
 };
 
 const reservedOrderCliente = async () => {
@@ -1324,6 +1406,7 @@ const clearFormErrors = () => {
 };
 
 const handleCurrencyChanged = async (newCurrency) => {
+  isCurrencyChanging.value = true;
   try {
     if (hasOpenOrder.value && openOrderData.value?.id) {
       // Calculate totals for the new currency to satisfy backend validation
@@ -2145,6 +2228,7 @@ const closeBuysModal = () => {
       toast.success("¡Compra finalizada y registrada con éxito!");
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
+      changeAmountOriginForPrint.value = changeAmountOrigin;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
@@ -2271,6 +2355,7 @@ const handleBuysCompletion = async (
   changeAmount,
   changeAmountUSD,
   switchStates,
+  changeAmountOrigin = 0,
 ) => {
   try {
     isFinishingOrder.value = true;
@@ -2467,6 +2552,7 @@ const handleBuysCompletion = async (
       toast.success("¡Compra finalizada y registrada con éxito!");
       prescriptionFile.value = null;
       changeAmountForPrint.value = changeAmount;
+      changeAmountOriginForPrint.value = changeAmountOrigin;
       creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
       creditForPrint.value = credit;
       expirationDiscountForPrint.value = totalExpirationDiscountAmount.value;
@@ -3071,6 +3157,7 @@ onUnmounted(() => {
         :recipe-discount-total="totalRecipeDiscountAmount || 0"
         :expiration-discount-total="totalExpirationDiscountAmount || 0"
         :cliente="selectedClient || null"
+        :exchange-rates="exchangeRates"
         :selected-display-currency="selectedDisplayCurrency || 'USD'"
         @currency-changed="handleCurrencyChanged"
         @update-quantity="updateOrderItemQuantity"
@@ -3100,6 +3187,7 @@ onUnmounted(() => {
         :buttons-icon-only="true"
         :show-quotation-input="true"
         @verify-client="verifyClient"
+        @identify-and-start="handleIdentifyAndStart"
         @reserved-order-cliente="reservedOrderCliente"
         @load-quotation="handleLoadQuotation"
       />
@@ -3134,6 +3222,8 @@ onUnmounted(() => {
       :current-discount="discount || 0"
       :order-items="orderItems || []"
       :options="tableOptions"
+      :exchange-rates="exchangeRates"
+      :currency="selectedDisplayCurrency"
       @update:options="updateTableOptions"
       @add-product="addProductToOrder"
       @view-group-products="fetchGroupProducts"
@@ -3217,6 +3307,7 @@ onUnmounted(() => {
         :selected-currency="selectedDisplayCurrency || 'USD'"
         :payments="paymentsForPrint || []"
         :change-amount="changeAmountForPrint || 0"
+        :change-amount-origin="changeAmountOriginForPrint || 0"
         :credit-amount="creditAmountForPrint || 0"
         :credit="creditForPrint || false"
         :company-discount-total="companyDiscountForPrint || 0"

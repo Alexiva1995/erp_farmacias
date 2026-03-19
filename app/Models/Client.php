@@ -20,6 +20,7 @@ class Client extends Model
     const CLIENT_TYPE_FRECUENTE = 'Frecuente';
     const CLIENT_TYPE_VIP = 'VIP';
     const CLIENT_TYPE_EN_RIESGO = 'En Riesgo';
+    const CLIENT_TYPE_INACTIVO = 'Inactivo';
 
     const CLIENT_TYPES = [
         self::CLIENT_TYPE_NUEVO,
@@ -27,6 +28,7 @@ class Client extends Model
         self::CLIENT_TYPE_FRECUENTE,
         self::CLIENT_TYPE_VIP,
         self::CLIENT_TYPE_EN_RIESGO,
+        self::CLIENT_TYPE_INACTIVO,
     ];
 
     use SoftDeletes; // De la rama 5.0-CRM

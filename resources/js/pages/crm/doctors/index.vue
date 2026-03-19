@@ -6,7 +6,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfDoctorsGenerator from "@/utils/pdfDoctorsGenerator";
 import Swal from 'sweetalert2';
-import { onMounted, reactive, watch } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
 
 const route= useRouter()
@@ -224,7 +224,6 @@ function mostarModoEdit(payload){
 }
 
 const updateTableOptionsTable = options => {
-  // console.log(options)
   page.value = options.page
   itemsPerPage.value = options.itemsPerPage
   sortBy.value = options.sortBy[0]?.key
@@ -237,7 +236,7 @@ function limpiarFiltros(){
   fechaHasta_filtro.value=""
 }
 
-
+let debounceTimer;
 watch(
     [
       buscardor_filtro,
@@ -249,10 +248,16 @@ watch(
       sortBy
   ],
   async () =>{
-    // console.log("uwu")
-    await actualizarTabla()
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      await actualizarTabla();
+    }, 300);
   }
 )
+
+watch([buscardor_filtro, fechaDesde_filtro, fechaHasta_filtro], () => {
+  page.value = 1;
+});
 
 async function exportarPdf(){
   let filtros={

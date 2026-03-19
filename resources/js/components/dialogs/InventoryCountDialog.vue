@@ -1,7 +1,7 @@
 <script setup>
-import { computed, nextTick, ref, watch } from "vue";
-import Swal from "sweetalert2";
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
+import Swal from "sweetalert2";
+import { computed, nextTick, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -23,12 +23,14 @@ const allowWithoutBarcode = ref(false);
 
 const canSave = computed(() => {
   const isQuantityValid =
-    countedQuantity.value !== "" && !isNaN(Number(countedQuantity.value)) && Number(countedQuantity.value) >= 0;
-  
+    countedQuantity.value !== "" &&
+    !isNaN(Number(countedQuantity.value)) &&
+    Number(countedQuantity.value) >= 0;
+
   if (allowWithoutBarcode.value) {
     return isQuantityValid;
   }
-  
+
   return (
     barcodeInput.value.trim() !== "" && isQuantityValid && !barcodeError.value
   );
@@ -59,7 +61,7 @@ watch(
     } else {
       resetForm();
     }
-  }
+  },
 );
 
 watch(barcodeInput, (newBarcode) => {
@@ -124,7 +126,7 @@ const handleSave = async () => {
 
   const result = await Swal.fire({
     title: "Confirmar Conteo",
-    text: `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}`,
+    text: `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`,
     icon: "question",
     showCancelButton: true,
     confirmButtonText: "Confirmar",
@@ -160,18 +162,36 @@ const handleSave = async () => {
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-3 d-flex align-center shadow-sm">
           <div class="d-flex align-center">
-            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="32"
+              class="me-3 elevation-1"
+            >
               <VIcon icon="tabler-scan" color="primary" size="18" />
             </VAvatar>
             <div>
-              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0">Conteo de Inventario</h2>
-              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem;">
+              <h2
+                class="text-subtitle-2 font-weight-black text-white leading-tight mb-0"
+              >
+                Conteo de Inventario
+              </h2>
+              <span
+                class="text-super-xs text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem"
+              >
                 Validación física
               </span>
             </div>
           </div>
           <VSpacer />
-          <VBtn icon variant="tonal" color="white" size="x-small" @click="handleCancel">
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="x-small"
+            @click="handleCancel"
+          >
             <VIcon size="18">tabler-x</VIcon>
           </VBtn>
         </div>
@@ -179,33 +199,57 @@ const handleSave = async () => {
 
       <VCardText class="pa-4 bg-light inventory-count-content h-100">
         <!-- Perfil del Producto Premium Elevado -->
-        <VCard variant="flat" class="border pa-4 mb-4 bg-white elevation-2 rounded-lg transition-all border-l-primary">
+        <VCard
+          variant="flat"
+          class="border pa-4 mb-4 bg-white elevation-2 rounded-lg transition-all border-l-primary"
+        >
           <div class="d-flex flex-column min-width-0">
             <div class="d-flex align-center justify-space-between mb-3">
               <div class="d-flex align-center gap-2">
-                <VChip size="small" color="primary" variant="flat" class="font-weight-black uppercase px-3 shadow-sm">
+                <VChip
+                  size="small"
+                  color="primary"
+                  variant="flat"
+                  class="font-weight-black uppercase px-3 shadow-sm"
+                >
                   ID: {{ product.id }}
                 </VChip>
-                <VChip size="small" color="secondary" variant="tonal" class="font-weight-black uppercase px-3">
-                  {{ product.category?.name || 'General' }}
+                <VChip
+                  size="small"
+                  color="secondary"
+                  variant="tonal"
+                  class="font-weight-black uppercase px-3"
+                >
+                  {{ product.category?.name || "General" }}
                 </VChip>
               </div>
               <div class="header-indicator primary"></div>
             </div>
-            
-            <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-2">
+
+            <h3
+              class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-2"
+            >
               {{ product.name }}
             </h3>
 
             <div class="d-flex flex-wrap align-center gap-x-6 gap-y-3 mt-1">
               <div class="d-flex align-center gap-2">
                 <VAvatar size="24" color="primary-lighten-5" class="border">
-                  <VIcon icon="tabler-building-factory" size="14" color="primary" />
+                  <VIcon
+                    icon="tabler-building-factory"
+                    size="14"
+                    color="primary"
+                  />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">Laboratorio</span>
-                  <span class="text-xs font-weight-bold text-high-emphasis uppercase">
-                    {{ product.laboratory?.name || 'S/L' }}
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1"
+                    >Laboratorio</span
+                  >
+                  <span
+                    class="text-xs font-weight-bold text-high-emphasis uppercase"
+                  >
+                    {{ product.laboratory?.name || "S/L" }}
                   </span>
                 </div>
               </div>
@@ -215,9 +259,15 @@ const handleSave = async () => {
                   <VIcon icon="tabler-flask" size="14" color="primary" />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">P. Activo</span>
-                  <span class="text-xs font-weight-bold text-high-emphasis uppercase text-truncate" style="max-inline-size: 150px;">
-                    {{ product.active_ingredient || 'Sin registrar' }}
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1"
+                    >P. Activo</span
+                  >
+                  <span
+                    class="text-xs font-weight-bold text-high-emphasis uppercase text-truncate"
+                    style="max-inline-size: 150px"
+                  >
+                    {{ product.active_ingredient || "Sin registrar" }}
                   </span>
                 </div>
               </div>
@@ -231,7 +281,11 @@ const handleSave = async () => {
             variant="flat"
             :color="allowWithoutBarcode ? 'warning' : 'primary'"
             class="pa-3 mb-4 rounded-lg border-dashed-2 transition-all shadow-sm"
-            :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
+            :class="
+              allowWithoutBarcode
+                ? 'bg-warning-lighten-5'
+                : 'bg-primary-lighten-5'
+            "
           >
             <VCheckbox
               v-model="allowWithoutBarcode"
@@ -242,25 +296,49 @@ const handleSave = async () => {
             >
               <template #label>
                 <div class="d-flex align-center gap-3">
-                  <VAvatar :color="allowWithoutBarcode ? 'warning' : 'primary'" size="32" variant="tonal" class="elevation-1">
-                    <VIcon 
-                      :icon="allowWithoutBarcode ? 'tabler-barcode-off' : 'tabler-barcode'" 
-                      size="20" 
+                  <VAvatar
+                    :color="allowWithoutBarcode ? 'warning' : 'primary'"
+                    size="32"
+                    variant="tonal"
+                    class="elevation-1"
+                  >
+                    <VIcon
+                      :icon="
+                        allowWithoutBarcode
+                          ? 'tabler-barcode-off'
+                          : 'tabler-barcode'
+                      "
+                      size="20"
                     />
                   </VAvatar>
                   <div>
-                    <span class="text-subtitle-2 font-weight-black uppercase d-block" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
-                      {{ allowWithoutBarcode ? 'Conteo Manual Activo' : 'Modo Escaneo Activo' }}
+                    <span
+                      class="text-subtitle-2 font-weight-black uppercase d-block"
+                      :class="
+                        allowWithoutBarcode ? 'text-warning' : 'text-primary'
+                      "
+                    >
+                      {{
+                        allowWithoutBarcode
+                          ? "Conteo Manual Activo"
+                          : "Modo Escaneo Activo"
+                      }}
                     </span>
-                    <span class="text-super-xs font-weight-bold opacity-70 uppercase">
-                      {{ allowWithoutBarcode ? 'Ajuste de stock sin código de barras' : 'Validación obligatoria por scanner' }}
+                    <span
+                      class="text-super-xs font-weight-bold opacity-70 uppercase"
+                    >
+                      {{
+                        allowWithoutBarcode
+                          ? "Ajuste de stock sin código de barras"
+                          : "Validación obligatoria por scanner"
+                      }}
                     </span>
                   </div>
                 </div>
               </template>
             </VCheckbox>
           </VCard>
-          
+
           <!-- Campo de Escaneo Premium -->
           <div v-if="!allowWithoutBarcode" class="mb-4">
             <AppTextField
@@ -290,19 +368,26 @@ const handleSave = async () => {
           </div>
 
           <!-- Input de Cantidad Premium -->
-          <VCard variant="flat" border class="pa-4 rounded-lg mb-4 bg-white border-dashed-2 shadow-sm">
+          <VCard
+            variant="flat"
+            border
+            class="pa-4 rounded-lg mb-4 bg-white border-dashed-2 shadow-sm"
+          >
             <div class="d-flex align-center justify-space-between mb-3">
-              <span class="text-subtitle-2 font-weight-black text-disabled uppercase letter-spacing-1">Cantidad Auditada</span>
-              <VChip 
-                size="small" 
-                color="primary" 
-                variant="tonal" 
+              <span
+                class="text-subtitle-2 font-weight-black text-disabled uppercase letter-spacing-1"
+                >Cantidad Auditada</span
+              >
+              <VChip
+                size="small"
+                color="primary"
+                variant="tonal"
                 class="font-weight-black px-2"
               >
                 UNIDADES
               </VChip>
             </div>
-            
+
             <div class="d-flex justify-center align-center py-2">
               <AppTextField
                 id="quantity-input"
@@ -314,7 +399,10 @@ const handleSave = async () => {
                 class="ultra-huge-input-text h-auto font-weight-950"
                 density="compact"
                 hide-details
-                :disabled="!allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
+                :disabled="
+                  !allowWithoutBarcode &&
+                  (!barcodeInput.trim() || !!barcodeError)
+                "
                 @keyup.enter="handleSave"
               />
             </div>
@@ -357,10 +445,7 @@ const handleSave = async () => {
       </VCardActions>
     </VCard>
 
-    <BarcodeScannerDialog
-      v-model="isScannerVisible"
-      @scan="onBarcodeScanned"
-    />
+    <BarcodeScannerDialog v-model="isScannerVisible" @scan="onBarcodeScanned" />
   </VDialog>
 </template>
 
@@ -375,7 +460,11 @@ const handleSave = async () => {
 }
 
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173b22 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #173b22 100%
+  );
 }
 
 .bg-light {
@@ -415,9 +504,15 @@ const handleSave = async () => {
   line-height: normal;
 }
 
-.letter-spacing-1 { letter-spacing: 1.5px !important; }
-.letter-spacing-05 { letter-spacing: 0.5px !important; }
-.leading-tight { line-height: 1.25 !important; }
+.letter-spacing-1 {
+  letter-spacing: 1.5px !important;
+}
+.letter-spacing-05 {
+  letter-spacing: 0.5px !important;
+}
+.leading-tight {
+  line-height: 1.25 !important;
+}
 
 .truncate-2-lines {
   display: -webkit-box;

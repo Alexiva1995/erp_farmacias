@@ -121,6 +121,31 @@ const handleDownloadPdf = async (id, type) => {
     toast.error('Hubo un error al descargar el PDF');
   }
 };
+
+const handleDownloadBulk = async () => {
+  try {
+    loading.value = true;
+    const response = await axios.get('/finances/payslips/download-bulk-pdf', {
+      params: { year: 2025, type: 'legal' },
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'nominas_consolidadas_2025.pdf');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success('PDF consolidado descargado exitosamente');
+  } catch (error) {
+    toast.error('Hubo un error al descargar el PDF consolidado');
+  } finally {
+    loading.value = false;
+  }
+};
 </script>
 
 <template>
@@ -137,6 +162,7 @@ const handleDownloadPdf = async (id, type) => {
       v-model:endDate="endDate"
       @clear="handleClearFilters"
       @generated="fetchPayslips"
+      @download-bulk="handleDownloadBulk"
     />
 
     <PayslipTable
