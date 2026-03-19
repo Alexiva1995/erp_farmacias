@@ -28,27 +28,28 @@ const emit = defineEmits([
   "sort",
 ]);
 
+const isFiltersVisible = ref(false);
+
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
 ];
 
-// Opcion para el nuevo filtro bloqueado
 const lockedOptions = [
-  { name: "Bloqueado", value: 2 },
-  { name: "No bloqueado", value: 1 },
+  { title: "Bloqueado", value: 2 },
+  { title: "No bloqueado", value: 1 },
 ];
 
 const sortOptions = [
   {
     title: "Precio mayor",
-    icon: "tabler-arrow-up",
+    icon: "tabler-arrow-narrow-up",
     key: "sale_price",
     order: "desc",
   },
   {
     title: "Precio Menor",
-    icon: "tabler-arrow-down",
+    icon: "tabler-arrow-narrow-down",
     key: "sale_price",
     order: "asc",
   },
@@ -65,8 +66,8 @@ const sortOptions = [
     order: "asc",
   },
   {
-    title: "Fecha pronto a Vencer",
-    icon: "tabler-calendar-time",
+    title: "Pronto a Vencer",
+    icon: "tabler-calendar-stats",
     key: "next_expiration",
     order: "asc",
   },
@@ -84,7 +85,7 @@ const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 
 const getStorageKey = () =>
-  `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
+  `product_profitability_sort_user_${currentUser.value?.id || "anonymous"}`;
 
 const loadSavedSort = () => {
   try {
@@ -127,195 +128,208 @@ const clearSortFilter = () => {
   } catch (error) {
     console.error("Error al limpiar el filtro:", error);
   }
-
   emit("sort", { key: undefined, order: undefined });
-};
-
-const getSelectedSortTitle = () => {
-  if (!selectedSort.value) return null;
-  const option = sortOptions.find(
-    (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order,
-  );
-  return option ? option.title : null;
-};
-
-const getSelectedSortIcon = () => {
-  if (!selectedSort.value) return null;
-  const option = sortOptions.find(
-    (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order,
-  );
-  return option ? option.icon : null;
-};
-
-const isOptionSelected = (option) => {
-  return (
-    selectedSort.value &&
-    selectedSort.value.key === option.key &&
-    selectedSort.value.order === option.order
-  );
 };
 
 const handleClear = () => {
   emit("clear");
+  clearSortFilter();
 };
 
 onMounted(() => {
   loadSavedSort();
 });
-
-watch(
-  () => currentUser.value?.id,
-  () => {
-    if (currentUser.value?.id) {
-      loadSavedSort();
-    }
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="2">
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Producto, C. Activo..."
-            clearable
-            @update:model-value="emit('update:searchQuery', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <VAutocomplete
-            :model-value="props.selectedLaboratory"
-            :items="props.laboratories"
-            :loading="props.loading"
-            label="Laboratorio"
-            placeholder="Escribe para buscar un laboratorio"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:selectedLaboratory', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2">
-          <VSelect
-            :model-value="props.stockStatusFilter"
-            label="Estado de Stock"
-            :items="stockOptions"
-            clearable
-            @update:model-value="emit('update:stockStatusFilter', $event)"
-          />
-        </VCol>
-        <!-- Filtro bloqueado -->
-        <VCol cols="12" sm="6" md="2">
-          <VAutocomplete
-            :model-value="props.lockedValue"
-            :items="lockedOptions"
-            label="Estado"
-            placeholder="Bloqueado"
-            item-title="name"
-            item-value="value"
-            clearable
-            @update:model-value="emit('update:lockedValue', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <AppDateTimePicker
-            :model-value="props.startDate"
-            placeholder="Vencimiento Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:startDate', $event)"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2">
-          <AppDateTimePicker
-            :model-value="props.endDate"
-            placeholder="Vencimiento Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:endDate', $event)"
-          />
-        </VCol>
-      </VRow>
-    </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
-        Limpiar Filtros
-      </VBtn>
-
-      <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
-
-        <VChip
-          v-if="selectedSort"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click:close="clearSortFilter"
-        >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
-        </VChip>
+  <div class="profitability-filters-container">
+    <!-- Barra de Búsqueda Principal (Siempre Visible) -->
+    <div class="d-flex flex-wrap align-center gap-3 mb-6">
+      <div class="flex-grow-1" style="min-inline-size: 240px;">
+        <AppTextField
+          :model-value="props.searchQuery"
+          placeholder="Buscar por ID, Producto, C. Activo..."
+          prepend-inner-icon="tabler-search"
+          class="premium-input-compact"
+          density="compact"
+          hide-details
+          clearable
+          @update:model-value="emit('update:searchQuery', $event)"
+        />
       </div>
 
-      <VSpacer />
+      <div class="d-flex gap-2 flex-grow-1 flex-sm-grow-0 justify-sm-end">
+        <VBtn
+          :color="isFiltersVisible ? 'primary' : 'secondary'"
+          variant="tonal"
+          class="rounded-lg px-4 font-weight-black flex-grow-1 flex-sm-grow-0 h-38"
+          @click="isFiltersVisible = !isFiltersVisible"
+        >
+          <VIcon start icon="tabler-adjustments-horizontal" size="18" />
+          <span class="d-none d-sm-inline">FILTROS</span>
+          <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
+        </VBtn>
 
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-plus"
-        @click="emit('add-profitability')"
-      >
-        Asignar Rentabilidad!
-      </VBtn>
-    </VCardActions>
-  </VCard>
+        <VBtn
+          color="primary"
+          variant="flat"
+          class="rounded-lg px-4 font-weight-black shadow-sm flex-grow-1 flex-sm-grow-0 h-38"
+          prepend-icon="tabler-percentage"
+          @click="emit('add-profitability')"
+        >
+          ASIGNAR RENTABILIDAD
+        </VBtn>
+      </div>
+    </div>
+
+    <!-- Panel de Filtros Colapsable -->
+    <VExpandTransition>
+      <VCard v-if="isFiltersVisible" class="rounded-xl border-0 shadow-sm mb-6 bg-surface-variant-light overflow-hidden">
+        <VCardText class="pa-5">
+          <VRow>
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Laboratorio</span>
+              <VAutocomplete
+                :model-value="props.selectedLaboratory"
+                :items="props.laboratories"
+                :loading="props.loading"
+                placeholder="Todos los laboratorios"
+                item-title="name"
+                item-value="id"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="premium-select-compact"
+                clearable
+                @update:model-value="emit('update:selectedLaboratory', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Disponibilidad Stock</span>
+              <VSelect
+                :model-value="props.stockStatusFilter"
+                :items="stockOptions"
+                placeholder="Cualquier estado"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="premium-select-compact"
+                clearable
+                @update:model-value="emit('update:stockStatusFilter', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Estado de Bloqueo</span>
+              <VSelect
+                :model-value="props.lockedValue"
+                :items="lockedOptions"
+                item-title="title"
+                item-value="value"
+                placeholder="Todos los estados"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="premium-select-compact"
+                clearable
+                @update:model-value="emit('update:lockedValue', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Criterio Orden</span>
+              <VMenu>
+                <template #activator="{ props: menuProps }">
+                  <VBtn v-bind="menuProps" variant="outlined" color="primary" density="compact" block class="rounded-lg h-38 font-weight-black">
+                    {{ sortOptions.find(o => o.key === selectedSort?.key && o.order === selectedSort?.order)?.title || 'ORDENAR POR' }}
+                    <VIcon end icon="tabler-chevron-down" size="16" />
+                  </VBtn>
+                </template>
+                <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+                  <VListItem
+                    v-for="(option, index) in sortOptions"
+                    :key="index"
+                    :class="{ 'bg-primary-lighten-5': selectedSort?.key === option.key && selectedSort?.order === option.order }"
+                    @click="handleSortClick(option)"
+                  >
+                    <template #prepend>
+                      <VIcon :icon="option.icon" size="18" class="me-2" />
+                    </template>
+                    <VListItemTitle class="text-xs font-weight-bold">{{ option.title }}</VListItemTitle>
+                  </VListItem>
+                </VList>
+              </VMenu>
+            </VCol>
+
+            <VCol cols="12" sm="6" md="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Rango Vencimiento</span>
+              <div class="d-flex gap-2">
+                <AppDateTimePicker
+                  :model-value="props.startDate"
+                  placeholder="Desde"
+                  clearable
+                  class="premium-input-compact"
+                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  @update:model-value="emit('update:startDate', $event)"
+                />
+                <AppDateTimePicker
+                  :model-value="props.endDate"
+                  placeholder="Hasta"
+                  clearable
+                  class="premium-input-compact"
+                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  @update:model-value="emit('update:endDate', $event)"
+                />
+              </div>
+            </VCol>
+          </VRow>
+
+          <div class="d-flex justify-end mt-4">
+            <VBtn
+              variant="text"
+              color="secondary"
+              size="small"
+              class="font-weight-black"
+              @click="handleClear"
+            >
+              LIMPIAR FILTROS
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VExpandTransition>
+  </div>
 </template>
+
+<style scoped>
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.h-38 {
+  block-size: 38px !important;
+}
+
+:deep(.premium-input-compact) {
+  .v-field__input {
+    font-size: 0.8125rem !important;
+    min-block-size: 38px !important;
+    padding-block: 0 !important;
+  }
+}
+
+:deep(.premium-select-compact) {
+  .v-field__input {
+    font-size: 0.8125rem !important;
+    min-block-size: 38px !important;
+    padding-block: 0 !important;
+  }
+}
+
+.bg-surface-variant-light {
+  background-color: rgba(var(--v-theme-surface-variant), 0.03);
+}
+</style>
