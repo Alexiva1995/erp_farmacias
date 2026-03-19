@@ -1,4 +1,8 @@
 <script setup>
+import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
+import { toast } from "@/plugins/sweetalert";
+import axios from "@/plugins/axios";
+import Swal from "sweetalert2";
 import { useDisplay } from "vuetify";
 import { onMounted, ref, watch } from "vue";
 
@@ -51,9 +55,9 @@ const fetchResignations = async () => {
       if (filters.value.date_from) params.date_from = filters.value.date_from;
       if (filters.value.date_to) params.date_to = filters.value.date_to;
       
-      response = await axios.get("/api/rrhh/resignations", { params });
+      response = await axios.get("/rrhh/resignations", { params });
     } else {
-      response = await axios.get("/api/rrhh/resignations");
+      response = await axios.get("/rrhh/resignations");
     }
 
     const { data } = response;
@@ -93,7 +97,7 @@ const openToggleConfirmDialog = (employeeId, currentStatus, employeeName) => {
 
 const confirmToggleStatus = async () => {
   try {
-    await axios.put("/api/rrhh/resignations/toggle-employee-status", {
+    await axios.put("/rrhh/resignations/toggle-employee-status", {
       employee_id: employeeToToggle.value.id,
       is_active: newStatus.value,
     });
@@ -123,7 +127,7 @@ const cancelToggleStatus = () => {
 const downloadResignationPDF = async (resignation) => {
   try {
     const response = await axios.get(
-      `/api/rrhh/resignations/${resignation.id}/download-pdf`,
+      `/rrhh/resignations/${resignation.id}/download-pdf`,
       {
         responseType: "blob",
         headers: {
@@ -184,7 +188,7 @@ const editResignation = async (resignation) => {
     if (confirmed.isConfirmed) {
       // Obtener los datos de la renuncia existente
       const response = await axios.get(
-        `/api/rrhh/resignations/${resignation.id}/edit`
+        `/rrhh/resignations/${resignation.id}/edit`
       );
 
       if (response.data.success) {
@@ -244,7 +248,7 @@ const deleteResignation = async (resignation) => {
     });
 
     if (confirmed.isConfirmed) {
-      await axios.delete(`/api/rrhh/resignations/${resignation.id}`);
+      await axios.delete(`/rrhh/resignations/${resignation.id}`);
 
       toast.success("Renuncia eliminada exitosamente");
       fetchResignations(); // Recargar la lista
