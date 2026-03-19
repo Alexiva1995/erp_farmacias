@@ -79,6 +79,22 @@ const totalInUSD = computed(() => {
   return props.invoices.reduce((sum, invoice) => sum + (parseFloat(invoice.total_usd) || 0), 0);
 });
 
+const totalInBS = computed(() => {
+  return props.invoices.reduce((sum, invoice) => {
+    // Si la factura está indexada, usamos el monto indexado (que está en BS)
+    if (invoice.is_indexed && invoice.indexed_data?.is_indexed) {
+      return sum + (parseFloat(invoice.indexed_data.indexed_amount) || 0);
+    }
+    // Si no está indexada, pero su moneda original es Bs, usamos total_amount
+    if (invoice.currency === "Bs" || invoice.currency === "VES") {
+      return sum + (parseFloat(invoice.total_amount) || 0);
+    }
+    // Si es otra moneda (USD/COP) y no está indexada, convertimos el total_usd a BS 
+    // usando la tasa del sistema recibida por prop
+    return sum + ((parseFloat(invoice.total_usd) || 0) * props.exchangeRate);
+  }, 0);
+});
+
 const fetchExchangeRates = async () => {
   try {
     const { data } = await axios.get("/public/exchange-rates");
@@ -117,19 +133,9 @@ const processPayment = async () => {
       binance: "BINANCE", paypal: "PAYPAL", credit: "CREDIT"
     };
 
-    // Detectar automáticamente si es pago parcial o completo
-    const amount = parseFloat(form.value.payment_amount);
-    const total = parseFloat(totalInUSD.value);
-    
-    // Si la moneda es USD comparamos directo, si es otra habría que convertir 
-    // pero para simplificar y cumplir con lo que pide el usuario, 
-    // si el monto es menor al total en USD (que es nuestro base), marcamos parcial.
-    // Aunque lo ideal es que el backend lo maneje, lo enviaremos según la lógica de negocio.
-    const detectedType = amount < total ? "partial" : "full";
-
     const response = await axios.post("/finances/pending-payments/process-payment", {
       ...form.value,
-      payment_type: detectedType,
+      payment_type: "full", // Forzado a full por requerimiento del usuario (aunque sea menor)
       payment_method: frontendToEnumMap[form.value.payment_method],
       invoice_ids: props.invoices.map(i => i.id)
     });
@@ -167,9 +173,16 @@ const handleFileUpload = async (file) => {
   }
 };
 
-const formatCurrency = (amount, currency) => {
+const formatCurrency = (amount, currency, omitCurrency = false) => {
+  if (!amount && amount !== 0) return "0,00";
   const code = currency === "Bs" ? "VES" : currency === "COP" ? "COP" : "USD";
-  return new Intl.NumberFormat("es-VE", { style: "currency", currency: code }).format(amount || 0);
+  const formatted = new Intl.NumberFormat("es-VE", {
+    style: omitCurrency ? "decimal" : "currency",
+    currency: code,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+  return formatted;
 };
 
 watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
@@ -229,7 +242,11 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                   </VAvatar>
                   <div class="d-flex flex-column">
                     <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">Total a Procesar</span>
-                    <span class="text-h6 font-weight-black text-primary leading-none">{{ formatCurrency(totalInUSD, 'USD') }}</span>
+                    <div class="d-flex align-center gap-2">
+                       <span class="text-h6 font-weight-black text-primary leading-none">{{ formatCurrency(totalInUSD, 'USD') }}</span>
+                       <VDivider vertical class="mx-1" />
+                       <span class="text-xs font-weight-black text-success leading-none">Bs. {{ formatCurrency(totalInBS, 'Bs', true) }}</span>
+                    </div>
                   </div>
                 </div>
                 <VChip size="small" variant="flat" color="primary" class="font-weight-black rounded">
