@@ -40,6 +40,7 @@
     "destr": "2.0.5",
     "dropzone": "^6.0.0-beta.2",
     "eslint-plugin-regexp": "2.7.0",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "jwt-decode": "4.0.0",
