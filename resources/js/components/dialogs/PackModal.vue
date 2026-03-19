@@ -1,3 +1,4 @@
+<script setup>
 import { ref, computed, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
