@@ -62,9 +62,18 @@ const handleSearchOrder = () => {
 
 <style scoped>
 .premium-input-compact :deep(.v-field__input) {
-  font-size: 0.8rem !important;
-  font-weight: 600;
+  display: flex !important;
+  align-items: center !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  min-block-size: 38px !important;
+  padding-block: 0 !important;
   text-transform: uppercase;
+}
+
+.premium-input-compact :deep(.v-field) {
+  border-radius: 8px !important;
+  min-block-size: 38px !important;
 }
 
 .text-xs { font-size: 0.75rem !important; }

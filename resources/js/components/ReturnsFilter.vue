@@ -174,6 +174,8 @@ const hasActiveAdvancedFilters = computed(() => {
 
 <style scoped>
 .premium-input-compact :deep(.v-field__input) {
+  display: flex !important;
+  align-items: center !important;
   font-size: 0.75rem !important;
   font-weight: 700;
   min-block-size: 38px !important;
@@ -185,6 +187,19 @@ const hasActiveAdvancedFilters = computed(() => {
 .premium-input-compact :deep(.v-field__outline__end),
 .premium-input-compact :deep(.v-field__outline__notch) {
   border-color: rgba(var(--v-border-color), 15%) !important;
+}
+
+/* Forzar altura en selects y autocomplete que suelen ser más altos */
+.premium-input-compact :deep(.v-field) {
+  border-radius: 8px !important;
+  min-block-size: 38px !important;
+}
+
+.premium-input-compact :deep(.v-select__selection),
+.premium-input-compact :deep(.v-select__selection-text) {
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .gap-1 { gap: 4px !important; }
