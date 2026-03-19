@@ -1024,6 +1024,7 @@ const showChangeAmount = computed(() => {
   const hasRelevantCashPayment = payments.value.some(
     (payment) =>
       (payment.method === "cash_usd" && payment.currency === "USD") ||
+      (payment.method === "cash_bs" && payment.currency === "BS") ||
       (payment.method === "cash_cop" && payment.currency === "COP"),
   );
   return hasRelevantCashPayment && changeAmount.value > 0;
@@ -1727,6 +1728,7 @@ const getAvailableMethodsForCurrency = (currency) => {
               :payments="payments"
               :remaining-amount="remainingAmount"
               :show-change-amount="showChangeAmount"
+              :change-amount="changeAmount"
               :change-amount-in-cop="changeAmountInCOP"
               :get-converted-remaining-amount="getConvertedRemainingAmount"
               :get-payment-method-label="getPaymentMethodLabel"
@@ -1767,6 +1769,7 @@ const getAvailableMethodsForCurrency = (currency) => {
           :total-s-p-e-savings="totalSPESavings"
           :has-credit-payment="hasCreditPayment"
           :show-change-amount="showChangeAmount"
+          :change-amount="changeAmount"
           :change-amount-in-cop="changeAmountInCOP"
           @print="handlePrintTicket"
           @cancel="handleCancelAfterTicket"

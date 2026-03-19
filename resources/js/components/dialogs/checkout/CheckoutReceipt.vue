@@ -19,6 +19,7 @@ const props = defineProps({
   totalSPESavings: Number,
   hasCreditPayment: Boolean,
   showChangeAmount: Boolean,
+  changeAmount: Number,
   changeAmountInCOP: Number,
 });
 
@@ -110,9 +111,15 @@ const logoSrc = BASE64_LOGO_DATA;
             </div>
           </div>
 
-          <div v-if="showChangeAmount" class="d-flex justify-space-between font-weight-black text-success border-t pt-1">
-            <span>DEVOLUCIÓN (COP):</span>
-            <span>{{ formatCurrency(changeAmountInCOP, 'COP') }}</span>
+          <div v-if="showChangeAmount" class="border-t pt-1">
+            <div class="d-flex justify-space-between font-weight-black text-success">
+              <span>DEVOLUCIÓN (COP):</span>
+              <span>{{ formatCurrency(changeAmountInCOP, 'COP') }}</span>
+            </div>
+            <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between text-tiny mt-1">
+              <span>VUELTO EN {{ selectedCurrency }}:</span>
+              <span>{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
+            </div>
           </div>
         </div>
 
