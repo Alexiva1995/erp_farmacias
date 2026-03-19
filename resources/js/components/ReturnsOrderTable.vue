@@ -2,6 +2,7 @@
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -12,6 +13,8 @@ const props = defineProps({
   isVendedor: { type: Boolean, required: true },
 });
 const emit = defineEmits(["update:options", "return-product"]);
+const { mobile } = useDisplay();
+
 const selectedProductsToReturn = ref({});
 const showProductsModal = ref(false);
 const selectedOrderForModal = ref(null);
@@ -139,10 +142,11 @@ const getRefundAmount = (detail, isSelected) => {
   return qty * price;
 };
 
-/** Formatea el monto a devolver con 2 decimales y sufijo " BS". */
+/** Formatea el monto a devolver con la moneda de la orden. */
 const formatRefundAmount = (detail, isSelected) => {
   const amount = getRefundAmount(detail, isSelected);
-  return formatCurrency(amount, "BS");
+  const currency = selectedOrderForModal.value?.currency || "USD";
+  return formatCurrency(amount, currency.toUpperCase());
 };
 
 const setReturnsQuantity = (detailId, value) => {
@@ -155,17 +159,90 @@ const setReturnsQuantity = (detailId, value) => {
 };
 
 const totalRefundAmount = computed(() => {
-  if (!selectedOrderForModal.value) return { amount: 0, formatted: formatCurrency(0, "BS") };
+  if (!selectedOrderForModal.value) return { amount: 0, formatted: formatCurrency(0, "USD") };
   const orderId = selectedOrderForModal.value.id;
+  const currency = selectedOrderForModal.value.currency || "USD";
   const selected = selectedProductsToReturn.value[orderId] || [];
   const itemsToSum = Array.isArray(selected) ? selected : [];
   const amount = itemsToSum.reduce((sum, d) => sum + getRefundAmount(d, true), 0);
-  return { amount, formatted: formatCurrency(amount, "BS") };
+  return { amount, formatted: formatCurrency(amount, currency.toUpperCase()) };
 });
 </script>
 <template>
   <VCard>
+    <template v-if="mobile">
+      <VDataIterator
+        :items="props.orders"
+        :items-per-page="props.itemsPerPage"
+        :loading="props.loading"
+      >
+        <template v-slot:default="{ items }">
+          <div class="pa-2 d-flex flex-column gap-2">
+            <VCard
+              v-for="item in items"
+              :key="item.raw.id"
+              variant="flat"
+              border
+              class="rounded-lg pa-3"
+            >
+              <div class="d-flex justify-space-between align-start mb-1">
+                <div class="d-flex flex-column">
+                  <span class="text-caption font-weight-bold text-primary leading-tight">Orden #{{ item.raw.id }}</span>
+                  <div class="d-flex align-center gap-1 text-medium-emphasis mt-n1">
+                    <VIcon size="12">tabler-calendar</VIcon>
+                    <span style="font-size: 0.65rem;">{{ new Date(item.raw.created_at).toISOString().split("T")[0] }}</span>
+                  </div>
+                </div>
+                <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1" style="block-size: 18px; font-size: 0.6rem;">
+                  {{ item.raw.currency?.toUpperCase() }}
+                </VChip>
+              </div>
+
+              <div class="text-body-2 font-weight-bold truncate mb-2">
+                {{ item.raw.client.name }} {{ item.raw.client.last_name }}
+              </div>
+
+              <VDivider class="border-dashed mb-2" />
+
+              <div class="d-flex justify-space-between align-center">
+                <div class="d-flex flex-column">
+                  <span style="font-size: 0.6rem;" class="text-medium-emphasis text-uppercase font-weight-bold mb-n1">Monto Total</span>
+                  <span class="text-subtitle-1 font-weight-black text-success">
+                    {{ formatCurrency(parseFloat(item.raw.total_amount), item.raw.currency?.toUpperCase()) }}
+                  </span>
+                </div>
+                <VBtn
+                  icon="tabler-package"
+                  variant="tonal"
+                  color="info"
+                  size="32"
+                  @click="openProductsModal(item.raw)"
+                />
+              </div>
+            </VCard>
+          </div>
+        </template>
+        <template v-slot:no-data>
+          <div class="pa-8 text-center text-medium-emphasis">
+            No hay órdenes para mostrar
+          </div>
+        </template>
+      </VDataIterator>
+
+       <!-- Paginación Móvil -->
+      <div class="pa-4 border-t d-flex justify-center">
+        <VPagination
+          v-model="props.page"
+          :length="Math.ceil(props.totalOrder / props.itemsPerPage)"
+          size="small"
+          total-visible="5"
+          @update:model-value="(p) => emit('update:options', { ...props, page: p })"
+        />
+      </div>
+    </template>
+
     <VDataTableServer
+      v-else
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
@@ -211,9 +288,10 @@ const totalRefundAmount = computed(() => {
 
     <VDialog
       v-model="showProductsModal"
-      max-width="800"
+      :max-width="mobile ? '100%' : '800'"
+      :fullscreen="mobile"
       persistent
-      transition="dialog-transition"
+      transition="dialog-bottom-transition"
       @click:outside="closeProductsModal"
     >
       <VCard v-if="selectedOrderForModal">
@@ -226,8 +304,71 @@ const totalRefundAmount = computed(() => {
           </span>
         </VCardTitle>
         <VDivider />
-        <VCardText class="pa-4">
+        <VCardText class="pa-0">
+          <template v-if="mobile">
+            <div class="pa-3 d-flex flex-column gap-3 overflow-y-auto" style="max-block-size: calc(100vh - 200px);">
+              <VCard
+                v-for="detailItem in (selectedOrderForModal.details || [])"
+                :key="detailItem.id"
+                variant="flat"
+                border
+                class="rounded-lg pa-3"
+                :color="isDetailSelected(detailItem) ? 'primary-lighten-5' : ''"
+              >
+                <div class="d-flex align-center gap-3 mb-2">
+                  <VCheckbox
+                    v-model="selectedProductsToReturn[selectedOrderForModal.id]"
+                    :value="detailItem"
+                    density="compact"
+                    hide-details
+                    class="mt-n1"
+                  />
+                  <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                    <span class="text-body-2 font-weight-bold truncate">{{ detailItem.product?.name }}</span>
+                    <span class="text-caption text-medium-emphasis">{{ detailItem.product?.laboratory?.name }}</span>
+                  </div>
+                </div>
+
+                <div class="d-flex justify-space-between align-center mb-2 text-caption">
+                  <div>
+                    <span class="text-medium-emphasis">Vendido:</span>
+                    <span class="ms-1 font-weight-bold">{{ detailItem.quantity }}</span>
+                  </div>
+                  <div>
+                    <span class="text-medium-emphasis">Precio:</span>
+                    <span class="ms-1 font-weight-bold">{{ formatCurrency(parseFloat(detailItem.price), selectedOrderForModal.currency) }}</span>
+                  </div>
+                </div>
+
+                <VDivider class="border-dashed mb-2" />
+
+                <div class="d-flex justify-space-between align-center">
+                   <div class="d-flex flex-column" style="max-inline-size: 100px;">
+                    <span style="font-size: 0.6rem;" class="text-uppercase font-weight-bold text-medium-emphasis">Devolver</span>
+                    <VTextField
+                      :model-value="returnsQuantityByDetailId[detailItem.id] ?? detailItem.returns_quantity ?? detailItem.quantity"
+                      type="number"
+                      min="0"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      :max="detailItem.quantity"
+                      @update:model-value="(v) => setReturnsQuantity(detailItem.id, v)"
+                    />
+                  </div>
+                  <div class="d-flex flex-column text-end">
+                    <span style="font-size: 0.6rem;" class="text-uppercase font-weight-bold text-medium-emphasis">Reembolso</span>
+                    <span class="text-subtitle-2 font-weight-black text-primary">
+                      {{ formatRefundAmount(detailItem, isDetailSelected(detailItem)) }}
+                    </span>
+                  </div>
+                </div>
+              </VCard>
+            </div>
+          </template>
+
           <VDataTable
+            v-else
             v-model="selectedProductsToReturn[selectedOrderForModal.id]"
             :headers="orderItemHeaders"
             :items="selectedOrderForModal.details || []"
@@ -277,9 +418,12 @@ const totalRefundAmount = computed(() => {
               </span>
             </template>
           </VDataTable>
+
+          <VDivider />
+
           <div
             v-if="selectedProductsToReturn[selectedOrderForModal.id]?.length"
-            class="d-flex justify-end align-center mt-3 text-h6"
+            class="pa-4 d-flex justify-end align-center text-h6"
           >
             <span class="text-medium-emphasis me-2">Total a devolver:</span>
             <span class="font-weight-bold text-primary">
