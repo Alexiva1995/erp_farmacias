@@ -11,15 +11,16 @@ const currentYear = date.getFullYear();
 const selectedMonth = ref(currentMonth);
 const selectedYear = ref(currentYear);
 
-// Sort State
+const searchQuery = ref("");
 const selectedSort = ref({ key: "total", order: "desc" });
 const isLocked = ref(false);
+const isFiltersVisible = ref(false);
 
 const sortOptions = [
   {
     title: "Puntaje Total",
     icon: "tabler-trophy",
-    key: "total",
+    key: "scores.total",
     order: "desc",
   },
   {
@@ -37,14 +38,14 @@ const sortOptions = [
   {
     title: "Inventario",
     icon: "tabler-package",
-    key: "inventory_score",
+    key: "inventory_counted",
     order: "desc",
   },
   {
     title: "Vencimientos",
     icon: "tabler-calendar-off",
-    key: "scores.expiration", // Sort by score to reward fewer expirations
-    order: "desc",
+    key: "expirations",
+    order: "asc",
   },
 ];
 
@@ -53,14 +54,16 @@ const handleSortClick = (option) => {
 };
 
 const handleClear = () => {
+  searchQuery.value = "";
   selectedMonth.value = currentMonth;
   selectedYear.value = currentYear;
-  selectedSort.value = { key: "total", order: "desc" };
+  selectedSort.value = { key: "scores.total", order: "desc" };
+  isFiltersVisible.value = false;
 };
 
-// Generate list of months (e.g., current year + previous year)
+// Generar lista de meses
 const availableMonths = computed(() => {
-  const months = [
+  return [
     { value: 1, title: "Enero" },
     { value: 2, title: "Febrero" },
     { value: 3, title: "Marzo" },
@@ -74,17 +77,11 @@ const availableMonths = computed(() => {
     { value: 11, title: "Noviembre" },
     { value: 12, title: "Diciembre" },
   ];
-  return months;
 });
 
-// Years: Current and Previous
+// Años: Actual y Anterior
 const availableYears = computed(() => {
   return [currentYear, currentYear - 1];
-});
-
-const monthTitle = computed(() => {
-  const m = availableMonths.value.find((m) => m.value === selectedMonth.value);
-  return m ? `${m.title} ${selectedYear.value}` : "";
 });
 
 const fetchEmployees = async () => {
@@ -127,19 +124,17 @@ onMounted(() => {
 });
 
 const calculatedEmployees = computed(() => {
-  const data = employees.value;
-  if (!data.length) return [];
-
-  const processed = data.map((e) => {
-    return {
-      ...e,
-      // Helper for sorting
-      inventory_score: e.scores?.inventory || 0,
-    };
+  const filtered = employees.value.filter((e) => {
+    if (!searchQuery.value) return true;
+    const search = searchQuery.value.toLowerCase();
+    return (
+      e.name.toLowerCase().includes(search) ||
+      e.last_name.toLowerCase().includes(search) ||
+      (e.identification && String(e.identification).toLowerCase().includes(search))
+    );
   });
 
-// Dynamic Sorting
-  return processed.sort((a, b) => {
+  return [...filtered].sort((a, b) => {
     const key = selectedSort.value.key;
     const order = selectedSort.value.order === "asc" ? 1 : -1;
 
@@ -147,11 +142,11 @@ const calculatedEmployees = computed(() => {
 
     if (key.includes(".")) {
       const keys = key.split(".");
-      valA = a[keys[0]][keys[1]];
-      valB = b[keys[0]][keys[1]];
+      valA = a[keys[0]]?.[keys[1]] ?? 0;
+      valB = b[keys[0]]?.[keys[1]] ?? 0;
     } else {
-      valA = a[key];
-      valB = b[key];
+      valA = a[key] ?? 0;
+      valB = b[key] ?? 0;
     }
 
     if (valA < valB) return -1 * order;
@@ -159,6 +154,7 @@ const calculatedEmployees = computed(() => {
     return 0;
   });
 });
+
 const formatNumber = (num) =>
   new Intl.NumberFormat("es-VE", { maximumFractionDigits: 2 }).format(num);
 
@@ -170,46 +166,73 @@ const formatCurrency = (amount) =>
 </script>
 
 <template>
-  <VContainer fluid>
+  <VContainer fluid class="productivity-employee-month-page pa-4">
     <!-- Header Summary / Leaderboard -->
-    <VRow v-if="calculatedEmployees.length" class="mb-6">
+    <VRow v-if="calculatedEmployees.length" class="mb-6" dense>
       <VCol cols="12" md="4">
-        <VCard color="warning" class="text-white h-100 d-flex align-center shadow-lg">
-          <VCardText class="d-flex align-center gap-4 w-100">
-            <VAvatar size="64" class="leader-podium-avatar" border="2px solid white">
+        <VCard class="leader-card h-100 overflow-hidden border-0 shadow-lg position-relative">
+          <div class="premium-header pa-5 d-flex align-center gap-4">
+            <VAvatar size="70" class="leader-avatar border-2 border-white shadow-lg">
               <VImg v-if="calculatedEmployees[0].photo" :src="calculatedEmployees[0].photo" />
-              <div v-else class="text-h4">{{ calculatedEmployees[0].name.charAt(0) }}</div>
+              <div v-else class="text-h4 font-weight-black text-white">{{ calculatedEmployees[0].name.charAt(0) }}</div>
             </VAvatar>
-            <div>
-              <div class="text-overline opacity-80">Líder del Mes</div>
-              <div class="text-h5 font-weight-black">{{ calculatedEmployees[0].name }} {{ calculatedEmployees[0].last_name }}</div>
-              <div class="text-h4 font-weight-bold">{{ formatNumber(calculatedEmployees[0].scores.total) }} pts</div>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1">Líder del Mes</span>
+              <span class="text-h5 font-weight-black text-white leading-tight mb-1">
+                {{ calculatedEmployees[0].name }} {{ calculatedEmployees[0].last_name }}
+              </span>
+              <div class="d-flex align-center gap-2">
+                <VIcon icon="tabler-award" color="warning" size="20" />
+                <span class="text-h4 font-weight-black text-white">
+                  {{ formatNumber(calculatedEmployees[0].scores?.total || 0) }} 
+                  <small class="text-h6 font-weight-bold">pts</small>
+                </span>
+              </div>
             </div>
-            <VSpacer />
-            <VIcon icon="tabler-trophy" size="48" class="opacity-30" />
-          </VCardText>
+            <VIcon icon="tabler-trophy" size="64" class="position-absolute opacity-10" style="inset-block-end: -10px; inset-inline-end: -10px;" />
+          </div>
         </VCard>
       </VCol>
 
       <VCol cols="12" md="8">
-        <VCard class="h-100">
-          <VCardText class="d-flex align-center h-100">
-            <VRow class="w-100 text-center">
-              <VCol cols="3">
-                <div class="text-overline mb-1">Total Ventas</div>
-                <div class="text-h6 font-weight-bold">{{ formatCurrency(calculatedEmployees.reduce((acc, e) => acc + e.sales, 0)) }}</div>
+        <VCard class="h-100 border-0 shadow-sm rounded-xl overflow-hidden">
+          <VCardText class="d-flex align-center h-100 pa-6 bg-surface-variant-light">
+            <VRow class="w-100 text-center align-center">
+              <VCol cols="6" sm="3">
+                <div class="d-flex flex-column align-center">
+                  <VAvatar color="primary" variant="tonal" size="40" class="mb-2">
+                    <VIcon icon="tabler-currency-dollar" size="20" />
+                  </VAvatar>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Ventas</span>
+                  <span class="text-h6 font-weight-black">{{ formatCurrency(calculatedEmployees.reduce((acc, e) => acc + (e.sales || 0), 0)) }}</span>
+                </div>
               </VCol>
-              <VCol cols="3">
-                <div class="text-overline mb-1">Crecimiento Prom.</div>
-                <div class="text-h6 font-weight-bold text-success">{{ formatNumber(calculatedEmployees.reduce((acc, e) => acc + e.growth, 0) / calculatedEmployees.length) }}%</div>
+              <VCol cols="6" sm="3">
+                <div class="d-flex flex-column align-center">
+                  <VAvatar color="success" variant="tonal" size="40" class="mb-2">
+                    <VIcon icon="tabler-trending-up" size="20" />
+                  </VAvatar>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Crecimiento</span>
+                  <span class="text-h6 font-weight-black text-success">{{ formatNumber(calculatedEmployees.reduce((acc, e) => acc + (e.growth || 0), 0) / (calculatedEmployees.length || 1)) }}%</span>
+                </div>
               </VCol>
-              <VCol cols="3">
-                <div class="text-overline mb-1">Vencimientos</div>
-                <div class="text-h6 font-weight-bold text-error">{{ calculatedEmployees.reduce((acc, e) => acc + e.expirations, 0) }}</div>
+              <VCol cols="6" sm="3">
+                <div class="d-flex flex-column align-center">
+                  <VAvatar color="error" variant="tonal" size="40" class="mb-2">
+                    <VIcon icon="tabler-calendar-off" size="20" />
+                  </VAvatar>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Vencimientos</span>
+                  <span class="text-h6 font-weight-black text-error">{{ calculatedEmployees.reduce((acc, e) => acc + (e.expirations || 0), 0) }}</span>
+                </div>
               </VCol>
-              <VCol cols="3">
-                <div class="text-overline mb-1">Conteos Inv.</div>
-                <div class="text-h6 font-weight-bold text-info">{{ calculatedEmployees.reduce((acc, e) => acc + e.inventory_counted, 0) }}</div>
+              <VCol cols="6" sm="3">
+                <div class="d-flex flex-column align-center">
+                  <VAvatar color="info" variant="tonal" size="40" class="mb-2">
+                    <VIcon icon="tabler-package" size="20" />
+                  </VAvatar>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Inventario</span>
+                  <span class="text-h6 font-weight-black text-info">{{ calculatedEmployees.reduce((acc, e) => acc + (e.inventory_counted || 0), 0) }}</span>
+                </div>
               </VCol>
             </VRow>
           </VCardText>
@@ -217,84 +240,175 @@ const formatCurrency = (amount) =>
       </VCol>
     </VRow>
 
-    <VCard class="mb-6 border">
-      <VCardText class="pa-4">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-          <div class="d-flex align-center gap-4 flex-grow-1 flex-md-grow-0">
-            <VIcon icon="tabler-filter" color="secondary" />
-            <span class="text-h6 font-weight-bold">Filtros de Análisis</span>
-          </div>
+    <!-- Barra de Búsqueda y Acciones Rápidas (Siempre visible) -->
+    <div class="d-flex flex-wrap align-center gap-3 mb-6">
+      <div class="flex-grow-1" style="min-inline-size: 240px;">
+        <AppTextField
+          v-model="searchQuery"
+          placeholder="Buscar empleado..."
+          prepend-inner-icon="tabler-search"
+          class="premium-input-compact"
+          density="compact"
+          hide-details
+          clearable
+        />
+      </div>
 
-          <div class="d-flex align-center flex-wrap gap-3 flex-grow-1 flex-md-grow-0">
-            <div style="inline-size: 180px;">
-              <AppSelect
+      <div class="d-flex gap-2 flex-grow-1 flex-sm-grow-0 justify-sm-end">
+        <VBtn
+          :color="isFiltersVisible ? 'primary' : 'secondary'"
+          variant="tonal"
+          class="rounded-lg px-4 font-weight-black flex-grow-1 flex-sm-grow-0"
+          @click="isFiltersVisible = !isFiltersVisible"
+        >
+          <VIcon start icon="tabler-filter" size="18" />
+          <span class="d-none d-sm-inline">FILTROS</span>
+          <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
+        </VBtn>
+
+        <VBtn
+          v-if="!isLocked"
+          color="error"
+          variant="flat"
+          class="rounded-lg px-4 font-weight-black shadow-sm flex-grow-1 flex-sm-grow-0"
+          @click="handleLockMonth"
+        >
+          <VIcon start icon="tabler-lock" size="18" />
+          <span class="d-none d-sm-inline">CERRAR MES</span>
+          <VIcon icon="tabler-lock" size="18" class="d-sm-none" />
+        </VBtn>
+        <VChip v-else color="success" variant="elevated" class="rounded-lg px-4 h-38 font-weight-black" prepend-icon="tabler-lock-check">
+          HISTÓRICO
+        </VChip>
+      </div>
+    </div>
+
+    <!-- Panel de Filtros Colapsable -->
+    <VExpandTransition>
+      <VCard v-if="isFiltersVisible" class="rounded-xl border-0 shadow-sm mb-6 bg-surface-variant-light overflow-hidden">
+        <VCardText class="pa-5">
+          <div class="d-flex align-center gap-2 mb-4">
+            <VIcon icon="tabler-adjustments-horizontal" size="20" color="primary" />
+            <span class="font-weight-black text-uppercase text-xs text-primary">Ajustes de Análisis</span>
+          </div>
+          <VRow>
+            <VCol cols="12" sm="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Periodo (Mes)</span>
+              <VSelect
                 v-model="selectedMonth"
                 :items="availableMonths"
                 item-title="title"
                 item-value="value"
                 placeholder="Mes"
-                prepend-inner-icon="tabler-calendar"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="premium-select-compact"
               />
-            </div>
-            <div style="inline-size: 140px;">
-              <AppSelect
+            </VCol>
+            
+            <VCol cols="12" sm="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Periodo (Año)</span>
+              <VSelect
                 v-model="selectedYear"
                 :items="availableYears"
                 placeholder="Año"
-                prepend-inner-icon="tabler-calendar-event"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="premium-select-compact"
               />
-            </div>
+            </VCol>
             
-            <VBtn color="secondary" variant="tonal" @click="handleClear" icon="tabler-refresh" />
-          </div>
+            <VCol cols="12" sm="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Ordenar Por</span>
+              <VSelect
+                v-model="selectedSort.key"
+                :items="sortOptions"
+                item-title="title"
+                item-value="key"
+                placeholder="Ordenar por..."
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="premium-select-compact"
+              />
+            </VCol>
+          </VRow>
 
-          <VSpacer />
-
-          <div class="d-flex align-center gap-3">
-            <VBtn 
-              v-if="!isLocked"
-              color="error" 
-              variant="elevated" 
-              prepend-icon="tabler-lock"
-              @click="handleLockMonth"
+          <div class="d-flex justify-end mt-4">
+            <VBtn
+              variant="text"
+              color="secondary"
+              size="small"
+              class="font-weight-black"
+              @click="handleClear"
             >
-              Cerrar Mes
+              LIMPIAR FILTROS
             </VBtn>
-            <VChip v-else color="success" variant="elevated" prepend-icon="tabler-lock-check">
-              Mes Cerrado (Histórico)
-            </VChip>
-
-            <VMenu>
-              <template #activator="{ props }">
-                <VBtn v-bind="props" color="primary" variant="outlined" prepend-icon="tabler-sort-descending">
-                  Ordenar por: {{ sortOptions.find(o => o.key === selectedSort.key)?.title }}
-                </VBtn>
-              </template>
-              <VList>
-                <VListItem
-                  v-for="(option, index) in sortOptions"
-                  :key="index"
-                  @click="handleSortClick(option)"
-                >
-                  <template #prepend>
-                    <VIcon :icon="option.icon" size="20" class="me-2" />
-                  </template>
-                  <VListItemTitle>{{ option.title }}</VListItemTitle>
-                  <template #append>
-                    <VIcon
-                      v-if="selectedSort.key === option.key"
-                      icon="tabler-check"
-                      size="16"
-                      color="primary"
-                    />
-                  </template>
-                </VListItem>
-              </VList>
-            </VMenu>
           </div>
-        </div>
-      </VCardText>
-    </VCard>
+        </VCardText>
+      </VCard>
+    </VExpandTransition>
+
     <EmployeeMonthTable :items="calculatedEmployees" />
   </VContainer>
 </template>
+
+<style scoped>
+.productivity-employee-month-page {
+  background-color: rgb(var(--v-theme-background));
+  min-block-size: 100vh;
+}
+
+.premium-header {
+  background: linear-gradient(135deg, rgb(var(--v-theme-warning)) 0%, #ff8c00 100%);
+}
+
+.leader-avatar {
+  background-color: white !important;
+  padding: 2px;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.h-38 {
+  block-size: 38px !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+:deep(.premium-input-compact) {
+  .v-field__input {
+    font-size: 0.8125rem !important;
+    min-block-size: 38px !important;
+    padding-block: 0 !important;
+  }
+}
+
+:deep(.premium-select-compact) {
+  .v-field__input {
+    font-size: 0.8125rem !important;
+    min-block-size: 38px !important;
+    padding-block: 0 !important;
+  }
+}
+
+.bg-surface-variant-light {
+  background-color: rgba(var(--v-theme-surface-variant), 0.03);
+}
+
+.leader-card {
+  transition: transform 0.3s ease;
+}
+
+.leader-card:hover {
+  transform: translateY(-4px);
+}
+</style>

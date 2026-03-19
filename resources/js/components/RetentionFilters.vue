@@ -2,40 +2,40 @@
 import { computed, ref } from "vue";
 
 const props = defineProps({
-  startDate: { type: [String, null], default: null },
-  endDate: { type: [String, null], default: null },
+  search: String,
+  supplierId: [Number, String, null],
+  startDate: String,
+  endDate: String,
+  suppliers: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  selectedCount: { type: Number, default: 0 },
+  currentTab: { type: String, default: "pending" },
 });
 
 const emit = defineEmits([
+  "update:search",
+  "update:supplierId",
   "update:startDate",
   "update:endDate",
   "clear",
-  "generated",
-  "download-bulk",
-  "refresh",
+  "bulk-generate",
 ]);
 
 const isFilterVisible = ref(false);
-const isGenerating = ref(false);
 
 const hasFiltersCount = computed(() => {
   let count = 0;
+  if (props.search) count++;
+  if (props.supplierId) count++;
   if (props.startDate) count++;
   if (props.endDate) count++;
   return count;
 });
 
-const handleManualPayment = async () => {
-  isGenerating.value = true;
-  try {
-    // La lógica de la petición axios se maneja en el componente padre 
-    // para mantener PayslipFilters como un componente de UI puro
-    emit("generated");
-  } finally {
-    isGenerating.value = false;
-  }
-};
+const handleSearchUpdate = (val) => emit("update:search", val);
+const handleSupplierUpdate = (val) => emit("update:supplierId", val);
+const handleStartDateUpdate = (val) => emit("update:startDate", val);
+const handleEndDateUpdate = (val) => emit("update:endDate", val);
 </script>
 
 <template>
@@ -44,17 +44,32 @@ const handleManualPayment = async () => {
     <VCardActions class="pa-4 px-6 d-flex align-center bg-surface">
       <div class="d-flex align-center gap-2">
         <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
-          <VIcon icon="tabler-file-spreadsheet" size="20" />
+          <VIcon icon="tabler-file-percent" size="20" />
         </VAvatar>
         <div class="d-flex flex-column">
-          <span class="text-sm font-weight-black uppercase leading-none mb-1">Registro de Nóminas</span>
-          <span class="text-super-xs text-disabled font-weight-medium">Historial y generación de pagos</span>
+          <span class="text-sm font-weight-black uppercase leading-none mb-1">Retenciones IVA</span>
+          <span class="text-super-xs text-disabled font-weight-medium">Gestión administrativa</span>
         </div>
       </div>
 
       <VSpacer />
 
       <div class="d-flex align-center gap-2">
+        <!-- Acción Masiva (Si hay seleccionados) -->
+        <VExpandTransition v-show="props.selectedCount > 0 && props.currentTab === 'pending'">
+          <VBtn
+            color="success"
+            variant="flat"
+            size="38"
+            icon
+            class="rounded-lg shadow-sm me-2"
+            @click="emit('bulk-generate')"
+          >
+            <VIcon icon="tabler-check" size="20" />
+            <VTooltip activator="parent" location="top">Generar {{ props.selectedCount }} Retenciones</VTooltip>
+          </VBtn>
+        </VExpandTransition>
+
         <!-- Toggle Filtros -->
         <VBtn
           icon
@@ -78,45 +93,18 @@ const handleManualPayment = async () => {
 
         <VDivider vertical class="mx-1 my-2" />
 
-        <!-- Actualizar -->
+        <!-- Limpiar -->
         <VBtn
           icon
-          color="primary"
-          variant="flat"
-          size="38"
-          class="rounded-lg shadow-sm"
-          :loading="props.loading"
-          @click="emit('refresh')"
-        >
-          <VIcon icon="tabler-refresh" size="20" />
-          <VTooltip activator="parent" location="top">Actualizar Datos</VTooltip>
-        </VBtn>
-
-        <!-- Acciones Rápidas -->
-        <VBtn
-          color="success"
           variant="tonal"
+          color="error"
           size="38"
-          icon
           class="rounded-lg"
-          @click="emit('download-bulk')"
+          @click="emit('clear')"
+          :disabled="hasFiltersCount === 0 || props.loading"
         >
-          <VIcon icon="tabler-download" size="20" />
-          <VTooltip activator="parent" location="top">Descargar Todo 2025</VTooltip>
-        </VBtn>
-
-        <VBtn
-          color="primary"
-          variant="tonal"
-          size="38"
-          icon
-          class="rounded-lg"
-          :loading="isGenerating"
-          :disabled="isGenerating"
-          @click="emit('generated')"
-        >
-          <VIcon icon="tabler-player-play" size="20" />
-          <VTooltip activator="parent" location="top">Generar Nómina Manual</VTooltip>
+          <VIcon icon="tabler-filter-x" size="20" />
+          <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
         </VBtn>
       </div>
     </VCardActions>
@@ -127,8 +115,51 @@ const handleManualPayment = async () => {
         <VDivider class="opacity-10" />
         <VCardText class="pa-6 pt-4 bg-surface-variant-opacity-2">
           <VRow>
+            <!-- Búsqueda -->
+            <VCol cols="12" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Búsqueda</span>
+              <VTextField
+                :model-value="props.search"
+                placeholder="Factura o Proveedor..."
+                variant="outlined"
+                density="compact"
+                hide-details
+                color="primary"
+                clearable
+                class="premium-input"
+                @update:model-value="handleSearchUpdate"
+              >
+                <template #prepend-inner>
+                  <VIcon icon="tabler-search" size="18" color="disabled" class="me-2" />
+                </template>
+              </VTextField>
+            </VCol>
+
+            <!-- Proveedor -->
+            <VCol cols="12" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Proveedor</span>
+              <VSelect
+                :model-value="props.supplierId"
+                :items="props.suppliers"
+                item-title="name"
+                item-value="id"
+                placeholder="Seleccionar..."
+                variant="outlined"
+                density="compact"
+                hide-details
+                color="primary"
+                clearable
+                class="premium-input text-capitalize"
+                @update:model-value="handleSupplierUpdate"
+              >
+                <template #prepend-inner>
+                  <VIcon icon="tabler-building-factory-2" size="18" color="disabled" class="me-2" />
+                </template>
+              </VSelect>
+            </VCol>
+
             <!-- Fecha Desde -->
-            <VCol cols="12" md="4">
+            <VCol cols="12" md="3">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Inicial</span>
               <AppDateTimePicker
                 :model-value="props.startDate"
@@ -140,16 +171,16 @@ const handleManualPayment = async () => {
                 clearable
                 class="premium-input"
                 :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                @update:model-value="emit('update:startDate', $event)"
+                @update:model-value="handleStartDateUpdate"
               >
                 <template #prepend-inner>
-                  <VIcon icon="tabler-calendar" size="18" color="disabled" class="me-2" />
+                  <VIcon icon="tabler-calendar-event" size="18" color="disabled" class="me-2" />
                 </template>
               </AppDateTimePicker>
             </VCol>
 
             <!-- Fecha Hasta -->
-            <VCol cols="12" md="4">
+            <VCol cols="12" md="3">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Final</span>
               <AppDateTimePicker
                 :model-value="props.endDate"
@@ -161,26 +192,12 @@ const handleManualPayment = async () => {
                 clearable
                 class="premium-input"
                 :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                @update:model-value="emit('update:endDate', $event)"
+                @update:model-value="handleEndDateUpdate"
               >
                 <template #prepend-inner>
                   <VIcon icon="tabler-calendar-check" size="18" color="disabled" class="me-2" />
                 </template>
               </AppDateTimePicker>
-            </VCol>
-
-            <!-- Limpiar -->
-            <VCol cols="12" md="4" class="d-flex align-end">
-              <VBtn
-                variant="tonal"
-                color="error"
-                block
-                class="rounded-lg font-weight-black text-xs h-10"
-                prepend-icon="tabler-filter-x"
-                @click="emit('clear')"
-              >
-                LIMPIAR FILTROS
-              </VBtn>
             </VCol>
           </VRow>
         </VCardText>
@@ -207,9 +224,5 @@ const handleManualPayment = async () => {
   .v-field__outline {
     --v-field-border-opacity: 0.1;
   }
-}
-
-.h-10 {
-  height: 40px !important;
 }
 </style>

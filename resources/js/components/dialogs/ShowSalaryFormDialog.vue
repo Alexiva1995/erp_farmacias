@@ -1,7 +1,10 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { watch } from "vue";
+import { ref, watch } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -120,24 +123,27 @@ watch(
     :model-value="props.modelValue"
     max-width="800px"
     persistent
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
     @update:model-value="closeDialog"
     :scrollable="true"
     content-class="d-flex"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center">
-        <span class="headline">
-          Editar Salario
-          <span class="font-weight-bold">
-            {{
-              `${props.selectedEmployee.name} ${props.selectedEmployee.last_name} V-${props.selectedEmployee.identification}`
-            }}
-          </span>
-        </span>
+    <VCard :class="['rounded-xl border-0 shadow-lg bg-surface overflow-hidden', mobile ? 'rounded-0' : '']">
+      <VCardTitle class="d-flex align-center pa-6">
+        <div class="d-flex align-center">
+           <VAvatar color="primary" variant="tonal" rounded size="48" class="me-4 shadow-sm">
+            <VIcon icon="tabler-file-dollar" size="28" />
+          </VAvatar>
+          <div>
+            <div class="text-h5 font-weight-black text-high-emphasis">Editar Salario</div>
+            <div class="text-caption text-medium-emphasis">
+              Trabajador: <span class="font-weight-bold text-primary">{{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}</span>
+            </div>
+          </div>
+        </div>
         <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+        <VBtn icon="tabler-x" variant="tonal" color="secondary" size="small" @click="closeDialog" />
       </VCardTitle>
       <VDivider />
       <VContainer>

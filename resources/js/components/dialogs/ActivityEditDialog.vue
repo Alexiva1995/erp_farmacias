@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -9,6 +9,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
+
+const { mobile } = useDisplay();
 
 const formData = ref({});
 const formErrors = ref({});
@@ -63,107 +65,165 @@ const submitForm = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="600px"
+    :max-width="mobile ? undefined : '600px'"
+    :fullscreen="mobile"
     persistent
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
     @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
-        <VIcon
-          :icon="isNewActivity ? 'tabler-plus' : 'tabler-edit'"
-          size="24"
-          color="white"
-          class="me-2"
-        />
-        <span class="text-h5 font-weight-bold text-white">{{
-          isNewActivity ? "Añadir Nueva Actividad" : "Editar Actividad"
-        }}</span>
+    <VCard v-if="formData" class="rounded-xl border-0 shadow-xl overflow-hidden d-flex flex-column">
+      <!-- Header con Gradiente Premium -->
+      <div class="premium-header pa-5 d-flex align-center bg-primary">
+        <div class="d-flex align-center gap-3">
+          <VAvatar color="white" variant="tonal" size="40" class="rounded-lg">
+            <VIcon
+              :icon="isNewActivity ? 'tabler-plus' : 'tabler-edit'"
+              size="24"
+              color="white"
+            />
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <span class="text-h6 font-weight-black text-white leading-none mb-1">
+              {{ isNewActivity ? "Nueva Actividad" : "Editar Actividad" }}
+            </span>
+            <span class="text-xs text-white opacity-70 font-weight-medium">
+              {{ isNewActivity ? "Crea una nueva tarea de limpieza" : `Editando ID: #${formData.id}` }}
+            </span>
+          </div>
+        </div>
 
         <VSpacer />
+        
         <VBtn
-          icon
+          icon="tabler-x"
           variant="text"
           color="white"
           size="small"
+          class="rounded-lg bg-white-opacity-10"
           @click="closeDialog"
-        >
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
-      </VCardTitle>
+        />
+      </div>
 
-      <VDivider />
+      <VDivider class="opacity-10" />
 
-      <VCardText class="flex-grow-1 pa-4" style="overflow-y: auto;">
+      <VCardText class="pa-6 flex-grow-1" style="max-block-size: 70vh; overflow-y: auto;">
         <VForm @submit.prevent="submitForm">
-          <VRow dense class="mb-2">
-            <VCol cols="12">
-              <VTextField
-                v-model="formData.activity"
-                label="Nombre de la Actividad"
-                variant="outlined"
-                density="compact"
-                placeholder="Ej: Revisión de Inventario"
-                :error-messages="formErrors.activity"
-                required
-              />
-            </VCol>
-          </VRow>
+          <!-- Campo Actividad -->
+          <div class="mb-6">
+            <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre de la Actividad</span>
+            <VTextField
+              v-model="formData.activity"
+              placeholder="Ej: Desinfección de estanterías"
+              variant="outlined"
+              color="primary"
+              density="compact"
+              :error-messages="formErrors.activity"
+              class="premium-input"
+              hide-details="auto"
+            >
+              <template #prepend-inner>
+                <VIcon icon="tabler-activity" size="18" color="disabled" class="me-2" />
+              </template>
+            </VTextField>
+          </div>
 
-          <VRow dense class="mb-2">
-            <VCol cols="12">
-              <VTextarea
-                v-model="formData.description"
-                label="Descripción"
-                variant="outlined"
-                density="compact"
-                placeholder="Describe la actividad en detalle..."
-                rows="4"
-                :error-messages="formErrors.description"
-              />
-            </VCol>
-          </VRow>
+          <!-- Campo Frecuencia -->
+          <div class="mb-6">
+            <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Frecuencia de Ejecución</span>
+            <VSelect
+              v-model="formData.frequency"
+              :items="props.frequencies"
+              placeholder="Seleccionar frecuencia"
+              variant="outlined"
+              color="primary"
+              density="compact"
+              :error-messages="formErrors.frequency"
+              class="premium-input"
+              hide-details="auto"
+            >
+              <template #prepend-inner>
+                <VIcon icon="tabler-calendar-stats" size="18" color="disabled" class="me-2" />
+              </template>
+            </VSelect>
+          </div>
 
-          <VRow dense class="mb-2">
-            <VCol cols="12">
-              <VSelect
-                v-model="formData.frequency"
-                label="Frecuencia"
-                :items="props.frequencies"
-                variant="outlined"
-                density="compact"
-                placeholder="Selecciona la frecuencia"
-                :error-messages="formErrors.frequency"
-                required
-              />
-            </VCol>
-          </VRow>
+          <!-- Campo Descripción -->
+          <div class="mb-2">
+            <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Instrucciones Detalladas</span>
+            <VTextarea
+              v-model="formData.description"
+              placeholder="Describe paso a paso cómo se debe realizar esta limpieza..."
+              variant="outlined"
+              color="primary"
+              density="compact"
+              rows="4"
+              :error-messages="formErrors.description"
+              class="premium-input"
+              hide-details="auto"
+            >
+              <template #prepend-inner>
+                <VIcon icon="tabler-notes" size="18" color="disabled" class="me-2 mt-1" />
+              </template>
+            </VTextarea>
+          </div>
         </VForm>
       </VCardText>
 
-      <VDivider />
+      <VDivider class="opacity-10" />
 
-      <VCardActions class="pa-4 d-flex gap-2">
+      <VCardActions class="pa-6 d-flex gap-3 mt-auto">
         <VBtn
           color="secondary"
-          variant="outlined"
+          variant="tonal"
+          class="rounded-lg font-weight-black flex-grow-1 h-44"
           @click="closeDialog"
-          class="flex-grow-1"
-          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
-          Cancelar
+          CANCELAR
         </VBtn>
         <VBtn
           color="primary"
           variant="flat"
+          class="rounded-lg font-weight-black flex-grow-1 h-44 shadow-sm"
           @click="submitForm"
-          class="flex-grow-1"
-          style="flex: 1 1 50%; max-inline-size: 50%;"
         >
-          Guardar
+          <VIcon start icon="tabler-device-floppy" size="18" />
+          GUARDAR CAMBIOS
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.premium-header {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2b3341 100%) !important;
+}
+
+.bg-white-opacity-10 {
+  background-color: rgba(255, 255, 255, 10%) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+.h-44 {
+  block-size: 44px !important;
+}
+
+:deep(.premium-input) {
+  .v-field__outline {
+    --v-field-border-opacity: 0.15;
+  }
+}
+
+.shadow-xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 25%) !important;
+}
+</style>

@@ -2,6 +2,9 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   isDialogVisible: { type: Boolean, required: true },
@@ -89,27 +92,35 @@ const closeModal = () => {
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="900px" scrollable>
-    <VCard class="rounded-xl overflow-hidden">
+  <VDialog
+    v-model="dialogVisible"
+    max-width="900px"
+    scrollable
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
+  >
+    <VCard class="rounded-xl overflow-hidden border shadow-sm">
       <!-- Header Premium -->
-      <VCardItem class="bg-primary pt-6 pb-6">
-        <div class="d-flex align-center justify-space-between w-100">
-          <div>
-            <VCardTitle class="text-h5 font-weight-bold text-white mb-1">
-              Consolidación de Referencias
-            </VCardTitle>
-            <VCardSubtitle class="text-white opacity-80">
-              Cierre Diario N° {{ props.cashData.id }} • Gestión de Arqueo
-            </VCardSubtitle>
+      <VCardTitle class="pa-0 border-b bg-primary">
+        <div class="d-flex align-center justify-space-between w-100 pa-6">
+          <div class="d-flex align-center gap-3">
+             <VAvatar color="white" variant="tonal" class="rounded-lg shadow-sm">
+                <VIcon icon="tabler-clipboard-list" color="white" />
+             </VAvatar>
+             <div>
+               <h3 class="text-h6 font-weight-black text-white mb-0 uppercase leading-none">CONSOLIDACIÓN DE REFERENCIAS</h3>
+               <span class="text-xs text-white opacity-80 font-weight-medium uppercase">Cierre Diario N° {{ props.cashData.id }} • Gestión de Arqueo</span>
+             </div>
           </div>
           <VBtn
             icon="tabler-x"
             variant="text"
             color="white"
             @click="closeModal"
+            class="rounded-lg"
           />
         </div>
-      </VCardItem>
+      </VCardTitle>
 
       <VCardText class="pa-0">
         <VDataTable

@@ -31,26 +31,54 @@ const handleSearchOrder = () => {
 };
 </script>
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <div class="d-flex align-center gap-2">
+  <VCard class="mb-6 elevation-1 border-0 rounded-lg overflow-hidden">
+    <VCardText class="pa-4">
+      <div class="d-flex align-end gap-3">
         <AppTextField
-          placeholder="Ingrese identificación, N° Orden"
+          placeholder="BUSCAR CLIENTE O N° ORDEN..."
           clearable
-          class="flex-grow-1"
+          density="compact"
+          prepend-inner-icon="tabler-search"
+          class="flex-grow-1 premium-input-compact"
+          hide-details
           :model-value="identificationInput"
           @update:model-value="updateIdentification"
           @keyup.enter="handleSearchOrder"
         />
         <VBtn
-          icon
-          color="success"
-          variant="tonal"
+          color="primary"
+          variant="flat"
+          height="38"
+          class="font-weight-black rounded-lg text-xs shadow-sm"
           @click="handleSearchOrder"
         >
-          <VIcon icon="tabler-search" />
+          <VIcon icon="tabler-search" class="me-1" size="18" />
+          BUSCAR
         </VBtn>
       </div>
     </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.premium-input-compact :deep(.v-field__input) {
+  display: flex !important;
+  align-items: center !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  min-block-size: 38px !important;
+  padding-block: 0 !important;
+  text-transform: uppercase;
+}
+
+.premium-input-compact :deep(.v-field) {
+  border-radius: 8px !important;
+  min-block-size: 38px !important;
+}
+
+.text-xs { font-size: 0.75rem !important; }
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 8%) !important;
+}
+</style>

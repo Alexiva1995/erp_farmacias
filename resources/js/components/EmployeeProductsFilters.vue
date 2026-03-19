@@ -1,6 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const searchProduct = ref("");
 const remoteProducts = ref([]);
@@ -84,6 +84,7 @@ const sortOptions = [
 ];
 
 const selectedSort = ref(null);
+const isAdvancedFiltersVisible = ref(false);
 
 const handleSortClick = (option) => {
   const sortFilter = { key: option.key, order: option.order };
@@ -94,16 +95,6 @@ const handleSortClick = (option) => {
 const clearSortFilter = () => {
   selectedSort.value = null;
   emit("sort", { key: undefined, order: undefined });
-};
-
-const getSelectedSortTitle = () => {
-  if (!selectedSort.value) return null;
-  const option = sortOptions.find(
-    (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order,
-  );
-  return option ? option.title : null;
 };
 
 const getSelectedSortIcon = () => {
@@ -127,100 +118,124 @@ const isOptionSelected = (option) => {
 const handleClear = () => {
   emit("clear");
   clearSortFilter();
+  isAdvancedFiltersVisible.value = false;
 };
+
+const hasActiveAdvancedFilters = computed(() => {
+  return props.selectedProduct || selectedSort.value;
+});
 </script>
 
 <template>
   <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="6">
+    <VCardText class="pa-3">
+      <!-- Fila Principal: Búsqueda y Acciones -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="5" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar empleado por nombre..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            hide-details
             clearable
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="6">
-          <VAutocomplete
-            :model-value="props.selectedProduct"
-            v-model:search="searchProduct"
-            :items="remoteProducts"
-            :loading="isSearching || props.loading"
-            item-title="title"
-            item-value="value"
-            label="Filtrar por Producto"
-            placeholder="Escriba ID o nombre del producto..."
-            clearable
-            :no-filter="true"
-            @update:model-value="emit('update:selectedProduct', $event)"
-          />
-        </VCol>
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros Avanzados -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
+            @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
+          >
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            <VBadge
+              v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+              color="error"
+              dot
+              offset-x="3"
+              offset-y="-3"
+            />
+          </VBtn>
+
+          <!-- Ordenar Por -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                variant="tonal"
+                color="secondary"
+                size="38"
+              >
+                <VIcon :icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'" />
+                <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact">
+              <VListItem
+                v-for="(option, index) in sortOptions"
+                :key="index"
+                :active="isOptionSelected(option)"
+                color="primary"
+                @click="handleSortClick(option)"
+              >
+                <template #prepend>
+                  <VIcon :icon="option.icon" size="20" />
+                </template>
+                <VListItemTitle>{{ option.title }}</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+
+          <!-- Limpiar -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="handleClear"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
+
+      <!-- Panel Colapsable -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VDivider class="my-3 border-opacity-10" />
+          <VRow dense>
+            <VCol cols="12" sm="6" md="4">
+              <VAutocomplete
+                :model-value="props.selectedProduct"
+                v-model:search="searchProduct"
+                :items="remoteProducts"
+                :loading="isSearching || props.loading"
+                item-title="title"
+                item-value="value"
+                placeholder="Filtrar por producto..."
+                density="compact"
+                hide-details
+                clearable
+                :no-filter="true"
+                prepend-inner-icon="tabler-pill"
+                @update:model-value="emit('update:selectedProduct', $event)"
+              />
+            </VCol>
+          </VRow>
+        </div>
+      </VExpandTransition>
     </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="handleClear">
-        Limpiar Filtros
-      </VBtn>
-
-      <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
-
-        <VChip
-          v-if="selectedSort"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click:close="clearSortFilter"
-        >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
-        </VChip>
-      </div>
-
-      <VSpacer />
-
-      <VBtn
-        color="success"
-        prepend-icon="tabler-plus"
-        @click="emit('add-assignment')"
-      >
-        Asignar Productos
-      </VBtn>
-    </VCardActions>
   </VCard>
 </template>

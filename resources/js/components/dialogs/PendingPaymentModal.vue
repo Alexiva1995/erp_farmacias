@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: {
@@ -18,15 +19,14 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "close"]);
 
+const { mobile } = useDisplay();
+
 // Headers de la tabla de facturas
 const invoiceHeaders = [
-  { title: "ID", key: "id", sortable: false },
   { title: "N° Factura", key: "invoice_number", sortable: false },
-  { title: "N° Control", key: "control_number", sortable: false },
-  { title: "Monto", key: "total_amount", sortable: false },
-  { title: "Moneda", key: "currency", sortable: false },
-  { title: "Fecha Vencimiento", key: "exp_date", sortable: false },
-  { title: "Estado", key: "status", sortable: false },
+  { title: "Monto", key: "total_amount", sortable: false, align: "end" },
+  { title: "Vencimiento", key: "exp_date", sortable: false },
+  { title: "Estado", key: "status", sortable: false, align: "center" },
 ];
 
 // Cerrar modal
@@ -43,10 +43,13 @@ const formatDate = (date) => {
 
 // Formatear moneda
 const formatCurrency = (amount, currency) => {
-  if (!amount) return "N/A";
+  if (!amount && amount !== 0) return "N/A";
+  const validCurrency = currency === "Bs" ? "VES" : currency === "COP" ? "COP" : "USD";
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
-    currency: currency === "Bs" ? "VES" : currency === "COP" ? "COP" : "USD",
+    currency: validCurrency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 };
 
@@ -73,7 +76,7 @@ const getStatusColor = (status) => {
 // Total de facturas
 const totalAmount = computed(() => {
   return props.invoices.reduce(
-    (sum, invoice) => sum + (invoice.total_amount || 0),
+    (sum, invoice) => sum + (parseFloat(invoice.total_amount) || 0),
     0
   );
 });
@@ -83,159 +86,181 @@ const mainCurrency = computed(() => {
   return props.paymentGroup?.currency || "USD";
 });
 
-// Información del proveedor
-const supplierInfo = computed(() => {
-  if (!props.paymentGroup) return null;
-  return {
-    name: props.paymentGroup.supplier_name,
-    paymentDate: props.paymentGroup.payment_date,
-    currency: props.paymentGroup.currency,
-    invoiceCount: props.paymentGroup.invoice_count,
-  };
-});
+const getAvatarColor = (name) => {
+  const colors = ["primary", "secondary", "success", "info", "warning", "error"];
+  const hash = (name || "").split("").reduce((a, b) => a + b.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
 </script>
 
 <template>
   <VDialog
     :model-value="modelValue"
-    max-width="900px"
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
+    max-width="800px"
     persistent
-    @update:model-value="closeModal"
     scrollable
+    @update:model-value="closeModal"
   >
-    <VCard class="d-flex flex-column">
-      <!-- Header -->
-      <VCardTitle class="d-flex align-center">
-        <VIcon icon="tabler-receipt" class="me-2" />
-        <span class="text-h5 font-weight-bold">Facturas Pendientes</span>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeModal">
+    <VCard class="rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Barra Superior Premium (Móvil) -->
+      <VToolbar v-if="mobile" color="primary" flat>
+        <VBtn icon @click="closeModal">
           <VIcon icon="tabler-x" />
         </VBtn>
+        <VToolbarTitle class="text-sm font-weight-black uppercase">Detalle de Pago</VToolbarTitle>
+      </VToolbar>
+
+      <!-- Cabecera Premium (Escritorio) -->
+      <VCardTitle v-else class="pa-6 pb-2 d-flex align-center">
+        <VAvatar color="primary" variant="tonal" size="44" class="me-4 rounded-lg">
+          <VIcon icon="tabler-receipt" size="24" />
+        </VAvatar>
+        <div class="d-flex flex-column">
+          <span class="text-lg font-weight-black uppercase leading-none mb-1">Facturas Pendientes</span>
+          <span class="text-xs text-disabled font-weight-medium">Desglose de deuda por proveedor</span>
+        </div>
+        <VSpacer />
+        <VBtn
+          icon="tabler-x"
+          variant="tonal"
+          color="secondary"
+          size="32"
+          class="rounded-lg"
+          @click="closeModal"
+        />
       </VCardTitle>
 
-      <VDivider />
+      <VCardText class="pa-6">
+        <!-- Info del Proveedor Card -->
+        <VCard v-if="paymentGroup" variant="tonal" color="primary" class="rounded-xl border-0 mb-6 overflow-hidden">
+          <div class="pa-5">
+            <VRow align="center">
+              <VCol cols="12" md="6" class="d-flex align-center gap-4">
+                <VAvatar :color="getAvatarColor(paymentGroup.supplier_name)" variant="flat" size="48" class="rounded-xl shadow-sm text-white">
+                  {{ paymentGroup.supplier_name.charAt(0).toUpperCase() }}
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-lg font-weight-black text-primary leading-tight text-capitalize">{{ paymentGroup.supplier_name }}</span>
+                  <span class="text-xs font-weight-bold text-disabled uppercase mt-1">
+                    FECHA PAGO: {{ formatDate(paymentGroup.payment_date) }}
+                  </span>
+                </div>
+              </VCol>
+              <VCol cols="6" md="3" class="text-center md:text-left">
+                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Total Facturas</span>
+                <span class="text-xl font-weight-black text-primary">{{ paymentGroup.invoice_count }}</span>
+              </VCol>
+              <VCol cols="6" md="3" class="text-end">
+                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Monto Consolidado</span>
+                <span class="text-xl font-weight-black text-success">{{ formatCurrency(totalAmount, mainCurrency) }}</span>
+              </VCol>
+            </VRow>
+          </div>
+        </VCard>
 
-      <!-- Contenido -->
-      <VCardText class="flex-grow-1" style="overflow-y: auto;">
-        <!-- Información del proveedor -->
-        <div v-if="supplierInfo" class="mb-6">
-          <VCard variant="tonal" color="primary">
-            <VCardText>
-              <VRow>
-                <VCol cols="12" md="6">
-                  <div class="text-h6 font-weight-bold">
-                    {{ supplierInfo.name }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Fecha de Pago: {{ formatDate(supplierInfo.paymentDate) }}
-                  </div>
-                </VCol>
-                <VCol cols="12" md="3">
-                  <div class="text-caption text-medium-emphasis">
-                    Total Facturas
-                  </div>
-                  <div class="text-h6 font-weight-bold">
-                    {{ supplierInfo.invoiceCount }}
-                  </div>
-                </VCol>
-                <VCol cols="12" md="3">
-                  <div class="text-caption text-medium-emphasis">
-                    Monto Total
-                  </div>
-                  <div class="text-h6 font-weight-bold text-success">
-                    {{ formatCurrency(totalAmount, supplierInfo.currency) }}
-                  </div>
-                </VCol>
-              </VRow>
-            </VCardText>
-          </VCard>
-        </div>
-
-        <!-- Tabla de facturas -->
-        <div v-if="invoices.length > 0">
+        <!-- Tabla de Facturas Premium -->
+        <div v-if="invoices.length > 0" class="rounded-xl border-0 overflow-hidden shadow-sm">
           <VDataTable
             :headers="invoiceHeaders"
             :items="invoices"
-            density="compact"
+            density="comfortable"
             hide-default-footer
-            class="mb-4"
+            class="premium-detail-table font-weight-medium"
           >
-            <!-- Columna de monto -->
+            <template #item.invoice_number="{ item }">
+              <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
+            </template>
+            
             <template #item.total_amount="{ item }">
-              <div class="font-weight-bold">
-                {{ formatCurrency(item.total_amount, item.currency) }}
-              </div>
+              <span class="text-xs font-weight-black">{{ formatCurrency(item.total_amount, item.currency) }}</span>
             </template>
 
-            <!-- Columna de fecha de vencimiento -->
             <template #item.exp_date="{ item }">
-              <div>
-                {{ formatDate(item.exp_date) }}
-              </div>
+              <span class="text-xs text-disabled">{{ formatDate(item.exp_date) }}</span>
             </template>
 
-            <!-- Columna de estado -->
             <template #item.status="{ item }">
-              <VChip
-                :color="getStatusColor(item.status)"
-                size="small"
-                variant="tonal"
-              >
+              <VChip :color="getStatusColor(item.status)" size="x-small" variant="tonal" class="rounded font-weight-black uppercase">
                 {{ formatStatus(item.status) }}
               </VChip>
             </template>
           </VDataTable>
 
-          <!-- Resumen -->
-          <VCard variant="outlined" color="success">
-            <VCardText>
-              <div class="d-flex justify-space-between align-center">
-                <div>
-                  <div class="text-h6 font-weight-bold">Total a Pagar</div>
-                  <div class="text-caption text-medium-emphasis">
-                    {{ invoices.length }} factura(s) pendiente(s)
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="text-h5 font-weight-bold text-success">
-                    {{ formatCurrency(totalAmount, mainCurrency) }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    {{ mainCurrency }}
-                  </div>
+          <!-- Resumen Inferior Estilizado -->
+          <div class="pa-6 bg-success-opacity-1 mt-4 rounded-xl border border-dashed border-success">
+            <div class="d-flex justify-space-between align-center">
+              <div class="d-flex align-center gap-3">
+                <VAvatar color="success" variant="tonal" size="38" class="rounded-lg">
+                  <VIcon icon="tabler-sum" size="20" />
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-sm font-weight-black uppercase text-success leading-tight">Total Consolidado</span>
+                  <span class="text-super-xs text-disabled font-weight-bold uppercase">{{ invoices.length }} FACTURA(S)</span>
                 </div>
               </div>
-            </VCardText>
-          </VCard>
+              <div class="text-end">
+                <div class="text-h5 font-weight-black text-success leading-none mb-1">
+                  {{ formatCurrency(totalAmount, mainCurrency) }}
+                </div>
+                <span class="text-xs font-weight-black text-disabled uppercase">{{ mainCurrency }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Estado vacío -->
-        <div v-else class="text-center py-8">
-          <VIcon
-            icon="tabler-receipt-off"
-            size="48"
-            class="text-disabled mb-4"
-          />
-          <div class="text-h6 text-disabled">No hay facturas</div>
-          <div class="text-caption text-disabled">
-            No se encontraron facturas para este grupo de pago
-          </div>
+        <!-- Estado Vacío -->
+        <div v-else class="text-center py-12 opacity-50">
+          <VIcon icon="tabler-receipt-off" size="64" class="mb-4" />
+          <div class="text-lg font-weight-black uppercase">Sin registros</div>
+          <span class="text-sm">No hay facturas asociadas a este grupo.</span>
         </div>
       </VCardText>
 
-      <!-- Footer -->
-      <VDivider />
-      <VCardActions class="pa-4">
+      <VCardActions v-if="!mobile" class="pa-6 pt-0">
         <VSpacer />
-        <VBtn variant="outlined" @click="closeModal"> Cerrar </VBtn>
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          class="rounded-lg font-weight-black text-xs px-8"
+          @click="closeModal"
+        >
+          CERRAR VENTANA
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.text-medium-emphasis {
-  opacity: 0.7;
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.bg-success-opacity-1 {
+  background-color: rgba(var(--v-theme-success), 0.03) !important;
+}
+
+.premium-detail-table :deep(thead th) {
+  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  color: rgba(var(--v-theme-on-surface), 0.6) !important;
+  height: 48px !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
 }
 </style>

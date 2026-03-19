@@ -1,7 +1,8 @@
 <script setup>
+import { computed, ref, watch, nextTick } from "vue";
+import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, defineProps, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: {
@@ -18,6 +19,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "saved"]);
+
+const { mobile } = useDisplay();
 
 // Wizard steps
 const currentStep = ref(1);
@@ -39,24 +42,11 @@ const scalesData = ref([
   },
 ]);
 
-const loading = ref(false);
+const isSaving = ref(false);
 const formErrors = ref({});
 
-// Opciones para el select de estatus
-const statusOptions = [
-  { title: 'Activa', value: true },
-  { title: 'Inactiva', value: false },
-];
-
-// Computed properties
 const dialogTitle = computed(() => {
-  return props.isEditing ? "Editar Oferta" : "Crear Nueva Oferta";
-});
-
-const stepTitle = computed(() => {
-  return currentStep.value === 1
-    ? "Información General"
-    : "Escalas de Descuento";
+  return props.isEditing ? "Editar Oferta de Empresa" : "Nueva Oferta de Empresa";
 });
 
 const canProceedToNext = computed(() => {
@@ -67,15 +57,9 @@ const canProceedToNext = computed(() => {
       companiesOfferData.value.end_date
     );
   }
-
   return true;
 });
 
-const isLastStep = computed(() => {
-  return currentStep.value === totalSteps;
-});
-
-// Methods
 const onCancel = () => {
   resetForm();
   emit("update:modelValue", false);
@@ -127,49 +111,31 @@ const removeScale = (index) => {
 
 const validateScales = () => {
   const errors = [];
-
   for (let i = 0; i < scalesData.value.length; i++) {
     const scale = scalesData.value[i];
-
     if (!scale.min_amount || !scale.max_amount || !scale.discount_percentage) {
-      errors.push(`La escala ${i + 1} tiene campos vacíos`);
+      errors.push(`LA ESCALA ${i + 1} TIENE CAMPOS VACÍOS`);
     }
-
     if (parseFloat(scale.min_amount) >= parseFloat(scale.max_amount)) {
-      errors.push(
-        `En la escala ${i + 1}, el monto máximo debe ser mayor al mínimo`
-      );
-    }
-
-    if (
-      parseFloat(scale.discount_percentage) < 0 ||
-      parseFloat(scale.discount_percentage) > 100
-    ) {
-      errors.push(
-        `En la escala ${i + 1}, el descuento debe estar entre 0 y 100`
-      );
+      errors.push(`EN LA ESCALA ${i + 1}, EL MONTO MÁXIMO DEBE SER MAYOR AL MÍNIMO`);
     }
   }
-
   return errors;
 };
 
 const onSave = async () => {
   if (currentStep.value === 1) {
     nextStep();
-
     return;
   }
 
-  // Validate scales
   const scaleErrors = validateScales();
   if (scaleErrors.length > 0) {
     scaleErrors.forEach((error) => toast.error(error));
-
     return;
   }
 
-  loading.value = true;
+  isSaving.value = true;
   try {
     const payload = {
       ...companiesOfferData.value,
@@ -186,61 +152,22 @@ const onSave = async () => {
 
     const method = props.isEditing ? "put" : "post";
 
-    const response = await axios[method](url, payload);
-    toast.success("La oferta se ha guardado correctamente");
+    await axios[method](url, payload);
+    toast.success("LA OFERTA SE HA GUARDADO CORRECTAMENTE");
     emit("saved");
     onCancel();
   } catch (error) {
-    console.error("Error al guardar la oferta:", error);
-
+    console.error("Error saving company offer:", error);
     if (error.response?.data?.errors) {
       formErrors.value = error.response.data.errors;
-      Object.values(error.response.data.errors)
-        .flat()
-        .forEach((err) => {
-          toast.error(err);
-        });
+      Object.values(error.response.data.errors).flat().forEach((err) => toast.error(err));
     } else {
-      toast.error(
-        error.response?.data?.message || "Error al guardar la oferta"
-      );
+      toast.error(error.response?.data?.message || "ERROR AL GUARDAR LA OFERTA");
     }
   } finally {
-    loading.value = false;
+    isSaving.value = false;
   }
 };
-
-// Watchers
-watch(
-  () => props.modelValue,
-  (isVisible) => {
-    if (isVisible && props.isEditing && props.companiesOfferToEdit) {
-      // Load data for editing
-      companiesOfferData.value = {
-        id: props.companiesOfferToEdit.id,
-        company_id: props.companiesOfferToEdit.company_id,
-        start_date: formatDateForInput(props.companiesOfferToEdit.start_date),
-        end_date: formatDateForInput(props.companiesOfferToEdit.end_date),
-        is_active: Boolean(props.companiesOfferToEdit.is_active), // Asegurar que sea booleano 
-      };
-
-      if (
-        props.companiesOfferToEdit.scales &&
-        props.companiesOfferToEdit.scales.length > 0
-      ) {
-        scalesData.value = props.companiesOfferToEdit.scales.map((scale) => ({
-          id: scale.id,
-          company_offer_id: scale.company_offer_id,
-          min_amount: scale.min_amount.toString(),
-          max_amount: scale.max_amount.toString(),
-          discount_percentage: scale.discount_percentage.toString(),
-        }));
-      }
-    } else if (isVisible) {
-      resetForm();
-    }
-  }
-);
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
@@ -248,9 +175,39 @@ const formatDateForInput = (dateString) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${day}`;
 };
+
+watch(
+  () => props.modelValue,
+  (isVisible) => {
+    if (isVisible) {
+      if (props.isEditing && props.companiesOfferToEdit) {
+        nextTick(() => {
+          companiesOfferData.value = {
+            id: props.companiesOfferToEdit.id,
+            company_id: props.companiesOfferToEdit.company_id,
+            start_date: formatDateForInput(props.companiesOfferToEdit.start_date),
+            end_date: formatDateForInput(props.companiesOfferToEdit.end_date),
+            is_active: Boolean(props.companiesOfferToEdit.is_active),
+          };
+
+          if (props.companiesOfferToEdit.scales?.length > 0) {
+            scalesData.value = props.companiesOfferToEdit.scales.map((scale) => ({
+              id: scale.id,
+              min_amount: scale.min_amount,
+              max_amount: scale.max_amount,
+              discount_percentage: scale.discount_percentage,
+            }));
+          }
+        });
+      } else {
+        resetForm();
+      }
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -260,182 +217,219 @@ const formatDateForInput = (dateString) => {
     persistent
     scrollable
     :retain-focus="false"
-    @update:model-value="onCancel"
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard :loading="loading" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-building" size="24" color="white" />
-          <span class="text-h6 text-white">{{ dialogTitle }}</span>
-        </div>
-        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="loading">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
-      </VCardTitle>
-
-      <VDivider />
-
-      <!-- Progress Steps -->
-      <VCardText class="pa-4">
-        <VStepper :model-value="currentStep" alt-labels>
-          <VStepperHeader>
-            <VStepperItem
-              :value="1"
-              title="Información General"
-              :complete="currentStep > 1"
-            />
-            <VStepperDivider />
-            <VStepperItem
-              :value="2"
-              title="Escalas de Descuento"
-              :complete="currentStep > 2"
-            />
-          </VStepperHeader>
-        </VStepper>
-      </VCardText>
-
-      <VDivider />
-
-      <!-- Step 1: Informacion General -->
-      <VCardText v-if="currentStep === 1" class="flex-grow-1 pa-6">
-        <p class="text-h6 font-weight-medium mb-4">Información de la Oferta</p>
-
-        <VRow>
-          <VCol cols="12">
-            <VSelect
-              v-model="companiesOfferData.company_id"
-              label="Seleccionar Empresa"
-              :items="props.companiesData"
-              :item-title="(item) => `${item.id} - ${item.name}`"
-              item-value="id"
-              placeholder="Buscar empresa..."
-              variant="outlined"
-              :error-messages="formErrors.company_id"
-              clearable
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <VTextField
-              v-model="companiesOfferData.start_date"
-              label="Fecha de Inicio"
-              type="date"
-              placeholder="YYYY-MM-DD"
-              variant="outlined"
-              :error-messages="formErrors.start_date"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6">
-            <VTextField
-              v-model="companiesOfferData.end_date"
-              label="Fecha de Finalización"
-              type="date"
-              placeholder="YYYY-MM-DD"
-              variant="outlined"
-              :error-messages="formErrors.end_date"
-            />
-          </VCol>
-
-          <VCol cols="12">
-            <VSelect
-              v-model="companiesOfferData.is_active"
-              label="Estatus"
-              :items="statusOptions"
-              item-title="title"
-              item-value="value"
-              placeholder="Seleccione un estatus"
-              variant="outlined"
-              :error-messages="formErrors.is_active"
-            />
-          </VCol>
-        </VRow>
-      </VCardText>
-
-      <!-- Step 2: Escala de Descuento -->
-      <VCardText v-if="currentStep === 2" class="flex-grow-1 pa-6">
-        <div class="d-flex justify-space-between align-center mb-4">
-          <p class="text-h6 font-weight-medium mb-0">Escalas de Descuento</p>
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2 text-primary font-weight-black">
+            <VIcon icon="tabler-building" size="26" />
+          </VAvatar>
+          <div>
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">{{ dialogTitle }}</h2>
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+              {{ currentStep === 1 ? 'Paso 1: Configuración General' : 'Paso 2: Escalas de Descuento' }}
+            </span>
+          </div>
+          <VSpacer />
           <VBtn
-            prepend-icon="tabler-plus"
-            color="primary"
-            variant="outlined"
-            @click="addScale"
+            icon
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="onCancel"
+            :disabled="isSaving"
           >
-            Agregar Escala
+            <VIcon>tabler-x</VIcon>
           </VBtn>
         </div>
+      </VCardTitle>
 
-        <p class="text-caption text-medium-emphasis mb-4">
-          Define los rangos del monto y sus respectivos descuentos
-        </p>
-
-        <VRow
-          v-for="(scale, index) in scalesData"
-          :key="index"
-          class="mb-4 scale-row"
-        >
-          <VCol cols="12" sm="4">
-            <VTextField
-              v-model="scale.min_amount"
-              label="Monto Mínimo"
-              type="number"
-              placeholder="0"
-              variant="outlined"
-              :error-messages="formErrors[`scales.${index}.min_amount`]"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="4">
-            <VTextField
-              v-model="scale.max_amount"
-              label="Monto Máximo"
-              type="number"
-              placeholder="0"
-              variant="outlined"
-              :error-messages="formErrors[`scales.${index}.max_amount`]"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="3">
-            <VTextField
-              v-model="scale.discount_percentage"
-              label="% Descuento"
-              type="number"
-              placeholder="0"
-              variant="outlined"
-              suffix="%"
-              :error-messages="
-                formErrors[`scales.${index}.discount_percentage`]
-              "
-            />
-          </VCol>
-
-          <VCol cols="12" sm="1" class="d-flex align-center">
-            <VBtn
-              v-if="scalesData.length > 1"
-              icon
-              color="error"
-              variant="text"
-              @click="removeScale(index)"
+      <VCardText class="pa-0 bg-light">
+        <!-- Indicador de Progreso -->
+        <div class="pa-4 bg-white border-b d-flex align-center justify-center gap-4">
+          <div 
+            v-for="step in totalSteps" 
+            :key="step" 
+            class="d-flex align-center gap-2"
+          >
+            <div 
+              :class="[
+                'step-dot rounded-circle d-flex align-center justify-center font-weight-black text-xs',
+                currentStep >= step ? 'bg-primary text-white' : 'bg-lighten-4 text-disabled'
+              ]"
+              style="width: 24px; height: 24px;"
             >
-              <VIcon icon="tabler-trash" />
-            </VBtn>
-          </VCol>
-        </VRow>
+              {{ step }}
+            </div>
+            <span :class="['text-super-xs font-weight-black uppercase', currentStep === step ? 'text-primary' : 'text-disabled']">
+              {{ step === 1 ? 'General' : 'Escalas' }}
+            </span>
+            <VDivider v-if="step < totalSteps" length="40" class="mx-2 border-dashed" />
+          </div>
+        </div>
+
+        <div class="pa-6">
+          <!-- Step 1: Información General -->
+          <VWindow v-model="currentStep">
+            <VWindowItem :value="1">
+              <VRow dense>
+                <VCol cols="12" md="8">
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Empresa</span>
+                  <VAutocomplete
+                    v-model="companiesOfferData.company_id"
+                    :items="props.companiesData"
+                    :item-title="(item) => `${item.id} - ${item.name}`"
+                    item-value="id"
+                    placeholder="BUSCAR EMPRESA..."
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    clearable
+                    :disabled="isSaving"
+                    class="premium-input-compact mb-4"
+                  />
+                </VCol>
+
+                <VCol cols="12" md="4">
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado</span>
+                  <VSelect
+                    v-model="companiesOfferData.is_active"
+                    :items="[
+                      { value: true, title: 'ACTIVA' },
+                      { value: false, title: 'INACTIVA' },
+                    ]"
+                    item-title="title"
+                    item-value="value"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact mb-4"
+                  />
+                </VCol>
+
+                <VCol cols="12" sm="6">
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Inicio</span>
+                  <AppDateTimePicker
+                    v-model="companiesOfferData.start_date"
+                    placeholder="YYYY-MM-DD"
+                    prepend-inner-icon="tabler-calendar-event"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact mb-4"
+                    :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  />
+                </VCol>
+
+                <VCol cols="12" sm="6">
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Final</span>
+                  <AppDateTimePicker
+                    v-model="companiesOfferData.end_date"
+                    placeholder="YYYY-MM-DD"
+                    prepend-inner-icon="tabler-calendar-off"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact mb-4"
+                    :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  />
+                </VCol>
+              </VRow>
+            </VWindowItem>
+
+            <!-- Step 2: Escalas -->
+            <VWindowItem :value="2">
+              <div class="d-flex justify-space-between align-center mb-4">
+                <h3 class="text-sm font-weight-black text-primary uppercase letter-spacing-1">Tablero de Escalas</h3>
+                <VBtn
+                  prepend-icon="tabler-plus"
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                  class="rounded-lg font-weight-black"
+                  @click="addScale"
+                >
+                  Añadir Escala
+                </VBtn>
+              </div>
+
+              <div v-for="(scale, index) in scalesData" :key="index" class="scale-premium-row pa-4 mb-4 rounded-xl bg-white elevation-1 border">
+                <div class="d-flex justify-space-between align-center mb-3">
+                  <span class="text-super-xs font-weight-black bg-primary-lighten-5 text-primary px-2 py-1 rounded">ESCALA #{{ index + 1 }}</span>
+                  <VBtn
+                    v-if="scalesData.length > 1"
+                    icon="tabler-trash"
+                    variant="tonal"
+                    color="error"
+                    size="28"
+                    class="rounded-lg"
+                    @click="removeScale(index)"
+                  />
+                </div>
+                <VRow dense>
+                  <VCol cols="12" sm="4">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Monto Mín. (USD)</span>
+                    <AppTextField
+                      v-model="scale.min_amount"
+                      type="number"
+                      placeholder="0.00"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="premium-input-compact"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="4">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Monto Máx. (USD)</span>
+                    <AppTextField
+                      v-model="scale.max_amount"
+                      type="number"
+                      placeholder="0.00"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="premium-input-compact"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="4">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">% Descuento</span>
+                    <AppTextField
+                      v-model="scale.discount_percentage"
+                      type="number"
+                      placeholder="0"
+                      suffix="%"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="premium-input-compact font-weight-black"
+                    />
+                  </VCol>
+                </VRow>
+              </div>
+            </VWindowItem>
+          </VWindow>
+        </div>
       </VCardText>
 
-      <VCardActions class="pa-4 px-5">
-        <VRow class="w-100 ma-0">
-          <VCol cols="6" class="pa-2">
+      <VDivider />
+
+      <VCardActions class="pa-6 bg-light">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               v-if="currentStep > 1"
               color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-arrow-left"
+              variant="tonal"
+              size="large"
               block
+              height="48"
+              prepend-icon="tabler-arrow-left"
+              class="font-weight-black rounded-lg text-button uppercase"
               @click="prevStep"
             >
               Anterior
@@ -443,27 +437,31 @@ const formatDateForInput = (dateString) => {
             <VBtn
               v-else
               color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
+              variant="tonal"
+              size="large"
               block
+              height="48"
+              class="font-weight-black rounded-lg text-button uppercase"
               @click="onCancel"
-              :disabled="loading"
+              :disabled="isSaving"
             >
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="6" class="pa-2">
+          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              :prepend-icon="currentStep === 1 ? 'tabler-arrow-right' : 'tabler-check'"
+              size="large"
               block
-              :disabled="!canProceedToNext"
-              :loading="loading"
+              height="48"
+              :prepend-icon="currentStep === 1 ? 'tabler-arrow-right' : 'tabler-device-floppy'"
+              class="font-weight-black rounded-lg shadow-primary-lg text-button uppercase"
+              :loading="isSaving"
+              :disabled="currentStep === 1 && !canProceedToNext"
               @click="onSave"
             >
-              <template v-if="currentStep === 1">Siguiente</template>
-              <template v-else>{{ props.isEditing ? "Actualizar" : "Guardar" }}</template>
+              {{ currentStep === 1 ? 'Siguiente' : (props.isEditing ? 'Actualizar' : 'Guardar') }}
             </VBtn>
           </VCol>
         </VRow>
@@ -473,10 +471,71 @@ const formatDateForInput = (dateString) => {
 </template>
 
 <style scoped>
-.scale-row {
-  padding: 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #fafafa;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.premium-input-compact :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.15 !important;
+  color: rgba(var(--v-border-color), 1) !important;
+}
+
+.premium-input-compact :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1 !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.premium-input-compact :deep(.v-field) {
+  border-radius: 8px !important;
+  min-height: 38px !important;
+  background-color: white !important;
+}
+
+.premium-input-compact :deep(.v-field__input) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  min-height: 38px !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow-primary-lg {
+  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.scale-premium-row {
+  border-color: rgba(var(--v-border-color), 0.1) !important;
+  transition: all 0.2s ease;
+}
+
+.scale-premium-row:hover {
+  border-color: rgba(var(--v-theme-primary), 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+  opacity: 0.4;
+}
+
+.step-dot {
+  border: 2px solid rgba(var(--v-border-color), 0.1);
 }
 </style>

@@ -101,9 +101,11 @@ watch([searchQuery, selectedLaboratory], () => {
 });
 
 onMounted(() => {
-  fetchLaboratories();
-  fetchEmployees();
-  fetchEmployeeLaboratories();
+  Promise.all([
+    fetchLaboratories(),
+    fetchEmployees(),
+    fetchEmployeeLaboratories(),
+  ]);
 });
 
 const updateTableOptions = (options) => {
@@ -169,7 +171,11 @@ const handleSort = (sortOptions) => {
   }
 };
 
-const handleAddAssignment = () => {
+const handleAddAssignment = async () => {
+  // Si los empleados no cargaron aún, reintenta antes de abrir
+  if (employees.value.length === 0) {
+    await fetchEmployees();
+  }
   currentEmployee.value = {};
   dialogErrors.value = {};
   isDialogVisible.value = true;

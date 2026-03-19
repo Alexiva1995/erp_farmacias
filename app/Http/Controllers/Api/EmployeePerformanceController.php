@@ -377,12 +377,10 @@ class EmployeePerformanceController extends Controller
 
     private function getRankings($userId, $month, $year)
     {
-        // Top 10 Productos por unidades
+        // Top 10 Productos por unidades (histórico)
         $topProductsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->where('orders.seller_id', $userId)
-            ->whereMonth('orders.order_date', $month)
-            ->whereYear('orders.order_date', $year)
             ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
             ->where(function($query) {
                 $query->where('orders.status', 'Completed')
@@ -399,12 +397,10 @@ class EmployeePerformanceController extends Controller
             ->limit(10)
             ->get();
 
-        // Top 10 Productos por monto
+        // Top 10 Productos por monto (histórico)
         $topProductsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->where('orders.seller_id', $userId)
-            ->whereMonth('orders.order_date', $month)
-            ->whereYear('orders.order_date', $year)
             ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
             ->where(function($query) {
                 $query->where('orders.status', 'Completed')
@@ -421,13 +417,11 @@ class EmployeePerformanceController extends Controller
             ->limit(10)
             ->get();
 
-        // Top 5 Laboratorios por unidades
+        // Top 5 Laboratorios por unidades (histórico)
         $topLabsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->where('orders.seller_id', $userId)
-            ->whereMonth('orders.order_date', $month)
-            ->whereYear('orders.order_date', $year)
             ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
             ->where(function($query) {
                 $query->where('orders.status', 'Completed')
@@ -444,13 +438,11 @@ class EmployeePerformanceController extends Controller
             ->limit(5)
             ->get();
 
-        // Top 5 Laboratorios por monto
+        // Top 5 Laboratorios por monto (histórico)
         $topLabsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->where('orders.seller_id', $userId)
-            ->whereMonth('orders.order_date', $month)
-            ->whereYear('orders.order_date', $year)
             ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
             ->where(function($query) {
                 $query->where('orders.status', 'Completed')

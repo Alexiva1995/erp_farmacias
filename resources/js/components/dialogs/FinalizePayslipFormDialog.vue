@@ -2,6 +2,9 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   modalValue: { type: Boolean, default: false },
@@ -123,9 +126,11 @@ watch(
     :model-value="props.modalValue"
     max-width="500"
     persistent
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
     @update:model-value="closeDialog"
   >
-    <VCard class="finalize-payslip-dialog glass-morphism overflow-hidden">
+    <VCard :class="['finalize-payslip-dialog overflow-hidden bg-surface', mobile ? 'rounded-0' : 'rounded-xl border-0 shadow-lg']">
       <!-- Header -->
       <VCardTitle class="d-flex align-center justify-space-between pa-6">
         <div class="d-flex align-center">

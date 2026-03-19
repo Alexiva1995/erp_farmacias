@@ -1,32 +1,44 @@
 <script setup>
+import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
 import { useAuthStore } from "@/stores/auth";
 import defaultAvatarImg from "@images/avatars/avatar-1.png";
-import axios from "axios";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 
 const route = useRoute();
 const router = useRouter();
 const { isAdmin } = useAuthStore();
+const { mobile } = useDisplay();
 
 const loading = ref(false);
 const employee = ref({ user: { role: {} } });
 const roles = ref([]);
 const isEditing = ref(false);
+const showEditDialog = ref(false);
 const photoInput = ref(null);
 const photoUploading = ref(false);
 const photoLoadFailed = ref(false);
+const photoPreview = ref(null);
+const activeView = ref("performance"); // "performance" o "salary"
+
+// Configuración de documentos
+const photo = ref(null);
+const residenceLetter = ref(null);
+const rif = ref(null);
+const cv = ref(null);
 
 const triggerPhotoInput = () => {
-  photoInput.value?.click();
+  if (isAdmin) photoInput.value?.click();
 };
 
 const onPhotoChange = async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  // Validación cliente: formato y tamaño (2MB)
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
   if (!validTypes.includes(file.type)) {
     Swal.fire({ icon: 'error', title: 'Formato no válido', text: 'Use JPG o PNG.' });
@@ -61,6 +73,7 @@ const onPhotoChange = async (event) => {
   event.target.value = '';
 };
 
+// Métricas de Desempeño
 const defaultPerformanceData = {
   salesMetrics: {
     historical: { totalAmount: 0, totalUnits: 0, ticketAverage: 0, unitsAverage: 0, totalOrders: 0, ordersWithSingleProduct: 0 },
@@ -76,34 +89,22 @@ const defaultPerformanceData = {
     topLabsByUnits: [],
     topLabsByAmount: [],
   },
+  topProducts: [],
+  topLaboratories: [],
   inventoryCounts: { total: 0, discrepancies: 0 },
 };
 
-const performanceData = ref(structuredClone ? structuredClone(defaultPerformanceData) : JSON.parse(JSON.stringify(defaultPerformanceData)));
+const performanceData = ref(structuredClone(defaultPerformanceData));
 
 const crossSellingRate = computed(() => {
   const salesData = performanceData.value.salesMetrics.currentMonth;
-  
   if (!salesData.totalOrders || salesData.totalOrders === 0) return 0;
-  
-  // Cross-selling: porcentaje de órdenes que venden más de un producto
-  // Si ordersWithSingleProduct no existe o es inválido, asumimos 0
   const ordersWithSingleProduct = salesData.ordersWithSingleProduct || 0;
   const ordersWithMultipleProducts = salesData.totalOrders - ordersWithSingleProduct;
-  
-  // Validar que no sea negativo
-  const validMultipleOrders = Math.max(0, ordersWithMultipleProducts);
-  
-  return (validMultipleOrders / salesData.totalOrders) * 100;
+  return (Math.max(0, ordersWithMultipleProducts) / salesData.totalOrders) * 100;
 });
 
-const photoPreview = ref(null);
-
-const activeTab = ref("profile");
-const showEditDialog = ref(false);
-const activeView = ref("performance"); // "performance" o "salary"
-
-// Nómina: conceptos predefinidos (solo visual) e historial
+// Nómina
 const paymentHistory = ref([]);
 const payrollEmployee = ref({ total_package_usd: null, saldo_deuda: 0 });
 const distribution = ref(null);
@@ -115,13 +116,6 @@ const paymentForm = ref({
 });
 const savingPackage = ref(false);
 
-// Form data
-const photo = ref(null);
-const residenceLetter = ref(null);
-const rif = ref(null);
-const cv = ref(null);
-
-// Computed properties: mapeo de roles con manejo seguro de nulos
 const translatedRole = computed(() => {
   const roleMap = {
     admin: "Administrador",
@@ -130,30 +124,21 @@ const translatedRole = computed(() => {
     hr: "Recursos Humanos",
   };
   const roleName = employee.value?.user?.role?.name;
-  if (roleName == null) return "N/A";
+  if (!roleName) return "N/A";
   const normalized = String(roleName).toLowerCase();
   return roleMap[normalized] ?? roleName;
 });
 
 const roleItems = computed(() =>
   roles.value.map((role) => ({
-    title:
-      role.name === 'Admin'
-        ? 'Administrador'
-        : role.name === 'Employee'
-        ? 'Empleado'
-        : role.name === 'Supervisor'
-        ? 'Supervisor'
-        : role.name === 'HR' || role.name === 'Hr'
-        ? 'Recursos Humanos'
-        : role.name,
+    title: role.name === 'Admin' ? 'Administrador' : role.name === 'Employee' ? 'Empleado' : role.name === 'Supervisor' ? 'Supervisor' : role.name === 'HR' || role.name === 'Hr' ? 'Recursos Humanos' : role.name,
     value: Number(role.id),
   }))
 );
 
 const fetchRoles = async () => {
   try {
-    const response = await axios.get('/api/roles');
+    const response = await axios.get('roles');
     roles.value = response.data?.data ?? [];
   } catch (error) {
     roles.value = [];
@@ -166,28 +151,16 @@ const employeeInitials = computed(() => {
   return (name.charAt(0) + lastName.charAt(0)).toUpperCase();
 });
 
-/** URL base del backend para resolver rutas relativas (ej: http://farmacia-vue.test) */
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
-
-/**
- * Resuelve la URL de la imagen: si es relativa, antepone API_BASE_URL.
- * Si es absoluta (http/https), la usa tal cual.
- */
 const resolveImageUrl = (urlOrPath) => {
   if (!urlOrPath || typeof urlOrPath !== 'string') return null;
   const s = urlOrPath.trim();
   if (!s || s.toLowerCase() === 'null' || s === ' NULL') return null;
   if (s.startsWith('http://') || s.startsWith('https://')) return s;
-  const base = API_BASE_URL || '';
   const path = s.startsWith('/') ? s : `/${s}`;
-  return base ? `${base}${path}` : path;
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
 };
 
-/**
- * Obtiene la URL visualizable de la foto del empleado.
- * Prioriza data.photo_url; si no, construye desde data.photo.
- * Devuelve null si no hay imagen válida (fallback a iniciales).
- */
 const employeePhotoUrl = computed(() => {
   const emp = employee.value;
   if (!emp) return null;
@@ -195,19 +168,11 @@ const employeePhotoUrl = computed(() => {
   return url ? `${url}?t=${Date.now()}` : null;
 });
 
-/** Imagen por defecto cuando no hay foto o falla la carga */
-const defaultAvatar = defaultAvatarImg;
-
-/** URL a mostrar: foto, fallback por error, o imagen por defecto */
 const avatarDisplaySrc = computed(() => {
-  if (photoLoadFailed.value || !employeePhotoUrl.value) return defaultAvatar;
+  if (photoLoadFailed.value || !employeePhotoUrl.value) return defaultAvatarImg;
   return employeePhotoUrl.value;
 });
 
-/**
- * Extrae el objeto empleado de la respuesta API de forma segura.
- * Soporta profile: response.data.data y storeDocuments: response.data.data.data
- */
 const getEmployeeFromResponse = (response) => {
   const d = response?.data?.data;
   if (!d || typeof d !== 'object') return null;
@@ -215,246 +180,95 @@ const getEmployeeFromResponse = (response) => {
   return d;
 };
 
-// Methods
 const fetchEmployee = async () => {
   try {
-    const response = await axios.get(`/api/rrhh/employees/${route.params.id}`);
-
-    // Validar respuesta (profile: employee en data.data)
+    loading.value = true;
+    const response = await axios.get(`rrhh/employees/${route.params.id}`);
     const emp = getEmployeeFromResponse(response) ?? response?.data?.data;
     if (emp && emp.id) {
       employee.value = emp;
-    } else {
-      employee.value = { 
-        id: route.params.id,
-        name: 'Error en respuesta',
-        last_name: '',
-        user: { role: {} } 
-      };
     }
   } catch (error) {
-    // No redirigir automáticamente, solo inicializar con objeto vacío
-    employee.value = { 
-      id: route.params.id,
-      name: 'Empleado no encontrado',
-      last_name: '',
-      user: { role: {} } 
-    };
+    employee.value = { id: route.params.id, name: 'Error', last_name: '', user: { role: {} } };
+  } finally {
+    loading.value = false;
   }
 };
 
 const fetchPerformanceData = async () => {
   try {
-    const response = await axios.get(`/api/rrhh/employees/${route.params.id}/performance`);
+    const response = await axios.get(`rrhh/employees/${route.params.id}/performance`);
+    // La API retorna ApiResponse::success que envuelve en data.data
     const data = response.data?.data;
-    const fallback = structuredClone ? structuredClone(defaultPerformanceData) : JSON.parse(JSON.stringify(defaultPerformanceData));
 
-    performanceData.value = {
-      ...fallback,
-      ...(data ?? {}),
-    salesMetrics: {
-      ...fallback.salesMetrics,
-      ...(data?.salesMetrics ?? {}),
-      historical: {
-        ...fallback.salesMetrics.historical,
-        ...(data?.salesMetrics?.historical ?? {}),
-      },
-      currentMonth: {
-        ...fallback.salesMetrics.currentMonth,
-        ...(data?.salesMetrics?.currentMonth ?? {}),
-        ordersWithSingleProduct: Math.max(0, data?.salesMetrics?.currentMonth?.ordersWithSingleProduct ?? 0),
-      },
-    },
-    profitabilityMetrics: {
-      ...fallback.profitabilityMetrics,
-      ...(data?.profitabilityMetrics ?? {}),
-      historical: {
-        ...fallback.profitabilityMetrics.historical,
-        ...(data?.profitabilityMetrics?.historical ?? {}),
-      },
-      currentMonth: {
-        ...fallback.profitabilityMetrics.currentMonth,
-        ...(data?.profitabilityMetrics?.currentMonth ?? {}),
-        ordersWithSingleProduct: data?.salesMetrics?.currentMonth?.ordersWithSingleProduct ?? 0,
-      },
-    },
-      rankings: {
-        ...fallback.rankings,
-        ...(data?.rankings ?? {}),
-      },
-      inventoryCounts: {
-        ...fallback.inventoryCounts,
-        ...(data?.inventoryCounts ?? {}),
-      },
-    };
+    if (data) {
+      performanceData.value = {
+        ...performanceData.value,
+        ...data,
+        salesMetrics: {
+          ...performanceData.value.salesMetrics,
+          ...(data.salesMetrics || {}),
+          historical: {
+            ...performanceData.value.salesMetrics.historical,
+            ...(data.salesMetrics?.historical || {}),
+          },
+          currentMonth: {
+            ...performanceData.value.salesMetrics.currentMonth,
+            ...(data.salesMetrics?.currentMonth || {}),
+          },
+        },
+        // La API retorna data.rankings.topProductsByUnits y data.rankings.topLabsByUnits
+        topProducts: data.rankings?.topProductsByUnits ?? data.topProducts ?? [],
+        topLaboratories: data.rankings?.topLabsByUnits ?? data.topLaboratories ?? [],
+      };
+    }
   } catch (error) {
-    performanceData.value = structuredClone ? structuredClone(defaultPerformanceData) : JSON.parse(JSON.stringify(defaultPerformanceData));
-    loading.value = false;
+    performanceData.value = structuredClone(defaultPerformanceData);
   }
 };
 
-const handleMonthFilterChange = ({ month, year }) => {
-  fetchPerformanceData(month, year);
-};
-
 const handleReset2FA = async () => {
-  if (!employee.value?.id) return;
-
   const result = await Swal.fire({
     title: "¿Reiniciar 2FA?",
     text: "Esto obligará al empleado a configurar nuevamente el 2FA en su próximo acceso.",
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
     confirmButtonText: "Sí, reiniciar",
     cancelButtonText: "Cancelar",
   });
-
   if (!result.isConfirmed) return;
-
   try {
-    const { data } = await axios.put(`/api/rrhh/employees/${employee.value.id}/reset-2fa`);
-    const ok = data?.data?.status ?? false;
-
-    if (ok) {
-      Swal.fire({
-        icon: "success",
-        title: "Listo",
-        text: "2FA reiniciado correctamente",
-      });
-    } else {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo reiniciar el 2FA",
-      });
-    }
+    await axios.put(`rrhh/employees/${employee.value.id}/reset-2fa`);
+    toast.success("2FA reiniciado correctamente");
   } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.response?.data?.message || "No se pudo reiniciar el 2FA",
-    });
+    toast.error("Error al reiniciar 2FA");
   }
-};
-
-const handleDeleteEmployee = async () => {
-  const result = await Swal.fire({
-    title: "¿Está seguro?",
-    text: "Esta acción eliminará la cuenta del empleado del sistema",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#3085d6",
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (result.isConfirmed) {
-    try {
-      const response = await axios.delete(`/api/rrhh/employees/${employee.value.id}`);
-      if (response.data.status) {
-        Swal.fire({
-          icon: "success",
-          title: "Eliminado",
-          text: "El empleado ha sido eliminado correctamente",
-        });
-        router.push("/rrhh/employees");
-      }
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo eliminar el empleado",
-      });
-    }
-  }
-};
-
-const handleUploadDocument = async (type, file) => {
-  if (!file) return;
-
-  const formData = new FormData();
-  formData.append(type, file);
-
-  try {
-    await axios.post(`/rrhh/employees/${employee.value.id}/upload-document`, formData);
-    await fetchEmployee();
-    await Swal.fire({
-      icon: "success",
-      title: "Documento subido",
-      text: "El documento ha sido subido exitosamente",
-    });
-  } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudo subir el documento",
-    });
-  }
-};
-
-const handleDownloadDocument = async (type, filename) => {
-  try {
-    const response = await axios.get(`/rrhh/employees/${employee.value.id}/download-document/${type}`, {
-      responseType: 'blob'
-    });
-    
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudo descargar el documento",
-    });
-  }
-};
-
-const handleEditEmployee = () => { showEditDialog.value = true; };
-const handleCloseEditDialog = () => { showEditDialog.value = false; };
-const handleRefreshTable = async () => { fetchEmployee(); };
-
-const toggleEditMode = () => {
-  isEditing.value = !isEditing.value;
 };
 
 const saveProfileChanges = async () => {
   try {
     loading.value = true;
     const roleId = employee.value.user?.role_id ?? employee.value.user?.role?.id;
-    const response = await axios.put(`/api/rrhh/employees/${employee.value.id}`, {
+    await axios.put(`rrhh/employees/${employee.value.id}`, {
       name: employee.value.name,
       last_name: employee.value.last_name,
       identification: employee.value.identification,
-      email: employee.value.user?.email,
+      email: employee.value.email || employee.value.user?.email,
       role: roleId,
     });
-    
-    if (response.data.status || response.data.success) {
-      await Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Perfil actualizado correctamente",
-      });
-      isEditing.value = false;
-      await fetchEmployee();
-    }
+    toast.success("Perfil actualizado");
+    isEditing.value = false;
+    await fetchEmployee();
   } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.response?.data?.message || "No se pudo actualizar el perfil",
-    });
+    toast.error("Error al actualizar perfil");
   } finally {
     loading.value = false;
   }
+};
+
+const formatCurrency = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString('es-VE', { style: 'currency', currency: 'USD' }) : '—';
 };
 
 const fetchPayments = async () => {
@@ -462,72 +276,42 @@ const fetchPayments = async () => {
   payrollLoading.value = true;
   try {
     const now = new Date();
-    const params = {
-      month: now.getMonth() + 1,
-      year: now.getFullYear(),
-    };
-    const pkg = paymentForm.value.total_package_usd ?? payrollEmployee.value.total_package_usd;
-    if (pkg != null && pkg !== '') params.total_package_usd = Number(pkg);
-    const { data } = await axios.get(`/api/rrhh/employees/${employee.value.id}/payments`, { params });
-    const res = data?.data ?? data;
+    const params = { month: now.getMonth() + 1, year: now.getFullYear() };
+    const { data } = await axios.get(`rrhh/employees/${employee.value.id}/payments`, { params });
+    const res = data?.data;
     paymentHistory.value = res.history ?? [];
     payrollEmployee.value = res.employee ?? { total_package_usd: null, saldo_deuda: 0 };
     distribution.value = res.distribution ?? null;
-    if (paymentForm.value.total_package_usd == null && payrollEmployee.value.total_package_usd != null) {
-      paymentForm.value.total_package_usd = Number(payrollEmployee.value.total_package_usd);
-    }
+    if (paymentForm.value.total_package_usd == null) paymentForm.value.total_package_usd = Number(res.employee?.total_package_usd);
   } catch {
     paymentHistory.value = [];
-    payrollEmployee.value = { total_package_usd: null, saldo_deuda: 0 };
-    distribution.value = null;
   } finally {
     payrollLoading.value = false;
   }
 };
 
 const savePackage = async () => {
-  if (!employee.value?.id) return;
-  const pkg = paymentForm.value.total_package_usd ?? payrollEmployee.value.total_package_usd;
-  if (pkg == null || pkg === '') {
-    Swal.fire({ icon: 'warning', title: 'Dato requerido', text: 'Indique el paquete total (USD).' });
-    return;
-  }
+  const pkg = paymentForm.value.total_package_usd;
+  if (!pkg) return;
   savingPackage.value = true;
   try {
-    await axios.put(`/api/rrhh/employees/${employee.value.id}/payroll-settings`, {
-      total_package_usd: Number(pkg),
-    });
-    await Swal.fire({ icon: 'success', title: 'Guardado', text: 'Paquete actualizado en el perfil.' });
-    await fetchPayments();
-    await fetchEmployee();
+    await axios.put(`rrhh/employees/${employee.value.id}/payroll-settings`, { total_package_usd: Number(pkg) });
+    toast.success("Paquete actualizado");
+    fetchPayments();
   } catch {
-    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el paquete.' });
+    toast.error("Error al guardar paquete");
   } finally {
     savingPackage.value = false;
   }
 };
 
-const formatCurrency = (value) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—';
+const handleRefreshTable = async () => {
+  await fetchEmployee();
 };
-
-const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-const formatPeriod = (year, month) => `${monthNames[Number(month) - 1]} ${year}`;
-const formatFecha = (fechaStr) => {
-  if (!fechaStr) return '—';
-  const d = new Date(fechaStr);
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('es-VE', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
-};
-const formatVes = (value) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n.toLocaleString('es-VE', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Bs.S' : '—';
-};
-
 
 const handleDownloadFile = async (file) => {
   try {
-    const response = await axios.get(`/api/rrhh/employees/${employee.value.id}/download/${file}`, { responseType: "blob" });
+    const response = await axios.get(`rrhh/employees/${employee.value.id}/download/${file}`, { responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -536,976 +320,521 @@ const handleDownloadFile = async (file) => {
     link.click();
     link.remove();
   } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudo descargar el archivo",
-    });
+    toast.error("No se pudo descargar el archivo");
   }
 };
 
-  const handleUpdateEmployeeDocument = async (photoOnly = false) => {
-    // Validar que el empleado existe
-  if (!employee.value || !employee.value.id) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se encontró información del empleado. Por favor recargue la página.",
-    });
-    return false;
-  }
-
-  if (!photo.value && !residenceLetter.value && !rif.value && !cv.value) {
-    Swal.fire({
-      icon: "warning",
-      title: "Advertencia",
-      text: "Por favor seleccione al menos un archivo para actualizar",
-    });
-    return false;
-  }
-
-  const normalizeFile = (value) => {
-    if (!value) return null;
-    if (Array.isArray(value)) return value[0] ?? null;
-    return value;
-  };
-
+const handleUpdateEmployeeDocument = async (photoOnly = false) => {
   const formData = new FormData();
-
-  const photoFile = normalizeFile(photo.value);
-  const residenceLetterFile = normalizeFile(residenceLetter.value);
-  const rifFile = normalizeFile(rif.value);
-  const cvFile = normalizeFile(cv.value);
-
-  if (photoFile) formData.append('photo', photoFile);
-  if (residenceLetterFile) formData.append('residence_letter', residenceLetterFile);
-  if (rifFile) formData.append('rif', rifFile);
-  if (cvFile) formData.append('cv', cvFile);
+  if (photo.value) formData.append('photo', photo.value);
+  if (residenceLetter.value) formData.append('residence_letter', residenceLetter.value);
+  if (rif.value) formData.append('rif', rif.value);
+  if (cv.value) formData.append('cv', cv.value);
 
   try {
-    loading.value = true;
-    const response = await axios.post(
-      `/api/rrhh/employees/${employee.value.id}/documents`,
-      formData,
-      {
-        transformRequest: [(data, headers) => {
-          if (data instanceof FormData) {
-            delete headers['Content-Type'];
-          }
-          return data;
-        }],
-      }
-    );
-
-    if (response.data?.status === 'success' || response.data?.success) {
-      if (photoOnly) {
-        Swal.fire({
-          icon: "success",
-          title: "Foto actualizada",
-          text: "La foto de perfil se ha guardado correctamente",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } else {
-        await Swal.fire({
-          icon: "success",
-          title: "Éxito",
-          text: "Documentos actualizados correctamente",
-        });
-      }
-      
-      // Sincronización reactiva: actualizar employee con la respuesta (photo_url) inmediatamente
-      const updatedEmployee = getEmployeeFromResponse(response);
-      if (updatedEmployee && (updatedEmployee.photo_url ?? updatedEmployee.photo)) {
-        employee.value = { ...employee.value, ...updatedEmployee };
-      }
-      // Recargar empleado para persistencia tras F5
-      await fetchEmployee();
-      
-      // Limpiar después de recargar (para que employeePhotoUrl muestre la nueva imagen)
-      photo.value = null;
-      residenceLetter.value = null;
-      rif.value = null;
-      cv.value = null;
-      if (!photoOnly) photoPreview.value = null;
-      return true;
-    } else {
-      throw new Error(response.data.message || 'Error al actualizar documentos');
-    }
-  } catch (error) {
-    console.error('Error updating documents:', error);
-    let errorMessage = "No se pudieron actualizar los documentos";
-    
-    if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    } else if (error.response?.data?.errors) {
-      errorMessage = Object.values(error.response.data.errors).flat().join(', ');
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: errorMessage,
+    photoUploading.value = true;
+    await axios.post(`rrhh/employees/${employee.value.id}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
+    toast.success(photoOnly ? "Foto actualizada" : "Documentos actualizados");
+    await fetchEmployee();
+    return true;
+  } catch (error) {
+    toast.error("Error al actualizar");
     return false;
   } finally {
-    loading.value = false;
+    photoUploading.value = false;
   }
 };
 
-// Sincronizar role_id desde role cuando el empleado se carga (por si la API devuelve solo el objeto role)
-watch(
-  () => employee.value?.id,
-  () => { photoLoadFailed.value = false; },
-  { immediate: false }
-);
-
-watch(
-  () => employee.value?.user,
-  (user) => {
-    if (user?.role?.id && user.role_id == null) {
-      user.role_id = user.role.id;
-    }
-  },
-  { immediate: true, deep: true }
-);
+onMounted(() => {
+  fetchEmployee();
+  fetchRoles();
+  fetchPerformanceData();
+});
 
 watch(activeView, (view) => {
-  if (view === 'salary' && employee.value?.id) fetchPayments();
+  if (view === 'salary') fetchPayments();
 });
-
-// Lifecycle
-onMounted(async () => {
-  await Promise.all([
-    fetchEmployee(),
-    fetchRoles(),
-    fetchPerformanceData()
-  ]);
-});
-
 </script>
 
 <template>
-  <div>
+  <div class="employee-profile-page">
     <EmployeeFormDialog
       v-model="showEditDialog"
       :roles="roles"
       :selectedEmployee="employee"
       :clear-data-on-close="false"
       @refresh-table="handleRefreshTable"
-      @close="handleCloseEditDialog"
     />
 
     <VRow>
+      <!-- Sidebar de Perfil (Sticky) -->
       <VCol cols="12" md="3">
-        <!-- Botones de Navegación -->
-        <div class="d-flex flex-column gap-2 mb-3">
-          <VBtn
-            :color="activeView === 'performance' ? 'primary' : 'secondary'"
-            :variant="activeView === 'performance' ? 'flat' : 'tonal'"
-            block
-            prepend-icon="tabler-chart-bar"
-            @click="activeView = 'performance'"
-          >
-            Resumen de Desempeño
-          </VBtn>
-          <VBtn
-            :color="activeView === 'salary' ? 'primary' : 'secondary'"
-            :variant="activeView === 'salary' ? 'flat' : 'tonal'"
-            block
-            prepend-icon="tabler-wallet"
-            @click="activeView = 'salary'"
-          >
-            Gestión Salarial
-          </VBtn>
-        </div>
-
-        <VCard class="pb-3">
-          <VCardText class="text-center pt-4">
-            <div class="position-relative d-inline-block mb-3">
-              <input
-                ref="photoInput"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png"
-                class="d-none"
-                @change="onPhotoChange"
-              />
-              <div class="avatar-wrapper position-relative">
-                <VAvatar
-                  size="100"
-                  variant="tonal"
-                  rounded="circle"
-                  class="elevation-2"
-                >
-                  <img
-                    v-if="photoPreview"
-                    :src="photoPreview"
-                    alt=""
-                    class="v-avatar__img"
-                  >
-                  <img
-                    v-else-if="employeePhotoUrl || photoLoadFailed"
-                    :src="avatarDisplaySrc"
-                    alt=""
-                    class="v-avatar__img"
-                    @error="photoLoadFailed = true"
-                  >
-                  <template v-else>
-                    {{ employeeInitials }}
-                  </template>
-                </VAvatar>
-                <!-- Overlay "Subiendo..." durante la carga -->
-                <div
-                  v-if="photoUploading"
-                  class="avatar-upload-overlay"
-                >
-                  <VProgressCircular indeterminate color="white" size="32" width="3" />
-                  <span class="text-caption text-white font-weight-medium">Subiendo...</span>
+        <VCard class="rounded-xl border-0 shadow-sm sticky-sidebar overflow-visible mb-6">
+          <!-- Header con Gradiente Premium -->
+          <div class="header-gradient rounded-t-xl pa-6 d-flex flex-column align-center position-relative">
+            <div class="position-relative mb-4">
+              <VAvatar size="100" class="elevation-12 rounded-xl photo-avatar" border="3px solid white">
+                <img v-if="photoPreview || employeePhotoUrl" :src="photoPreview || avatarDisplaySrc" @error="photoLoadFailed = true" />
+                <span v-else class="text-h4 font-weight-black text-white">{{ employeeInitials }}</span>
+                
+                <div v-if="photoUploading" class="upload-overlay d-flex flex-column align-center justify-center">
+                  <VProgressCircular indeterminate color="white" size="24" width="3" />
                 </div>
-              </div>
-              <div
+              </VAvatar>
+              <VBtn
                 v-if="isAdmin && !photoUploading"
-                class="avatar-camera-badge"
+                icon="tabler-camera"
+                color="primary"
+                size="34"
+                class="avatar-camera-btn elevation-4"
                 @click="triggerPhotoInput"
-              >
-                <VIcon icon="tabler-camera" size="18" color="white" />
+              />
+              <input ref="photoInput" type="file" accept="image/*" class="d-none" @change="onPhotoChange" />
+            </div>
+
+            <div class="text-center">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-1 uppercase tracking-tight">
+                {{ employee.name }} {{ employee.last_name }}
+              </h2>
+              <VChip size="x-small" color="white" variant="flat" class="font-weight-black text-primary px-3 rounded">
+                {{ translatedRole }}
+              </VChip>
+            </div>
+          </div>
+
+          <VCardText class="pa-5 bg-surface">
+            <!-- Navegación de Vistas -->
+            <VList class="premium-nav-list pa-0 mb-6">
+              <VListItem
+                :active="activeView === 'performance'"
+                prepend-icon="tabler-chart-bar"
+                title="DESEMPEÑO"
+                @click="activeView = 'performance'"
+                class="rounded-lg mb-2"
+                color="primary"
+                variant="tonal"
+              />
+              <VListItem
+                :active="activeView === 'salary'"
+                prepend-icon="tabler-wallet"
+                title="GESTIÓN SALARIAL"
+                @click="activeView = 'salary'"
+                class="rounded-lg"
+                color="primary"
+                variant="tonal"
+              />
+            </VList>
+
+            <VDivider class="border-dashed mb-6 opacity-30" />
+
+            <!-- Información Básica -->
+            <div class="d-flex flex-column gap-5">
+              <div class="info-group">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Identificación</span>
+                <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis tracking-wide tabular-nums">
+                  {{ employee.identification || '—' }}
+                </div>
+                <VTextField v-else v-model="employee.identification" density="compact" hide-details class="premium-input-compact" />
+              </div>
+
+              <div class="info-group">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Correo Electrónico</span>
+                <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis lowercase">
+                  {{ employee.user?.email || employee.email || '—' }}
+                </div>
+                <VTextField v-else v-model="employee.email" density="compact" hide-details class="premium-input-compact" />
               </div>
             </div>
 
-            <div class="mb-3">
-              <div v-if="!isEditing">
-                <h3 class="text-h5 font-weight-bold mb-1">
-                  {{ employee.name }} {{ employee.last_name }}
-                </h3>
-                <VChip
-                  :color="employee.is_active ? 'success' : 'error'"
-                  variant="tonal"
-                  size="small"
-                  class="mb-2"
-                >
-                  {{ employee.is_active ? 'Activo' : 'Inactivo' }}
-                </VChip>
-              </div>
-              <div v-else>
-                <VTextField
-                  v-model="employee.name"
-                  label="Nombre"
-                  density="compact"
-                  class="mb-2"
-                />
-                <VTextField
-                  v-model="employee.last_name"
-                  label="Apellido"
-                  density="compact"
-                  class="mb-2"
-                />
-              </div>
-            </div>
-
-            <VDivider class="my-3" />
-
-            <div class="text-left px-2">
-              <div class="mb-3">
-                <div class="text-caption text-disabled mb-1">IDENTIFICACIÓN</div>
-                <div v-if="!isEditing" class="text-body-2 text-high-emphasis">
-                  {{ employee?.identification ?? '—' }}
-                </div>
-                <VTextField
-                  v-else
-                  v-model="employee.identification"
-                  label="Cédula"
-                  density="compact"
-                  hide-details
-                />
-              </div>
-
-              <div class="mb-3">
-                <div class="text-caption text-disabled mb-1">CORREO</div>
-                <div v-if="!isEditing" class="text-body-2 text-high-emphasis">
-                  {{ employee?.user?.email ?? '—' }}
-                </div>
-                <VTextField
-                  v-else
-                  v-model="employee.user.email"
-                  label="Email"
-                  density="compact"
-                  hide-details
-                />
-              </div>
-
-              <div class="mb-3">
-                <div class="text-caption text-disabled mb-1">ROL</div>
-                <div v-if="!isEditing" class="text-body-2 font-weight-medium text-primary d-flex align-center">
-                  <VIcon icon="tabler-shield-check" size="16" class="mr-1" />
-                  {{ translatedRole }}
-                </div>
-                <VSelect
-                  v-else
-                  v-model="employee.user.role_id"
-                  :items="roleItems"
-                  item-title="title"
-                  item-value="value"
-                  label="Rol"
-                  density="compact"
-                  hide-details
-                  prepend-inner-icon="tabler-shield-check"
-                />
-              </div>
-            </div>
-
-            <VDivider class="my-3" />
-
-            <!-- Botones de Acción -->
-            <div class="d-flex flex-column gap-2">
+            <!-- Botones de Acción Global -->
+            <div class="mt-8 d-flex flex-column gap-3">
               <VBtn
                 v-if="isAdmin"
+                block
                 :color="isEditing ? 'success' : 'primary'"
-                :variant="isEditing ? 'flat' : 'tonal'"
-                block
-                size="small"
-                :prepend-icon="isEditing ? 'tabler-check' : 'tabler-pencil'"
-                @click="isEditing ? saveProfileChanges() : toggleEditMode()"
+                variant="tonal"
+                size="large"
+                class="rounded-lg font-weight-black text-button"
                 :loading="loading"
+                @click="isEditing ? saveProfileChanges() : isEditing = true"
               >
-                {{ isEditing ? 'Guardar Cambios' : 'Editar Perfil' }}
+                <VIcon start :icon="isEditing ? 'tabler-check' : 'tabler-pencil'" size="18" />
+                {{ isEditing ? 'GUARDAR' : 'EDITAR PERFIL' }}
               </VBtn>
 
-              <VBtn
-                v-if="isAdmin && isEditing"
-                color="secondary"
-                variant="tonal"
-                block
-                size="small"
-                prepend-icon="tabler-x"
-                @click="toggleEditMode()"
-              >
-                Cancelar
+              <VBtn v-if="isAdmin && isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="isEditing = false">
+                CANCELAR
               </VBtn>
 
-              <VBtn
-                v-if="isAdmin"
-                color="warning"
-                variant="tonal"
-                block
-                size="small"
-                prepend-icon="tabler-refresh"
-                :disabled="!employee || !employee.id"
-                @click="handleReset2FA"
-              >
-                Reiniciar 2FA
+              <VBtn v-if="isAdmin && !isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="handleReset2FA">
+                <VIcon start icon="tabler-refresh" size="18" />
+                REINICIAR 2FA
               </VBtn>
 
-              <VBtn
-                v-if="isAdmin"
-                color="error"
-                variant="tonal"
-                block
-                size="small"
-                prepend-icon="tabler-trash"
-                @click="handleDeleteEmployee"
+              <VBtn 
+                v-if="isAdmin && !isEditing" 
+                block 
+                color="secondary" 
+                variant="text" 
+                size="small" 
+                class="rounded-lg mt-2 font-weight-bold" 
+                @click="showEditDialog = true"
               >
-                Eliminar cuenta
+                Configuración Avanzada
+                <VIcon end icon="tabler-chevron-right" size="14" />
               </VBtn>
             </div>
+          </VCardText>
+        </VCard>
 
-            <!-- Sección de Documentos -->
-            <VDivider class="my-3" />
-            <div class="text-left">
-              <div class="text-caption text-disabled mb-2">DOCUMENTOS</div>
-              <div class="d-flex flex-column gap-1">
-                <div class="d-flex align-center justify-between">
-                  <span class="text-body-2">Identificación</span>
-                  <VBtn
-                    v-if="employee.residence_letter"
-                    icon="tabler-download"
-                    size="x-small"
-                    variant="text"
-                    @click="handleDownloadFile('residence_letter')"
-                  />
-                </div>
-                <div class="d-flex align-center justify-between">
-                  <span class="text-body-2">RIF</span>
-                  <VBtn
-                    v-if="employee.rif"
-                    icon="tabler-download"
-                    size="x-small"
-                    variant="text"
-                    @click="handleDownloadFile('rif')"
-                  />
-                </div>
-                <div class="d-flex align-center justify-between">
-                  <span class="text-body-2">CV</span>
-                  <VBtn
-                    v-if="employee.cv"
-                    icon="tabler-download"
-                    size="x-small"
-                    variant="text"
-                    @click="handleDownloadFile('cv')"
-                  />
-                </div>
+        <!-- Sección de Documentos -->
+        <VCard class="rounded-xl border-1 shadow-sm overflow-hidden">
+          <div class="pa-4 bg-light font-weight-black text-super-xs text-primary uppercase letter-spacing-1 border-b d-flex align-center">
+            <VIcon icon="tabler-files" size="16" class="me-2" />
+            Documentación Digital
+          </div>
+          <VCardText class="pa-4 d-flex flex-column gap-2">
+            <div v-for="(file, label) in { residence_letter: 'Cédula / Rif', cv: 'Currículum Vitae' }" :key="file" class="document-item rounded-lg border pa-3 d-flex align-center justify-space-between transition-all">
+              <div class="d-flex align-center gap-3">
+                <VAvatar color="primary" variant="tonal" size="32" class="rounded">
+                  <VIcon icon="tabler-file-type-pdf" size="18" />
+                </VAvatar>
+                <span class="text-xs font-weight-bold text-high-emphasis">{{ label }}</span>
               </div>
-              
-              <div v-if="isAdmin" class="mt-2">
-                <VFileInput
-                  v-model="residenceLetter"
-                  label="Subir Identificación"
-                  accept=".pdf"
-                  density="compact"
-                  hide-details
-                  prepend-icon="tabler-upload"
-                  @change="(file) => {
-                    if (file) {
-                      handleUpdateEmployeeDocument();
-                    }
-                  }"
-                />
-                <VFileInput
-                  v-model="rif"
-                  label="Subir RIF"
-                  accept=".pdf"
-                  density="compact"
-                  hide-details
-                  prepend-icon="tabler-upload"
-                  class="mt-1"
-                  @change="(file) => {
-                    if (file) {
-                      handleUpdateEmployeeDocument();
-                    }
-                  }"
-                />
-                <VFileInput
-                  v-model="cv"
-                  label="Subir CV"
-                  accept=".pdf"
-                  density="compact"
-                  hide-details
-                  prepend-icon="tabler-upload"
-                  class="mt-1"
-                  @change="(file) => {
-                    if (file) {
-                      handleUpdateEmployeeDocument();
-                    }
-                  }"
-                />
-              </div>
+              <VBtn 
+                v-if="employee[file]" 
+                icon="tabler-download" 
+                size="28" 
+                variant="tonal" 
+                color="primary" 
+                class="rounded" 
+                @click="handleDownloadFile(file)"
+              />
+              <VBtn icon="tabler-upload" size="28" variant="tonal" color="secondary" class="rounded" v-else />
             </div>
           </VCardText>
         </VCard>
       </VCol>
 
+      <!-- Área de Contenido Principal -->
       <VCol cols="12" md="9">
-        
-        <!-- Vista de Resumen de Desempeño -->
-        <div v-if="activeView === 'performance'">
-          <h2 class="text-h5 mb-4 font-weight-bold">Dashboard de Rendimiento Avanzado</h2>
-          
-          <!-- KPIs Principales -->
-          <VRow class="mb-4">
-            <VCol cols="12" sm="6" md="3">
-              <VCard color="primary" theme="dark" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="white" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-cash" color="white" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.currentMonth.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
-                    <div class="text-caption">Ventas Mes</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="success" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="success" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-package" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.currentMonth.totalUnits.toLocaleString() }}</div>
-                    <div class="text-caption">Unidades</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="warning" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="warning" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-receipt" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.currentMonth.ticketAverage.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
-                    <div class="text-caption">Ticket Prom.</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="info" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="info" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-box-multiple" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.currentMonth.unitsAverage.toFixed(1) }}</div>
-                    <div class="text-caption">Unds. Prom.</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
+        <VTabsWindow v-model="activeView">
+          <!-- DASHBOARD DE DESEMPEÑO -->
+          <VTabsWindowItem value="performance">
+            <div class="d-flex align-center justify-space-between mb-6">
+              <h2 class="text-h5 font-weight-black text-high-emphasis tracking-tight uppercase">Dashboard Operativo</h2>
+              <VChip color="primary" variant="flat" class="font-weight-black px-4">MES ACTUAL</VChip>
+            </div>
 
-          <!-- KPIs Históricos -->
-          <h3 class="text-subtitle-1 font-weight-bold mb-3">
-            <VIcon icon="tabler-history" class="mr-2" />
-            Datos Históricos Acumulados
-          </h3>
-          <VRow class="mb-4">
-            <VCol cols="12" sm="6" md="3">
-              <VCard color="primary" theme="dark" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="white" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-cash-bank" color="white" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
-                    <div class="text-caption">Ventas Totales</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="success" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="success" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-stack" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.totalUnits.toLocaleString() }}</div>
-                    <div class="text-caption">Unidades Totales</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="warning" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="warning" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-receipt" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.ticketAverage.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</div>
-                    <div class="text-caption">Ticket Prom. Hist.</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="info" height="120">
-                <VCardText class="d-flex align-center justify-center text-center">
-                  <div>
-                    <VAvatar color="info" variant="tonal" class="mb-2">
-                      <VIcon icon="tabler-box-multiple" />
-                    </VAvatar>
-                    <div class="text-h5 font-weight-bold">{{ performanceData.salesMetrics.historical.unitsAverage.toFixed(1) }}</div>
-                    <div class="text-caption">Unds. Prom. Hist.</div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
+            <!-- KPIs Principales -->
+            <VRow class="mb-4">
+              <VCol v-for="kpi in [
+                { label: 'VENTAS USD', value: performanceData.salesMetrics.currentMonth.totalAmount, icon: 'tabler-cash', color: 'primary', format: 'currency' },
+                { label: 'UNIDADES', value: performanceData.salesMetrics.currentMonth.totalUnits, icon: 'tabler-package', color: 'success', format: 'number' },
+                { label: 'TICKET PROM', value: performanceData.salesMetrics.currentMonth.ticketAverage, icon: 'tabler-receipt', color: 'warning', format: 'currency' },
+                { label: 'CROSS-SELLING', value: crossSellingRate, icon: 'tabler-trending-up', color: 'info', format: 'percent' }
+              ]" :key="kpi.label" cols="12" sm="6" lg="3">
+                <VCard class="rounded-xl border-0 shadow-sm kpi-card overflow-hidden h-100">
+                  <div :class="`kpi-glow bg-${kpi.color}`" />
+                  <VCardText class="pa-5">
+                    <div class="d-flex justify-space-between align-start mb-4">
+                      <VAvatar :color="kpi.color" variant="tonal" size="44" class="rounded-xl">
+                        <VIcon :icon="kpi.icon" size="24" />
+                      </VAvatar>
+                    </div>
+                    <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">{{ kpi.label }}</div>
+                    <div class="text-h5 font-weight-black text-high-emphasis tabular-nums leading-none">
+                      {{ kpi.format === 'currency' ? formatCurrency(kpi.value) : kpi.format === 'percent' ? kpi.value.toFixed(1) + '%' : kpi.value.toLocaleString() }}
+                    </div>
+                  </VCardText>
+                </VCard>
+              </VCol>
+            </VRow>
 
-          <!-- KPIs de Rentabilidad -->
-          <VRow class="mb-4">
-            <VCol cols="12" md="6">
-              <VCard height="180">
-                <VCardTitle class="text-subtitle-1">Métricas de Rentabilidad</VCardTitle>
-                <VDivider />
-                <VCardText>
-                  <VRow>
-                    <VCol cols="6">
-                    <div class="text-center mb-3">
-                      <VAvatar color="success" variant="tonal" class="mb-2">
-                        <VIcon icon="tabler-trending-up" />
-                      </VAvatar>
-                      <div class="text-h5 font-weight-bold text-success">{{ crossSellingRate.toFixed(2) }}%</div>
-                      <div class="text-caption">Cross-selling</div>
+            <!-- Comparativo Histórico (Estilo Compacto) -->
+            <VCard class="rounded-xl border-0 shadow-sm mb-8">
+              <div class="pa-4 bg-light border-b font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
+                Acumulado Histórico
+              </div>
+              <VCardText class="pa-0">
+                <VRow no-gutters>
+                  <VCol v-for="(metric, idx) in [
+                    { label: 'Ventas Totales', value: formatCurrency(performanceData.salesMetrics.historical.totalAmount) },
+                    { label: 'Unidades Totales', value: performanceData.salesMetrics.historical.totalUnits.toLocaleString() },
+                    { label: 'Ticket Prom. Hist', value: formatCurrency(performanceData.salesMetrics.historical.ticketAverage) },
+                    { label: 'Unds. Prom. Hist', value: performanceData.salesMetrics.historical.unitsAverage.toFixed(1) }
+                  ]" :key="idx" cols="6" md="3">
+                    <div class="pa-4 text-center" :class="idx < 3 ? 'border-r-sm' : ''">
+                      <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">{{ metric.label }}</div>
+                      <div class="text-subtitle-1 font-weight-black text-high-emphasis tabular-nums">{{ metric.value }}</div>
                     </div>
-                    </VCol>
-                    <VCol cols="6">
-                    <div class="text-center mb-3">
-                      <VAvatar color="warning" variant="tonal" class="mb-2">
-                        <VIcon icon="tabler-clock" />
-                      </VAvatar>
-                      <div class="text-h5 font-weight-bold text-warning">{{ performanceData.profitabilityMetrics.currentMonth.avgOrderTime.toFixed(2) }}m</div>
-                      <div class="text-caption">Tiempo Orden</div>
+                  </VCol>
+                </VRow>
+              </VCardText>
+            </VCard>
+
+            <!-- Rankings y Detalles -->
+            <VRow>
+              <VCol cols="12" lg="6">
+                <VCard class="rounded-xl border-0 shadow-sm h-100 overflow-hidden">
+                  <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
+                    <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 10 Productos (Unidades)</span>
+                    <VIcon icon="tabler-crown" size="18" color="warning" />
+                  </div>
+                  <VCardText class="pa-2">
+                    <VList density="compact" class="ranking-list">
+                      <VListItem v-for="(product, i) in performanceData.topProducts.slice(0, 10)" :key="i" class="rounded-lg mb-1">
+                        <template #prepend>
+                          <div :class="`rank-number rank-${i+1} font-weight-black text-xs me-3`">{{ i + 1 }}</div>
+                        </template>
+                        <VListItemTitle class="text-xs font-weight-black text-high-emphasis uppercase">{{ product.name || product.product_name }}</VListItemTitle>
+                        <template #append>
+                          <div class="text-right d-flex flex-column align-end">
+                            <span class="text-xs font-weight-black text-primary">{{ product.units || product.total_units }} unds</span>
+                            <span class="text-super-xs text-disabled">{{ formatCurrency(product.amount || product.total_amount) }}</span>
+                          </div>
+                        </template>
+                      </VListItem>
+                    </VList>
+                  </VCardText>
+                </VCard>
+              </VCol>
+
+              <VCol cols="12" lg="6">
+                <VCard class="rounded-xl border-0 shadow-sm h-100 overflow-hidden">
+                  <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
+                    <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 5 Laboratorios</span>
+                    <VIcon icon="tabler-flask" size="18" color="info" />
+                  </div>
+                  <VCardText class="pa-4 text-center d-flex flex-column gap-3">
+                    <div v-for="(lab, i) in performanceData.topLaboratories.slice(0, 5)" :key="i" class="lab-row rounded-lg pa-3 border d-flex align-center justify-space-between shadow-xs transition-all">
+                      <div class="d-flex align-center gap-3">
+                         <VAvatar :color="i < 2 ? 'primary' : 'secondary'" variant="tonal" size="32" class="rounded font-weight-black text-xs">
+                           {{ i + 1 }}
+                         </VAvatar>
+                         <span class="text-xs font-weight-black text-high-emphasis uppercase">{{ lab.name || lab.laboratory }}</span>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-xs font-weight-black text-primary">{{ lab.units || lab.total_units }} unds</div>
+                      </div>
                     </div>
-                    </VCol>
-                    <VCol cols="12">
-                    <div class="text-center">
-                      <VAvatar color="error" variant="tonal" class="mb-2">
-                        <VIcon icon="tabler-arrow-back-up" />
-                      </VAvatar>
-                      <div class="text-h5 font-weight-bold text-error">{{ performanceData.profitabilityMetrics.currentMonth.returnRate.toFixed(2) }}%</div>
-                      <div class="text-caption">Devoluciones</div>
-                    </div>
-                    </VCol>
-                  </VRow>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" md="6">
-              <VCard variant="tonal" color="error" height="180">
-                <VCardTitle class="text-subtitle-1">Control de Inventario</VCardTitle>
-                <VDivider />
-                <VCardText class="text-center d-flex flex-column justify-center" style="block-size: 100px;">
-                  <VAvatar color="white" variant="tonal" class="mb-3">
-                    <VIcon icon="tabler-package" color="error" />
+                  </VCardText>
+                </VCard>
+              </VCol>
+            </VRow>
+          </VTabsWindowItem>
+
+          <!-- GESTIÓN SALARIAL -->
+          <VTabsWindowItem value="salary">
+             <div class="d-flex align-center justify-space-between mb-6">
+              <h2 class="text-h5 font-weight-black text-high-emphasis tracking-tight uppercase">Nómina e Incentivos</h2>
+              <VChip color="success" variant="flat" class="font-weight-black px-4">ACTIVO</VChip>
+            </div>
+
+            <VCard class="rounded-xl border-0 shadow-sm mb-6 overflow-hidden">
+               <div class="pa-5 header-gradient d-flex align-center">
+                  <VAvatar color="white" variant="flat" size="48" class="me-4 rounded-xl shadow-sm">
+                    <VIcon icon="tabler-piggy-bank" color="primary" size="24" />
                   </VAvatar>
-                  <div class="text-h3 font-weight-bold">{{ performanceData.inventoryCounts.total }}</div>
-                  <div class="text-caption">Conteos Realizados</div>
-                  <VDivider class="my-2" />
-                  <div class="text-h6 font-weight-bold text-error">
-                    {{ performanceData.inventoryCounts.discrepancies }} Discrepancias
+                  <div class="flex-grow-1">
+                    <div class="text-super-xs text-white opacity-70 font-weight-black uppercase letter-spacing-1 mb-1">Paquete Mensual Acordado</div>
+                    <div class="text-h4 font-weight-black text-white tabular-nums leading-none">{{ formatCurrency(paymentForm.total_package_usd) }}</div>
                   </div>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
+                  <VBtn v-if="isAdmin" color="white" variant="flat" class="font-weight-black text-primary rounded-lg px-6" :loading="savingPackage" @click="savePackage">ACTUALIZAR</VBtn>
+               </div>
+               
+               <VCardText class="pa-6">
+                  <div class="max-600 mx-auto">
+                    <div class="text-xs font-weight-bold text-medium-emphasis mb-6 text-center italic">
+                      "La distribución de conceptos se calcula según la ley vigente y las políticas de la farmacia."
+                    </div>
+                    
+                    <div v-if="distribution" class="premium-invoice rounded-xl pa-8 border-1 shadow-sm position-relative overflow-hidden">
+                      <div class="invoice-watermark">PAYROLL</div>
+                      <div class="d-flex justify-space-between align-center mb-8">
+                        <span class="text-h6 font-weight-black text-primary uppercase">Detalle de Cobro</span>
+                        <VIcon icon="tabler-file-invoice" size="32" class="text-primary opacity-20" />
+                      </div>
 
-          <!-- Rankings -->
-          <VRow>
-            <VCol cols="12" md="6">
-              <VCard>
-                <VCardTitle class="text-subtitle-1">Top 10 Productos por Unidades</VCardTitle>
-                <VDivider />
-                <VCardText>
-                  <VList density="compact">
-                    <VListItem v-for="(product, i) in performanceData.rankings.topProductsByUnits" :key="i">
-                      <template #prepend>
-                        <VChip :color="i < 3 ? 'primary' : 'grey-lighten-2'" size="small" class="mr-2">
-                          {{ i + 1 }}
-                        </VChip>
-                      </template>
-                      <VListItemTitle class="text-body-2">{{ product.name }}</VListItemTitle>
-                      <template #append>
-                        <div class="text-right">
-                          <div class="text-caption font-weight-bold">{{ product.units }} unds</div>
-                          <div class="text-caption text-disabled">${{ product.amount.toLocaleString() }}</div>
+                      <div class="concept-list">
+                        <div v-for="c in distribution.concepts" :key="c.name" class="d-flex justify-space-between py-3 border-dashed-b last:border-0">
+                          <span class="text-xs font-weight-black text-high-emphasis uppercase">{{ c.name }}</span>
+                          <span class="text-xs font-weight-black text-high-emphasis tabular-nums">{{ formatCurrency(c.amount) }}</span>
                         </div>
-                      </template>
-                    </VListItem>
-                  </VList>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" md="6">
-              <VCard>
-                <VCardTitle class="text-subtitle-1">Top 10 Productos por Monto</VCardTitle>
-                <VDivider />
-                <VCardText>
-                  <VList density="compact">
-                    <VListItem v-for="(product, i) in performanceData.rankings.topProductsByAmount" :key="i">
-                      <template #prepend>
-                        <VChip :color="i < 3 ? 'success' : 'grey-lighten-2'" size="small" class="mr-2">
-                          {{ i + 1 }}
-                        </VChip>
-                      </template>
-                      <VListItemTitle class="text-body-2">{{ product.name }}</VListItemTitle>
-                      <template #append>
-                        <div class="text-right">
-                          <div class="text-caption font-weight-bold">${{ product.amount.toLocaleString() }}</div>
-                          <div class="text-caption text-disabled">{{ product.units }} unds</div>
-                        </div>
-                      </template>
-                    </VListItem>
-                  </VList>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
+                      </div>
 
-          <!-- Rankings de Laboratorios -->
-          <VRow class="mt-4">
-            <VCol cols="12" md="6">
-              <VCard>
-                <VCardTitle class="text-subtitle-1">Top 5 Laboratorios por Unidades</VCardTitle>
-                <VDivider />
-                <VCardText>
-                  <VList density="compact">
-                    <VListItem v-for="(lab, i) in performanceData.rankings.topLabsByUnits" :key="i">
-                      <template #prepend>
-                        <VChip :color="i < 2 ? 'warning' : 'grey-lighten-2'" size="small" class="mr-2">
-                          {{ i + 1 }}
-                        </VChip>
-                      </template>
-                      <VListItemTitle class="text-body-2">{{ lab.name }}</VListItemTitle>
-                      <template #append>
-                        <div class="text-right">
-                          <div class="text-caption font-weight-bold">{{ lab.units }} unds</div>
-                          <div class="text-caption text-disabled">${{ lab.amount.toLocaleString() }}</div>
-                        </div>
-                      </template>
-                    </VListItem>
-                  </VList>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" md="6">
-              <VCard>
-                <VCardTitle class="text-subtitle-1">Top 5 Laboratorios por Monto</VCardTitle>
-                <VDivider />
-                <VCardText>
-                  <VList density="compact">
-                    <VListItem v-for="(lab, i) in performanceData.rankings.topLabsByAmount" :key="i">
-                      <template #prepend>
-                        <VChip :color="i < 2 ? 'info' : 'grey-lighten-2'" size="small" class="mr-2">
-                          {{ i + 1 }}
-                        </VChip>
-                      </template>
-                      <VListItemTitle class="text-body-2">{{ lab.name }}</VListItemTitle>
-                      <template #append>
-                        <div class="text-right">
-                          <div class="text-caption font-weight-bold">${{ lab.amount.toLocaleString() }}</div>
-                          <div class="text-caption text-disabled">{{ lab.units }} unds</div>
-                        </div>
-                      </template>
-                    </VListItem>
-                  </VList>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
-        </div>
+                      <VDivider class="my-6 border-solid opacity-10" />
 
-        <!-- Vista de Gestión Salarial -->
-        <div v-else-if="activeView === 'salary'">
-          <h2 class="text-h5 mb-4 font-weight-bold">Gestión Salarial</h2>
-          
-          <!-- Conceptos predefinidos: solo paquete editable; el resto se distribuye según el mes (solo visual, no se cierra nómina aquí) -->
-          <VCard>
-            <VCardTitle class="d-flex align-center gap-2">
-              <VIcon icon="tabler-list" />
-              Conceptos predefinidos
-            </VCardTitle>
-            <VDivider />
-            <VCardText v-if="payrollLoading">
-              <VProgressLinear indeterminate color="primary" />
-            </VCardText>
-            <VCardText v-else>
-              <p class="text-body-2 text-medium-emphasis mb-3">
-                El <strong>paquete total</strong> se guarda en el perfil del empleado y puedes editarlo cuando sea necesario. La <strong>Asistencia Social de Salud</strong> se calcula automáticamente según el consumo acumulado del empleado en la farmacia.
-              </p>
-              <VRow dense>
-                <VCol cols="12">
-                  <div class="d-flex align-stretch">
-                    <VTextField
-                      v-model.number="paymentForm.total_package_usd"
-                      label="Paquete total (USD)"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      variant="outlined"
-                      density="comfortable"
-                      placeholder="Ej. 200"
-                      hide-details
-                      class="flex-grow-1"
-                    />
-                    <VBtn
-                      v-if="isAdmin"
-                      color="primary"
-                      variant="flat"
-                      :loading="savingPackage"
-                      @click="savePackage"
-                      class="ml-2"
-                      height="48"
-                    >
-                      Guardar paquete en perfil
-                    </VBtn>
+                      <div class="d-flex justify-space-between align-center">
+                        <div class="d-flex flex-column">
+                          <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Neto Estimado</span>
+                          <span class="text-h4 font-weight-black text-primary tabular-nums">{{ formatCurrency(distribution.total_a_cobrar) }}</span>
+                        </div>
+                        <VIcon icon="tabler-currency-dollar" size="48" class="text-primary opacity-10" />
+                      </div>
+                    </div>
                   </div>
-                </VCol>
-              </VRow>
-              <VCard v-if="distribution" variant="tonal" class="mt-4" density="comfortable">
-                <VCardTitle class="text-subtitle-2">
-                  Distribución de Conceptos
-                </VCardTitle>
-                <VCardText>
-                  <VList density="compact">
-                    <VListItem
-                      v-for="(c, i) in distribution.concepts"
-                      :key="i"
-                      class="px-0"
-                    >
-                      <template #prepend>
-                        <VIcon v-if="c.fixed" icon="tabler-lock" size="18" class="text-medium-emphasis mr-2" />
-                        <VIcon v-else icon="tabler-calculator" size="18" class="text-medium-emphasis mr-2" />
-                      </template>
-                      <VListItemTitle>{{ c.name }}</VListItemTitle>
-                      <template #append>
-                        <span class="font-weight-medium text-high-emphasis">{{ formatCurrency(c.amount) }}</span>
-                      </template>
-                    </VListItem>
-                    <VDivider class="my-2" />
-                    <VListItem class="px-0">
-                      <VListItemTitle class="font-weight-bold">Total a cobrar (Salario + Bono + Incentivo)</VListItemTitle>
-                      <template #append>
-                        <span class="font-weight-bold text-primary text-high-emphasis">{{ formatCurrency(distribution.total_a_cobrar) }}</span>
-                      </template>
-                    </VListItem>
-                  </VList>
-                </VCardText>
-              </VCard>
-              <p v-else-if="paymentForm.total_package_usd != null && paymentForm.total_package_usd > 0" class="text-medium-emphasis mt-4 mb-3">
-                Seleccione mes y año para ver la distribución.
-              </p>
-              <p v-else class="text-medium-emphasis mt-4 mb-3">
-                Defina el paquete total y seleccione mes y año para ver cómo se distribuyen los conceptos.
-              </p>
-            </VCardText>
-          </VCard>
+               </VCardText>
+            </VCard>
 
-          <!-- Historial de pagos: sin acciones, columnas obligatorias, orden descendente -->
-          <VCard v-if="!payrollLoading" class="mt-4">
-            <VCardTitle class="d-flex align-center gap-2">
-              <VIcon icon="tabler-history" />
-              Historial de pagos
-            </VCardTitle>
-            <VDivider />
-            <VCardText>
-              <VTable v-if="paymentHistory.length > 0">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th class="text-right">Salario Básico Mensual</th>
-                    <th class="text-right">Cestaticket Socialista de Ley</th>
-                    <th class="text-right">Asistencia Social de Salud (Art. 105 LOTTT)</th>
-                    <th class="text-right">Gratificación Extraordinaria por Rendimiento</th>
-                    <th class="text-right">Total Pagado (USD)</th>
-                    <th class="text-right">Total Pagado (VES)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in paymentHistory" :key="row.id">
-                    <td class="text-high-emphasis">{{ formatFecha(row.fecha) }}</td>
-                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.salario_base) }}</td>
-                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.bono_alimentacion) }}</td>
-                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.beneficio_salud) }}</td>
-                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.incentivo_metas) }}</td>
-                    <td class="text-right text-high-emphasis">{{ formatCurrency(row.total_pagado_usd) }}</td>
-                    <td class="text-right text-high-emphasis">{{ formatVes(row.total_pagado_ves) }}</td>
-                  </tr>
-                </tbody>
-              </VTable>
-              <p v-else class="text-medium-emphasis mb-0">No hay pagos procesados.</p>
-            </VCardText>
-          </VCard>
-        </div>
-
-
-
+            <!-- Historial -->
+            <VCard class="rounded-xl border-0 shadow-sm overflow-hidden mt-8">
+              <div class="pa-4 bg-light border-b font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
+                Historial de Pagos Procesados
+              </div>
+              <VDataTableServer
+                :items="paymentHistory"
+                :headers="[
+                  { title: 'PERIODO', key: 'fecha' },
+                  { title: 'NETO (USD)', key: 'total_pagado_usd', align: 'end' },
+                  { title: 'EQUIVALENTE (VES)', key: 'total_pagado_ves', align: 'end' }
+                ]"
+                class="premium-table"
+                hide-default-footer
+              >
+                <template #item.fecha="{ item }">
+                  <div class="d-flex align-center gap-3 py-2">
+                    <VAvatar color="primary" variant="tonal" size="32" class="rounded font-weight-black text-super-xs">
+                      {{ new Date(item.fecha).getMonth() + 1 }}
+                    </VAvatar>
+                    <span class="text-xs font-weight-black uppercase">{{ new Date(item.fecha).toLocaleString('es-VE', { month: 'long', year: 'numeric' }) }}</span>
+                  </div>
+                </template>
+                <template #item.total_pagado_usd="{ item }">
+                  <span class="text-xs font-weight-black text-primary tabular-nums">{{ formatCurrency(item.total_pagado_usd) }}</span>
+                </template>
+                <template #item.total_pagado_ves="{ item }">
+                  <span class="text-xs font-weight-bold text-medium-emphasis tabular-nums">{{ item.total_pagado_ves.toLocaleString('es-VE') }} Bs</span>
+                </template>
+              </VDataTableServer>
+            </VCard>
+          </VTabsWindowItem>
+        </VTabsWindow>
       </VCol>
     </VRow>
-    
   </div>
 </template>
 
 <style scoped>
-.cursor-pointer { cursor: pointer; }
-
-.avatar-wrapper {
-  display: inline-block;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.avatar-wrapper .v-avatar__img {
-  block-size: 100%;
-  inline-size: 100%;
-  object-fit: cover;
+.sticky-sidebar {
+  position: sticky;
+  inset-block-start: 1rem;
 }
 
-.avatar-upload-overlay {
+.photo-avatar {
+  border: 4px solid rgba(255, 255, 255, 40%);
+  transition: all 0.3s ease;
+}
+
+.avatar-camera-btn {
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 60%);
-  gap: 4px;
-  inset: 0;
-}
-
-.avatar-camera-badge {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgb(var(--v-theme-primary));
-  block-size: 32px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 20%);
-  cursor: pointer;
-  inline-size: 32px;
+  border-radius: 50% !important;
   inset-block-end: 0;
-  inset-inline-end: 0;
-  transition: opacity 0.2s ease;
+  inset-inline-end: -6px;
 }
 
-.avatar-camera-badge:hover {
-  opacity: 0.9;
+.upload-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: rgba(0, 0, 0, 60%);
 }
 
-/* Estilos para la card izquierda compacta */
-.compact-card .v-card-text {
-  padding: 1rem !important;
+.premium-nav-list :deep(.v-list-item--active) {
+  border: 1px solid rgba(var(--v-theme-primary), 20%);
+  background-color: rgba(var(--v-theme-primary), 10%) !important;
 }
 
-.compact-field .v-field {
-  font-size: 0.875rem !important;
+.premium-input-compact :deep(.v-field) {
+  background-color: white !important;
+  border-radius: 8px !important;
+  min-block-size: 34px !important;
+  font-size: 0.75rem !important;
 }
 
-/* Estilos para los botones de navegación */
-.nav-btn {
-  transition: all 0.2s ease;
+.bg-light { background-color: #f8fafc !important; }
+
+.kpi-card {
+  position: relative;
+  transition: transform 0.3s ease;
 }
 
-.nav-btn.active {
-  box-shadow: 0 4px 8px rgba(var(--v-theme-primary), 0.2);
+.kpi-card:hover {
+  transform: translateY(-4px);
 }
 
-/* Estilos para la sección de documentos */
-.document-item {
-  border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  padding-block: 0.5rem;
-  padding-inline: 0;
+.kpi-glow {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  block-size: 4px;
+  inline-size: 100%;
+  opacity: 0.8;
 }
 
-.document-item:last-child {
-  border-block-end: none;
+.premium-invoice {
+  border: 1px solid rgba(var(--v-theme-primary), 10%);
+  background: white;
 }
 
-/* Estilos responsivos */
+.invoice-watermark {
+  position: absolute;
+  color: rgba(var(--v-theme-primary), 3%);
+  inset-block-end: -10px;
+  inset-inline-end: 10px;
+  font-size: 5rem;
+  font-weight: 900;
+  pointer-events: none;
+  transform: rotate(-5deg);
+}
+
+.rank-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 24px;
+  inline-size: 24px;
+  border-radius: 50%;
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.rank-1 { background-color: #fef3c7; color: #d97706; }
+.rank-2 { background-color: #f1f5f9; color: #475569; }
+.rank-3 { background-color: #ffedd5; color: #9a3412; }
+
+.lab-row:hover {
+  border-color: rgba(var(--v-theme-primary), 20%) !important;
+  background-color: #f8fafc;
+}
+
+.shadow-xs { box-shadow: 0 1px 3px rgba(0, 0, 0, 5%) !important; }
+.shadow-sm { box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important; }
+
+.leading-none { line-height: 1 !important; }
+.leading-tight { line-height: 1.25 !important; }
+.tracking-tight { letter-spacing: -0.5px !important; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.text-super-xs { font-size: 0.65rem !important; }
+.uppercase { text-transform: uppercase !important; }
+
+.border-dashed-b { border-block-end: 1px dashed rgba(0, 0, 0, 8%) !important; }
+.border-dashed { border-width: 2px !important; border-style: dashed !important; }
+
+.document-item:hover {
+  border-color: rgb(var(--v-theme-primary)) !important;
+  background-color: rgba(var(--v-theme-primary), 2%);
+}
+
+.transition-all { transition: all 0.2s ease; }
+
 @media (max-width: 960px) {
-  .v-col-md-3 {
-    margin-block-end: 1.5rem;
-  }
-
-  .nav-btn {
-    font-size: 0.875rem;
-    padding-block: 0.5rem;
-    padding-inline: 0.75rem;
-  }
-}
-
-@media (max-width: 600px) {
-  .v-avatar {
-    block-size: 80px !important;
-    inline-size: 80px !important;
-  }
-
-  .text-h5 {
-    font-size: 1.25rem !important;
-  }
+  .sticky-sidebar { position: static; }
 }
 </style>

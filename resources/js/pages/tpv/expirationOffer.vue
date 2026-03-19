@@ -226,20 +226,16 @@ onMounted(() => {
       @add-expiration-offer="openCreateOfferModal"
     />
 
-    <VCard title="Ofertas por Caducidad">
-      <VCardText>
-        <ExpirationOfferTable
-          :offers="productExpirationOfferData"
-          :loading="loadingExpirations"
-          :items-per-page="itemsPerPageExpirations"
-          :page="pageExpirations"
-          :total="totalExpirations"
-          @update:options="updateTableOptionsExpiration"
-          @edit-offer="handleEditOffer"
-          @delete-offer="handleDeleteOffer"
-        />
-      </VCardText>
-    </VCard>
+    <ExpirationOfferTable
+      :offers="productExpirationOfferData"
+      :loading="loadingExpirations"
+      :items-per-page="itemsPerPageExpirations"
+      :page="pageExpirations"
+      :total="totalExpirations"
+      @update:options="updateTableOptionsExpiration"
+      @edit-offer="handleEditOffer"
+      @delete-offer="handleDeleteOffer"
+    />
 
     <ExpirationCreateOffer
       v-model="isOfferDialogVisible"

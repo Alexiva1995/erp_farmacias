@@ -25,6 +25,7 @@ class ExpenseResource extends JsonResource
             'has_invoice' => $this->has_invoice,
             'is_deductible' => $this->is_deductible,
             'total_usd' => $this->total_usd,
+            'url_file' => $this->url_file,
             'category' => $this->whenLoaded('category', function () {
                 return [
                     'id' => $this->category->id,

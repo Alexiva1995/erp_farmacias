@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   packs: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -7,22 +9,24 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-pack", "delete-pack", "view-pack"]);
+const emit = defineEmits(["update:options", "edit-pack", "delete-pack", "view-pack", "toggle-status"]);
+
+const { mobile } = useDisplay();
 
 const headers = [
   { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "Nombre", key: "name", sortable: true, width: "25%" },
-  { title: "Productos", key: "products_count", sortable: true, width: "120px" },
-  { title: "Precio Total", key: "total_price", sortable: true, width: "120px" },
-  { title: "Cant. Máx.", key: "max_quantity", sortable: true, width: "120px" },
-  { title: "Fecha Límite", key: "max_sale_date", sortable: true, width: "140px" },
-  { title: "Estado", key: "is_active", sortable: true, width: "100px" },
-  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "120px" },
+  { title: "NOMBRE DEL PACK", key: "name", sortable: true },
+  { title: "PRODUCTOS", key: "products_count", sortable: true, width: "120px" },
+  { title: "PRECIO TOTAL", key: "total_price", sortable: true, width: "140px" },
+  { title: "CANT. MÁX", key: "max_quantity", sortable: true, width: "120px" },
+  { title: "FECHA LÍMITE", key: "max_sale_date", sortable: true, width: "140px" },
+  { title: "ESTADO", key: "is_active", sortable: true, width: "100px" },
+  { title: "ACCIONES", key: "actions", sortable: false, align: "center", width: "160px" },
 ];
 
 const formatDate = (date) => {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('es-ES');
+  return new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const formatCurrency = (amount) => {
@@ -44,86 +48,207 @@ const handleView = (pack) => {
   emit('view-pack', pack);
 };
 
+const handleToggleStatus = (pack) => {
+  emit('toggle-status', pack);
+};
 </script>
 
 <template>
-  <VCard>
+  <div class="pack-table-container">
+    <template v-if="mobile">
+      <VDataIterator
+        :items="props.packs"
+        :items-per-page="props.itemsPerPage"
+        :loading="props.loading"
+      >
+        <template v-slot:default="{ items }">
+          <div class="pa-2 d-flex flex-column gap-3">
+            <VCard
+              v-for="item in items"
+              :key="item.raw.id"
+              variant="flat"
+              border
+              class="rounded-lg pa-3"
+            >
+              <div class="d-flex justify-space-between align-start mb-2">
+                <div class="d-flex flex-column">
+                  <span class="text-caption font-weight-bold text-primary leading-tight">PACK #{{ item.raw.id }}</span>
+                  <h3 class="text-body-1 font-weight-black text-high-emphasis leading-tight mt-1">{{ item.raw.name }}</h3>
+                </div>
+                <VSwitch
+                  :model-value="item.raw.is_active"
+                  density="compact"
+                  color="success"
+                  hide-details
+                  @update:model-value="handleToggleStatus(item.raw)"
+                />
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
+                  {{ Object.keys(item.raw.pack_config || {}).length }} Prods
+                </VChip>
+                <VChip v-if="item.raw.max_sale_date" size="x-small" color="info" variant="tonal" class="font-weight-bold">
+                  <VIcon start size="12">tabler-calendar-event</VIcon>
+                  {{ formatDate(item.raw.max_sale_date) }}
+                </VChip>
+              </div>
+
+              <VDivider class="border-dashed mb-3" />
+
+              <div class="d-flex justify-space-between align-center">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold mb-n1">Precio del Pack</span>
+                  <span class="text-h6 font-weight-950 text-success">
+                    {{ formatCurrency(item.raw.total_price) }}
+                  </span>
+                </div>
+                <div class="d-flex gap-1">
+                  <VBtn icon="tabler-eye" variant="tonal" color="info" size="32" @click="handleView(item.raw)" />
+                  <VBtn icon="tabler-edit" variant="tonal" color="warning" size="32" @click="handleEdit(item.raw)" />
+                  <VBtn icon="tabler-trash" variant="tonal" color="error" size="32" @click="handleDelete(item.raw)" />
+                </div>
+              </div>
+            </VCard>
+          </div>
+        </template>
+        <template v-slot:no-data>
+          <div class="pa-8 text-center text-medium-emphasis uppercase font-weight-bold text-xs">
+            No hay packs configurados
+          </div>
+        </template>
+      </VDataIterator>
+
+      <!-- Paginación Móvil -->
+      <div class="pa-4 border-t d-flex justify-center">
+        <VPagination
+          v-model="props.page"
+          :length="Math.ceil(props.totalPacks / props.itemsPerPage)"
+          size="small"
+          total-visible="5"
+          @update:model-value="(p) => emit('update:options', { ...props, page: p })"
+        />
+      </div>
+    </template>
+
     <VDataTableServer
+      v-else
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
       :items="props.packs"
       :items-length="props.totalPacks"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="text-no-wrap premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.id="{ item }">
+        <VChip color="primary" size="small" variant="flat" class="font-weight-black shadow-sm">
+          #{{ item.id }}
+        </VChip>
+      </template>
+
+      <template #item.name="{ item }">
+        <span class="font-weight-bold text-high-emphasis">{{ item.name }}</span>
+      </template>
+
       <template #item.products_count="{ item }">
-        <VChip variant="outlined" color="primary" size="small">
+        <VChip variant="tonal" color="info" size="small" class="font-weight-bold">
+          <VIcon start size="14">tabler-package</VIcon>
           {{ Object.keys(item.pack_config || {}).length }}
         </VChip>
       </template>
 
       <template #item.total_price="{ item }">
-        <span class="font-weight-bold">
+        <span class="font-weight-950 text-success text-subtitle-2">
           {{ formatCurrency(item.total_price) }}
         </span>
       </template>
 
       <template #item.max_quantity="{ item }">
-        <span v-if="item.max_quantity" class="text-caption">
+        <span v-if="item.max_quantity" class="font-weight-medium">
           {{ item.max_quantity }}
         </span>
-        <span v-else class="text-disabled text-caption">Ilimitado</span>
+        <span v-else class="text-disabled italic font-weight-medium">Ilimitado</span>
       </template>
 
       <template #item.max_sale_date="{ item }">
-        <span class="text-caption">
-          {{ formatDate(item.max_sale_date) }}
-        </span>
+        <div class="d-flex align-center gap-1 text-medium-emphasis">
+          <VIcon icon="tabler-calendar" size="16" />
+          <span class="font-weight-medium">{{ formatDate(item.max_sale_date) }}</span>
+        </div>
       </template>
 
       <template #item.is_active="{ item }">
-        <VChip
-          :color="item.is_active ? 'success' : 'error'"
-          variant="flat"
-          size="small"
-        >
-          {{ item.is_active ? 'Activo' : 'Inactivo' }}
-        </VChip>
+        <VSwitch
+          :model-value="item.is_active"
+          density="compact"
+          color="success"
+          hide-details
+          class="d-inline-flex"
+          @update:model-value="handleToggleStatus(item)"
+        />
       </template>
 
       <template #item.actions="{ item }">
-        <VBtn
-          icon
-          variant="text"
-          size="small"
-          color="info"
-          @click="handleView(item)"
-        >
-          <VIcon>tabler-eye</VIcon>
-        </VBtn>
-
-        <VBtn
-          icon
-          variant="text"
-          size="small"
-          color="warning"
-          @click="handleEdit(item)"
-        >
-          <VIcon>tabler-edit</VIcon>
-        </VBtn>
-        
-        <VBtn
-          icon
-          variant="text"
-          size="small"
-          color="error"
-          @click="handleDelete(item)"
-        >
-          <VIcon>tabler-trash</VIcon>
-        </VBtn>
+        <div class="d-flex justify-center gap-1">
+          <VBtn
+            icon="tabler-eye"
+            variant="tonal"
+            size="32"
+            color="info"
+            class="rounded-lg shadow-sm"
+            @click="handleView(item)"
+          />
+          <VBtn
+            icon="tabler-edit"
+            variant="tonal"
+            size="32"
+            color="warning"
+            class="rounded-lg shadow-sm"
+            @click="handleEdit(item)"
+          />
+          <VBtn
+            icon="tabler-trash"
+            variant="tonal"
+            size="32"
+            color="error"
+            class="rounded-lg shadow-sm"
+            @click="handleDelete(item)"
+          />
+        </div>
       </template>
     </VDataTableServer>
-  </VCard>
+  </div>
 </template>
+
+<style scoped>
+.premium-table :deep(th) {
+  background-color: #f8fafc !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 0.73rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.5px;
+  text-transform: uppercase !important;
+}
+
+.premium-table :deep(td) {
+  padding-block: 16px !important;
+}
+
+.text-super-xs {
+  font-size: 0.68rem !important;
+  line-height: normal;
+}
+
+.font-weight-950 { font-weight: 950 !important; }
+.leading-tight { line-height: 1.25 !important; }
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
+}
+
+.border-dashed {
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+</style>

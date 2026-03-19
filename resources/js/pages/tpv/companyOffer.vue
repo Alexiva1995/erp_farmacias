@@ -248,20 +248,17 @@ onMounted(() => {
       @add-companies="handleAddCompaniesOfferModal"
     />
 
-    <VCard title="Ofertas por Empresa">
-      <div class="mb-2" />
-      <CompanyOfferTable
-        :companies="companiesOfferData"
-        :loading="loadingCompanies"
-        :items-per-page="itemsPerPageCompanies"
-        :page="pageCompanies"
-        :total-companies="totalCompanies"
-        @update:options="updateTableOptionsCompanies"
-        @view-offer="handleViewOffer"
-        @edit-offer="handleEditOffer"
-        @delete-offer="handleDeleteOffer"
-      />
-    </VCard>
+    <CompanyOfferTable
+      :companies="companiesOfferData"
+      :loading="loadingCompanies"
+      :items-per-page="itemsPerPageCompanies"
+      :page="pageCompanies"
+      :total-companies="totalCompanies"
+      @update:options="updateTableOptionsCompanies"
+      @view-offer="handleViewOffer"
+      @edit-offer="handleEditOffer"
+      @delete-offer="handleDeleteOffer"
+    />
 
     <CompanyCreateOffer
       v-model="isOfferDialogVisible"

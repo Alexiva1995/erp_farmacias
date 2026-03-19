@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   sellerCash:       { type: Array,  required: true },
   loading:          { type: Boolean, default: false },
@@ -9,6 +11,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:options', 'print-cash', 'download-cash']);
 
+const { mobile } = useDisplay();
+
 const headers = [
   { title: "Vendedor",   key: "seller.username",  sortable: true },
   { title: "USD",        key: "total_usd",         sortable: true, align: "end" },
@@ -16,7 +20,7 @@ const headers = [
   { title: "Bs.",        key: "total_bs",          sortable: true, align: "end" },
   { title: "Total USD",  key: "total_sales",       sortable: true, align: "end" },
   { title: "Estado",     key: "status",            sortable: true, align: "center" },
-  { title: "",           key: "actions",           sortable: false, align: "center", width: "100px" },
+  { title: "Acciones",   key: "actions",           sortable: false, align: "center", width: "120px" },
 ];
 
 const statusMap = {
@@ -27,98 +31,243 @@ const statusMap = {
 const fmtUsd = (val) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val ?? 0) + " USD";
 const fmtCop = (val) => Math.round(val ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
 const fmtBs  = (val) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val ?? 0) + " Bs.";
+
+const formatUsername = (username) => {
+  if (!username) return '—';
+  return username
+    .replace(/[._]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const getAvatarColor = (id) => {
+  const colors = ["primary", "secondary", "success", "info", "warning", "error"];
+  return colors[id % colors.length];
+};
 </script>
 
 <template>
-  <VCard elevation="0" class="seller-table rounded-xl border">
-    <VCardItem class="pa-4 pb-2">
-      <template #prepend>
-        <VAvatar color="primary" variant="tonal" size="38" rounded>
-          <VIcon icon="tabler-users" size="20" />
-        </VAvatar>
-      </template>
-      <VCardTitle class="text-subtitle-1 font-weight-bold">Cierres por Vendedor</VCardTitle>
-      <VCardSubtitle class="text-caption">Resumen de cierres individuales del período</VCardSubtitle>
-    </VCardItem>
-
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.sellerCash"
-      :items-length="props.totalSellerCash"
-      :loading="props.loading"
-      no-data-text="No hay cierres registrados para el período seleccionado"
-      @update:options="(opt) => emit('update:options', opt)"
-    >
-      <!-- Vendedor -->
-      <template #item.seller.username="{ item }">
-        <div class="d-flex align-center gap-2 py-1">
-          <VAvatar size="30" color="primary" variant="tonal" class="font-weight-bold text-caption">
-            {{ (item.seller?.username ?? '?').charAt(0).toUpperCase() }}
+  <div class="mt-4">
+    <!-- Vista Escritorio -->
+    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+      <VCardItem class="pa-4 pb-0">
+        <template #prepend>
+          <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
+            <VIcon icon="tabler-users" size="20" />
           </VAvatar>
-          <span class="font-weight-medium">
-            {{ 
-              item.seller?.username 
-                ? item.seller.username
-                    .replace(/[._]/g, ' ')
-                    .split(' ')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                    .join(' ')
-                : '—' 
-            }}
-          </span>
-        </div>
-      </template>
+        </template>
+        <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Cierres por Vendedor</VCardTitle>
+        <VCardSubtitle class="text-xs font-weight-medium text-disabled">Resumen de cierres individuales del período</VCardSubtitle>
+      </VCardItem>
 
-      <!-- Monedas -->
-      <template #item.total_usd="{ item }">
-        <span class="font-weight-medium text-primary">{{ fmtUsd(item.total_usd) }}</span>
-      </template>
-      <template #item.total_cop="{ item }">
-        <span class="font-weight-medium text-success">{{ fmtCop(item.total_cop) }}</span>
-      </template>
-      <template #item.total_bs="{ item }">
-        <span class="font-weight-medium text-warning">{{ fmtBs(item.total_bs) }}</span>
-      </template>
-      <template #item.total_sales="{ item }">
-        <span class="font-weight-black">{{ fmtUsd(item.total_sales) }}</span>
-      </template>
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="headers"
+        :items="props.sellerCash"
+        :items-length="props.totalSellerCash"
+        :loading="props.loading"
+        no-data-text="No hay cierres registrados para el período seleccionado"
+        class="text-no-wrap premium-table"
+        @update:options="(opt) => emit('update:options', opt)"
+      >
+        <!-- Vendedor -->
+        <template #item.seller.username="{ item }">
+          <div class="d-flex align-center gap-3 py-2">
+            <VAvatar size="32" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg font-weight-black text-xs">
+              {{ (item.seller?.username ?? '?').charAt(0).toUpperCase() }}
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-xs font-weight-black text-high-emphasis">{{ formatUsername(item.seller?.username) }}</span>
+              <span class="text-super-xs text-disabled uppercase">#ID-{{ item.id }}</span>
+            </div>
+          </div>
+        </template>
 
-      <!-- Estado -->
-      <template #item.status="{ item }">
-        <VChip
-          :color="statusMap[item.status]?.color ?? 'default'"
-          :prepend-icon="statusMap[item.status]?.icon"
-          size="small"
-          label
-          class="font-weight-medium"
-        >
-          {{ statusMap[item.status]?.label ?? item.status }}
-        </VChip>
-      </template>
+        <!-- Monedas -->
+        <template #item.total_usd="{ item }">
+          <span class="text-xs font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
+        </template>
+        <template #item.total_cop="{ item }">
+          <span class="text-xs font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
+        </template>
+        <template #item.total_bs="{ item }">
+          <span class="text-xs font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+        </template>
+        <template #item.total_sales="{ item }">
+          <VChip size="x-small" variant="flat" color="primary" class="font-weight-black rounded px-2">
+            {{ fmtUsd(item.total_sales) }}
+          </VChip>
+        </template>
 
-      <!-- Acciones -->
-      <template #item.actions="{ item }">
-        <div class="d-flex align-center gap-1">
-          <VTooltip text="Ver / Imprimir" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-printer" size="small" variant="tonal" color="info" @click="emit('print-cash', item)" />
+        <!-- Estado -->
+        <template #item.status="{ item }">
+          <VChip
+            :color="statusMap[item.status]?.color ?? 'default'"
+            variant="tonal"
+            size="x-small"
+            class="font-weight-black rounded px-2 text-uppercase"
+          >
+            <template #prepend>
+              <VIcon :icon="statusMap[item.status]?.icon" size="14" class="me-1" />
             </template>
-          </VTooltip>
-          <VTooltip text="Descargar PDF" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-download" size="small" variant="tonal" color="primary" @click="emit('download-cash', item)" />
-            </template>
-          </VTooltip>
-        </div>
-      </template>
-    </VDataTableServer>
-  </VCard>
+            {{ statusMap[item.status]?.label ?? item.status }}
+          </VChip>
+        </template>
+
+        <!-- Acciones -->
+        <template #item.actions="{ item }">
+          <div class="d-flex align-center justify-center gap-1">
+            <VTooltip text="Ver / Imprimir" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn v-bind="tip" icon="tabler-printer" size="32" variant="text" color="info" class="rounded-lg" @click="emit('print-cash', item)" />
+              </template>
+            </VTooltip>
+            <VTooltip text="Descargar PDF" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn v-bind="tip" icon="tabler-file-type-pdf" size="32" variant="text" color="primary" class="rounded-lg" @click="emit('download-cash', item)" />
+              </template>
+            </VTooltip>
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
+
+    <!-- Vista Móvil Cards -->
+    <div v-else class="d-flex flex-column gap-4">
+      <VCard
+        v-for="item in props.sellerCash"
+        :key="item.id"
+        class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+      >
+        <div class="premium-card-decoration" :class="item.status === 'closed' ? 'bg-success-opacity' : 'bg-warning-opacity'"></div>
+        
+        <VCardText class="pa-5">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center gap-3">
+              <VAvatar size="42" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg font-weight-black text-sm">
+                {{ (item.seller?.username ?? '?').charAt(0).toUpperCase() }}
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-sm font-weight-black leading-tight">{{ formatUsername(item.seller?.username) }}</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">Cierre #{{ item.id }}</span>
+              </div>
+            </div>
+            <VChip
+              :color="statusMap[item.status]?.color ?? 'default'"
+              variant="flat"
+              size="x-small"
+              class="font-weight-black rounded px-2"
+            >
+              {{ statusMap[item.status]?.label ?? item.status }}
+            </VChip>
+          </div>
+
+          <VDivider class="mb-4 opacity-10" />
+
+          <!-- Grid de Totales -->
+          <div class="d-flex flex-column gap-2 mb-4">
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase">Base USD</span>
+              <span class="text-xs font-weight-black text-primary">{{ fmtUsd(item.total_usd) }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase">Base COP</span>
+              <span class="text-xs font-weight-black text-success">{{ fmtCop(item.total_cop) }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase">Base Bs.</span>
+              <span class="text-xs font-weight-black text-warning">{{ fmtBs(item.total_bs) }}</span>
+            </div>
+          </div>
+
+          <div class="bg-primary-gradient pa-3 rounded-lg d-flex justify-space-between align-center shadow-sm mb-4">
+            <span class="text-xs font-weight-black text-white uppercase">Venta Total (USD)</span>
+            <span class="text-sm font-weight-black text-white">{{ fmtUsd(item.total_sales) }}</span>
+          </div>
+
+          <!-- Acciones Móvil -->
+          <div class="d-flex align-center gap-2">
+            <VBtn
+              block
+              color="primary"
+              variant="tonal"
+              class="rounded-lg font-weight-black text-xs h-10 flex-grow-1"
+              prepend-icon="tabler-printer"
+              @click="emit('print-cash', item)"
+            >
+              IMPRIMIR
+            </VBtn>
+            <VBtn
+              icon="tabler-file-type-pdf"
+              color="error"
+              variant="tonal"
+              class="rounded-lg"
+              size="40"
+              min-width="40"
+              @click="emit('download-cash', item)"
+            />
+          </div>
+        </VCardText>
+      </VCard>
+
+      <VAlert v-if="props.sellerCash.length === 0" type="info" variant="tonal" class="rounded-xl">
+        No hay cierres de vendedores en este periodo.
+      </VAlert>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.seller-table {
-  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+.premium-table :deep(.v-data-table-header) {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+.premium-table :deep(.v-data-table-header th) {
+  block-size: 44px !important;
+  color: rgba(var(--v-theme-on-surface), 50%) !important;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+.bg-primary-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #9575cd 100%);
+}
+
+.premium-card {
+  position: relative;
+}
+
+.premium-card-decoration {
+  position: absolute;
+  border-radius: 6px;
+  block-size: 60px;
+  inline-size: 60px;
+  inset-block-start: 0;
+  inset-inline-end: 8px;
+}
+
+.bg-success-opacity {
+  background: linear-gradient(135deg, rgba(var(--v-theme-success), 0.1) 0%, transparent 100%);
+}
+
+.bg-warning-opacity {
+  background: linear-gradient(135deg, rgba(var(--v-theme-warning), 0.1) 0%, transparent 100%);
+}
+
+.h-10 {
+  block-size: 40px !important;
+}
+
+.leading-tight {
+  line-height: 1.25;
 }
 </style>

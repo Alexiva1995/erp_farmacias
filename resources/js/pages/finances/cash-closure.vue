@@ -15,6 +15,9 @@ import ConsolidationReferenceModal from "@/components/dialogs/ReferenceModal.vue
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { nextTick, onMounted, ref } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -646,93 +649,105 @@ const closingDaily = async (daily) => {
 };
 </script>
 <template>
-  <CashAverage
-    :average-amount="summaryData.current_month_average"
-    :last-month-average="summaryData.last_month_average"
-    :percentage-change="summaryData.percentage_change"
-    :is-positive="summaryData.is_positive"
-  />
-  <div class="mb-5"></div>
-  <SellerCashFilters
-    v-model:searchQuery="filterSearchQuery"
-    v-model:startDate="startDateFilter"
-    v-model:endDate="endDateFilter"
-    @clear="handleClearFilters"
-    :showDateFilters="true"
-    :showStateFilters="true"
-  ></SellerCashFilters>
+  <div :class="mobile ? 'pa-0 pb-16' : 'pa-4'">
+    <CashAverage
+      :average-amount="summaryData.current_month_average"
+      :last-month-average="summaryData.last_month_average"
+      :percentage-change="summaryData.percentage_change"
+      :is-positive="summaryData.is_positive"
+    />
+    
+    <div class="mb-6"></div>
 
-  <div class="mb-5"></div>
-  <SellerBoxTable
-    :sellerCash="sellerCash"
-    :loading="loadingSellerCash"
-    :total-sellerCash="totalSellerCash"
-    :items-per-page="itemsPerPageSellerCash"
-    :page="pageSellerCash"
-    @update:options="updateTableOptionsSellerCash"
-    @print-cash="printCash"
-    @download-cash="downloadcash"
-  />
-  <div class="mb-5"></div>
-  <DailyCashClosingTable
-    :dailyCash="dailyCash"
-    :loading="loadingDailyCash"
-    :total-dailyCash="totalDailyCash"
-    :items-per-page="itemsPerPageDailyCash"
-    :page="pageDailyCash"
-    :loading-id="loadingRefId"
-    @update:options="updateTableOptionsDailyCash"
-    @view-cash="viewDailyCash"
-    @delivery="deliveryDaily"
-    @reference="referenceDaily"
-    @closing-daily="closingDaily"
-  />
-  <div class="mb-5"></div>
-  <MonthlyCashClosingTable
-    :monthlyCash="monthlyCash"
-    :loading="loadingMonthlyCash"
-    :total-monthlyCash="totalMonthlyCash"
-    :items-per-page="itemsPerPageMonthlyCash"
-    :page="pageMonthlyCash"
-    @update:options="updateTableOptionsMonthlyCash"
-    @view-cash="viewMonthlyCash"
-  />
+    <SellerCashFilters
+      v-model:searchQuery="filterSearchQuery"
+      v-model:startDate="startDateFilter"
+      v-model:endDate="endDateFilter"
+      :loading="loadingSellerCash || loadingDailyCash || loadingMonthlyCash"
+      :showDateFilters="true"
+      :showStateFilters="true"
+      @clear="handleClearFilters"
+      @refresh="onMounted(() => { fetchSummaryData(); fetchDailyCashData(); fetchMonthlyCashData(); fetchSellerCashData(); })"
+    />
 
-  <MonthlyCashModal
-    v-model:isDialogVisible="viewModal"
-    :monthlyCash-data="monthlyCashData"
-    :original-ids="originalMonthlyIds"
-    @close="handleCloseViewModal"
-  />
+    <div class="mb-4"></div>
 
-  <DailyCashModal
-    ref="dailyCashModalRef"
-    v-model:isDialogVisible="viewModalDaily"
-    :cashData="dailyCashData"
-    @close="handleCloseViewModalDaily"
-  />
+    <SellerBoxTable
+      :sellerCash="sellerCash"
+      :loading="loadingSellerCash"
+      :total-sellerCash="totalSellerCash"
+      :items-per-page="itemsPerPageSellerCash"
+      :page="pageSellerCash"
+      @update:options="updateTableOptionsSellerCash"
+      @print-cash="printCash"
+      @download-cash="downloadcash"
+    />
 
-  <ConsolidationReferenceModal
-    v-if="viewModalReference"
-    v-model:isDialogVisible="viewModalReference"
-    :reference="referenceData"
-    :cashData="dailyCashData"
-    @close="handleCloseViewModalReference"
-  />
+    <div class="mb-6"></div>
 
-  <DeliveryModal
-    ref="deliveryModalRef"
-    v-model:isDialogVisible="viewModalDelivery"
-    :cashData="dailyCashData"
-    @close="handleCloseViewModalDelivery"
-  />
+    <DailyCashClosingTable
+      :dailyCash="dailyCash"
+      :loading="loadingDailyCash"
+      :total-dailyCash="totalDailyCash"
+      :items-per-page="itemsPerPageDailyCash"
+      :page="pageDailyCash"
+      :loading-id="loadingRefId"
+      @update:options="updateTableOptionsDailyCash"
+      @view-cash="viewDailyCash"
+      @delivery="deliveryDaily"
+      @reference="referenceDaily"
+      @closing-daily="closingDaily"
+    />
 
-  <ClosingModal
-    v-model:isDialogVisible="viewModalClosing"
-    :reference="referenceData"
-    :cashData="dailyCashData"
-    @close="handleCloseViewModalClosing"
-  />
+    <div class="mb-6"></div>
+
+    <MonthlyCashClosingTable
+      :monthlyCash="monthlyCash"
+      :loading="loadingMonthlyCash"
+      :total-monthlyCash="totalMonthlyCash"
+      :items-per-page="itemsPerPageMonthlyCash"
+      :page="pageMonthlyCash"
+      @update:options="updateTableOptionsMonthlyCash"
+      @view-cash="viewMonthlyCash"
+    />
+
+    <!-- Modales -->
+    <MonthlyCashModal
+      v-model:isDialogVisible="viewModal"
+      :monthlyCash-data="monthlyCashData"
+      :original-ids="originalMonthlyIds"
+      @close="handleCloseViewModal"
+    />
+
+    <DailyCashModal
+      ref="dailyCashModalRef"
+      v-model:isDialogVisible="viewModalDaily"
+      :cashData="dailyCashData"
+      @close="handleCloseViewModalDaily"
+    />
+
+    <ConsolidationReferenceModal
+      v-if="viewModalReference"
+      v-model:isDialogVisible="viewModalReference"
+      :reference="referenceData"
+      :cashData="dailyCashData"
+      @close="handleCloseViewModalReference"
+    />
+
+    <DeliveryModal
+      ref="deliveryModalRef"
+      v-model:isDialogVisible="viewModalDelivery"
+      :cashData="dailyCashData"
+      @close="handleCloseViewModalDelivery"
+    />
+
+    <ClosingModal
+      v-model:isDialogVisible="viewModalClosing"
+      :reference="referenceData"
+      :cashData="dailyCashData"
+      @close="handleCloseViewModalClosing"
+    />
+  </div>
 
   <div
     id="CashClosurePrint"

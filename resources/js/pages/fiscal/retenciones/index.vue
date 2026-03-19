@@ -1,8 +1,12 @@
 <script setup>
+import RetentionFilters from "@/components/RetentionFilters.vue";
+import RetentionTable from "@/components/RetentionTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
+const { mobile } = useDisplay();
 const loading = ref(false);
 const invoices = ref([]);
 const suppliers = ref([]);
@@ -19,33 +23,12 @@ const startDate = ref("");
 const endDate = ref("");
 const sortBy = ref("created_invoice_date");
 const orderBy = ref("desc");
-const vSortBy = ref([{ key: "created_invoice_date", order: "desc" }]);
 
 const setYearPreset = () => {
   const now = new Date();
   startDate.value = `${now.getFullYear()}-01-01`;
   endDate.value = `${now.getFullYear()}-12-31`;
 };
-
-const pendingHeaders = [
-  { title: "", key: "select", sortable: false, width: "50px" },
-  { title: "Fecha Factura", key: "created_invoice_date", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true },
-  { title: "Nº Factura", key: "invoice_number", sortable: true },
-  { title: "Base Imponible", key: "taxable_base", align: "end", sortable: true },
-  { title: "IVA", key: "tax_amount", align: "end", sortable: true },
-  { title: "Total", key: "total_amount", align: "end", sortable: true },
-];
-
-const generatedHeaders = [
-  { title: "Nº Comprobante", key: "number", sortable: true },
-  { title: "Fecha Emisión", key: "date", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true },
-  { title: "Base Imponible", key: "total_taxable_base", align: "end", sortable: true },
-  { title: "IVA Total", key: "total_tax_amount", align: "end", sortable: true },
-  { title: "Total Retenido", key: "total_withheld_amount", align: "end", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
-];
 
 const fetchSuppliers = async () => {
   try {
@@ -75,21 +58,20 @@ const fetchRetentions = async () => {
     invoices.value = response.data.data;
     totalRecords.value = response.data.pagination.total;
   } catch (error) {
-    toast.error("Error al cargar datos");
+    console.error("Error al cargar retenciones:", error);
+    toast.error("Error al cargar datos del servidor");
   } finally {
     loading.value = false;
   }
 };
 
-const handleSortChange = (newSort) => {
-  if (newSort && newSort.length > 0) {
-    sortBy.value = newSort[0].key;
-    orderBy.value = newSort[0].order;
-  } else {
-    sortBy.value = "created_invoice_date";
-    orderBy.value = "desc";
+const handleTableUpdate = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
   }
-  page.value = 1;
   fetchRetentions();
 };
 
@@ -97,6 +79,7 @@ const handleBulkGenerate = async () => {
   if (selected.value.length === 0) return;
 
   try {
+    loading.value = true;
     const idsToProcess = [...selected.value];
     const response = await axios.post("/retentions/bulk-generate", {
       ids: idsToProcess,
@@ -104,7 +87,6 @@ const handleBulkGenerate = async () => {
     
     toast.success(response.data.message);
     
-    // Descargar el PDF usando el ID de la retención creada
     if (response.data.retention_id) {
         await downloadPdf(response.data.retention_id, true);
     }
@@ -112,7 +94,10 @@ const handleBulkGenerate = async () => {
     selected.value = [];
     fetchRetentions();
   } catch (error) {
-    toast.error("Error al generar retenciones");
+    console.error("Error al generar retenciones:", error);
+    toast.error("Hubo un problema al procesar la solicitud.");
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -123,6 +108,7 @@ const downloadPdf = async (id, isRetention = true) => {
       params,
       responseType: "blob",
     });
+    
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -130,21 +116,19 @@ const downloadPdf = async (id, isRetention = true) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success("Comprobante descargado.");
   } catch (error) {
-    toast.error("Error al descargar el PDF");
+    console.error("Error al descargar PDF:", error);
+    toast.error("Error al obtener el archivo PDF.");
   }
 };
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "VES",
-  }).format(value);
-};
-
-const formatDate = (date) => {
-  if (!date) return "-";
-  return new Intl.DateTimeFormat("es-VE").format(new Date(date));
+const clearFilters = () => {
+  search.value = "";
+  supplierId.value = null;
+  setYearPreset();
+  page.value = 1;
+  fetchRetentions();
 };
 
 watch(currentTab, () => {
@@ -153,12 +137,14 @@ watch(currentTab, () => {
   fetchRetentions();
 });
 
-const clearFilters = () => {
-  search.value = "";
-  supplierId.value = null;
-  setYearPreset();
-  fetchRetentions();
-};
+let debounceTimer;
+watch([search, supplierId, startDate, endDate], () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    page.value = 1;
+    fetchRetentions();
+  }, 400);
+});
 
 onMounted(() => {
   setYearPreset();
@@ -168,166 +154,98 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="retention-management">
-    <!-- Filtros -->
-    <VCard class="mb-6">
-      <VCardText class="pa-6">
-        <VRow>
-          <VCol cols="12" sm="4" md="3">
-            <AppTextField
-              v-model="search"
-              placeholder="Nº Factura o Proveedor"
-              prepend-inner-icon="tabler-search"
-              clearable
-              @update:model-value="fetchRetentions"
-            />
-          </VCol>
+  <div :class="mobile ? 'pa-0' : 'pa-4'">
+    <!-- Filtros Premium Colapsables -->
+    <RetentionFilters
+      v-model:search="search"
+      v-model:supplier-id="supplierId"
+      v-model:start-date="startDate"
+      v-model:end-date="endDate"
+      :suppliers="suppliers"
+      :loading="loading"
+      :selected-count="selected.length"
+      :current-tab="currentTab"
+      @clear="clearFilters"
+      @bulk-generate="handleBulkGenerate"
+    />
 
-          <VCol cols="12" sm="4" md="3">
-            <AppSelect
-              v-model="supplierId"
-              :items="suppliers"
-              item-title="name"
-              item-value="id"
-              placeholder="Proveedor"
-              clearable
-              @update:model-value="fetchRetentions"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="2" md="3">
-            <AppDateTimePicker
-              v-model="startDate"
-              placeholder="Desde"
-              :config="{ dateFormat: 'Y-m-d' }"
-              clearable
-              @update:model-value="fetchRetentions"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="2" md="3">
-            <AppDateTimePicker
-              v-model="endDate"
-              placeholder="Hasta"
-              :config="{ dateFormat: 'Y-m-d' }"
-              clearable
-              @update:model-value="fetchRetentions"
-            />
-          </VCol>
-        </VRow>
-      </VCardText>
-
-      <VDivider />
-
-      <VCardActions class="pa-4 px-6 d-flex align-center">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          prepend-icon="tabler-filter-off"
-          @click="clearFilters"
-        >
-          Limpiar Filtros
-        </VBtn>
-
+    <!-- Gestión de Retenciones con Pestañas -->
+    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+      <VCardTitle class="pa-4 px-6 d-flex align-center">
+        <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
+          <VIcon icon="tabler-file-analytics" size="18" />
+        </VAvatar>
+        <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
         <VSpacer />
-
-        <div class="d-flex gap-4">
-          <VBtn
-            v-if="selected.length > 0 && currentTab === 'pending'"
-            color="success"
-            variant="flat"
-            prepend-icon="tabler-check"
-            @click="handleBulkGenerate"
-          >
-            Generar {{ selected.length }} Retenciones
-          </VBtn>
-        </div>
-      </VCardActions>
-    </VCard>
-
-    <!-- Tabla de Resultados -->
-    <VCard>
-      <VCardTitle class="d-flex align-center py-4">
-        <VIcon icon="tabler-file-percent" class="me-2" />
-        Gestión de Retenciones de IVA
+        <VBtn
+          v-if="selected.length > 0 && currentTab === 'pending'"
+          color="success"
+          variant="flat"
+          class="rounded-lg text-xs font-weight-black px-4 shadow-sm"
+          @click="handleBulkGenerate"
+        >
+          <VIcon start icon="tabler-check" size="18" />
+          GENERAR {{ selected.length }} RETENCIONES
+        </VBtn>
       </VCardTitle>
 
-      <VTabs v-model="currentTab" color="primary" grow>
-        <VTab value="pending">
-          <VIcon icon="tabler-clock-pause" class="me-2" />
-          Facturas Pendientes
+      <VTabs v-model="currentTab" color="primary" grow class="premium-tabs bg-surface-variant-opacity-2">
+        <VTab value="pending" class="text-xs font-weight-black py-4">
+          <VIcon start icon="tabler-clock-pause" size="18" />
+          FACTURAS PENDIENTES
+          <VChip v-if="currentTab === 'pending'" size="x-small" color="primary" class="ms-2 font-weight-black">
+            {{ totalRecords }}
+          </VChip>
         </VTab>
-        <VTab value="generated">
-          <VIcon icon="tabler-checkbox" class="me-2" />
-          Comprobantes Generados
+        <VTab value="generated" class="text-xs font-weight-black py-4">
+          <VIcon start icon="tabler-checkbox" size="18" />
+          COMPROBANTES GENERADOS
+          <VChip v-if="currentTab === 'generated'" size="x-small" color="success" class="ms-2 font-weight-black">
+            {{ totalRecords }}
+          </VChip>
         </VTab>
       </VTabs>
 
-      <VDivider />
+      <VDivider class="opacity-10" />
 
-    <VDataTableServer
-      v-model="selected"
-      v-model:items-per-page="itemsPerPage"
-      v-model:page="page"
-      v-model:sort-by="vSortBy"
-      :headers="currentTab === 'pending' ? pendingHeaders : generatedHeaders"
-      :items="invoices"
-      :items-length="totalRecords"
-      :loading="loading"
-      :show-select="currentTab === 'pending'"
-      select-strategy="multiple"
-      @update:page="fetchRetentions"
-      @update:items-per-page="fetchRetentions"
-      @update:sort-by="handleSortChange"
-    >
-      <template #[`item.created_invoice_date`]="{ item }">
-        {{ formatDate(item.created_invoice_date) }}
-      </template>
-
-      <template #[`item.date`]="{ item }">
-        {{ formatDate(item.date) }}
-      </template>
-
-      <template #[`item.supplier.social_reason`]="{ item }">
-        {{ item.supplier?.social_reason || item.supplier?.name || 'N/A' }}
-      </template>
-
-      <template #[`item.taxable_base`]="{ item }">
-        {{ formatCurrency(item.taxable_base) }}
-      </template>
-
-      <template #[`item.total_taxable_base`]="{ item }">
-        {{ formatCurrency(item.total_taxable_base) }}
-      </template>
-
-      <template #[`item.tax_amount`]="{ item }">
-        {{ formatCurrency(item.tax_amount) }}
-      </template>
-
-      <template #[`item.total_tax_amount`]="{ item }">
-        {{ formatCurrency(item.total_tax_amount) }}
-      </template>
-
-      <template #[`item.total_amount`]="{ item }">
-        {{ formatCurrency(item.total_amount) }}
-      </template>
-
-      <template #[`item.total_withheld_amount`]="{ item }">
-        {{ formatCurrency(item.total_withheld_amount) }}
-      </template>
-
-      <template #[`item.actions`]="{ item }">
-        <VBtn
-          icon="tabler-file-download"
-          variant="text"
-          color="primary"
-          @click="downloadPdf(item.id, true)"
-        >
-          <VTooltip activator="parent" location="top">Descargar Comprobante</VTooltip>
-          <VIcon icon="tabler-file-download" />
-        </VBtn>
-      </template>
-    </VDataTableServer>
+      <VCardText class="pa-0">
+        <RetentionTable
+          v-model:selected="selected"
+          :invoices="invoices"
+          :loading="loading"
+          :total-records="totalRecords"
+          :page="page"
+          :items-per-page="itemsPerPage"
+          :current-tab="currentTab"
+          @update:options="handleTableUpdate"
+          @download-pdf="downloadPdf"
+        />
+      </VCardText>
     </VCard>
   </div>
 </template>
+
+<style scoped>
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+.premium-tabs :deep(.v-tab) {
+  letter-spacing: 0.05em !important;
+  opacity: 0.6;
+}
+
+.premium-tabs :deep(.v-tab--selected) {
+  opacity: 1 !important;
+  background-color: white !important;
+}
+
+.bg-surface-variant-opacity-2 {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+:deep(.v-btn.bg-success) {
+  --v-theme-overlay: 255, 255, 255;
+}
+</style>
