@@ -116,25 +116,26 @@ const isFiltersVisible = ref(false);
       <VExpandTransition>
         <div v-show="isFiltersVisible">
           <VDivider class="my-3 border-opacity-10" />
-          <VRow dense>
-            <VCol cols="12" sm="6" md="3">
+          <VRow dense align="center" class="ma-0 px-1">
+            <VCol cols="12" sm="4" md="4">
               <VSelect
                 :model-value="props.tipo_empresa_filtro"
-                label="Tipo de Empresa"
+                label="TIPO DE ORGANIZACIÓN"
                 :items="['Empresa', 'Clinica']"
                 variant="outlined"
                 density="compact"
                 hide-details
                 clearable
+                prepend-inner-icon="tabler-building-factory-2"
                 @update:model-value="emit('update:tipo_empresa_filtro', $event)"
               />
             </VCol>
             
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="4" md="4">
               <AppDateTimePicker
                 :model-value="props.fechaDesde_filtro"
-                label="Fecha Desde"
-                placeholder="Seleccionar"
+                label="FECHA DESDE"
+                placeholder="SELECCIONAR"
                 clearable
                 density="compact"
                 hide-details
@@ -143,11 +144,11 @@ const isFiltersVisible = ref(false);
                 @update:model-value="emit('update:fechaDesde_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="4" md="4">
               <AppDateTimePicker
                 :model-value="props.fechaHasta_filtro"
-                label="Fecha Hasta"
-                placeholder="Seleccionar"
+                label="FECHA HASTA"
+                placeholder="SELECCIONAR"
                 clearable
                 density="compact"
                 hide-details

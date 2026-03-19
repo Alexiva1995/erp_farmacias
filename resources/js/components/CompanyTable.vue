@@ -79,12 +79,11 @@ const handleMobilePageChange = (newPage) => {
         </VDataTableServer>
       </VCard>
     </div>
-
     <!-- Mobile View (Premium Cards) -->
     <div class="d-block d-md-none pa-2 bg-light">
       <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.items.length === 0 && !props.loading" class="text-center py-8 text-disabled">
+      <div v-if="props.items.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
         No se encontraron empresas registradas.
       </div>
 
@@ -93,63 +92,74 @@ const handleMobilePageChange = (newPage) => {
           v-for="item in props.items"
           :key="item.id"
           variant="flat"
-          class="border mb-1 overflow-hidden premium-card"
+          border
+          class="mb-1 overflow-hidden premium-card bg-white"
         >
           <div class="pa-4">
-            <div class="d-flex justify-space-between align-start mb-2">
-              <div class="d-flex flex-column">
-                <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mt-1">
+            <div class="d-flex justify-space-between align-start mb-3">
+              <div class="d-flex flex-column min-width-0">
+                <span class="text-primary font-weight-black text-xs uppercase mb-1">Empresa</span>
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
                   {{ item.name }}
                 </h3>
               </div>
               <div class="d-flex gap-1">
-                <VBtn
-                  icon="tabler-users"
-                  variant="tonal"
+                <IconBtn
                   color="secondary"
+                  variant="tonal"
                   size="x-small"
+                  class="rounded"
                   @click="emit('verClientes', item.id)"
-                />
-                <VBtn
-                  icon="tabler-edit"
-                  variant="tonal"
+                >
+                  <VIcon icon="tabler-users" size="16" />
+                </IconBtn>
+                <IconBtn
                   color="warning"
-                  size="x-small"
-                  @click="emit('edit', item.id)"
-                />
-                <VBtn
-                  icon="tabler-trash"
                   variant="tonal"
-                  color="error"
                   size="x-small"
+                  class="rounded"
+                  @click="emit('edit', item.id)"
+                >
+                  <VIcon icon="tabler-edit" size="16" />
+                </IconBtn>
+                <IconBtn
+                  color="error"
+                  variant="tonal"
+                  size="x-small"
+                  class="rounded"
                   @click="emit('delete', item.id)"
-                />
+                >
+                  <VIcon icon="tabler-trash" size="16" />
+                </IconBtn>
               </div>
             </div>
 
-            <VDivider class="my-2 border-opacity-10" />
+            <VDivider class="my-3 border-opacity-10" />
 
-            <div class="d-grid mobile-grid gap-2">
+            <div class="d-grid mobile-grid gap-3">
               <div class="stat-box">
-                <span class="label">Identificación</span>
-                <span class="value">{{ item.identification }}</span>
+                <span class="label">RIF / ID</span>
+                <span class="value font-weight-black uppercase text-xs">{{ item.identification }}</span>
               </div>
-              <div class="stat-box">
+              <div class="stat-box text-center">
                 <span class="label">Tipo</span>
-                <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'success'" variant="flat" class="font-weight-black">
-                  {{ item.type_company }}
+                <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'success'" variant="flat" class="font-weight-black shadow-sm">
+                  {{ item.type_company.toUpperCase() }}
                 </VChip>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Clientes</span>
-                <span class="value text-primary">{{ item.clients?.length || 0 }}</span>
+                <span class="value text-primary font-weight-black text-xs">{{ item.clients?.length || 0 }}</span>
               </div>
             </div>
 
-            <div class="mt-3 bg-var-theme-background-light rounded pa-2 d-flex align-center gap-2">
-              <VIcon icon="tabler-map-pin" size="14" class="text-disabled" />
-              <span class="text-super-xs text-medium-emphasis truncate">{{ item.address || 'Sin dirección' }}</span>
+            <div class="mt-3 pa-2 bg-light rounded-lg border-dashed">
+              <div class="d-flex align-start gap-2">
+                <VIcon icon="tabler-map-pin" size="14" class="text-primary mt-1" />
+                <span class="text-super-xs text-medium-emphasis leading-tight truncate-2-lines uppercase font-weight-bold">
+                  {{ item.address || 'SIN DIRECCIÓN FISCAL REGISTRADA' }}
+                </span>
+              </div>
             </div>
           </div>
         </VCard>
@@ -172,38 +182,40 @@ const handleMobilePageChange = (newPage) => {
 
 <style scoped>
 .text-super-xs {
-  font-size: 0.7rem !important;
+  font-size: 0.65rem !important;
+  line-height: normal;
 }
 
 .bg-light {
-  background-color: rgba(var(--v-border-color), 0.02) !important;
-}
-
-.bg-var-theme-background-light {
-  background-color: rgba(var(--v-border-color), 0.05);
+  background-color: #f8fafc !important;
 }
 
 .premium-card {
   border-radius: 12px !important;
+  transition: transform 0.2s ease;
+}
+
+.premium-card:active {
+  transform: scale(0.98);
 }
 
 .mobile-grid {
   display: grid;
+  align-items: center;
   grid-template-columns: 1fr 1fr 1fr;
 }
 
 .stat-box .label {
   display: block;
+  color: rgba(var(--v-theme-on-surface), 0.45);
   font-size: 0.6rem;
   font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.45);
+  margin-block-end: 2px;
   text-transform: uppercase;
 }
 
 .stat-box .value {
-  font-size: 0.75rem;
   font-weight: 800;
-  text-transform: uppercase;
 }
 
 .truncate {
@@ -212,11 +224,26 @@ const handleMobilePageChange = (newPage) => {
   white-space: nowrap;
 }
 
-.leading-tight {
-  line-height: 1.2 !important;
+.truncate-2-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.gap-1 { gap: 4px; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.border-dashed {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
 </style>

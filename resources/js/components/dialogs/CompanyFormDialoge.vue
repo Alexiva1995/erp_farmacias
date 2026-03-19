@@ -78,37 +78,45 @@ function submitForm(){
               <VTextField
                 v-model="formData.name"
                 :error-messages="formError.name"
-                label="Razón Social"
+                label="RAZÓN SOCIAL"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
+                prepend-inner-icon="tabler-building"
+                class="premium-input"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <VTextField
                 v-model="formData.identification"
                 :error-messages="formError.identification"
-                label="RIF / Identificación"
+                label="RIF / IDENTIFICACIÓN"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
+                prepend-inner-icon="tabler-fingerprint"
+                class="premium-input"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <VSelect
                 v-model="formData.type_company"
                 :error-messages="formError.type_company"
-                label="Tipo de Organización"
+                label="TIPO DE ORGANIZACIÓN"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 :items="['Empresa', 'Clinica']"
+                prepend-inner-icon="tabler-category"
+                class="premium-input"
               />
             </VCol>
             <VCol cols="12">
               <VTextarea
                 v-model="formData.address"
                 :error-messages="formError.address"
-                label="Dirección Fiscal"
+                label="DIRECCIÓN FISCAL"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
+                prepend-inner-icon="tabler-map-pin"
+                class="premium-input"
                 rows="2"
               />
             </VCol>
@@ -163,6 +171,18 @@ function submitForm(){
   line-height: normal;
 }
 
+.premium-input :deep(.v-field__input) {
+  font-size: 0.8rem !important;
+  font-weight: 600;
+}
+
+.premium-input :deep(.v-label) {
+  font-size: 0.7rem !important;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
@@ -172,6 +192,6 @@ function submitForm(){
 .text-button {
   font-size: 0.875rem !important;
   letter-spacing: 1px !important;
+  text-transform: uppercase;
 }
 </style>
-</template>
