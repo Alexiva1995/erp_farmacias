@@ -35,12 +35,12 @@ const handleSearchOrder = () => {
     <VCardText class="pa-4">
       <div class="d-flex align-end gap-3">
         <AppTextField
-          label="BÚSQUEDA DE CLIENTE / ORDEN"
-          placeholder="INGRESE IDENTIFICACIÓN O N° ORDEN..."
+          placeholder="BUSCAR CLIENTE O N° ORDEN..."
           clearable
           density="compact"
           prepend-inner-icon="tabler-search"
-          class="flex-grow-1 premium-input"
+          class="flex-grow-1 premium-input-compact"
+          hide-details
           :model-value="identificationInput"
           @update:model-value="updateIdentification"
           @keyup.enter="handleSearchOrder"
@@ -61,16 +61,9 @@ const handleSearchOrder = () => {
 </template>
 
 <style scoped>
-.premium-input :deep(.v-field__input) {
+.premium-input-compact :deep(.v-field__input) {
   font-size: 0.8rem !important;
   font-weight: 600;
-  text-transform: uppercase;
-}
-
-.premium-input :deep(.v-label) {
-  font-size: 0.7rem !important;
-  font-weight: 800;
-  letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
