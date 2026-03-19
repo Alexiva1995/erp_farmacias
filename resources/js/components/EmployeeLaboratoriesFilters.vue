@@ -165,19 +165,7 @@ const toggleAdvancedFilters = () => {
             </VList>
           </VMenu>
 
-          <VDivider vertical class="mx-1 my-2" />
 
-          <!-- Asignar Laboratorios -->
-          <VBtn
-            icon
-            color="primary"
-            variant="flat"
-            size="38"
-            @click="emit('add-assignment')"
-          >
-            <VIcon icon="tabler-plus" />
-            <VTooltip activator="parent" location="top">Asignar Laboratorios</VTooltip>
-          </VBtn>
 
           <!-- Limpiar Filtros -->
           <VBtn
