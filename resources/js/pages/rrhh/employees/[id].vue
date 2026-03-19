@@ -325,7 +325,9 @@ const handleUpdateEmployeeDocument = async (photoOnly = false) => {
 
   try {
     photoUploading.value = true;
-    await axios.post(`rrhh/employees/${employee.value.id}/documents`, formData);
+    await axios.post(`rrhh/employees/${employee.value.id}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     toast.success(photoOnly ? "Foto actualizada" : "Documentos actualizados");
     await fetchEmployee();
     return true;
