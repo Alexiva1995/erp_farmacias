@@ -38,9 +38,10 @@ const clientTypeOptions = [
 <template>
   <VCard class="mb-6">
     <VCardText class="pa-3">
-      <VRow align="center" no-gutters class="gap-2">
+      <!-- Fila Principal (Buscador y Acciones) -->
+      <div class="d-flex align-center gap-2 mb-1">
         <!-- Buscador Principal -->
-        <VCol cols="12" md="6" lg="5">
+        <div class="flex-grow-1 min-width-0">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, ID o teléfono..."
@@ -51,11 +52,10 @@ const clientTypeOptions = [
             hide-details
             @update:model-value="emit('update:buscador', $event)"
           />
-        </VCol>
+        </div>
         
-        <VSpacer />
-
-        <div class="d-flex align-center gap-1">
+        <!-- Grupo de Acciones -->
+        <div class="d-flex align-center gap-1 flex-shrink-0">
           <!-- Toggle Filtros -->
           <VBtn
             icon
@@ -110,7 +110,7 @@ const clientTypeOptions = [
             <VTooltip activator="parent" location="top">Nuevo Cliente</VTooltip>
           </VBtn>
 
-          <VDivider vertical class="mx-1 my-2" />
+          <VDivider vertical class="mx-1" style="block-size: 24px;" />
 
           <!-- Resetear Filtros -->
           <VBtn
@@ -124,7 +124,7 @@ const clientTypeOptions = [
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>
-      </VRow>
+      </div>
 
       <VExpandTransition>
         <div v-show="isFiltersVisible">

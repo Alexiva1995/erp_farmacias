@@ -35,10 +35,10 @@ const handleClear = () => {
 <template>
   <VCard class="mb-6">
     <VCardText class="pa-3">
-      <!-- Fila Principal -->
-      <VRow align="center" no-gutters class="gap-2">
+      <!-- Fila Principal (Buscador y Acciones) -->
+      <div class="d-flex align-center gap-2 mb-1">
         <!-- Buscador Principal -->
-        <VCol cols="12" md="6" lg="5">
+        <div class="flex-grow-1 min-width-0">
           <AppTextField
             :model-value="props.buscador"
             placeholder="Buscar por nombre, identificación o dirección..."
@@ -49,11 +49,10 @@ const handleClear = () => {
             hide-details
             @update:model-value="emit('update:buscador', $event)"
           />
-        </VCol>
+        </div>
 
-        <VSpacer />
-
-        <div class="d-flex align-center gap-1">
+        <!-- Grupo de Acciones -->
+        <div class="d-flex align-center gap-1 flex-shrink-0">
           <!-- Toggle Filtros -->
           <VBtn
             icon
@@ -115,7 +114,7 @@ const handleClear = () => {
             <VTooltip activator="parent" location="top">Agregar Doctor</VTooltip>
           </VBtn>
 
-          <VDivider vertical class="mx-1 my-2" />
+          <VDivider vertical class="mx-1" style="block-size: 24px;" />
 
           <!-- Limpiar Filtros -->
           <VBtn
@@ -129,7 +128,7 @@ const handleClear = () => {
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>
-      </VRow>
+      </div>
 
       <!-- Panel de Filtros Colapsable -->
       <VExpandTransition>
@@ -173,4 +172,8 @@ const handleClear = () => {
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
+
+.min-width-0 {
+  min-inline-size: 0;
+}
 </style>
