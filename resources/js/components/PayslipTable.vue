@@ -223,9 +223,8 @@ const getAvatarColor = (id) => {
             </div>
 
             <!-- Botones de Acción Móvil -->
-            <div class="d-flex align-center gap-2">
+            <div class="d-flex align-center gap-2 w-100">
               <VBtn
-                block
                 color="primary"
                 variant="tonal"
                 class="rounded-lg font-weight-black text-xs h-10 flex-grow-1"
@@ -240,6 +239,7 @@ const getAvatarColor = (id) => {
                 variant="tonal"
                 class="rounded-lg"
                 size="40"
+                min-width="40"
                 @click="emit('download-pdf', item.id, 'legal')"
               />
               <VBtn
@@ -249,6 +249,7 @@ const getAvatarColor = (id) => {
                 variant="flat"
                 class="rounded-lg shadow-sm"
                 size="40"
+                min-width="40"
                 @click="emit('finalize-payslip', item)"
               />
             </div>
