@@ -84,11 +84,11 @@ const getAvatarColor = (index) => {
       <template #item.products_count="{ item }">
         <div class="d-flex justify-center">
           <VChip
-            :color="item.products_count > 0 ? 'success' : 'default'"
+            :color="item.products_count > 0 ? 'success' : 'surface-variant'"
             size="small"
             class="font-weight-black rounded px-3"
             variant="flat"
-            style="min-inline-size: 40px;"
+            style="color: white !important; min-inline-size: 40px;"
           >
             {{ item.products_count }}
           </VChip>

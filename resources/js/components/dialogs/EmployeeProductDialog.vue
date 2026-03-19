@@ -70,10 +70,12 @@ watch(searchProduct, (val) => {
 });
 
 watch(
-  () => props.modelValue,
-  (newValue) => {
-    if (newValue) {
-      if (isEditMode.value) {
+  [() => props.modelValue, () => props.employee],
+  ([newVisible], [oldVisible]) => {
+    // Solo actuar cuando el dialog pasa de cerrado a abierto
+    if (!newVisible) return;
+    if (newVisible && !oldVisible !== undefined) {
+      if (isEditMode.value && props.employee?.employee_id) {
         formData.value = {
           employee_id: props.employee.employee_id,
           products: props.employee.products
@@ -93,6 +95,7 @@ watch(
       remoteProducts.value = [];
     }
   },
+  { deep: true },
 );
 
 const closeDialog = () => {
