@@ -144,7 +144,7 @@ const clientTypeOptions = [
                 @update:model-value="emit('update:tipo_identificacion_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="8" md="3">
+            <VCol cols="12" sm="8" md="2">
               <VSelect
                 :model-value="props.company_id_filtro"
                 label="Empresa"
@@ -172,7 +172,7 @@ const clientTypeOptions = [
                 @update:model-value="emit('update:client_type_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="2.5">
+            <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.fechaDesde_filtro"
                 placeholder="Desde"
@@ -184,7 +184,7 @@ const clientTypeOptions = [
                 @update:model-value="emit('update:fechaDesde_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="2.5">
+            <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 :model-value="props.fechaHasta_filtro"
                 placeholder="Hasta"

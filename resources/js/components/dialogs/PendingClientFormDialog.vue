@@ -298,12 +298,21 @@ function formatearFechaCompleta(fechaInput) {
   .premium-input :deep(.v-label) {
     font-size: 0.7rem !important;
     font-weight: 800;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
 
-  .leading-tight { line-height: 1.25 !important; }
-  .uppercase { text-transform: uppercase; }
-  .text-button { font-size: 0.875rem !important; letter-spacing: 1px !important; }
+  .leading-tight {
+    line-height: 1.25 !important;
+  }
+
+  .uppercase {
+    text-transform: uppercase;
+  }
+
+  .text-button {
+    font-size: 0.875rem !important;
+    letter-spacing: 1px !important;
+  }
   </style>
 </template>
