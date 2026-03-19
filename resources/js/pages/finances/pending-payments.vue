@@ -1,34 +1,23 @@
 <script setup>
+import PendingPaymentFilters from "@/components/PendingPaymentFilters.vue";
+import PendingPaymentTable from "@/components/PendingPaymentTable.vue";
 import PendingPaymentModal from "@/components/dialogs/PendingPaymentModal.vue";
 import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useDisplay } from "vuetify";
 
-// Estado reactivo
-const loading = ref(false);
-const pendingPayments = ref([]);
-const totalGroups = ref(0);
-const totalSuppliers = ref(0);
-const totalAmount = ref(0);
-const statistics = ref({});
-const exchangeRates = ref({});
-
-//Accediendo a la ruta
+const { mobile } = useDisplay();
 const route = useRoute();
 
-// Totales por moneda
-const totalsByCurrency = ref({
-  bs: { amount: 0, count: 0, total_usd: 0 },
-  usd: { amount: 0, count: 0, total_usd: 0 },
-  cop: { amount: 0, count: 0, total_usd: 0 },
-  usd_converted: 0,
-});
-
-// Estado para filtros
+const loading = ref(false);
+const pendingPayments = ref([]);
+const totalInvoices = ref(0);
 const suppliers = ref([]);
 const isLoadingFilters = ref(false);
+const exchangeRate = ref(1);
 
 // Filtros
 const searchQuery = ref("");
@@ -40,8 +29,6 @@ const showOverdueOnly = ref(false);
 // Paginación
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref("payment_date");
-const orderBy = ref("asc");
 
 // Modales
 const showPaymentModal = ref(false);
@@ -50,59 +37,30 @@ const selectedPaymentGroup = ref(null);
 const selectedInvoices = ref([]);
 const selectedTableInvoices = ref([]);
 
-// Headers de la tabla
-const headers = [
-  { title: "", key: "select", sortable: false, width: "50px" },
-  { title: "FAC", key: "invoice_number", sortable: false },
-  { title: "Proveedor", key: "supplier_name", sortable: false },
-  { title: "Fecha de Pago", key: "payment_date", sortable: false },
-  { title: "Moneda", key: "currency", sortable: false },
-  { title: "Monto USD", key: "original_amount", sortable: false },
-  { title: "Monto BS", key: "remaining_amount", sortable: false },
-  { title: "Indexada", key: "is_indexed", sortable: false, width: "80px" },
-  { title: "Total Proveedor", key: "total_supplier_currency", sortable: false }, // ISSUE #4: Nueva columna
-  { title: "Estado", key: "status", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false },
-];
+const fetchExchangeRates = async () => {
+  try {
+    const { data } = await axios.get("/public/exchange-rates");
+    const rate = data.find(r => r.currency_code === "BS")?.rate || 1;
+    exchangeRate.value = parseFloat(rate);
+  } catch (error) {
+    console.error("Error tasa:", error);
+  }
+};
 
-const selectedAll = computed(() => {
-  if (pendingPayments.value.length === 0) return false;
-  return selectedTableInvoices.value.length === pendingPayments.value.length;
-});
-
-const indeterminate = computed(() => {
-  return (
-    selectedTableInvoices.value.length > 0 &&
-    selectedTableInvoices.value.length < pendingPayments.value.length
-  );
-});
-
-// Cargar proveedores para filtros
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
   try {
-    const response = await axios.get("/finances/pending-payments/suppliers");
-
-    if (response.data.success || response.data.status === "success") {
-      suppliers.value = response.data.data;
-    } else {
-      console.error("Error al cargar proveedores:", response.data.message);
-      toast.error(
-        response.data.message || "No se pudieron cargar los proveedores."
-      );
-    }
+    const { data } = await axios.get("/finances/pending-payments/suppliers");
+    suppliers.value = data.data;
   } catch (error) {
-    console.error("Error al cargar proveedores:", error);
-    toast.error("No se pudieron cargar los proveedores.");
+    console.error("Error proveedores:", error);
   } finally {
     isLoadingFilters.value = false;
   }
 };
 
-// Cargar datos
 const fetchPendingPayments = async () => {
   loading.value = true;
-
   try {
     const params = {
       page: page.value,
@@ -114,289 +72,87 @@ const fetchPendingPayments = async () => {
       show_overdue_only: showOverdueOnly.value,
     };
 
-    // Limpiar parámetros vacíos (mantener show_overdue_only siempre)
-    Object.keys(params).forEach((key) => {
-      if (params[key] === null || params[key] === "") {
-        delete params[key];
-      }
-    });
-
-    const response = await axios.get("/finances/pending-payments", {
-      params,
-    });
-
-    if (response.data.status === "success" || response.data.success) {
-      // Aplanar las facturas agrupadas para mostrar cada factura individualmente
-      const allInvoices = [];
-      response.data.data.pending_payments.forEach((group, groupIndex) => {
-        group.invoices.forEach((invoice, invoiceIndex) => {
-          const flattenedInvoice = {
-            ...invoice,
-            supplier_name: group.supplier_name,
-            payment_date: group.payment_date,
-            group_id: `${group.supplier_id}_${group.payment_date}`,
-            // ISSUE #4: Agregar campos del grupo para cada factura
-            total_in_supplier_currency: group.total_in_supplier_currency,
-            supplier_preferred_currency: group.supplier_preferred_currency,
-          };
-
-          allInvoices.push(flattenedInvoice);
+    const { data } = await axios.get("/finances/pending-payments", { params });
+    
+    const allInvoices = [];
+    data.data.pending_payments.forEach((group) => {
+      group.invoices.forEach((invoice) => {
+        allInvoices.push({
+          ...invoice,
+          supplier_name: group.supplier_name,
+          payment_date: group.payment_date,
+          group_id: `${group.supplier_id}_${group.payment_date}`,
+          supplier_total_bs: group.total_in_supplier_currency,
+          supplier_total_usd: group.total_amount_usd
         });
       });
+    });
 
-      pendingPayments.value = allInvoices;
-      totalGroups.value = allInvoices.length; // Total de facturas individuales
-      totalSuppliers.value = response.data.data.total_suppliers || 0; // Total de proveedores únicos
-      totalsByCurrency.value = response.data.data.totals_by_currency || {
-        bs: { amount: 0, count: 0, total_usd: 0 },
-        usd: { amount: 0, count: 0, total_usd: 0 },
-        cop: { amount: 0, count: 0, total_usd: 0 },
-        usd_converted: 0,
-      };
+    pendingPayments.value = allInvoices;
+    totalInvoices.value = data.data.total_suppliers || allInvoices.length;
 
-      // totalAmount se calcula ahora con totalAmountUSD (computed)
-    } else {
-      toast.error(
-        response.data.message || "Error al cargar los pagos pendientes"
-      );
-    }
+    // Sincronizar las facturas seleccionadas con los datos más recientes (para reflejar cambios de indexación)
+    selectedTableInvoices.value = selectedTableInvoices.value.map((selected) => {
+      const updated = allInvoices.find((inv) => inv.id === selected.id);
+      return updated || selected;
+    });
   } catch (error) {
-    toast.error("Error al cargar los pagos pendientes");
+    console.error("Error pagos:", error);
+    toast.error("Error al cargar pagos pendientes");
   } finally {
     loading.value = false;
   }
 };
 
-// Cargar tasas de cambio
-const fetchExchangeRates = async () => {
-  try {
-    const response = await axios.get("/public/exchange-rates");
-    if (Array.isArray(response.data)) {
-      exchangeRates.value = response.data.reduce((acc, rate) => {
-        acc[rate.currency_code] = parseFloat(rate.rate);
-        return acc;
-      }, {});
-    }
-    return true;
-  } catch (error) {
-    console.error("Error al cargar tasas de cambio:", error);
-    console.error("Error response:", error.response);
-    return false;
-  }
-};
-
-// Convertir monto a USD
-const convertToUSD = (amount, currency) => {
-  if (currency === "USD") return parseFloat(amount);
-
-  // Mapear moneda para buscar la tasa de cambio
-  const currencyKey = currency === "Bs" ? "BS" : currency;
-
-  if (!exchangeRates.value[currencyKey]) {
-    return 0;
-  }
-
-  const result =
-    Math.round((parseFloat(amount) / exchangeRates.value[currencyKey]) * 100) /
-    100;
-  return result;
-};
-
-// Calcular total en USD
-const totalAmountUSD = computed(() => {
-  const result = pendingPayments.value.reduce((sum, invoice) => {
-    // Usar directamente total_usd del backend
-    return sum + (parseFloat(invoice.total_amount_usd) || 0);
-  }, 0);
-
-  return result;
-});
-
-// Calcular desglose por moneda
-const currencyBreakdown = computed(() => {
-  const breakdown = {};
-  pendingPayments.value.forEach((invoice) => {
-    const currency = invoice.currency;
-    if (!breakdown[currency]) {
-      breakdown[currency] = {
-        count: 0,
-        total: 0,
-        totalUSD: 0,
-      };
-    }
-    breakdown[currency].count++;
-    breakdown[currency].total += parseFloat(invoice.total_amount);
-
-    // Usar directamente total_usd del backend en lugar de convertir
-    const usdAmount = parseFloat(invoice.total_amount_usd) || 0;
-
-    breakdown[currency].totalUSD += usdAmount;
-  });
-
-  return breakdown;
-});
-
-// Cargar estadísticas
-const fetchStatistics = async () => {
-  try {
-    const response = await axios.get("/finances/pending-payments/statistics");
-
-    if (response.data.status === "success" || response.data.success) {
-      statistics.value = response.data.data;
-      // Actualizar también totalsByCurrency con los datos de estadísticas
-      totalsByCurrency.value = response.data.data.totals_by_currency || {
-        bs: { amount: 0, count: 0, total_usd: 0 },
-        usd: { amount: 0, count: 0, total_usd: 0 },
-        cop: { amount: 0, count: 0, total_usd: 0 },
-        usd_converted: 0,
-      };
-    } else {
-      console.error("Error al cargar estadísticas:", response.data.message);
-    }
-  } catch (error) {
-    console.error("Error al cargar estadísticas:", error);
-  }
-};
-
-// Ver factura individual
-const viewInvoice = (invoice) => {
-  selectedPaymentGroup.value = {
-    supplier_name: invoice.supplier_name,
-    payment_date: invoice.payment_date,
-    currency: invoice.currency,
-    total_amount: invoice.total_amount,
-    invoice_count: 1,
-  };
-  selectedInvoices.value = [invoice];
-  showPaymentModal.value = true;
-};
-
-// Procesar pago de factura individual
-const processPayment = (invoice) => {
-  selectedPaymentGroup.value = {
-    supplier_name: invoice.supplier_name,
-    payment_date: invoice.payment_date,
-    currency: invoice.currency,
-    total_amount: invoice.total_amount,
-    invoice_count: 1,
-  };
-  selectedInvoices.value = [invoice];
-  showProcessModal.value = true;
-};
-
-// Seleccionar/deseleccionar factura de la tabla
-const toggleTableInvoiceSelection = (invoice) => {
-  const index = selectedTableInvoices.value.findIndex(
-    (inv) => inv.id === invoice.id
-  );
-  if (index > -1) {
-    selectedTableInvoices.value.splice(index, 1);
-  } else {
-    selectedTableInvoices.value.push(invoice);
-  }
-};
-
-// Verificar si una factura está seleccionada en la tabla
-const isTableInvoiceSelected = (invoice) => {
-  return selectedTableInvoices.value.some((inv) => inv.id === invoice.id);
-};
-
-// Seleccionar todas las facturas
-const selectAllInvoices = () => {
-  selectedTableInvoices.value = [...pendingPayments.value];
-};
-
-// Deseleccionar todas las facturas
-const deselectAllInvoices = () => {
-  selectedTableInvoices.value = [];
-};
-
-// Procesar pago de múltiples facturas seleccionadas
-const processMultiplePayments = () => {
-  if (selectedTableInvoices.value.length === 0) {
-    toast.error("Debe seleccionar al menos una factura");
-    return;
-  }
-
-  selectedInvoices.value = [...selectedTableInvoices.value];
-
-  // Agrupar por proveedor y fecha
-  const groupedInvoices = selectedTableInvoices.value.reduce(
-    (groups, invoice) => {
-      const key = `${invoice.supplier_name}_${invoice.payment_date}`;
-      if (!groups[key]) {
-        groups[key] = {
-          supplier_name: invoice.supplier_name,
-          payment_date: invoice.payment_date,
-          currency: invoice.currency,
-          invoices: [],
-        };
-      }
-      groups[key].invoices.push(invoice);
-      return groups;
-    },
-    {}
-  );
-
-  // Si hay múltiples grupos, mostrar modal con todas las facturas
-  if (Object.keys(groupedInvoices).length > 1) {
-    selectedPaymentGroup.value = {
-      supplier_name: "Múltiples Proveedores",
-      payment_date: "Varias Fechas",
-      currency: "Múltiples Monedas",
-      total_amount: selectedTableInvoices.value.reduce(
-        (sum, inv) => sum + parseFloat(inv.total_amount),
-        0
-      ),
-      invoice_count: selectedTableInvoices.value.length,
-    };
-  } else {
-    const group = Object.values(groupedInvoices)[0];
-    selectedPaymentGroup.value = {
-      supplier_name: group.supplier_name,
-      payment_date: group.payment_date,
-      currency: group.currency,
-      total_amount: group.invoices.reduce(
-        (sum, inv) => sum + parseFloat(inv.total_amount),
-        0
-      ),
-      invoice_count: group.invoices.length,
-    };
-  }
-
-  showProcessModal.value = true;
-};
-
-// Cerrar modales
-const closePaymentModal = () => {
-  showPaymentModal.value = false;
-  selectedPaymentGroup.value = null;
-  selectedInvoices.value = [];
-};
-
-const closeProcessModal = () => {
-  showProcessModal.value = false;
-  selectedPaymentGroup.value = null;
-  selectedInvoices.value = [];
-};
-
-// Manejar pago procesado
-const handlePaymentProcessed = () => {
-  closeProcessModal();
+const handleTableUpdate = (options) => {
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
   fetchPendingPayments();
-  fetchStatistics();
-  toast.success("Pago procesado exitosamente");
 };
 
-const handleHeaderCheckboxChange = (value) => {
-  if (value) {
-    selectAllInvoices();
-  } else {
-    deselectAllInvoices();
+const toggleIndexedStatus = async (item) => {
+  try {
+    await axios.put(`/finances/invoices/${item.id}/toggle-indexed`, {
+      is_indexed: item.is_indexed,
+    });
+    toast.success("Estado de indexación actualizado");
+    fetchPendingPayments();
+  } catch (error) {
+    item.is_indexed = !item.is_indexed;
+    toast.error("Error al actualizar indexación");
   }
 };
 
-// Limpiar filtros
+const processPayment = (invoice) => {
+  selectedInvoices.value = [invoice];
+  selectedPaymentGroup.value = {
+    supplier_name: invoice.supplier_name,
+    payment_date: invoice.payment_date,
+    currency: invoice.currency,
+    invoice_count: 1
+  };
+  showProcessModal.value = true;
+};
+
+const processMultiplePayments = () => {
+  if (selectedTableInvoices.value.length === 0) return;
+  
+  selectedInvoices.value = [...selectedTableInvoices.value];
+  selectedPaymentGroup.value = {
+    supplier_name: "Múltiples Proveedores",
+    payment_date: "Varias Fechas",
+    currency: "USD",
+    invoice_count: selectedTableInvoices.value.length
+  };
+  showProcessModal.value = true;
+};
+
+const handlePaymentProcessed = () => {
+  // CORRECCIÓN SOLICITADA: Limpiar selección tras pago exitoso
+  selectedTableInvoices.value = [];
+  fetchPendingPayments();
+};
+
 const clearFilters = () => {
   searchQuery.value = "";
   selectedSupplier.value = null;
@@ -405,413 +161,109 @@ const clearFilters = () => {
   showOverdueOnly.value = false;
 };
 
-// Formatear fecha
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString("es-VE");
+const toggleSelection = (invoice) => {
+  const index = selectedTableInvoices.value.findIndex(i => i.id === invoice.id);
+  if (index > -1) selectedTableInvoices.value.splice(index, 1);
+  else selectedTableInvoices.value.push(invoice);
 };
 
-// Formatear moneda
-const formatCurrency = (amount, currency, omitCurrency) => {
-  if (!amount || amount === 0) return "0";
-
-  // Redondear a 2 decimales
-  const roundedAmount = Math.round(amount * 100) / 100;
-
-  // Formatear número con separadores de miles
-  const formatter = new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  const formattedNumber = formatter.format(roundedAmount);
-
-  if (omitCurrency) {
-    return formattedNumber;
-  }
-
-  // Agregar símbolo de moneda según la moneda
-  switch (currency) {
-    case "Bs":
-      return `Bs ${formattedNumber}`;
-    case "COP":
-      return `COP ${formattedNumber}`;
-    case "USD":
-      return `USD ${formattedNumber}`;
-    default:
-      return `${currency} ${formattedNumber}`;
-  }
-};
-
-// Obtener clase CSS para monto restante
-const getRemainingAmountClass = (item) => {
-  const remainingAmount = item.remaining_amount || item.total_amount;
-  const originalAmount = item.original_amount || item.total_amount;
-
-  // Si el monto restante es menor al original, significa que hay pagos parciales
-  if (remainingAmount < originalAmount) {
-    return "text-warning"; // Color naranja para pagos parciales
-  }
-
-  return "text-success"; // Color verde para facturas sin pagos
-};
-
-// ISSUE #3: Función para obtener monto a mostrar (considerando indexación)
-const getDisplayAmount = (item) => {
-  // CORRECCIÓN: Para facturas indexadas, calcular el monto restante indexado
-  if (item.is_indexed && item.indexed_data && item.indexed_data.is_indexed) {
-    return item.indexed_data.indexed_amount;
-    // Calcular el porcentaje pagado
-    // const originalAmount = parseFloat(item.indexed_data.original_amount_usd);
-    // const remainingAmountUSD = parseFloat(item.remaining_amount_usd);
-    // const paidAmountUSD = originalAmount - remainingAmountUSD;
-    // const paidPercentage = paidAmountUSD / originalAmount;
-
-    // // Aplicar el mismo porcentaje al monto indexado
-    // const indexedAmount = parseFloat(item.indexed_data.indexed_amount);
-    // const remainingIndexedAmount = indexedAmount * (1 - paidPercentage);
-
-    // return Math.round(remainingIndexedAmount);
-  }
-
-  // Si no está indexada, usar el monto restante normal
-  return item.total_amount || item.total_amount;
-};
-
-// ISSUE #3: Función para obtener monto USD a mostrar (considerando indexación)
-const getDisplayAmountUSD = (item) => {
-  // CORRECCIÓN: Para facturas indexadas, usar el monto restante USD real
-  if (item.is_indexed && item.indexed_data && item.indexed_data.is_indexed) {
-    // Para facturas indexadas, el monto USD restante ya está calculado correctamente
-    return item.remaining_amount_usd || item.total_usd;
-  }
-
-  // Si no está indexada, usar el USD restante normal
-  return item.remaining_amount_usd || item.total_usd;
-};
-
-// ISSUE #3: Función para cambiar estado de factura indexada
-const toggleIndexedStatus = async (item) => {
-  try {
-    const response = await axios.put(
-      `/finances/invoices/${item.id}/toggle-indexed`,
-      {
-        is_indexed: item.is_indexed,
-      }
-    );
-
-    if (response.data.status === "success") {
-      toast.success(
-        `Factura ${item.invoice_number} ${
-          item.is_indexed ? "indexada" : "desindexada"
-        } correctamente`
-      );
-
-      // CORRECCIÓN: Recargar datos para obtener los nuevos cálculos indexados
-      await fetchPendingPayments();
-    } else {
-      // Revertir el cambio si falla
-      item.is_indexed = !item.is_indexed;
-      toast.error(
-        response.data.message || "Error al actualizar el estado de indexación"
-      );
-    }
-  } catch (error) {
-    // Revertir el cambio si falla
-    item.is_indexed = !item.is_indexed;
-    console.error("Error al cambiar estado de indexación:", error);
-    toast.error("Error al actualizar el estado de indexación");
-  }
-};
-
-// Obtener color del estado
-const getStatusColor = (status) => {
-  switch (status) {
-    case "loaded":
-      return "info";
-    case "to_order":
-      return "warning";
-    default:
-      return "success";
-  }
-};
-
-// CORRECCIÓN ISSUE #1: Función para formatear fecha de vencimiento (payment_date - 1 día)
-const formatDueDate = (paymentDate) => {
-  if (!paymentDate) return "N/A";
-
-  const dueDate = new Date(paymentDate);
-  dueDate.setDate(dueDate.getDate() - 1);
-
-  return dueDate.toLocaleDateString("es-VE", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-};
-
-// Obtener texto del estado
-const getStatusText = (status) => {
-  switch (status) {
-    case "loaded":
-      return "Cargada";
-    case "to_order":
-      return "Por Ordenar";
-    default:
-      return "Pendiente";
-  }
-};
-
-// Watchers para recargar datos
-watch([page, itemsPerPage], () => {
-  fetchPendingPayments();
-});
-
-watch(
-  [searchQuery, selectedSupplier, startDate, endDate, showOverdueOnly],
-  () => {
-    page.value = 1;
-    fetchPendingPayments();
-  },
-  { deep: true }
-);
-
-// Cargar datos al montar el componente
 onMounted(async () => {
   await fetchExchangeRates();
   await fetchSuppliers();
+  if (route.query.supplierId) selectedSupplier.value = Number(route.query.supplierId);
+  fetchPendingPayments();
+});
 
-  const supplierIdFromRoute = route.query.supplierId;
-  if (supplierIdFromRoute) {
-    selectedSupplier.value = Number(supplierIdFromRoute);
-  }
-  await fetchPendingPayments();
-  await fetchStatistics();
+watch([searchQuery, selectedSupplier, startDate, endDate, showOverdueOnly], () => {
+  page.value = 1;
+  fetchPendingPayments();
 });
 </script>
 
 <template>
-  <div>
-    <!-- Header con estadísticas -->
-    <VCard class="mb-6">
-      <VCardTitle class="d-flex align-center">
-        <VIcon icon="tabler-credit-card" class="me-2" />
-        Pagos Pendientes
-      </VCardTitle>
-      <VCardText>
-        <!-- Filtros integrados -->
-        <VRow>
-          <VCol cols="12" sm="6" md="2">
-            <AppTextField
-              v-model="searchQuery"
-              placeholder="Buscar por factura..."
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="2">
-            <VAutocomplete
-              v-model="selectedSupplier"
-              :items="suppliers"
-              :loading="isLoadingFilters"
-              label="Proveedor"
-              item-title="name"
-              item-value="id"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="2">
-            <AppDateTimePicker
-              v-model="startDate"
-              placeholder="Desde"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="2">
-            <AppDateTimePicker
-              v-model="endDate"
-              placeholder="Hasta"
-              clearable
-            />
-          </VCol>
-          <VCol cols="12" sm="6" md="2">
-            <VCheckbox v-model="showOverdueOnly" label="Pagos vencidos" />
-          </VCol>
-          <VCol cols="12" sm="6" md="2" class="text-end">
-            <VBtn color="secondary" variant="outlined" @click="clearFilters">
-              Limpiar Filtros
-            </VBtn>
-          </VCol>
-        </VRow>
-      </VCardText>
-    </VCard>
+  <div :class="mobile ? 'pa-0 pb-16' : 'pa-4'">
+    <!-- Filtros Premium -->
+    <PendingPaymentFilters
+      v-model:search-query="searchQuery"
+      v-model:selected-supplier="selectedSupplier"
+      v-model:start-date="startDate"
+      v-model:end-date="endDate"
+      v-model:show-overdue-only="showOverdueOnly"
+      :suppliers="suppliers"
+      :loading="loading"
+      :is-loading-filters="isLoadingFilters"
+      @clear="clearFilters"
+      @refresh="fetchPendingPayments"
+    />
 
-    <!-- Tabla de pagos pendientes -->
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between">
-        <span>Pagos Pendientes</span>
+    <!-- Cabecera de Tabla Premium (Escritorio) -->
+    <VCard v-if="!mobile" class="mb-4 rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+      <VCardTitle class="pa-4 px-6 d-flex align-center">
+        <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
+          <VIcon icon="tabler-list-check" size="18" />
+        </VAvatar>
+        <span class="text-sm font-weight-black uppercase">Listado de Facturas</span>
+        <VSpacer />
         <div class="d-flex align-center gap-2">
-          <VBtn
-            variant="outlined"
+           <VBtn
+            v-if="selectedTableInvoices.length > 0"
+            variant="tonal"
             color="secondary"
-            @click="deselectAllInvoices"
-            :disabled="selectedTableInvoices.length === 0"
+            class="rounded-lg text-xs font-weight-black"
+            @click="selectedTableInvoices = []"
           >
-            <VIcon icon="tabler-x" class="mr-2" />
-            {{ selectedTableInvoices.length }}
+            DESELECCIONAR ({{ selectedTableInvoices.length }})
           </VBtn>
           <VBtn
-            :variant="selectedTableInvoices.length > 0 ? 'flat' : 'outlined'"
-            color="success"
-            @click="processMultiplePayments"
             :disabled="selectedTableInvoices.length === 0"
+            color="success"
+            variant="flat"
+            class="rounded-lg text-xs font-weight-black px-6 shadow-sm"
+            @click="processMultiplePayments"
           >
-            <VIcon icon="tabler-credit-card" class="mr-2" />
-            {{ selectedTableInvoices.length }}
+            <VIcon start icon="tabler-credit-card" size="18" />
+            PAGAR SELECCIONADOS
           </VBtn>
         </div>
       </VCardTitle>
-      <VCardText>
-        <VDataTable
-          :headers="headers"
-          :items="pendingPayments"
-          :loading="loading"
-          :items-per-page="itemsPerPage"
-          :page="page"
-          :sort-by="[]"
-          @update:options="
-            (options) => {
-              page = options.page;
-              itemsPerPage = options.itemsPerPage;
-              // NO aplicar ordenamiento del frontend - el backend ya envía los datos ordenados
-            }
-          "
-        >
-          <template #header.select>
-            <VCheckbox
-              :model-value="selectedAll"
-              :indeterminate="indeterminate"
-              @update:model-value="handleHeaderCheckboxChange"
-              :disabled="pendingPayments.length === 0"
-              density="compact"
-            />
-          </template>
-
-          <!-- Columna de selección -->
-          <template #item.select="{ item }">
-            <VCheckbox
-              :model-value="isTableInvoiceSelected(item)"
-              @change="toggleTableInvoiceSelection(item)"
-              color="primary"
-            />
-          </template>
-
-          <!-- Columna de fecha de pago -->
-          <template #item.payment_date="{ item }">
-            <div>
-              {{ item.payment_date ? formatDate(item.payment_date) : "N/A" }}
-            </div>
-          </template>
-
-          <!-- Columna de monto original -->
-          <template #item.original_amount="{ item }">
-            <div class="font-weight-bold">
-              {{ formatCurrency(item.original_amount_usd, "USD", true) }}
-            </div>
-          </template>
-
-          <!-- Columna de monto restante -->
-          <template #item.remaining_amount="{ item }">
-            <div
-              class="font-weight-bold"
-              :class="getRemainingAmountClass(item)"
-            >
-              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
-            </div>
-          </template>
-
-          <!-- Columna de factura indexada -->
-          <template #item.is_indexed="{ item }">
-            <VSwitch
-              v-model="item.is_indexed"
-              color="primary"
-              @change="toggleIndexedStatus(item)"
-              :disabled="loading"
-            />
-          </template>
-
-          <!-- ISSUE #4: Columna de total en moneda del proveedor -->
-          <template #item.total_supplier_currency="{ item }">
-            <div class="font-weight-bold text-primary">
-              {{
-                formatCurrency(
-                  item.supplier_total_bs || 0,
-                  item.currency || "USD"
-                )
-              }}
-            </div>
-            <div
-              v-if="item.currency === 'Bs'"
-              class="text-caption text-medium-emphasis"
-            >
-              {{ formatCurrency(item.supplier_total_usd || 0, "USD") }}
-            </div>
-          </template>
-
-          <!-- Columna de estado -->
-          <template #item.status="{ item }">
-            <VChip :color="getStatusColor(item.status)" variant="tonal">
-              {{ getStatusText(item.status) }}
-            </VChip>
-          </template>
-
-          <!-- Columna de acciones -->
-          <template #item.actions="{ item }">
-            <div class="d-flex gap-2">
-              <IconBtn @click="processPayment(item)">
-                <VIcon icon="tabler-credit-card" />
-              </IconBtn>
-            </div>
-          </template>
-
-          <!-- Estado vacío -->
-          <template #no-data>
-            <div class="text-center py-8">
-              <VIcon
-                icon="tabler-receipt-off"
-                size="48"
-                class="text-disabled mb-4"
-              />
-              <div class="text-h6 text-disabled">No hay pagos pendientes</div>
-              <div class="text-caption text-disabled">
-                No se encontraron facturas pendientes de pago
-              </div>
-            </div>
-          </template>
-        </VDataTable>
-      </VCardText>
     </VCard>
 
-    <!-- Modal para ver facturas -->
+    <!-- Tabla y Cards Premium -->
+    <PendingPaymentTable
+      :pending-payments="pendingPayments"
+      :loading="loading"
+      :selected-table-invoices="selectedTableInvoices"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="handleTableUpdate"
+      @toggle-indexed="toggleIndexedStatus"
+      @process-payment="processPayment"
+      @process-multiple="processMultiplePayments"
+      @toggle-selection="toggleSelection"
+      @select-all="selectedTableInvoices = [...pendingPayments]"
+      @deselect-all="selectedTableInvoices = []"
+    />
+
+    <!-- Modales -->
     <PendingPaymentModal
       v-model="showPaymentModal"
       :payment-group="selectedPaymentGroup"
       :invoices="selectedInvoices"
-      @close="closePaymentModal"
+      @close="showPaymentModal = false"
     />
 
-    <!-- Modal para procesar pago -->
     <ProcessPaymentModal
       v-model="showProcessModal"
-      :exchange-rate="exchangeRates.bs"
-      :payment-group="selectedPaymentGroup"
       :invoices="selectedInvoices"
-      @close="closeProcessModal"
+      :exchange-rate="exchangeRate"
       @payment-processed="handlePaymentProcessed"
     />
   </div>
 </template>
 
 <style scoped>
-.gap-2 {
-  gap: 8px;
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
 }
 </style>
