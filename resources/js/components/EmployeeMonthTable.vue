@@ -1,4 +1,5 @@
-<script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   items: {
     type: Array,
@@ -6,31 +7,43 @@ const props = defineProps({
   },
 });
 
+const { mobile } = useDisplay();
+
 const headers = [
   { title: "Empleado", key: "name", width: "250px" },
-  { title: "Puntaje Total", key: "scores.total", align: "end", sortable: true },
-  { title: "Ventas", key: "scores.sales", align: "center", width: "120px" },
-  { title: "Crecimiento", key: "scores.growth", align: "center", width: "120px" },
-  { title: "Vencimientos", key: "scores.expiration", align: "center", width: "120px" },
-  { title: "Inventario", key: "scores.inventory", align: "center", width: "150px" },
-  { title: "Premium", key: "scores.premium", align: "center", width: "120px" },
-  { title: "Facturación", key: "scores.invoice", align: "center", width: "120px" },
-  { title: "Limpieza", key: "scores.cleaning", align: "center", width: "100px" },
-  { title: "Estratégico", key: "scores.strategy", align: "center", width: "120px" },
+  { title: "Puntaje Final", key: "scores.total", align: "end", width: "130px" },
+  { title: "Ventas", key: "scores.sales", align: "center", width: "130px" },
+  { title: "Crecimiento", key: "scores.growth", align: "center", width: "130px" },
+  { title: "Vencimientos", key: "scores.expiration", align: "center", width: "130px" },
+  { title: "Inventario", key: "scores.inventory", align: "center", width: "130px" },
+  { title: "Premium", key: "scores.premium", align: "center", width: "130px" },
+  { title: "Facturación", key: "scores.invoice", align: "center", width: "130px" },
+  { title: "Limpieza", key: "scores.cleaning", align: "center", width: "110px" },
+  { title: "Estratégico", key: "scores.strategy", align: "center", width: "130px" },
 ];
 
 const getScoreInfo = (key) => {
   const infos = {
-    "scores.sales": { max: 25, desc: "Basado en el volumen total de ventas comparado con el líder." },
-    "scores.growth": { max: 15, desc: "Porcentaje de crecimiento respecto al mes anterior." },
-    "scores.expiration": { max: 15, desc: "Premia el bajo índice de productos vencidos en zona." },
-    "scores.inventory": { max: 10, desc: "Calidad y cantidad de conteos cíclicos realizados." },
-    "scores.premium": { max: 10, desc: "Ventas de productos de alto valor (>$15)." },
-    "scores.invoice": { max: 15, desc: "Desempeño en carga, registro y archivo de facturas." },
-    "scores.cleaning": { max: 5, desc: "Cumplimiento de cronograma de limpieza asignado." },
-    "scores.strategy": { max: 5, desc: "Venta de productos/marcas priorizadas por la gerencia." },
+    "scores.sales": { title: "Ventas", icon: "tabler-currency-dollar", max: 25, desc: "Basado en el volumen total de ventas." },
+    "scores.growth": { title: "Crecimiento", icon: "tabler-trending-up", max: 15, desc: "Crecimiento porcentual respecto al mes anterior." },
+    "scores.expiration": { title: "Vencimientos", icon: "tabler-calendar-off", max: 15, desc: "Premia el bajo índice de productos vencidos." },
+    "scores.inventory": { title: "Inventario", icon: "tabler-package", max: 10, desc: "Calidad y cantidad de conteos cíclicos." },
+    "scores.premium": { title: "Premium", icon: "tabler-pills", max: 10, desc: "Ventas de productos de alto valor (>$15)." },
+    "scores.invoice": { title: "Facturación", icon: "tabler-file-invoice", max: 15, desc: "Desempeño en gestión de facturas." },
+    "scores.cleaning": { title: "Limpieza", icon: "tabler-brush", max: 5, desc: "Cumplimiento de cronograma de limpieza." },
+    "scores.strategy": { title: "Estratégico", icon: "tabler-target", max: 5, desc: "Venta de marcas priorizadas." },
   };
-  return infos[key] || { max: 100, desc: "" };
+  return infos[key] || { title: key, icon: "tabler-info-circle", max: 100, desc: "" };
+};
+
+const getScoreColor = (key, item) => {
+  if (key === 'growth') return item.growth > 0 ? 'success' : 'primary';
+  if (key === 'expiration') return item.expirations > 10 ? 'error' : 'info';
+  if (key === 'inventory') return 'info';
+  if (key === 'premium') return 'warning';
+  if (key === 'cleaning') return 'success';
+  if (key === 'strategy') return 'deep-purple-accent-2';
+  return 'primary';
 };
 
 const formatNumber = (num) =>
@@ -44,239 +57,240 @@ const formatCurrency = (amount) =>
 </script>
 
 <template>
-  <VCard>
-    <VDataTable
-      :headers="headers"
-      :items="props.items"
-      item-value="id"
-      class="text-no-wrap"
-    >
-      <!-- Custom Headers with Tooltips -->
-      <template v-for="header in headers" :key="header.key" #[`header.${header.key}`]="{ column }">
-        <div class="d-flex align-center gap-1 justify-center" v-if="header.key !== 'name' && header.key !== 'scores.total'">
-          <span class="text-xs font-weight-bold text-uppercase">{{ column.title }}</span>
-          <VTooltip location="top" :text="getScoreInfo(header.key).desc">
-            <template #activator="{ props }">
-              <VIcon v-bind="props" icon="tabler-info-circle" size="14" class="text-disabled" />
-            </template>
-          </VTooltip>
-        </div>
-        <span v-else class="text-xs font-weight-bold text-uppercase">{{ column.title }}</span>
-      </template>
+  <div class="employee-month-table-container">
+    <!-- Vista de Escritorio: Tabla Premium -->
+    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden">
+      <VDataTable
+        :headers="headers"
+        :items="props.items"
+        item-value="id"
+        class="premium-performance-table text-no-wrap"
+      >
+        <!-- Custom Headers with Tooltips -->
+        <template v-for="header in headers" :key="header.key" #[`header.${header.key}`]="{ column }">
+          <div class="d-flex align-center gap-1 justify-center" v-if="header.key !== 'name' && header.key !== 'scores.total'">
+            <span class="text-super-xs font-weight-black text-uppercase">{{ column.title }}</span>
+            <VTooltip location="top" :text="getScoreInfo(header.key).desc">
+              <template #activator="{ props: tooltipProps }">
+                <VIcon v-bind="tooltipProps" icon="tabler-info-circle" size="14" class="text-disabled" />
+              </template>
+            </VTooltip>
+          </div>
+          <span v-else class="text-super-xs font-weight-black text-uppercase">{{ column.title }}</span>
+        </template>
 
-      <template #item.name="{ item }">
-        <div class="d-flex align-center gap-3 py-2">
-          <div class="position-relative">
-            <VAvatar 
-              :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'" 
-              :variant="props.items.indexOf(item) === 0 ? 'elevated' : 'tonal'" 
-              size="40"
-              :class="props.items.indexOf(item) === 0 ? 'leader-avatar' : ''"
+        <template #item.name="{ item }">
+          <div class="d-flex align-center gap-3 py-3">
+            <div class="position-relative">
+              <VAvatar 
+                :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'" 
+                :variant="props.items.indexOf(item) === 0 ? 'elevated' : 'tonal'" 
+                size="42"
+                v-if="item.photo"
+              >
+                <VImg :src="item.photo" />
+              </VAvatar>
+              <VAvatar
+                v-else
+                :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'"
+                variant="tonal"
+                size="42"
+              >
+                <span class="font-weight-bold text-lg">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
+              </VAvatar>
+              <VIcon
+                v-if="props.items.indexOf(item) === 0"
+                color="warning"
+                icon="tabler-crown"
+                size="20"
+                class="position-absolute leader-crown"
+              />
+            </div>
+            <div class="d-flex flex-column">
+              <span :class="['font-weight-black', props.items.indexOf(item) === 0 ? 'text-warning' : 'text-high-emphasis']">
+                {{ item.name }} {{ item.last_name }}
+              </span>
+              <span class="text-super-xs text-disabled uppercase">ID: {{ item.identification || item.id }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template #item.scores.total="{ item }">
+          <div class="d-flex flex-column align-end pe-4">
+            <VChip
+              :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'"
+              :variant="props.items.indexOf(item) === 0 ? 'elevated' : 'tonal'"
+              class="font-weight-black px-4 rounded-lg"
+              size="large"
             >
-              <VImg v-if="item.photo" :src="item.photo" />
-              <span v-else>{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
-            </VAvatar>
-            <VIcon
-              v-if="props.items.indexOf(item) === 0"
-              color="warning"
-              icon="tabler-crown"
-              size="18"
-              class="position-absolute leader-crown"
+              {{ formatNumber(item.scores.total) }}
+            </VChip>
+          </div>
+        </template>
+
+        <template v-for="key in ['sales', 'growth', 'expiration', 'inventory', 'premium', 'invoice', 'cleaning', 'strategy']" :key="key" #[`item.scores.${key}`]="{ item }">
+          <div class="score-cell-desktop py-2">
+            <div class="d-flex justify-space-between text-xs mb-1">
+              <span class="font-weight-bold" :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : 'text-error') : ''">
+                {{ key === 'sales' ? formatCurrency(item.sales) : 
+                   key === 'growth' ? `${item.growth > 0 ? '+' : ''}${item.growth}%` :
+                   key === 'expiration' ? `${item.expirations} u.` :
+                   key === 'inventory' ? `${item.inventory_counted} c.` :
+                   key === 'premium' ? `${item.premium_products} u.` :
+                   key === 'invoice' ? `${item.invoice_items} icon.` :
+                   key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
+                   `${item.strategy_sales} u.`
+                }}
+              </span>
+              <span class="text-disabled font-weight-bold">{{ formatNumber(item.scores[key]) }}/{{ getScoreInfo(`scores.${key}`).max }}</span>
+            </div>
+            <VProgressLinear
+              :model-value="(item.scores[key] / getScoreInfo(`scores.${key}`).max) * 100"
+              height="6"
+              rounded
+              :color="getScoreColor(key, item)"
+              bg-color="secondary"
+              bg-opacity="0.1"
             />
           </div>
-          <div class="d-flex flex-column">
-            <span :class="['font-weight-bold', props.items.indexOf(item) === 0 ? 'text-warning' : 'text-high-emphasis']">
+        </template>
+      </VDataTable>
+    </VCard>
+
+    <!-- Vista Móvil: Cards de Desempeño -->
+    <div v-else class="d-flex flex-column gap-4">
+      <VCard
+        v-for="(item, index) in props.items"
+        :key="item.id"
+        class="performance-card-mobile rounded-xl border-0 shadow-sm overflow-hidden"
+        :class="{ 'leader-card-border': index === 0 }"
+      >
+        <!-- Header del Card -->
+        <div class="pa-4 d-flex align-center gap-3" :class="index === 0 ? 'bg-warning-lighten-5' : 'bg-surface'">
+          <div class="position-relative">
+            <VAvatar 
+              :color="index === 0 ? 'warning' : 'primary'" 
+              :variant="index === 0 ? 'elevated' : 'tonal'" 
+              size="48"
+              class="rounded-lg shadow-sm"
+            >
+              <VImg v-if="item.photo" :src="item.photo" />
+              <span v-else class="font-weight-black">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
+            </VAvatar>
+            <VIcon v-if="index === 0" icon="tabler-crown" color="warning" size="20" class="position-absolute leader-crown-mobile" />
+          </div>
+          
+          <div class="d-flex flex-column flex-grow-1">
+            <span class="text-base font-weight-black leading-tight" :class="index === 0 ? 'text-warning' : ''">
               {{ item.name }} {{ item.last_name }}
             </span>
-            <span class="text-xs text-disabled">ID: {{ item.identification || item.id }}</span>
+            <span class="text-super-xs text-disabled uppercase">Ranking #{{ index + 1 }}</span>
           </div>
-        </div>
-      </template>
 
-      <template #item.scores.total="{ item }">
-        <div class="d-flex flex-column align-end">
           <VChip
-            :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'"
-            :variant="props.items.indexOf(item) === 0 ? 'elevated' : 'tonal'"
-            class="font-weight-black px-4"
-            size="large"
+            :color="index === 0 ? 'warning' : 'primary'"
+            variant="flat"
+            class="font-weight-black px-4 rounded-lg shadow-sm"
           >
-            {{ formatNumber(item.scores.total) }}
+            {{ formatNumber(item.scores.total) }} pts
           </VChip>
-          <span class="text-xs mt-1 text-disabled">Puntaje Final</span>
         </div>
-      </template>
 
-      <template #item.scores.sales="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span class="font-weight-medium">{{ formatCurrency(item.sales) }}</span>
-            <span class="text-disabled">{{ formatNumber(item.scores.sales) }}/25</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.sales / 25) * 100"
-            height="6"
-            rounded
-            color="primary"
-            bg-color="secondary"
-            bg-opacity="0.1"
-          />
-        </div>
-      </template>
+        <VDivider class="opacity-10" />
 
-      <template #item.scores.growth="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span :class="['font-weight-medium', item.growth > 0 ? 'text-success' : 'text-error']">
-              {{ item.growth > 0 ? '+' : '' }}{{ item.growth }}%
-            </span>
-            <span class="text-disabled">{{ formatNumber(item.scores.growth) }}/15</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.growth / 15) * 100"
-            height="6"
-            rounded
-            :color="item.growth > 0 ? 'success' : 'primary'"
-            bg-opacity="0.1"
-          />
-        </div>
-      </template>
-
-      <template #item.scores.expiration="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span :class="['font-weight-medium', item.expirations > 10 ? 'text-error' : 'text-medium-emphasis']">
-              {{ item.expirations }} unid.
-            </span>
-            <span class="text-disabled">{{ formatNumber(item.scores.expiration) }}/15</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.expiration / 15) * 100"
-            height="6"
-            rounded
-            :color="item.expirations > 10 ? 'error' : 'info'"
-            bg-opacity="0.1"
-          />
-        </div>
-      </template>
-
-      <template #item.scores.inventory="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span class="font-weight-medium">{{ item.inventory_counted }} conteos</span>
-            <span class="text-disabled">{{ formatNumber(item.scores.inventory) }}/10</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.inventory / 10) * 100"
-            height="6"
-            rounded
-            color="info"
-            bg-opacity="0.1"
-          />
-          <div class="text-[10px] text-error mt-1" v-if="item.inventory_errors > 0">
-             {{ item.inventory_errors }} errores detectados
-          </div>
-        </div>
-      </template>
-
-      <template #item.scores.premium="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span class="font-weight-medium">{{ item.premium_products }} unid.</span>
-            <span class="text-disabled">{{ formatNumber(item.scores.premium) }}/10</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.premium / 10) * 100"
-            height="6"
-            rounded
-            color="warning"
-            bg-opacity="0.1"
-          />
-        </div>
-      </template>
-
-      <template #item.scores.invoice="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <div class="d-flex align-center gap-1">
-              <span class="font-weight-medium">{{ item.invoice_items }}</span>
-              <VIcon icon="tabler-packages" size="12" class="text-disabled" />
+        <!-- Grid de Desempeño Móvil -->
+        <div class="pa-4">
+          <div class="performance-grid">
+            <div v-for="key in ['sales', 'growth', 'expiration', 'inventory', 'premium', 'invoice', 'cleaning', 'strategy']" :key="key" class="perf-item pa-2 rounded-lg border border-opacity-10">
+              <div class="d-flex align-center gap-1 mb-1">
+                <VIcon :icon="getScoreInfo(`scores.${key}`).icon" size="14" class="text-disabled" />
+                <span class="text-super-xs font-weight-black text-disabled uppercase truncate">{{ getScoreInfo(`scores.${key}`).title }}</span>
+              </div>
+              <div class="d-flex justify-space-between align-end">
+                <span class="text-xs font-weight-black">
+                  {{ key === 'sales' ? formatCurrency(item.sales) : 
+                     key === 'growth' ? `${item.growth}%` :
+                     key === 'expiration' ? `${item.expirations}` :
+                     `${item.scores[key]}`
+                  }}
+                </span>
+                <span class="text-super-xs font-weight-bold text-primary">{{ formatNumber(item.scores[key]) }} pts</span>
+              </div>
+              <VProgressLinear
+                :model-value="(item.scores[key] / getScoreInfo(`scores.${key}`).max) * 100"
+                height="4"
+                rounded
+                :color="getScoreColor(key, item)"
+                bg-opacity="0.1"
+                class="mt-1"
+              />
             </div>
-            <span class="text-disabled">{{ formatNumber(item.scores.invoice) }}/15</span>
           </div>
-          <VProgressLinear
-            :model-value="(item.scores.invoice / 15) * 100"
-            height="6"
-            rounded
-            color="primary"
-            bg-opacity="0.1"
-          />
         </div>
-      </template>
-
-      <template #item.scores.cleaning="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span class="font-weight-bold">{{ Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100) }}%</span>
-            <span class="text-disabled">{{ formatNumber(item.scores.cleaning) }}/5</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.cleaning / 5) * 100"
-            height="6"
-            rounded
-            color="success"
-            bg-opacity="0.1"
-          />
-        </div>
-      </template>
-
-      <template #item.scores.strategy="{ item }">
-        <div class="score-cell">
-          <div class="d-flex justify-space-between text-xs mb-1">
-            <span class="font-weight-medium">{{ item.strategy_sales }} unid.</span>
-            <span class="text-disabled">{{ formatNumber(item.scores.strategy) }}/5</span>
-          </div>
-          <VProgressLinear
-            :model-value="(item.scores.strategy / 5) * 100"
-            height="6"
-            rounded
-            color="deep-purple-accent-2"
-            bg-opacity="0.1"
-          />
-        </div>
-      </template>
-    </VDataTable>
-  </VCard>
+      </VCard>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.leader-avatar {
-  border: 2px solid #ffb400;
-  box-shadow: 0 0 10px rgba(255, 180, 0, 40%);
+.text-super-xs {
+  font-size: 0.625rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: normal;
 }
 
 .leader-crown {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 20%));
-  inset-block-start: -8px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 10%));
+  inset-block-start: -10px;
   inset-inline-end: -8px;
   transform: rotate(15deg);
 }
 
-.score-cell {
-  min-inline-size: 100px;
-  padding-block: 8px;
-  padding-inline: 0;
+.leader-crown-mobile {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 20%));
+  inset-block-start: -8px;
+  inset-inline-end: -6px;
+  transform: rotate(15deg);
 }
 
-:deep(.v-data-table__tr:first-child) {
+.score-cell-desktop {
+  min-inline-size: 110px;
+}
+
+:deep(.premium-performance-table) {
+  .v-data-table-header th {
+    background-color: rgba(var(--v-theme-surface-variant), 0.05) !important;
+    text-transform: uppercase;
+  }
+
+  .v-data-table__tr:hover {
+    background-color: rgba(var(--v-theme-primary), 0.02) !important;
+  }
+}
+
+.performance-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.bg-warning-lighten-5 {
   background-color: rgba(var(--v-theme-warning), 0.05) !important;
 }
 
-:deep(.v-data-table-header__content) {
-  justify-content: center !important;
+.leader-card-border {
+  border: 1px solid rgba(var(--v-theme-warning), 0.3) !important;
 }
 
-.text-[10px] {
-  font-size: 10px;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .performance-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>
