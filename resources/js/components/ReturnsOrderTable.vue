@@ -108,19 +108,19 @@ const closeProductsModal = () => {
 };
 
 const headers = [
-  { title: "N° Orden", key: "id", sortable: true, width: "100px" },
-  { title: "Cliente", key: "client", sortable: true },
-  { title: "Monto", key: "amount", sortable: true },
-  { title: "Fecha", key: "date", sortable: true },
-  { title: "Productos", key: "products", sortable: false, width: "80px" },
+  { title: "N° ORDEN", key: "id", sortable: true, width: "100px" },
+  { title: "CLIENTE", key: "client", sortable: true },
+  { title: "MONTO", key: "amount", sortable: true },
+  { title: "FECHA", key: "date", sortable: true },
+  { title: "PRODUCTOS", key: "products", sortable: false, width: "80px" },
 ];
 
 const orderItemHeaders = [
-  { title: "Producto", key: "product.name" },
-  { title: "Cantidad", key: "quantity" },
-  { title: "Precio", key: "price" },
-  { title: "Cantidad a Devolver", key: "returns_quantity" },
-  { title: "Monto a devolver", key: "refund_amount" },
+  { title: "PRODUCTO", key: "product.name" },
+  { title: "VENDIDO", key: "quantity" },
+  { title: "PRECIO", key: "price" },
+  { title: "DEVOLVER", key: "returns_quantity" },
+  { title: "REEMBOLSO", key: "refund_amount" },
 ];
 
 /** Indica si el detalle está seleccionado (checkbox marcado). */
@@ -300,22 +300,23 @@ const totalRefundAmount = computed(() => {
 
       <!-- Action Column -->
       <template #item.products="{ item }">
-        <IconBtn
+        <VBtn
           color="info"
           size="small"
           variant="tonal"
+          icon
           class="rounded-lg shadow-sm"
-          @click:stop="openProductsModal(item)"
+          @click.stop="openProductsModal(item)"
         >
           <VIcon icon="tabler-package" />
-        </IconBtn>
+        </VBtn>
       </template>
     </VDataTableServer>
 
     <!-- Dialog Details -->
     <VDialog
       v-model="showProductsModal"
-      :max-width="mobile ? '100%' : '1000'"
+      :max-inline-size="mobile ? '100%' : '1000'"
       :fullscreen="mobile"
       persistent
       transition="dialog-bottom-transition"
@@ -359,7 +360,7 @@ const totalRefundAmount = computed(() => {
         <VCardText class="pa-0 bg-light">
           <template v-if="mobile">
             <!-- Mobile Detail List -->
-            <div class="pa-3 d-flex flex-column gap-3 overflow-y-auto" style="max-height: calc(100vh - 220px);">
+            <div class="pa-3 d-flex flex-column gap-3 overflow-y-auto" style="max-block-size: calc(100vh - 220px);">
               <VCard
                 v-for="detailItem in (selectedOrderForModal.details || [])"
                 :key="detailItem.id"
@@ -397,7 +398,7 @@ const totalRefundAmount = computed(() => {
                 <VDivider class="border-dashed mb-2" />
 
                 <div class="d-flex justify-space-between align-center px-1">
-                   <div class="d-flex flex-column" style="max-width: 110px;">
+                   <div class="d-flex flex-column" style="max-inline-size: 110px;">
                     <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1">Devolver</span>
                     <AppTextField
                       :model-value="returnsQuantityByDetailId[detailItem.id] ?? detailItem.returns_quantity ?? detailItem.quantity"
@@ -463,7 +464,7 @@ const totalRefundAmount = computed(() => {
             </template>
 
             <template #item.returns_quantity="{ item: detailItem }">
-              <div class="pa-1 rounded-lg bg-light" style="max-width: 100px;">
+              <div class="pa-1 rounded-lg bg-light" style="max-inline-size: 100px;">
                 <AppTextField
                   :model-value="returnsQuantityByDetailId[detailItem.id] ?? detailItem.returns_quantity ?? detailItem.quantity"
                   type="number"
@@ -576,20 +577,16 @@ const totalRefundAmount = computed(() => {
   line-height: normal;
 }
 
-.letter-spacing-1 { letter-spacing: 1.5px !important; }
-.leading-none { line-height: 1 !important; }
-.leading-tight { line-height: 1.25 !important; }
-
 .shadow-sm {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
 }
 
 .shadow-primary-lg {
-  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important;
+  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 25%) !important;
 }
 
 .shadow-warning-lg {
-  box-shadow: 0 8px 24px rgba(var(--v-theme-warning), 0.25) !important;
+  box-shadow: 0 8px 24px rgba(var(--v-theme-warning), 25%) !important;
 }
 
 .shadow-inner {
@@ -609,9 +606,29 @@ const totalRefundAmount = computed(() => {
 }
 
 .selected-item-card {
-  background-color: rgba(var(--v-theme-primary), 0.05) !important;
   border-color: rgb(var(--v-theme-primary)) !important;
+  background-color: rgba(var(--v-theme-primary), 0.05) !important;
   box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1.5px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.font-weight-900 {
+  font-weight: 900 !important;
+}
+
+.font-weight-950 {
+  font-weight: 950 !important;
 }
 
 .compact-qty-input :deep(.v-field__input) {
@@ -625,9 +642,6 @@ const totalRefundAmount = computed(() => {
   font-weight: 950 !important;
   text-align: center !important;
 }
-
-.font-weight-900 { font-weight: 900 !important; }
-.font-weight-950 { font-weight: 950 !important; }
 
 .truncate {
   overflow: hidden;
