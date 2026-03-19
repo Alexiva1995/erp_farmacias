@@ -246,23 +246,32 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
 
+/**
+ * Obtiene la tasa de cambio efectiva entre dos monedas.
+ * Aplica reglas de negocio especiales como la tasa COPC.
+ */
+const getEffectiveRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const rates = exchangeRates.value?.[fromCurrency];
+  if (!rates) return 0;
+
+  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
+  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
+    return rates["COPC"];
+  }
+
+  return rates[toCurrency] || 0;
+};
+
 const totalPaidAmount = computed(() => {
   let currentSum = 0;
-  payments.value.forEach((payment, index) => {
+  payments.value.forEach((payment) => {
     let amount = Number(payment.amount) || 0;
-    let amountToAdd = 0;
-
-    if (payment.currency === props.selectedCurrency) {
-      amountToAdd = amount;
-    } else {
-      const rate =
-        exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-      if (rate) {
-        let convertedAmount = amount * rate;
-        amountToAdd = convertedAmount;
-      }
+    const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
+    if (rate > 0 || payment.currency === props.selectedCurrency) {
+      currentSum = roundToTwoDecimalPlaces(currentSum + amount * rate);
     }
-    currentSum = roundToTwoDecimalPlaces(currentSum + amountToAdd);
   });
   return currentSum;
 });
@@ -272,19 +281,10 @@ const totalPaidAmountNonCash = computed(() => {
   payments.value.forEach((payment) => {
     if (!payment.method || !payment.method.startsWith("cash_")) {
       let amount = Number(payment.amount) || 0;
-      let amountToAdd = 0;
-
-      if (payment.currency === props.selectedCurrency) {
-        amountToAdd = amount;
-      } else {
-        const rate =
-          exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-        if (rate) {
-          let convertedAmount = amount * rate;
-          amountToAdd = convertedAmount;
-        }
+      const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
+      if (rate > 0 || payment.currency === props.selectedCurrency) {
+        currentSum = roundToTwoDecimalPlaces(currentSum + amount * rate);
       }
-      currentSum = roundToTwoDecimalPlaces(currentSum + amountToAdd);
     }
   });
   return currentSum;
@@ -408,12 +408,10 @@ const getConvertedRemainingAmount = (currency) => {
     return 0;
   }
 
-  const rate = exchangeRates.value[baseCurrency]?.[targetCurrency];
+  const rate = getEffectiveRate(baseCurrency, targetCurrency);
 
-  if (!rate) {
-    console.warn(
-      `No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`,
-    );
+  if (rate <= 0) {
+    console.warn(`No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`);
     return 0;
   }
 
@@ -483,7 +481,7 @@ const handleCompletePurchase = () => {
 
   payments.value.forEach((p) => {
     if (p.amount > 0 && p.currency && p.currency !== baseCurrency) {
-      const rate = exchangeRates.value?.[p.currency]?.[baseCurrency];
+      const rate = getEffectiveRate(p.currency, baseCurrency);
       if (!rate || rate === 0) {
         missingRates.push(`${p.currency} a ${baseCurrency}`);
       }
@@ -522,7 +520,7 @@ const handleCompletePurchase = () => {
         const baseCurrency = props.selectedCurrency;
         const targetCurrency = p.currency;
 
-        const rate = exchangeRates.value?.[baseCurrency]?.[targetCurrency];
+        const rate = getEffectiveRate(baseCurrency, targetCurrency);
         if (rate) {
           amountToAssign = amountToAssign * rate;
         } else {
@@ -944,8 +942,7 @@ const totalCashPaidInUSDOrCOP = computed(() => {
       if (payment.currency === props.selectedCurrency) {
         cashAmount += Number(payment.amount);
       } else {
-        const rate =
-          exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+        const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
         if (rate) {
           cashAmount += Number(payment.amount) * rate;
         }
@@ -991,10 +988,10 @@ const changeAmountInUsd = computed(() => {
   if (props.selectedCurrency === "USD") {
     totalOrdenEnUSD = props.totalAmount;
   } else {
-    const rate = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
-    if (!rate) {
+    const rate = getEffectiveRate("USD", props.selectedCurrency);
+    if (rate <= 0) {
       console.error(
-        `No se encontró la tasa de cambio de ${props.selectedCurrency} a USD.`,
+        `No se encontró la tasa de cambio de USD a ${props.selectedCurrency}.`,
       );
       return 0;
     }
@@ -1011,18 +1008,8 @@ const changeAmountInCop = computed(() => {
     return vueltoEnMonedaOrden;
   }
 
-  const baseCurrency = props.selectedCurrency;
-  const rates = exchangeRates.value?.[baseCurrency];
-
-  // REGLA NEGOCIO: Si la moneda base es USD y vamos a dar vuelto en COP,
-  // usar la tasa COPC (COP Cambio) si está disponible.
-  let rateToUse = "COP";
-  if (baseCurrency === "USD" && rates?.["COPC"]) {
-    rateToUse = "COPC";
-  }
-
-  const rate = rates?.[rateToUse];
-  if (rate) {
+  const rate = getEffectiveRate(props.selectedCurrency, "COP");
+  if (rate > 0) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
     return roundUpToNearestHundred(vueltoConvertido);
   }
@@ -1054,7 +1041,7 @@ watch(
       if (props.selectedCurrency === "USD") {
         rateToUSD = 1;
       } else {
-        rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+        rateToUSD = getEffectiveRate(props.selectedCurrency, "USD");
       }
 
       if (!rateToUSD) {
@@ -1229,7 +1216,7 @@ const selectPaymentMethod = (methodValue, currency = null) => {
     if (props.selectedCurrency === "USD") {
       rateToUSD = 1;
     } else {
-      rateToUSD = exchangeRates.value?.[props.selectedCurrency]?.["USD"];
+      rateToUSD = getEffectiveRate(props.selectedCurrency, "USD");
     }
     if (!rateToUSD) {
       toast.error("No se encontró la tasa de cambio.");
@@ -1295,11 +1282,9 @@ const confirmPaymentAmount = (payment) => {
             remainingInPaymentCurrency += previousAmount;
           } else {
             // Convertir el monto anterior a la moneda base y luego a la moneda del pago
-            const rateToBase =
-              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment =
-              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-            if (rateToBase && rateToPayment) {
+            const rateToBase = getEffectiveRate(payment.currency, props.selectedCurrency);
+            const rateToPayment = getEffectiveRate(props.selectedCurrency, payment.currency);
+            if (rateToBase > 0 && rateToPayment > 0) {
               const previousInBase = previousAmount * rateToBase;
               remainingInPaymentCurrency += previousInBase * rateToPayment;
             }
@@ -1383,9 +1368,9 @@ const confirmPaymentComplete = (payment) => {
         if (payment.currency === props.selectedCurrency) {
           remainingInPaymentCurrency += previousAmount;
         } else {
-          const rateToBase = exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-          const rateToPayment = exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-          if (rateToBase && rateToPayment) {
+          const rateToBase = getEffectiveRate(payment.currency, props.selectedCurrency);
+          const rateToPayment = getEffectiveRate(props.selectedCurrency, payment.currency);
+          if (rateToBase > 0 && rateToPayment > 0) {
             const previousInBase = previousAmount * rateToBase;
             remainingInPaymentCurrency += previousInBase * rateToPayment;
           }

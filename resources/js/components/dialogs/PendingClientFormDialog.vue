@@ -275,8 +275,9 @@ function formatearFechaCompleta(fechaInput) {
       </VCardActions>
     </VCard>
   </VDialog>
+</template>
 
-  <style scoped>
+<style scoped>
   .header-gradient {
     background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173b1f 100%);
   }
@@ -315,4 +316,3 @@ function formatearFechaCompleta(fechaInput) {
     letter-spacing: 1px !important;
   }
   </style>
-</template>
