@@ -88,118 +88,156 @@ function formatearFechaCompleta(fechaInput) {
     persistent
     scrollable
     :retain-focus="false"
+    :fullscreen="$vuetify.display.xs"
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
     @click:outside.prevent
     @keydown.esc.prevent="close"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-users" size="24" color="white" />
-          <span class="text-h6 text-white">{{ props.titulo }}</span>
+    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
+      <!-- Cabecera Compacta Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
+              <VIcon icon="tabler-user-edit" color="primary" size="18" />
+            </VAvatar>
+            <div>
+              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0 uppercase">{{ props.titulo }}</h2>
+              <div class="d-flex align-center gap-1 mt-0">
+                <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+                  GESTIÓN DE APROBACIÓN DE CLIENTE
+                </span>
+              </div>
+            </div>
+          </div>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" size="x-small" @click="close">
+            <VIcon size="18">tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VBtn icon variant="text" color="white" size="small" @click="close">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
-        <VRow>
-          <VCol cols="12" sm="6" md="6">
+      <VCardText class="pa-4 bg-light" style="max-block-size: 80vh;">
+        <VRow dense>
+          <VCol cols="12" sm="6">
             <VSelect
               v-model="formData.identification_type"
               :error-messages="formError.identification_type"
-              label="Tipo"
+              label="TIPO IDENTIDAD"
               variant="outlined"
+              density="compact"
               :items="['V-', 'J-', 'G-', 'E-']"
               disabled
+              prepend-inner-icon="tabler-id"
+              class="premium-input"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
             <VTextField
               v-model="formData.identification"
               :error-messages="formError.identification"
-              label="Identificación"
+              label="NÚMERO IDENTIFICACIÓN"
               type="text"
               variant="outlined"
+              density="compact"
               disabled
               :counter="9"
               :maxlength="9"
-              :rules="[
-                (v) => (v && v.length >= 7) || 'Mínimo 7 caracteres',
-                (v) => (v && v.length <= 9) || 'Máximo 9 caracteres',
-              ]"
+              prepend-inner-icon="tabler-fingerprint"
+              class="premium-input"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
             <VTextField
               v-model="formData.name"
               :error-messages="formError.name"
-              label="Nombre"
+              label="NOMBRE(S)"
               type="text"
               variant="outlined"
+              density="compact"
+              prepend-inner-icon="tabler-user"
+              class="premium-input"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
             <VTextField
               v-model="formData.last_name"
               :error-messages="formError.last_name"
-              label="Apellido"
+              label="APELLIDO(S)"
               type="text"
               variant="outlined"
+              density="compact"
+              prepend-inner-icon="tabler-user"
               :disabled="formData.identification_type == 'J-'"
+              class="premium-input"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
             <VTextField
               v-model="formData.email"
               :error-messages="formError.email"
-              label="Correo"
-              type="text"
+              label="CORREO ELECTRÓNICO"
+              type="email"
               variant="outlined"
+              density="compact"
+              prepend-inner-icon="tabler-mail"
+              class="premium-input"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
             <VTextField
               v-model="formData.phone"
               :error-messages="formError.phone"
-              label="Telefono"
-              type="number"
+              label="TELÉFONO DE CONTACTO"
+              type="text"
               variant="outlined"
+              density="compact"
+              prepend-inner-icon="tabler-phone"
+              class="premium-input"
             />
           </VCol>
           <VCol
             cols="12"
             sm="6"
-            md="6"
             v-if="formData.id != null && formData.identification_type != 'J-'"
           >
             <VDateInput
               v-model="formData.birthdate"
               :error-messages="formError.birthdate"
-              label="Fecha de Nacimiento"
+              label="FECHA DE NACIMIENTO"
               variant="outlined"
-              density="comfortable"
+              density="compact"
+              prepend-inner-icon="tabler-calendar"
+              class="premium-input"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
             <VSelect
               v-model="formData.company_id"
               :error-messages="formError.company_id"
-              label="Empresa"
+              label="EMPRESA ASOCIADA"
               variant="outlined"
+              density="compact"
               :items="props.companies"
               item-title="name"
               item-value="id"
               clearable
+              prepend-inner-icon="tabler-building"
               :disabled="formData.identification_type == 'J-'"
+              class="premium-input"
             />
           </VCol>
           <VCol cols="12">
             <VTextarea
               v-model="formData.address"
               :error-messages="formError.address"
-              label="Dirección"
+              label="DIRECCIÓN DE HABITACIÓN"
               variant="outlined"
+              density="compact"
+              prepend-inner-icon="tabler-map-pin"
+              class="premium-input"
+              rows="3"
             />
           </VCol>
         </VRow>
@@ -207,32 +245,65 @@ function formatearFechaCompleta(fechaInput) {
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-5">
-        <VRow class="w-100 ma-0">
-          <VCol cols="6" class="pa-2">
+      <VCardActions class="pa-4 bg-light">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6">
             <VBtn
               color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
+              variant="tonal"
               block
+              height="48"
+              class="font-weight-black rounded-lg text-button uppercase"
               @click="close"
             >
-              Cancelar
+              CANCELAR
             </VBtn>
           </VCol>
-          <VCol cols="6" class="pa-2">
+          <VCol cols="6">
             <VBtn
               color="primary"
               variant="flat"
-              prepend-icon="tabler-check"
               block
+              height="48"
+              class="font-weight-black rounded-lg text-button uppercase shadow-sm"
               @click="submitForm"
             >
-              {{ formData.id ? 'Actualizar' : 'Guardar' }}
+              {{ formData.id ? 'APROBAR Y ACTUALIZAR' : 'REGISTRAR' }}
             </VBtn>
           </VCol>
         </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
+
+  <style scoped>
+  .header-gradient {
+    background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173b1f 100%);
+  }
+
+  .bg-light {
+    background-color: #f8fafc !important;
+  }
+
+  .text-super-xs {
+    font-size: 0.65rem !important;
+    line-height: normal;
+  }
+
+  .premium-input :deep(.v-field__input) {
+    font-size: 0.8rem !important;
+    font-weight: 600;
+  }
+
+  .premium-input :deep(.v-label) {
+    font-size: 0.7rem !important;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .leading-tight { line-height: 1.25 !important; }
+  .uppercase { text-transform: uppercase; }
+  .text-button { font-size: 0.875rem !important; letter-spacing: 1px !important; }
+  </style>
 </template>
