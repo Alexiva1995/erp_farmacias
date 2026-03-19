@@ -96,6 +96,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  exchangeRates: {
+    type: Object,
+    default: () => ({}),
+  },
 });
 
 const emit = defineEmits([
@@ -178,6 +182,33 @@ const Identidad = computed(() => {
 });
 
 const availableCurrency = ref(["USD", "BS", "COP"]);
+
+const getEffectiveRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const rates = props.exchangeRates?.[fromCurrency];
+  if (!rates) return 0;
+
+  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
+  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
+    return rates["COPC"];
+  }
+
+  return rates[toCurrency] || 0;
+};
+
+const getDynamicPrice = (item, basePrice, targetCurrency) => {
+  // REGLA NEGOCIO: Si estamos en USD y el producto tiene precio en COP,
+  // recalcular el USD dinámicamente usando la tasa COPC si está disponible.
+  if (targetCurrency === "USD" && (item.price_cop || item.original_price_cop)) {
+    const rate = getEffectiveRate("USD", "COP");
+    if (rate > 0) {
+      const priceCop = item.price_cop || item.original_price_cop;
+      return priceCop / rate;
+    }
+  }
+  return parseFloat(basePrice) || 0;
+};
 
 const breakdownItems = computed(() => {
   let ivaAmount = props.totalIvaAmount;
@@ -273,7 +304,7 @@ const getPricePerUnit = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : product.price || 0;
+          : getDynamicPrice(product, product.price, "USD");
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice =
       getOriginalBasePrice(product, currency) * getDiscountFactor(product);
@@ -283,7 +314,7 @@ const getPricePerUnit = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : product.price || 0;
+          : getDynamicPrice(product, product.price, "USD");
   }
   const taxRate = product.taxRate || 0;
   let price = basePrice * (1 + taxRate);
@@ -301,7 +332,7 @@ const getProductPriceSinIva = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : product.price || 0;
+          : getDynamicPrice(product, product.price, "USD");
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice =
       getOriginalBasePrice(product, currency) * getDiscountFactor(product);
@@ -311,7 +342,7 @@ const getProductPriceSinIva = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : product.price || 0;
+          : getDynamicPrice(product, product.price, "USD");
   }
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
@@ -343,18 +374,21 @@ const getProductPriceOriginalSinIva = (product, currency) => {
         product.price_cop ||
         0;
     } else {
-      basePrice =
+      basePrice = getDynamicPrice(
+        product,
         product.original_price_usd ||
-        product.originalPrice ||
-        product.basePrice ||
-        product.price ||
-        0;
+          product.originalPrice ||
+          product.basePrice ||
+          product.price ||
+          0,
+        "USD",
+      );
     }
   } else {
     if (currency === "BS")
       basePrice = product.price_bs || 0;
     else if (currency === "COP") basePrice = product.price_cop || 0;
-    else basePrice = product.price || 0;
+    else basePrice = getDynamicPrice(product, product.price, "USD");
   }
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") priceSinIva = roundUpToNearestHundred(priceSinIva);

@@ -14,6 +14,8 @@ const props = defineProps({
   discountMaxProducts: { type: Number, default: 0 },
   currentDiscount: { type: Number, default: 0 },
   orderItems: { type: Array, default: () => [] },
+  exchangeRates: { type: Object, default: () => ({}) },
+  currency: { type: String, default: "USD" },
 });
 
 const inputQuantities = ref(new Map());
@@ -36,6 +38,32 @@ const options = ref({
   itemsPerPage: 10,
   sortBy: [],
 });
+
+const getEffectiveRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const rates = props.exchangeRates?.[fromCurrency];
+  if (!rates) return 0;
+
+  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
+  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
+    return rates["COPC"];
+  }
+
+  return rates[toCurrency] || 0;
+};
+
+const getDynamicPrice = (item, basePrice, targetCurrency) => {
+  // REGLA NEGOCIO: Si estamos en USD y el producto tiene precio en COP,
+  // recalcular el USD dinámicamente usando la tasa COPC si está disponible.
+  if (targetCurrency === "USD" && item.price_cop) {
+    const rate = getEffectiveRate("USD", "COP");
+    if (rate > 0) {
+      return item.price_cop / rate;
+    }
+  }
+  return parseFloat(basePrice) || 0;
+};
 
 const headers = [
   { title: "ID", key: "id", sortable: true, width: "70px" },
@@ -228,11 +256,11 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="calculatePriceWithIVA(item.sale_price, item) > calculatePriceWithIVAAndDiscount(item.sale_price, item)" class="precio-tachado">
-            {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
+          <del v-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="precio-tachado">
+            {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-black text-primary">
-            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
+            {{ formatCurrency(calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
           </span>
         </div>
       </template>
@@ -378,11 +406,11 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
               <div class="price-box">
                 <span class="label">USD</span>
                 <div class="d-flex flex-column">
-                  <del v-if="calculatePriceWithIVA(item.sale_price, item) > calculatePriceWithIVAAndDiscount(item.sale_price, item)" class="text-super-xs text-disabled text-decoration-line-through">
-                    {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
+                  <del v-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="text-super-xs text-disabled text-decoration-line-through">
+                    {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
                   </del>
                   <span class="value font-weight-black text-primary" :class="getPriceClass(item)">
-                    {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
+                    {{ formatCurrency(calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
                   </span>
                 </div>
               </div>
@@ -485,11 +513,11 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 <style scoped>
 .premium-table :deep(thead th) {
   background-color: rgba(var(--v-theme-primary), 0.02) !important;
+  color: rgba(var(--v-theme-on-surface), 0.6) !important;
   font-size: 0.75rem !important;
   font-weight: 900 !important;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.6) !important;
 }
 
 .premium-table :deep(tr:hover) {
@@ -507,8 +535,8 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 .precio-tachado {
   color: #a0a0a0;
   font-size: 0.7rem;
-  text-decoration: line-through;
   line-height: 1;
+  text-decoration: line-through;
 }
 
 .precio-oferta {

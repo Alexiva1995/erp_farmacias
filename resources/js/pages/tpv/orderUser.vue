@@ -76,6 +76,67 @@ const isFinishingOrder = ref(false);
 
 const isSpecialTaxpayer = ref(false);
 
+const exchangeRates = ref({});
+const ratesLoaded = ref(false);
+
+const fetchExchangeRates = async () => {
+  ratesLoaded.value = false;
+  try {
+    const response = await axios.get("/public/exchange-rates");
+    if (response.status != 200) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const apiRates = response.data;
+    const formattedRates = {};
+    apiRates.forEach((rateItem) => {
+      const currencyCode = rateItem.currency_code;
+      const rateValue = parseFloat(rateItem.rate);
+
+      if (!formattedRates["USD"]) {
+        formattedRates["USD"] = {};
+      }
+      formattedRates["USD"][currencyCode] = rateValue;
+      if (!formattedRates[currencyCode]) {
+        formattedRates[currencyCode] = {};
+      }
+      if (rateValue !== 0) {
+        formattedRates[currencyCode]["USD"] = 1 / rateValue;
+      }
+
+      if (formattedRates["COP"] && formattedRates["BS"]) {
+        formattedRates["COP"]["BS"] =
+          parseFloat(formattedRates["USD"]["BS"]) /
+          parseFloat(formattedRates["USD"]["COP"]);
+        formattedRates["BS"]["COP"] =
+          parseFloat(formattedRates["USD"]["COP"]) /
+          parseFloat(formattedRates["USD"]["BS"]);
+      }
+    });
+
+    exchangeRates.value = formattedRates;
+    ratesLoaded.value = true;
+    console.log("[ORDER_USER] Tasas de cambio cargadas:", exchangeRates.value);
+  } catch (error) {
+    console.error("[ORDER_USER] Error fetching exchange rates:", error);
+    toast.error("No se pudieron cargar las tasas de cambio.");
+  }
+};
+
+const getEffectiveRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return 1;
+
+  const rates = exchangeRates.value?.[fromCurrency];
+  if (!rates) return 0;
+
+  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
+  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
+    return rates["COPC"];
+  }
+
+  return rates[toCurrency] || 0;
+};
+
 const newClientFormData = ref({
   id: null,
   identification_type: "",
@@ -1011,6 +1072,13 @@ onMounted(async () => {
       fetchPrescriptionOffers();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar ofertas de recetas", error);
+    }
+
+    try {
+      console.log("[ORDER_USER] Cargando tasas de cambio...");
+      fetchExchangeRates();
+    } catch (error) {
+      console.error("[ORDER_USER] Error al cargar tasas", error);
     }
 
     try {
@@ -1964,11 +2032,22 @@ watch(
 );
 
 const getItemPriceByCurrency = (item, currency) => {
+  // REGLA NEGOCIO: Si estamos en USD y el producto tiene precio en COP,
+  // recalcular el USD dinámicamente usando la tasa COPC si está disponible.
+  if (currency === "USD" && (item.price_cop || item.original_price_cop)) {
+    const rate = getEffectiveRate("USD", "COP");
+    if (rate > 0) {
+      const priceCop = item.price_cop || item.original_price_cop;
+      return priceCop / rate;
+    }
+  }
+
   if (currency === "BS") {
     return item.price_bs || 0;
   } else if (currency === "COP") {
     return item.price_cop || 0;
   } else {
+    // Si no es BS o COP, y no pudimos calcular dinámicamente arriba, usar precio base
     return item.price || item.sale_price || 0;
   }
 };
@@ -3087,6 +3166,7 @@ onUnmounted(() => {
         :recipe-discount-total="totalRecipeDiscountAmount || 0"
         :expiration-discount-total="totalExpirationDiscountAmount || 0"
         :cliente="selectedClient || null"
+        :exchange-rates="exchangeRates"
         :selected-display-currency="selectedDisplayCurrency || 'USD'"
         @currency-changed="handleCurrencyChanged"
         @update-quantity="updateOrderItemQuantity"
@@ -3151,6 +3231,8 @@ onUnmounted(() => {
       :current-discount="discount || 0"
       :order-items="orderItems || []"
       :options="tableOptions"
+      :exchange-rates="exchangeRates"
+      :currency="selectedDisplayCurrency"
       @update:options="updateTableOptions"
       @add-product="addProductToOrder"
       @view-group-products="fetchGroupProducts"
