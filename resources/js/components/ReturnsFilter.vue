@@ -18,6 +18,7 @@ const emit = defineEmits([
   "update:seller",
   "clear",
 ]);
+
 const statuses = [
   { title: "Todas", value: "" },
   { title: "Pendiente", value: "pending" },
@@ -173,26 +174,33 @@ const hasActiveAdvancedFilters = computed(() => {
 </template>
 
 <style scoped>
+.premium-input-compact :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.15 !important;
+
+  color: rgba(0, 0, 0, 15%) !important;
+}
+
+.premium-input-compact :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1 !important;
+
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+/* Forzar altura y alineación en todos los campos */
+.premium-input-compact :deep(.v-field) {
+  padding-inline-start: 12px !important;
+  border-radius: 8px !important;
+  min-block-size: 38px !important;
+}
+
 .premium-input-compact :deep(.v-field__input) {
   display: flex !important;
   align-items: center !important;
+  padding-block: 0 !important;
   font-size: 0.75rem !important;
   font-weight: 700;
   min-block-size: 38px !important;
-  padding-block: 0 !important;
   text-transform: uppercase;
-}
-
-.premium-input-compact :deep(.v-field__outline__start),
-.premium-input-compact :deep(.v-field__outline__end),
-.premium-input-compact :deep(.v-field__outline__notch) {
-  border-color: rgba(var(--v-border-color), 15%) !important;
-}
-
-/* Forzar altura en selects y autocomplete que suelen ser más altos */
-.premium-input-compact :deep(.v-field) {
-  border-radius: 8px !important;
-  min-block-size: 38px !important;
 }
 
 .premium-input-compact :deep(.v-select__selection),
@@ -203,5 +211,6 @@ const hasActiveAdvancedFilters = computed(() => {
 }
 
 .gap-1 { gap: 4px !important; }
+
 .gap-2 { gap: 8px !important; }
 </style>

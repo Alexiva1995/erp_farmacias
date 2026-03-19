@@ -118,18 +118,13 @@ const handleRejectReturn = async (item) => {
         </template>
 
         <template #item.product="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VAvatar size="32" color="info" variant="tonal" class="rounded">
-              <VIcon icon="tabler-package" size="18" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-sm font-weight-black uppercase leading-tight truncate" style="max-inline-size: 250px;">
-                {{ item.product.name }}
-              </span>
-              <span v-if="item.product?.laboratory?.name" class="text-super-xs font-weight-bold text-disabled uppercase">
-                {{ item.product.laboratory.name }}
-              </span>
-            </div>
+          <div class="d-flex flex-column py-2">
+            <span class="text-sm font-weight-black uppercase leading-tight truncate" style="max-inline-size: 250px;">
+              {{ item.product.name }}
+            </span>
+            <span v-if="item.product?.laboratory?.name" class="text-super-xs font-weight-bold text-disabled uppercase">
+              {{ item.product.laboratory.name }}
+            </span>
           </div>
         </template>
 
@@ -248,21 +243,16 @@ const handleRejectReturn = async (item) => {
 
           <!-- Producto y Detalles -->
           <div class="bg-light pa-3 rounded-lg mb-3 border border-dashed">
-            <div class="d-flex align-start gap-3">
-              <VAvatar size="40" color="primary" variant="tonal" class="rounded">
-                <VIcon icon="tabler-package" size="22" />
-              </VAvatar>
-              <div class="d-flex flex-column overflow-hidden">
-                <span class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate">
-                  {{ item.product.name }}
-                </span>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                  {{ item.product?.laboratory?.name ?? 'SIN LABORATORIO' }}
-                </span>
-                <div class="d-flex align-center gap-1 mt-1">
-                  <VIcon icon="tabler-shopping-cart" size="12" class="text-primary" />
-                  <span class="text-super-xs font-weight-black text-primary uppercase">CANTIDAD: {{ item.quantity }}</span>
-                </div>
+            <div class="d-flex flex-column overflow-hidden">
+              <span class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate">
+                {{ item.product.name }}
+              </span>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">
+                {{ item.product?.laboratory?.name ?? 'SIN LABORATORIO' }}
+              </span>
+              <div class="d-flex align-center gap-1 mt-1">
+                <VIcon icon="tabler-shopping-cart" size="12" class="text-primary" />
+                <span class="text-super-xs font-weight-black text-primary uppercase">CANTIDAD: {{ item.quantity }}</span>
               </div>
             </div>
           </div>
