@@ -1,4 +1,5 @@
 <script setup>
+import { ref, computed, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
@@ -120,14 +121,27 @@ const getPack = async (packId) => {
 // Inicializar productos del pack
 const initializePackProducts = () => {
   formData.value.pack_products = [];
-  for (let i = 0; i < formData.value.products_count; i++) {
+  addProductRow();
+};
+
+const addProductRow = () => {
+  if (formData.value.pack_products.length < 10) {
     formData.value.pack_products.push({
       product: null,
       quantity: 1,
       discount_percentage: 0,
       calculated_price: 0,
     });
+    formData.value.products_count = formData.value.pack_products.length;
+  } else {
+    toast.warning("Máximo 10 productos por pack");
   }
+};
+
+const removeProductRow = (index) => {
+  formData.value.pack_products.splice(index, 1);
+  formData.value.products_count = formData.value.pack_products.length;
+  calculateTotalPrice();
 };
 
 // Calcular precio con descuento para un producto
@@ -310,26 +324,8 @@ const resetForm = () => {
   productSearchQuery.value = "";
 };
 
-// Ajustar productos cuando cambia products_count
-watch(
-  () => formData.value.products_count,
-  (newCount) => {
-    const currentCount = formData.value.pack_products.length;
-    if (newCount > currentCount) {
-      for (let i = currentCount; i < newCount; i++) {
-        formData.value.pack_products.push({
-          product: null,
-          quantity: 1,
-          discount_percentage: 0,
-          calculated_price: 0,
-        });
-      }
-    } else if (newCount < currentCount) {
-      formData.value.pack_products.splice(newCount);
-    }
-    calculateTotalPrice();
-  }
-);
+// No eliminar, se mantiene para compatibilidad con la API
+// products_count se actualiza automáticamente al agregar/quitar filas
 
 // Cargar datos del pack para edición
 const loadPackData = async (packId) => {
@@ -463,7 +459,7 @@ watch(
         <!-- Información del Pack -->
         <div class="pa-5 pb-2">
           <VRow>
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="6" md="3">
               <div class="d-flex flex-column gap-1">
                 <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Nombre del Pack</span>
                 <AppTextField
@@ -477,23 +473,7 @@ watch(
                 />
               </div>
             </VCol>
-            <VCol cols="12" sm="6" md="2">
-              <div class="d-flex flex-column gap-1">
-                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Prods en Pack</span>
-                <AppTextField
-                  v-model.number="formData.products_count"
-                  variant="outlined"
-                  density="compact"
-                  type="number"
-                  min="1"
-                  max="10"
-                  :error-messages="formErrors.products_count"
-                  :disabled="loading"
-                  class="premium-input shadow-sm text-center"
-                />
-              </div>
-            </VCol>
-            <VCol cols="12" sm="6" md="2">
+            <VCol cols="12" sm="6" md="3">
               <div class="d-flex flex-column gap-1">
                 <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Estado</span>
                 <AppSelect
@@ -511,7 +491,7 @@ watch(
                 />
               </div>
             </VCol>
-            <VCol cols="12" sm="6" md="2">
+            <VCol cols="12" sm="6" md="3">
               <div class="d-flex flex-column gap-1">
                 <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Máx. Ventas</span>
                 <AppTextField
@@ -526,7 +506,7 @@ watch(
                 />
               </div>
             </VCol>
-            <VCol cols="12" sm="6" md="2">
+            <VCol cols="12" sm="6" md="3">
               <div class="d-flex flex-column gap-1">
                 <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Fecha Máx</span>
                 <AppTextField
@@ -549,18 +529,32 @@ watch(
         <div class="pa-5 pt-2">
           <div class="d-flex align-center justify-space-between mb-4">
             <h3 class="text-subtitle-1 font-weight-950 text-high-emphasis flex-grow-1">PRODUCTOS INCLUIDOS</h3>
-            <VChip variant="tonal" color="primary" size="small" class="font-weight-black">
-              {{ formData.products_count }} ITEMS
-            </VChip>
+            <div class="d-flex gap-2">
+              <VBtn
+                variant="tonal"
+                color="primary"
+                prepend-icon="tabler-plus"
+                size="small"
+                class="rounded-lg font-weight-black"
+                :disabled="loading || formData.pack_products.length >= 10"
+                @click="addProductRow"
+              >
+                Añadir Producto
+              </VBtn>
+              <VChip variant="tonal" color="primary" size="small" class="font-weight-black px-4">
+                {{ formData.pack_products.length }} ITEMS
+              </VChip>
+            </div>
           </div>
 
           <VDataTable
             :headers="[
               { title: 'PRODUCTO', key: 'product', sortable: false, width: '35%' },
-              { title: 'CANT.', key: 'quantity', sortable: false, width: '15%', align: 'center' },
-              { title: 'DESC. %', key: 'discount', sortable: false, width: '15%', align: 'center' },
+              { title: 'CANT.', key: 'quantity', sortable: false, width: '12%', align: 'center' },
+              { title: 'DESC. %', key: 'discount', sortable: false, width: '12%', align: 'center' },
               { title: 'UNITARIO', key: 'unit_price', sortable: false, width: '15%', align: 'end' },
-              { title: 'SUBTOTAL', key: 'subtotal', sortable: false, width: '20%', align: 'end' },
+              { title: 'SUBTOTAL', key: 'subtotal', sortable: false, width: '18%', align: 'end' },
+              { title: '', key: 'actions', sortable: false, width: '8%', align: 'center' },
             ]"
             :items="formData.pack_products"
             density="comfortable"
@@ -646,6 +640,18 @@ watch(
                 ${{ calculateProductPrice(item).toFixed(2) }}
               </span>
               <span v-else class="text-disabled">—</span>
+            </template>
+
+            <template #item.actions="{ index }">
+              <VBtn
+                icon="tabler-trash"
+                variant="tonal"
+                color="error"
+                size="30"
+                class="rounded-lg"
+                :disabled="loading || formData.pack_products.length <= 1"
+                @click="removeProductRow(index)"
+              />
             </template>
           </VDataTable>
         </div>
