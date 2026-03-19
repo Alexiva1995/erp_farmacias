@@ -98,6 +98,22 @@ watch(
   { deep: true },
 );
 
+const displayEmployees = computed(() => {
+  if (isEditMode.value && props.employee?.employee_id) {
+    const exists = props.employees.some(e => e.value === props.employee.employee_id);
+    if (!exists) {
+      return [
+        ...props.employees,
+        {
+          title: props.employee.employee_name,
+          value: props.employee.employee_id
+        }
+      ];
+    }
+  }
+  return props.employees;
+});
+
 const closeDialog = () => {
   emit("update:modelValue", false);
   emit("clear-errors");
@@ -109,12 +125,12 @@ const handleAddProduct = () => {
   if (!formData.value.new_product_id) return;
 
   const product = remoteProducts.value.find(
-    (prod) => prod.id === formData.value.new_product_id,
+    (prod) => Number(prod.id) === Number(formData.value.new_product_id),
   );
 
   if (product) {
     const exists = formData.value.products.some(
-      (prod) => prod.id === product.id,
+      (prod) => Number(prod.id) === Number(product.id),
     );
 
     if (!exists) {
@@ -242,7 +258,7 @@ const getProductColor = (index) => {
             <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Empleado *</span>
             <VSelect
               v-model="formData.employee_id"
-              :items="props.employees"
+              :items="displayEmployees"
               :disabled="isEditMode"
               placeholder="Selecciona un empleado"
               density="compact"
@@ -264,7 +280,7 @@ const getProductColor = (index) => {
                       {{ item.title.split(" ").map((n) => n[0]).join("").substring(0, 2) }}
                     </span>
                   </VAvatar>
-                  <span class="text-xs font-weight-bold">{{ item.title }}</span>
+                  <span class="text-xs font-weight-bold text-capitalize">{{ item.title }}</span>
                 </div>
               </template>
             </VSelect>
@@ -313,10 +329,11 @@ const getProductColor = (index) => {
             <div class="d-flex align-center justify-space-between mb-3">
               <span class="text-super-xs font-weight-black text-disabled uppercase">Productos Asignados</span>
               <VChip
-                :color="formData.products.length > 0 ? 'success' : 'default'"
+                :color="formData.products.length > 0 ? 'success' : 'surface-variant'"
                 size="x-small"
                 variant="flat"
                 class="font-weight-black rounded"
+                style="color: white !important;"
               >
                 {{ formData.products.length }}
               </VChip>
