@@ -186,7 +186,7 @@ const handleSort = (sortOptions) => {
 </script>
 
 <template>
-  <div>
+  <div class="productivity-cleaning-page pa-4">
     <ActivityFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedFrequency="selectedFrequency"
@@ -218,3 +218,10 @@ const handleSort = (sortOptions) => {
     />
   </div>
 </template>
+
+<style scoped>
+.productivity-cleaning-page {
+  background-color: rgb(var(--v-theme-background));
+  min-block-size: 100vh;
+}
+</style>
