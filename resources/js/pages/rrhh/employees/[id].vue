@@ -1,3 +1,4 @@
+<script setup>
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
 import { useAuthStore } from "@/stores/auth";
 import defaultAvatarImg from "@images/avatars/avatar-1.png";
