@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { Html5Qrcode } from 'html5-qrcode'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -7,67 +8,60 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'scan'])
 
-const video = ref(null)
-const canvas = ref(null)
 const isScanning = ref(false)
 const error = ref('')
-const hasSupport = ref('BarcodeDetector' in window)
+const hasSupport = ref(true)
 
-let stream = null
-let animationId = null
+let html5QrCode = null
 
 const startCamera = async () => {
   error.value = ''
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' }
-    })
-    if (video.value) {
-      video.value.srcObject = stream
-      isScanning.value = true
-      scanBarcode()
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode('barcode-reader')
     }
+    
+    isScanning.value = true
+    
+    // Configuración optimizada para códigos de barras
+    const config = {
+      fps: 10,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        return { 
+          width: Math.min(viewfinderWidth * 0.8, 300), 
+          height: Math.min(viewfinderHeight * 0.4, 150) 
+        }
+      },
+      aspectRatio: 1.333334,
+    }
+
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      config,
+      (decodedText) => {
+        emit('scan', decodedText)
+        close()
+      },
+      (errorMessage) => {
+        // Errores de escaneo individuales se ignoran para no saturar
+      }
+    )
   } catch (err) {
     error.value = 'No se pudo acceder a la cámara. Asegúrate de dar permisos.'
-    console.error('Error accessing camera:', err)
+    console.error('Error starting scanner:', err)
+    isScanning.value = false
   }
 }
 
-const stopCamera = () => {
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop())
-    stream = null
-  }
-  if (animationId) {
-    cancelAnimationFrame(animationId)
-    animationId = null
+const stopCamera = async () => {
+  if (html5QrCode && html5QrCode.isScanning) {
+    try {
+      await html5QrCode.stop()
+    } catch (err) {
+      console.error('Error stopping scanner:', err)
+    }
   }
   isScanning.value = false
-}
-
-const scanBarcode = async () => {
-  if (!isScanning.value || !hasSupport.value) return
-
-  const barcodeDetector = new BarcodeDetector()
-
-  const detect = async () => {
-    if (!isScanning.value) return
-
-    try {
-      const barcodes = await barcodeDetector.detect(video.value)
-      if (barcodes.length > 0) {
-        emit('scan', barcodes[0].rawValue)
-        close()
-        return
-      }
-    } catch (err) {
-      console.error('Detection error:', err)
-    }
-
-    animationId = requestAnimationFrame(detect)
-  }
-
-  detect()
 }
 
 const close = () => {
@@ -110,19 +104,8 @@ watch(() => props.modelValue, (newVal) => {
       </VCardTitle>
 
       <VCardText class="pa-0 relative overflow-hidden">
-        <div v-if="!hasSupport" class="pa-4 text-center">
-          <VAlert type="error" variant="tonal">
-            Tu navegador no soporta el escaneo nativo de códigos de barras.
-          </VAlert>
-        </div>
-        
-        <div v-else class="scanner-container">
-          <video
-            ref="video"
-            autoplay
-            playsinline
-            class="scanner-video"
-          ></video>
+        <div class="scanner-container">
+          <div id="barcode-reader" class="scanner-video"></div>
           <div class="scanner-overlay">
             <div class="scanner-laser"></div>
             <div class="scanner-frame"></div>
@@ -162,6 +145,12 @@ watch(() => props.modelValue, (newVal) => {
   block-size: 100%;
   inline-size: 100%;
   object-fit: cover;
+}
+
+.scanner-video :deep(video) {
+  block-size: 100% !important;
+  inline-size: 100% !important;
+  object-fit: cover !important;
 }
 
 .scanner-overlay {
