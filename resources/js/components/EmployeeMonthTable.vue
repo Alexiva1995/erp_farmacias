@@ -57,7 +57,7 @@ const formatCurrency = (amount) =>
 <template>
   <div class="employee-month-table-container">
     <!-- Vista de Escritorio: Tabla Premium -->
-    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden d-none d-md-block">
+    <VCard v-if="!$vuetify.display.smAndDown" class="rounded-xl border-0 shadow-sm overflow-hidden">
       <VDataTable
         :headers="headers"
         :items="props.items"
@@ -156,7 +156,7 @@ const formatCurrency = (amount) =>
     </VCard>
 
     <!-- Vista Móvil: Cards de Desempeño -->
-    <div class="d-flex flex-column gap-4 d-md-none">
+    <div v-else class="d-flex flex-column gap-4">
       <VCard
         v-for="(item, index) in props.items"
         :key="item.id"
