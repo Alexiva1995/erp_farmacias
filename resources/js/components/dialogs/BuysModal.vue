@@ -1011,10 +1011,19 @@ const changeAmountInCop = computed(() => {
     return vueltoEnMonedaOrden;
   }
 
-  const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
+  const baseCurrency = props.selectedCurrency;
+  const rates = exchangeRates.value?.[baseCurrency];
+
+  // REGLA NEGOCIO: Si la moneda base es USD y vamos a dar vuelto en COP,
+  // usar la tasa COPC (COP Cambio) si está disponible.
+  let rateToUse = "COP";
+  if (baseCurrency === "USD" && rates?.["COPC"]) {
+    rateToUse = "COPC";
+  }
+
+  const rate = rates?.[rateToUse];
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
-    console.log(roundUpToNearestHundred(vueltoConvertido));
     return roundUpToNearestHundred(vueltoConvertido);
   }
   return 0;

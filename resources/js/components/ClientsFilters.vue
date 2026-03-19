@@ -32,6 +32,7 @@ const clientTypeOptions = [
   { title: "Ocasional", value: "Ocasional" },
   { title: "En Riesgo", value: "En Riesgo" },
   { title: "Nuevo", value: "Nuevo" },
+  { title: "Inactivo", value: "Inactivo" },
 ];
 </script>
 
@@ -129,8 +130,8 @@ const clientTypeOptions = [
       <VExpandTransition>
         <div v-show="isFiltersVisible">
           <VDivider class="my-3 border-opacity-10" />
-          <VRow dense align="center">
-            <VCol cols="12" sm="6" md="2">
+          <VRow dense align="center" class="ma-0 px-1">
+            <VCol cols="12" sm="4" md="2">
               <VSelect
                 :model-value="props.tipo_identificacion_filtro"
                 label="Tipo ID"
@@ -143,7 +144,7 @@ const clientTypeOptions = [
                 @update:model-value="emit('update:tipo_identificacion_filtro', $event)"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="8" md="3">
               <VSelect
                 :model-value="props.company_id_filtro"
                 label="Empresa"

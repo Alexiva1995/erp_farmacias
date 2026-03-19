@@ -27,7 +27,8 @@ const clientTypeColor = (type) => {
     'Frecuente': 'success',
     'En Riesgo': 'error',
     'Ocasional': 'info',
-    'Nuevo': 'secondary',
+    'Nuevo': 'primary',
+    'Inactivo': 'secondary',
   }
   return map[type] || 'secondary'
 }

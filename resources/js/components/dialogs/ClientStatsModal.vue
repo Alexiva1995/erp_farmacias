@@ -22,7 +22,8 @@ const badgeConfig = computed(() => {
     Frecuente: { color: "success", icon: "tabler-heart", text: "Frecuente" },
     "En Riesgo": { color: "error", icon: "tabler-alert-triangle", text: "En Riesgo" },
     Ocasional: { color: "info", icon: "tabler-user", text: "Ocasional" },
-    Nuevo: { color: "secondary", icon: "tabler-user-plus", text: "Nuevo" },
+    Nuevo: { color: "primary", icon: "tabler-user-plus", text: "Nuevo" },
+    Inactivo: { color: "secondary", icon: "tabler-user-off", text: "Inactivo" },
   };
   return map[stats.value.badge] || map["Nuevo"];
 });
@@ -286,10 +287,10 @@ const onClose = () => {
 
 .label-premium {
   font-size: 0.55rem;
-  font-weight: 900;
-  text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.45);
+  font-weight: 900;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .stat-box-premium {
