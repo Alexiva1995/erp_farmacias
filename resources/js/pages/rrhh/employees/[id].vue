@@ -89,6 +89,8 @@ const defaultPerformanceData = {
     topLabsByUnits: [],
     topLabsByAmount: [],
   },
+  topProducts: [],
+  topLaboratories: [],
   inventoryCounts: { total: 0, discrepancies: 0 },
 };
 
@@ -197,7 +199,6 @@ const fetchPerformanceData = async () => {
   try {
     const response = await axios.get(`rrhh/employees/${route.params.id}/performance`);
     const rawData = response.data?.data;
-    // Manejar posible anidación data.data
     const data = (rawData?.data && typeof rawData.data === 'object' && !Array.isArray(rawData.data)) ? rawData.data : rawData;
     
     if (data) {
@@ -207,7 +208,10 @@ const fetchPerformanceData = async () => {
         salesMetrics: {
           ...performanceData.value.salesMetrics,
           ...(data.salesMetrics || {})
-        }
+        },
+        // Normalizar rankings desde multiples posibles estructuras de la API
+        topProducts: data.topProducts || data.rankings?.topProductsByUnits || [],
+        topLaboratories: data.topLaboratories || data.rankings?.topLabsByUnits || [],
       };
     }
   } catch (error) {
