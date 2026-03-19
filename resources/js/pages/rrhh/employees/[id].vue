@@ -294,7 +294,7 @@ const handleDownloadFile = async (file) => {
   }
 };
 
-onMounted(() => {
+const handleUpdateEmployeeDocument = async (photoOnly = false) => {
   const formData = new FormData();
   if (photo.value) formData.append('photo', photo.value);
   if (residenceLetter.value) formData.append('residence_letter', residenceLetter.value);
