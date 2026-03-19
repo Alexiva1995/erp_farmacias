@@ -1,6 +1,7 @@
-<script setup>
 import { ref, computed, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   isDialogVisible: {
@@ -578,7 +579,7 @@ watch(
                 :disabled="loading"
                 placeholder="Buscar..."
                 class="compact-autocomplete"
-                :custom-filter="() => true"
+                no-filter
                 @update:search="handleProductSearch"
                 @update:model-value="calculateTotalPrice()"
               >

@@ -151,6 +151,23 @@ const handleEditPack = (pack) => {
   addPackModal.value = true;
 };
 
+// Cambiar estado del pack (Activo/Inactivo)
+const handleToggleStatus = async (pack) => {
+  try {
+    const newStatus = !pack.is_active;
+    const response = await updatePack(pack.id, { ...pack, is_active: newStatus });
+    
+    if (response && response.success) {
+      toast.success(`Pack ${newStatus ? 'activado' : 'desactivado'} correctamente`);
+      await fetchPacks();
+    } else {
+      toast.error(response?.message || "Error al cambiar el estado");
+    }
+  } catch (error) {
+    toast.error("Error al comunicarse con el servidor");
+  }
+};
+
 // Eliminar Pack
 const handleDeletePack = async (pack) => {
   const result = await Swal.fire({
@@ -158,10 +175,14 @@ const handleDeletePack = async (pack) => {
     text: `Esta acción eliminará la oferta de ${pack.name}. Esta acción no se puede deshacer.`,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
+    confirmButtonColor: "rgb(var(--v-theme-primary))",
+    cancelButtonColor: "rgb(var(--v-theme-error))",
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'rounded-lg',
+      cancelButton: 'rounded-lg'
+    }
   });
 
   if (result.isConfirmed) {
@@ -261,7 +282,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="pa-2">
     <PacksFilters
       v-model:idSearchQuery="filterSearchQueryIdPacks"
       v-model:searchQuery="filterSearchQueryPacks"
@@ -270,8 +291,7 @@ onMounted(() => {
       @add-pack="handleAddPackModal"
     />
 
-    <VCard title="Packs de Productos">
-      <div class="mb-2"></div>
+    <VCard class="elevation-1 rounded-lg border-0 overflow-hidden mt-6">
       <PackTable
         :packs="packs"
         :loading="loadingPack"

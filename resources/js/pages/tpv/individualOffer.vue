@@ -225,20 +225,21 @@ onMounted(async () => {
       @add-product="handleAddIndividualOfferModal"
     />
 
-    <VCard title="Ofertas Individuales">
-      <div class="mb-2" />
-      <IndividualOfferTable
-        :products-offer="productDataOffer.data || []"
-        :loading="loadingProduct"
-        :total-offer="productDataOffer.total || 0"
-        :discount="discount"
-        :items-per-page="productDataOffer.per_page || 10"
-        :page="productDataOffer.current_page || 1"
-        @update:options="updateTableOptionsOffer"
-        @edit-offer="handleEditOffer"
-        @delete-offer="handleDeleteOffer"
-      />
-    </VCard>
+    <div class="d-flex align-center justify-space-between mb-4">
+      <h1 class="text-h5 font-weight-black text-primary uppercase letter-spacing-1">Ofertas Individuales</h1>
+    </div>
+
+    <IndividualOfferTable
+      :products-offer="productDataOffer.data || []"
+      :loading="loadingProduct"
+      :total-offer="productDataOffer.total || 0"
+      :discount="discount"
+      :items-per-page="productDataOffer.per_page || 10"
+      :page="productDataOffer.current_page || 1"
+      @update:options="updateTableOptionsOffer"
+      @edit-offer="handleEditOffer"
+      @delete-offer="handleDeleteOffer"
+    />
 
     <IndividualCreateOffer
       v-model="isOfferDialogVisible"
