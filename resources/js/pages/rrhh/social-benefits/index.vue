@@ -156,7 +156,7 @@ watch(
 );
 </script>
 <template>
-  <VContainer fluid>
+  <div>
     <input
       type="file"
       ref="fileInput"
@@ -164,6 +164,7 @@ watch(
       accept="application/pdf,image/*"
       @change="onFileSelected"
     />
+    
     <SocialBenefitsEmployeeFilter
       v-model:search="search"
       @clear="handleClearFilters"
@@ -187,5 +188,5 @@ watch(
       @upload-signed="handleUploadSignedSettlement"
       @download-signed="handleDownloadSignedSettlement"
     />
-  </VContainer>
+  </div>
 </template>

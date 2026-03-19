@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, defineProps, ref, watch } from "vue";
+import { computed, defineProps, ref, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
@@ -20,31 +20,44 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "saved"]);
 
+const { mobile } = useDisplay();
+
 // Form data
 const doctorsOfferData = ref({
   doctor_id: null,
   start_date: "",
   end_date: "",
-  discount: "", // Nuevo campo descuento
+  discount: "",
   is_active: true,
 });
 
-const loading = ref(false);
+const isSaving = ref(false);
 const formErrors = ref({});
-const { mobile } = useDisplay();
 
-// Opciones para el select de estatus
-const statusOptions = [
-  { title: "Activa", value: true },
-  { title: "Inactiva", value: false },
-];
-
-// Computed properties
 const dialogTitle = computed(() => {
-  return props.isEditing ? "Editar Oferta" : "Crear Nueva Oferta";
+  return props.isEditing ? "Editar Oferta de Médico" : "Nueva Oferta de Médico";
 });
 
-// Resetear formulario
+const selectedDoctorDisplay = computed(() => {
+  if (!doctorsOfferData.value.doctor_id) return '';
+  const doctor = props.doctorsData.find(d => d.id === doctorsOfferData.value.doctor_id);
+  return doctor ? `${doctor.id} - ${doctor.name}` : `ID: ${doctorsOfferData.value.doctor_id}`;
+});
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const onCancel = () => {
+  resetForm();
+  emit("update:modelValue", false);
+};
+
 const resetForm = () => {
   doctorsOfferData.value = {
     doctor_id: null,
@@ -56,23 +69,16 @@ const resetForm = () => {
   formErrors.value = {};
 };
 
-const onCancel = () => {
-  resetForm();
-  emit("update:modelValue", false);
-};
-
 const onSave = async () => {
-  // Validación simple del lado del cliente antes de enviar
   if (!doctorsOfferData.value.doctor_id || !doctorsOfferData.value.discount) {
-    toast.error("Por favor complete los campos obligatorios");
+    toast.error("POR FAVOR COMPLETE LOS CAMPOS OBLIGATORIOS");
     return;
   }
 
-  loading.value = true;
-  formErrors.value = {}; // Limpiar errores previos
+  isSaving.value = true;
+  formErrors.value = {};
 
   try {
-    // Preparamos los datos. Aseguramos que el descuento sea numérico.
     const payload = {
       ...doctorsOfferData.value,
       discount: parseFloat(doctorsOfferData.value.discount),
@@ -85,59 +91,44 @@ const onSave = async () => {
     const method = props.isEditing ? "put" : "post";
 
     await axios[method](url, payload);
-
-    toast.success("La oferta se ha guardado correctamente");
-
+    toast.success("LA OFERTA SE HA GUARDADO CORRECTAMENTE");
     emit("saved");
     onCancel();
   } catch (error) {
-    console.error("Error al guardar la oferta:", error);
-
+    console.error("Error saving doctor offer:", error);
     if (error.response?.data?.errors) {
       formErrors.value = error.response.data.errors;
-      // Mostrar toast solo si hay error general, si es de validación ya sale en el input
-      const errors = Object.values(error.response.data.errors).flat();
-      if (errors.length > 0) toast.error("Por favor revise el formulario");
+      toast.error("POR FAVOR REVISE EL FORMULARIO");
     } else {
-      toast.error(
-        error.response?.data?.message || "Error al guardar la oferta"
-      );
+      toast.error(error.response?.data?.message || "ERROR AL GUARDAR LA OFERTA");
     }
   } finally {
-    loading.value = false;
+    isSaving.value = false;
   }
 };
 
-// Watchers
 watch(
   () => props.modelValue,
   (isVisible) => {
-    if (isVisible && props.isEditing && props.doctorsOfferToEdit) {
-      // Cargar datos para edición
-      doctorsOfferData.value = {
-        id: props.doctorsOfferToEdit.id,
-        doctor_id: props.doctorsOfferToEdit.doctor_id,
-        start_date: formatDateForInput(props.doctorsOfferToEdit.start_date),
-        end_date: formatDateForInput(props.doctorsOfferToEdit.end_date),
-        // Asumimos que la API ahora devuelve 'discount' en el objeto principal
-        discount: props.doctorsOfferToEdit.discount,
-        is_active: Boolean(props.doctorsOfferToEdit.is_active),
-      };
-    } else if (isVisible) {
-      resetForm();
+    if (isVisible) {
+      if (props.isEditing && props.doctorsOfferToEdit) {
+        nextTick(() => {
+          doctorsOfferData.value = {
+            id: props.doctorsOfferToEdit.id,
+            doctor_id: props.doctorsOfferToEdit.doctor_id,
+            start_date: formatDateForInput(props.doctorsOfferToEdit.start_date),
+            end_date: formatDateForInput(props.doctorsOfferToEdit.end_date),
+            discount: props.doctorsOfferToEdit.discount,
+            is_active: Boolean(props.doctorsOfferToEdit.is_active),
+          };
+        });
+      } else {
+        resetForm();
+      }
     }
-  }
+  },
+  { immediate: true }
 );
-
-const formatDateForInput = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
 </script>
 
 <template>
@@ -149,85 +140,133 @@ const formatDateForInput = (dateString) => {
     :retain-focus="false"
     :fullscreen="mobile"
     transition="dialog-bottom-transition"
-    @update:model-value="onCancel"
+    class="premium-dialog"
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard :loading="loading" :class="mobile ? 'rounded-0' : 'rounded-lg overflow-hidden border-0 elevation-12'">
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-stethoscope" size="24" color="white" />
-          <span class="text-h6 text-white">{{ dialogTitle }}</span>
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24 text-none'">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
+            <VIcon icon="tabler-stethoscope" color="primary" size="26" />
+          </VAvatar>
+          <div>
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">{{ dialogTitle }}</h2>
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+              Gestión de beneficios para médicos aliados
+            </span>
+          </div>
+          <VSpacer />
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="onCancel"
+            :disabled="isSaving"
+          >
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VBtn icon variant="text" color="white" size="small" @click="onCancel" :disabled="loading">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
-        <p class="text-h6 font-weight-medium mb-4">Información de la Oferta</p>
-
-        <VRow>
-          <VCol cols="12">
-            <VSelect
+      <VCardText class="pa-6 bg-light">
+        <VRow dense>
+          <!-- Selector de Médico -->
+          <VCol cols="12" md="8">
+            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Médico Aliado</span>
+            <VAutocomplete
+              v-if="!props.isEditing"
               v-model="doctorsOfferData.doctor_id"
-              label="Seleccionar Médico"
               :items="props.doctorsData"
               :item-title="(item) => `${item.id} - ${item.name}`"
               item-value="id"
-              placeholder="Buscar médico..."
+              placeholder="BUSCAR MÉDICO POR ID O NOMBRE..."
               variant="outlined"
-              :error-messages="formErrors.doctor_id"
+              density="compact"
+              hide-details
               clearable
+              :disabled="isSaving"
+              class="premium-input-compact mb-4"
+              :error="!!formErrors.doctor_id"
             />
-          </VCol>
-
-          <VCol cols="12" sm="6">
             <VTextField
-              v-model="doctorsOfferData.start_date"
-              label="Fecha de Inicio"
-              type="date"
-              placeholder="YYYY-MM-DD"
+              v-else
+              :model-value="selectedDoctorDisplay"
+              readonly
               variant="outlined"
-              :error-messages="formErrors.start_date"
+              density="compact"
+              class="premium-input-compact mb-4"
+              bg-color="white"
             />
           </VCol>
 
-          <VCol cols="12" sm="6">
-            <VTextField
-              v-model="doctorsOfferData.end_date"
-              label="Fecha de Finalización"
-              type="date"
-              placeholder="YYYY-MM-DD"
+          <VCol cols="12" md="4">
+            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado</span>
+            <VSelect
+              v-model="doctorsOfferData.is_active"
+              :items="[
+                { value: true, title: 'ACTIVA' },
+                { value: false, title: 'INACTIVA' },
+              ]"
+              item-title="title"
+              item-value="value"
               variant="outlined"
-              :error-messages="formErrors.end_date"
+              density="compact"
+              hide-details
+              class="premium-input-compact mb-4"
+              :disabled="isSaving"
             />
           </VCol>
 
-          <VCol cols="12" sm="6">
-            <VTextField
+          <VCol cols="12" md="4">
+            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">% Descuento</span>
+            <AppTextField
               v-model="doctorsOfferData.discount"
-              label="Porcentaje de Descuento"
               type="number"
               placeholder="0"
               suffix="%"
               min="0"
               max="100"
               variant="outlined"
-              :error-messages="formErrors.discount"
+              density="compact"
+              hide-details
+              prepend-inner-icon="tabler-percentage"
+              class="premium-input-compact"
+              :error="!!formErrors.discount"
+              :disabled="isSaving"
             />
           </VCol>
 
-          <VCol cols="12" sm="6">
-            <VSelect
-              v-model="doctorsOfferData.is_active"
-              label="Estatus"
-              :items="statusOptions"
-              item-title="title"
-              item-value="value"
-              placeholder="Seleccione un estatus"
-              variant="outlined"
-              :error-messages="formErrors.is_active"
+          <VCol cols="12" sm="6" md="4">
+            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Inicio</span>
+            <AppDateTimePicker
+              v-model="doctorsOfferData.start_date"
+              placeholder="SELECCIONAR FECHA"
+              prepend-inner-icon="tabler-calendar-event"
+              density="compact"
+              hide-details
+              class="premium-input-compact"
+              :error="!!formErrors.start_date"
+              :disabled="isSaving"
+              :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+            />
+          </VCol>
+
+          <VCol cols="12" sm="6" md="4">
+            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Final</span>
+            <AppDateTimePicker
+              v-model="doctorsOfferData.end_date"
+              placeholder="SELECCIONAR FECHA"
+              prepend-inner-icon="tabler-calendar-off"
+              density="compact"
+              hide-details
+              class="premium-input-compact"
+              :error="!!formErrors.end_date"
+              :disabled="isSaving"
+              :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
             />
           </VCol>
         </VRow>
@@ -235,30 +274,35 @@ const formatDateForInput = (dateString) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-5">
-        <VRow class="w-100 ma-0">
-          <VCol cols="6" class="pa-2">
+      <VCardActions class="pa-6 bg-light border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
+              variant="tonal"
+              size="large"
               block
+              height="48"
+              class="font-weight-black rounded-lg text-button uppercase"
               @click="onCancel"
-              :disabled="loading"
+              :disabled="isSaving"
             >
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="6" class="pa-2">
+          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              prepend-icon="tabler-check"
+              size="large"
               block
-              :loading="loading"
+              height="48"
+              class="font-weight-black rounded-lg shadow-primary-lg text-button uppercase"
+              :loading="isSaving"
               @click="onSave"
             >
-              {{ props.isEditing ? "Actualizar" : "Guardar" }}
+              <VIcon icon="tabler-device-floppy" class="me-2" />
+              {{ props.isEditing ? "Guardar Cambios" : "Crear Oferta" }}
             </VBtn>
           </VCol>
         </VRow>
@@ -266,3 +310,59 @@ const formatDateForInput = (dateString) => {
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.premium-input-compact :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.15 !important;
+  color: rgba(var(--v-border-color), 1) !important;
+}
+
+.premium-input-compact :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1 !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.premium-input-compact :deep(.v-field) {
+  border-radius: 8px !important;
+  min-height: 38px !important;
+  background-color: white !important;
+}
+
+.premium-input-compact :deep(.v-field__input) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  min-height: 38px !important;
+  text-transform: uppercase;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow-primary-lg {
+  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+</style>

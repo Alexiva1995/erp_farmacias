@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -10,6 +11,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "refresh-table", "close"]);
+
+const { mobile } = useDisplay();
 
 const step = ref("employee");
 const settlement = ref(null);
@@ -76,7 +79,6 @@ const fetchSettlement = async () => {
 const fetchExchangeRate = async () => {
   try {
     const { data } = await axios.get("/finances/exchange-rates/consultOneBCV");
-
     exchangeRate.value = data.rate;
   } catch (error) {
     toast.error("No se pudo obtener la tasa del día");
@@ -93,11 +95,9 @@ watch(
       // Inicializar overrides con valores actuales
       const resignation = props.selectedEmployee.resignation;
       
-      // Fecha de Ingreso: Prioridad en renuncia > creación empleado
       const rawHireDate = resignation?.start_date || props.selectedEmployee.created_at;
       hireDateOverride.value = rawHireDate ? rawHireDate.split("T")[0] : null;
 
-      // Fecha de Egreso: Prioridad en renuncia > hoy
       const rawResignationDate = resignation?.effective_date || new Date().toISOString();
       resignationDateOverride.value = rawResignationDate ? rawResignationDate.split("T")[0] : null;
       
@@ -158,13 +158,12 @@ const submitForm = async () => {
       },
     };
 
-    const { data, headers } = await axios.post(
+    const { data } = await axios.post(
       `/rrhh/social-benefits/employees/${props.selectedEmployee.id}/fire`,
       payload,
       { responseType: "blob" }
     );
 
-    // Manejar descarga del PDF
     const blob = new Blob([data], { type: "application/pdf" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -175,40 +174,15 @@ const submitForm = async () => {
     );
     document.body.appendChild(link);
     link.click();
-    link.remove(); window.URL.revokeObjectURL(url);
+    link.remove();
+    window.URL.revokeObjectURL(url);
 
     toast.success("Empleado liquidado y documento generado con éxito");
     emit("refresh-table");
     closeDialog();
   } catch (error) {
-    if (error.response?.data instanceof Blob) {
-      if (error.response.data.type === "application/json") {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const errorData = JSON.parse(reader.result);
-            toast.error(errorData.message || "Error en validación de datos");
-            if (errorData.errors) {
-              errors.value = errorData.errors;
-              if (errors.value.percentage) step.value = "employee";
-            }
-          } catch (e) {
-            toast.error("Error al procesar la respuesta del servidor");
-          }
-        };
-        reader.readAsText(error.response.data);
-      } else {
-        toast.error(`Error del servidor (${error.response.status})`);
-      }
-    } else {
-      console.error("Error en liquidación:", error);
-      const message = error.response?.data?.message || error.message || "Error de conexión con el servidor";
-      toast.error(message);
-      if (error.response?.data?.errors) {
-        errors.value = error.response.data.errors;
-        if (errors.value.percentage) step.value = "employee";
-      }
-    }
+    console.error("Error en liquidación:", error);
+    toast.error("Error al procesar la liquidación");
   }
 };
 
@@ -260,316 +234,358 @@ const formatDate = (dateString) => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="1000px"
+    max-width="1100px"
     persistent
+    scrollable
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
     @update:model-value="closeDialog"
-    :scrollable="true"
+    @click:outside.prevent
+    @keydown.esc.prevent="closeDialog"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center py-3 bg-light-primary">
-        <span class="text-h6">
-          Liquidación: {{ props.selectedEmployee?.name }}
-          {{ props.selectedEmployee?.last_name }}
-        </span>
-        <VSpacer />
-        <VBtn icon variant="text" density="compact" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
+            <VIcon icon="tabler-file-analytics" color="primary" size="26" />
+          </VAvatar>
+          <div class="flex-grow-1">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
+              Liquidación de Haberes
+            </h2>
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+              Empleado: {{ props.selectedEmployee?.name }} {{ props.selectedEmployee?.last_name }} | C.I: {{ props.selectedEmployee?.identification }}
+            </span>
+          </div>
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg ms-3"
+            @click="closeDialog"
+          >
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
+        </div>
       </VCardTitle>
 
-      <VDivider />
+      <VCardText class="pa-0 bg-light">
+        <div class="pa-4 bg-white border-b overflow-x-auto no-scrollbar">
+          <VTabs v-model="step" density="compact" class="premium-tabs" hide-slider>
+            <VTab value="employee" class="rounded-lg me-2 transition-all">
+              <VIcon icon="tabler-calculator" class="me-2" size="18" />
+              1. Configuración y Cálculo
+            </VTab>
+            <VTab value="payment" class="rounded-lg transition-all" :disabled="!settlement">
+              <VIcon icon="tabler-wallet" class="me-2" size="18" />
+              2. Gestión de Pago
+            </VTab>
+          </VTabs>
+        </div>
 
-      <VCardText class="pa-4 bg-surface">
-        <VTabs v-model="step" density="compact" class="mb-5 custom-tabs border-b">
-          <VTab value="employee" class="text-uppercase font-weight-bold">1. Configuración y Cálculo</VTab>
-          <VTab value="payment" class="text-uppercase font-weight-bold">2. Gestión de Pago</VTab>
-        </VTabs>
-
-        <VTabsWindow v-model="step">
+        <VTabsWindow v-model="step" class="pa-4 pa-md-6">
           <VTabsWindowItem value="employee">
-            <!-- Sección Superior: Configuración y Salario -->
-            <VRow dense class="mb-5">
-              <!-- Card 1: Configuración de Fechas y Base -->
-              <VCol cols="12" md="6">
-                <VCard variant="outlined" class="rounded-lg pa-2 h-100 bg-surface border">
-                  <VCardText class="pa-3">
-                    <div class="d-flex align-center mb-6">
-                      <VIcon icon="tabler-settings-automation" color="primary" class="me-2" />
-                      <span class="text-subtitle-1 font-weight-bold opacity-90">Parámetros de Cálculo</span>
-                    </div>
-                    <VRow dense>
-                      <VCol cols="12" md="4">
-                        <VTextField
-                          v-model="hireDateOverride"
-                          label="Fecha de Ingreso"
-                          type="date"
-                          density="compact"
-                          variant="outlined"
-                          persistent-placeholder
-                          @change="fetchSettlement"
-                        />
-                      </VCol>
-                      <VCol cols="12" md="4">
-                        <VTextField
-                          v-model="resignationDateOverride"
-                          label="Fecha de Egreso"
-                          type="date"
-                          density="compact"
-                          variant="outlined"
-                          persistent-placeholder
-                          @change="fetchSettlement"
-                        />
-                      </VCol>
-                      <VCol cols="12" md="4">
-                        <VTextField
-                          :model-value="formatNumberWithSeparators(baseSalaryOverride)"
-                          label="Salario Base (USD)"
-                          density="compact"
-                          variant="outlined"
-                          prefix="$"
-                          persistent-placeholder
-                          @update:model-value="(val) => handleNumberInput('baseSalaryOverride', val)"
-                        />
-                      </VCol>
-                    </VRow>
-                  </VCardText>
-                </VCard>
-              </VCol>
-
-              <!-- Card 2: Salario Promedio + Integral/Diario -->
-              <VCol cols="12" md="6">
-                <VCard variant="flat" class="rounded-lg pa-2 h-100 bg-primary-lighten-5 border">
-                  <VCardText class="pa-3 text-center d-flex flex-column justify-center align-center">
-                    <div class="text-overline text-primary font-weight-bold mb-1">PROMEDIO ÚLTIMOS SALARIOS</div>
-                    <div class="text-h3 font-weight-black text-primary">
-                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-h6">Bs</small>
-                    </div>
-
-                    <!-- Datos Restituidos: Diario e Integral -->
-                    <div class="d-flex gap-4 mt-2 justify-center align-center">
-                       <div class="text-center">
-                         <div class="text-caption text-medium-emphasis font-weight-bold">DIARIO</div>
-                         <div class="text-subtitle-2 font-weight-bold text-primary">{{ displayAmount(settlement?.daily_wage ?? 0) }} Bs</div>
-                       </div>
-                       <VDivider vertical class="mx-2" />
-                       <div class="text-center">
-                         <div class="text-caption text-medium-emphasis font-weight-bold">INTEGRAL</div>
-                         <div class="text-subtitle-2 font-weight-bold text-primary">{{ displayAmount(settlement?.integral_salary ?? 0) }} Bs</div>
-                       </div>
-                    </div>
-
-                    <div class="text-caption font-weight-medium mt-2">
-                       Calculado sobre {{ settlement?.average_salary_count ?? 0 }} registros
-                       <VBtn icon size="x-small" variant="tonal" color="primary" class="ms-1" @click="showSalaryDetails = !showSalaryDetails">
-                         <VIcon>{{ showSalaryDetails ? 'tabler-eye-off' : 'tabler-eye' }}</VIcon>
-                       </VBtn>
-                    </div>
-                  </VCardText>
-                </VCard>
-              </VCol>
-
-              <!-- Detalles de salarios (Expandible) -->
-              <VCol cols="12" v-if="showSalaryDetails">
-                <VCard variant="flat" class="bg-surface-variant rounded-lg pa-3 animate__animated animate__fadeIn border">
-                  <div v-if="settlement?.last_salaries?.length > 0" class="d-flex flex-wrap gap-2 justify-center">
-                    <VChip v-for="(salary, index) in settlement.last_salaries" :key="index" size="small" variant="elevated" color="surface" border>
-                      <span class="text-medium-emphasis me-1">{{ formatDate(salary.payslip_date) }}:</span>
-                      <strong class="text-primary">{{ formatCurrency(salary.amount_bs) }} Bs</strong>
-                    </VChip>
+            <VRow dense>
+              <!-- Sección: Parámetros -->
+              <VCol cols="12" lg="8">
+                <VCard variant="flat" class="rounded-xl border border-dashed pa-4 mb-4 bg-white shadow-xs">
+                  <div class="d-flex align-center mb-4">
+                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Parámetros de Cálculo</span>
+                    <VSpacer />
+                    <VChip size="x-small" color="primary" variant="tonal" class="rounded font-weight-black">MODIFICABLES</VChip>
                   </div>
-                  <div v-else class="text-caption text-center italic">No hay historial salarial disponible</div>
+                  <VRow dense>
+                    <VCol cols="12" md="4">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase ms-1 mb-1 d-block">Fecha Ingreso</span>
+                      <AppDateTimePicker
+                        v-model="hireDateOverride"
+                        placeholder="INGRESAR"
+                        density="compact"
+                        hide-details
+                        class="premium-input-compact"
+                        @update:model-value="fetchSettlement"
+                      />
+                    </VCol>
+                    <VCol cols="12" md="4">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase ms-1 mb-1 d-block">Fecha Egreso</span>
+                      <AppDateTimePicker
+                        v-model="resignationDateOverride"
+                        placeholder="EGRESAR"
+                        density="compact"
+                        hide-details
+                        class="premium-input-compact"
+                        @update:model-value="fetchSettlement"
+                      />
+                    </VCol>
+                    <VCol cols="12" md="4">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase ms-1 mb-1 d-block">Sueldo Base (USD)</span>
+                      <AppTextField
+                        :model-value="formatNumberWithSeparators(baseSalaryOverride)"
+                        placeholder="0.00"
+                        density="compact"
+                        hide-details
+                        prefix="$"
+                        class="premium-input-compact"
+                        @update:model-value="(val) => handleNumberInput('baseSalaryOverride', val)"
+                      />
+                    </VCol>
+                  </VRow>
                 </VCard>
-              </VCol>
-            </VRow>
 
-            <!-- Tablas de Detalle -->
-            <VRow>
-              <VCol cols="12" md="6">
-                <VCard variant="outlined" class="rounded-lg overflow-hidden h-100 bg-surface border">
-                  <div class="bg-surface pa-3 font-weight-bold d-flex align-center border-b">
-                    <VIcon icon="tabler-list-check" class="me-2" size="20" color="primary" /> Devengaciones
-                  </div>
-                  <VTable density="compact">
-                    <thead>
-                      <tr>
-                        <th class="text-uppercase text-caption font-weight-bold">Concepto</th>
-                        <th class="text-center text-uppercase text-caption font-weight-bold">Días</th>
-                        <th class="text-end text-uppercase text-caption font-weight-bold">Monto (Bs)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Prestaciones Sociales</td>
-                        <td class="text-center">{{ settlement?.social_benefits_days ?? 0 }}</td>
-                        <td class="text-end">{{ displayAmount(settlement?.social_benefits_amount ?? 0) }}</td>
-                      </tr>
-                      <tr>
-                        <td>Vacaciones Fracc.</td>
-                        <td class="text-center">{{ settlement?.vacation_voucher_days ?? 0 }}</td>
-                        <td class="text-end">{{ displayAmount(settlement?.vacation_voucher_amount ?? 0) }}</td>
-                      </tr>
-                      <tr>
-                        <td>Bono Vacacional</td>
-                        <td class="text-center">{{ settlement?.vacation_bonus_voucher_days ?? 0 }}</td>
-                        <td class="text-end">{{ displayAmount(settlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
-                      </tr>
-                      <tr>
-                        <td>Utilidades</td>
-                        <td class="text-center">{{ settlement?.earnings_voucher_days ?? 0 }}</td>
-                        <td class="text-end">{{ displayAmount(settlement?.earnings_voucher_amount ?? 0) }}</td>
-                      </tr>
-                      <tr class="bg-primary-lighten-5 font-weight-black">
-                        <td>TOTAL DEVENGADO</td>
-                        <td class="text-center">{{ settlement?.total_settlement_days ?? 0 }}</td>
-                        <td class="text-end text-primary">{{ displayAmount(settlement?.total_settlement_amount ?? 0) }}</td>
-                      </tr>
-                    </tbody>
-                  </VTable>
-                </VCard>
-              </VCol>
-
-              <VCol cols="12" md="6">
-                <VCard variant="outlined" class="rounded-lg overflow-hidden h-100 bg-surface border">
-                  <div class="bg-surface pa-3 font-weight-bold d-flex align-center border-b">
-                    <VIcon icon="tabler-minus-vertical" class="me-2" size="20" color="error" /> Deducciones
-                  </div>
-                  <VTable density="compact">
-                    <thead>
-                      <tr>
-                        <th class="text-uppercase text-caption font-weight-bold">Concepto</th>
-                        <th class="text-end text-uppercase text-caption font-weight-bold">Monto (Bs)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Deducción Vacaciones</td>
-                        <td class="text-end">
-                          <VTextField
-                            :model-value="formatNumberWithSeparators(vacationDeductionOverride)"
-                            density="compact"
-                            hide-details
-                            variant="solo-filled"
-                            flat
-                            class="text-right-input text-error font-weight-bold custom-deduction-input"
-                            @update:model-value="(val) => handleNumberInput('vacationDeductionOverride', val)"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Deducción Bono Vac.</td>
-                        <td class="text-end">
-                          <VTextField
-                            :model-value="formatNumberWithSeparators(vacationBonusDeductionOverride)"
-                            density="compact"
-                            hide-details
-                            variant="solo-filled"
-                            flat
-                            class="text-right-input text-error font-weight-bold custom-deduction-input"
-                            @update:model-value="(val) => handleNumberInput('vacationBonusDeductionOverride', val)"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Deducción Utilidades</td>
-                        <td class="text-end">
-                          <VTextField
-                            :model-value="formatNumberWithSeparators(earningsDeductionOverride)"
-                            density="compact"
-                            hide-details
-                            variant="solo-filled"
-                            flat
-                            class="text-right-input text-error font-weight-bold custom-deduction-input"
-                            @update:model-value="(val) => handleNumberInput('earningsDeductionOverride', val)"
-                          />
-                        </td>
-                      </tr>
-                      <!-- Deducciones Adicionales -->
-                      <tr v-for="(ded, idx) in additionalDeductions" :key="idx" class="italic">
-                        <td class="d-flex align-center">
-                          <VBtn icon size="x-small" variant="text" color="error" class="me-1" @click="removeDeduction(idx)">
-                            <VIcon size="14">tabler-trash-x</VIcon>
-                          </VBtn>
-                          {{ ded.description }}
-                        </td>
-                        <td class="text-end text-error">- {{ displayAmount(ded.amount * exchangeRate) }}</td>
-                      </tr>
-                      <!-- Fila Agregar -->
-                      <tr class="bg-surface-variant">
-                        <td colspan="2" class="pa-1">
-                          <div class="d-flex align-center gap-2">
-                            <VTextField v-model="newDeduction.description" placeholder="Añadir nueva deducción..." variant="plain" density="compact" hide-details class="text-caption px-2" />
-                            <VTextField v-model="newDeduction.amount" type="number" placeholder="0,00" variant="plain" density="compact" hide-details class="text-caption font-weight-bold px-2" style="max-inline-size: 80px;" @keyup.enter="addDeduction" />
-                            <VBtn icon="tabler-plus" size="x-small" color="primary" variant="elevated" @click="addDeduction" />
-                          </div>
-                        </td>
-                      </tr>
-                      <tr class="bg-error-lighten-5 font-weight-black">
-                        <td>TOTAL DEDUCCIONES</td>
-                        <td class="text-end text-error">{{ displayAmount((settlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
-                      </tr>
-                    </tbody>
-                  </VTable>
-                </VCard>
-              </VCol>
-            </VRow>
-
-            <!-- Resumen Inferior Hero -->
-            <VCard variant="flat" class="mt-6 border-primary border-t-2 rounded-lg bg-primary-lighten-5 animate__animated animate__slideInUp border">
-              <VCardText class="pa-4">
-                <VRow align="center">
-                  <VCol cols="12" md="3">
-                    <div class="d-flex flex-column">
-                      <span class="text-caption text-primary font-weight-bold text-uppercase">Tasa del Día</span>
-                      <div class="text-h6 font-weight-bold">1 USD = {{ displayAmount(exchangeRate) }} <span class="text-caption">Bs</span></div>
-                    </div>
-                  </VCol>
-                  <VCol cols="12" md="3">
-                    <VTextField
-                      v-model="percentage"
-                      label="% A Liquidar"
-                      type="number"
-                      density="compact"
-                      variant="outlined"
-                      suffix="%"
-                      bg-color="surface"
-                      hide-details
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6" class="text-end">
-                    <div class="d-flex flex-column align-end">
-                      <span class="text-subtitle-2 text-primary font-weight-bold mb-n1">TOTAL NETO A PAGAR</span>
-                      <div class="text-h2 font-weight-black text-primary d-flex align-end gap-1">
-                        {{ displayAmount(amountToPay) }} <span class="text-h4 mb-1">USD</span>
+                <!-- Tablas de Detalle -->
+                <VRow dense>
+                  <!-- Devengaciones -->
+                  <VCol cols="12" md="6">
+                    <VCard variant="flat" class="rounded-xl border overflow-hidden shadow-xs h-100 bg-white">
+                      <div class="pa-3 bg-light border-b d-flex align-center">
+                        <VIcon icon="tabler-plus" color="success" size="16" class="me-2" />
+                        <span class="text-xs font-weight-black text-high-emphasis uppercase">Devengaciones</span>
                       </div>
-                      <div class="text-subtitle-2 text-medium-emphasis font-weight-medium">
-                        ≈ {{ displayAmount(amountToPay * exchangeRate) }} <span class="text-caption">Bs.S</span>
+                      <VTable density="compact" class="premium-micro-table">
+                        <thead>
+                          <tr>
+                            <th class="text-left text-super-xs font-weight-black text-disabled uppercase py-2">Concepto</th>
+                            <th class="text-center text-super-xs font-weight-black text-disabled uppercase py-2">Días</th>
+                            <th class="text-right text-super-xs font-weight-black text-disabled uppercase py-2">Monto (Bs)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Antigüedad/Prestaciones</td>
+                            <td class="text-center font-weight-black">{{ settlement?.social_benefits_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.social_benefits_amount ?? 0) }}</td>
+                          </tr>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Vacaciones Fracc.</td>
+                            <td class="text-center font-weight-black">{{ settlement?.vacation_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.vacation_voucher_amount ?? 0) }}</td>
+                          </tr>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Bono Vacacional</td>
+                            <td class="text-center font-weight-black">{{ settlement?.vacation_bonus_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
+                          </tr>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Utilidades</td>
+                            <td class="text-center font-weight-black">{{ settlement?.earnings_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.earnings_voucher_amount ?? 0) }}</td>
+                          </tr>
+                          <tr class="bg-success-lighten-5">
+                            <td colspan="2" class="text-xs font-weight-black text-success uppercase">Subtotal Devengado</td>
+                            <td class="text-right text-success font-weight-black">{{ displayAmount(settlement?.total_settlement_amount ?? 0) }}</td>
+                          </tr>
+                        </tbody>
+                      </VTable>
+                    </VCard>
+                  </VCol>
+
+                  <!-- Deducciones -->
+                  <VCol cols="12" md="6">
+                    <VCard variant="flat" class="rounded-xl border overflow-hidden shadow-xs h-100 bg-white">
+                      <div class="pa-3 bg-light border-b d-flex align-center">
+                        <VIcon icon="tabler-minus" color="error" size="16" class="me-2" />
+                        <span class="text-xs font-weight-black text-high-emphasis uppercase">Deducciones</span>
                       </div>
-                    </div>
+                      <VTable density="compact" class="premium-micro-table">
+                        <thead>
+                          <tr>
+                            <th class="text-left text-super-xs font-weight-black text-disabled uppercase py-2">Concepto</th>
+                            <th class="text-right text-super-xs font-weight-black text-disabled uppercase py-2">Monto (Bs)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Deducción Vacaciones</td>
+                            <td class="text-right pa-1">
+                              <input
+                                :value="formatNumberWithSeparators(vacationDeductionOverride)"
+                                class="micro-input text-end font-weight-black text-error"
+                                @input="(e) => handleNumberInput('vacationDeductionOverride', e.target.value)"
+                              />
+                            </td>
+                          </tr>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Ded. Bono Vacacional</td>
+                            <td class="text-right pa-1">
+                              <input
+                                :value="formatNumberWithSeparators(vacationBonusDeductionOverride)"
+                                class="micro-input text-end font-weight-black text-error"
+                                @input="(e) => handleNumberInput('vacationBonusDeductionOverride', e.target.value)"
+                              />
+                            </td>
+                          </tr>
+                          <tr>
+                            <td class="text-xs font-weight-bold">Deducción Utilidades</td>
+                            <td class="text-right pa-1">
+                              <input
+                                :value="formatNumberWithSeparators(earningsDeductionOverride)"
+                                class="micro-input text-end font-weight-black text-error"
+                                @input="(e) => handleNumberInput('earningsDeductionOverride', e.target.value)"
+                              />
+                            </td>
+                          </tr>
+                          <!-- Deducciones Adicionales -->
+                          <tr v-for="(ded, idx) in additionalDeductions" :key="idx" class="bg-error-lighten-5 border-dashed-t">
+                            <td class="text-super-xs font-weight-black d-flex align-center py-1">
+                              <VBtn icon="tabler-trash-x" size="16" variant="text" color="error" class="me-1" @click="removeDeduction(idx)" />
+                              {{ ded.description.toUpperCase() }}
+                            </td>
+                            <td class="text-right text-super-xs font-weight-black text-error py-1">- {{ displayAmount(ded.amount * exchangeRate) }}</td>
+                          </tr>
+                          <tr class="bg-light">
+                            <td colspan="2" class="pa-1">
+                              <div class="d-flex align-center gap-1 bg-white rounded border pa-1">
+                                <input v-model="newDeduction.description" placeholder="+ OTRA DEDUCCIÓN" class="micro-input grow flex-grow-1" />
+                                <VDivider vertical class="mx-1" />
+                                <input v-model="newDeduction.amount" type="number" placeholder="0.00" class="micro-input w-50 font-weight-black" style="max-inline-size: 60px" @keyup.enter="addDeduction" />
+                                <VBtn icon="tabler-plus" size="18" color="primary" variant="tonal" class="rounded" @click="addDeduction" />
+                              </div>
+                            </td>
+                          </tr>
+                          <tr class="bg-error-lighten-5">
+                            <td class="text-xs font-weight-black text-error uppercase">Subtotal Deducido</td>
+                            <td class="text-right text-error font-weight-black">{{ displayAmount((settlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
+                          </tr>
+                        </tbody>
+                      </VTable>
+                    </VCard>
                   </VCol>
                 </VRow>
-              </VCardText>
-            </VCard>
+              </VCol>
+
+              <!-- Sección Derecha: Resumen -->
+              <VCol cols="12" lg="4">
+                <div class="d-flex flex-column gap-4 h-100">
+                  <VCard variant="flat" class="rounded-xl border bg-primary text-white shadow-sm pa-5">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                      <span class="text-super-xs font-weight-bold opacity-75 uppercase">Promedio Últimos Sueldos</span>
+                      <VBtn icon size="x-small" variant="tonal" color="white" @click="showSalaryDetails = !showSalaryDetails">
+                        <VIcon size="14">{{ showSalaryDetails ? 'tabler-eye-off' : 'tabler-eye' }}</VIcon>
+                      </VBtn>
+                    </div>
+                    <div class="text-h3 font-weight-black shadow-text leading-none mb-1">
+                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-h6 opacity-75">Bs</small>
+                    </div>
+                    <div class="d-flex gap-4 mt-3">
+                       <div class="d-flex flex-column flex-grow-1 border-r border-white border-opacity-20 pe-2">
+                         <span class="text-super-xs font-weight-bold opacity-60 uppercase">Día/Social</span>
+                         <span class="text-xs font-weight-black">{{ displayAmount(settlement?.daily_wage ?? 0) }} Bs</span>
+                       </div>
+                       <div class="d-flex flex-column flex-grow-1">
+                         <span class="text-super-xs font-weight-bold opacity-60 uppercase">Día/Integral</span>
+                         <span class="text-xs font-weight-black">{{ displayAmount(settlement?.integral_salary ?? 0) }} Bs</span>
+                       </div>
+                    </div>
+                  </VCard>
+
+                  <VExpandTransition>
+                    <div v-show="showSalaryDetails">
+                      <VCard variant="flat" class="rounded-xl border border-dashed pa-3 bg-white">
+                        <span class="text-super-xs font-weight-black text-primary uppercase d-block mb-2">Historial Reciente</span>
+                        <div v-if="settlement?.last_salaries?.length > 0" class="d-flex flex-column gap-1">
+                          <div v-for="(salary, index) in settlement.last_salaries" :key="index" class="d-flex justify-space-between align-center text-super-xs pa-1 border-b last:border-0">
+                            <span class="font-weight-bold opacity-60">{{ formatDate(salary.payslip_date) }}</span>
+                            <span class="font-weight-black text-high-emphasis">{{ formatCurrency(salary.amount_bs) }} Bs</span>
+                          </div>
+                        </div>
+                        <div v-else class="text-super-xs text-center text-disabled italic">SIN HISTORIAL</div>
+                      </VCard>
+                    </div>
+                  </VExpandTransition>
+
+                  <VCard variant="flat" class="rounded-xl border bg-primary-lighten-5 pa-5 flex-grow-1 d-flex flex-column justify-center shadow-xs">
+                    <div class="text-center">
+                       <span class="text-super-xs font-weight-bold text-primary uppercase letter-spacing-1 d-block mb-1">Tasa BCV del Día</span>
+                       <div class="text-h5 font-weight-black text-primary mb-4">1 USD = {{ displayAmount(exchangeRate) }} Bs</div>
+                       
+                       <VDivider class="border-dashed my-4" />
+
+                       <VSlider
+                         v-model="percentage"
+                         :min="1"
+                         :max="100"
+                         :step="1"
+                         color="primary"
+                         density="compact"
+                         hide-details
+                         class="mb-2"
+                       />
+                       <div class="d-flex justify-space-between align-center mb-6">
+                         <span class="text-super-xs font-weight-black text-primary uppercase">% A LIQUIDAR</span>
+                         <span class="text-h6 font-weight-black text-primary">{{ percentage }}%</span>
+                       </div>
+
+                       <div class="text-overline font-weight-black text-primary leading-none mb-1 opacity-70">TOTAL NETO A PAGAR</div>
+                       <div class="text-h1 font-weight-black text-primary leading-none mb-2 tabular-nums">
+                         {{ displayAmount(amountToPay) }}
+                       </div>
+                       <div class="text-h6 font-weight-bold text-medium-emphasis mb-0 mt-n1">
+                         USD <VIcon icon="tabler-currency-dollar" size="18" />
+                       </div>
+                       <div class="text-caption font-weight-black text-disabled uppercase mt-2">
+                         ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.S
+                       </div>
+                    </div>
+                  </VCard>
+                </div>
+              </VCol>
+            </VRow>
           </VTabsWindowItem>
 
           <VTabsWindowItem value="payment">
-            <div class="max-600 mx-auto py-4">
-              <VCard variant="outlined" class="rounded-lg bg-surface-variant mb-6 border">
-                <VCardText class="pa-6 text-center">
-                   <div class="text-overline text-medium-emphasis">Resumen de Liquidación</div>
-                   <div class="text-h3 font-weight-black text-primary my-2">{{ displayAmount(amountToPay) }} <small class="text-h6">USD</small></div>
-                   <div class="text-subtitle-1 font-weight-bold">Equivalente a {{ displayAmount(amountToPay * exchangeRate) }} Bs</div>
-                </VCardText>
+            <div class="mx-auto" style="max-inline-size: 700px">
+              <VCard variant="flat" class="rounded-xl border-primary border-t-4 pa-8 mb-8 text-center bg-white shadow-primary">
+                 <VAvatar color="primary" variant="tonal" size="64" class="mb-4">
+                   <VIcon icon="tabler-wallet" size="32" />
+                 </VAvatar>
+                 <div class="text-overline text-primary font-weight-black letter-spacing-1">TOTAL LIQUIDACIÓN</div>
+                 <div class="text-h2 font-weight-black text-primary mb-2 tabular-nums">${{ displayAmount(amountToPay) }}</div>
+                 <div class="text-h6 font-weight-bold text-medium-emphasis">Equivalente a {{ displayAmount(amountToPay * exchangeRate) }} Bs.S</div>
               </VCard>
 
               <VRow dense>
                 <VCol cols="12" md="6">
-                  <VSelect v-model="currency" label="Método / Moneda" variant="outlined" :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))" :error-messages="errors.currency" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Método / Moneda</span>
+                  <VSelect
+                    v-model="currency"
+                    :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact mb-4"
+                    :error="!!errors.currency"
+                  />
                 </VCol>
                 <VCol cols="12" md="6">
-                  <VSelect v-model="count" label="Tipo de Pago" variant="outlined" :items="(countsFilterByCurrency[currency] ?? []).map(a => ({ title: a, value: a }))" :error-messages="errors.count" :disabled="!currency" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Caja o Banco</span>
+                  <VSelect
+                    v-model="count"
+                    :items="(countsFilterByCurrency[currency] ?? []).map(a => ({ title: a, value: a }))"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact mb-4"
+                    :disabled="!currency"
+                    :error="!!errors.count"
+                  />
                 </VCol>
                 <VCol cols="12">
-                  <VTextField v-model="payed" label="Monto Confirmado (USD)" type="number" variant="outlined" prefix="$" :step="0.01" :error-messages="errors.payed" class="text-h6" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Monto Confirmado (USD)</span>
+                  <AppTextField
+                    v-model="payed"
+                    type="number"
+                    step="0.01"
+                    prefix="$"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact mb-2 text-h5"
+                    :error="!!errors.payed"
+                  />
+                  <div class="text-super-xs font-weight-bold text-disabled uppercase ms-1">Ingrese el monto exacto entregado al empleado</div>
                 </VCol>
               </VRow>
             </div>
@@ -579,73 +595,124 @@ const formatDate = (dateString) => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 bg-surface d-flex gap-3">
-        <VBtn
-          variant="tonal"
-          color="secondary"
-          size="large"
-          class="flex-grow-1 font-weight-bold"
-          @click="closeDialog"
-        >
-          Cerrar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="elevated"
-          elevation="2"
-          size="large"
-          class="flex-grow-1 font-weight-bold"
-          @click="submitForm"
-          :disabled="!settlement"
-        >
-          {{ step === "employee" ? "Ir al Pago" : "Finalizar" }}
-          <VIcon end icon="tabler-chevron-right" />
-        </VBtn>
+      <VCardActions class="pa-6 bg-light border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="12" sm="4" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              height="48"
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeDialog"
+              :disabled="props.loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="8" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="48"
+              class="font-weight-black rounded-lg shadow-primary-lg text-button uppercase"
+              :loading="props.loading"
+              :disabled="!settlement"
+              @click="submitForm"
+            >
+              {{ step === "employee" ? "CONFIGURAR PAGO" : "FINALIZAR Y GENERAR PDF" }}
+              <VIcon end icon="tabler-chevron-right" class="ms-2" />
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.text-right-input :deep(input) {
-  text-align: end !important;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.custom-deduction-input :deep(.v-field__input) {
-  min-block-size: 32px !important;
-  padding-block: 4px !important;
+.bg-light { background-color: #f8fafc !important; }
+.bg-white { background-color: white !important; }
+
+.premium-tabs :deep(.v-tab) {
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  color: #64748b !important;
+  letter-spacing: 0.5px;
 }
 
-.custom-tabs :deep(.v-tab--selected) {
-  color: rgb(var(--v-theme-primary)) !important;
+.premium-tabs :deep(.v-tab--selected) {
+  background-color: rgb(var(--v-theme-primary)) !important;
+  color: white !important;
 }
 
-.animate__animated {
-  animation-duration: 0.5s;
+.premium-input-compact :deep(.v-field) {
+  border-radius: 8px !important;
+  min-height: 38px !important;
+  background-color: white !important;
 }
 
-.max-600 {
-  max-inline-size: 600px;
+.premium-input-compact :deep(.v-field__input) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  min-height: 38px !important;
+  text-transform: uppercase;
 }
 
-/* Compatibilidad con Temas */
-.bg-primary-lighten-5 {
-  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+.premium-micro-table :deep(th) {
+  background-color: #f8fafc !important;
+  height: 32px !important;
 }
 
-.white-input :deep(.v-field) {
-  background-color: var(--v-theme-surface) !important;
+.premium-micro-table :deep(td) {
+  height: 36px !important;
+  color: #334155 !important;
 }
 
-.bg-surface-variant {
-  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+.micro-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  outline: none;
+  border-radius: 4px;
 }
 
-.border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
+.micro-input:focus {
+  background-color: #f1f5f9;
 }
 
-.border-b {
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
-}
+.shadow-xs { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important; }
+.shadow-sm { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important; }
+.shadow-primary { box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.15) !important; }
+.shadow-primary-lg { box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important; }
+
+.shadow-text { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
+
+.border-dashed { border-style: dashed !important; border-width: 2px !important; }
+.border-dashed-t { border-block-start: 1px dashed rgba(0,0,0,0.1) !important; }
+
+.text-super-xs { font-size: 0.65rem !important; line-height: 1.2; }
+.letter-spacing-1 { letter-spacing: 1px !important; }
+.leading-none { line-height: 1 !important; }
+.leading-tight { line-height: 1.25 !important; }
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-4 { gap: 16px !important; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.tabular-nums { font-variant-numeric: tabular-nums; }
 </style>

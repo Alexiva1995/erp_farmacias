@@ -225,21 +225,17 @@ onMounted(async () => {
       @add-doctors="handleAddDoctorsOfferModal"
     />
 
-    <VCard title="Ofertas por Médico">
-      <VCardText>
-        <DoctorOfferTable
-          :doctors-offer="doctorsOfferData"
-          :loading="loadingDoctors"
-          :items-per-page="itemsPerPageDoctors"
-          :page="pageDoctors"
-          :totaldoctors="totalDoctors"
-          @update:options="updateTableOptionsDoctors"
-          @view="handleViewDoctorOffer"
-          @edit="handleEditDoctorOffer"
-          @delete="handleDeleteDoctorOffer"
-        />
-      </VCardText>
-    </VCard>
+    <DoctorOfferTable
+      :doctors-offer="doctorsOfferData"
+      :loading="loadingDoctors"
+      :items-per-page="itemsPerPageDoctors"
+      :page="pageDoctors"
+      :totaldoctors="totalDoctors"
+      @update:options="updateTableOptionsDoctors"
+      @view="handleViewDoctorOffer"
+      @edit="handleEditDoctorOffer"
+      @delete="handleDeleteDoctorOffer"
+    />
 
     <DoctorOfferModal
       v-model="isOfferDialogVisible"
