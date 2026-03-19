@@ -36,9 +36,22 @@ class TransactionRepository
         $paginatedDates = $datesQuery->paginate($perPage, ['*'], 'page', $currentPage);
         $activeDates    = $paginatedDates->pluck('transaction_date')->toArray();
 
+        // Calcular el balance acumulado previo (Opening Balance)
+        // Esto es necesario para calcular el balance línea a línea en el frontend
+        $openingBalance = 0;
+        if ($detailed && $option && $currency) {
+            $openingBalance = Transaction::query()
+                ->where('transactions.currency', $currency)
+                ->where('transactions.type', TransactionType::tryFrom($option)->value)
+                ->where('transactions.transaction_date', '<', $startDate ?: now()->format('Y-m-d'))
+                ->selectRaw("SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as net")
+                ->value('net') ?? 0;
+        }
+
         if (empty($activeDates)) {
             return [
                 'paginator' => $paginatedDates,
+                'opening_balance' => $openingBalance,
                 'previous_total_usd' => 0
             ];
         }
@@ -56,6 +69,14 @@ class TransactionRepository
                 'transactions.*',
                 'users.username as user_name',
                 'expense_categories.name as category_name',
+                DB::raw("(
+                    SELECT SUM(CASE WHEN t2.movement_type = 'IN' THEN t2.amount ELSE -t2.amount END)
+                    FROM transactions t2
+                    WHERE t2.currency = transactions.currency
+                      AND t2.type = transactions.type
+                      AND (t2.transaction_date < transactions.transaction_date 
+                           OR (t2.transaction_date = transactions.transaction_date AND t2.id <= transactions.id))
+                ) as balance")
             ])
             ->orderByDesc('transactions.transaction_date')
             ->orderByDesc('transactions.id')
@@ -71,6 +92,7 @@ class TransactionRepository
 
         return [
             'paginator' => $paginatedDates,
+            'opening_balance' => (float)$openingBalance,
             'previous_total_usd' => 0 
         ];
     }
