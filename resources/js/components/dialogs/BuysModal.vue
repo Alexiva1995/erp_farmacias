@@ -678,8 +678,8 @@ const handleCompletePurchase = () => {
         props.orderData.id,
         validPayments,
         hasCreditPayment.value,
-        changeAmountInCOP.value,
-        changeAmountInUSD.value,
+        changeAmountInCop.value,
+        changeAmountInUsd.value,
         {
           invoice_switch: invoiceSwitch.value,
           spe:
@@ -973,7 +973,7 @@ const changeAmount = computed(() => {
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
-const changeAmountInUSD = computed(() => {
+const changeAmountInUsd = computed(() => {
   const cashPaymentsInUSD = payments.value.filter(
     (p) => p.method === "cash_usd" && p.currency === "USD",
   );
@@ -1005,10 +1005,9 @@ const changeAmountInUSD = computed(() => {
   return Math.max(0, roundToTwoDecimalPlaces(diff));
 });
 
-const changeAmountInCOP = computed(() => {
+const changeAmountInCop = computed(() => {
   const vueltoEnMonedaOrden = changeAmount.value;
   if (props.selectedCurrency === "COP") {
-    console.log(vueltoEnMonedaOrden);
     return vueltoEnMonedaOrden;
   }
 
@@ -1688,7 +1687,7 @@ const getAvailableMethodsForCurrency = (currency) => {
               :remaining-amount="remainingAmount"
               :show-change-amount="showChangeAmount"
               :change-amount="changeAmount"
-              :change-amount-in-cop="changeAmountInCOP"
+              :change-amount-in-cop="changeAmountInCop"
               :get-converted-remaining-amount="getConvertedRemainingAmount"
               :get-payment-method-label="getPaymentMethodLabel"
               :edit-payment-amount="editPaymentAmount"
@@ -1729,7 +1728,7 @@ const getAvailableMethodsForCurrency = (currency) => {
           :has-credit-payment="hasCreditPayment"
           :show-change-amount="showChangeAmount"
           :change-amount="changeAmount"
-          :change-amount-in-cop="changeAmountInCOP"
+          :change-amount-in-cop="changeAmountInCop"
           @print="handlePrintTicket"
           @cancel="handleCancelAfterTicket"
         />

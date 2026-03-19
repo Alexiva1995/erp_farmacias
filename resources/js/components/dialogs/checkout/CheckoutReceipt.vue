@@ -20,7 +20,7 @@ const props = defineProps({
   hasCreditPayment: Boolean,
   showChangeAmount: Boolean,
   changeAmount: Number,
-  changeAmountInCOP: Number,
+  changeAmountInCop: Number,
 });
 
 const emit = defineEmits(["print", "cancel"]);
@@ -114,7 +114,7 @@ const logoSrc = BASE64_LOGO_DATA;
           <div v-if="showChangeAmount" class="border-t pt-1">
             <div class="d-flex justify-space-between font-weight-black text-success">
               <span>DEVOLUCIÓN (COP):</span>
-              <span>{{ formatCurrency(changeAmountInCOP, 'COP') }}</span>
+              <span>{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
             </div>
             <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between text-tiny mt-1">
               <span>VUELTO EN {{ selectedCurrency }}:</span>

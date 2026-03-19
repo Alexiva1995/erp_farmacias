@@ -14,7 +14,7 @@ const props = defineProps({
   remainingAmount: Number,
   showChangeAmount: Boolean,
   changeAmount: Number,
-  changeAmountInCOP: Number,
+  changeAmountInCop: Number,
   getConvertedRemainingAmount: Function,
   getPaymentMethodLabel: Function,
   editPaymentAmount: Function,
@@ -125,7 +125,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
         <div v-if="showChangeAmount" class="d-flex flex-column mb-3 px-2 border-t pt-2">
           <div class="d-flex justify-space-between mb-1">
             <span class="text-caption font-weight-bold">Devolución:</span>
-            <span class="text-caption font-weight-black text-success">{{ formatCurrency(changeAmountInCOP, 'COP') }}</span>
+            <span class="text-caption font-weight-black text-success">{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
           </div>
           <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between">
             <span class="text-tiny text-medium-emphasis">Vuelto en {{ selectedCurrency }}:</span>
