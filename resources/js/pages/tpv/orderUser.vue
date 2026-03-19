@@ -1454,6 +1454,8 @@ const handleCurrencyChanged = async (newCurrency) => {
   } catch (error) {
     console.error("Error updating currency:", error);
     toast.error("Error al actualizar la moneda de la orden.");
+  } finally {
+    isCurrencyChanging.value = false;
   }
 };
 
@@ -3139,6 +3141,24 @@ onUnmounted(() => {
 </script>
 <template>
   <div>
+    <VOverlay
+      v-model="isCurrencyChanging"
+      persistent
+      class="align-center justify-center"
+      scrim="rgba(255, 255, 255, 0.7)"
+      z-index="10000"
+    >
+      <div class="d-flex flex-column align-center gap-3">
+        <v-progress-circular
+          indeterminate
+          color="primary"
+          size="64"
+          width="6"
+        ></v-progress-circular>
+        <span class="text-h6 font-weight-black text-primary text-uppercase letter-spacing-1">Convirtiendo Moneda...</span>
+      </div>
+    </VOverlay>
+
     <div v-if="isLoadingInitialOrder">
       <p>Cargando sesión de orden...</p>
     </div>

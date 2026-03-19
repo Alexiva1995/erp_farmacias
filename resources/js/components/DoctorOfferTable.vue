@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from 'vuetify';
+
 const props = defineProps({
   doctorsOffer: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -9,172 +11,255 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "edit", "view", "delete"]);
 
+const { mobile } = useDisplay();
+
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "Médico", key: "doctor_name", sortable: true, width: "25%" },
-  {
-    title: "% Descuento",
-    key: "discount",
-    sortable: true,
-    width: "120px",
-  },
-  // { title: "Vol Min", key: "min_volume", sortable: true, width: "100px" },
-  // { title: "Vol Max", key: "max_volume", sortable: true, width: "100px" },
-  { title: "Fecha Inicio", key: "start_date", sortable: true, width: "120px" },
-  { title: "Fecha Final", key: "end_date", sortable: true, width: "120px" },
-  { title: "Estatus", key: "is_active", sortable: true, width: "100px" },
-  {
-    title: "Acciones",
-    key: "actions",
-    sortable: false,
-    align: "center",
-    width: "120px",
-  },
+  { title: "ID", key: "id", sortable: true, align: 'start' },
+  { title: "MÉDICO", key: "doctor_name", sortable: true, width: "35%" },
+  { title: "% DESC.", key: "discount", sortable: true, align: 'center' },
+  { title: "VIGENCIA", key: "validity", sortable: false, width: "25%" },
+  { title: "ESTADO", key: "is_active", sortable: true, align: 'center' },
+  { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
 ];
 
+const getStatusColor = (isActive) => isActive ? 'success' : 'error';
+const getStatusText = (isActive) => isActive ? 'ACTIVA' : 'INACTIVA';
+
 const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-
-  return new Date(dateString).toLocaleDateString("es-ES");
+  if (!dateString) return 'S/F';
+  return new Date(dateString).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 };
 
-const getStatusBadge = (isActive) => {
-  return isActive ? "Activa" : "Inactiva";
-};
-
-const getStatusColor = (isActive) => {
-  return isActive ? "success" : "error";
-};
-
-const getDiscountPercentage = (scales) => {
-  if (!scales || scales.length === 0) return "N/A";
-
-  if (scales.length === 1) return `${scales[0].discount_percentage}%`;
-  const min = Math.min(...scales.map((s) => s.discount_percentage));
-  const max = Math.max(...scales.map((s) => s.discount_percentage));
-
-  return `${min}% - ${max}%`;
-};
-
-const getVolumeRange = (scales) => {
-  if (!scales || scales.length === 0) return { min: "N/A", max: "N/A" };
-  const min = Math.min(...scales.map((s) => s.min_volume));
-  const max = Math.max(...scales.map((s) => s.max_volume));
-
-  return { min, max };
-};
-
-const handleView = (doctorOffer) => {
-  emit("view", doctorOffer);
-};
-
-const handleEdit = (doctorOffer) => {
-  emit("edit", doctorOffer);
-};
-
-const handleDelete = (doctorOffer) => {
-  emit("delete", doctorOffer);
-};
+const handleView = (doctorOffer) => emit("view", doctorOffer);
+const handleEdit = (doctorOffer) => emit("edit", doctorOffer);
+const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
 </script>
 
 <template>
-  <VCard>
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.doctorsOffer"
-      :items-length="props.totaldoctors"
-      :loading="props.loading"
-      class="text-no-wrap"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #item.doctor_name="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            item.doctor?.name || "N/A"
-          }}</span>
-          <span class="text-caption text-disabled"
-            >ID: {{ item.doctor_id }}</span
+  <div class="doctor-offer-container">
+    <!-- Desktop View -->
+    <VCard class="d-none d-md-block rounded-xl border-0 shadow-sm overflow-hidden">
+      <VDataTableServer
+        v-model:items-per-page="props.itemsPerPage"
+        v-model:page="props.page"
+        :headers="headers"
+        :items="props.doctorsOffer"
+        :items-length="props.totaldoctors"
+        :loading="props.loading"
+        class="premium-table"
+        @update:options="(options) => emit('update:options', options)"
+      >
+        <template #item.id="{ item }">
+          <span class="font-weight-black text-primary">#{{ item.id }}</span>
+        </template>
+
+        <template #item.doctor_name="{ item }">
+          <div class="d-flex flex-column py-2">
+            <span class="text-sm font-weight-black text-high-emphasis uppercase">{{ item.doctor?.name || 'N/A' }}</span>
+            <span class="text-super-xs font-weight-bold text-disabled">ID MÉDICO: {{ item.doctor_id }}</span>
+          </div>
+        </template>
+
+        <template #item.discount="{ item }">
+          <VChip :color="getStatusColor(item.is_active)" size="small" variant="tonal" class="font-weight-black rounded">
+            {{ item.discount }}%
+          </VChip>
+        </template>
+
+        <template #item.validity="{ item }">
+          <div class="d-flex align-center gap-2 py-1">
+            <div class="d-flex flex-column">
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-calendar-event" size="14" color="success" />
+                <span class="text-super-xs font-weight-black text-success">{{ formatDate(item.start_date) }}</span>
+              </div>
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-calendar-off" size="14" color="error" />
+                <span class="text-super-xs font-weight-black text-error">{{ formatDate(item.end_date) }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template #item.is_active="{ item }">
+          <VChip
+            :color="getStatusColor(item.is_active)"
+            size="x-small"
+            variant="flat"
+            class="font-weight-black px-2"
           >
-        </div>
-      </template>
+            {{ getStatusText(item.is_active) }}
+          </VChip>
+        </template>
 
-      <template #item.discount="{ item }">
-        <VChip size="small" color="primary" variant="flat">
-          {{ item.discount }}%
-        </VChip>
-      </template>
+        <template #item.actions="{ item }">
+          <div class="d-flex justify-center gap-2">
+            <VTooltip text="Ver Detalles" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon="tabler-eye"
+                  variant="tonal"
+                  color="info"
+                  size="32"
+                  class="rounded-lg shadow-sm"
+                  @click="handleView(item)"
+                />
+              </template>
+            </VTooltip>
+            <VTooltip text="Editar Oferta" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon="tabler-edit"
+                  variant="tonal"
+                  color="primary"
+                  size="32"
+                  class="rounded-lg shadow-sm"
+                  @click="handleEdit(item)"
+                />
+              </template>
+            </VTooltip>
+            <VTooltip text="Eliminar Oferta" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon="tabler-trash"
+                  variant="tonal"
+                  color="error"
+                  size="32"
+                  class="rounded-lg shadow-sm"
+                  @click="handleDelete(item)"
+                />
+              </template>
+            </VTooltip>
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
 
-      <!-- <template #item.min_volume="{ item }">
-        {{ getVolumeRange(item.scales).min }}
-      </template>
+    <!-- Mobile View -->
+    <div class="d-md-none">
+      <VDataIterator
+        :items="props.doctorsOffer"
+        :items-length="props.totaldoctors"
+        :loading="props.loading"
+        @update:options="(options) => emit('update:options', options)"
+      >
+        <template #default="{ items }">
+          <VRow dense>
+            <VCol v-for="item in items" :key="item.id" cols="12" class="mb-4">
+              <VCard class="premium-card rounded-xl border-0 overflow-hidden shadow-sm flex-row d-flex h-100">
+                <div :class="`status-strip bg-${getStatusColor(item.raw.is_active)}`" />
+                <div class="pa-4 flex-grow-1">
+                  <div class="d-flex justify-space-between align-center mb-3">
+                    <span class="text-super-xs font-weight-black text-primary uppercase">OFERTA #{{ item.raw.id }}</span>
+                    <VChip :color="getStatusColor(item.raw.is_active)" size="x-small" variant="tonal" class="font-weight-black rounded">
+                      {{ item.raw.discount }}% DESC.
+                    </VChip>
+                  </div>
 
-      <template #item.max_volume="{ item }">
-        {{ getVolumeRange(item.scales).max }}
-      </template> -->
+                  <h3 class="text-sm font-weight-black text-high-emphasis uppercase mb-1">{{ item.raw.doctor?.name || 'N/A' }}</h3>
+                  <p class="text-super-xs font-weight-bold text-disabled uppercase mb-3">ID MÉDICO: {{ item.raw.doctor_id }}</p>
 
-      <template #item.start_date="{ item }">
-        {{ formatDate(item.start_date) }}
-      </template>
+                  <VDivider class="border-dashed my-3" />
 
-      <template #item.end_date="{ item }">
-        {{ formatDate(item.end_date) }}
-      </template>
+                  <div class="d-flex justify-space-between align-center">
+                    <div class="d-flex flex-column gap-1">
+                      <span class="text-super-xs font-weight-black text-success d-flex align-center gap-1">
+                        <VIcon icon="tabler-calendar-event" size="12" /> {{ formatDate(item.raw.start_date) }}
+                      </span>
+                      <span class="text-super-xs font-weight-black text-error d-flex align-center gap-1">
+                        <VIcon icon="tabler-calendar-off" size="12" /> {{ formatDate(item.raw.end_date) }}
+                      </span>
+                    </div>
 
-      <template #item.is_active="{ item }">
-        <VChip
-          :color="getStatusColor(item.is_active)"
-          size="small"
-          variant="flat"
-        >
-          {{ getStatusBadge(item.is_active) }}
-        </VChip>
-      </template>
-
-      <template #item.actions="{ item }">
-        <div class="d-flex gap-1 justify-center">
-          <VBtn
-            icon
-            size="small"
-            color="info"
-            variant="text"
-            @click="handleView(item)"
-          >
-            <VIcon icon="tabler-eye" size="20" />
-          </VBtn>
-
-          <VBtn
-            icon
-            size="small"
-            color="warning"
-            variant="text"
-            @click="handleEdit(item)"
-          >
-            <VIcon icon="tabler-edit" size="20" />
-          </VBtn>
-
-          <VBtn
-            icon
-            size="small"
-            color="error"
-            variant="text"
-            @click="handleDelete(item)"
-          >
-            <VIcon icon="tabler-trash" size="20" />
-          </VBtn>
-        </div>
-      </template>
-
-      <template #loading>
-        <VSkeletonLoader type="table-row@10" />
-      </template>
-    </VDataTableServer>
-  </VCard>
+                    <div class="d-flex gap-2">
+                       <VBtn
+                        icon="tabler-eye"
+                        variant="tonal"
+                        color="info"
+                        size="36"
+                        class="rounded-xl shadow-sm"
+                        @click="handleView(item.raw)"
+                      />
+                      <VBtn
+                        icon="tabler-edit"
+                        variant="tonal"
+                        color="primary"
+                        size="36"
+                        class="rounded-xl shadow-sm"
+                        @click="handleEdit(item.raw)"
+                      />
+                      <VBtn
+                        icon="tabler-trash"
+                        variant="tonal"
+                        color="error"
+                        size="36"
+                        class="rounded-xl shadow-sm"
+                        @click="handleDelete(item.raw)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
+        </template>
+      </VDataIterator>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.gap-1 {
-  gap: 4px;
+.premium-table :deep(th) {
+  background-color: #f8fafc !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05rem !important;
+  text-transform: uppercase !important;
 }
+
+.premium-table :deep(td) {
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: #334155 !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+}
+
+.status-strip {
+  width: 6px;
+  height: 100%;
+}
+
+.premium-card {
+  transition: all 0.3s ease;
+}
+
+.premium-card:active {
+  transform: scale(0.98);
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+  opacity: 0.4;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 </style>

@@ -64,124 +64,155 @@ const handleSelect = (wallet) => {
 </script>
 
 <template>
-  <div class="mb-6">
+  <div class="cash-wallets-wrapper">
     <!-- Título del Panel -->
     <div class="d-flex align-center justify-space-between mb-4">
       <div class="d-flex align-center gap-2">
-        <VIcon icon="tabler-wallet" color="primary" />
-        <span class="text-subtitle-1 font-weight-bold">Estado actual de Cajas</span>
-        <VChip v-if="dateFiltered" size="x-small" color="info" variant="tonal" class="ms-1">
-          Rango filtrado
+        <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
+          <VIcon icon="tabler-wallet" size="18" />
+        </VAvatar>
+        <span class="text-subtitle-1 font-weight-black uppercase letter-spacing-1">Estado de Cajas</span>
+        <VChip v-if="dateFiltered" size="x-small" color="info" variant="elevated" class="ms-1 font-weight-black px-2 py-0">
+          FILTRADO
         </VChip>
       </div>
-      <div class="text-body-2 text-medium-emphasis">
-        Total equiv. USD:
-        <span class="font-weight-black text-success ms-1">
+      <div class="d-flex flex-column align-end">
+        <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Total Consolidado</span>
+        <span class="text-h6 font-weight-black text-success">
           USD {{ new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalUsd) }}
         </span>
       </div>
     </div>
 
     <!-- Secciones por moneda -->
-    <VRow v-if="!loading">
-      <template v-for="section in sections" :key="section.currency">
-        <VCol cols="12">
-          <!-- Encabezado de moneda -->
-          <div class="d-flex align-center mb-2 mt-1">
-            <VAvatar
-              :color="currencyConfig[section.currency]?.color || 'secondary'"
-              variant="tonal"
-              size="28"
-              class="me-2"
-            >
-              <VIcon :icon="currencyConfig[section.currency]?.icon || 'tabler-coin'" size="16" />
-            </VAvatar>
-            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">
-              {{ currencyConfig[section.currency]?.label || section.currency }}
-            </span>
-            <VDivider class="ms-3 flex-1" />
-            <span class="text-caption text-medium-emphasis ms-3">
-              Total: {{ currencyConfig[section.currency]?.prefix }}
-              {{ formatAmount(section.section_total, section.currency) }}
+    <div v-if="!loading" class="d-flex flex-column gap-6">
+      <div v-for="section in sections" :key="section.currency" class="currency-section">
+        <!-- Encabezado de moneda Premium -->
+        <div class="d-flex align-center mb-3">
+          <VAvatar
+            :color="currencyConfig[section.currency]?.color || 'secondary'"
+            variant="tonal"
+            size="28"
+            class="me-2 rounded-lg"
+          >
+            <VIcon :icon="currencyConfig[section.currency]?.icon || 'tabler-coin'" size="16" />
+          </VAvatar>
+          <span class="text-xs font-weight-black text-uppercase text-medium-emphasis letter-spacing-1">
+            {{ currencyConfig[section.currency]?.label || section.currency }}
+          </span>
+          <VDivider class="ms-4 flex-grow-1 opacity-10" />
+          <div class="ms-4 px-3 py-1 bg-surface-variant-light rounded-pill border">
+            <span class="text-xs font-weight-black text-medium-emphasis">
+              Σ {{ currencyConfig[section.currency]?.prefix }} {{ formatAmount(section.section_total, section.currency) }}
             </span>
           </div>
+        </div>
 
-          <!-- Tarjetas de billeteras -->
-          <VRow dense>
-            <VCol
-              v-for="wallet in section.wallets"
-              :key="wallet.key"
-              cols="6"
-              sm="4"
-              md="3"
-              lg="2"
+        <!-- Grid de billeteras -->
+        <VRow dense>
+          <VCol
+            v-for="wallet in section.wallets"
+            :key="wallet.key"
+            cols="6"
+            sm="4"
+            md="3"
+            lg="2"
+          >
+            <VCard
+              :variant="isSelected(wallet) ? 'flat' : 'outlined'"
+              :class="[
+                'cursor-pointer wallet-card pa-3 h-100 rounded-xl border-0 shadow-sm transition-all',
+                isSelected(wallet) ? `bg-${currencyConfig[section.currency]?.color}-lighten-5 ring-primary` : 'bg-white'
+              ]"
+              @click="handleSelect(wallet)"
             >
-              <VCard
-                :color="isSelected(wallet) ? currencyConfig[section.currency]?.color : undefined"
-                :variant="isSelected(wallet) ? 'tonal' : 'outlined'"
-                class="cursor-pointer wallet-card pa-3 h-100"
-                :class="{
-                  'border-opacity-25': !isSelected(wallet),
-                  'border-opacity-75': isSelected(wallet),
-                }"
-                @click="handleSelect(wallet)"
-              >
-                <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <VAvatar 
+                  size="32" 
+                  :color="isSelected(wallet) ? currencyConfig[section.currency]?.color : 'secondary'"
+                  variant="tonal"
+                  class="rounded-lg"
+                >
                   <VIcon
                     :icon="methodConfig[wallet.method]?.icon || 'tabler-cash'"
                     size="18"
-                    :color="isSelected(wallet) ? currencyConfig[section.currency]?.color : 'default'"
-                    class="opacity-80"
                   />
-                  <VChip
-                    v-if="wallet.balance < 0"
-                    size="x-small"
-                    color="error"
-                    variant="flat"
-                  >—</VChip>
-                </div>
-                <div
-                  class="text-caption font-weight-bold text-truncate mb-1"
-                  :class="isSelected(wallet) ? `text-${currencyConfig[section.currency]?.color}` : 'text-medium-emphasis'"
-                >
+                </VAvatar>
+                <VChip
+                  v-if="wallet.balance < 0"
+                  size="x-small"
+                  color="error"
+                  variant="elevated"
+                  class="font-weight-black rounded-lg px-2"
+                >DÉFICIT</VChip>
+              </div>
+
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">
                   {{ methodConfig[wallet.method]?.label || wallet.method }}
-                </div>
-                <div
-                  class="font-weight-black"
-                  :class="[
-                    wallet.balance >= 0 ? 'text-body-2' : 'text-caption text-error',
-                    isSelected(wallet) ? `text-${currencyConfig[section.currency]?.color}` : '',
-                  ]"
-                >
+                </span>
+                <span :class="['text-h6 font-weight-black', wallet.balance < 0 ? 'text-error' : 'text-high-emphasis']">
                   {{ formatAmount(wallet.balance, wallet.currency) }}
+                </span>
+                
+                <div class="mt-2 d-flex gap-2">
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-arrow-up" size="12" color="success" />
+                    <span class="text-super-xs font-weight-bold text-success">{{ formatAmount(wallet.total_in, wallet.currency) }}</span>
+                  </div>
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-arrow-down" size="12" color="error" />
+                    <span class="text-super-xs font-weight-bold text-error">{{ formatAmount(wallet.total_out, wallet.currency) }}</span>
+                  </div>
                 </div>
-                <div class="text-caption text-medium-emphasis mt-1 d-flex gap-1">
-                  <span class="text-success">↑{{ formatAmount(wallet.total_in, wallet.currency) }}</span>
-                  <span class="text-error">↓{{ formatAmount(wallet.total_out, wallet.currency) }}</span>
-                </div>
-              </VCard>
-            </VCol>
-          </VRow>
-        </VCol>
-      </template>
-    </VRow>
+              </div>
+            </VCard>
+          </VCol>
+        </VRow>
+      </div>
+    </div>
 
     <!-- Skeleton loader -->
     <VRow v-else>
-      <VCol v-for="i in 8" :key="i" cols="6" sm="4" md="3" lg="2">
-        <VSkeletonLoader type="card" height="100" />
+      <VCol v-for="i in 6" :key="i" cols="6" sm="4" md="3" lg="2">
+        <VSkeletonLoader type="card" height="120" class="rounded-xl" />
       </VCol>
     </VRow>
   </div>
 </template>
 
 <style scoped>
+.text-super-xs {
+  font-size: 0.625rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.bg-surface-variant-light {
+  background-color: rgba(var(--v-theme-surface-variant), 0.05);
+}
+
 .wallet-card {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(var(--v-theme-surface-variant), 0.1) !important;
 }
 
 .wallet-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 12%);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px -10px rgba(var(--v-theme-primary), 0.2) !important;
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+.ring-primary {
+  box-shadow: 0 0 0 2px rgb(var(--v-theme-primary), 0.2) !important;
+  border: 1px solid rgb(var(--v-theme-primary), 0.5) !important;
+}
+
+.currency-section:not(:last-child) {
+  margin-bottom: 0.5rem;
 }
 </style>

@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   monthlyCash:       { type: Array,  required: true },
   loading:           { type: Boolean, default: false },
@@ -9,6 +11,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:options', 'view-cash']);
 
+const { mobile } = useDisplay();
+
 const headers = [
   { title: "Período",         key: "period",              sortable: true },
   { title: "USD",             key: "amount_usd",           sortable: true, align: "end" },
@@ -17,76 +21,200 @@ const headers = [
   { title: "Total (≈ USD)",   key: "total_usd_equivalent", sortable: false, align: "end" },
   { title: "Días",            key: "days_closed",          sortable: false, align: "center" },
   { title: "Promedio/Día",    key: "daily_average",        sortable: true, align: "end" },
-  { title: "",                key: "actions",              sortable: false, align: "center", width: "90px" },
+  { title: "Acciones",        key: "actions",              sortable: false, align: "center", width: "100px" },
 ];
+
+const getAvatarColor = (id) => {
+  const colors = ["primary", "success", "info", "warning", "error", "purple"];
+  return colors[id % colors.length];
+};
 </script>
 
 <template>
-  <VCard elevation="0" class="monthly-table rounded-xl border">
-    <VCardItem class="pa-4 pb-2">
-      <template #prepend>
-        <VAvatar color="success" variant="tonal" size="38" rounded>
-          <VIcon icon="tabler-chart-area" size="20" />
-        </VAvatar>
-      </template>
-      <VCardTitle class="text-subtitle-1 font-weight-bold">Cierres Mensuales</VCardTitle>
-      <VCardSubtitle class="text-caption">Totales convertidos a USD equivalente para comparación correcta</VCardSubtitle>
-    </VCardItem>
+  <div class="mt-4">
+    <!-- Vista Escritorio -->
+    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+      <VCardItem class="pa-4 pb-0">
+        <template #prepend>
+          <VAvatar color="success" variant="tonal" size="38" class="rounded-lg">
+            <VIcon icon="tabler-chart-area" size="20" />
+          </VAvatar>
+        </template>
+        <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Cierres Mensuales</VCardTitle>
+        <VCardSubtitle class="text-xs font-weight-medium text-disabled">Totales convertidos a USD equivalente para comparación correcta</VCardSubtitle>
+      </VCardItem>
 
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.monthlyCash"
-      :items-length="props.totalMonthlyCash"
-      :loading="props.loading"
-      no-data-text="No hay cierres mensuales registrados"
-      @update:options="(opt) => emit('update:options', opt)"
-    >
-      <template #item.period="{ item }">
-        <span class="font-weight-bold text-high-emphasis">{{ item.period }}</span>
-      </template>
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="headers"
+        :items="props.monthlyCash"
+        :items-length="props.totalMonthlyCash"
+        :loading="props.loading"
+        no-data-text="No hay cierres mensuales registrados"
+        class="text-no-wrap premium-table"
+        @update:options="(opt) => emit('update:options', opt)"
+      >
+        <template #item.period="{ item }">
+          <div class="d-flex align-center gap-3 py-2">
+            <VAvatar size="32" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg font-weight-black text-xs">
+              <VIcon icon="tabler-calendar-month" size="16" />
+            </VAvatar>
+            <span class="text-xs font-weight-black uppercase">{{ item.period }}</span>
+          </div>
+        </template>
 
-      <template #item.amount_usd="{ item }">
-        <span class="text-primary font-weight-medium">{{ item.amount_usd }} USD</span>
-      </template>
-      <template #item.amount_cop="{ item }">
-        <span class="text-success font-weight-medium">{{ item.amount_cop }} COP</span>
-      </template>
-      <template #item.amount_bs="{ item }">
-        <span class="text-warning font-weight-medium">{{ item.amount_bs }} Bs.</span>
-      </template>
+        <template #item.amount_usd="{ item }">
+          <span class="text-xs font-weight-bold text-primary">{{ item.amount_usd }} USD</span>
+        </template>
+        <template #item.amount_cop="{ item }">
+          <span class="text-xs font-weight-bold text-success">{{ item.amount_cop }} COP</span>
+        </template>
+        <template #item.amount_bs="{ item }">
+          <span class="text-xs font-weight-bold text-warning">{{ item.amount_bs }} Bs.</span>
+        </template>
 
-      <!-- Total unificado correcto -->
-      <template #item.total_usd_equivalent="{ item }">
-        <VChip color="primary" size="small" label class="font-weight-bold">
-          {{ item.total_usd_equivalent ?? '—' }} USD
-        </VChip>
-      </template>
+        <template #item.total_usd_equivalent="{ item }">
+          <VChip color="primary" size="x-small" variant="flat" class="font-weight-black rounded px-2">
+            {{ item.total_usd_equivalent ?? '—' }} USD
+          </VChip>
+        </template>
 
-      <template #item.days_closed="{ item }">
-        <VChip size="small" label variant="tonal">{{ item.days_closed }} días</VChip>
-      </template>
+        <template #item.days_closed="{ item }">
+          <VChip size="x-small" variant="tonal" class="font-weight-black rounded px-2">{{ item.days_closed }} DÍAS</VChip>
+        </template>
 
-      <template #item.daily_average="{ item }">
-        <span class="font-weight-medium">{{ item.daily_average }} USD</span>
-      </template>
+        <template #item.daily_average="{ item }">
+          <span class="text-xs font-weight-black">{{ item.daily_average }} USD</span>
+        </template>
 
-      <template #item.actions="{ item }">
-        <div class="d-flex align-center gap-1 justify-center">
-          <VTooltip text="Ver detalle mensual" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-eye" size="small" variant="tonal" color="info" @click="emit('view-cash', item)" />
-            </template>
-          </VTooltip>
-        </div>
-      </template>
-    </VDataTableServer>
-  </VCard>
+        <template #item.actions="{ item }">
+          <div class="d-flex align-center justify-center gap-1">
+            <VTooltip text="Ver Detalle Mensual" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn v-bind="tip" icon="tabler-eye" size="32" variant="text" color="info" class="rounded-lg" @click="emit('view-cash', item)" />
+              </template>
+            </VTooltip>
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
+
+    <!-- Vista Móvil Cards -->
+    <div v-else class="d-flex flex-column gap-4">
+      <VCard
+        v-for="item in props.monthlyCash"
+        :key="item.id"
+        class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+      >
+        <VCardText class="pa-5">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center gap-3">
+              <VAvatar size="42" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg">
+                <VIcon icon="tabler-calendar-stats" size="20" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-sm font-weight-black leading-tight uppercase">{{ item.period }}</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">Consolidado Mensual #{{ item.id }}</span>
+              </div>
+            </div>
+            <VChip color="success" variant="flat" size="x-small" class="font-weight-black rounded px-2">
+              MENSUAL
+            </VChip>
+          </div>
+
+          <VDivider class="mb-4 opacity-10" />
+
+          <!-- Resumen de Totales Físicos -->
+          <div class="d-flex flex-column gap-2 mb-4">
+            <div class="d-flex justify-space-between align-center px-1">
+              <span class="text-xs text-disabled font-weight-bold uppercase">USD Físico</span>
+              <span class="text-xs font-weight-black text-primary">{{ item.amount_usd }} USD</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-1">
+              <span class="text-xs text-disabled font-weight-bold uppercase">COP Físico</span>
+              <span class="text-xs font-weight-black text-success">{{ item.amount_cop }} COP</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-1">
+              <span class="text-xs text-disabled font-weight-bold uppercase">BS Físico</span>
+              <span class="text-xs font-weight-black text-warning">{{ item.amount_bs }} Bs.</span>
+            </div>
+          </div>
+
+          <!-- Total Unificado y Promedios -->
+          <div class="bg-primary-gradient pa-4 rounded-lg shadow-sm mb-4">
+             <div class="d-flex justify-space-between align-center mb-2">
+                <span class="text-xs font-weight-black text-white uppercase opacity-80">Total Equivalente</span>
+                <span class="text-lg font-weight-black text-white leading-none">{{ item.total_usd_equivalent }} USD</span>
+             </div>
+             <VDivider class="mb-2 opacity-20 border-white" />
+             <div class="d-flex justify-space-between align-center">
+                <div class="d-flex flex-column">
+                   <span class="text-super-xs text-white opacity-60 font-weight-bold uppercase">Promedio Diario</span>
+                   <span class="text-xs font-weight-black text-white">{{ item.daily_average }} USD/día</span>
+                </div>
+                <div class="d-flex flex-column align-end">
+                   <span class="text-super-xs text-white opacity-60 font-weight-bold uppercase">Días Cerrados</span>
+                   <span class="text-xs font-weight-black text-white">{{ item.days_closed }} DÍAS</span>
+                </div>
+             </div>
+          </div>
+
+          <!-- Acciones Móvil -->
+          <div class="d-flex align-center">
+            <VBtn
+              block
+              color="primary"
+              variant="tonal"
+              class="rounded-lg font-weight-black text-xs h-10"
+              prepend-icon="tabler-eye"
+              @click="emit('view-cash', item)"
+            >
+              VER DETALLE MENSUAL
+            </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+
+      <VAlert v-if="props.monthlyCash.length === 0" type="info" variant="tonal" class="rounded-xl">
+        No hay registros mensuales para mostrar.
+      </VAlert>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.monthly-table {
-  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+.premium-table :deep(.v-data-table-header) {
+  background-color: rgba(var(--v-theme-success), 60%) !important;
+}
+
+.premium-table :deep(.v-data-table-header th) {
+  block-size: 44px !important;
+  color: rgba(var(--v-theme-on-surface), 50%) !important;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.bg-primary-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #9575cd 100%);
+}
+
+.h-10 {
+  block-size: 40px !important;
+}
+
+.text-white-opacity-60 {
+  color: rgba(255, 255, 255, 60%);
 }
 </style>

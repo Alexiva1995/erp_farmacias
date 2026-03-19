@@ -4,6 +4,9 @@ import { formatDateTime } from "@/utils/formatDateTime";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, defineEmits, defineProps } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   isDialogVisible: {
@@ -245,21 +248,32 @@ const productLineLabel = (product) => {
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="560" persistent content-class="order-view-dialog">
-    <VCard class="order-view-card rounded-lg">
-      <VCardTitle class="order-view-header d-flex align-center flex-wrap gap-2 pt-3 px-3 pb-2">
-        <span class="text-subtitle-1 font-weight-bold section-title">Orden #{{ orderData.id }}</span>
-        <VChip :color="paymentBadge.color" size="x-small" variant="tonal" density="compact">
-          {{ paymentBadge.label }}
-        </VChip>
-        <VChip v-if="paymentBadge.currency" size="x-small" variant="tonal" :color="getCurrencyChipColor(paymentBadge.currency)" density="compact">
-          {{ paymentBadge.currency }}
-        </VChip>
+  <VDialog
+    v-model="dialogVisible"
+    max-width="560"
+    persistent
+    content-class="order-view-dialog"
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
+  >
+    <VCard class="order-view-card rounded-xl border shadow-sm">
+      <VCardTitle class="order-view-header d-flex align-center flex-wrap gap-2 px-4 py-3 border-b bg-surface">
+        <div class="d-flex align-center gap-3">
+          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg shadow-sm">
+            <VIcon icon="tabler-receipt" />
+          </VAvatar>
+          <div>
+            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">Orden #{{ orderData.id }}</h3>
+            <span class="text-xs text-disabled font-weight-medium uppercase">{{ formattedOrderDate }}</span>
+          </div>
+        </div>
         <VSpacer />
-        <span class="header-date">{{ formattedOrderDate }}</span>
-        <VBtn icon variant="text" size="x-small" @click="closeModal">
-          <VIcon size="18">tabler-x</VIcon>
-        </VBtn>
+        <div class="d-flex align-center gap-2">
+          <VChip :color="paymentBadge.color" size="x-small" variant="tonal" class="font-weight-bold">
+            {{ paymentBadge.label }}
+          </VChip>
+          <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
+        </div>
       </VCardTitle>
 
       <VCardText class="px-4 pb-4 pt-3">
@@ -465,8 +479,11 @@ const productLineLabel = (product) => {
 .products-table-row:last-child td {
   border-block-end: none;
 }
-.quantity-col { inline-size: 52px; }
-.quantity-cell { inline-size: 52px; text-align: center; }
+
+.quantity-cell {
+  inline-size: 52px;
+  text-align: center;
+}
 .product-cell { min-inline-size: 0; }
 
 .product-line-full {
@@ -529,6 +546,11 @@ const productLineLabel = (product) => {
   letter-spacing: 0.02em;
 }
 
+.header-date {
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  font-size: 0.8125rem;
+}
+
 /* — Modo oscuro: contraste y elevación — */
 .v-theme--dark .order-view-card {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 35%);
@@ -542,11 +564,6 @@ const productLineLabel = (product) => {
 .v-theme--dark .section-label,
 .v-theme--dark .header-date {
   color: rgba(255, 255, 255, 90%);
-}
-
-.header-date {
-  color: rgba(var(--v-theme-on-surface), 0.75);
-  font-size: 0.8125rem;
 }
 
 .v-theme--dark .data-label {

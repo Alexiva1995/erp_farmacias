@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps({
   startDate: { type: String, default: "" },
@@ -13,6 +13,8 @@ const emit = defineEmits([
   "apply-filter",
   "clear-filter",
 ]);
+
+const isFilterVisible = ref(false);
 
 // Computed para los v-model
 const startDateModel = computed({
@@ -31,8 +33,11 @@ const isValidDateRange = computed(() => {
   return new Date(props.startDate) <= new Date(props.endDate);
 });
 
-const hasFilters = computed(() => {
-  return props.startDate || props.endDate;
+const hasFiltersCount = computed(() => {
+  let count = 0;
+  if (props.startDate) count++;
+  if (props.endDate) count++;
+  return count;
 });
 
 // Métodos
@@ -81,146 +86,195 @@ const setYearPreset = () => {
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <!-- Campos de fecha -->
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="startDateModel"
-            placeholder="Fecha Inicial"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            :error="!isValidDateRange"
-            :error-messages="
-              !isValidDateRange
-                ? ['La fecha inicial debe ser menor a la fecha final']
-                : []
-            "
-            @update:model-value="startDateModel = $event"
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="endDateModel"
-            placeholder="Fecha Final"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            :error="!isValidDateRange"
-            :error-messages="
-              !isValidDateRange
-                ? ['La fecha final debe ser mayor a la fecha inicial']
-                : []
-            "
-            @update:model-value="endDateModel = $event"
-          />
-        </VCol>
-
-        <!-- Espacio vacío para mantener alineación -->
-        <VCol cols="12" sm="6" md="4">
-          <!-- Columna vacía para alineación -->
-        </VCol>
-      </VRow>
-
-      <!-- Información del período seleccionado -->
-      <VRow v-if="startDate && endDate && isValidDateRange" class="mt-2">
-        <VCol cols="12">
-          <VAlert type="info" variant="tonal" density="compact" class="mb-0">
-            <template #prepend>
-              <VIcon icon="tabler-info-circle" />
-            </template>
-
-            <span class="text-body-2">
-              <strong>Período seleccionado:</strong>
-              {{
-                new Date(startDate).toLocaleDateString("es-VE", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              }}
-              -
-              {{
-                new Date(endDate).toLocaleDateString("es-CO", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              }}
-            </span>
-          </VAlert>
-        </VCol>
-      </VRow>
-    </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn
-        color="secondary"
-        variant="outlined"
-        @click="handleClearFilter"
-        :disabled="!hasFilters || loading"
-      >
-        Limpiar Filtros
-      </VBtn>
-
-      <!-- Presets de fecha -->
-      <div class="d-flex align-center gap-2 flex-wrap">
-        <VBtn
-          size="small"
-          variant="tonal"
-          color="info"
-          @click="setMonthPreset"
-          :disabled="loading"
-        >
-          <VIcon icon="tabler-calendar-month" size="16" class="me-1" />
-          Mes Actual
-        </VBtn>
-
-        <VBtn
-          size="small"
-          variant="tonal"
-          color="info"
-          @click="setQuarterPreset"
-          :disabled="loading"
-        >
-          <VIcon icon="tabler-calendar-stats" size="16" class="me-1" />
-          Trimestre
-        </VBtn>
-
-        <VBtn
-          size="small"
-          variant="tonal"
-          color="info"
-          @click="setYearPreset"
-          :disabled="loading"
-        >
-          <VIcon icon="tabler-calendar-year" size="16" class="me-1" />
-          Año Actual
-        </VBtn>
+  <VCard class="mb-6 rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <!-- Barra de Acciones Principal -->
+    <VCardActions class="pa-4 px-6 d-flex align-center bg-surface">
+      <div class="d-flex align-center gap-2">
+        <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
+          <VIcon icon="tabler-calendar-search" size="20" />
+        </VAvatar>
+        <div class="d-flex flex-column">
+          <span class="text-sm font-weight-black uppercase leading-none mb-1">Período Fiscal</span>
+          <span class="text-super-xs text-disabled font-weight-medium">Filtrar por fechas</span>
+        </div>
       </div>
 
       <VSpacer />
 
-      <VBtn
-        color="primary"
-        prepend-icon="tabler-filter"
-        @click="handleApplyFilter"
-        :disabled="!isValidDateRange || loading"
-        :loading="loading"
-      >
-        Aplicar Filtros
-      </VBtn>
+      <div class="d-flex align-center gap-2">
+        <!-- Toggle Filtros -->
+        <VBtn
+          icon
+          variant="tonal"
+          :color="isFilterVisible ? 'primary' : 'secondary'"
+          size="38"
+          @click="isFilterVisible = !isFilterVisible"
+          class="rounded-lg"
+        >
+          <VBadge
+            :model-value="hasFiltersCount > 0"
+            :content="hasFiltersCount"
+            color="error"
+            offset-x="3"
+            offset-y="3"
+          >
+            <VIcon :icon="isFilterVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+          </VBadge>
+          <VTooltip activator="parent" location="top">{{ isFilterVisible ? 'Ocultar Filtros' : 'Mostrar Filtros' }}</VTooltip>
+        </VBtn>
+
+        <!-- Presets de Fecha (Quick Actions) -->
+        <VMenu transition="scale-transition">
+          <template #activator="{ props: menuProps }">
+            <VBtn
+              v-bind="menuProps"
+              icon
+              variant="tonal"
+              color="info"
+              size="38"
+              class="rounded-lg"
+            >
+              <VIcon icon="tabler-calendar-stats" size="20" />
+              <VTooltip activator="parent" location="top">Períodos Predefinidos</VTooltip>
+            </VBtn>
+          </template>
+          <VList class="rounded-lg shadow-lg border-0 pa-2" min-width="180">
+            <VListItem class="rounded-md mb-1" @click="setMonthPreset">
+              <template #prepend>
+                <VIcon icon="tabler-calendar-month" size="18" class="me-3" color="info" />
+              </template>
+              <VListItemTitle class="text-xs font-weight-bold">Mes Actual</VListItemTitle>
+            </VListItem>
+            <VListItem class="rounded-md mb-1" @click="setQuarterPreset">
+              <template #prepend>
+                <VIcon icon="tabler-calendar-stats" size="18" class="me-3" color="info" />
+              </template>
+              <VListItemTitle class="text-xs font-weight-bold">Trimestre Actual</VListItemTitle>
+            </VListItem>
+            <VListItem class="rounded-md" @click="setYearPreset">
+              <template #prepend>
+                <VIcon icon="tabler-calendar-year" size="18" class="me-3" color="info" />
+              </template>
+              <VListItemTitle class="text-xs font-weight-bold">Año Actual</VListItemTitle>
+            </VListItem>
+          </VList>
+        </VMenu>
+
+        <VDivider vertical class="mx-1 my-2" />
+
+        <!-- Aplicar (Solo si hay cambios y panel visible?) o siempre? En este caso siempre -->
+        <VBtn
+          icon
+          color="primary"
+          variant="flat"
+          size="38"
+          class="rounded-lg shadow-sm"
+          :loading="props.loading"
+          @click="handleApplyFilter"
+        >
+          <VIcon icon="tabler-check" size="20" />
+          <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
+        </VBtn>
+
+        <!-- Limpiar -->
+        <VBtn
+          icon
+          variant="tonal"
+          color="error"
+          size="38"
+          class="rounded-lg"
+          @click="handleClearFilter"
+          :disabled="hasFiltersCount === 0 || props.loading"
+        >
+          <VIcon icon="tabler-filter-x" size="20" />
+          <VTooltip activator="parent" location="top">Restablecer Fechas</VTooltip>
+        </VBtn>
+      </div>
     </VCardActions>
+
+    <!-- Panel de Filtros Colapsable -->
+    <VExpandTransition>
+      <div v-show="isFilterVisible">
+        <VDivider class="opacity-10" />
+        <VCardText class="pa-6 pt-4 bg-surface-variant-opacity-2">
+          <VRow>
+            <!-- Fecha Inicial -->
+            <VCol cols="12" md="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Inicial</span>
+              <AppDateTimePicker
+                :model-value="startDateModel"
+                placeholder="Desde..."
+                variant="outlined"
+                density="compact"
+                hide-details
+                color="primary"
+                clearable
+                class="premium-input"
+                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                :error="!isValidDateRange"
+                @update:model-value="startDateModel = $event"
+              >
+                <template #prepend-inner>
+                  <VIcon icon="tabler-calendar-search" size="18" color="disabled" class="me-2" />
+                </template>
+              </AppDateTimePicker>
+            </VCol>
+
+            <!-- Fecha Final -->
+            <VCol cols="12" md="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Final</span>
+              <AppDateTimePicker
+                :model-value="endDateModel"
+                placeholder="Hasta..."
+                variant="outlined"
+                density="compact"
+                hide-details
+                color="primary"
+                clearable
+                class="premium-input"
+                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                :error="!isValidDateRange"
+                @update:model-value="endDateModel = $event"
+              >
+                <template #prepend-inner>
+                  <VIcon icon="tabler-calendar-check" size="18" color="disabled" class="me-2" />
+                </template>
+              </AppDateTimePicker>
+            </VCol>
+          </VRow>
+
+          <!-- Alerta de fecha inválida -->
+          <VExpandTransition>
+            <div v-if="!isValidDateRange" class="mt-4">
+              <VAlert type="error" variant="tonal" density="compact" class="rounded-lg">
+                <span class="text-xs font-weight-bold">La fecha inicial debe ser menor o igual a la fecha final.</span>
+              </VAlert>
+            </div>
+          </VExpandTransition>
+        </VCardText>
+      </div>
+    </VExpandTransition>
   </VCard>
 </template>
+
+<style scoped>
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+.bg-surface-variant-opacity-2 {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+:deep(.premium-input) {
+  .v-field__outline {
+    --v-field-border-opacity: 0.1;
+  }
+}
+</style>

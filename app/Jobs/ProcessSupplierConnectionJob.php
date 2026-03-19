@@ -63,7 +63,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [JOB] Status creado - ID: {$status->id}, Status: processing\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        $supplierConnection = $this->supplier->connections->first();
+        $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
         if (is_null($supplierConnection) && !$this->filePath) {
             $status->update([
                 "status" => "failed",
@@ -139,7 +139,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 error_log($logMessage);
                 Log::info("🌐 [JOB] Iniciando conexión FTP/API para proveedor: {$this->supplier->name} (ID: {$this->supplier->id})");
                 
-                $supplierConnection = $this->supplier->connections->first();
+                $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
                 if ($supplierConnection) {
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
                     file_put_contents($logFile, $logMessage, FILE_APPEND);

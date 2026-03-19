@@ -1,6 +1,9 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { computed, defineEmits, defineProps, ref } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   isDialogVisible: { type: Boolean, required: true },
@@ -87,18 +90,25 @@ const completeClosure = () => {
 </script>
 
 <template>
-  <VDialog v-model="dialogVisible" max-width="780px" scrollable>
-    <VCard class="rounded-xl">
-      <!-- Header -->
-      <VCardTitle class="d-flex align-center px-6 py-4 border-b">
-        <VAvatar color="primary" variant="tonal" rounded class="mr-3">
-          <VIcon icon="tabler-cash-register" />
-        </VAvatar>
-        <div>
-          <h3 class="text-h6 font-weight-bold mb-0">Cierre de Caja</h3>
-          <span class="text-caption text-medium-emphasis">Confirma el resumen antes de cerrar</span>
+  <VDialog
+    v-model="dialogVisible"
+    max-width="780px"
+    scrollable
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
+  >
+    <VCard class="rounded-xl border shadow-sm">
+      <!-- Header Premium -->
+      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b bg-surface">
+        <div class="d-flex align-center gap-3">
+          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg shadow-sm">
+            <VIcon icon="tabler-cash-register" />
+          </VAvatar>
+          <div>
+            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">CIERRE DE CAJA</h3>
+            <span class="text-xs text-disabled font-weight-medium uppercase">Revisa los totales antes de finalizar</span>
+          </div>
         </div>
-        <VSpacer />
         <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
       </VCardTitle>
 

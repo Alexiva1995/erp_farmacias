@@ -29,7 +29,7 @@ class StoreSupplierRequest extends FormRequest
             'address' => ['nullable', 'string'],
             'sales_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
             'collections_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
-            'credit_days' => ['numeric', 'min:0'],
+            'credit_days' => ['required', 'numeric'],
             'dispatch_days' => ['required', 'array', 'min:1'],
             'dispatch_days.*' => ['in:monday,tuesday,wednesday,thursday,friday,saturday'],
             'order_days' => ['required', 'array', 'min:1'],
@@ -41,9 +41,9 @@ class StoreSupplierRequest extends FormRequest
             //'supplier_payment_method' => 'required|string',
             //'supplier_payment_days' => 'sometimes|numeric|min:0',
             'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
-            'custom_due_days' => 'nullable|integer|min:1',
-            'payment_due_reference' => 'required_unless:payment_due_type,invoice_date|in:issue_date,receipt_date',
-            'invoice_date_reference' => 'required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date',
+            'custom_due_days' => 'nullable|required_if:payment_due_type,custom|integer|min:1',
+            'payment_due_reference' => 'nullable|required_if:payment_due_type,early_payment|in:issue_date,receipt_date',
+            'invoice_date_reference' => 'nullable|required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date,issue_date',
         ];
     }
 

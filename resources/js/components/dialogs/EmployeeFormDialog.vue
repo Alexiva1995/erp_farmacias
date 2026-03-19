@@ -2,7 +2,8 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -14,6 +15,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "refresh-table", "close"]);
 
 const { isAdmin } = useAuthStore();
+const { mobile } = useDisplay();
 
 const errors = ref({});
 const name = ref("");
@@ -39,6 +41,7 @@ const roleItems = computed(() =>
 
 const closeDialog = () => {
   emit("close");
+  emit("update:modelValue", false);
 
   if (props.clearDataOnClose) {
     handleClearFilters();
@@ -121,7 +124,7 @@ const submitForm = async () => {
         : "No se pudo registrar al empleado"
     );
 
-    if (error.response.status === 422) {
+    if (error.response?.status === 422) {
       errors.value = error.response.data.errors;
     }
   }
@@ -151,120 +154,144 @@ watch(
     max-width="700px"
     persistent
     scrollable
-    :retain-focus="false"
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
     @click:outside.prevent
     @keydown.esc.prevent="closeDialog"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center justify-space-between pa-5 bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VIcon icon="tabler-user-plus" size="24" color="white" />
-          <span class="text-h6 text-white">
-            {{ props.selectedEmployee != null ? "Editar" : "Nuevo" }} empleado
-          </span>
+    <VCard :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
+            <VIcon :icon="props.selectedEmployee ? 'tabler-user-edit' : 'tabler-user-plus'" color="primary" size="26" />
+          </VAvatar>
+          <div class="flex-grow-1">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
+              {{ props.selectedEmployee != null ? "Editar" : "Nuevo" }} Empleado
+            </h2>
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+              Configuración de datos y accesos al sistema
+            </span>
+          </div>
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg ms-3"
+            @click="closeDialog"
+          >
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VCardText class="pa-5">
+      <VCardText class="pa-6 pa-md-8 bg-light">
         <VRow>
-          <VCol cols="12" sm="6" md="6">
-            <VTextField
+          <VCol cols="12" sm="6">
+            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Nombres</span>
+            <AppTextField
               v-model="name"
-              label="Nombres"
-              type="text"
-              variant="outlined"
+              placeholder="Ingresar nombres"
               :error-messages="errors.name"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <VTextField
+          <VCol cols="12" sm="6">
+            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Apellidos</span>
+            <AppTextField
               v-model="lastName"
-              label="Apellidos"
-              type="text"
-              variant="outlined"
+              placeholder="Ingresar apellidos"
               :error-messages="errors.last_name"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <VTextField
+          <VCol cols="12" sm="6">
+            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Identificación</span>
+            <AppTextField
               v-model="identification"
-              label="Cédula"
               type="number"
-              variant="outlined"
+              placeholder="Número de cédula"
               :error-messages="errors.identification"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
-            <VTextField
+          <VCol cols="12" sm="6">
+            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Correo Electrónico</span>
+            <AppTextField
               v-model="email"
-              label="Correo"
               type="email"
-              variant="outlined"
+              placeholder="ejemplo@correo.com"
               :error-messages="errors.email"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6" v-if="props.selectedEmployee == null || isAdmin">
-            <VTextField
+          <VCol cols="12" sm="6" v-if="props.selectedEmployee == null || isAdmin">
+            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Contraseña</span>
+            <AppTextField
               v-model="password"
-              label="Contraseña"
+              placeholder="********"
               :type="showPassword ? 'text' : 'password'"
-              variant="outlined"
               :error-messages="errors.password"
               :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
               @click:append-inner="showPassword = !showPassword"
             />
           </VCol>
-          <VCol cols="12" sm="6" md="6">
+          <VCol cols="12" sm="6">
+            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Rol de Sistema</span>
             <VSelect
               v-model="role"
-              label="Rol"
+              placeholder="Seleccionar rol"
               variant="outlined"
+              density="comfortable"
               :items="roleItems"
               :error-messages="errors.role"
             />
           </VCol>
-          <VCol v-if="props.selectedEmployee != null" cols="12" sm="6" md="6">
-            <VTextField
-              v-model="totalPackageUsd"
-              label="Paquete total (USD) – referencia nómina"
-              type="number"
-              min="0"
-              step="0.01"
-              variant="outlined"
-              :error-messages="errors.total_package_usd"
-              placeholder="Ej. 200"
-            />
+          <VCol v-if="props.selectedEmployee != null" cols="12">
+            <VCard variant="flat" class="pa-4 rounded-xl border border-dashed bg-white shadow-xs">
+              <div class="d-flex align-center mb-2">
+                <VIcon icon="tabler-coin" color="primary" class="me-2" size="20" />
+                <span class="text-xs font-weight-black text-high-emphasis uppercase">Paquete Salarial (Referencia)</span>
+              </div>
+              <AppTextField
+                v-model="totalPackageUsd"
+                type="number"
+                min="0"
+                step="0.01"
+                prefix="$"
+                placeholder="Monto total en USD para nómina"
+                :error-messages="errors.total_package_usd"
+              />
+            </VCard>
           </VCol>
         </VRow>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-5">
+      <VCardActions class="pa-6 px-md-8 bg-white">
         <VRow class="w-100 ma-0">
-          <VCol cols="6" class="pa-2">
+          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="outlined"
-              prepend-icon="tabler-x"
+              variant="tonal"
+              size="large"
               block
+              height="48"
+              class="font-weight-black rounded-lg"
               @click="closeDialog"
             >
-              Cancelar
+              CANCELAR
             </VBtn>
           </VCol>
-          <VCol cols="6" class="pa-2">
+          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              prepend-icon="tabler-check"
+              size="large"
               block
+              height="48"
+              class="font-weight-black rounded-lg shadow-primary-sm"
               @click="submitForm"
             >
-              {{ props.selectedEmployee != null ? 'Actualizar' : 'Guardar' }}
+              {{ props.selectedEmployee != null ? 'ACTUALIZAR' : 'GUARDAR' }}
             </VBtn>
           </VCol>
         </VRow>
@@ -272,3 +299,46 @@ watch(
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.shadow-xs {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 10%) !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important;
+}
+
+.shadow-primary-sm {
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 25%) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.border-dashed {
+  border-width: 2px !important;
+  border-style: dashed !important;
+}
+
+.uppercase {
+  text-transform: uppercase !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+</style>

@@ -5,7 +5,7 @@ import ClosingHistoryTable from "@/components/ClosingHistoryTable.vue";
 import ClosedCashClosure from "@/components/dialogs/ClosedCashClosure.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
-import OrderCashCloseTable from "@/components/OrderCashCloseTable.vue";
+import UserCashFilters from "@/components/UserCashFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
@@ -46,6 +46,16 @@ const creditForPrint = ref(false);
 const currency = ref("COP");
 const orderItems = ref([]);
 
+const filters = ref({
+  search: "",
+  date_start: null,
+  date_end: null,
+});
+
+const handleFilterUpdate = (newFilters) => {
+  filters.value = { ...newFilters };
+};
+
 const orderDataHistory = ref(null);
 
 const fetchCashClosure = async () => {
@@ -79,6 +89,9 @@ const fetchClosingHistory = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    search: filters.value.search,
+    date_start: filters.value.date_start,
+    date_end: filters.value.date_end,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -311,6 +324,9 @@ const fetchOrder = async () => {
     itemsPerPage: itemsPerPageOrders.value,
     sortBy: sortByOrders.value,
     orderBy: orderByOrders.value,
+    search: filters.value.search,
+    date_start: filters.value.date_start,
+    date_end: filters.value.date_end,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -414,18 +430,19 @@ watch(
 );
 
 
-let debounceTimer;
 watch(
   [
     page,
     itemsPerPage,
     sortBy,
     orderBy,
+    filters,
   ],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       fetchClosingHistory();
+      fetchOrder();
     }, 300);
   },
   { deep: true }
@@ -440,46 +457,75 @@ const isSpecialTaxpayer = computed(() => {
 </script>
 
 <template>
-  <div>
-    <p v-if="loading">Cargando resumen de caja...</p>
-    <p v-else-if="!cashClosure">No hay datos de cierre de caja disponibles.</p>
-    <CashSummary
-      v-else
-      :cash-closure-data="cashClosure"
-      @requestCloseCash="handleRequestCloseCash"
-    />
+  <div class="cash-closure-user-page pa-4">
+    <VRow>
+      <!-- Resumen de Caja Superior -->
+      <VCol cols="12">
+        <CashSummary
+          v-if="cashClosure"
+          :cash-closure-data="cashClosure"
+          :loading="loading"
+          @requestCloseCash="handleRequestCloseCash"
+        />
+        <VAlert v-else-if="!loading" type="info" variant="tonal" class="rounded-xl">
+          No hay datos de cierre de caja disponibles.
+        </VAlert>
+      </VCol>
 
+      <!-- Filtros Colapsables -->
+      <VCol cols="12">
+        <UserCashFilters
+          :loading="loadingClosing || loadingOrders"
+          @update:filters="handleFilterUpdate"
+          @refresh="() => { fetchCashClosure(); fetchClosingHistory(); fetchOrder(); }"
+        />
+      </VCol>
+
+      <!-- Histórico de Cierre -->
+      <VCol cols="12" md="4">
+        <VCard class="rounded-xl border shadow-sm h-100">
+          <VCardTitle class="px-6 py-4 border-b d-flex align-center gap-2">
+            <VIcon icon="tabler-history" color="primary" />
+            <span class="text-h6 font-weight-black uppercase">Historial</span>
+          </VCardTitle>
+          <ClosingHistoryTable
+            :closing="closing"
+            :loading="loadingClosing"
+            :total-closing="totalClosing"
+            :items-per-page="itemsPerPage"
+            :page="page"
+            @update:options="updateTableOptions"
+            @print-cash="printCash"
+          />
+        </VCard>
+      </VCol>
+
+      <!-- Lista de Órdenes -->
+      <VCol cols="12" md="8">
+        <VCard class="rounded-xl border shadow-sm h-100">
+          <VCardTitle class="px-6 py-4 border-b d-flex align-center gap-2">
+            <VIcon icon="tabler-list-details" color="primary" />
+            <span class="text-h6 font-weight-black uppercase">Órdenes del Turno</span>
+          </VCardTitle>
+          <OrderCashCloseTable
+            :orders="orders"
+            :loading="loadingOrders"
+            :total-orders="totalOrders"
+            :items-per-page="itemsPerPageOrders"
+            :page="pageOrders"
+            @update:options="updateTableOptionsOrders"
+            @view-order="handleViewOrder"
+            @cancelar-order="cancelarOrder"
+          />
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- Diálogos -->
     <ClosedCashClosure
       v-model:isDialogVisible="isCloseCashModalVisible"
       :cash-closure-data="cashClosure"
       @complete-cash-closure="handleCompleteClosure"
-    />
-  </div>
-  <div class="mb-5"></div>
-  <VCard title="Histórico de cierre">
-    <div class="mb-2"></div>
-    <ClosingHistoryTable
-      :closing="closing"
-      :loading="loadingClosing"
-      :total-closing="totalClosing"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @print-cash="printCash"
-    />
-  </VCard>
-  <div class="mb-5"></div>
-  <VCard title="Lista de Ordenes">
-    <div class="mb-2"></div>
-    <OrderCashCloseTable
-      :orders="orders"
-      :loading="loadingOrders"
-      :total-orders="totalOrders"
-      :items-per-page="itemsPerPageOrders"
-      :page="pageOrders"
-      @update:options="updateTableOptionsOrders"
-      @view-order="handleViewOrder"
-      @cancelar-order="cancelarOrder"
     />
 
     <OrderViewModal
@@ -495,7 +541,7 @@ const isSpecialTaxpayer = computed(() => {
       @close="handleCloseViewModal"
       :is-special-taxpayer="isSpecialTaxpayer"
     />
-  </VCard>
+  </div>
 
     <div id="CashClosurePrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
       <CashClosureTicke

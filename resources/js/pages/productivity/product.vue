@@ -91,8 +91,10 @@ watch([searchQuery, selectedProduct], () => {
 });
 
 onMounted(() => {
-  fetchEmployees();
-  fetchEmployeeProducts();
+  Promise.all([
+    fetchEmployees(),
+    fetchEmployeeProducts(),
+  ]);
 });
 
 const updateTableOptions = (options) => {
@@ -161,7 +163,11 @@ const handleViewProducts = (employee) => {
   isViewDialogVisible.value = true;
 };
 
-const handleAddAssignment = () => {
+const handleAddAssignment = async () => {
+  // Si por algún motivo los empleados no cargaron, reintenta
+  if (employees.value.length === 0) {
+    await fetchEmployees();
+  }
   currentEmployee.value = {};
   dialogErrors.value = {};
   isDialogVisible.value = true;
@@ -203,7 +209,8 @@ const clearDialogErrors = () => {
 </script>
 
 <template>
-  <div>
+  <div class="productivity-product-page">
+    <div class="pa-4 pb-2">
     <EmployeeProductsFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedProduct="selectedProduct"
@@ -240,5 +247,13 @@ const clearDialogErrors = () => {
       @save="handleSaveAssignment"
       @clear-errors="clearDialogErrors"
     />
+    </div>
   </div>
 </template>
+
+<style scoped>
+.productivity-product-page {
+  background-color: rgb(var(--v-theme-background));
+  min-block-size: 100vh;
+}
+</style>

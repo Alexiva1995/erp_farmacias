@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   dailyCash:       { type: Array,  required: true },
   loading:         { type: Boolean, default: false },
@@ -9,6 +11,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:options', 'view-cash', 'delivery', 'reference', 'closing-daily']);
 
+const { mobile } = useDisplay();
+
 const headers = [
   { title: "Fecha",      key: "date",          sortable: true },
   { title: "USD",        key: "total_usd",      sortable: true, align: "end" },
@@ -18,113 +22,237 @@ const headers = [
   { title: "E. COP",     key: "cop_delivered",  sortable: true, align: "end" },
   { title: "Bs PM",      key: "bs_mobile",      sortable: true, align: "end" },
   { title: "Bs Tarjeta", key: "bs_card",        sortable: true, align: "end" },
-  { title: "",           key: "actions",        sortable: false, align: "center", width: "120px" },
+  { title: "Acciones",   key: "actions",        sortable: false, align: "center", width: "140px" },
 ];
 
-const fmtDate = (v) => v ? new Date(v).toISOString().split("T")[0] : "—";
+const fmtDate = (v) => {
+  if (!v) return '—';
+  const date = new Date(v);
+  const days = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
+  const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+};
+
 const fmtUsd  = (v) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
 const fmtCop  = (v) => Math.round(v ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const fmtBs   = (v) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
 
-// Heurística de alerta: si usd_delivered < total_usd * 0.8 → advertencia de conciliación
-const conciliationAlert = (item) => {
-  const expected = parseFloat(item.total_usd ?? 0);
-  const delivered = parseFloat(item.usd_delivered ?? 0);
-  if (expected <= 0) return null;
-  const ratio = delivered / expected;
-  if (ratio < 0.5) return { color: 'error',   label: 'Diferencia alta' };
-  if (ratio < 0.9) return { color: 'warning',  label: 'Revisar entrega' };
-  return { color: 'success', label: 'Conciliado' };
+const getAvatarColor = (id) => {
+  const colors = ["primary", "success", "info", "warning", "purple", "cyan"];
+  return colors[id % colors.length];
 };
 </script>
 
 <template>
-  <VCard elevation="0" class="daily-table rounded-xl border">
-    <VCardItem class="pa-4 pb-2">
-      <template #prepend>
-        <VAvatar color="info" variant="tonal" size="38" rounded>
-          <VIcon icon="tabler-calendar-check" size="20" />
-        </VAvatar>
-      </template>
-      <VCardTitle class="text-subtitle-1 font-weight-bold">Cierres Diarios</VCardTitle>
-      <VCardSubtitle class="text-caption">Consolidado de ventas por día con detalle de entregas</VCardSubtitle>
-    </VCardItem>
+  <div class="mt-4">
+    <!-- Vista Escritorio -->
+    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+      <VCardItem class="pa-4 pb-0">
+        <template #prepend>
+          <VAvatar color="info" variant="tonal" size="38" class="rounded-lg">
+            <VIcon icon="tabler-calendar-check" size="20" />
+          </VAvatar>
+        </template>
+        <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Cierres Diarios</VCardTitle>
+        <VCardSubtitle class="text-xs font-weight-medium text-disabled">Consolidado de ventas por día con detalle de entregas</VCardSubtitle>
+      </VCardItem>
 
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.dailyCash"
-      :items-length="props.totalDailyCash"
-      :loading="props.loading"
-      no-data-text="No hay cierres diarios registrados"
-      density="compact"
-      @update:options="(opt) => emit('update:options', opt)"
-    >
-      <template #item.date="{ item }">
-        <span class="font-weight-medium">{{ fmtDate(item.created_at) }}</span>
-      </template>
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="headers"
+        :items="props.dailyCash"
+        :items-length="props.totalDailyCash"
+        :loading="props.loading"
+        no-data-text="No hay cierres diarios registrados"
+        class="text-no-wrap premium-table"
+        @update:options="(opt) => emit('update:options', opt)"
+      >
+        <template #item.date="{ item }">
+          <div class="d-flex align-center gap-3 py-2">
+            <VAvatar size="32" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg font-weight-black text-xs">
+              <VIcon icon="tabler-calendar" size="16" />
+            </VAvatar>
+            <span class="text-xs font-weight-black uppercase">{{ fmtDate(item.created_at) }}</span>
+          </div>
+        </template>
 
-      <!-- Totales vendidos -->
-      <template #item.total_usd="{ item }">
-        <span class="font-weight-medium text-primary">{{ fmtUsd(item.total_usd) }}</span>
-      </template>
-      <template #item.total_cop="{ item }">
-        <span class="font-weight-medium text-success">{{ fmtCop(item.total_cop) }}</span>
-      </template>
-      <template #item.total_bs="{ item }">
-        <span class="font-weight-medium text-warning">{{ fmtBs(item.total_bs) }}</span>
-      </template>
+        <template #item.total_usd="{ item }">
+          <span class="text-xs font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
+        </template>
+        <template #item.total_cop="{ item }">
+          <span class="text-xs font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
+        </template>
+        <template #item.total_bs="{ item }">
+          <span class="text-xs font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+        </template>
 
-      <!-- Entregas con conciliación -->
-      <template #item.usd_delivered="{ item }">
-        <div class="text-right">
-          <span class="font-weight-medium">{{ fmtUsd(item.usd_delivered) }}</span>
-        </div>
-      </template>
-      <template #item.cop_delivered="{ item }">
-        <span>{{ fmtCop(item.cop_delivered) }}</span>
-      </template>
-      <template #item.bs_mobile="{ item }">
-        <span>{{ fmtBs(item.bs_mobile) }}</span>
-      </template>
-      <template #item.bs_card="{ item }">
-        <span>{{ fmtBs(item.bs_card) }}</span>
-      </template>
+        <template #item.usd_delivered="{ item }">
+          <span class="text-xs font-weight-bold">{{ fmtUsd(item.usd_delivered) }}</span>
+        </template>
+        <template #item.cop_delivered="{ item }">
+          <span class="text-xs font-weight-bold">{{ fmtCop(item.cop_delivered) }}</span>
+        </template>
+        <template #item.bs_mobile="{ item }">
+          <span class="text-xs font-weight-medium text-info">{{ fmtBs(item.bs_mobile) }}</span>
+        </template>
+        <template #item.bs_card="{ item }">
+          <span class="text-xs font-weight-medium text-info">{{ fmtBs(item.bs_card) }}</span>
+        </template>
 
-      <!-- Acciones -->
-      <template #item.actions="{ item }">
-        <div class="d-flex align-center gap-1 justify-center">
-          <VTooltip text="Ver detalle" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-eye" size="x-small" variant="tonal" color="info" @click="emit('view-cash', item)" />
-            </template>
-          </VTooltip>
-          <VTooltip text="Entregas" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn v-bind="tip" icon="tabler-box" size="x-small" variant="tonal" @click="emit('delivery', item)" />
-            </template>
-          </VTooltip>
-          <VTooltip text="Referencias" location="top">
-            <template #activator="{ props: tip }">
-              <VBtn 
-                v-bind="tip" 
-                icon="tabler-clipboard-list" 
-                size="x-small" 
-                variant="tonal" 
-                color="secondary" 
-                @click="emit('reference', item)" 
-              />
-            </template>
-          </VTooltip>
-        </div>
-      </template>
-    </VDataTableServer>
-  </VCard>
+        <template #item.actions="{ item }">
+          <div class="d-flex align-center justify-center gap-1">
+            <VTooltip text="Ver Detalle" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn v-bind="tip" icon="tabler-eye" size="32" variant="text" color="info" class="rounded-lg" @click="emit('view-cash', item)" />
+              </template>
+            </VTooltip>
+            <VTooltip text="Entregas" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn v-bind="tip" icon="tabler-box" size="32" variant="text" color="success" class="rounded-lg" @click="emit('delivery', item)" />
+              </template>
+            </VTooltip>
+            <VTooltip text="Referencias" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn v-bind="tip" icon="tabler-clipboard-list" size="32" variant="text" color="secondary" class="rounded-lg" @click="emit('reference', item)" />
+              </template>
+            </VTooltip>
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
+
+    <!-- Vista Móvil Cards -->
+    <div v-else class="d-flex flex-column gap-4">
+      <VCard
+        v-for="item in props.dailyCash"
+        :key="item.id"
+        class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+      >
+        <VCardText class="pa-5">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center gap-3">
+              <VAvatar size="42" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg">
+                <VIcon icon="tabler-calendar-event" size="20" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-sm font-weight-black leading-tight uppercase">{{ fmtDate(item.created_at) }}</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">Consolidado Diario #{{ item.id }}</span>
+              </div>
+            </div>
+            <VChip color="info" variant="tonal" size="x-small" class="font-weight-black rounded px-2">
+              DIARIO
+            </VChip>
+          </div>
+
+          <VDivider class="mb-4 opacity-10" />
+
+          <!-- Resumen de Ventas -->
+          <span class="text-super-xs font-weight-black text-primary uppercase d-block mb-3">Ventas Consolidadas</span>
+          <div class="d-flex gap-3 mb-4">
+            <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
+              <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">USD</span>
+              <span class="text-sm font-weight-black text-primary">{{ fmtUsd(item.total_usd) }}</span>
+            </div>
+            <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
+              <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">COP</span>
+              <span class="text-sm font-weight-black text-success">{{ fmtCop(item.total_cop) }}</span>
+            </div>
+            <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
+              <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">Bs.</span>
+              <span class="text-sm font-weight-black text-warning">{{ fmtBs(item.total_bs) }}</span>
+            </div>
+          </div>
+
+          <!-- Resumen de Entregas/Métodos -->
+          <span class="text-super-xs font-weight-black text-secondary uppercase d-block mb-3">Detalle de Recepción</span>
+          <div class="bg-surface-variant-opacity-2 rounded-lg pa-4 mb-4">
+            <div class="d-flex justify-space-between align-center mb-2">
+              <span class="text-xs text-disabled font-weight-medium">Entregado USD</span>
+              <span class="text-xs font-weight-black">{{ fmtUsd(item.usd_delivered) }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center mb-2">
+              <span class="text-xs text-disabled font-weight-medium">Entregado COP</span>
+              <span class="text-xs font-weight-black">{{ fmtCop(item.cop_delivered) }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center mb-2">
+              <span class="text-xs text-disabled font-weight-medium">Pago Móvil Bs.</span>
+              <span class="text-xs font-weight-black text-info">{{ fmtBs(item.bs_mobile) }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center">
+              <span class="text-xs text-disabled font-weight-medium">Tarjeta Bs.</span>
+              <span class="text-xs font-weight-black text-info">{{ fmtBs(item.bs_card) }}</span>
+            </div>
+          </div>
+
+          <!-- Acciones Móvil -->
+          <div class="d-flex align-center gap-2">
+            <VBtn
+              color="primary"
+              variant="tonal"
+              class="rounded-lg font-weight-black text-xs h-10 flex-grow-1"
+              prepend-icon="tabler-eye"
+              @click="emit('view-cash', item)"
+            >
+              DETALLES
+            </VBtn>
+            <VBtn
+              icon="tabler-box"
+              color="success"
+              variant="tonal"
+              class="rounded-lg"
+              size="40"
+              min-width="40"
+              @click="emit('delivery', item)"
+            />
+            <VBtn
+              icon="tabler-clipboard-list"
+              color="secondary"
+              variant="tonal"
+              class="rounded-lg"
+              size="40"
+              min-width="40"
+              @click="emit('reference', item)"
+            />
+          </div>
+        </VCardText>
+      </VCard>
+
+      <VAlert v-if="props.dailyCash.length === 0" type="info" variant="tonal" class="rounded-xl">
+        No hay registros diarios encontrados.
+      </VAlert>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.daily-table {
-  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
+.premium-table :deep(.v-data-table-header) {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+.premium-table :deep(.v-data-table-header th) {
+  block-size: 44px !important;
+  color: rgba(var(--v-theme-on-surface), 50%) !important;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.bg-surface-variant-opacity-2 {
+  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+}
+
+.h-10 {
+  block-size: 40px !important;
 }
 </style>

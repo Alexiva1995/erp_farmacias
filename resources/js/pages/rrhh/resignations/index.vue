@@ -1,14 +1,27 @@
 <script setup>
 import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
 import { toast } from "@/plugins/sweetalert";
-import axios from "axios";
+import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
-import { onMounted, ref } from "vue";
+import { useDisplay } from "vuetify";
+import { onMounted, ref, watch } from "vue";
+
+const { mobile } = useDisplay();
 
 // Estado reactivo
 const loading = ref(false);
 const resignations = ref([]);
 const search = ref("");
+const isFilterVisible = ref(false);
+
+// Filtros avanzados
+const filters = ref({
+  resignation_type: null,
+  date_from: null,
+  date_to: null,
+  status: null,
+});
+
 const showConfirmDialog = ref(false);
 const employeeToToggle = ref(null);
 const newStatus = ref(null);
@@ -20,35 +33,57 @@ const isEditingResignation = ref(false);
 const existingResignationData = ref(null);
 
 const headers = [
-  { title: "Empleado", key: "employee_name" },
-  { title: "Identificación", key: "employee_identification" },
-  { title: "Tipo", key: "resignation_type" },
-  { title: "Fecha Efectiva", key: "effective_date" },
-  { title: "Estado", key: "employee_status" },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "EMPLEADO", key: "employee_name", class: "font-weight-black text-super-xs" },
+  { title: "IDENTIFICACIÓN", key: "employee_identification", class: "font-weight-black text-super-xs" },
+  { title: "TIPO", key: "resignation_type", class: "font-weight-black text-super-xs" },
+  { title: "FECHA EFECTIVA", key: "effective_date", class: "font-weight-black text-super-xs text-center", align: 'center' },
+  { title: "ESTADO", key: "employee_status", class: "font-weight-black text-super-xs text-center", align: 'center' },
+  { title: "ACCIONES", key: "actions", sortable: false, class: "font-weight-black text-super-xs text-right", align: 'end' },
 ];
 
 // Métodos
 const fetchResignations = async () => {
   loading.value = true;
   try {
-    const { data } = await axios.get("/api/rrhh/resignations");
+    const hasFilters = search.value || Object.values(filters.value).some(v => v !== null && v !== "");
+    let response;
+
+    if (hasFilters) {
+      const params = {};
+      if (search.value) params.search = search.value;
+      if (filters.value.resignation_type) params.resignation_type = filters.value.resignation_type;
+      if (filters.value.date_from) params.date_from = filters.value.date_from;
+      if (filters.value.date_to) params.date_to = filters.value.date_to;
+      
+      response = await axios.get("/rrhh/resignations", { params });
+    } else {
+      response = await axios.get("/rrhh/resignations");
+    }
+
+    const { data } = response;
 
     if (data.success) {
-      resignations.value = data.data;
+      // Intentar extraer de data.data o directamente de data
+      resignations.value = data.data || [];
     } else {
       toast.error("Error en la respuesta del servidor");
     }
   } catch (error) {
-    toast.error(
-      `Error al cargar las renuncias: ${
-        error.response?.data?.message || error.message
-      }`
-    );
+    console.error("Error al cargar renuncias:", error);
+    toast.error(`Error al cargar las renuncias: ${error.response?.data?.message || error.message}`);
   } finally {
     loading.value = false;
   }
 };
+
+// Watchers para recarga automática
+watch([search, filters], () => {
+  fetchResignations();
+}, { deep: true });
+
+onMounted(() => {
+  fetchResignations();
+});
 
 const openToggleConfirmDialog = (employeeId, currentStatus, employeeName) => {
   employeeToToggle.value = {
@@ -62,7 +97,7 @@ const openToggleConfirmDialog = (employeeId, currentStatus, employeeName) => {
 
 const confirmToggleStatus = async () => {
   try {
-    await axios.put("/api/rrhh/resignations/toggle-employee-status", {
+    await axios.put("/rrhh/resignations/toggle-employee-status", {
       employee_id: employeeToToggle.value.id,
       is_active: newStatus.value,
     });
@@ -92,7 +127,7 @@ const cancelToggleStatus = () => {
 const downloadResignationPDF = async (resignation) => {
   try {
     const response = await axios.get(
-      `/api/rrhh/resignations/${resignation.id}/download-pdf`,
+      `/rrhh/resignations/${resignation.id}/download-pdf`,
       {
         responseType: "blob",
         headers: {
@@ -153,7 +188,7 @@ const editResignation = async (resignation) => {
     if (confirmed.isConfirmed) {
       // Obtener los datos de la renuncia existente
       const response = await axios.get(
-        `/api/rrhh/resignations/${resignation.id}/edit`
+        `/rrhh/resignations/${resignation.id}/edit`
       );
 
       if (response.data.success) {
@@ -213,7 +248,7 @@ const deleteResignation = async (resignation) => {
     });
 
     if (confirmed.isConfirmed) {
-      await axios.delete(`/api/rrhh/resignations/${resignation.id}`);
+      await axios.delete(`/rrhh/resignations/${resignation.id}`);
 
       toast.success("Renuncia eliminada exitosamente");
       fetchResignations(); // Recargar la lista
@@ -244,127 +279,261 @@ const handleResignationGenerated = () => {
   fetchResignations();
 };
 
-// Lifecycle
-onMounted(() => {
-  fetchResignations();
-});
+// El onMounted original será removido al final del script
 </script>
 
 <template>
-  <div>
-    <VCard class="mb-6">
-      <VCardText>
-        <VRow>
-          <VCol cols="12" md="12">
-            <AppTextField
-              v-model="search"
-              placeholder="Buscar renuncia..."
-              prepend-inner-icon="tabler-search"
-            />
-          </VCol>
-        </VRow>
+  <div class="resignations-page pa-4">
+    <!-- Barra de Búsqueda y Filtros -->
+    <VCard class="rounded-xl border-0 shadow-sm mb-6 overflow-hidden">
+      <VCardText class="pa-4">
+        <div class="d-flex align-center gap-3">
+          <AppTextField
+            v-model="search"
+            placeholder="Buscar por nombre o identificación..."
+            prepend-inner-icon="tabler-search"
+            class="flex-grow-1 premium-input-compact"
+            density="compact"
+            hide-details
+          />
+          <VBtn
+            :color="isFilterVisible ? 'primary' : 'secondary'"
+            variant="tonal"
+            class="rounded-lg px-6 font-weight-black"
+            @click="isFilterVisible = !isFilterVisible"
+          >
+            <VIcon start icon="tabler-filter" size="18" />
+            FILTROS
+            <VIcon end :icon="isFilterVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
+          </VBtn>
+        </div>
+
+        <VExpandTransition>
+          <div v-show="isFilterVisible">
+            <VDivider class="my-4 border-dashed opacity-30" />
+            <VRow>
+              <VCol cols="12" sm="4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Tipo de Egreso</span>
+                <VSelect
+                  v-model="filters.resignation_type"
+                  :items="[
+                    { title: 'Todos', value: null },
+                    { title: 'Renuncia Voluntaria', value: 'voluntary' },
+                    { title: 'Despido Injustificado', value: 'unjustified_dismissal' }
+                  ]"
+                  placeholder="Seleccionar tipo"
+                  density="compact"
+                  hide-details
+                  class="premium-input-compact"
+                />
+              </VCol>
+              <VCol cols="12" sm="4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha Desde</span>
+                <AppTextField
+                  v-model="filters.date_from"
+                  type="date"
+                  density="compact"
+                  hide-details
+                  class="premium-input-compact"
+                />
+              </VCol>
+              <VCol cols="12" sm="4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha Hasta</span>
+                <AppTextField
+                  v-model="filters.date_to"
+                  type="date"
+                  density="compact"
+                  hide-details
+                  class="premium-input-compact"
+                />
+              </VCol>
+            </VRow>
+            <div class="d-flex justify-end mt-4">
+              <VBtn 
+                variant="text" 
+                color="secondary" 
+                size="small" 
+                class="font-weight-black" 
+                @click="filters = { resignation_type: null, date_from: null, date_to: null, status: null }"
+              >
+                LIMPIAR FILTROS
+              </VBtn>
+            </div>
+          </div>
+        </VExpandTransition>
       </VCardText>
     </VCard>
 
-    <VCard>
-      <VCardText>
-        <VDataTable
-          :headers="headers"
-          :items="resignations"
-          :search="search"
-          :loading="loading"
-          items-per-page="10"
-          class="text-no-wrap"
-        >
-          <!-- Empleado -->
-          <template #item.employee_name="{ item }">
-            <span class="font-weight-medium">{{ item.employee_name }}</span>
-          </template>
+    <!-- Contenido Principal: Tabla o Tarjetas Móviles -->
+    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden">
+      <!-- Vista de Escritorio: Tabla Premium -->
+      <VDataTable
+        v-if="!mobile"
+        :headers="headers"
+        :items="resignations"
+        :loading="loading"
+        :items-per-page="10"
+        class="premium-table text-no-wrap"
+      >
+        <!-- Empleado -->
+        <template #item.employee_name="{ item }">
+          <div class="d-flex align-center gap-3 py-2">
+            <VAvatar color="primary" variant="tonal" size="32" class="rounded font-weight-black text-super-xs">
+              {{ item.employee_name.charAt(0) }}
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-xs font-weight-black text-high-emphasis">{{ item.employee_name }}</span>
+              <span class="text-super-xs text-disabled">{{ item.employee_position || 'Cargo no especificado' }}</span>
+            </div>
+          </div>
+        </template>
 
-          <!-- Tipo -->
-          <template #item.resignation_type="{ item }">
-            <VChip
-              :color="
-                item.resignation_type === 'voluntary' ? 'success' : 'warning'
-              "
-              size="small"
-              label
-            >
-              {{
-                item.resignation_type === "voluntary"
-                  ? "Justificada"
-                  : "Injustificada"
-              }}
-            </VChip>
-          </template>
+        <!-- Tipo -->
+        <template #item.resignation_type="{ item }">
+          <VChip
+            :color="item.resignation_type === 'voluntary' ? 'success' : 'warning'"
+            size="x-small"
+            class="font-weight-black px-2 rounded"
+            variant="flat"
+          >
+            {{ item.resignation_type === "voluntary" ? "JUSTIFICADA" : "INJUSTIFICADA" }}
+          </VChip>
+        </template>
 
-          <!-- Fecha -->
-          <template #item.effective_date="{ item }">
+        <!-- Fecha -->
+        <template #item.effective_date="{ item }">
+          <div class="text-xs font-weight-black text-high-emphasis tabular-nums">
             {{ formatDate(item.effective_date) }}
-          </template>
+          </div>
+        </template>
 
-          <!-- Estado -->
-          <template #item.employee_status="{ item }">
-            <VChip
-              :color="item.employee_status === 'Activo' ? 'success' : 'error'"
-              size="small"
-              label
-            >
-              {{ item.employee_status }}
-            </VChip>
-          </template>
+        <!-- Estado -->
+        <template #item.employee_status="{ item }">
+          <VChip
+            :color="item.employee_status === 'Activo' ? 'success' : 'error'"
+            size="x-small"
+            class="font-weight-black px-2 rounded"
+            variant="tonal"
+          >
+            {{ item.employee_status.toUpperCase() }}
+          </VChip>
+        </template>
 
-          <!-- Acciones -->
-          <template #item.actions="{ item }">
-            <VTooltip text="Descargar Carta" location="top">
+        <!-- Acciones -->
+        <template #item.actions="{ item }">
+          <div class="d-flex justify-end gap-1">
+            <VTooltip text="Descargar" location="top">
               <template #activator="{ props }">
-                <IconBtn v-bind="props" @click="downloadResignationPDF(item)">
-                  <VIcon icon="tabler-download" />
-                </IconBtn>
+                <VBtn v-bind="props" icon="tabler-file-download" variant="text" color="primary" size="32" @click="downloadResignationPDF(item)" />
               </template>
             </VTooltip>
 
-            <VTooltip text="Editar Renuncia" location="top">
+            <VTooltip text="Editar" location="top">
               <template #activator="{ props }">
-                <IconBtn v-bind="props" @click="editResignation(item)">
-                  <VIcon icon="tabler-edit" />
-                </IconBtn>
+                <VBtn v-bind="props" icon="tabler-edit" variant="text" color="info" size="32" @click="editResignation(item)" />
               </template>
             </VTooltip>
 
-            <VTooltip text="Cambiar Estado" location="top">
+            <VTooltip text="Estado" location="top">
               <template #activator="{ props }">
-                <IconBtn
-                  v-bind="props"
-                  @click="
-                    openToggleConfirmDialog(
-                      item.employee_id,
-                      item.employee_status === 'Activo',
-                      item.employee_name
-                    )
-                  "
+                <VBtn 
+                  v-bind="props" 
+                  :icon="item.employee_status === 'Activo' ? 'tabler-user-minus' : 'tabler-user-plus'" 
+                  variant="text" 
+                  :color="item.employee_status === 'Activo' ? 'warning' : 'success'" 
+                  size="32" 
+                  @click="openToggleConfirmDialog(item.employee_id, item.employee_status === 'Activo', item.employee_name)" 
+                />
+              </template>
+            </VTooltip>
+
+            <VTooltip text="Eliminar" location="top">
+              <template #activator="{ props }">
+                <VBtn v-bind="props" icon="tabler-trash" variant="text" color="error" size="32" @click="deleteResignation(item)" />
+              </template>
+            </VTooltip>
+          </div>
+        </template>
+      </VDataTable>
+
+      <!-- Vista Móvil: Cards Premium -->
+      <div v-else class="pa-4 bg-light">
+        <VRow>
+          <VCol v-for="item in resignations" :key="item.id" cols="12">
+            <VCard class="rounded-xl border shadow-sm mb-4 overflow-hidden">
+              <div class="pa-4 border-b d-flex justify-space-between align-center">
+                <div class="d-flex align-center gap-3">
+                  <VAvatar color="primary" variant="tonal" size="40" class="rounded font-weight-black">
+                    {{ item.employee_name.charAt(0) }}
+                  </VAvatar>
+                  <div class="d-flex flex-column">
+                    <span class="text-sm font-weight-black text-high-emphasis leading-tight">{{ item.employee_name }}</span>
+                    <span class="text-xs text-disabled">{{ item.employee_identification }}</span>
+                  </div>
+                </div>
+                <VChip
+                  :color="item.employee_status === 'Activo' ? 'success' : 'error'"
+                  size="x-small"
+                  class="font-weight-black px-2 rounded"
+                  variant="tonal"
                 >
-                  <VIcon
-                    :icon="
-                      item.employee_status === 'Activo'
-                        ? 'tabler-user-minus'
-                        : 'tabler-user-plus'
-                    "
-                  />
-                </IconBtn>
-              </template>
-            </VTooltip>
-
-            <VTooltip text="Eliminar Renuncia" location="top">
-              <template #activator="{ props }">
-                <IconBtn v-bind="props" @click="deleteResignation(item)">
-                  <VIcon icon="tabler-trash" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-          </template>
-        </VDataTable>
-      </VCardText>
+                  {{ item.employee_status.toUpperCase() }}
+                </VChip>
+              </div>
+              <VCardText class="pa-4">
+                <div class="d-flex justify-space-between mb-2">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase">Tipo de Egreso</span>
+                  <VChip
+                    :color="item.resignation_type === 'voluntary' ? 'success' : 'warning'"
+                    size="x-small"
+                    class="font-weight-black px-2 rounded"
+                    variant="flat"
+                  >
+                    {{ item.resignation_type === "voluntary" ? "JUSTIFICADA" : "INJUSTIFICADA" }}
+                  </VChip>
+                </div>
+                <div class="d-flex justify-space-between mb-4">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase">Fecha Efectiva</span>
+                  <span class="text-xs font-weight-black text-high-emphasis tabular-nums">{{ formatDate(item.effective_date) }}</span>
+                </div>
+                
+                <VDivider class="border-dashed mb-4" />
+                
+                <div class="d-flex gap-2">
+                  <VBtn block color="primary" variant="tonal" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="downloadResignationPDF(item)">
+                    <VIcon start icon="tabler-file-download" size="16" />
+                    Bajar
+                  </VBtn>
+                  <VBtn block color="info" variant="tonal" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="editResignation(item)">
+                    <VIcon start icon="tabler-edit" size="16" />
+                    Editar
+                  </VBtn>
+                  <VMenu location="bottom end">
+                    <template #activator="{ props }">
+                      <VBtn v-bind="props" color="secondary" variant="tonal" size="small" class="rounded-lg" icon="tabler-dots-vertical" />
+                    </template>
+                    <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+                      <VListItem @click="openToggleConfirmDialog(item.employee_id, item.employee_status === 'Activo', item.employee_name)">
+                        <template #prepend><VIcon :icon="item.employee_status === 'Activo' ? 'tabler-user-minus' : 'tabler-user-plus'" size="18" :color="item.employee_status === 'Activo' ? 'warning' : 'success'" /></template>
+                        <VListItemTitle class="text-xs font-weight-bold">{{ item.employee_status === 'Activo' ? 'Desactivar' : 'Activar' }}</VListItemTitle>
+                      </VListItem>
+                      <VListItem @click="deleteResignation(item)" class="text-error">
+                        <template #prepend><VIcon icon="tabler-trash" size="18" color="error" /></template>
+                        <VListItemTitle class="text-xs font-weight-bold">Eliminar</VListItemTitle>
+                      </VListItem>
+                    </VList>
+                  </VMenu>
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+        </VRow>
+        
+        <div v-if="resignations.length === 0" class="text-center py-8">
+          <VIcon icon="tabler-ghost" size="48" color="disabled" class="mb-2" />
+          <div class="text-xs font-weight-bold text-disabled">No se encontraron resultados</div>
+        </div>
+      </div>
     </VCard>
 
     <!-- Modal de Confirmación -->
@@ -467,3 +636,85 @@ onMounted(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.resignations-page {
+  background-color: rgb(var(--v-theme-background));
+  min-block-size: 100vh;
+}
+
+/* Estilos para Inputs Compactos Premium */
+:deep(.premium-input-compact) {
+  .v-field__input {
+    font-size: 0.8125rem !important;
+    min-block-size: 38px !important;
+    padding-block: 0 !important;
+  }
+
+  .v-field__outline {
+    --v-field-border-opacity: 0.15;
+  }
+}
+
+/* Estilos para Tabla Premium */
+:deep(.premium-table) {
+  background: transparent !important;
+
+  thead {
+    background: rgba(var(--v-theme-on-surface), 0.02);
+
+    th {
+      background: transparent !important;
+      block-size: 48px !important;
+      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+      color: rgb(var(--v-theme-disabled)) !important;
+    }
+  }
+
+  tbody tr {
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: rgba(var(--v-theme-primary), 0.02) !important;
+    }
+
+    td {
+      block-size: 56px !important;
+      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+    }
+  }
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.bg-light {
+  background-color: rgba(var(--v-theme-on-surface), 0.015);
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+/* Sombras suaves */
+.shadow-sm {
+  box-shadow:
+    0 2px 12px -4px rgba(var(--v-shadow-key-umbra-opacity), 0.08),
+    0 4px 20px -2px rgba(var(--v-shadow-key-penumbra-opacity), 0.04) !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+:deep(.v-data-table-footer) {
+  border-block-start: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+</style>

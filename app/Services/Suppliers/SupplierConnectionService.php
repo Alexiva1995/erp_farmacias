@@ -184,21 +184,25 @@ class SupplierConnectionService
             $client = (new Browser($connector))->withTimeout(1800.0);
 
             $token = null;
-            if (!empty($connection->username)) {
+            if (!empty($connection->username) && !empty($connection->password) && !in_array($connection->supplier_id, [3])) {
                 $loginResponse = Http::post($connection->host, [
                     "usuario" => $connection->username,
                     "clave" => FtpCrypt::decrypt($connection->password),
                 ]);
                 $token = $loginResponse->json()["token"] ?? null;
+            } elseif (!empty($connection->password)) {
+                $token = FtpCrypt::decrypt($connection->password);
             }
 
             // Productos
-            $payload = $this->buildPayload($connection, 'productos');
+            $payloadDef = $this->buildPayload($connection, 'productos');
             $productData = [];
 
-            if ($payload) {
-                $url = $payload['url'] ?? $connection->path;
-                $productResponse = $this->fetchFromAPI($token, $payload, $client, $url, $payload['method'] ?? 'post');
+            if ($payloadDef) {
+                $url = $payloadDef['url'] ?? $connection->path;
+                $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : $payloadDef);
+
+                $productResponse = $this->fetchFromAPI($token, $requestData, $client, $url, $payloadDef['method'] ?? 'post');
                 
                 // Detectar si los productos vienen en una clave específica
                 $productsRaw = $productResponse;
@@ -217,8 +221,11 @@ class SupplierConnectionService
 
                 $payloadInvoice = $this->buildPayload($connection, 'facturas');
                 $invoiceUrl = $payloadInvoice['url'] ?? $connection->invoice_path;
+                $requestDataInv = isset($payloadInvoice['payload']) ? $payloadInvoice['payload'] : (isset($payloadInvoice['url']) ? [] : $payloadInvoice);
                 
-                $invoiceResponse = $this->fetchFromAPI($token, $payloadInvoice, $client, $invoiceUrl, $payloadInvoice['method'] ?? 'post');
+                Log::error("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $payloadInvoice['method'] ?? 'post']);
+                $invoiceResponse = $this->fetchFromAPI($token, $requestDataInv, $client, $invoiceUrl, $payloadInvoice['method'] ?? 'post');
+                Log::error("🔎 [FACTURAS] fetchFromAPI result", ['count' => count($invoiceResponse)]);
 
                 // Detectar si las facturas vienen en una clave específica (ej: 'facturas')
                 $invoicesRaw = $invoiceResponse;
@@ -804,9 +811,11 @@ class SupplierConnectionService
         }
     }
 
-    private function castValue(string $raw, array $meta): mixed
+    private function castValue(string|null $raw, array $meta): mixed
     {
+        if ($raw === null) return null;
         $value = trim(str_replace('"', '', $raw));
+
         return match ($meta["type"]) {
             "string" => $value,
             "integer" => is_numeric($value) ? (int) $value : null,

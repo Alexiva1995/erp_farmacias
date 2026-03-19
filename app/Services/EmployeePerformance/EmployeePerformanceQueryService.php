@@ -127,7 +127,7 @@ class EmployeePerformanceQueryService
 
         // 2. Find MAX values for dynamic scoring
         $maxSales = $employeesData->max('metrics.sales') ?: 1;
-        $maxGrowth = $employeesData->max('metrics.growth') ?: 1;
+        $maxGrowth = $employeesData->max('metrics.growth');
         $maxExpirations = $employeesData->max('metrics.expirations') ?: 1;
         $maxInventoryCount = $employeesData->max('metrics.inventory_counted') ?: 1;
         $maxPremium = $employeesData->max('metrics.premium_products') ?: 1;
@@ -146,10 +146,21 @@ class EmployeePerformanceQueryService
             $employee = $data['employee'];
             $metrics = $data['metrics'];
 
-            // Calculate Individual Scores
+            // Puntaje de Crecimiento (Growth) - Refactorizado para proporcionalidad y capping
+            if ($maxGrowth > 0) {
+                $growthScore = ($metrics['growth'] / $maxGrowth) * 15;
+            } elseif ($maxGrowth < 0) {
+                // Si todos decrecen, el que decrece menos (más cercano a 0) obtiene 15 puntos.
+                // Usamos la relación inversa: maxGrowth / growth actual.
+                $growthScore = ($metrics['growth'] != 0) ? ($maxGrowth / $metrics['growth']) * 15 : 0;
+            } else {
+                $growthScore = 0;
+            }
+
+            // Aplicar Capping de -15 a 15
             $scores = [
                 'sales' => ($metrics['sales'] / $maxSales) * 25,
-                'growth' => ($metrics['growth'] / $maxGrowth) * 15,
+                'growth' => max(-15, min(15, $growthScore)),
                 'expiration' => ($metrics['expirations'] / $maxExpirations) * 15,
                 'inventory' => max(0, (($metrics['inventory_counted'] / $maxInventoryCount) * 10) - ($metrics['inventory_errors'] * 0.01)),
                 'premium' => ($metrics['premium_products'] / $maxPremium) * 10,

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   productsOffer: { type: Array, required: true },
@@ -11,66 +11,286 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options", "edit-offer", "delete-offer"]);
+const { mobile } = useDisplay();
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
+  { title: "ID", key: "id", sortable: true, width: "80px" },
   { title: "Producto", key: "product.name", sortable: true, width: "35%" },
-  { title: "% Descuento", key: "discount_percent", sortable: true },
-  { title: "Precio normal", key: "sale_price", sortable: false, align: "end" },
-  { title: "Precio descuento", key: "discount_price", sortable: false, align: "end" },
-  { title: "Fecha Inicio", key: "start_date", sortable: true },
-  { title: "Fecha Final", key: "end_date", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
+  { title: "% DESC", key: "discount_percent", sortable: true, align: "center", width: "100px" },
+  { title: "Precio Normal", key: "sale_price", sortable: false, align: "end" },
+  { title: "Precio Oferta", key: "discount_price", sortable: false, align: "end" },
+  { title: "Vigencia", key: "validity", sortable: false, align: "center" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
 ];
+
+const formatDate = (dateString) => {
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString();
+};
+
+const calculateDiscountPrice = (price, discount) => {
+  const salePrice = parseFloat(price) || 0;
+  const discPercent = parseFloat(discount) || 0;
+  return (salePrice * (1 - discPercent / 100)).toFixed(2);
+};
 </script>
 
 <template>
-  <VCard>
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.productsOffer"
-      :items-length="props.totalOffer"
-      :loading="props.loading"
-      class="text-no-wrap"
-      @update:options="(options) => $emit('update:options', options)"
-    >
-      <template #item.product.name="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-body-1">{{ item.product?.name || 'N/A' }}</span>
-          <span class="text-caption text-disabled">ID: {{ item.product?.id || 'N/A' }}</span>
+  <div class="individual-offers-container">
+    <!-- Vista de Escritorio (Tabla Premium) -->
+    <VCard class="d-none d-md-block elevation-1 border-0 rounded-lg overflow-hidden">
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="headers"
+        :items="props.productsOffer"
+        :items-length="props.totalOffer"
+        :loading="props.loading"
+        class="text-no-wrap premium-table"
+        fixed-header
+        height="auto"
+        @update:options="(options) => $emit('update:options', options)"
+      >
+        <!-- ID Column -->
+        <template #item.id="{ item }">
+          <span class="font-weight-black text-secondary">#{{ item.id }}</span>
+        </template>
+
+        <!-- Product Column -->
+        <template #item.product.name="{ item }">
+          <div class="d-flex flex-column py-2">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate" style="max-inline-size: 300px;">
+              {{ item.product?.name || 'SIN NOMBRE' }}
+            </span>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">
+              ID PRODUCTO: {{ item.product?.id || '—' }} | {{ item.product?.laboratory?.name || 'SIN LABORATORIO' }}
+            </span>
+          </div>
+        </template>
+        
+        <!-- Discount Column -->
+        <template #item.discount_percent="{ item }">
+          <VChip
+            size="small"
+            color="success"
+            variant="tonal"
+            class="font-weight-black rounded"
+          >
+            {{ item.discount_percent }}%
+          </VChip>
+        </template>
+
+        <!-- Sale Price -->
+        <template #item.sale_price="{ item }">
+          <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through">
+            ${{ (parseFloat(item.product?.sale_price) || 0).toFixed(2) }}
+          </span>
+        </template>
+
+        <!-- Discount Price -->
+        <template #item.discount_price="{ item }">
+          <span class="text-sm font-weight-black text-success">
+            ${{ calculateDiscountPrice(item.product?.sale_price, item.discount_percent) }}
+          </span>
+        </template>
+        
+        <!-- Validity Column -->
+        <template #item.validity="{ item }">
+          <div class="d-flex flex-column align-center">
+            <span class="text-super-xs font-weight-bold text-primary uppercase">INICIO: {{ formatDate(item.start_date) }}</span>
+            <span class="text-super-xs font-weight-bold text-error uppercase">FIN: {{ formatDate(item.end_date) }}</span>
+          </div>
+        </template>
+        
+        <!-- Actions Column -->
+        <template #item.actions="{ item }">
+          <div class="d-flex align-center justify-center gap-1">
+            <VBtn
+              icon
+              size="x-small"
+              color="warning"
+              variant="tonal"
+              class="rounded shadow-sm"
+              @click="$emit('edit-offer', item)"
+            >
+              <VIcon icon="tabler-edit" size="18" />
+              <VTooltip activator="parent" location="top">Editar Oferta</VTooltip>
+            </VBtn>
+            <VBtn
+              icon
+              size="x-small"
+              color="error"
+              variant="tonal"
+              class="rounded shadow-sm"
+              @click="$emit('delete-offer', item.id)"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+              <VTooltip activator="parent" location="top">Eliminar Oferta</VTooltip>
+            </VBtn>
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
+
+    <!-- Vista Móvil (Premium Cards) -->
+    <div class="d-block d-md-none">
+      <div v-if="props.loading" class="d-flex justify-center py-8">
+        <VProgressCircular indeterminate color="primary" />
+      </div>
+      
+      <div v-else-if="props.productsOffer.length === 0" class="text-center py-8 bg-white rounded-lg border border-dashed">
+        <VIcon icon="tabler-tag-off" size="48" color="disabled" class="mb-2" />
+        <div class="text-sm font-weight-black text-disabled uppercase">No hay ofertas individuales</div>
+      </div>
+
+      <div v-for="item in props.productsOffer" :key="item.id" class="premium-card mb-4 bg-white rounded-lg elevation-2 overflow-hidden border-0">
+        <!-- Badge Lateral de Descuento -->
+        <div class="status-strip bg-success"></div>
+
+        <div class="pa-4">
+          <!-- Cabecera Tarjeta -->
+          <div class="d-flex justify-space-between align-center mb-3">
+            <div class="d-flex align-center gap-2">
+              <span class="text-xs font-weight-black text-secondary">ID: #{{ item.id }}</span>
+              <VDivider vertical length="12" class="mx-1" />
+              <VChip size="x-small" color="success" variant="flat" class="font-weight-black rounded-sm">
+                {{ item.discount_percent }}% OFF
+              </VChip>
+            </div>
+            
+            <div class="d-flex gap-2">
+              <VBtn 
+                icon="tabler-edit" 
+                size="x-small" 
+                color="warning" 
+                variant="tonal" 
+                class="rounded"
+                @click="$emit('edit-offer', item)"
+              />
+              <VBtn 
+                icon="tabler-trash" 
+                size="x-small" 
+                color="error" 
+                variant="tonal" 
+                class="rounded"
+                @click="$emit('delete-offer', item.id)"
+              />
+            </div>
+          </div>
+
+          <!-- Producto y Precios -->
+          <div class="bg-light pa-3 rounded-lg mb-3 border border-dashed">
+            <div class="d-flex flex-column overflow-hidden mb-2">
+              <span class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate">
+                {{ item.product?.name || 'SIN NOMBRE' }}
+              </span>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">
+                {{ item.product?.laboratory?.name || 'SIN LABORATORIO' }}
+              </span>
+            </div>
+            
+            <div class="d-flex justify-space-between align-center">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Normal</span>
+                <span class="text-xs text-medium-emphasis text-decoration-line-through">
+                  ${{ (parseFloat(item.product?.sale_price) || 0).toFixed(2) }}
+                </span>
+              </div>
+              <VIcon icon="tabler-arrow-right" size="14" class="text-disabled" />
+              <div class="d-flex flex-column text-end">
+                <span class="text-super-xs font-weight-black text-success uppercase">Oferta</span>
+                <span class="text-sm font-weight-black text-success">
+                  ${{ calculateDiscountPrice(item.product?.sale_price, item.discount_percent) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Tarjeta: Vigencia -->
+          <div class="d-flex justify-space-between align-center pt-1 border-t mt-2">
+            <div class="d-flex align-center gap-1">
+              <VIcon icon="tabler-calendar-play" size="12" class="text-success" />
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ formatDate(item.start_date) }}</span>
+            </div>
+            <div class="d-flex align-center gap-1">
+              <VIcon icon="tabler-calendar-off" size="12" class="text-error" />
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ formatDate(item.end_date) }}</span>
+            </div>
+          </div>
         </div>
-      </template>
-      
-      <template #item.discount_percent="{ item }">
-        {{ item.discount_percent }}%
-      </template>
+      </div>
 
-      <template #item.sale_price="{ item }">
-        <span class="text-body-2 text-medium-emphasis text-decoration-line-through">${{ (parseFloat(item.product?.sale_price) || 0).toFixed(2) }}</span>
-      </template>
-
-      <template #item.discount_price="{ item }">
-        <span class="text-body-1 font-weight-medium text-success">${{ ((parseFloat(item.product?.sale_price) || 0) * (1 - (parseFloat(item.discount_percent) || 0) / 100)).toFixed(2) }}</span>
-      </template>
-      
-      <template #item.start_date="{ item }">
-        {{ new Date(item.start_date).toLocaleDateString() }}
-      </template>
-      
-      <template #item.end_date="{ item }">
-        {{ new Date(item.end_date).toLocaleDateString() }}
-      </template>
-      
-      <template #item.actions="{ item }">
-        <IconBtn @click="$emit('edit-offer', item)">
-          <VIcon icon="tabler-edit" />
-        </IconBtn>
-        <IconBtn @click="$emit('delete-offer', item.id)">
-          <VIcon icon="tabler-trash" />
-        </IconBtn>
-      </template>
-    </VDataTableServer>
-  </VCard>
+      <!-- Paginación Móvil -->
+      <div class="mt-4 pb-6" v-if="props.totalOffer > props.itemsPerPage">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalOffer / props.itemsPerPage)"
+          density="compact"
+          color="primary"
+          @update:model-value="(val) => $emit('update:options', { page: val, itemsPerPage: props.itemsPerPage, sortBy: [] })"
+        />
+      </div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.premium-table :deep(th) {
+  background-color: #f8fafc !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05rem !important;
+  text-transform: uppercase !important;
+}
+
+.premium-table :deep(td) {
+  font-size: 0.8rem !important;
+}
+
+.premium-card {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.premium-card:active {
+  transform: scale(0.98);
+}
+
+.status-strip {
+  position: absolute;
+  inline-size: 4px;
+  inset-block: 0;
+  inset-inline-start: 0;
+}
+
+.bg-light {
+  background-color: #f1f5f9 !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+</style>

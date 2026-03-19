@@ -44,6 +44,10 @@ class Expense extends Model
         'tax_amount',
         'exchange_rate',
         'total_usd',
+        'file_name',
+        'extension_file',
+        'url_file',
+        'date_upload',
     ];
 
     protected $casts = [
