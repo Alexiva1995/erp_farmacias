@@ -344,6 +344,7 @@ declare module 'vue' {
     TwoFactorAuthModal: typeof import('./resources/js/components/TwoFactorAuthModal.vue')['default']
     UniqueMarketOpportunityTable: typeof import('./resources/js/components/UniqueMarketOpportunityTable.vue')['default']
     UpdateActivityStatusDialog: typeof import('./resources/js/components/dialogs/UpdateActivityStatusDialog.vue')['default']
+    UserCashFilters: typeof import('./resources/js/components/UserCashFilters.vue')['default']
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
     VerifyCountModal: typeof import('./resources/js/components/dialogs/VerifyCountModal.vue')['default']
