@@ -192,8 +192,8 @@ const kpis = [
 
 <style scoped>
 .expenses-view {
-  min-block-size: 100vh;
   background-color: #f8fafc;
+  min-block-size: 100vh;
 }
 
 .header-bg {
@@ -211,8 +211,8 @@ const kpis = [
 }
 
 .kpi-card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 10%) !important;
+  transform: translateY(-4px);
 }
 
 .leading-tight { line-height: 1.2; }
