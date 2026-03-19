@@ -203,7 +203,7 @@ const clearDialogErrors = () => {
 </script>
 
 <template>
-  <div>
+  <div class="productivity-product-page pa-4">
     <EmployeeProductsFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedProduct="selectedProduct"
@@ -242,3 +242,10 @@ const clearDialogErrors = () => {
     />
   </div>
 </template>
+
+<style scoped>
+.productivity-product-page {
+  background-color: rgb(var(--v-theme-background));
+  min-block-size: 100vh;
+}
+</style>
