@@ -3,6 +3,9 @@ import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { computed, defineEmits, defineProps, nextTick } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   isDialogVisible: {
@@ -123,22 +126,28 @@ const display = (val, currency = "USD") => {
 
 </script>
 <template>
-  <VDialog v-model="dialogVisible" max-width="950px" scrollable>
+  <VDialog
+    v-model="dialogVisible"
+    max-width="950px"
+    scrollable
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
+  >
     <VCard class="rounded-xl border shadow-sm">
-      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b">
+      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b bg-surface">
         <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" variant="tonal" rounded>
+          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg">
             <VIcon icon="tabler-calendar-stats" />
           </VAvatar>
           <div>
-            <h3 class="text-h6 font-weight-bold mb-0">Detalle del Consolidado Mensual</h3>
-            <span class="text-caption text-medium-emphasis">Reporte Consolidado</span>
+            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">CONSOLIDADO MENSUAL</h3>
+            <span class="text-xs text-disabled font-weight-medium uppercase">Detalle de Operaciones</span>
           </div>
         </div>
         <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
       </VCardTitle>
 
-      <VCardText class="pa-6" style="background-color: #f8f9fa;">
+      <VCardText class="pa-6 pt-4" style="background-color: #f8f9fa;">
         <!-- RESUMEN GLOBAL -->
         <h4 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center gap-2">
           <VIcon icon="tabler-report-money" size="20" color="primary" /> Total Consolidado por Monedas

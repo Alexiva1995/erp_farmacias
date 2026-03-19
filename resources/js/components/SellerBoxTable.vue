@@ -229,8 +229,8 @@ const getAvatarColor = (id) => {
   color: rgba(var(--v-theme-on-surface), 50%) !important;
   font-size: 0.65rem !important;
   font-weight: 900 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .text-super-xs {
@@ -248,11 +248,11 @@ const getAvatarColor = (id) => {
 
 .premium-card-decoration {
   position: absolute;
+  border-radius: 6px;
   block-size: 60px;
   inline-size: 60px;
   inset-block-start: 0;
-  inset-inline-end: 0;
-  border-radius: 0 0 0 100%;
+  inset-inline-end: 8px;
 }
 
 .bg-success-opacity {

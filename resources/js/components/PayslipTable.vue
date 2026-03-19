@@ -270,12 +270,12 @@ const getAvatarColor = (id) => {
 }
 
 .premium-table :deep(.v-data-table-header th) {
-  height: 44px !important;
+  block-size: 44px !important;
+  color: rgba(var(--v-theme-on-surface), 50%) !important;
   font-size: 0.65rem !important;
   font-weight: 900 !important;
-  text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
-  color: rgba(var(--v-theme-on-surface), 0.5) !important;
+  text-transform: uppercase !important;
 }
 
 .text-super-xs {
@@ -294,11 +294,11 @@ const getAvatarColor = (id) => {
 
 .premium-card-decoration {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 70px;
-  height: 70px;
+  block-size: 70px;
+  inline-size: 70px;
   border-radius: 0 0 0 100%;
+  inset-block-start: 0;
+  inset-inline-end: 0;
 }
 
 .bg-success-opacity {
@@ -314,6 +314,6 @@ const getAvatarColor = (id) => {
 }
 
 .h-10 {
-  height: 40px !important;
+  block-size: 40px !important;
 }
 </style>

@@ -219,14 +219,22 @@ onMounted(() => {
 
 :deep(.premium-input) {
   .v-field__outline {
+    border-radius: 6px;
+
     --v-field-border-opacity: 0.1;
   }
+
   .v-field__input {
-    font-size: 0.875rem !important;
+    font-size: 0.875rem;
   }
 }
 
 .h-10 {
   block-size: 40px !important;
 }
+
+.text-xs {
+  font-size: 0.7rem !important;
+}
 </style>
+```

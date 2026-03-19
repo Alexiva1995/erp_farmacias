@@ -29,12 +29,18 @@ const headers = [
 const processedTransactions = computed(() => {
   const raw = Array.isArray(props.transactions) ? props.transactions : (props.transactions?.data || []);
   return raw.map(t => {
-    const isEntry = t.movement_type === 'IN' || t.amount > 0;
+    // Detección robusta de entrada vs salida (insensible a mayúsculas y variaciones latinas)
+    const mType = String(t.movement_type || '').trim().toUpperCase();
+    const isEntry = ['IN', 'ENTRADA', 'INGRESO'].includes(mType) || (mType === '' && parseFloat(t.amount) > 0);
+    
+    // Rescatar balance con fallback exhaustivo por si el backend lo envía con nombre distinto
+    const rawBalance = t.balance ?? t.running_balance ?? t.current_balance ?? t.saldo ?? 0;
+
     return {
       ...t,
       isEntry,
       amount: Math.abs(parseFloat(t.amount) || 0),
-      balance: parseFloat(t.balance) || 0,
+      balance: parseFloat(rawBalance) || 0,
     };
   });
 });
@@ -243,7 +249,7 @@ const groupedByDay = computed(() => {
 }
 
 .bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.04);
+  background-color: rgba(var(--v-theme-surface-variant), 4%);
 }
 
 .premium-table {
@@ -251,13 +257,13 @@ const groupedByDay = computed(() => {
 }
 
 .premium-table :deep(th) {
-  height: 48px !important;
-  border-bottom: 2px solid rgba(var(--v-theme-surface-variant), 0.1) !important;
+  block-size: 48px !important;
+  border-block-end: 2px solid rgba(var(--v-theme-surface-variant), 0.1) !important;
 }
 
 .premium-table :deep(td) {
-  height: 60px !important;
-  border-bottom: 1px solid rgba(var(--v-theme-surface-variant), 0.05) !important;
+  block-size: 60px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-surface-variant), 0.05) !important;
 }
 
 .row-in:hover {
@@ -277,17 +283,17 @@ const groupedByDay = computed(() => {
 }
 
 .border-success-subtle {
-  border-left: 4px solid rgb(var(--v-theme-success)) !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-success)) !important;
 }
 
 .border-error-subtle {
-  border-left: 4px solid rgb(var(--v-theme-error)) !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-error)) !important;
 }
 
 .line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 </style>

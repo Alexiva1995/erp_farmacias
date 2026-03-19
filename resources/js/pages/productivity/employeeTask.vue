@@ -7,7 +7,9 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
+const { mobile } = useDisplay();
 const employeeCleanings = ref([]);
 const totalRecords = ref(0);
 const loading = ref(false);
@@ -49,8 +51,6 @@ const fetchEmployeeCleanings = async () => {
     const response = await axios.get("/employee-cleaning-activities", {
       params,
     });
-    console.log(response.data.data);
-
     employeeCleanings.value = response.data.data.data;
     totalRecords.value = response.data.data.total;
   } catch (error) {
@@ -65,7 +65,7 @@ const fetchEmployeeCleanings = async () => {
 const fetchCleaningActivities = async () => {
   try {
     const response = await axios.get("/cleaning-activities", {
-      params: { itemsPerPage: -1 }, // Obtener todas las actividades
+      params: { itemsPerPage: -1 },
     });
 
     cleaningActivities.value = response.data.data.map((activity) => ({
@@ -74,7 +74,6 @@ const fetchCleaningActivities = async () => {
     }));
   } catch (error) {
     console.error("Error al obtener actividades:", error);
-    toast.error("Error al cargar las actividades de limpieza.");
   }
 };
 
@@ -92,7 +91,6 @@ const fetchEmployees = async () => {
       }));
   } catch (error) {
     console.error("Error al obtener empleados:", error);
-    toast.error("Error al cargar los empleados.");
   }
 };
 
@@ -110,10 +108,14 @@ watch([searchQuery, selectedStatus], () => {
   page.value = 1;
 });
 
-onMounted(() => {
-  fetchCleaningActivities();
-  fetchEmployees();
-  fetchEmployeeCleanings();
+onMounted(async () => {
+  loading.value = true;
+  await Promise.all([
+    fetchCleaningActivities(),
+    fetchEmployees(),
+    fetchEmployeeCleanings()
+  ]);
+  loading.value = false;
 });
 
 const updateTableOptions = (options) => {
@@ -132,22 +134,10 @@ const handleDeleteAssignment = async (employeeId, activityId) => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Eliminar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
+    customClass: {
+      confirmButton: 'v-btn v-btn--variant-flat bg-primary rounded-lg px-6',
+      cancelButton: 'v-btn v-btn--variant-tonal bg-secondary rounded-lg px-6'
+    }
   });
 
   if (result.isConfirmed) {
@@ -170,13 +160,8 @@ const handleClearFilters = () => {
 };
 
 const handleSort = (sortOptions) => {
-  if (sortOptions.key === undefined && sortOptions.order === undefined) {
-    sortBy.value = undefined;
-    orderBy.value = undefined;
-  } else {
-    sortBy.value = sortOptions.key;
-    orderBy.value = sortOptions.order;
-  }
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
 };
 
 const handleViewActivities = (employee) => {
@@ -184,13 +169,23 @@ const handleViewActivities = (employee) => {
   isViewDialogVisible.value = true;
 };
 
-const handleAddAssignment = () => {
+const handleAddAssignment = async () => {
+  if (employees.value.length === 0) {
+    loading.value = true;
+    await fetchEmployees();
+    loading.value = false;
+  }
   currentEmployee.value = {};
   dialogErrors.value = {};
   isDialogVisible.value = true;
 };
 
-const handleEditAssignment = (employee) => {
+const handleEditAssignment = async (employee) => {
+  if (employees.value.length === 0) {
+    loading.value = true;
+    await fetchEmployees();
+    loading.value = false;
+  }
   currentEmployee.value = { ...employee };
   dialogErrors.value = {};
   isDialogVisible.value = true;
@@ -199,12 +194,8 @@ const handleEditAssignment = (employee) => {
 const handleSaveAssignment = async (assignmentData) => {
   try {
     await axios.post("/employee-cleaning-activities", assignmentData);
-
     const isEditMode = !!currentEmployee.value.employee_id;
-    toast.success(
-      `Actividades ${isEditMode ? "actualizadas" : "asignadas"} con éxito`,
-    );
-
+    toast.success(`Actividades ${isEditMode ? "actualizadas" : "asignadas"} con éxito`);
     isDialogVisible.value = false;
     await fetchEmployeeCleanings();
   } catch (error) {
@@ -224,7 +215,7 @@ const clearDialogErrors = () => {
 </script>
 
 <template>
-  <div>
+  <div :class="mobile ? 'pa-0' : 'pa-4'">
     <EmployeeCleaningFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedStatus="selectedStatus"
@@ -262,3 +253,9 @@ const clearDialogErrors = () => {
     />
   </div>
 </template>
+
+<style scoped>
+:deep(.v-btn.bg-primary) {
+  --v-theme-overlay: 255, 255, 255;
+}
+</style>

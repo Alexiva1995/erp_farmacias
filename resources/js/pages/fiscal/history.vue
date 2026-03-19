@@ -5,7 +5,9 @@ import DetailHistoryShowDialog from "@/components/dialogs/DetailHistoryShowDialo
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
+const { mobile } = useDisplay();
 const histories = ref([]);
 const totalHistories = ref(0);
 const loading = ref(false);
@@ -91,8 +93,8 @@ watch(
   }
 );
 
-onMounted(() => {
-  fetchHistorys();
+onMounted(async () => {
+  await fetchHistorys();
 });
 
 const updateTableOptions = (options) => {
@@ -168,10 +170,13 @@ const handleExport = async (format) => {
 
     link.remove();
     window.URL.revokeObjectURL(url);
+    toast.success("Archivo exportado con éxito.");
   } catch (error) {
     console.error("Error al exportar los datos:", error);
+    toast.error("Hubo un error al exportar el archivo.");
   }
 };
+
 const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
@@ -179,7 +184,7 @@ const handleSort = (sortOptions) => {
 </script>
 
 <template>
-  <div>
+  <div :class="mobile ? 'pa-0' : 'pa-4'">
     <HistoryFilters
       v-model:searchQuery="searchQuery"
       v-model:startDate="startDate"

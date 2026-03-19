@@ -185,7 +185,7 @@ const getAvatarColor = (id) => {
 
 <style scoped>
 .premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+  background-color: rgba(var(--v-theme-success), 60%) !important;
 }
 
 .premium-table :deep(.v-data-table-header th) {
@@ -193,8 +193,8 @@ const getAvatarColor = (id) => {
   color: rgba(var(--v-theme-on-surface), 50%) !important;
   font-size: 0.65rem !important;
   font-weight: 900 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .text-super-xs {
@@ -215,6 +215,6 @@ const getAvatarColor = (id) => {
 }
 
 .text-white-opacity-60 {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 60%);
 }
 </style>

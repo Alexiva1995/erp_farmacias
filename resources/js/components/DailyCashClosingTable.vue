@@ -235,8 +235,8 @@ const getAvatarColor = (id) => {
   color: rgba(var(--v-theme-on-surface), 50%) !important;
   font-size: 0.65rem !important;
   font-weight: 900 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .text-super-xs {
