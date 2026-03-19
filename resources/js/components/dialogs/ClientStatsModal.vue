@@ -105,7 +105,7 @@ const onClose = () => {
                   size="x-small"
                   variant="flat"
                   class="font-weight-black px-2 py-0 h-auto"
-                  style="font-size: 0.55rem; height: 14px !important;"
+                  style="block-size: 14px !important; font-size: 0.55rem;"
                 >
                   {{ badgeConfig.text.toUpperCase() }}
                 </VChip>
@@ -119,7 +119,7 @@ const onClose = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 bg-light" style="max-height: 80vh;">
+      <VCardText class="pa-4 bg-light" style="max-block-size: 80vh;">
         <!-- Loading -->
         <div v-if="loading" class="d-flex flex-column justify-center align-center py-10 gap-3">
           <VProgressCircular indeterminate color="primary" size="48" />
@@ -202,7 +202,7 @@ const onClose = () => {
                 <template v-for="(product, index) in topProducts" :key="'top-' + index">
                   <VListItem class="py-2">
                     <template #prepend>
-                      <div class="text-h6 font-weight-black text-primary opacity-25 me-3" style="width: 24px;">{{ index + 1 }}</div>
+                      <div class="text-h6 font-weight-black text-primary opacity-25 me-3" style="inline-size: 24px;">{{ index + 1 }}</div>
                     </template>
                     <VListItemTitle class="text-super-xs font-weight-black uppercase truncate">{{ product.product_name }}</VListItemTitle>
                     <VListItemSubtitle class="text-super-xs font-weight-bold text-disabled uppercase">
@@ -259,7 +259,7 @@ const onClose = () => {
           variant="tonal"
           size="large"
           block
-          height="52"
+          block-size="52"
           class="font-weight-black rounded-lg text-button uppercase"
           @click="onClose"
         >
@@ -295,7 +295,7 @@ const onClose = () => {
 .stat-box-premium {
   border-radius: 12px !important;
   background: white !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 5%) !important;
 }
 
 .truncate {
@@ -315,18 +315,5 @@ const onClose = () => {
 .text-button {
   font-size: 0.875rem !important;
   letter-spacing: 1px !important;
-}
-</style>
-</template>
-
-<style scoped>
-.stat-card {
-  border-radius: 12px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%);
-  transform: translateY(-2px);
 }
 </style>
