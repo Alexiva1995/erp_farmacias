@@ -246,41 +246,45 @@ const formatCurrency = (amount) =>
     <!-- Filtros Colapsables -->
     <VCard class="rounded-xl border-0 shadow-sm mb-6 overflow-hidden">
       <VCardText class="pa-4">
-        <div class="d-flex align-center gap-3">
+        <div class="d-flex flex-wrap align-center gap-3">
           <AppTextField
             v-model="searchQuery"
-            placeholder="Buscar empleado por nombre o ID..."
+            placeholder="Buscar empleado..."
             prepend-inner-icon="tabler-search"
             class="flex-grow-1 premium-input-compact"
             density="compact"
             hide-details
             clearable
+            style="min-inline-size: 200px;"
           />
 
-          <VBtn
-            :color="isFiltersVisible ? 'primary' : 'secondary'"
-            variant="tonal"
-            class="rounded-lg px-6 font-weight-black"
-            @click="isFiltersVisible = !isFiltersVisible"
-          >
-            <VIcon start icon="tabler-filter" size="18" />
-            FILTROS
-            <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
-          </VBtn>
+          <div class="d-flex gap-2 flex-grow-1 flex-sm-grow-0 justify-sm-end">
+            <VBtn
+              :color="isFiltersVisible ? 'primary' : 'secondary'"
+              variant="tonal"
+              class="rounded-lg px-4 font-weight-black flex-grow-1 flex-sm-grow-0"
+              @click="isFiltersVisible = !isFiltersVisible"
+            >
+              <VIcon start icon="tabler-filter" size="18" />
+              <span class="d-none d-sm-inline">FILTROS</span>
+              <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
+            </VBtn>
 
-          <VBtn
-            v-if="!isLocked"
-            color="error"
-            variant="flat"
-            class="rounded-lg px-6 font-weight-black shadow-sm"
-            @click="handleLockMonth"
-          >
-            <VIcon start icon="tabler-lock" size="18" />
-            CERRAR MES
-          </VBtn>
-          <VChip v-else color="success" variant="elevated" class="rounded-lg px-4 h-38 font-weight-black" prepend-icon="tabler-lock-check">
-            HISTÓRICO
-          </VChip>
+            <VBtn
+              v-if="!isLocked"
+              color="error"
+              variant="flat"
+              class="rounded-lg px-4 font-weight-black shadow-sm flex-grow-1 flex-sm-grow-0"
+              @click="handleLockMonth"
+            >
+              <VIcon start icon="tabler-lock" size="18" />
+              <span class="d-none d-sm-inline">CERRAR MES</span>
+              <VIcon v-else icon="tabler-lock" size="18" class="d-sm-none" />
+            </VBtn>
+            <VChip v-else color="success" variant="elevated" class="rounded-lg px-4 h-38 font-weight-black" prepend-icon="tabler-lock-check">
+              HISTÓRICO
+            </VChip>
+          </div>
         </div>
 
         <VExpandTransition>

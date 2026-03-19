@@ -1,5 +1,4 @@
-import { useDisplay } from "vuetify";
-
+<script setup>
 const props = defineProps({
   items: {
     type: Array,
@@ -7,7 +6,6 @@ const props = defineProps({
   },
 });
 
-const { mobile } = useDisplay();
 
 const headers = [
   { title: "Empleado", key: "name", width: "250px" },
@@ -59,7 +57,7 @@ const formatCurrency = (amount) =>
 <template>
   <div class="employee-month-table-container">
     <!-- Vista de Escritorio: Tabla Premium -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden">
+    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden d-none d-md-block">
       <VDataTable
         :headers="headers"
         :items="props.items"
@@ -158,7 +156,7 @@ const formatCurrency = (amount) =>
     </VCard>
 
     <!-- Vista Móvil: Cards de Desempeño -->
-    <div v-else class="d-flex flex-column gap-4">
+    <div class="d-flex flex-column gap-4 d-md-none">
       <VCard
         v-for="(item, index) in props.items"
         :key="item.id"
