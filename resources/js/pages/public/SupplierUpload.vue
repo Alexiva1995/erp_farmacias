@@ -81,7 +81,7 @@ onMounted(fetchSupplier)
 
 <template>
   <div class="public-upload-container d-flex align-center justify-center fill-height">
-    <VCard width="500" class="pa-8 text-center glass-card">
+    <VCard width="500" class="pa-8 text-center glass-card" theme="dark">
       <div v-if="loading" class="py-12">
         <VProgressCircular indeterminate color="primary" size="64" />
         <p class="mt-4 text-h6">Cargando portal de proveedor...</p>
@@ -139,7 +139,8 @@ onMounted(fetchSupplier)
             v-model="file"
             label="Seleccionar archivo Excel"
             placeholder="Suba su archivo .xlsx o .xls"
-            prepend-icon="tabler-file-spreadsheet"
+            prepend-icon=""
+            prepend-inner-icon="tabler-file-spreadsheet"
             accept=".xlsx,.xls,.csv"
             variant="outlined"
             class="mb-4"

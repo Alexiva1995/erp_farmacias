@@ -30,10 +30,28 @@ const copyPublicLink = (item) => {
   const baseUrl = window.location.origin;
   const publicUrl = `${baseUrl}/p/suppliers/upload/${item.public_token}`;
 
-  navigator.clipboard
-    .writeText(publicUrl)
-    .then(() => toast.success("Enlace copiado al portapapeles"))
-    .catch(() => toast.error("Error al copiar el enlace"));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard
+      .writeText(publicUrl)
+      .then(() => toast.success("Enlace copiado al portapapeles"))
+      .catch(() => toast.error("Error al copiar el enlace"));
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = publicUrl;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      toast.success("Enlace copiado al portapapeles");
+    } catch (error) {
+      toast.error("Error al copiar el enlace");
+    }
+    textArea.remove();
+  }
 };
 
 const headers = [
