@@ -54,14 +54,6 @@ const getEffectiveRate = (fromCurrency, toCurrency) => {
 };
 
 const getDynamicPrice = (item, basePrice, targetCurrency) => {
-  // REGLA NEGOCIO: Si estamos en USD y el producto tiene precio en COP,
-  // recalcular el USD dinámicamente usando la tasa COPC si está disponible.
-  if (targetCurrency === "USD" && item.price_cop) {
-    const rate = getEffectiveRate("USD", "COP");
-    if (rate > 0) {
-      return item.price_cop / rate;
-    }
-  }
   return parseFloat(basePrice) || 0;
 };
 

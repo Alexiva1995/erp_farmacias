@@ -143,8 +143,8 @@ const confirmGenerateResignation = async (employee) => {
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-3 py-2">
-          <VAvatar size="38" :color="item.is_active ? 'primary' : 'secondary'" variant="tonal" class="rounded-lg">
+        <div class="d-flex align-center gap-3 py-1">
+          <VAvatar size="34" :color="item.is_active ? 'primary' : 'secondary'" variant="tonal" class="rounded-lg">
             <span class="text-xs font-weight-bold">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
           </VAvatar>
           <div class="d-flex flex-column">
@@ -159,7 +159,7 @@ const confirmGenerateResignation = async (employee) => {
       </template>
 
       <template #item.email="{ item }">
-        <div class="d-flex flex-column">
+        <div class="d-flex flex-column py-1">
           <span class="text-caption font-weight-medium text-high-emphasis leading-tight">{{ item.email }}</span>
           <span v-if="item.phone" class="text-super-xs text-disabled">{{ item.phone }}</span>
         </div>
@@ -343,7 +343,7 @@ const confirmGenerateResignation = async (employee) => {
 }
 
 .premium-table :deep(td) {
-  padding-block: 12px !important;
+  padding-block: 6px !important;
 }
 
 .employee-mobile-card {
