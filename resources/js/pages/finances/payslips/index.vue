@@ -149,7 +149,7 @@ const handleDownloadBulk = async () => {
 </script>
 
 <template>
-  <div>
+  <div :class="mobile ? 'pa-0 pb-16' : 'pa-4'">
     <FinalizePayslipFormDialog
       v-model="showFinalizeDialog"
       :selected-payslip="selectedPayslip"
@@ -157,23 +157,34 @@ const handleDownloadBulk = async () => {
       @close="handleClosePayslip"
     />
 
+    <!-- Filtros Premium Colapsables -->
     <PayslipFilters
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
+      v-model:start-date="startDate"
+      v-model:end-date="endDate"
+      :loading="loading"
       @clear="handleClearFilters"
-      @generated="fetchPayslips"
+      @generated="handleManualPayment"
       @download-bulk="handleDownloadBulk"
+      @refresh="fetchPayslips"
     />
 
+    <!-- Tabla y Cards Premium -->
     <PayslipTable
       :page="page"
       :items-per-page="itemsPerPage"
       :total="totalPayslips"
       :items="payslips"
       :loading="loading"
+      @update:options="(options) => { page = options.page; itemsPerPage = options.itemsPerPage; fetchPayslips(); }"
       @finalize-payslip="handleFinalizePayslip"
       @download-excel="handleDownloadExcel"
       @download-pdf="handleDownloadPdf"
     />
   </div>
 </template>
+
+<style scoped>
+.leading-none {
+  line-height: 1;
+}
+</style>
