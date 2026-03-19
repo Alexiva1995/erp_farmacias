@@ -247,7 +247,7 @@ async function submitForm() {
   clearSelectedFile();
 }
 </script>
-
+<template>
   <VDialog
     :model-value="props.modalFormulario"
     max-width="800px"
