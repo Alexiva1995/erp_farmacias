@@ -251,130 +251,166 @@ watch([startDate, endDate], () => loadData());
       </div>
 
       <VCardText class="pa-0">
-        <VProgressLinear 
-          v-if="loadingDetails" 
-          indeterminate 
-          color="primary" 
-          height="3" 
-          class="position-absolute w-100" 
-          style="z-index: 1;"
-        />
-        
-        <VDataTableServer
-          v-model:items-per-page="itemsPerPage"
-          v-model:page="page"
-          :headers="headers"
-          :items="transactions"
-          :items-length="totalItems"
-          :loading="loadingDetails"
-          class="premium-table"
-          @update:options="updateOptions"
-        >
-          <!-- Vista Móvil: Tarjetas -->
-          <template v-if="$vuetify.display.smAndDown" #item="{ item }">
-            <div class="px-4 py-3">
-              <VCard variant="outlined" class="rounded-xl border-dashed pa-4 bg-white shadow-xs mb-1">
-                <div class="d-flex justify-space-between align-start mb-3">
+        <!-- Vista Desktop: Tabla Tradicional -->
+        <template v-if="!$vuetify.display.smAndDown">
+          <VProgressLinear 
+            v-if="loadingDetails" 
+            indeterminate 
+            color="primary" 
+            height="3" 
+            class="position-absolute w-100" 
+            style="z-index: 1;"
+          />
+          
+          <VDataTableServer
+            v-model:items-per-page="itemsPerPage"
+            v-model:page="page"
+            :headers="headers"
+            :items="transactions"
+            :items-length="totalItems"
+            :loading="loadingDetails"
+            class="premium-table"
+            @update:options="updateOptions"
+          >
+            <template #item.date="{ item }">
+              <span class="text-body-2 font-weight-black text-medium-emphasis">
+                {{ formatDate(item.date) }}
+              </span>
+            </template>
+
+            <template #item.type="{ item }">
+              <VChip
+                :color="item.type === 'sale' ? 'success' : 'error'"
+                size="x-small"
+                variant="flat"
+                class="font-weight-black px-3 rounded-lg"
+              >
+                {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
+              </VChip>
+            </template>
+
+            <template #item.description="{ item }">
+              <span class="text-body-2 font-weight-bold">
+                {{ item.description }}
+              </span>
+            </template>
+
+            <template #item.client="{ item }">
+              <div class="d-flex align-center gap-3">
+                <VAvatar 
+                  size="26" 
+                  variant="tonal" 
+                  :color="item.type === 'sale' ? 'primary' : 'secondary'"
+                  class="rounded-lg shadow-soft"
+                >
+                  <span class="text-xs font-weight-black">
+                    {{ getAvatarInitial(item.client || item.category) }}
+                  </span>
+                </VAvatar>
+                <span class="text-xs font-weight-medium text-high-emphasis">{{ item.client || item.category || "N/A" }}</span>
+              </div>
+            </template>
+
+            <template #item.amount="{ item }">
+               <span class="text-base font-weight-black" :class="item.type === 'sale' ? 'text-success' : 'text-error'">
+                {{ item.type === "sale" ? "+" : "-" }}{{ formatCurrency(item.amount) }}
+              </span>
+            </template>
+
+            <template #item.costs="{ item }">
+               <span class="text-body-2 font-weight-black text-warning">
+                {{ item.costs > 0 ? '-' + formatCurrency(item.costs) : '—' }}
+              </span>
+            </template>
+
+            <template #item.profit="{ item }">
+              <VChip
+                :color="item.profit >= 0 ? 'success' : 'error'"
+                variant="tonal"
+                size="small"
+                class="font-weight-black px-4 rounded-xl"
+              >
+                {{ item.profit >= 0 ? "+" : "" }}{{ formatCurrency(item.profit) }}
+              </VChip>
+            </template>
+          </VDataTableServer>
+        </template>
+
+        <!-- Vista Móvil: Grid de Tarjetas Reales (No Tabla) -->
+        <div v-else class="pa-4">
+          <div v-if="loadingDetails" class="text-center py-12">
+            <VProgressCircular indeterminate color="primary" size="48" />
+            <p class="text-caption mt-2 font-weight-bold text-disabled uppercase">Cargando...</p>
+          </div>
+          
+          <template v-else-if="transactions.length > 0">
+            <div class="d-flex flex-column gap-4">
+              <VCard
+                v-for="item in transactions"
+                :key="item.id"
+                variant="flat"
+                class="border rounded-xl px-4 py-4 bg-white shadow-xs"
+                :class="item.type === 'sale' ? 'border-success-subtle' : 'border-error-subtle'"
+              >
+                <div class="d-flex justify-space-between align-start mb-4">
                   <div class="d-flex align-center gap-3">
-                    <VAvatar :color="item.type === 'sale' ? 'success' : 'error'" variant="tonal" size="40" class="rounded-lg">
-                      <VIcon :icon="item.type === 'sale' ? 'tabler-arrow-up-right' : 'tabler-arrow-down-left'" size="22" />
+                    <VAvatar :color="item.type === 'sale' ? 'success' : 'error'" variant="tonal" size="44" class="rounded-xl">
+                      <VIcon :icon="item.type === 'sale' ? 'tabler-arrow-up-right' : 'tabler-arrow-down-left'" size="24" />
                     </VAvatar>
                     <div class="d-flex flex-column">
-                      <span class="text-xs font-weight-black text-disabled uppercase">{{ formatDate(item.date) }}</span>
-                      <span class="text-super-xs font-weight-black" :class="item.type === 'sale' ? 'text-success' : 'text-error'">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase">{{ formatDate(item.date) }}</span>
+                      <span class="text-xs font-weight-black" :class="item.type === 'sale' ? 'text-success' : 'text-error'">
                         {{ item.type === 'sale' ? 'INGRESO' : 'EGRESO' }}
                       </span>
                     </div>
                   </div>
                   <div class="text-right">
-                    <div :class="['text-base font-weight-black', item.type === 'sale' ? 'text-success' : 'text-error']">
-                      {{ item.type === 'sale' ? '+' : '-' }} {{ formatCurrency(item.amount) }}
+                    <div :class="['text-xl font-weight-black', item.type === 'sale' ? 'text-success' : 'text-error']">
+                      {{ item.type === 'sale' ? '+' : '-' }}{{ formatCurrency(item.amount) }}
                     </div>
-                    <span v-if="item.costs" class="text-super-xs font-weight-bold text-disabled d-block">Costos: -{{ formatCurrency(item.costs) }}</span>
                   </div>
                 </div>
 
-                <div class="text-body-2 font-weight-bold mb-3 d-flex align-center gap-2">
-                  <span class="text-primary opacity-60">#</span> {{ item.description }}
+                <div class="text-sm font-weight-bold mb-4 bg-surface-variant-light pa-3 rounded-lg border-dashed">
+                  {{ item.description }}
                 </div>
 
                 <div class="d-flex justify-space-between align-center pt-3 border-t border-dashed">
                   <div class="d-flex align-center gap-2">
-                    <VAvatar size="20" variant="tonal" :color="item.type === 'sale' ? 'primary' : 'secondary'">
-                      <span class="text-super-xs font-weight-black">{{ getAvatarInitial(item.client || item.category) }}</span>
+                    <VAvatar size="24" variant="tonal" :color="item.type === 'sale' ? 'primary' : 'secondary'" rounded>
+                      <span class="text-xs font-weight-black">{{ getAvatarInitial(item.client || item.category) }}</span>
                     </VAvatar>
                     <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.client || item.category || "N/A" }}</span>
                   </div>
-                  <VChip :color="item.profit >= 0 ? 'success' : 'error'" size="x-small" variant="flat" class="font-weight-black">
-                    Ut. {{ item.profit >= 0 ? '+' : '' }}{{ formatCurrency(item.profit) }}
-                  </VChip>
+                  
+                  <div class="d-flex flex-column align-end">
+                    <span class="text-super-xs font-weight-black text-primary uppercase">Utilidad de Op.</span>
+                    <span :class="['text-base font-weight-black', item.profit >= 0 ? 'text-success' : 'text-error']">
+                      {{ item.profit >= 0 ? '+' : '' }}{{ formatCurrency(item.profit) }}
+                    </span>
+                  </div>
                 </div>
               </VCard>
             </div>
+
+            <!-- Paginación Móvil -->
+            <VCard class="rounded-xl border shadow-sm pa-3 d-flex justify-center mt-6">
+              <VPagination
+                v-model="page"
+                :length="Math.ceil(totalItems / itemsPerPage)"
+                density="compact"
+                total-visible="3"
+                active-color="primary"
+                @update:model-value="loadDetails"
+              />
+            </VCard>
           </template>
 
-          <template #item.date="{ item }">
-            <span class="text-body-2 font-weight-black text-medium-emphasis">
-              {{ formatDate(item.date) }}
-            </span>
-          </template>
-
-          <template #item.type="{ item }">
-            <VChip
-              :color="item.type === 'sale' ? 'success' : 'error'"
-              size="x-small"
-              variant="flat"
-              class="font-weight-black px-3 rounded-lg"
-            >
-              {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
-            </VChip>
-          </template>
-
-          <template #item.description="{ item }">
-            <span class="text-body-2 font-weight-bold">
-              {{ item.description }}
-            </span>
-          </template>
-
-          <template #item.client="{ item }">
-            <div class="d-flex align-center gap-3">
-              <VAvatar 
-                size="26" 
-                variant="tonal" 
-                :color="item.type === 'sale' ? 'primary' : 'secondary'"
-                class="rounded-lg shadow-soft"
-              >
-                <span class="text-xs font-weight-black">
-                  {{ getAvatarInitial(item.client || item.category) }}
-                </span>
-              </VAvatar>
-              <span class="text-xs font-weight-medium text-high-emphasis">{{ item.client || item.category || "N/A" }}</span>
-            </div>
-          </template>
-
-          <template #item.amount="{ item }">
-             <span class="text-base font-weight-black" :class="item.type === 'sale' ? 'text-success' : 'text-error'">
-              {{ item.type === "sale" ? "+" : "-" }}{{ formatCurrency(item.amount) }}
-            </span>
-          </template>
-
-          <template #item.costs="{ item }">
-             <span class="text-body-2 font-weight-black text-warning">
-              {{ item.costs > 0 ? '-' + formatCurrency(item.costs) : '—' }}
-            </span>
-          </template>
-
-          <template #item.profit="{ item }">
-            <VChip
-              :color="item.profit >= 0 ? 'success' : 'error'"
-              variant="tonal"
-              size="small"
-              class="font-weight-black px-4 rounded-xl"
-            >
-              {{ item.profit >= 0 ? "+" : "" }}{{ formatCurrency(item.profit) }}
-            </VChip>
-          </template>
-        </VDataTableServer>
+          <div v-else class="text-center py-12 text-disabled border-2 border-dashed rounded-xl">
+             <VIcon icon="tabler-database-x" size="40" class="mb-2" />
+             <p class="text-body-2 font-weight-bold">No hay registros</p>
+          </div>
+        </div>
       </VCardText>
     </VCard>
   </div>
@@ -382,8 +418,8 @@ watch([startDate, endDate], () => loadData());
 
 <style scoped>
 .income-statement-view {
-  min-block-size: 100vh;
   background-color: #f8fafc;
+  min-block-size: 100vh;
 }
 
 .header-bg {
@@ -403,7 +439,7 @@ watch([startDate, endDate], () => loadData());
 }
 
 .bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.05);
+  background-color: rgba(var(--v-theme-surface-variant), 5%);
 }
 
 .border-dashed {
@@ -411,16 +447,20 @@ watch([startDate, endDate], () => loadData());
 }
 
 .letter-spacing-tight { letter-spacing: -0.02em; }
+
 .letter-spacing-widest { letter-spacing: 0.1em; }
-.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.08) !important; }
-.shadow-xs { box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05) !important; }
+
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+
+.shadow-xs { box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 5%) !important; }
 
 .kpi-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
 .kpi-card:hover {
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 10%) !important;
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Tabla Premium Styling */
@@ -429,8 +469,8 @@ watch([startDate, endDate], () => loadData());
 }
 
 :deep(.v-data-table.premium-table th) {
-  block-size: 52px !important;
   background-color: #f8fafc !important;
+  block-size: 52px !important;
   border-block-end: 2px solid rgba(var(--v-border-color), 0.05) !important;
   color: rgba(var(--v-theme-on-surface), 0.6) !important;
   font-size: 0.7rem !important;
@@ -440,15 +480,15 @@ watch([startDate, endDate], () => loadData());
 }
 
 :deep(.v-data-table.premium-table td) {
+  block-size: 64px !important;
   border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
   padding-block: 12px !important;
-  height: 64px !important;
 }
 
 .line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 </style>

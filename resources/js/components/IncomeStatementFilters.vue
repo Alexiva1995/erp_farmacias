@@ -146,9 +146,9 @@ function setQuickFilter(days) {
 
 :deep(.premium-input-compact) {
   .v-field__input {
+    font-size: 0.85rem !important;
     min-block-size: 38px !important;
     padding-block: 0 !important;
-    font-size: 0.85rem !important;
   }
 }
 </style>
