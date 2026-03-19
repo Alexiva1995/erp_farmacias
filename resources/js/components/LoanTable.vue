@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   loans: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -9,11 +11,13 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "edit-loan", "delete-loan"]);
 
+const { mobile } = useDisplay();
+
 const headers = [
   { title: "ID", key: "id", sortable: true },
-  { title: "Fecha Préstamo", key: "loan_date", sortable: true, width: "15%" },
-  { title: "Cuota Mensual", key: "monthly_payment", sortable: true },
-  { title: "Total Cuotas", key: "total_installments", sortable: true },
+  { title: "Préstamo", key: "loan_date", sortable: true, width: "15%" },
+  { title: "C. Mensual", key: "monthly_payment", sortable: true },
+  { title: "Cuotas", key: "total_installments", sortable: true },
   { title: "Monto Total", key: "total_amount", sortable: true },
   { title: "Saldo Pendiente", key: "remaining_balance", sortable: true },
   { title: "Estado", key: "status", sortable: false },
@@ -72,13 +76,13 @@ const getLoanStatus = (item) => {
   const remainingBalance = calculateRemainingBalance(item);
 
   if (remainingBalance <= 0) {
-    return { text: "Completado", color: "success" };
+    return { text: "Completado", color: "success", icon: "tabler-circle-check" };
   } else if (monthsPassed >= item.total_installments) {
-    return { text: "Vencido", color: "error" };
+    return { text: "Vencido", color: "error", icon: "tabler-alert-circle" };
   } else if (item.total_installments - monthsPassed <= 3) {
-    return { text: "Por Vencer", color: "warning" };
+    return { text: "Por Vencer", color: "warning", icon: "tabler-clock-hour-4" };
   } else {
-    return { text: "Activo", color: "info" };
+    return { text: "Activo", color: "info", icon: "tabler-progress" };
   }
 };
 
@@ -106,134 +110,283 @@ const getRemainingMonths = (item) => {
 </script>
 
 <template>
-  <VCard>
+  <div class="loan-table-container">
+    <!-- Vista de Escritorio (Tabla) -->
     <VDataTableServer
+      v-if="!mobile"
       :items-per-page="props.itemsPerPage"
       :page="props.page"
       :headers="headers"
       :items="props.loans"
       :items-length="props.totalLoans"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="premium-table rounded-xl border shadow-sm"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-medium">#{{ item.id }}</span>
+        <span class="font-weight-black text-primary">#{{ item.id }}</span>
       </template>
 
       <template #item.loan_date="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <VAvatar size="38" variant="tonal" color="purple" rounded>
-            <VIcon icon="tabler-calendar-dollar" />
+        <div class="d-flex align-center gap-3 py-2">
+          <VAvatar color="purple" variant="tonal" rounded size="36" class="rounded-lg">
+            <VIcon icon="tabler-calendar-dollar" size="18" />
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">
+            <span class="text-body-2 font-weight-bold text-high-emphasis leading-tight">
               {{ formatDate(item.loan_date) }}
             </span>
-            <span class="text-sm text-disabled">
-              Hace
-              {{
-                Math.floor(
-                  (new Date() - new Date(item.loan_date)) /
-                    (1000 * 60 * 60 * 24 * 30.44)
-                )
-              }}
-              meses
+            <span class="text-xs text-disabled">
+              Inició hace {{ Math.floor((new Date() - new Date(item.loan_date)) / (1000 * 60 * 60 * 24 * 30.44)) }} meses
             </span>
           </div>
         </div>
       </template>
 
       <template #item.monthly_payment="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            formatCurrency(item.monthly_payment)
-          }}</span>
-          <span class="text-xs text-disabled">Mensual</span>
-        </div>
+        <span class="text-body-2 font-weight-semibold text-primary">{{ formatCurrency(item.monthly_payment) }}</span>
       </template>
 
       <template #item.total_installments="{ item }">
-        <div class="text-center">
-          <VChip color="primary" variant="tonal" size="small">
-            {{ item.total_installments }} cuotas
-          </VChip>
+        <div class="d-flex align-center gap-2">
+          <VIcon icon="tabler-hash" size="14" color="disabled" />
+          <span class="text-body-2 font-weight-medium">{{ item.total_installments }} cuotas</span>
         </div>
       </template>
 
       <template #item.total_amount="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            formatCurrency(calculateTotalAmount(item))
-          }}</span>
-          <span class="text-xs text-disabled">Total del préstamo</span>
-        </div>
+        <span class="text-body-2 font-weight-medium">{{ formatCurrency(calculateTotalAmount(item)) }}</span>
       </template>
 
       <template #item.remaining_balance="{ item }">
-        <div class="d-flex flex-column">
-          <span class="font-weight-medium">{{
-            formatCurrency(calculateRemainingBalance(item))
-          }}</span>
-          <div class="mt-1">
-            <VProgressLinear
-              :model-value="getProgressPercentage(item)"
-              :color="getLoanStatus(item).color"
-              height="4"
-              rounded
-            />
+        <div class="d-flex flex-column" style="min-inline-size: 140px;">
+          <div class="d-flex justify-space-between align-center mb-1">
+            <span class="text-body-2 font-weight-black">{{ formatCurrency(calculateRemainingBalance(item)) }}</span>
+            <span class="text-xs font-weight-bold">{{ getProgressPercentage(item).toFixed(0) }}%</span>
           </div>
-          <span class="text-xs text-disabled mt-1">
-            {{ getRemainingMonths(item) }} meses restantes
+          <VProgressLinear
+            :model-value="getProgressPercentage(item)"
+            :color="getLoanStatus(item).color"
+            height="6"
+            rounded
+            class="rounded-pill"
+          />
+          <span class="text-xs text-disabled mt-1 font-weight-medium">
+            {{ getRemainingMonths(item) }} meses rest.
           </span>
         </div>
       </template>
 
       <template #item.status="{ item }">
-        <VChip :color="getLoanStatus(item).color" variant="tonal" size="small">
+        <VChip
+          :color="getLoanStatus(item).color"
+          variant="tonal"
+          size="small"
+          class="font-weight-bold"
+        >
+          <template #prepend>
+            <VIcon :icon="getLoanStatus(item).icon" size="14" class="mr-1" />
+          </template>
           {{ getLoanStatus(item).text }}
         </VChip>
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex gap-1">
-          <IconBtn @click="emit('edit-loan', item)" color="warning">
-            <VIcon icon="tabler-edit" />
-            <VTooltip activator="parent" location="top">
-              Editar préstamo
-            </VTooltip>
-          </IconBtn>
+        <div class="d-flex justify-center gap-2">
+          <VTooltip text="Editar">
+            <template #activator="{ props: tooltip }">
+              <VBtn
+                v-bind="tooltip"
+                icon="tabler-edit"
+                variant="tonal"
+                color="warning"
+                size="32"
+                class="rounded-lg"
+                @click="emit('edit-loan', item)"
+              />
+            </template>
+          </VTooltip>
 
-          <IconBtn @click="emit('delete-loan', item.id)" color="error">
-            <VIcon icon="tabler-trash" />
-            <VTooltip activator="parent" location="top">
-              Eliminar préstamo
-            </VTooltip>
-          </IconBtn>
+          <VTooltip text="Eliminar">
+            <template #activator="{ props: tooltip }">
+              <VBtn
+                v-bind="tooltip"
+                icon="tabler-trash"
+                variant="tonal"
+                color="error"
+                size="32"
+                class="rounded-lg"
+                @click="emit('delete-loan', item.id)"
+              />
+            </template>
+          </VTooltip>
         </div>
       </template>
 
-      <!-- Loading state -->
       <template #loading>
         <VSkeletonLoader type="table-row@10" />
       </template>
+    </VDataTableServer>
+
+    <!-- Vista Móvil (Cards) -->
+    <div v-else class="mobile-cards-container pa-4">
+      <VRow v-if="props.loading">
+        <VCol v-for="n in 5" :key="n" cols="12">
+          <VSkeletonLoader type="card" class="rounded-xl" />
+        </VCol>
+      </VRow>
+      <VRow v-else-if="props.loans.length > 0">
+        <VCol v-for="item in props.loans" :key="item.id" cols="12">
+          <VCard class="rounded-xl border shadow-sm loan-card" variant="flat">
+            <VCardText class="pa-4">
+              <div class="d-flex justify-space-between align-start mb-3">
+                <div class="d-flex align-center gap-3">
+                  <VAvatar color="purple" variant="tonal" rounded size="40" class="rounded-lg">
+                    <VIcon icon="tabler-calendar-dollar" size="20" />
+                  </VAvatar>
+                  <div>
+                    <div class="text-subtitle-1 font-weight-black text-high-emphasis leading-none">#{{ item.id }}</div>
+                    <div class="text-caption text-disabled font-weight-bold uppercase mt-1">
+                      Iniciado el {{ formatDate(item.loan_date) }}
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <VBtn
+                    icon="tabler-edit"
+                    variant="tonal"
+                    color="warning"
+                    size="36"
+                    class="rounded-lg"
+                    @click="emit('edit-loan', item)"
+                  />
+                  <VBtn
+                    icon="tabler-trash"
+                    variant="tonal"
+                    color="error"
+                    size="36"
+                    class="rounded-lg"
+                    @click="emit('delete-loan', item.id)"
+                  />
+                </div>
+              </div>
+
+              <VDivider class="my-3 border-dashed" />
+
+              <VRow no-gutters class="mb-4">
+                <VCol cols="6">
+                  <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Cuota Mensual</div>
+                  <div class="text-body-2 font-weight-black text-primary">{{ formatCurrency(item.monthly_payment) }}</div>
+                </VCol>
+                <VCol cols="6" class="text-right border-l-dashed pl-4">
+                  <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Saldo Pendiente</div>
+                  <div class="text-body-2 font-weight-black">{{ formatCurrency(calculateRemainingBalance(item)) }}</div>
+                </VCol>
+              </VRow>
+
+              <div class="mb-4">
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">Progreso de Pago</span>
+                  <span class="text-xs font-weight-black text-primary">{{ getProgressPercentage(item).toFixed(1) }}%</span>
+                </div>
+                <VProgressLinear
+                  :model-value="getProgressPercentage(item)"
+                  :color="getLoanStatus(item).color"
+                  height="10"
+                  rounded
+                  class="rounded-pill"
+                />
+                <div class="d-flex justify-space-between mt-1">
+                  <span class="text-xs text-disabled font-weight-medium">{{ item.total_installments }} cuotas tot.</span>
+                  <span class="text-xs text-disabled font-weight-medium text-uppercase">{{ getRemainingMonths(item) }} meses rest.</span>
+                </div>
+              </div>
+
+              <div class="d-flex justify-space-between align-center px-4 py-2 bg-light-surface rounded-lg border">
+                <div class="d-flex flex-column">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">Estado</span>
+                  <div class="d-flex align-center gap-1">
+                    <VIcon :icon="getLoanStatus(item).icon" :color="getLoanStatus(item).color" size="14" />
+                    <span :class="`text-body-2 font-weight-black text-${getLoanStatus(item).color}`">
+                      {{ getLoanStatus(item).text }}
+                    </span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">Total Préstamo</span>
+                  <div class="text-body-2 font-weight-bold">{{ formatCurrency(calculateTotalAmount(item)) }}</div>
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
 
       <!-- No data state -->
-      <template #no-data>
-        <div class="text-center pa-4">
-          <VIcon
-            icon="tabler-credit-card-off"
-            size="48"
-            class="mb-2 text-disabled"
-          />
-          <div class="text-body-1 font-weight-medium mb-1">
-            No hay préstamos
-          </div>
-          <div class="text-body-2 text-disabled">
-            No se encontraron préstamos con los filtros aplicados
-          </div>
-        </div>
-      </template>
-    </VDataTableServer>
-  </VCard>
+      <div v-else class="text-center pa-12">
+        <VIcon icon="tabler-credit-card-off" size="64" class="mb-4 text-disabled opacity-20" />
+        <div class="text-h6 font-weight-bold mb-1">Sin resultados</div>
+        <div class="text-body-2 text-disabled">No se encontraron préstamos con esos filtros</div>
+      </div>
+
+      <!-- Paginación Móvil -->
+      <div class="d-flex justify-center mt-6">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalLoans / props.itemsPerPage)"
+          density="comfortable"
+          variant="tonal"
+          @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: props.itemsPerPage })"
+        />
+      </div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.premium-table :deep(.v-data-table-header) {
+  background-color: rgba(var(--v-theme-on-surface), 2%) !important;
+}
+
+.premium-table :deep(.v-data-table-header th) {
+  block-size: 48px !important;
+  color: rgba(var(--v-theme-on-surface), 50%) !important;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.loan-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.loan-card:active {
+  transform: scale(0.98);
+}
+
+.border-dashed {
+  border-style: dashed !important;
+  opacity: 0.15;
+}
+
+.border-l-dashed {
+  border-inline-start: 1px dashed rgba(var(--v-border-color), 0.15);
+}
+
+.bg-light-surface {
+  background-color: rgba(var(--v-theme-on-surface), 2%);
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.opacity-20 {
+  opacity: 0.2;
+}
+</style>
