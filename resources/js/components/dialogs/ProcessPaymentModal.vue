@@ -81,17 +81,19 @@ const totalInUSD = computed(() => {
 
 const totalInBS = computed(() => {
   return props.invoices.reduce((sum, invoice) => {
-    // Si la factura está indexada, usamos el monto indexado (que está en BS)
-    if (invoice.is_indexed && invoice.indexed_data?.is_indexed) {
-      return sum + (parseFloat(invoice.indexed_data.indexed_amount) || 0);
+    // Si la factura está indexada, el usuario quiere usar la "tasa de hoy"
+    if (invoice.is_indexed) {
+      return sum + ((parseFloat(invoice.total_usd) || 0) * props.exchangeRate);
     }
-    // Si no está indexada, pero su moneda original es Bs, usamos total_amount
+    
+    // Si no está indexada, el usuario quiere el "precio de la factura" (original en BS)
     if (invoice.currency === "Bs" || invoice.currency === "VES") {
       return sum + (parseFloat(invoice.total_amount) || 0);
     }
-    // Si es otra moneda (USD/COP) y no está indexada, convertimos el total_usd a BS 
-    // usando la tasa del sistema recibida por prop
-    return sum + ((parseFloat(invoice.total_usd) || 0) * props.exchangeRate);
+    
+    // Si la factura es en moneda extranjera y NO está indexada, 
+    // su valor en BS es el que se registró originalmente (total_amount_bs)
+    return sum + (parseFloat(invoice.total_amount_bs) || 0);
   }, 0);
 });
 
