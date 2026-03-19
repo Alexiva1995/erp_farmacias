@@ -136,6 +136,28 @@ const selectedDoctor = ref(null);
 const selectedCompany = ref(null);
 const prescriptionFile = ref(null);
 
+// Proxy para v-model:searchQuery del padre (usado por el scanner)
+const internalSearchQuery = computed({
+  get: () => props.searchQuery,
+  set: (val) => emit("update:searchQuery", val),
+});
+
+const handleSearchAction = (value) => {
+  if (!value) return;
+
+  // Si parece un código de barras (longitud >= 10), el padre lo maneja vía watcher
+  if (value.length >= 10) {
+    // Solo nos aseguramos de que el padre reciba el valor más reciente
+    // Aunque usualmente el v-model ya lo hace, esto previene desincronización
+    internalSearchQuery.value = value;
+    // No llamamos a cotizaciones para códigos de barras
+    return;
+  }
+
+  // Si es corto, intentamos cargar como cotización
+  fetchQuotationProducts(value);
+};
+
 watch(
   () => selectedDoctor.value,
   (newVal) => {
@@ -801,50 +823,51 @@ const getIva = (product, currency) => {
     </VCardItem>
 
     <VCardText class="pa-3">
+      <!-- Barra de búsqueda compacta: Visible siempre -->
+      <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2 px-1">
+         <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-list-details" color="primary" size="18" class="opacity-80" />
+            <span class="text-caption font-weight-950 text-primary uppercase letter-spacing-1">Ítems</span>
+            <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ totalSelectedQuantity }}</VChip>
+         </div>
+
+         <!-- Buscador Refinado y Compacto (Ampliado para mejor visibilidad) -->
+         <div class="d-flex align-center gap-2 flex-grow-1" style="min-inline-size: 280px; max-inline-size: 100%;">
+            <AppTextField
+              v-model="internalSearchQuery"
+              placeholder="Escanear código o ingresar cotización..."
+              density="compact"
+              variant="flat"
+              bg-color="grey-lighten-4"
+              hide-details
+              prepend-inner-icon="tabler-scan"
+              class="rounded-lg custom-search-slim shadow-sm border flex-grow-1"
+              autofocus
+              @keyup.enter="handleSearchAction(internalSearchQuery)"
+            >
+              <template #append-inner>
+                 <VBtn
+                    icon="tabler-arrow-right"
+                    variant="text"
+                    color="primary"
+                    size="x-small"
+                    class="me-n1"
+                    :disabled="!internalSearchQuery"
+                    @click="handleSearchAction(internalSearchQuery)"
+                 />
+              </template>
+            </AppTextField>
+         </div>
+      </div>
+
       <!-- Lista de Productos Premium (Minimalista) -->
       <div v-if="props.orderProducts.length === 0" class="text-center py-8 text-disabled bg-grey-lighten-5 rounded-xl border border-dashed mx-3">
         <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-3 opacity-20" />
         <p class="text-subtitle-2 font-weight-950 uppercase opacity-60">La orden está vacía</p>
-        <p class="text-super-xs">Use el buscador de productos para comenzar su venta</p>
+        <p class="text-super-xs">Use el buscador de productos o el escáner para comenzar su venta</p>
       </div>
 
       <div v-else class="mt-2">
-        <!-- Barra de búsqueda compacta encima de la lista -->
-        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2 px-1">
-           <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-list-details" color="primary" size="18" class="opacity-80" />
-              <span class="text-caption font-weight-950 text-primary uppercase letter-spacing-1">Ítems</span>
-              <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ totalSelectedQuantity }}</VChip>
-           </div>
-
-           <!-- Buscador Refinado y Compacto (Ampliado) -->
-           <div class="d-flex align-center gap-2 flex-grow-1 flex-md-grow-0" style="max-inline-size: 500px;">
-              <AppTextField
-                v-model="quotationId"
-                placeholder="Buscar producto..."
-                density="compact"
-                variant="flat"
-                bg-color="grey-lighten-4"
-                hide-details
-                prepend-inner-icon="tabler-scan"
-                class="rounded-lg custom-search-slim shadow-sm border"
-                @keyup.enter="fetchQuotationProducts(quotationId)"
-              >
-                <template #append-inner>
-                   <VBtn
-                      icon="tabler-plus"
-                      variant="text"
-                      color="primary"
-                      size="x-small"
-                      class="me-n1"
-                      :disabled="!quotationId"
-                      @click="fetchQuotationProducts(quotationId)"
-                   />
-                </template>
-              </AppTextField>
-           </div>
-        </div>
-
         <!-- Lista de Productos Premium -->
         <div class="mt-2">
           <div class="d-flex flex-column gap-2 overflow-y-auto" style="max-block-size: 380px; padding-inline-end: 4px;">
