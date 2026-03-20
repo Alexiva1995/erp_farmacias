@@ -4,7 +4,7 @@ return [
     'productos' => function ($connection) {
         $co_cli = !empty($connection->username) ? $connection->username : 'FAR00818';
         return [
-            'url' => 'https://api.cristmedicals.cristmedicals.com/api/pagina/articulos?co_cli=' . urlencode($co_cli),
+            'url' => 'https://api.cristmedicals.cristmedicals.com/api/pagina/articulos?co_cli=' . urlencode($co_cli) . '&page=1&perPage=1000',
             'method' => 'get',
         ];
     },
