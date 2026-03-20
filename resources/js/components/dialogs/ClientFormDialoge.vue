@@ -225,7 +225,6 @@ function formatearFechaCompleta(fechaInput) {
             color="secondary"
             variant="tonal"
             size="large"
-            block
             height="52"
             class="flex-grow-1 font-weight-black rounded-lg text-button uppercase"
             @click="close"
@@ -236,7 +235,6 @@ function formatearFechaCompleta(fechaInput) {
             color="primary"
             variant="flat"
             size="large"
-            block
             height="52"
             class="flex-grow-1 font-weight-black rounded-lg shadow-primary text-button uppercase"
             @click="submitForm"
