@@ -1448,7 +1448,7 @@ const detailsHeaders = computed(() => {
                 <div class="d-flex flex-wrap justify-md-end gap-2">
                   <VChip size="small" variant="tonal" color="secondary">
                     <VIcon start icon="tabler-calendar" size="14" />
-                    Emisión: {{ formatDate(invoice.exp_date) || "N/A" }}
+                    Emisión: {{ formatDate(invoice.created_invoice_date) || "N/A" }}
                   </VChip>
                   <VChip size="small" variant="tonal" color="info">
                     <VIcon start icon="tabler-download" size="14" />
@@ -1457,6 +1457,10 @@ const detailsHeaders = computed(() => {
                   <VChip size="small" variant="tonal" color="warning">
                     <VIcon start icon="tabler-calendar-due" size="14" />
                     Vence: {{ formatDate(invoice.payment_date) || "N/A" }}
+                  </VChip>
+                  <VChip v-if="invoice.exp_date" size="small" variant="tonal" color="error">
+                    <VIcon start icon="tabler-alert-triangle" size="14" />
+                    Vencimiento: {{ formatDate(invoice.exp_date) }}
                   </VChip>
                 </div>
               </VCol>
