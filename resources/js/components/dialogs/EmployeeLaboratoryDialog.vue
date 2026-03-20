@@ -314,22 +314,19 @@ const getLaboratoryColor = (index) => {
 
                     <template #append>
                       <div class="d-flex gap-1">
-                        <template v-if="editingLaboratory !== lab.id">
-                          <VBtn icon variant="text" size="x-small" color="warning" @click="handleEditLaboratory(lab)">
-                            <VIcon icon="tabler-edit" size="18" />
-                          </Btn>
-                          <VBtn icon variant="text" size="x-small" color="error" @click="handleRemoveLaboratory(lab.id)">
-                            <VIcon icon="tabler-trash" size="18" />
-                          </Btn>
-                        </template>
-                        <template v-else>
-                          <VBtn icon variant="text" size="x-small" color="success" @click="handleSaveEdit(lab.id)">
-                            <VIcon icon="tabler-check" size="18" />
-                          </Btn>
-                          <VBtn icon variant="text" size="x-small" color="error" @click="handleCancelEdit">
-                            <VIcon icon="tabler-x" size="18" />
-                          </Btn>
-                        </template>
+                        <VBtn v-if="editingLaboratory !== lab.id" icon variant="text" size="x-small" color="warning" @click="handleEditLaboratory(lab)">
+                          <VIcon icon="tabler-edit" size="18" />
+                        </VBtn>
+                        <VBtn v-if="editingLaboratory !== lab.id" icon variant="text" size="x-small" color="error" @click="handleRemoveLaboratory(lab.id)">
+                          <VIcon icon="tabler-trash" size="18" />
+                        </VBtn>
+                        
+                        <VBtn v-if="editingLaboratory === lab.id" icon variant="text" size="x-small" color="success" @click="handleSaveEdit(lab.id)">
+                          <VIcon icon="tabler-check" size="18" />
+                        </VBtn>
+                        <VBtn v-if="editingLaboratory === lab.id" icon variant="text" size="x-small" color="error" @click="handleCancelEdit">
+                          <VIcon icon="tabler-x" size="18" />
+                        </VBtn>
                       </div>
                     </template>
                   </VListItem>
