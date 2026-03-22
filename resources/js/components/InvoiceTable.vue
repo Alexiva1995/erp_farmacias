@@ -38,6 +38,7 @@ const headers = computed(() => {
     { title: "N° Factura", key: "invoice_number", sortable: true },
     { title: "N° Control", key: "control_number", sortable: true },
     { title: "Emisión", key: "created_invoice_date", sortable: true },
+    { title: "Vencimiento", key: "exp_date", sortable: true },
   ];
 
   if (props.actionsMode === "location") {
