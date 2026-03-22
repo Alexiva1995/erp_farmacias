@@ -215,12 +215,20 @@ watch(
       <VDivider />
 
       <!-- ── Contenido Tabs ─────────────────────────────────────────── -->
-      <VCardText class="pa-5" style="min-block-size: 320px">
+      <VCardText class="pa-5 dialog-content-min-height">
         <VTabsWindow v-model="activeTab">
           <!-- Tab 1 ─ General ────────────────────────────── -->
           <VTabsWindowItem :value="0">
             <VForm @submit.prevent="submitForm">
-              <!-- Fila 1: Nombre + Razón Social -->
+              <!-- Sección: Identificación -->
+              <div class="d-flex align-center gap-2 mb-4">
+                <VAvatar color="primary" variant="tonal" size="24" rounded="sm">
+                  <VIcon icon="tabler-id" size="16" />
+                </VAvatar>
+                <span class="text-subtitle-2 font-weight-bold text-uppercase text-primary letter-spacing-05">Identificación</span>
+                <VDivider class="opacity-20" />
+              </div>
+
               <VRow dense>
                 <VCol cols="12" md="6">
                   <AppTextField
@@ -240,20 +248,16 @@ watch(
                     :error-messages="formErrors.social_reason"
                   />
                 </VCol>
-              </VRow>
-
-              <!-- Fila 2: RIF + Dirección -->
-              <VRow dense class="mt-1">
-                <VCol cols="12" md="4">
+                <VCol cols="12" md="5">
                   <AppTextField
                     v-model="formData.rif"
                     label="RIF"
                     placeholder="J-12345678-9"
-                    prepend-inner-icon="tabler-id"
+                    prepend-inner-icon="tabler-id-badge-2"
                     :error-messages="formErrors.rif"
                   />
                 </VCol>
-                <VCol cols="12" md="8">
+                <VCol cols="12" md="7">
                   <AppTextField
                     v-model="formData.address"
                     label="Dirección"
@@ -264,8 +268,16 @@ watch(
                 </VCol>
               </VRow>
 
-              <!-- Fila 3: Teléfonos -->
-              <VRow dense class="mt-1">
+              <!-- Sección: Contacto -->
+              <div class="d-flex align-center gap-2 mt-6 mb-4">
+                <VAvatar color="info" variant="tonal" size="24" rounded="sm">
+                  <VIcon icon="tabler-phone-call" size="16" />
+                </VAvatar>
+                <span class="text-subtitle-2 font-weight-bold text-uppercase text-info letter-spacing-05">Contacto</span>
+                <VDivider class="opacity-20" />
+              </div>
+
+              <VRow dense>
                 <VCol cols="12" md="6">
                   <AppTextField
                     v-model="formData.sales_phone"
@@ -282,23 +294,21 @@ watch(
                     label="Tel. Cobranza"
                     type="tel"
                     placeholder="4147654321"
-                    prepend-inner-icon="tabler-phone-call"
+                    prepend-inner-icon="tabler-phone-incoming"
                     :error-messages="formErrors.collections_phone"
                   />
                 </VCol>
               </VRow>
 
-              <!-- Separador Pago -->
-              <div class="d-flex align-center gap-2 mt-4 mb-3">
-                <VIcon icon="tabler-credit-card" size="16" color="primary" />
-                <span
-                  class="text-caption text-primary font-weight-bold text-uppercase"
-                  >Pago</span
-                >
-                <VDivider />
+              <!-- Sección: Condiciones de Pago -->
+              <div class="d-flex align-center gap-2 mt-6 mb-4">
+                <VAvatar color="success" variant="tonal" size="24" rounded="sm">
+                  <VIcon icon="tabler-credit-card" size="16" />
+                </VAvatar>
+                <span class="text-subtitle-2 font-weight-bold text-uppercase text-success letter-spacing-05">Condiciones de Pago</span>
+                <VDivider class="opacity-20" />
               </div>
 
-              <!-- Fila 4: Días crédito + Forma de pago -->
               <VRow dense>
                 <VCol cols="12" md="4">
                   <AppTextField
@@ -324,7 +334,6 @@ watch(
                   />
                 </VCol>
                 <VCol cols="12" md="4">
-                  <!-- Campo condicional según payment_due_type -->
                   <AppSelect
                     v-if="formData.payment_due_type === 'invoice_date'"
                     v-model="formData.invoice_date_reference"
@@ -358,15 +367,10 @@ watch(
                     :error-messages="formErrors.payment_due_reference"
                   />
                 </VCol>
-              </VRow>
 
-              <!-- Fila 5: Forma de pago (radio) -->
-              <VRow dense class="mt-1">
                 <VCol cols="12">
-                  <div class="d-flex align-center gap-4">
-                    <span class="text-body-2 text-medium-emphasis"
-                      >Moneda:</span
-                    >
+                  <div class="d-flex align-center gap-4 py-2 px-3 border rounded-lg bg-light-surface mt-2 border-dashed">
+                    <span class="text-caption font-weight-bold text-disabled text-uppercase">Moneda de Pago:</span>
                     <VRadioGroup
                       v-model="formData.payment_method"
                       density="compact"
@@ -379,6 +383,7 @@ watch(
                         :label="op.label"
                         :value="op.value"
                         color="primary"
+                        class="me-2"
                       />
                     </VRadioGroup>
                   </div>
@@ -389,110 +394,89 @@ watch(
 
           <!-- Tab 2 ─ Logística ──────────────────────────── -->
           <VTabsWindowItem :value="1">
-            <!-- Días de despacho -->
-            <div class="d-flex align-center gap-2 mb-3">
-              <VIcon icon="tabler-calendar-check" size="16" color="primary" />
-              <span
-                class="text-caption text-primary font-weight-bold text-uppercase"
-                >Días de entrega del proveedor</span
-              >
-            </div>
-
-            <div class="d-flex flex-wrap gap-2 mb-4">
-              <VChip
-                v-for="dia in dias"
-                :key="dia.value"
-                :color="
-                  formData.dispatch_days?.includes(dia.value)
-                    ? 'primary'
-                    : undefined
-                "
-                :variant="
-                  formData.dispatch_days?.includes(dia.value)
-                    ? 'flat'
-                    : 'outlined'
-                "
-                class="cursor-pointer"
-                size="small"
-                @click="
-                  formData.dispatch_days.includes(dia.value)
-                    ? formData.dispatch_days.splice(
-                        formData.dispatch_days.indexOf(dia.value),
-                        1,
-                      )
-                    : formData.dispatch_days.push(dia.value)
-                "
-              >
-                {{ dia.label }}
-              </VChip>
-            </div>
-
-            <!-- Días de pedido por día de despacho -->
-            <template v-if="formData.dispatch_days?.length">
-              <VDivider class="mb-3" />
-              <div class="d-flex align-center gap-2 mb-3">
-                <VIcon icon="tabler-clock-edit" size="16" color="warning" />
-                <span
-                  class="text-caption text-warning font-weight-bold text-uppercase"
-                  >Días para hacer el pedido</span
-                >
+            <div class="pa-2">
+              <div class="d-flex align-center gap-2 mb-4">
+                <VAvatar color="primary" variant="tonal" size="24" rounded="sm">
+                  <VIcon icon="tabler-calendar-check" size="16" />
+                </VAvatar>
+                <span class="text-subtitle-2 font-weight-bold text-uppercase text-primary letter-spacing-05">Días de Entrega</span>
+                <VDivider class="opacity-20" />
               </div>
 
-              <div
-                v-for="diaD in formData.dispatch_days"
-                :key="diaD"
-                class="mb-3"
-              >
-                <div
-                  class="text-caption font-weight-bold mb-1 text-medium-emphasis"
-                >
-                  Para entregar el {{ diasFull[diaD] }}, pedir:
-                </div>
+              <div class="bg-light-surface pa-4 rounded-lg border mb-6">
+                <p class="text-caption text-medium-emphasis mb-3">Marca los días en los que el proveedor realiza despachos:</p>
                 <div class="d-flex flex-wrap gap-2">
                   <VChip
                     v-for="dia in dias"
                     :key="dia.value"
-                    :color="
-                      formData.order_days[diaD]?.includes(dia.value)
-                        ? 'warning'
-                        : undefined
-                    "
-                    :variant="
-                      formData.order_days[diaD]?.includes(dia.value)
-                        ? 'flat'
-                        : 'outlined'
-                    "
-                    class="cursor-pointer"
-                    size="x-small"
+                    :color="formData.dispatch_days?.includes(dia.value) ? 'primary' : undefined"
+                    :variant="formData.dispatch_days?.includes(dia.value) ? 'flat' : 'outlined'"
+                    class="cursor-pointer transition-all"
+                    rounded="lg"
                     @click="
-                      formData.order_days[diaD]?.includes(dia.value)
-                        ? formData.order_days[diaD].splice(
-                            formData.order_days[diaD].indexOf(dia.value),
-                            1,
-                          )
-                        : (formData.order_days[diaD] = [
-                            ...(formData.order_days[diaD] || []),
-                            dia.value,
-                          ])
+                      formData.dispatch_days.includes(dia.value)
+                        ? formData.dispatch_days.splice(formData.dispatch_days.indexOf(dia.value), 1)
+                        : formData.dispatch_days.push(dia.value)
                     "
                   >
+                    <VIcon v-if="formData.dispatch_days?.includes(dia.value)" icon="tabler-check" size="14" class="me-1" />
                     {{ dia.label }}
                   </VChip>
                 </div>
               </div>
-            </template>
 
-            <VAlert
-              v-else
-              type="info"
-              variant="tonal"
-              density="compact"
-              icon="tabler-info-circle"
-              class="mt-2"
-            >
-              Selecciona al menos un día de entrega arriba para configurar los
-              días de pedido.
-            </VAlert>
+              <!-- Días de pedido por día de despacho -->
+              <template v-if="formData.dispatch_days?.length">
+                <div class="d-flex align-center gap-2 mb-4">
+                  <VAvatar color="warning" variant="tonal" size="24" rounded="sm">
+                    <VIcon icon="tabler-clock-edit" size="16" />
+                  </VAvatar>
+                  <span class="text-subtitle-2 font-weight-bold text-uppercase text-warning letter-spacing-05">Configuración de Pedidos</span>
+                  <VDivider class="opacity-20" />
+                </div>
+
+                <VRow dense>
+                  <VCol v-for="diaD in formData.dispatch_days" :key="diaD" cols="12" sm="6">
+                    <div class="pa-3 border rounded-lg h-100 bg-light-surface">
+                      <div class="d-flex align-center gap-2 mb-2">
+                        <VIcon icon="tabler-truck" size="14" class="text-disabled" />
+                        <span class="text-caption font-weight-black text-uppercase">{{ diasFull[diaD] }}</span>
+                      </div>
+                      <p class="text-xs text-disabled mb-2">Selecciona cuándo pedir:</p>
+                      <div class="d-flex flex-wrap gap-1">
+                        <VChip
+                          v-for="dia in dias"
+                          :key="dia.value"
+                          :color="formData.order_days[diaD]?.includes(dia.value) ? 'warning' : undefined"
+                          :variant="formData.order_days[diaD]?.includes(dia.value) ? 'flat' : 'outlined'"
+                          class="cursor-pointer"
+                          size="x-small"
+                          rounded="md"
+                          @click="
+                            formData.order_days[diaD]?.includes(dia.value)
+                              ? formData.order_days[diaD].splice(formData.order_days[diaD].indexOf(dia.value), 1)
+                              : (formData.order_days[diaD] = [...(formData.order_days[diaD] || []), dia.value])
+                          "
+                        >
+                          {{ dia.label }}
+                        </VChip>
+                      </div>
+                    </div>
+                  </VCol>
+                </VRow>
+              </template>
+
+              <VAlert
+                v-else
+                type="info"
+                variant="tonal"
+                density="compact"
+                icon="tabler-info-circle"
+                class="mt-2 rounded-lg"
+              >
+                Activa al menos un día de entrega arriba para configurar la programación de pedidos.
+              </VAlert>
+            </div>
           </VTabsWindowItem>
         </VTabsWindow>
       </VCardText>
@@ -542,5 +526,29 @@ watch(
   display: block;
   margin: 0;
   color: rgba(255, 255, 255, 75%) !important;
+}
+
+.bg-light-surface {
+  background-color: rgba(var(--v-theme-on-surface), 2%) !important;
+}
+
+.text-xs {
+  font-size: 0.7rem !important;
+}
+
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+.letter-spacing-05 {
+  letter-spacing: 0.5px !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+.dialog-content-min-height {
+  min-block-size: 320px !important;
 }
 </style>

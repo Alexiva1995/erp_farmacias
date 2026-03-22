@@ -199,7 +199,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="1000px"
+    max-inline-size="1000px"
     :fullscreen="mobile"
     @update:model-value="closeDialog"
     persistent
@@ -214,7 +214,7 @@ watch(
             </VAvatar>
             <div>
               <div class="text-h6 font-weight-black leading-tight">Gestión de Orden #{{ purchaseOrder.id }}</div>
-              <div class="text-caption text-white opacity-80 font-weight-bold uppercase truncate" style="max-width: 250px;">
+              <div class="text-caption text-white opacity-80 font-weight-bold uppercase truncate" style="max-inline-size: 250px;">
                 {{ purchaseOrder.supplier_name }}
               </div>
             </div>
@@ -294,7 +294,7 @@ watch(
                 type="number"
                 density="compact"
                 hide-details
-                class="max-w-100 font-weight-black"
+                class="max-inline-size-100 font-weight-black"
                 @input="item.quantity = Math.max(0, item.quantity)"
               />
               <span v-else class="text-sm font-weight-black">{{ item.quantity }} u.</span>

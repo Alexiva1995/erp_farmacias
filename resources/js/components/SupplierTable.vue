@@ -226,18 +226,6 @@ const headers = [
                   icon="tabler-circle-filled"
                   :class="checkingApiId === item.id ? 'spin-icon' : ''"
                 />
-                <VMenu location="bottom end">
-                  <template #activator="{ props }">
-                    <IconBtn v-bind="props">
-                      <VIcon icon="tabler-dots-vertical" />
-                    </IconBtn>
-                  </template>
-                  <VList density="compact">
-                    <VListItem @click="emit('edit-supplier', item)" prepend-icon="tabler-edit" title="Editar" />
-                    <VListItem @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" title="Comercial" />
-                    <VListItem @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay" title="Pagos" />
-                  </VList>
-                </VMenu>
               </div>
             </div>
 
@@ -259,33 +247,60 @@ const headers = [
               </div>
             </div>
 
-            <div class="d-flex gap-2">
-              <VBtn
-                variant="tonal"
-                color="success"
-                block
-                class="flex-grow-1"
-                size="small"
-                prepend-icon="tabler-brand-whatsapp"
-                tabindex="-1"
-                :disabled="!item.sales_phone"
-                :href="item.sales_phone ? `https://wa.me/${item.sales_phone.replace(/\D/g, '')}` : undefined"
-                target="_blank"
-              >
-                Ventas
-              </VBtn>
-              <VBtn
-                variant="tonal"
-                color="info"
-                class="flex-grow-1"
-                size="small"
-                prepend-icon="tabler-phone"
-                tabindex="-1"
-                :disabled="!item.collections_phone"
-                :href="item.collections_phone ? `tel:${item.collections_phone}` : undefined"
-              >
-                Cobros
-              </VBtn>
+            <div class="d-flex justify-space-between align-center mt-2 pa-2 bg-light-surface rounded-pill">
+              <div class="d-flex gap-2">
+                <VTooltip text="WhatsApp Ventas" location="top">
+                  <template #activator="{ props }">
+                    <VBtn
+                      v-bind="props"
+                      icon="tabler-brand-whatsapp"
+                      variant="tonal"
+                      color="success"
+                      size="32"
+                      :disabled="!item.sales_phone"
+                      :href="item.sales_phone ? `https://wa.me/${item.sales_phone.replace(/\D/g, '')}` : undefined"
+                      target="_blank"
+                    />
+                  </template>
+                </VTooltip>
+                <VTooltip text="Llamar Cobranza" location="top">
+                  <template #activator="{ props }">
+                    <VBtn
+                      v-bind="props"
+                      icon="tabler-phone"
+                      variant="tonal"
+                      color="info"
+                      size="32"
+                      :disabled="!item.collections_phone"
+                      :href="item.collections_phone ? `tel:${item.collections_phone}` : undefined"
+                    />
+                  </template>
+                </VTooltip>
+              </div>
+
+              <div class="d-flex gap-1">
+                <VBtn
+                  icon="tabler-edit"
+                  variant="text"
+                  color="primary"
+                  size="32"
+                  @click="emit('edit-supplier', item)"
+                />
+                <VBtn
+                  icon="tabler-settings-dollar"
+                  variant="text"
+                  color="warning"
+                  size="32"
+                  @click="emit('commercial-panel', item)"
+                />
+                <VBtn
+                  icon="tabler-credit-card-pay"
+                  variant="text"
+                  color="secondary"
+                  size="32"
+                  @click="emit('supplier-pending-invoices', item)"
+                />
+              </div>
             </div>
           </VCardText>
         </VCard>
@@ -324,18 +339,29 @@ const headers = [
 }
 
 @keyframes pulse {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .premium-data-table :deep(th) {
   background-color: #f8fafc !important;
-  text-transform: uppercase;
+  color: #64748b !important;
   font-size: 0.7rem !important;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: #64748b !important;
+  text-transform: uppercase;
 }
 
 .premium-data-table :deep(td) {
@@ -344,7 +370,7 @@ const headers = [
 
 .supplier-mobile-card {
   border-radius: 16px;
-  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 5%) !important;
   transition: transform 0.2s;
 }
 
@@ -358,8 +384,12 @@ const headers = [
 
 .line-clamp-1 {
   display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.bg-light-surface {
+  background-color: rgba(var(--v-theme-on-surface), 4%) !important;
 }
 </style>

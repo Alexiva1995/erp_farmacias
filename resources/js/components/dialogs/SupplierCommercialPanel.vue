@@ -153,19 +153,26 @@ const close = () => {
     <VCard class="overflow-hidden">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div 
-          class="d-flex align-center pa-4 text-white"
-          style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff !important;"
-        >
-          <VIcon icon="tabler-settings-dollar" class="mr-3" />
+        <div class="dialog-header-premium">
+          <VAvatar color="white" variant="tonal" size="38" rounded class="me-3">
+            <VIcon icon="tabler-settings-dollar" size="20" color="white" />
+          </VAvatar>
           <div>
-            <div class="text-h5 font-weight-bold">Panel Comercial</div>
-            <div class="text-caption opacity-80">{{ supplier.name }} • RIF: {{ supplier.rif }}</div>
+            <p class="text-subtitle-1 font-weight-bold header-title">
+              Panel Comercial
+            </p>
+            <p class="text-caption header-subtitle">
+              {{ supplier.name }} • RIF: {{ supplier.rif }}
+            </p>
           </div>
           <VSpacer />
-          <VBtn icon variant="text" color="white" @click="close">
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+          <VBtn
+            icon="tabler-x"
+            variant="text"
+            size="small"
+            color="white"
+            @click="close"
+          />
         </div>
       </VCardTitle>
 
@@ -191,7 +198,7 @@ const close = () => {
 
       <VDivider />
 
-      <VCardText class="pa-0" style=" background-color: #f8fafc;block-size: 65vh; overflow-y: auto;">
+      <VCardText class="pa-0 dialog-content-scroll">
         <VWindow v-model="activeTab" class="pa-6">
           <!-- TAB 1: FINANZAS (PRONTO PAGO) -->
           <VWindowItem :value="0">
@@ -514,5 +521,30 @@ const close = () => {
 
 .bg-green-lighten-5 {
   background-color: #f0fdf4 !important;
+}
+
+.dialog-header-premium {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 80%) 100%);
+  padding-block: 16px;
+  padding-inline: 20px;
+}
+
+.header-title {
+  margin: 0;
+  color: #fff !important;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 75%) !important;
+}
+
+.dialog-content-scroll {
+  background-color: #f8fafc;
+  block-size: 65vh;
+  overflow-y: auto;
 }
 </style>

@@ -333,9 +333,9 @@ const formatTime = (dateString) => {
 .premium-card-decoration {
   position: absolute;
   border-radius: 0 0 0 100%;
-  inset-block-start: 0;
   block-size: 60px;
   inline-size: 60px;
+  inset-block-start: 0;
   inset-inline-end: 0;
   opacity: 0.1;
   pointer-events: none;
