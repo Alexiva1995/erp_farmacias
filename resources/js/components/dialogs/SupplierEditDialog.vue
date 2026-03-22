@@ -10,7 +10,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
 // ─── Estado ────────────────────────────────────────────────────────────────
-const activeTab = ref('general');
+const activeTab = ref(0);
 const baseForm = {
   id: null,
   name: "",
@@ -60,7 +60,7 @@ const isNewSupplier = computed(() => !formData.value.id);
 const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
-  activeTab.value = "general";
+  activeTab.value = 0;
   emit("clearErrors");
 };
 
@@ -142,7 +142,7 @@ const initForm = () => {
     formData.value = { ...baseForm };
   }
   formErrors.value = {};
-  activeTab.value = "general";
+  activeTab.value = 0;
 };
 
 watch(
@@ -204,22 +204,28 @@ watch(
       </div>
 
       <!-- ── Tabs ───────────────────────────────────────────────────── -->
-      <VTabs v-model="activeTab" color="primary" density="compact">
-        <VTab value="general" prepend-icon="tabler-info-circle">
-          <span class="text-caption font-weight-medium">General</span>
+      <VTabs
+        v-model="activeTab"
+        color="primary"
+        grow
+        density="compact"
+      >
+        <VTab :value="0">
+          General
         </VTab>
-        <VTab value="logistica" prepend-icon="tabler-truck">
-          <span class="text-caption font-weight-medium">Logística</span>
+        <VTab :value="1">
+          Logística
         </VTab>
       </VTabs>
+
       <VDivider />
 
       <!-- ── Contenido Tabs ─────────────────────────────────────────── -->
-      <VCardText class="pa-5">
+      <VCardText class="pa-0">
         <VForm @submit.prevent="submitForm">
-          <VTabsWindow v-model="activeTab">
+          <VWindow v-model="activeTab" class="pa-5">
             <!-- Tab 1 ─ General ────────────────────────────── -->
-            <VTabsWindowItem value="general">
+            <VWindowItem :value="0">
               <div class="pa-1">
               <!-- Sección: Identificación -->
               <div class="d-flex align-center gap-2 mb-4">
@@ -389,10 +395,10 @@ watch(
                 </VCol>
               </VRow>
             </div>
-          </VTabsWindowItem>
+          </VWindowItem>
 
           <!-- Tab 2 ─ Logística ──────────────────────────── -->
-          <VTabsWindowItem value="logistica">
+          <VWindowItem :value="1">
             <div class="pa-2">
               <div class="d-flex align-center gap-2 mb-4">
                 <VAvatar color="primary" variant="tonal" size="24" rounded="sm">
@@ -476,8 +482,8 @@ watch(
                 Activa al menos un día de entrega arriba para configurar la programación de pedidos.
               </VAlert>
             </div>
-          </VTabsWindowItem>
-          </VTabsWindow>
+          </VWindowItem>
+          </VWindow>
         </VForm>
         <div class="mb-2" />
       </VCardText>
