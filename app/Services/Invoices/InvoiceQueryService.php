@@ -37,7 +37,7 @@ class InvoiceQueryService
             $query->where('supplier_id', $request->supplierId);
         }
 
-        $dateColumn = 'exp_date';
+        $dateColumn = 'created_invoice_date';
         if ($request->input('status') && in_array('pending', (array) $request->input('status'))) {
             $dateColumn = 'received_date';
         }
