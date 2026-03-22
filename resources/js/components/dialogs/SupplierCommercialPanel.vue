@@ -146,6 +146,7 @@ const close = () => {
   <VDialog
     :model-value="modelValue"
     max-width="1000px"
+    :fullscreen="$vuetify.display.mobile"
     persistent
     @update:model-value="close"
   >

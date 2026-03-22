@@ -10,6 +10,11 @@ const emit = defineEmits([
   "add-supplier",
 ]);
 
+import { ref } from "vue";
+
+const isFiltersVisible = ref(false);
+const localSearchQuery = ref(props.searchQuery);
+
 const sortOptions = [
   {
     title: "Deuda mayor",
@@ -43,58 +48,117 @@ const handleSortClick = (option) => {
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow align="center">
-        <VCol cols="12" md="12">
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por ID, Nombre de Proveedor..."
-            clearable
-            @update:model-value="emit('update:searchQuery', $event)"
-          />
-        </VCol>
-      </VRow>
-    </VCardText>
+  <div class="supplier-filters-container">
+    <VCard class="mb-4 shadow-sm border-0">
+      <VCardText class="pa-4">
+        <div class="d-flex align-center flex-wrap gap-4">
+          <!-- Buscador Principal -->
+          <div class="flex-grow-1" style="min-inline-size: 260px;">
+            <AppTextField
+              v-model="localSearchQuery"
+              placeholder="Buscar por ID, Nombre de Proveedor..."
+              prepend-inner-icon="tabler-search"
+              clearable
+              hide-details
+              density="comfortable"
+              @update:model-value="emit('update:searchQuery', $event)"
+            />
+          </div>
 
-    <VDivider />
+          <!-- Acciones de Filtro -->
+          <div class="d-flex align-center gap-2">
+            <VBtn
+              :color="isFiltersVisible ? 'primary' : 'secondary'"
+              variant="tonal"
+              @click="isFiltersVisible = !isFiltersVisible"
+              prepend-icon="tabler-filter"
+            >
+              Filtros
+              <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" />
+            </VBtn>
 
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
+            <VBtn
+              color="primary"
+              variant="flat"
+              prepend-icon="tabler-plus"
+              @click="emit('add-supplier')"
+            >
+              <span class="d-none d-sm-inline">Añadir Proveedor</span>
+              <VIcon icon="tabler-plus" class="d-sm-none" />
+            </VBtn>
+          </div>
+        </div>
 
-      <VMenu>
-        <template #activator="{ props: menuProps }">
-          <VBtn v-bind="menuProps" variant="tonal">
-            Ordenar Por
-            <VIcon end icon="tabler-chevron-down" />
-          </VBtn>
-        </template>
-        <VList>
-          <VListItem
-            v-for="(option, index) in sortOptions"
-            :key="index"
-            @click="handleSortClick(option)"
-          >
-            <template #prepend>
-              <VIcon :icon="option.icon" size="20" class="me-2" />
-            </template>
-            <VListItemTitle>{{ option.title }}</VListItemTitle>
-          </VListItem>
-        </VList>
-      </VMenu>
+        <!-- Sección Colapsable -->
+        <VExpandTransition>
+          <div v-show="isFiltersVisible">
+            <VDivider class="my-4" />
+            <div class="d-flex flex-wrap gap-4 align-center">
+              <VMenu>
+                <template #activator="{ props: menuProps }">
+                  <VBtn v-bind="menuProps" variant="outlined" color="secondary" prepend-icon="tabler-sort-ascending">
+                    Ordenar Por
+                    <VIcon end icon="tabler-chevron-down" size="16" />
+                  </VBtn>
+                </template>
+                <VList density="compact" min-width="180">
+                  <VListItem
+                    v-for="(option, index) in sortOptions"
+                    :key="index"
+                    @click="handleSortClick(option)"
+                  >
+                    <template #prepend>
+                      <VIcon :icon="option.icon" size="18" class="me-2" :color="option.order === 'desc' ? 'primary' : 'secondary'" />
+                    </template>
+                    <VListItemTitle class="text-body-2">{{ option.title }}</VListItemTitle>
+                  </VListItem>
+                </VList>
+              </VMenu>
 
-      <VSpacer />
+              <VBtn
+                v-if="props.searchQuery"
+                color="error"
+                variant="text"
+                size="small"
+                prepend-icon="tabler-filter-off"
+                @click="emit('clear')"
+              >
+                Limpiar Filtros
+              </VBtn>
 
-      <VBtn
+              <VSpacer />
+
+              <div class="text-caption text-disabled d-none d-md-block">
+                <VIcon icon="tabler-info-circle" size="14" class="me-1" />
+                Usa el buscador para filtrar rápidamente por nombre o RIF.
+              </div>
+            </div>
+          </div>
+        </VExpandTransition>
+      </VCardText>
+    </VCard>
+
+    <!-- Indicador de búsqueda activa (Mobile) -->
+    <div v-if="props.searchQuery && !isFiltersVisible" class="d-flex gap-2 mb-4 px-2 overflow-x-auto">
+      <VChip
+        closable
+        size="small"
         color="primary"
-        variant="text"
-        prepend-icon="tabler-plus"
-        @click="emit('add-supplier')"
+        variant="tonal"
+        @click:close="emit('clear')"
       >
-        Añadir Proveedor
-      </VBtn>
-    </VCardActions>
-  </VCard>
+        Búsqueda: {{ props.searchQuery }}
+      </VChip>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.supplier-filters-container :deep(.v-card) {
+  border-radius: 12px;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05) !important;
+}
+</style>

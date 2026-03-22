@@ -59,44 +59,99 @@ const statistics = computed(() => [
       sm="6"
       md="4"
     >
-      <VCard>
-        <VCardText class="d-flex align-center justify-space-between">
-          <div>
-            <div class="d-flex align-center gap-2 mb-1">
-              <VIcon
-                :icon="item.icon"
-                :color="item.color"
-                size="24"
-              />
-              <span class="text-overline">{{ item.title }}</span>
+      <VCard class="stats-card border-0 overflow-hidden">
+        <!-- Decoración de fondo -->
+        <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${item.color}), 0.1), transparent)` }"></div>
+
+        <VCardText class="pa-5 relative-content">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <VAvatar
+              :color="item.color"
+              variant="tonal"
+              size="48"
+              rounded="lg"
+              class="elevation-1"
+            >
+              <VIcon :icon="item.icon" size="26" />
+            </VAvatar>
+
+            <div class="text-right">
+              <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">{{ item.title }}</span>
+              <h4 class="text-h4 font-weight-black mt-1">
+                <template v-if="loading">
+                  <VProgressCircular indeterminate size="24" width="3" color="primary" />
+                </template>
+                <template v-else>
+                  {{ item.value }}
+                </template>
+              </h4>
             </div>
-            <h4 class="text-h4 font-weight-bold mb-1">
-              <template v-if="loading">
-                <VProgressCircular indeterminate size="20" width="2" />
-              </template>
-              <template v-else>
-                {{ item.value }}
-              </template>
-            </h4>
-            <span class="text-caption text-disabled">{{ item.description }}</span>
           </div>
 
-          <VAvatar
-            :color="item.color"
-            variant="tonal"
-            size="48"
-            rounded
-          >
-            <VIcon
-              :icon="item.icon"
-              size="28"
-            />
-          </VAvatar>
+          <VDivider class="mb-3 opacity-20" />
+
+          <div class="d-flex align-center justify-space-between">
+            <span class="text-caption font-weight-medium text-medium-emphasis">
+              {{ item.description }}
+            </span>
+            <VIcon icon="tabler-trending-up" size="16" :color="item.color" class="opacity-50" />
+          </div>
         </VCardText>
+
+        <!-- Borde de acento lateral -->
+        <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${item.color}))` }"></div>
       </VCard>
     </VCol>
   </VRow>
 </template>
+
+<style scoped>
+.stats-card {
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 80%) !important;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 5%) !important;
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-5px);
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 100px;
+  filter: blur(40px);
+  inline-size: 100px;
+  inset-block-start: -20px;
+  inset-inline-end: -20px;
+  pointer-events: none;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 70%;
+  border-end-end-radius: 4px;
+  border-start-end-radius: 4px;
+  inline-size: 4px;
+  inset-block-start: 15%;
+  inset-inline-start: 0;
+  opacity: 0.8;
+}
+
+.text-h4 {
+  color: rgb(var(--v-theme-on-surface));
+  letter-spacing: -0.5px !important;
+}
+</style>
 
 <style scoped>
 /* Estilos eliminados ya que usamos variant="tonal" de Vuetify */

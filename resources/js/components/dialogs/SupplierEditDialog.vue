@@ -171,35 +171,21 @@ watch(
   <VDialog
     :model-value="props.modelValue"
     max-width="660px"
+    :fullscreen="$vuetify.display.mobile"
     persistent
     @update:model-value="closeDialog"
   >
     <VCard v-if="formData">
       <!-- ── Header ─────────────────────────────────────────────────── -->
-      <div
-        class="d-flex align-center px-5 py-4"
-        style="
-          background: linear-gradient(
-            135deg,
-            rgb(var(--v-theme-primary)) 0%,
-            rgba(var(--v-theme-primary), 0.8) 100%
-          );
-        "
-      >
+      <div class="dialog-header-premium">
         <VAvatar color="white" variant="tonal" size="38" rounded class="me-3">
           <VIcon icon="tabler-truck-delivery" size="20" color="white" />
         </VAvatar>
         <div>
-          <p
-            class="text-subtitle-1 font-weight-bold ma-0"
-            style="color: #fff !important; line-height: 1.2"
-          >
+          <p class="text-subtitle-1 font-weight-bold header-title">
             {{ isNewSupplier ? "Añadir Proveedor" : "Editar Proveedor" }}
           </p>
-          <p
-            class="text-caption ma-0"
-            style="color: rgba(255, 255, 255, 75%) !important"
-          >
+          <p class="text-caption header-subtitle">
             {{
               isNewSupplier
                 ? "Completa los datos del nuevo proveedor"
@@ -212,7 +198,7 @@ watch(
           icon="tabler-x"
           variant="text"
           size="small"
-          style="color: #fff"
+          color="white"
           @click="closeDialog"
         />
       </div>
@@ -534,5 +520,27 @@ watch(
         </VBtn>
       </VCardActions>
     </VCard>
-  </VDialog>
-</template>
+  </VDialog></template>
+
+<style scoped>
+.dialog-header-premium {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 80%) 100%);
+  padding-block: 16px;
+  padding-inline: 20px;
+}
+
+.header-title {
+  display: block;
+  margin: 0;
+  color: #fff !important;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  display: block;
+  margin: 0;
+  color: rgba(255, 255, 255, 75%) !important;
+}
+</style>
