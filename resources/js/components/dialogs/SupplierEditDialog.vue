@@ -10,7 +10,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
 // ─── Estado ────────────────────────────────────────────────────────────────
-const activeTab = ref(0);
+const activeTab = ref('general');
 const baseForm = {
   id: null,
   name: "",
@@ -60,7 +60,7 @@ const isNewSupplier = computed(() => !formData.value.id);
 const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
-  activeTab.value = 0;
+  activeTab.value = "general";
   emit("clearErrors");
 };
 
@@ -142,7 +142,7 @@ const initForm = () => {
     formData.value = { ...baseForm };
   }
   formErrors.value = {};
-  activeTab.value = 0;
+  activeTab.value = "general";
 };
 
 watch(
@@ -205,10 +205,10 @@ watch(
 
       <!-- ── Tabs ───────────────────────────────────────────────────── -->
       <VTabs v-model="activeTab" color="primary" density="compact">
-        <VTab :value="0" prepend-icon="tabler-info-circle">
+        <VTab value="general" prepend-icon="tabler-info-circle">
           <span class="text-caption font-weight-medium">General</span>
         </VTab>
-        <VTab :value="1" prepend-icon="tabler-truck">
+        <VTab value="logistica" prepend-icon="tabler-truck">
           <span class="text-caption font-weight-medium">Logística</span>
         </VTab>
       </VTabs>
@@ -218,7 +218,7 @@ watch(
       <VCardText class="pa-5">
         <VTabsWindow v-model="activeTab">
           <!-- Tab 1 ─ General ────────────────────────────── -->
-          <VTabsWindowItem :value="0">
+          <VTabsWindowItem value="general">
             <VForm @submit.prevent="submitForm">
               <!-- Sección: Identificación -->
               <div class="d-flex align-center gap-2 mb-4">
@@ -391,7 +391,7 @@ watch(
           </VTabsWindowItem>
 
           <!-- Tab 2 ─ Logística ──────────────────────────── -->
-          <VTabsWindowItem :value="1">
+          <VTabsWindowItem value="logistica">
             <div class="pa-2">
               <div class="d-flex align-center gap-2 mb-4">
                 <VAvatar color="primary" variant="tonal" size="24" rounded="sm">
