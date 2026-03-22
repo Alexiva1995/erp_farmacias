@@ -475,7 +475,6 @@ watch(
                 Activa al menos un día de entrega arriba para configurar la programación de pedidos.
               </VAlert>
             </div>
-            </div>
           </VTabsWindowItem>
         </VTabsWindow>
         <div class="mb-2" />
