@@ -206,14 +206,15 @@ watch(
       <!-- ── Tabs ───────────────────────────────────────────────────── -->
       <VTabs
         v-model="activeTab"
+        bg-color="grey-lighten-4"
         color="primary"
         grow
-        density="compact"
+        density="default"
       >
-        <VTab :value="0">
+        <VTab :value="0" prepend-icon="tabler-info-circle">
           General
         </VTab>
-        <VTab :value="1">
+        <VTab :value="1" prepend-icon="tabler-truck">
           Logística
         </VTab>
       </VTabs>
