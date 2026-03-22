@@ -151,46 +151,20 @@ const handleClearFilters = () => {
 
 <template>
   <VContainer fluid class="purchase-orders-list pa-0 pa-sm-4 bg-var-theme-background min-h-screen">
-    <!-- Encabezado Premium con KPIs -->
-    <div class="premium-header mb-6 rounded-xl-mobile overflow-hidden shadow-sm">
-      <div class="header-gradient pa-6 text-white position-relative">
-        <div class="d-flex align-center gap-3 mb-6">
-          <VAvatar color="white" variant="tonal" size="48" class="rounded-lg shadow-sm">
-            <VIcon icon="tabler-truck-delivery" color="white" size="28" />
-          </VAvatar>
-          <div>
-            <h1 class="text-h4 font-weight-black leading-none mb-1">Órdenes de Compra</h1>
-            <p class="text-subtitle-2 text-white opacity-80 font-weight-medium uppercase tracking-wide">Gestión de Abastecimiento</p>
-          </div>
+    <!-- Título de la página -->
+    <div class="page-header mb-6 px-4 px-sm-0">
+      <div class="d-flex align-center gap-3">
+        <VAvatar color="primary" variant="tonal" size="48" class="rounded-lg">
+          <VIcon icon="tabler-truck-delivery" size="28" />
+        </VAvatar>
+        <div>
+          <h1 class="text-h4 font-weight-black leading-none mb-1">Órdenes de Compra</h1>
+          <p class="text-subtitle-2 text-disabled font-weight-medium uppercase tracking-wide">Gestión de Abastecimiento</p>
         </div>
-
-        <VRow>
-          <VCol v-for="(kpi, index) in [
-            { label: 'En Espera', val: stats.pending_orders, color: 'warning', icon: 'tabler-clock', suffix: 'ord.' },
-            { label: 'En Camino', val: stats.sent_orders, color: 'info', icon: 'tabler-send', suffix: 'ord.' },
-            { label: 'Completadas', val: stats.completed_orders, color: 'success', icon: 'tabler-circle-check', suffix: 'ord.' },
-            { label: 'Inversión Total', val: Number(stats.total_amount).toLocaleString('es-ES', { maximumFractionDigits: 0 }), color: 'primary', icon: 'tabler-coin', prefix: '$ ' }
-          ]" :key="index" cols="6" sm="6" md="3">
-            <VCard variant="flat" color="rgba(255,255,255,0.1)" class="rounded-xl border-white-opacity px-4 py-3 h-full overflow-hidden position-relative">
-              <div class="d-flex align-center gap-3 position-relative z-10">
-                <VAvatar :color="kpi.color" variant="flat" size="36" class="rounded-lg shadow-inner">
-                  <VIcon :icon="kpi.icon" size="20" />
-                </VAvatar>
-                <div>
-                  <div class="text-xxs text-uppercase opacity-70 font-weight-black">{{ kpi.label }}</div>
-                  <div class="text-h6 font-weight-black leading-none mt-1">
-                    {{ kpi.prefix || '' }}{{ kpi.val }}{{ kpi.suffix || '' }}
-                  </div>
-                </div>
-              </div>
-              <div class="kpi-decoration" :class="`bg-${kpi.color}`"></div>
-            </VCard>
-          </VCol>
-        </VRow>
       </div>
     </div>
 
-    <!-- Filtros -->
+    <!-- Filtros (Ahora arriba como en proveedores) -->
     <PurchaseOrdersFilter
       v-model:selected-supplier="selectedSupplier"
       v-model:search-query="searchQuery"
@@ -198,7 +172,56 @@ const handleClearFilters = () => {
       v-model:end-date="endDate"
       :suppliers="suppliers"
       @clear="handleClearFilters"
+      class="mb-6"
     />
+
+    <!-- KPIs Estilo SupplierStatsCards -->
+    <VRow class="mb-6">
+      <VCol v-for="(kpi, index) in [
+        { title: 'En Espera', value: stats.pending_orders, color: 'warning', icon: 'tabler-clock', desc: 'Órdenes pendientes' },
+        { title: 'En Camino', value: stats.sent_orders, color: 'info', icon: 'tabler-send', desc: 'En tránsito' },
+        { title: 'Completadas', value: stats.completed_orders, color: 'success', icon: 'tabler-circle-check', desc: 'Recibidas con éxito' },
+        { title: 'Inversión Total', value: `$ ${Number(stats.total_amount).toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, color: 'primary', icon: 'tabler-coin', desc: 'Monto total acumulado' }
+      ]" :key="index" cols="12" sm="6" md="3">
+        <VCard class="stats-card border-0 overflow-hidden h-full position-relative">
+          <!-- Decoración de fondo -->
+          <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${kpi.color}), 0.1), transparent)` }"></div>
+
+          <VCardText class="pa-5 relative-content">
+            <div class="d-flex align-center justify-space-between mb-4">
+              <VAvatar
+                :color="kpi.color"
+                variant="tonal"
+                size="48"
+                rounded="lg"
+                class="elevation-1"
+              >
+                <VIcon :icon="kpi.icon" size="26" />
+              </VAvatar>
+
+              <div class="text-right">
+                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">{{ kpi.title }}</span>
+                <h4 class="text-h4 font-weight-black mt-1">
+                  {{ kpi.value }}
+                </h4>
+              </div>
+            </div>
+
+            <VDivider class="mb-3 opacity-20" />
+
+            <div class="d-flex align-center justify-space-between">
+              <span class="text-caption font-weight-medium text-medium-emphasis">
+                {{ kpi.desc }}
+              </span>
+              <VIcon icon="tabler-trending-up" size="16" :color="kpi.color" class="opacity-50" />
+            </div>
+          </VCardText>
+
+          <!-- Borde de acento lateral -->
+          <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${kpi.color}))` }"></div>
+        </VCard>
+      </VCol>
+    </VRow>
 
     <!-- Tabs de Estado Premium -->
     <VTabs
@@ -257,6 +280,52 @@ const handleClearFilters = () => {
 </template>
 
 <style scoped>
+.stats-card {
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 80%) !important;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 5%) !important;
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-5px);
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 100px;
+  filter: blur(40px);
+  inline-size: 100px;
+  inset-block-start: -20px;
+  inset-inline-end: -20px;
+  pointer-events: none;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 70%;
+  border-end-end-radius: 4px;
+  border-start-end-radius: 4px;
+  inline-size: 4px;
+  inset-block-start: 15%;
+  inset-inline-start: 0;
+  opacity: 0.8;
+}
+
+.text-h4 {
+  color: rgb(var(--v-theme-on-surface));
+  letter-spacing: -0.5px !important;
+}
+
 .header-gradient {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e293b 100%);
 }
