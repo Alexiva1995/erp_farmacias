@@ -37,6 +37,7 @@ class SupplierResource extends JsonResource
             'invoice_date_reference' => $this->invoice_date_reference,
             'debt' => $this->debt,
             'latest_score_value' => $this->latest_score_value,
+            'is_indexed' => (bool) $this->is_indexed,
             'score_breakdown' => $this->score_breakdown,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

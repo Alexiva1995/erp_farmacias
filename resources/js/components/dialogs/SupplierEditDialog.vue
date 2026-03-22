@@ -19,7 +19,6 @@ const baseForm = {
   address: "",
   sales_phone: "",
   collections_phone: "",
-  credit_days: 0,
   payment_due_type: null,
   invoice_date_reference: null,
   custom_due_days: null,
@@ -27,6 +26,7 @@ const baseForm = {
   payment_method: null,
   dispatch_days: [],
   order_days: {},
+  is_indexed: false,
 };
 const formData = ref({ ...baseForm });
 const formErrors = ref({});
@@ -215,7 +215,7 @@ watch(
       <VDivider />
 
       <!-- ── Contenido Tabs ─────────────────────────────────────────── -->
-      <VCardText class="pa-5 dialog-content-min-height">
+      <VCardText class="pa-5">
         <VTabsWindow v-model="activeTab">
           <!-- Tab 1 ─ General ────────────────────────────── -->
           <VTabsWindowItem :value="0">
@@ -311,16 +311,6 @@ watch(
 
               <VRow dense>
                 <VCol cols="12" md="4">
-                  <AppTextField
-                    v-model.number="formData.credit_days"
-                    label="Días de Crédito*"
-                    type="number"
-                    placeholder="0"
-                    prepend-inner-icon="tabler-calendar-time"
-                    :error-messages="formErrors.credit_days"
-                  />
-                </VCol>
-                <VCol cols="12" md="4">
                   <AppSelect
                     v-model="formData.payment_due_type"
                     :items="[
@@ -386,6 +376,14 @@ watch(
                         class="me-2"
                       />
                     </VRadioGroup>
+                    <VSpacer />
+                    <VCheckbox
+                      v-model="formData.is_indexed"
+                      label="Indexación (USD)"
+                      color="primary"
+                      hide-details
+                      density="compact"
+                    />
                   </div>
                 </VCol>
               </VRow>
@@ -477,8 +475,10 @@ watch(
                 Activa al menos un día de entrega arriba para configurar la programación de pedidos.
               </VAlert>
             </div>
+            </div>
           </VTabsWindowItem>
         </VTabsWindow>
+        <div class="mb-2" />
       </VCardText>
 
       <VDivider />
