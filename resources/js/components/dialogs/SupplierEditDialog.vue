@@ -216,10 +216,11 @@ watch(
 
       <!-- ── Contenido Tabs ─────────────────────────────────────────── -->
       <VCardText class="pa-5">
-        <VTabsWindow v-model="activeTab">
-          <!-- Tab 1 ─ General ────────────────────────────── -->
-          <VTabsWindowItem value="general">
-            <VForm @submit.prevent="submitForm">
+        <VForm @submit.prevent="submitForm">
+          <VTabsWindow v-model="activeTab">
+            <!-- Tab 1 ─ General ────────────────────────────── -->
+            <VTabsWindowItem value="general">
+              <div class="pa-1">
               <!-- Sección: Identificación -->
               <div class="d-flex align-center gap-2 mb-4">
                 <VAvatar color="primary" variant="tonal" size="24" rounded="sm">
@@ -387,7 +388,7 @@ watch(
                   </div>
                 </VCol>
               </VRow>
-            </VForm>
+            </div>
           </VTabsWindowItem>
 
           <!-- Tab 2 ─ Logística ──────────────────────────── -->
@@ -476,7 +477,8 @@ watch(
               </VAlert>
             </div>
           </VTabsWindowItem>
-        </VTabsWindow>
+          </VTabsWindow>
+        </VForm>
         <div class="mb-2" />
       </VCardText>
 
