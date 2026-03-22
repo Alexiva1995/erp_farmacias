@@ -53,7 +53,7 @@ const checkAdmin = async () => {
 
 const fetchSuppliers = async () => {
   try {
-    const response = await axios.get("/suppliers/list-simple"); // Endpoint estandarizado
+    const response = await axios.get("/available-suppliers");
     suppliers.value = response.data;
   } catch (error) {
     console.error("Error al obtener proveedores:", error);
@@ -63,13 +63,13 @@ const fetchSuppliers = async () => {
 const fetchStats = async () => {
   try {
     const params = { 
-      supplier_id: selectedSupplier.value,
+      selectedSupplier: selectedSupplier.value,
       search: searchQuery.value,
       start_date: startDate.value,
       end_date: endDate.value
     };
     const { data } = await axios.get("/suppliers/purchase-orders/stats", { params });
-    stats.value = data;
+    stats.value = data.data;
   } catch (error) {
     console.error("Error al obtener estadísticas:", error);
   }
@@ -79,8 +79,8 @@ const fetchPurchaseOrders = async () => {
   loading.value = true;
   const params = {
     page: page.value,
-    perPage: itemsPerPage.value,
-    supplier_id: selectedSupplier.value,
+    itemsPerPage: itemsPerPage.value,
+    selectedSupplier: selectedSupplier.value,
     search: searchQuery.value,
     start_date: startDate.value,
     end_date: endDate.value,
@@ -89,8 +89,8 @@ const fetchPurchaseOrders = async () => {
 
   try {
     const { data } = await axios.get("/suppliers/purchase-orders", { params });
-    purchaseOrders.value = data.data;
-    totalPurchaseOrders.value = data.total;
+    purchaseOrders.value = data.data.data;
+    totalPurchaseOrders.value = data.data.total;
   } catch (error) {
     toast.error("Error al obtener las órdenes de compra.");
   } finally {
