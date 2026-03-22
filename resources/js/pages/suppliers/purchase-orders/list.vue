@@ -228,6 +228,8 @@ const handleClearFilters = () => {
       </VTab>
     </VTabs>
 
+    <!-- Tabla Premium -->
+    <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm bg-surface">
       <VDivider />
 
       <PurchaseOrdersTable
@@ -240,7 +242,7 @@ const handleClearFilters = () => {
         @update:options="updateTableOptions"
         @manage="handleManage"
         @delete-purchaseOrder="handleDeleteOrder"
-        @refresh="fetchPurchaseOrders"
+        @refresh="fetchPurchaseOrders(); fetchStats();"
       />
     </VCard>
 
