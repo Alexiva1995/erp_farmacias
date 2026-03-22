@@ -225,7 +225,6 @@ const handleClearFilters = () => {
 
     <!-- Tabs de Estado Premium -->
     <VTabs
-      v-slot:content
       v-model="activeTab"
       color="primary"
       grow
