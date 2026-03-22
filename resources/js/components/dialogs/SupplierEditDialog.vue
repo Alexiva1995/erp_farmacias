@@ -203,28 +203,27 @@ watch(
         />
       </div>
 
-      <!-- ── Tabs ───────────────────────────────────────────────────── -->
-      <VTabs
-        v-model="activeTab"
-        bg-color="grey-lighten-4"
-        color="primary"
-        grow
-        density="default"
-      >
-        <VTab :value="0" prepend-icon="tabler-info-circle">
-          General
-        </VTab>
-        <VTab :value="1" prepend-icon="tabler-truck">
-          Logística
-        </VTab>
-      </VTabs>
-
-      <VDivider />
-
       <!-- ── Contenido Tabs ─────────────────────────────────────────── -->
       <VCardText class="pa-0">
-        <VForm @submit.prevent="submitForm">
-          <VWindow v-model="activeTab" class="pa-5">
+        <!-- ── Tabs (Relocalizadas) ────────────────────────────── -->
+        <VTabs
+          v-model="activeTab"
+          bg-color="grey-lighten-4"
+          color="primary"
+          grow
+          density="default"
+        >
+          <VTab :value="0" prepend-icon="tabler-info-circle">
+            General
+          </VTab>
+          <VTab :value="1" prepend-icon="tabler-truck">
+            Logística
+          </VTab>
+        </VTabs>
+        <VDivider />
+
+        <VForm @submit.prevent="submitForm" class="pa-5">
+          <VWindow v-model="activeTab">
             <!-- Tab 1 ─ General ────────────────────────────── -->
             <VWindowItem :value="0">
               <div class="pa-1">
