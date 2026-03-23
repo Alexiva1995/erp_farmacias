@@ -59,16 +59,13 @@ async function consultarKpisGlobales() {
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: 'all',
       isColombian: isColombian.value,
-      page: 1,
-      itemsPerPage: 99999, // traer todos para contar
-      sortBy: null,
-      orderBy: null,
     };
-    const resp = await axios.post('/suppliers-ia-order-assistant/filtrar-paginate?page=1', data);
-    const items = resp.data?.data?.paginate?.data || [];
-    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0 || (roundIaAnalysis(p.solicitar) === 0 && (Number(p.lote_quantity) || 0) <= 0)).length;
-    kpiGlobal.exceso    = items.filter(p => roundIaAnalysis(p.solicitar) < 0).length;
-    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) === 0 && (Number(p.lote_quantity) || 0) > 0).length;
+    const resp = await axios.post('/suppliers-ia-order-assistant/stats', data);
+    const stats = resp.data?.data || { necesitan: 0, exceso: 0, ok: 0 };
+    
+    kpiGlobal.necesitan = stats.necesitan;
+    kpiGlobal.exceso    = stats.exceso;
+    kpiGlobal.ok        = stats.ok;
   } catch (e) {
     console.error('Error al cargar KPIs globales:', e);
   } finally {

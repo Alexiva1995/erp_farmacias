@@ -39,11 +39,26 @@ class AutoOrdersRepository
 
     public function applyFilters($query, array $filters = [])
     {
-        $perPage = $filters["itemsPerPage"];
+        $perPage = $filters["itemsPerPage"] ?? 10;
         $supplierId = $filters["selectedSupplier"] ?? null;
+        $search = $filters["search"] ?? null;
+        $startDate = $filters["start_date"] ?? null;
+        $endDate = $filters["end_date"] ?? null;
 
         if ($supplierId) {
-            $query->where("supplier_id", $supplierId);
+            $query->where("auto_orders.supplier_id", $supplierId);
+        }
+
+        if ($search) {
+            $query->where("auto_orders.id", "like", "%{$search}%");
+        }
+
+        if ($startDate) {
+            $query->whereDate("auto_orders.order_date", ">=", $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate("auto_orders.order_date", "<=", $endDate);
         }
 
         return $query->paginate($perPage);
@@ -208,6 +223,18 @@ class AutoOrdersRepository
             ->when(
                 $filters['selectedSupplier'] ?? null,
                 fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
+            )
+            ->when(
+                $filters['search'] ?? null,
+                fn($q, $search) => $q->where('auto_orders.id', 'like', "%{$search}%")
+            )
+            ->when(
+                $filters['start_date'] ?? null,
+                fn($q, $date) => $q->whereDate('auto_orders.order_date', '>=', $date)
+            )
+            ->when(
+                $filters['end_date'] ?? null,
+                fn($q, $date) => $q->whereDate('auto_orders.order_date', '<=', $date)
             );
 
         return [

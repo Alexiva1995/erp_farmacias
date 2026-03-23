@@ -3,6 +3,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { pdfPurchaseOrderGenerator } from "@/utils/pdfPurchaseOrderGenerator";
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -11,6 +12,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "refresh"]);
+
+const { mobile } = useDisplay();
 
 const loading = ref(false);
 const saving = ref(false);
@@ -196,74 +199,75 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="1000px"
+    max-inline-size="1000px"
+    :fullscreen="mobile"
     @update:model-value="closeDialog"
     persistent
     scrollable
   >
-    <VCard class="management-dialog">
-      <VCardTitle class="pa-4 d-flex align-center bg-light">
-        <div class="d-flex align-center gap-2">
-          <VAvatar color="primary" variant="tonal" size="40">
-            <VIcon icon="tabler-clipboard-list" />
-          </VAvatar>
-          <div>
-            <div class="text-h6 font-weight-bold">Gestión de Orden #{{ purchaseOrder.id }}</div>
-            <div class="text-caption text-medium-emphasis">{{ purchaseOrder.supplier_name }}</div>
+    <VCard class="management-dialog rounded-xl-mobile overflow-hidden">
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center text-white">
+          <div class="d-flex align-center gap-3">
+            <VAvatar color="white" variant="tonal" size="44" class="rounded-lg">
+              <VIcon icon="tabler-clipboard-list" color="white" />
+            </VAvatar>
+            <div>
+              <div class="text-h6 font-weight-black leading-tight">Gestión de Orden #{{ purchaseOrder.id }}</div>
+              <div class="text-caption text-white opacity-80 font-weight-bold uppercase truncate" style="max-inline-size: 250px;">
+                {{ purchaseOrder.supplier_name }}
+              </div>
+            </div>
           </div>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" @click="closeDialog" density="comfortable" class="rounded-lg">
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog" density="comfortable">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VDivider />
-
-      <VCardText class="pa-0">
-        <!-- Resumen Superior -->
-        <div class="pa-4 bg-var-theme-background border-b">
-          <VRow>
-            <VCol cols="12" md="3">
-              <div class="text-caption text-uppercase text-medium-emphasis font-weight-bold">Solicitud</div>
-              <div class="d-flex align-center gap-1 mt-1">
+      <VCardText class="pa-0 bg-surface">
+        <!-- Resumen Superior Adaptativo -->
+        <div class="pa-4 bg-var-theme-background border-b shadow-inner-sm">
+          <VRow no-gutters class="gap-y-4">
+            <VCol cols="6" md="3">
+              <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Solicitud</div>
+              <div class="d-flex align-center gap-1">
                 <VIcon icon="tabler-calendar" size="16" class="text-primary" />
-                <span class="text-body-2">{{ formatDate(purchaseOrder.order_date) }}</span>
+                <span class="text-sm font-weight-bold">{{ formatDate(purchaseOrder.order_date) }}</span>
               </div>
             </VCol>
-            <VCol cols="12" md="3">
-              <div class="text-caption text-uppercase text-medium-emphasis font-weight-bold">Entrega Estimada</div>
-              <div class="d-flex align-center gap-1 mt-1">
+            <VCol cols="6" md="3" class="text-right text-md-left">
+              <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Entrega Est.</div>
+              <div class="d-flex align-center gap-1 justify-end justify-md-start">
+                <span class="text-sm font-weight-bold" :class="purchaseOrder.tentative_delivery_date ? 'text-success' : 'text-warning'">
+                  {{ formatDate(purchaseOrder.tentative_delivery_date) || 'No definida' }}
+                </span>
                 <VIcon icon="tabler-truck-delivery" size="16" :class="purchaseOrder.tentative_delivery_date ? 'text-success' : 'text-warning'" />
-                <span class="text-body-2">{{ formatDate(purchaseOrder.tentative_delivery_date) || 'No definida' }}</span>
               </div>
             </VCol>
-            <VCol cols="12" md="3">
-              <div class="mt-1">
-                <VChip
-                  :color="getStatusColor(purchaseOrder.status)"
-                  size="x-small"
-                  label
-                  variant="flat"
-                  class="font-weight-bold"
-                >
-                  {{ getStatusLabel(purchaseOrder.status) }}
-                </VChip>
-                <div v-if="purchaseOrder.sent_at" class="text-xxs text-medium-emphasis mt-1">
-                  {{ formatDate(purchaseOrder.sent_at) }}
-                </div>
-              </div>
+            <VCol cols="6" md="3">
+              <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Estado</div>
+              <VChip
+                :color="getStatusColor(purchaseOrder.status)"
+                size="x-small"
+                label
+                variant="flat"
+                class="font-weight-black rounded"
+              >
+                {{ getStatusLabel(purchaseOrder.status) }}
+              </VChip>
             </VCol>
-            <VCol cols="12" md="3" class="text-right">
-              <div class="text-caption text-uppercase text-medium-emphasis font-weight-bold">Total Orden</div>
-              <div class="text-h6 font-weight-bold text-primary mt-1">
+            <VCol cols="6" md="3" class="text-right">
+              <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Total Orden</div>
+              <div class="text-h6 font-weight-black text-primary leading-tight">
                 $ {{ Number(purchaseOrder.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
               </div>
             </VCol>
           </VRow>
         </div>
 
-        <!-- Tabla de Productos -->
+        <!-- Tabla de Productos Premium -->
         <VDataTableServer
           v-model:items-per-page="itemsPerPage"
           v-model:page="page"
@@ -274,65 +278,73 @@ watch(
           @update:options="fetchDetails"
           density="comfortable"
           hover
-          class="po-details-table"
+          class="premium-table min-h-400"
         >
           <template #item.product_name="{ item }">
-            <div class="d-flex flex-column">
-              <span class="font-weight-medium text-body-2">{{ item.product_name }}</span>
+            <div class="d-flex flex-column py-2">
+              <span class="font-weight-black text-sm text-high-emphasis">{{ item.product_name }}</span>
             </div>
           </template>
 
           <template #item.quantity="{ item }">
-            <VTextField
-              v-if="!purchaseOrder.sent_at"
-              v-model.number="item.quantity"
-              type="number"
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="max-w-100"
-            />
-            <span v-else class="text-body-2">{{ item.quantity }} u.</span>
+            <div class="d-flex align-center gap-2" :class="mobile ? 'py-2' : ''">
+              <AppTextField
+                v-if="!purchaseOrder.sent_at"
+                v-model.number="item.quantity"
+                type="number"
+                density="compact"
+                hide-details
+                class="max-inline-size-100 font-weight-black"
+                @input="item.quantity = Math.max(0, item.quantity)"
+              />
+              <span v-else class="text-sm font-weight-black">{{ item.quantity }} u.</span>
+            </div>
           </template>
 
           <template #item.unit_cost="{ item }">
-            <span class="text-body-2">$ {{ Number(item.unit_cost).toFixed(2) }}</span>
+            <span class="text-sm font-weight-bold text-disabled">$ {{ Number(item.unit_cost).toFixed(2) }}</span>
           </template>
 
           <template #item.subtotal="{ item }">
-            <span class="font-weight-bold text-body-2">$ {{ (item.quantity * item.unit_cost).toFixed(2) }}</span>
+            <span class="font-weight-black text-sm text-primary">$ {{ (item.quantity * item.unit_cost).toFixed(2) }}</span>
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex align-center justify-center gap-1">
+            <div class="d-flex align-center justify-center gap-2">
               <template v-if="item.received === null">
                 <VBtn
                   icon
-                  size="x-small"
+                  size="32"
                   variant="tonal"
                   color="success"
+                  class="rounded-lg"
                   @click="updateStatus(item.id, true)"
                 >
-                  <VIcon icon="tabler-check" size="16" />
+                  <VIcon icon="tabler-check" size="18" />
+                  <VTooltip activator="parent" location="top">Recibir</VTooltip>
                 </VBtn>
                 <VBtn
                   icon
-                  size="x-small"
+                  size="32"
                   variant="tonal"
                   color="error"
+                  class="rounded-lg"
                   @click="updateStatus(item.id, false)"
                 >
-                  <VIcon icon="tabler-x" size="16" />
+                  <VIcon icon="tabler-x" size="18" />
+                  <VTooltip activator="parent" location="top">Rechazar</VTooltip>
                 </VBtn>
                 <VBtn
                   v-if="!purchaseOrder.sent_at"
                   icon
-                  size="x-small"
+                  size="32"
                   variant="text"
                   color="secondary"
+                  class="rounded-lg"
                   @click="deleteDetail(item.id)"
                 >
-                  <VIcon icon="tabler-trash" size="16" />
+                  <VIcon icon="tabler-trash" size="18" />
+                  <VTooltip activator="parent" location="top">Eliminar</VTooltip>
                 </VBtn>
               </template>
               <VChip
@@ -340,7 +352,7 @@ watch(
                 :color="item.received ? 'success' : 'error'"
                 size="x-small"
                 label
-                class="font-weight-bold"
+                class="font-weight-black rounded"
               >
                 {{ item.received ? 'RECIBIDO' : 'RECHAZADO' }}
               </VChip>
@@ -351,13 +363,14 @@ watch(
 
       <VDivider />
 
-      <VCardActions class="pa-4 bg-light">
+      <VCardActions class="pa-4 bg-surface gap-3 flex-wrap flex-md-nowrap">
         <VBtn
-          color="info"
+          color="secondary"
           variant="tonal"
           prepend-icon="tabler-download"
           @click="handleExport"
-          class="flex-grow-1"
+          class="flex-grow-1 font-weight-black rounded-lg"
+          size="large"
         >
           PDF
         </VBtn>
@@ -365,23 +378,25 @@ watch(
         <VBtn
           v-if="purchaseOrder.status !== 2"
           :color="purchaseOrder.status === 1 ? 'primary' : 'success'"
-          variant="tonal"
-          :prepend-icon="purchaseOrder.status === 1 ? 'tabler-check' : 'tabler-send'"
+          variant="elevated"
+          :prepend-icon="purchaseOrder.status === 1 ? 'tabler-circle-check' : 'tabler-send'"
           @click="handleConfirmSent"
           :loading="sending"
-          class="flex-grow-1"
+          class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
+          size="large"
         >
-          {{ purchaseOrder.status === 1 ? 'Finalizar Orden' : 'Confirmar Envío' }}
+          {{ purchaseOrder.status === 1 ? 'Finalizar' : 'Confirmar Envío' }}
         </VBtn>
 
         <VBtn
           v-if="isDirty"
-          color="primary"
-          variant="flat"
+          color="warning"
+          variant="elevated"
           prepend-icon="tabler-device-floppy"
           @click="handleSave"
           :loading="saving"
-          class="flex-grow-1"
+          class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
+          size="large"
         >
           Guardar Cambios
         </VBtn>
@@ -390,7 +405,8 @@ watch(
           color="secondary"
           variant="outlined"
           @click="closeDialog"
-          class="flex-grow-1"
+          class="flex-grow-1 font-weight-black rounded-lg d-none d-md-flex"
+          size="large"
         >
           Cerrar
         </VBtn>
@@ -400,19 +416,44 @@ watch(
 </template>
 
 <style scoped>
-.max-w-100 {
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e293b 100%);
+}
+
+.shadow-inner-sm {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 5%);
+}
+
+.max-inline-size-100 {
   max-inline-size: 100px;
 }
 
 .text-xxs {
-  font-size: 0.65rem;
+  font-size: 0.65rem !important;
 }
 
-.po-details-table {
+.text-disabled {
+  color: rgba(var(--v-theme-on-surface), var(--v-disabled-opacity)) !important;
+}
+
+.min-h-400 {
   min-block-size: 400px;
 }
 
-.bg-light {
-  background-color: rgb(var(--v-theme-surface));
+.leading-tight {
+  line-height: 1.25;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .rounded-xl-mobile {
+    border-radius: 0 !important;
+  }
 }
 </style>
+
