@@ -83,9 +83,7 @@ const submitForm = async () => {
     emit("close-dialog");
     handleCleanFormData();
 
-    setTimeout(() => {
-      emit("refresh-products");
-    }, 3000);
+    emit("refresh-products");
   } catch (error) {
     console.error(error);
     toast.error(

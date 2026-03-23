@@ -299,6 +299,14 @@ const fetchProducts = async () => {
   }
 };
 
+const handleRefreshAll = async () => {
+  await Promise.all([
+    fetchSupplierConnections(),
+    fetchProducts(),
+    fetchProductsWithoutSupplier()
+  ]);
+};
+
 const fetchSupplierConnections = async () => {
   loadingSuppliers.value = true;
   const params = {
@@ -526,6 +534,10 @@ const handleCheckSupplierApi = async (supplier) => {
       `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`,
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
+    
+    // Al ser dispatchSync, llega aquí cuando ya terminó
+    await handleRefreshAll();
+    
     supplierConnectionStore.startConnection();
     startPolling();
   } catch (error) {
@@ -686,7 +698,7 @@ const handleOpenPublicLink = (supplier) => {
       v-model="isShowImportFileDialogActive"
       :selectedSupplier="supplierOption"
       @close-dialog="handleHideImportProductsDialog"
-      @refresh-products="fetchProducts"
+      @refresh-products="handleRefreshAll"
     />
     <ApplyDiscountDialog
       v-model:isDialogVisible="isApplyDiscountDialogActive"

@@ -89,6 +89,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         'structure' => $this->columnMap
                     ];
                     $queryService->storeConnection($data);
+                    $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
                 }
 
                 if (!Storage::disk('local')->exists($this->filePath)) {
@@ -201,9 +202,13 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             if (!in_array($this->supplier->id, [2]))
                 $queryService->addDiscountsToProducts($this->supplier);
 
-            if (!$this->filePath) {
-                $supplierConnection->update(["last_connection" => now()->today()]);
-            }
+            \Illuminate\Support\Facades\Log::info("🚨 [JOB] Intentando actualizar last_connection", ['supplier_id' => $this->supplier->id, 'has_connection' => !is_null($supplierConnection)]);
+            
+            \Illuminate\Support\Facades\DB::table('supplier_connections')
+                ->where('supplier_id', $this->supplier->id)
+                ->update(['last_connection' => now()->toDateString()]);
+            
+            \Illuminate\Support\Facades\Log::info("✅ [JOB] last_connection actualizado en DB", ['supplier_id' => $this->supplier->id]);
 
             $status->update([
                 "status" => "completed",
