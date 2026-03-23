@@ -275,65 +275,62 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <VContainer fluid class="px-0 py-4">
-    <!-- KPIs globales -->
-    <VRow class="mb-5">
-      <VCol cols="12" sm="4">
-        <VCard class="kpi-ia-card" elevation="0">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="error" variant="tonal" size="44" rounded>
-              <VIcon icon="tabler-alert-circle" size="22" />
-            </VAvatar>
-            <div class="flex-grow-1">
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Necesitan Reposición</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-error">
-                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="error" /></template>
-                  <template v-else>{{ kpiGlobal.necesitan }}</template>
-                </span>
-                <span class="text-caption text-disabled">productos</span>
+  <VContainer fluid class="pa-6">
+    <!-- Header Premium -->
+    <div class="premium-header mb-8 rounded-xl overflow-hidden shadow-sm">
+      <div class="header-gradient pa-8 relative-content">
+        <div class="d-flex align-center gap-4">
+          <VAvatar color="white" variant="flat" size="56" class="shadow-sm rounded-xl">
+            <VIcon icon="tabler-robot" color="primary" size="32" />
+          </VAvatar>
+          <div>
+            <div class="text-caption text-white opacity-80 font-weight-bold text-uppercase tracking-wider mb-1">
+              Suministros • Inteligencia Artificial
+            </div>
+            <h1 class="text-h3 font-weight-black text-white leading-none">Asistente de Pedidos</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs Globales Premium -->
+    <VRow class="mb-8 overflow-hidden">
+      <VCol v-for="kpi in [
+        { title: 'Necesitan Reposición', value: kpiGlobal.necesitan, icon: 'tabler-alert-triangle', color: 'error', desc: 'Productos bajo stock' },
+        { title: 'Exceso de Stock', value: kpiGlobal.exceso, icon: 'tabler-package', color: 'warning', desc: 'Optimización requerida' },
+        { title: 'Stock Óptimo', value: kpiGlobal.ok, icon: 'tabler-circle-check', color: 'success', desc: 'Inventario saludable' }
+      ]" :key="kpi.title" cols="12" sm="4">
+        <VCard class="stats-card h-full rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+          <!-- Decoración de fondo -->
+          <div class="card-bg-decoration">
+            <VIcon :icon="kpi.icon" />
+          </div>
+
+          <VCardText class="pa-5 relative-content">
+            <div class="d-flex align-center justify-space-between mb-4">
+              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                <VIcon :icon="kpi.icon" size="26" />
+              </VAvatar>
+
+              <div class="text-right">
+                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">{{ kpi.title }}</span>
+                <h4 class="text-h4 font-weight-black mt-1" :class="`text-${kpi.color}`">
+                  <template v-if="loadingStats">
+                    <VProgressCircular size="24" width="3" indeterminate :color="kpi.color" />
+                  </template>
+                  <template v-else>{{ kpi.value }}</template>
+                </h4>
               </div>
             </div>
-            <VChip color="primary" variant="tonal" size="x-small">Reporte IA</VChip>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VCard class="kpi-ia-card" elevation="0">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="warning" variant="tonal" size="44" rounded>
-              <VIcon icon="tabler-package" size="22" />
-            </VAvatar>
-            <div>
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Exceso de Stock</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-warning">
-                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="warning" /></template>
-                  <template v-else>{{ kpiGlobal.exceso }}</template>
-                </span>
-                <span class="text-caption text-disabled">productos</span>
-              </div>
+
+            <VDivider class="mb-3 opacity-20" />
+
+            <div class="d-flex align-center justify-space-between">
+              <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
+              <VIcon icon="tabler-trending-up" size="16" :color="kpi.color" class="opacity-50" />
             </div>
           </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VCard class="kpi-ia-card" elevation="0">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="success" variant="tonal" size="44" rounded>
-              <VIcon icon="tabler-circle-check" size="22" />
-            </VAvatar>
-            <div>
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Stock Óptimo</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-success">
-                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="success" /></template>
-                  <template v-else>{{ kpiGlobal.ok }}</template>
-                </span>
-                <span class="text-caption text-disabled">productos</span>
-              </div>
-            </div>
-          </VCardText>
+          <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${kpi.color}))` }"></div>
         </VCard>
       </VCol>
     </VRow>
@@ -356,39 +353,72 @@ onMounted(async () => {
     />
 
     <!-- Tabla -->
-    <div class="mt-4">
-      <SupplierAssistantReportTable
-        :products="statuModule.items"
-        :total-product="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptionsTable"
-      />
-    </div>
+    <SupplierAssistantReportTable
+      :products="statuModule.items"
+      :total-product="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptionsTable"
+    />
   </VContainer>
 </template>
 
 <style scoped>
-.kpi-ia-card {
-  border: 1px solid rgba(var(--v-border-color), 0.12);
-  border-radius: 8px !important;
-  transition: all 0.2s ease;
+.header-gradient {
+  position: relative;
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2c3e50 100%);
 }
 
-.kpi-ia-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 6%) !important;
-  transform: translateY(-2px);
-}
-</style>
-
-<style>
-/* Forzar eliminación de padding del layout boxed solicitado por el usuario */
-.layout-wrapper.layout-content-width-boxed .layout-content-wrapper > main > .v-container {
-  padding-inline: 0 !important;
+.premium-header {
+  position: relative;
 }
 
-#app > div > div > div > div.layout-wrapper.layout-nav-type-vertical.layout-navbar-sticky.layout-footer-static.layout-content-width-boxed.layout-overlay-nav > div.layout-content-wrapper > main > div > div {
-  padding-inline: 0 !important;
+.stats-card {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-card:hover {
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 15%) !important;
+  transform: translateY(-4px);
+}
+
+.card-bg-decoration {
+  position: absolute;
+  inset-block-start: -20px;
+  inset-inline-end: -20px;
+  opacity: 0.03;
+  pointer-events: none;
+  transform: rotate(-15deg);
+}
+
+.card-bg-decoration .v-icon {
+  font-size: 120px !important;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 4px;
+  inset-block-end: 0;
+  inset-inline: 0;
+  opacity: 0.8;
+}
+
+.tracking-wider {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+.gap-4 {
+  gap: 16px;
 }
 </style>
