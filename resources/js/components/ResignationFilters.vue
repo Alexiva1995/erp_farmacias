@@ -3,31 +3,37 @@ import { computed, ref } from 'vue';
 
 const props = defineProps({
   search: { type: String, default: "" },
-  showActiveEmployees: { type: Boolean, default: true },
+  filters: {
+    type: Object,
+    default: () => ({
+      resignation_type: null,
+      date_from: null,
+      date_to: null,
+      status: null,
+    }),
+  },
 });
 
-const emit = defineEmits(["update:search", "update:showActiveEmployees", "clear", "add-employee"]);
+const emit = defineEmits(["update:search", "update:filters", "clear"]);
 
-const isCollapsed = ref(true);
+const isAdvancedFilterVisible = ref(false);
 
 const hasActiveAdvancedFilters = computed(() => {
-  return props.showActiveEmployees === false;
+  return (
+    props.filters.resignation_type ||
+    props.filters.date_from ||
+    props.filters.date_to
+  );
 });
 
-const options = [
-  {
-    title: "ACTIVOS",
-    value: true,
-  },
-  {
-    title: "INACTIVOS / DESPEDIDOS",
-    value: false,
-  },
+const resignationTypes = [
+  { title: "REUNCIA VOLUNTARIA", value: "voluntary" },
+  { title: "DESPIDO INJUSTIFICADO", value: "unjustified_dismissal" },
 ];
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-lg border-0 shadow-sm overflow-visible">
+  <VCard class="mb-6 border-0 shadow-sm overflow-visible">
     <VCardText class="pa-3">
       <VRow align="center" no-gutters class="gap-2 px-2">
         <!-- Búsqueda Principal -->
@@ -52,33 +58,20 @@ const options = [
           <VBtn
             icon
             variant="tonal"
-            :color="!isCollapsed ? 'primary' : 'secondary'"
+            :color="isAdvancedFilterVisible ? 'primary' : 'secondary'"
             size="38"
             class="shadow-sm"
-            @click="isCollapsed = !isCollapsed"
+            @click="isAdvancedFilterVisible = !isAdvancedFilterVisible"
           >
-            <VIcon :icon="!isCollapsed ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VIcon :icon="isAdvancedFilterVisible ? 'tabler-filter-off' : 'tabler-filter'" />
             <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             <VBadge
-              v-if="hasActiveAdvancedFilters && isCollapsed"
-              color="error"
+              v-if="hasActiveAdvancedFilters && !isAdvancedFilterVisible"
               dot
+              color="error"
               offset-x="3"
               offset-y="-3"
             />
-          </VBtn>
-
-          <!-- Añadir Empleado -->
-          <VBtn
-            icon
-            color="primary"
-            variant="flat"
-            size="38"
-            class="shadow-primary-sm"
-            @click="emit('add-employee')"
-          >
-            <VIcon icon="tabler-plus" />
-            <VTooltip activator="parent" location="top">Añadir Nuevo Empleado</VTooltip>
           </VBtn>
 
           <VDivider
@@ -103,20 +96,51 @@ const options = [
 
       <!-- Filtros Avanzados Colapsables -->
       <VExpandTransition>
-        <div v-show="!isCollapsed">
+        <div v-show="isAdvancedFilterVisible">
           <VDivider class="my-3 border-opacity-10" />
           <VRow dense class="px-2 pb-2">
-            <VCol cols="12" sm="6" md="4">
+            <!-- Tipo de Egreso -->
+            <VCol cols="12" sm="4">
               <VSelect
-                :model-value="props.showActiveEmployees"
-                :items="options"
-                placeholder="ESTADO DEL EMPLEADO"
+                :model-value="props.filters.resignation_type"
+                :items="resignationTypes"
+                placeholder="TIPO DE EGRESO"
                 variant="outlined"
                 density="compact"
                 hide-details
-                prepend-inner-icon="tabler-users-group"
+                clearable
                 class="premium-input shadow-sm"
-                @update:model-value="emit('update:showActiveEmployees', $event)"
+                @update:model-value="emit('update:filters', { ...props.filters, resignation_type: $event })"
+              />
+            </VCol>
+
+            <!-- Fecha Desde -->
+            <VCol cols="12" sm="4">
+              <AppTextField
+                :model-value="props.filters.date_from"
+                type="date"
+                placeholder="FECHA DESDE"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                class="premium-input shadow-sm"
+                @update:model-value="emit('update:filters', { ...props.filters, date_from: $event })"
+              />
+            </VCol>
+
+            <!-- Fecha Hasta -->
+            <VCol cols="12" sm="4">
+              <AppTextField
+                :model-value="props.filters.date_to"
+                type="date"
+                placeholder="FECHA HASTA"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                class="premium-input shadow-sm"
+                @update:model-value="emit('update:filters', { ...props.filters, date_to: $event })"
               />
             </VCol>
           </VRow>

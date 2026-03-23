@@ -169,7 +169,7 @@ const getPhotoUrl = (photoPath) => {
 </script>
 
 <template>
-  <VCard>
+  <VCard class="border-0 shadow-sm overflow-hidden">
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -177,22 +177,23 @@ const getPhotoUrl = (photoPath) => {
       :items="props.myActivities"
       :items-length="props.totalRecords"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="premium-table text-no-wrap"
+      density="compact"
       @update:options="(options) => emit('update:options', options)"
     >
       <!-- Actividad -->
       <template #item.activity_name="{ item }">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" size="38" variant="tonal">
-            <VIcon icon="tabler-checkbox" size="20" />
+        <div class="d-flex align-center gap-3 py-2">
+          <VAvatar color="primary" size="34" variant="tonal" class="rounded">
+            <VIcon icon="tabler-checkbox" size="18" />
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">
+            <span class="text-xs font-weight-black text-high-emphasis leading-tight">
               {{ item.activity_name }}
             </span>
             <!-- Mostrar razón de rechazo si existe -->
-            <span v-if="item.rejection_reason" class="text-xs text-error mt-1">
-              <VIcon icon="tabler-alert-circle" size="12" class="me-1" />
+            <span v-if="item.rejection_reason" class="text-super-xs text-error mt-1 font-weight-bold">
+              <VIcon icon="tabler-alert-circle" size="10" class="me-1" />
               Rechazada: {{ item.rejection_reason }}
             </span>
           </div>
@@ -201,7 +202,7 @@ const getPhotoUrl = (photoPath) => {
 
       <!-- Descripción -->
       <template #item.description="{ item }">
-        <span class="text-sm text-medium-emphasis">
+        <span class="text-xs text-medium-emphasis">
           {{ item.description || "Sin descripción" }}
         </span>
       </template>
@@ -210,10 +211,11 @@ const getPhotoUrl = (photoPath) => {
       <template #item.frequency="{ item }">
         <VChip
           :color="getFrequencyColor(item.frequency)"
-          size="small"
+          size="x-small"
           variant="tonal"
+          class="rounded font-weight-black px-2"
         >
-          {{ item.frequency }}
+          {{ item.frequency.toUpperCase() }}
         </VChip>
       </template>
 
@@ -221,34 +223,35 @@ const getPhotoUrl = (photoPath) => {
       <template #item.status="{ item }">
         <VChip
           :color="getStatusColor(item.status)"
-          size="small"
+          size="x-small"
           variant="tonal"
+          class="rounded font-weight-black px-2"
         >
-          <VIcon :icon="getStatusIcon(item.status)" size="14" class="me-1" />
-          {{ item.status }}
+          <VIcon :icon="getStatusIcon(item.status)" size="12" class="me-1" />
+          {{ item.status.toUpperCase() }}
         </VChip>
       </template>
 
       <!-- Fecha Inicio -->
       <template #item.scheduled_date="{ item }">
-        <span class="text-sm">
+        <span class="text-xs font-weight-black tabular-nums">
           {{ formatDate(item.scheduled_date) }}
         </span>
       </template>
 
       <!-- Fecha Límite -->
       <template #item.due_date="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-sm font-weight-medium">
+        <div class="d-flex flex-column py-1">
+          <span class="text-xs font-weight-black tabular-nums">
             {{ formatDate(item.due_date) }}
           </span>
 
           <!-- Vencida -->
           <span
             v-if="isOverdue(item.due_date, item.status)"
-            class="text-xs text-error d-flex align-center gap-1 mt-1"
+            class="text-super-xs text-error d-flex align-center gap-1 font-weight-black uppercase"
           >
-            <VIcon icon="tabler-alert-triangle" size="12" />
+            <VIcon icon="tabler-alert-triangle" size="10" />
             ¡Vencida!
           </span>
 
@@ -258,26 +261,26 @@ const getPhotoUrl = (photoPath) => {
               getDaysRemaining(item.due_date) === 0 &&
               item.status === 'Pendiente'
             "
-            class="text-xs text-warning d-flex align-center gap-1 mt-1"
+            class="text-super-xs text-warning d-flex align-center gap-1 font-weight-black uppercase"
           >
-            <VIcon icon="tabler-clock-exclamation" size="12" />
+            <VIcon icon="tabler-clock-exclamation" size="10" />
             ¡Vence hoy!
           </span>
 
           <!-- Vence pronto -->
           <span
             v-else-if="isDueSoon(item.due_date, item.status)"
-            class="text-xs text-warning d-flex align-center gap-1 mt-1"
+            class="text-super-xs text-warning d-flex align-center gap-1 font-weight-black uppercase"
           >
-            <VIcon icon="tabler-clock-hour-4" size="12" />
-            Vence en {{ getDaysRemaining(item.due_date) }} día(s)
+            <VIcon icon="tabler-clock-hour-4" size="10" />
+            Queda {{ getDaysRemaining(item.due_date) }} día
           </span>
         </div>
       </template>
 
       <!-- Fecha Completada -->
       <template #item.completed_date="{ item }">
-        <span class="text-sm">
+        <span class="text-xs font-weight-black tabular-nums text-disabled">
           {{ formatDateTime(item.completed_date) }}
         </span>
       </template>
@@ -285,22 +288,21 @@ const getPhotoUrl = (photoPath) => {
       <!-- Evidencia (Foto) -->
       <template #item.photo="{ item }">
         <div v-if="item.photo" class="d-flex justify-center">
-          <VMenu>
+          <VMenu open-on-hover transition="scale-transition">
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
                 icon
                 variant="text"
-                size="small"
+                size="32"
                 color="primary"
+                class="rounded-lg"
               >
-                <VIcon icon="tabler-photo" size="20" />
-                <VTooltip activator="parent" location="top">
-                  Ver foto de evidencia
-                </VTooltip>
+                <VIcon icon="tabler-photo" size="18" />
+                <VTooltip activator="parent" location="top">Ver evidencia</VTooltip>
               </VBtn>
             </template>
-            <VCard max-width="400">
+            <VCard class="rounded-lg shadow-xl overflow-hidden" max-width="300">
               <VImg
                 :src="getPhotoUrl(item.photo)"
                 cover
@@ -308,29 +310,30 @@ const getPhotoUrl = (photoPath) => {
                 class="bg-grey-lighten-2"
               >
                 <template #error>
-                  <div
-                    class="d-flex align-center justify-center fill-height text-error"
-                  >
-                    <VIcon icon="tabler-photo-off" size="48" />
+                  <div class="d-flex align-center justify-center fill-height text-error">
+                    <VIcon icon="tabler-photo-off" size="32" />
                   </div>
                 </template>
               </VImg>
-              <VCardActions class="justify-end">
+              <VCardActions class="pa-2 bg-surface">
                 <VBtn
-                  size="small"
+                  block
+                  size="x-small"
                   color="primary"
+                  variant="tonal"
+                  class="rounded-lg font-weight-black"
                   :href="getPhotoUrl(item.photo)"
                   target="_blank"
-                  prepend-icon="tabler-external-link"
                 >
-                  Abrir en nueva pestaña
+                  <VIcon start icon="tabler-external-link" size="14" />
+                  Ampliar
                 </VBtn>
               </VCardActions>
             </VCard>
           </VMenu>
         </div>
-        <div v-else class="d-flex justify-center">
-          <VIcon icon="tabler-photo-off" size="20" color="grey" />
+        <div v-else class="d-flex justify-center opacity-30">
+          <VIcon icon="tabler-photo-off" size="18" color="grey" />
         </div>
       </template>
 
@@ -338,67 +341,64 @@ const getPhotoUrl = (photoPath) => {
       <template #item.actions="{ item }">
         <div class="d-flex gap-1 justify-center">
           <!-- Botón para procesar/completar solo si está Pendiente -->
-          <IconBtn v-if="canEdit(item)" @click="emit('update-status', item)">
-            <VIcon icon="tabler-upload" />
-            <VTooltip activator="parent" location="top">
-              Procesar Actividad
-            </VTooltip>
-          </IconBtn>
+          <VTooltip v-if="canEdit(item)" text="Subir Evidencia" location="top">
+            <template #activator="{ props: tp }">
+              <VBtn v-bind="tp" icon="tabler-upload" variant="text" color="primary" size="32" class="rounded-lg" @click="emit('update-status', item)" />
+            </template>
+          </VTooltip>
 
           <!-- Mostrar info si ya está procesada o completada -->
-          <VBtn
+          <VChip
             v-else-if="item.status === 'Procesada'"
-            size="small"
+            size="x-small"
             color="info"
-            variant="tonal"
-            disabled
+            variant="flat"
+            class="rounded font-weight-black"
           >
-            <VIcon icon="tabler-hourglass" size="16" class="me-1" />
-            En revisión
-          </VBtn>
+            REVISIÓN
+          </VChip>
 
-          <VBtn
+          <VChip
             v-else-if="item.status === 'Completada'"
-            size="small"
+            size="x-small"
             color="success"
-            variant="tonal"
-            disabled
+            variant="flat"
+            class="rounded font-weight-black px-1"
           >
-            <VIcon icon="tabler-check" size="16" class="me-1" />
-            Aprobada
-          </VBtn>
+            <VIcon icon="tabler-check" size="12" />
+          </VChip>
 
-          <VBtn
+          <VChip
             v-else-if="item.status === 'Vencida'"
-            size="small"
+            size="x-small"
             color="error"
-            variant="tonal"
-            disabled
+            variant="flat"
+            class="rounded font-weight-black px-1"
           >
-            <VIcon icon="tabler-alert-triangle" size="16" class="me-1" />
-            Vencida
-          </VBtn>
+             <VIcon icon="tabler-alert-triangle" size="12" />
+          </VChip>
 
           <!-- Ver notas si existen -->
-          <IconBtn v-if="item.notes">
-            <VIcon icon="tabler-note" />
-            <VTooltip activator="parent" location="top" max-width="300">
-              <div class="text-sm">
-                <strong>Notas:</strong><br />
-                {{ item.notes }}
-              </div>
-            </VTooltip>
-          </IconBtn>
+          <VTooltip v-if="item.notes" location="top" max-width="300">
+            <template #activator="{ props: tp }">
+              <VBtn v-bind="tp" icon="tabler-note" variant="text" color="secondary" size="32" class="rounded-lg" />
+            </template>
+            <div class="text-xs">
+              <strong>Notas:</strong><br />
+              {{ item.notes }}
+            </div>
+          </VTooltip>
         </div>
       </template>
 
       <!-- Paginación -->
       <template #bottom>
-        <VDivider />
+        <VDivider class="opacity-10" />
         <div class="d-flex justify-end pa-2">
           <VPagination
             :model-value="props.page"
             :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
+            size="small"
             @update:model-value="
               (newPage) => emit('update:options', { ...props, page: newPage })
             "
@@ -408,3 +408,43 @@ const getPhotoUrl = (photoPath) => {
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.premium-table) {
+  background: transparent !important;
+
+  thead th {
+    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  }
+
+  tbody tr {
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: rgba(var(--v-theme-primary), 0.02) !important;
+    }
+
+    td {
+      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+    }
+  }
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.leading-tight {
+  line-height: 1.2;
+}
+
+.opacity-30 {
+  opacity: 0.3;
+}
+</style>

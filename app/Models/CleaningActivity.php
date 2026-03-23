@@ -55,11 +55,14 @@ class CleaningActivity extends Model
     /**
      * Scope para búsqueda
      */
-    public function scopeSearch($query, $search)
+    public function scopeSearch($query, $search, $isStrict = false)
     {
-        return $query->where(function ($q) use ($search) {
-            $q->where('activity', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%");
+        return $query->where(function ($q) use ($search, $isStrict) {
+            $operator = $isStrict ? '=' : 'like';
+            $value = $isStrict ? $search : "%{$search}%";
+            
+            $q->where('activity', $operator, $value)
+                ->orWhere('description', $operator, $value);
         });
     }
 

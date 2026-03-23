@@ -1,6 +1,7 @@
 <script setup>
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { computed, reactive, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -17,6 +18,19 @@ const props = defineProps({
   // Producto seleccionado desde la tabla inferior (para calcular diferencia de precio)
   selectedProduct: { type: Object, default: null },
   sortBy: { type: Array, default: () => [] },
+  // Filtros avanzados
+  laboratories: { type: Array, default: () => [] },
+  selectedLaboratory: { type: Array, default: () => [] },
+  groups: { type: Array, default: () => [] },
+  selectedGroup: { type: Array, default: () => [] },
+  origins: { type: Array, default: () => [] },
+  selectedOrigin: [Number, String, null],
+  suppliers: { type: Array, default: () => [] },
+  selectedSupplier: [Number, String, null],
+  // Switches
+  enableDiscounts: Boolean,
+  enableUsdAmountCol: Boolean,
+  enableDiscountCol: Boolean,
 });
 
 const emit = defineEmits([
@@ -24,11 +38,28 @@ const emit = defineEmits([
   "send-product",
   "update:searchQuery",
   "update:isStrictSearch",
-  "open-filters",
+  "update:selectedLaboratory",
+  "update:selectedGroup",
+  "update:selectedOrigin",
+  "update:selectedSupplier",
+  "update:enableDiscounts",
+  "update:enableUsdAmountCol",
+  "update:enableDiscountCol",
   "update:sortBy",
+  "sync-apis",
 ]);
 
+const { mdAndUp } = useDisplay();
 const localSearch = ref(props.searchQuery);
+const isAdvancedFiltersVisible = ref(false);
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
+
+const hasActiveAdvancedFilters = computed(() => {
+  return props.selectedLaboratory?.length > 0;
+});
 
 // Sincronizar localSearch si cambia desde fuera
 watch(
@@ -68,34 +99,25 @@ const formatUsd = (amount) => {
   );
 };
 
-/**
- * Calcula el porcentaje de diferencia entre el precio del proveedor
- * y el costo actual del producto seleccionado.
- * Retorna: { diff: Number, label: String, color: String } o null si no aplica.
- */
 const getPriceDiff = (item) => {
   if (!props.selectedProduct) return null;
-
-  // Tomamos el costo actual del producto seleccionado (en USD)
   const currentCost = parseFloat(props.selectedProduct.current_unit_cost ?? props.selectedProduct.unit_cost ?? 0);
   if (!currentCost || currentCost === 0) return null;
 
-  // El precio del proveedor en USD (sin descuento o con descuento según la vista)
   const supplierCost = parseFloat(
     props.enableDiscountCol ? item.final_cost_usd : item.unit_cost_usd
   );
   if (!supplierCost) return null;
 
-  // diff > 0 = más barato (ahorro), diff < 0 = más caro (sobrepago)
   const diff = ((currentCost - supplierCost) / currentCost) * 100;
   const absDiff = Math.abs(diff).toFixed(0);
 
   if (diff > 0.5) {
-    return { diff, label: `${absDiff}% más barato`, color: "success" };
+    return { diff, label: `${absDiff}% más barato`, color: "success", icon: 'tabler-trending-down' };
   } else if (diff < -0.5) {
-    return { diff, label: `${absDiff}% más caro`, color: "error" };
+    return { diff, label: `${absDiff}% más caro`, color: "error", icon: 'tabler-trending-up' };
   }
-  return { diff: 0, label: "Precio igual", color: "warning" };
+  return { diff: 0, label: "Precio igual", color: "warning", icon: 'tabler-minus' };
 };
 
 const allHeaders = [
@@ -103,193 +125,420 @@ const allHeaders = [
   { title: "COSTO", key: "unit_cost_usd", sortable: true, width: "80px" },
   { title: "FINAL", key: "final_cost_usd", sortable: true, width: "80px" },
   { title: "AHORRO", key: "price_diff", sortable: false, width: "120px" },
-  { title: "ACCIÓN", key: "actions", sortable: false, width: "110px" },
+  { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ];
 
 const headers = computed(() =>
   allHeaders.filter((h) => {
-    // La columna de diferencia solo aparece si hay un producto seleccionado
     if (h.key === "price_diff" && !props.selectedProduct) return false;
-
-    // Si Divisas ($) está activo, ocultar columnas de BS, y viceversa
     if (props.enableUsdAmountCol && h.key.includes("bs")) return false;
     if (!props.enableUsdAmountCol && h.key.includes("usd")) return false;
-
-    // Las columnas con descuento (%) solo se muestran si enableDiscountCol es true
     if (h.key.includes("final_cost") && !props.enableDiscountCol) return false;
-
     return true;
   }),
 );
 </script>
 
 <template>
-  <VCard>
-    <VCardTitle class="d-flex align-center gap-2 pt-4 px-4 pb-0">
-      <span class="text-h6 font-weight-bold">CATÁLOGO DE PRODUCTOS</span>
-      <VSpacer />
-      <VBtn
-        color="primary"
-        variant="tonal"
-        size="small"
-        prepend-icon="tabler-adjustments-horizontal"
-        @click="emit('open-filters')"
-      >
-        Filtros Catálogo
-      </VBtn>
-    </VCardTitle>
+  <div class="comparator-products-container">
+    <!-- Header de Sección y Búsqueda (Estandarizado) -->
+    <VCard class="mb-4 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-4">
+        <VRow align="center" no-gutters class="gap-2">
+          <!-- Título/Icono -->
+          <div class="d-flex align-center gap-2 mr-4">
+            <VIcon icon="tabler-building-store" color="primary" size="20" />
+            <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Catálogo Proveedores</span>
+          </div>
 
-    <div class="px-4 py-2 mt-2">
-      <VTextField
-        :model-value="localSearch"
-        placeholder="Buscar por Nombre, Laboratorio o Proveedor..."
-        clearable
-        prepend-inner-icon="tabler-search"
-        @update:model-value="$emit('update:searchQuery', $event)"
-        density="compact"
-        class="w-100"
-      />
-    </div>
+          <!-- Buscador Principal -->
+          <VCol cols="12" sm="5" md="4" lg="4">
+            <VTextField
+              :model-value="localSearch"
+              placeholder="Buscar producto o proveedor..."
+              clearable
+              density="compact"
+              hide-details
+              prepend-inner-icon="tabler-search"
+              @update:model-value="$emit('update:searchQuery', $event)"
+            />
+          </VCol>
 
-    <VDivider />
+          <VSpacer />
 
-    <!-- Banner de producto en comparación -->
+          <!-- Acciones (Solo Iconos) -->
+          <div class="d-flex align-center gap-1">
+            <!-- Toggle Filtros -->
+            <VBtn
+              icon
+              variant="tonal"
+              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+              size="38"
+              @click="toggleAdvancedFilters"
+            >
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+              <VBadge
+                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+                color="error"
+                dot
+                offset-x="3"
+                offset-y="-3"
+              />
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2" />
+
+            <!-- Limpiar Filtros -->
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              @click="$emit('update:searchQuery', '')"
+            >
+              <VIcon icon="tabler-eraser" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
+          </div>
+        </VRow>
+
+        <!-- Panel de Filtros Avanzados -->
+        <VExpandTransition>
+          <div v-show="isAdvancedFiltersVisible" class="pt-4 mt-4 border-t">
+            <VRow dense>
+              <!-- Selecciones Principales -->
+              <VCol cols="12" md="6">
+                <VAutocomplete
+                  :model-value="props.selectedLaboratory"
+                  :items="props.laboratories"
+                  placeholder="Laboratorios"
+                  item-title="name"
+                  item-value="id"
+                  multiple
+                  chips
+                  closable-chips
+                  clearable
+                  hide-details
+                  density="compact"
+                  prepend-inner-icon="tabler-flask"
+                  @update:model-value="emit('update:selectedLaboratory', $event)"
+                />
+              </VCol>
+              
+              <VCol cols="12" md="6">
+                <VAutocomplete
+                  :model-value="props.selectedGroup"
+                  :items="props.groups"
+                  placeholder="Grupos"
+                  item-title="name"
+                  item-value="id"
+                  multiple
+                  chips
+                  closable-chips
+                  clearable
+                  hide-details
+                  density="compact"
+                  prepend-inner-icon="tabler-tags"
+                  @update:model-value="emit('update:selectedGroup', $event)"
+                />
+              </VCol>
+
+              <VCol cols="12" md="6">
+                <VSelect
+                  :model-value="props.selectedOrigin"
+                  :items="props.origins"
+                  placeholder="Origen"
+                  item-title="name"
+                  item-value="id"
+                  clearable
+                  hide-details
+                  density="compact"
+                  prepend-inner-icon="tabler-map-pin"
+                  @update:model-value="emit('update:selectedOrigin', $event)"
+                />
+              </VCol>
+
+              <VCol cols="12" md="6">
+                <VAutocomplete
+                  :model-value="props.selectedSupplier"
+                  :items="props.suppliers"
+                  placeholder="Proveedor Específico"
+                  item-title="name"
+                  item-value="id"
+                  clearable
+                  hide-details
+                  density="compact"
+                  prepend-inner-icon="tabler-building-warehouse"
+                  @update:model-value="emit('update:selectedSupplier', $event)"
+                />
+              </VCol>
+
+              <!-- Switches -->
+              <VCol cols="12" class="mt-2">
+                <div class="d-flex flex-wrap ga-4 align-center">
+                  <VSwitch
+                    :model-value="props.enableDiscounts"
+                    label="Descuentos"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                    @update:model-value="emit('update:enableDiscounts', $event)"
+                  />
+                  <VSwitch
+                    :model-value="props.enableUsdAmountCol"
+                    label="Ver Divisas"
+                    color="success"
+                    density="compact"
+                    hide-details
+                    @update:model-value="emit('update:enableUsdAmountCol', $event)"
+                  />
+                  <VSwitch
+                    :model-value="props.enableDiscountCol"
+                    label="Ver % Desc."
+                    color="info"
+                    density="compact"
+                    hide-details
+                    @update:model-value="emit('update:enableDiscountCol', $event)"
+                  />
+                  <VSwitch
+                    :model-value="props.isStrictSearch"
+                    label="Estricta"
+                    color="warning"
+                    density="compact"
+                    hide-details
+                    @update:model-value="emit('update:isStrictSearch', $event)"
+                  />
+                  
+                  <VSpacer />
+
+                  <VBtn
+                    color="info"
+                    variant="tonal"
+                    size="small"
+                    prepend-icon="tabler-cloud-download"
+                    @click="emit('sync-apis')"
+                  >
+                    APIs
+                  </VBtn>
+                </div>
+              </VCol>
+            </VRow>
+          </div>
+        </VExpandTransition>
+      </VCardText>
+    </VCard>
+
+    <!-- Alerta de Comparación -->
     <VAlert
       v-if="selectedProduct"
       type="info"
       variant="tonal"
       density="compact"
-      class="mx-4 my-2"
-      :icon="false"
+      class="mb-4 border-0"
+      rounded="lg"
+      icon="tabler-arrows-exchange"
     >
-      <div class="d-flex align-center gap-2">
-        <VIcon icon="tabler-arrows-exchange" color="info" size="18" />
-        <span class="text-body-2">
-          Comparando precios de:
-          <strong>{{ selectedProduct.name }}</strong>
-          <span v-if="selectedProduct.current_unit_cost" class="ml-2 text-disabled">
-            ( Costo actual: <strong>${{ parseFloat(selectedProduct.current_unit_cost).toFixed(2) }}</strong> )
-          </span>
+      <div class="text-xs">
+        Comparando: <strong>{{ selectedProduct.name }}</strong>
+        <span v-if="selectedProduct.current_unit_cost" class="opacity-70 ml-1">
+          (${{ parseFloat(selectedProduct.current_unit_cost).toFixed(2) }})
         </span>
       </div>
     </VAlert>
 
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.products"
-      :items-length="props.totalProducts"
-      :loading="props.loading"
-      :sort-by="props.sortBy"
-      @update:sort-by="emit('update:sortBy', $event)"
-      class="text-no-wrap custom-table-header"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #no-data>
-        <div class="d-flex flex-column align-center justify-center py-6 text-center">
-          <VIcon icon="tabler-search" size="48" color="secondary" class="mb-2" />
-          <h4 class="text-h6 font-weight-medium mb-1">
-            Utilice los filtros o el buscador
-          </h4>
-          <p class="text-body-2 text-disabled">
-            Para encontrar productos, escriba en el buscador superior o haga clic en una fila de la tabla derecha.
-          </p>
-        </div>
-      </template>
+    <!-- Tabla Principal (Unified VCard) -->
+    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+      <!-- Vista Desktop -->
+      <div v-if="mdAndUp" class="d-none d-md-block">
+        <VDataTableServer
+          :items-per-page="props.itemsPerPage"
+          :page="props.page"
+          :headers="headers"
+          :items="props.products"
+          :items-length="props.totalProducts"
+          :loading="props.loading"
+          :sort-by="props.sortBy"
+          @update:sort-by="emit('update:sortBy', $event)"
+          hover
+          density="compact"
+          class="text-no-wrap premium-table"
+          @update:options="(options) => emit('update:options', options)"
+        >
+          <template #item.name="{ item }">
+            <div class="d-flex flex-column py-2">
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap">
+                {{ item.name }}
+              </span>
+              <span class="text-xs text-disabled">
+                {{ item.laboratory_name }} • {{ item.supplier_name }}
+              </span>
+            </div>
+          </template>
 
-      <!-- Template Nombre -->
-      <template #item.name="{ item }">
-        <div class="d-flex align-center gap-x-4">
-          <div class="d-flex flex-column">
-            <span
-              class="text-caption font-weight-medium text-high-emphasis text-wrap"
-            >
-              {{ item.name }}
-            </span>
-            <span class="text-xs text-disabled">
-              {{ item.laboratory_name }} | {{ item.supplier_name }}
-            </span>
-          </div>
-        </div>
-      </template>
+          <template #item.price_diff="{ item }">
+            <template v-if="getPriceDiff(item)">
+              <VChip
+                :color="getPriceDiff(item).color"
+                size="x-small"
+                variant="tonal"
+                :prepend-icon="getPriceDiff(item).icon"
+                class="font-weight-bold"
+              >
+                {{ getPriceDiff(item).label }}
+              </VChip>
+            </template>
+            <span v-else class="text-disabled text-xs">—</span>
+          </template>
 
-      <!-- Columna de diferencia de precio vs. producto seleccionado -->
-      <template #item.price_diff="{ item }">
-        <template v-if="getPriceDiff(item)">
-          <VChip
-            :color="getPriceDiff(item).color"
-            size="small"
-            variant="tonal"
-            :prepend-icon="getPriceDiff(item).diff > 0 ? 'tabler-trending-down' : getPriceDiff(item).diff < 0 ? 'tabler-trending-up' : 'tabler-minus'"
-          >
-            {{ getPriceDiff(item).label }}
-          </VChip>
-        </template>
-        <span v-else class="text-disabled text-sm">—</span>
-      </template>
+          <template #item.unit_cost_usd="{ item }">
+            <span class="text-sm font-weight-medium">${{ formatUsd(item.unit_cost_usd) }}</span>
+          </template>
 
-      <!-- Templates de Monedas -->
-      <template #item.unit_cost_usd="{ item }">
-        <span>{{ formatUsd(item.unit_cost_usd) }}</span>
-      </template>
+          <template #item.final_cost_usd="{ item }">
+            <span class="text-sm font-weight-bold text-primary">${{ formatUsd(item.final_cost_usd) }}</span>
+          </template>
 
-      <template #item.final_cost_usd="{ item }">
-        <span>{{ formatUsd(item.final_cost_usd) }}</span>
-      </template>
-
-      <template #item.unit_cost_bs="{ item }">
-        <span>{{ formatBs(item.unit_cost_bs) }}</span>
-      </template>
-
-      <template #item.final_cost_bs="{ item }">
-        <span>{{ formatBs(item.final_cost_bs) }}</span>
-      </template>
-
-      <!-- Acciones -->
-      <template #item.actions="{ item }">
-        <div class="d-flex align-center ga-2">
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-end ga-2">
               <VTextField
                 :model-value="getQty(item.id)"
                 @update:model-value="(val) => (rows[item.id] = Number(val))"
                 type="number"
-                variant="underlined"
+                variant="outlined"
                 density="compact"
                 hide-details
-                class="compact-input-qty"
-                style="inline-size: 45px;"
+                class="compact-qty-input"
                 :error="!!quantityErrors[item.id]"
               />
-
-          <VTooltip text="Agregar al Pedido del Día" location="top">
-            <template #activator="{ props: tooltipProps }">
-              <IconBtn
-                v-bind="tooltipProps"
+              <VBtn
+                icon="tabler-shopping-cart-plus"
+                variant="flat"
                 color="primary"
-                @click="
-                  $emit('send-product', {
-                    id: item.id,
-                    quantity: getQty(item.id),
-                  })
-                "
-              >
-                <VIcon icon="tabler-shopping-cart-plus" />
-              </IconBtn>
-            </template>
-          </VTooltip>
+                size="small"
+                @click="emit('send-product', { id: item.id, quantity: getQty(item.id) })"
+              />
+            </div>
+          </template>
+
+          <template #no-data>
+            <div class="text-center py-8 text-disabled text-sm">Use el buscador para filtrar productos</div>
+          </template>
+        </VDataTableServer>
+      </div>
+
+      <!-- Vista Móvil (Cards) -->
+      <div v-else class="d-md-none pa-4 bg-var-theme-background">
+        <div v-if="loading" class="d-flex justify-center py-8">
+          <VProgressCircular indeterminate color="primary" />
         </div>
-      </template>
-    </VDataTableServer>
-  </VCard>
+        <div v-else-if="props.products.length === 0" class="text-center py-8 text-disabled text-sm">
+          No hay productos disponibles
+        </div>
+        <div v-else class="d-flex flex-column gap-3">
+          <VCard
+            v-for="item in props.products"
+            :key="item.id"
+            class="mobile-card border shadow-none"
+          >
+            <VCardText class="pa-4">
+              <div class="mb-3">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1">
+                  {{ item.name }}
+                </span>
+                <span class="text-xs text-disabled d-block">
+                  {{ item.laboratory_name }} | {{ item.supplier_name }}
+                </span>
+              </div>
+
+              <div class="d-flex justify-space-between align-center mb-3">
+                <div class="d-flex flex-column">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">Costo</span>
+                  <span class="text-sm font-weight-bold">${{ formatUsd(item.unit_cost_usd) }}</span>
+                </div>
+                <div v-if="enableDiscountCol" class="d-flex flex-column text-right">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">Final</span>
+                  <span class="text-sm font-weight-black text-primary">${{ formatUsd(item.final_cost_usd) }}</span>
+                </div>
+              </div>
+
+              <div v-if="getPriceDiff(item)" class="mb-3">
+                <VChip
+                  :color="getPriceDiff(item).color"
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-bold w-full justify-center"
+                  :prepend-icon="getPriceDiff(item).icon"
+                >
+                  {{ getPriceDiff(item).label }}
+                </VChip>
+              </div>
+
+              <VDivider class="mb-3" />
+
+              <div class="d-flex align-center ga-2">
+                <VTextField
+                  :model-value="getQty(item.id)"
+                  @update:model-value="(val) => (rows[item.id] = Number(val))"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  label="Cant."
+                  class="flex-grow-1"
+                />
+                <VBtn
+                  color="primary"
+                  icon="tabler-shopping-cart-plus"
+                  size="small"
+                  @click="emit('send-product', { id: item.id, quantity: getQty(item.id) })"
+                />
+              </div>
+            </VCardText>
+          </VCard>
+
+          <VPagination
+            v-model="props.page"
+            :length="Math.ceil(totalProducts / itemsPerPage)"
+            :total-visible="3"
+            density="compact"
+            @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: itemsPerPage })"
+          />
+        </div>
+      </div>
+    </VCard>
+  </div>
 </template>
+
 <style scoped>
-.custom-table-header :deep(thead) {
-  background-color: rgba(var(--v-theme-on-surface), 0.04);
+.premium-table :deep(thead th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
 }
 
-.compact-input-qty :deep(.v-field__input) {
-  padding-block: 4px;
-  padding-inline: 0;
-  text-align: center;
+.text-xs { font-size: 0.75rem !important; }
+
+.compact-qty-input {
+  max-width: 60px;
 }
+
+.compact-qty-input :deep(.v-field__input) {
+  padding-block: 4px;
+  padding-inline: 4px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.mobile-card {
+  transition: all 0.2s ease;
+}
+
+.ga-2 { gap: 8px !important; }
 </style>

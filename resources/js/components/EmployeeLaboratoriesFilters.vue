@@ -64,13 +64,13 @@ const clearSortFilter = () => {
 };
 
 const getSelectedSortIcon = () => {
-  if (!selectedSort.value) return null;
+  if (!selectedSort.value) return "tabler-sort-ascending";
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order,
+      opt.order === selectedSort.value.order
   );
-  return option ? option.icon : null;
+  return option ? option.icon : "tabler-sort-ascending";
 };
 
 const isOptionSelected = (option) => {
@@ -87,7 +87,7 @@ const handleClear = () => {
 };
 
 const hasActiveAdvancedFilters = computed(() => {
-  return props.selectedLaboratory || selectedSort.value;
+  return props.selectedLaboratory;
 });
 
 const toggleAdvancedFilters = () => {
@@ -96,7 +96,7 @@ const toggleAdvancedFilters = () => {
 </script>
 
 <template>
-  <VCard class="mb-6">
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
     <VCardText class="pa-3">
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-2">
@@ -109,6 +109,7 @@ const toggleAdvancedFilters = () => {
             clearable
             density="compact"
             hide-details
+            class="premium-input"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
@@ -124,14 +125,14 @@ const toggleAdvancedFilters = () => {
             size="38"
             @click="toggleAdvancedFilters"
           >
-            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
             <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             <VBadge
               v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
               color="error"
               dot
-              offset-x="3"
-              offset-y="-3"
+              offset-x="2"
+              offset-y="-2"
             />
           </VBtn>
 
@@ -145,11 +146,11 @@ const toggleAdvancedFilters = () => {
                 color="secondary"
                 size="38"
               >
-                <VIcon :icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'" />
+                <VIcon :icon="getSelectedSortIcon()" size="20" />
                 <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
               </VBtn>
             </template>
-            <VList density="compact">
+            <VList density="compact" class="rounded-lg py-1 border shadow-lg">
               <VListItem
                 v-for="(option, index) in sortOptions"
                 :key="index"
@@ -158,14 +159,33 @@ const toggleAdvancedFilters = () => {
                 @click="handleSortClick(option)"
               >
                 <template #prepend>
-                  <VIcon :icon="option.icon" size="20" />
+                  <VIcon :icon="option.icon" size="20" class="me-3" />
                 </template>
-                <VListItemTitle>{{ option.title }}</VListItemTitle>
+                <VListItemTitle class="text-xs font-weight-bold">{{ option.title }}</VListItemTitle>
+              </VListItem>
+              <VDivider v-if="selectedSort" class="my-1 opacity-10" />
+              <VListItem v-if="selectedSort" color="error" @click="clearSortFilter">
+                <template #prepend>
+                  <VIcon icon="tabler-sort-ascending" size="20" class="me-3" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-bold text-error">Limpiar Orden</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
 
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
 
+          <!-- Agregar Asignación -->
+          <VBtn
+            icon
+            color="primary"
+            variant="flat"
+            size="38"
+            @click="emit('add-assignment')"
+          >
+            <VIcon icon="tabler-plus" size="20" />
+            <VTooltip activator="parent" location="top">Asignar Laboratorio</VTooltip>
+          </VBtn>
 
           <!-- Limpiar Filtros -->
           <VBtn
@@ -175,7 +195,7 @@ const toggleAdvancedFilters = () => {
             size="38"
             @click="handleClear"
           >
-            <VIcon icon="tabler-eraser" />
+            <VIcon icon="tabler-eraser" size="20" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>
@@ -188,14 +208,16 @@ const toggleAdvancedFilters = () => {
 
           <VRow dense>
             <VCol cols="12" sm="6" md="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Laboratorio</span>
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
                 :loading="props.loading"
-                placeholder="Laboratorio"
+                placeholder="Seleccionar laboratorio"
                 clearable
                 density="compact"
                 hide-details
+                class="premium-input-compact"
                 prepend-inner-icon="tabler-flask"
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
@@ -208,6 +230,26 @@ const toggleAdvancedFilters = () => {
 </template>
 
 <style scoped>
+.premium-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+.premium-input-compact :deep(.v-field__input) {
+  font-size: 0.8125rem !important;
+  min-block-size: 38px !important;
+  padding-block: 0 !important;
+}
+
+.premium-input-compact :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 </style>

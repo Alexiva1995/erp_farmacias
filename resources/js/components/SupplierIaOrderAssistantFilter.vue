@@ -1,3 +1,4 @@
+<script setup>
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -11,6 +12,7 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   groups: { type: Array, default: () => [] },
   isColombian: Boolean,
+  searchQuery: String,
 });
 
 const emit = defineEmits([
@@ -22,19 +24,26 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedGroup",
   "update:isColombian",
+  "update:searchQuery",
   "clear",
   "generarPedido",
 ]);
 
-const isCollapsed = ref(true);
+const isAdvancedFiltersVisible = ref(false);
 
-const activeFiltersCount = computed(() => {
-  let count = 0;
-  if (props.selectedLaboratory?.length > 0) count++;
-  if (props.selectedGroup?.length > 0) count++;
-  if (props.isColombian) count++;
-  if (props.stock !== 'all') count++;
-  return count;
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
+
+const hasActiveAdvancedFilters = computed(() => {
+  return (
+    props.selectedLaboratory?.length > 0 ||
+    props.selectedGroup?.length > 0 ||
+    props.isColombian ||
+    props.stock !== 'all' ||
+    props.lapso_de_tiempo !== '1 month' ||
+    props.tipo_de_filtracion !== 'combinado'
+  );
 });
 
 const precio = [
@@ -70,105 +79,159 @@ const stockOpciones = [
 </script>
 
 <template>
-  <VCard class="mb-6 elevation-0 border rounded-lg overflow-hidden">
-    <!-- Header / Toggle -->
-    <VCardText class="pa-4 d-flex align-center cursor-pointer hover-bg" @click="isCollapsed = !isCollapsed">
-      <VIcon icon="tabler-filter" class="mr-2" color="primary" />
-      <span class="text-subtitle-1 font-weight-bold">Filtros de Análisis</span>
-      
-      <VBadge
-        v-if="activeFiltersCount > 0"
-        :content="activeFiltersCount"
-        color="primary"
-        class="ml-3"
-        inline
-      />
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+    <VCardText class="pa-4">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="4" lg="5">
+          <AppTextField
+            :model-value="props.searchQuery"
+            placeholder="Buscar producto o principio activo..."
+            prepend-inner-icon="tabler-search"
+            clearable
+            density="compact"
+            persistent-placeholder
+            hide-details
+            @update:model-value="emit('update:searchQuery', $event)"
+          />
+        </VCol>
 
-      <VSpacer />
-      <VBtn
-        variant="text"
-        size="small"
-        color="secondary"
-        :icon="isCollapsed ? 'tabler-chevron-down' : 'tabler-chevron-up'"
-      />
-    </VCardText>
+        <VSpacer />
 
-    <VDivider />
+        <div class="d-flex align-center gap-2">
+          <!-- Toggle Filtros -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
+            @click="toggleAdvancedFilters"
+          >
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            <VBadge
+              v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+              color="error"
+              dot
+              offset-x="3"
+              offset-y="-3"
+            />
+          </VBtn>
 
-    <VExpandTransition>
-      <div v-show="!isCollapsed">
-        <VCardText class="pa-5 bg-var-theme-background">
-          <VRow>
-            <!-- FILA 1 -->
-            <VCol cols="12" sm="6" md="4">
+          <VBtn
+            icon
+            color="primary"
+            variant="elevated"
+            size="38"
+            @click="emit('generarPedido')"
+          >
+            <VIcon icon="tabler-shopping-cart-plus" />
+            <VTooltip activator="parent" location="top">Generar Pedido de Reposición</VTooltip>
+          </VBtn>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Limpiar Filtros (Solo Icono) -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="emit('clear')"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
+      </VRow>
+
+      <!-- Panel de Filtros Colapsable -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VDivider class="my-3 border-opacity-10" />
+          
+          <VRow dense>
+            <VCol cols="12" sm="6" md="3">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
-                label="Laboratorio"
-                placeholder="Buscar..."
+                placeholder="Laboratorio"
                 item-title="name"
                 item-value="id"
                 clearable
-                chips
                 multiple
+                chips
                 closable-chips
+                hide-details
                 density="compact"
-                variant="outlined"
+                prepend-inner-icon="tabler-flask"
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="6" md="3">
               <VAutocomplete
                 :model-value="props.selectedGroup"
                 :items="props.groups"
-                label="Grupos"
-                placeholder="Buscar..."
+                placeholder="Grupos"
                 item-title="name"
                 item-value="id"
                 clearable
-                chips
                 multiple
+                chips
                 closable-chips
+                hide-details
                 density="compact"
-                variant="outlined"
+                prepend-inner-icon="tabler-tags"
                 @update:model-value="emit('update:selectedGroup', $event)"
               />
             </VCol>
 
-            <VCol cols="12" sm="12" md="4">
+            <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.lapso_de_tiempo"
-                label="Lapso de tiempo"
                 :items="lapsoDeTiempoOpciones"
-                clearable
+                placeholder="Lapso de tiempo"
+                hide-details
                 density="compact"
-                variant="outlined"
+                prepend-inner-icon="tabler-calendar-time"
                 @update:model-value="emit('update:lapso_de_tiempo', $event)"
               />
             </VCol>
 
-            <!-- FILA 2 -->
-            <VCol cols="12" sm="6" md="3">
+            <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.tipo_de_filtracion"
-                label="Calcular Por"
                 :items="tipoFiltracionOpcion"
-                clearable
+                placeholder="Calcular Por"
+                hide-details
                 density="compact"
-                variant="outlined"
+                prepend-inner-icon="tabler-calculator"
                 @update:model-value="emit('update:tipo_de_filtracion', $event)"
               />
             </VCol>
 
             <VCol cols="12" sm="6" md="2">
               <VSelect
-                :model-value="props.tipo_de_vista"
-                label="Vista"
-                :items="tipoDeVistaOpcion"
-                clearable
+                :model-value="props.stock"
+                :items="stockOpciones"
+                placeholder="Stock"
+                hide-details
                 density="compact"
-                variant="outlined"
+                prepend-inner-icon="tabler-package"
+                @update:model-value="emit('update:stock', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="2">
+              <VSelect
+                :model-value="props.tipo_de_vista"
+                :items="tipoDeVistaOpcion"
+                placeholder="Vista"
+                hide-details
+                density="compact"
+                prepend-inner-icon="tabler-layout-grid"
                 @update:model-value="emit('update:tipo_de_vista', $event)"
               />
             </VCol>
@@ -176,58 +239,43 @@ const stockOpciones = [
             <VCol cols="12" sm="6" md="2">
               <VSelect
                 :model-value="props.selectConDescuento"
-                label="Precio"
                 :items="precio"
-                clearable
+                placeholder="Precio"
+                hide-details
                 density="compact"
-                variant="outlined"
+                prepend-inner-icon="tabler-tag"
                 @update:model-value="emit('update:selectConDescuento', $event)"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6" md="2">
-              <VSelect
-                :model-value="props.stock"
-                label="Stock"
-                :items="stockOpciones"
-                clearable
-                density="compact"
-                variant="outlined"
-                @update:model-value="emit('update:stock', $event)"
               />
             </VCol>
             
             <VCol cols="12" sm="6" md="3" class="d-flex align-center">
-              <VSwitch
+              <VCheckbox
                 :model-value="props.isColombian"
-                label="Solo Origen Colombia"
+                label="Origen Colombia"
                 color="primary"
                 hide-details
+                density="compact"
+                class="mt-0"
                 @update:model-value="emit('update:isColombian', $event)"
               />
             </VCol>
           </VRow>
-        </VCardText>
-
-        <VDivider />
-
-        <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4 bg-var-theme-background">
-          <VBtn color="secondary" variant="tonal" prepend-icon="tabler-eraser" @click="emit('clear')">
-            Limpiar Filtros
-          </VBtn>
-
-          <VSpacer />
-
-          <VBtn
-            color="primary"
-            variant="elevated"
-            prepend-icon="tabler-shopping-cart-plus"
-            @click="emit('generarPedido')"
-          >
-            Generar Pedido de Reposición
-          </VBtn>
-        </VCardActions>
-      </div>
-    </VExpandTransition>
+        </div>
+      </VExpandTransition>
+    </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.gap-2 { gap: 8px !important; }
+.h-38 { height: 38px !important; }
+
+:deep(.v-btn.h-38) {
+  min-height: 38px;
+}
+
+.text-xs {
+  font-size: 0.7rem !important;
+  letter-spacing: 0.5px;
+}
+</style>

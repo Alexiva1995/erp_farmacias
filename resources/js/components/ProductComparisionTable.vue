@@ -1,5 +1,6 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   checkingApiId: { type: Number, default: null },
@@ -21,6 +22,8 @@ const emit = defineEmits([
   "update:searchQuery",
   "open-public-link",
 ]);
+
+const { mdAndUp } = useDisplay();
 
 const copyPublicLink = (item) => {
   if (!item.public_token) {
@@ -55,145 +58,293 @@ const copyPublicLink = (item) => {
 };
 
 const headers = [
-  { title: "Id", key: "id", sortable: false },
-  { title: "Proveedor", key: "name", sortable: false },
-  { title: "Fecha Conexión", key: "last_connection", sortable: false },
-  { title: "Tipo", key: "type", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "ID", key: "id", sortable: false, width: "70px" },
+  { title: "PROVEEDOR", key: "name", sortable: false },
+  { title: "ÚLTIMA CONEXIÓN", key: "last_connection", sortable: false },
+  { title: "TIPO", key: "type", sortable: false },
+  { title: "ACCIONES", key: "actions", sortable: false, align: "end" },
 ];
 </script>
 
 <template>
-  <VCard>
-    <VCardText class="py-4 gap-4">
-      <AppTextField
-        :model-value="props.searchQuery"
-        placeholder="Nombre del proveedor..."
-        clearable
-        @update:model-value="emit('update:searchQuery', $event)"
-        class="w-25"
-      />
-    </VCardText>
+  <div class="comparator-table-container">
+    <!-- Barra de Búsqueda y Filtros Rápidos (Standard) -->
+    <!-- Barra de Búsqueda y Filtros Rápidos (Estandarizado) -->
+    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-4">
+        <VRow align="center" no-gutters class="gap-2">
+          <!-- Título/Icono -->
+          <div class="d-flex align-center gap-2 mr-4">
+            <VIcon icon="tabler-link" color="primary" size="20" />
+            <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Conectores</span>
+          </div>
 
-    <VDataTableServer
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.supplierConnections"
-      :items-length="props.totalSupplierConnections"
-      :loading="props.loading"
-      class="text-no-wrap"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #item.id="{ item }">
-        <span class="font-weight-medium">{{ item.id }}</span>
-      </template>
+          <!-- Buscador Principal -->
+          <VCol cols="12" sm="5" md="4" lg="4">
+            <VTextField
+              :model-value="props.searchQuery"
+              placeholder="Buscar proveedor por nombre..."
+              clearable
+              density="compact"
+              hide-details
+              prepend-inner-icon="tabler-search"
+              @update:model-value="emit('update:searchQuery', $event)"
+            />
+          </VCol>
 
-      <template #item.name="{ item }">
-        <span class="text-body-1 font-weight-medium text-high-emphasis">
-          {{ item.name }}
-        </span>
-      </template>
+          <VSpacer />
 
-      <template #item.last_connection="{ item }">
-        <span class="font-weight-medium">{{ item.last_connection }}</span>
-      </template>
-
-      <template #item.type="{ item }">
-        <span class="font-weight-medium">{{ item.type }}</span>
-      </template>
-
-      <template #item.actions="{ item }">
-        <VTooltip text="Ver Productos" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('show-products', item)" color="info">
-              <VIcon icon="tabler-eye" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-
-        <VTooltip text="Borrar Productos" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" @click="emit('delete-products', item)">
-              <VIcon icon="tabler-trash" />
-            </IconBtn>
-          </template>
-        </VTooltip>
-
-        <VTooltip text="Aplicar Descuento" location="top">
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              color="warning"
-              @click="emit('open-discount-dialog', item)"
+          <!-- Acciones (Solo Iconos) -->
+          <div class="d-flex align-center gap-1">
+            <!-- Limpiar Filtros -->
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              @click="emit('update:searchQuery', '')"
             >
-              <VIcon icon="tabler-percentage" />
-            </IconBtn>
-          </template>
-        </VTooltip>
+              <VIcon icon="tabler-eraser" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
+          </div>
+        </VRow>
+      </VCardText>
+    </VCard>
 
-        <VTooltip
-          v-if="item.type !== 'NO REGISTRADO' && item.type !== 'ARCHIVO EXCEL'"
-          text="Actualizar Productos"
-          location="top"
+    <!-- Tabla Principal (Unified VCard) -->
+    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+      <!-- Vista Desktop -->
+      <div v-if="mdAndUp" class="d-none d-md-block">
+        <VDataTableServer
+          v-model:items-per-page="props.itemsPerPage"
+          v-model:page="props.page"
+          :headers="headers"
+          :items="props.supplierConnections"
+          :items-length="props.totalSupplierConnections"
+          :loading="props.loading"
+          hover
+          density="compact"
+          class="text-no-wrap premium-table"
+          @update:options="(options) => emit('update:options', options)"
         >
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              :disabled="checkingApiId === item.id"
-              @click="emit('update-products', item)"
-            >
-              <VIcon
-                :icon="
-                  checkingApiId === item.id ? 'tabler-loader' : 'tabler-api'
-                "
-                :class="checkingApiId === item.id ? 'spin-icon' : ''"
-              />
-            </IconBtn>
+          <template #item.id="{ item }">
+            <span class="text-xs font-weight-medium text-disabled">#{{ item.id }}</span>
           </template>
-        </VTooltip>
 
-        <VTooltip
-          v-if="item.type === 'NO REGISTRADO' || item.type === 'ARCHIVO EXCEL'"
-          text="Cargar Productos"
-          location="top"
-        >
-          <template #activator="{ props }">
-            <IconBtn
-              v-bind="props"
-              :disabled="checkingApiId === item.id"
-              @click="emit('load-products', item)"
-            >
-              <VIcon
-                :icon="
-                  checkingApiId === item.id ? 'tabler-loader' : 'tabler-upload'
-                "
-                :class="checkingApiId === item.id ? 'spin-icon' : ''"
-              />
-            </IconBtn>
+          <template #item.name="{ item }">
+            <div class="d-flex flex-column py-2">
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
+                {{ item.name }}
+              </span>
+              <span class="text-xs text-disabled">{{ item.type }}</span>
+            </div>
           </template>
-        </VTooltip>
 
-        <VTooltip text="Copiar Link Público" location="top">
-          <template #activator="{ props }">
-            <IconBtn 
-              v-bind="props" 
-              :color="item.public_token ? 'success' : 'grey-500'" 
-              @click="copyPublicLink(item)"
-            >
-              <VIcon icon="tabler-copy" />
-            </IconBtn>
+          <template #item.last_connection="{ item }">
+            <span class="text-sm font-weight-medium">{{ item.last_connection || 'Sin conexión' }}</span>
           </template>
-        </VTooltip>
 
-        <VTooltip text="Configurar Link Público" location="top">
-          <template #activator="{ props }">
-            <IconBtn v-bind="props" color="secondary" @click="emit('open-public-link', item)">
-              <VIcon icon="tabler-link" />
-            </IconBtn>
+          <template #item.type="{ item }">
+            <VChip
+              size="x-small"
+              :color="item.type === 'API' ? 'primary' : 'secondary'"
+              variant="tonal"
+              class="text-uppercase"
+            >
+              {{ item.type }}
+            </VChip>
           </template>
-        </VTooltip>
-      </template>
-    </VDataTableServer>
-  </VCard>
+
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-end ga-2">
+              <VTooltip text="Ver Productos" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon="tabler-eye"
+                    variant="text"
+                    color="primary"
+                    size="small"
+                    @click="emit('show-products', item)"
+                  />
+                </template>
+              </VTooltip>
+
+              <VTooltip text="Actualizar / Cargar" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    :icon="item.type === 'API' ? (checkingApiId === item.id ? 'tabler-loader-2' : 'tabler-refresh') : 'tabler-upload'"
+                    variant="text"
+                    color="info"
+                    size="small"
+                    :disabled="checkingApiId === item.id"
+                    :class="{ 'spin-icon': checkingApiId === item.id }"
+                    @click="item.type === 'API' ? emit('update-products', item) : emit('load-products', item)"
+                  />
+                </template>
+              </VTooltip>
+
+              <VTooltip text="Descuento" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon="tabler-percentage"
+                    variant="text"
+                    color="warning"
+                    size="small"
+                    @click="emit('open-discount-dialog', item)"
+                  />
+                </template>
+              </VTooltip>
+
+              <VMenu location="bottom end" transition="slide-y-transition">
+                <template #activator="{ props: menuProps }">
+                  <VBtn
+                    v-bind="menuProps"
+                    icon="tabler-dots-vertical"
+                    variant="text"
+                    color="secondary"
+                    size="small"
+                  />
+                </template>
+                <VList density="compact" class="py-2 rounded-lg">
+                  <VListItem @click="copyPublicLink(item)" prepend-icon="tabler-copy">
+                    <VListItemTitle>Copiar Link</VListItemTitle>
+                  </VListItem>
+                  <VListItem @click="emit('open-public-link', item)" prepend-icon="tabler-link">
+                    <VListItemTitle>Configurar Link</VListItemTitle>
+                  </VListItem>
+                  <VDivider class="my-2" />
+                  <VListItem @click="emit('delete-products', item)" prepend-icon="tabler-trash" color="error">
+                    <VListItemTitle>Borrar Productos</VListItemTitle>
+                  </VListItem>
+                </VList>
+              </VMenu>
+            </div>
+          </template>
+        </VDataTableServer>
+      </div>
+
+      <!-- Vista Móvil (Cards) -->
+      <div v-else class="d-md-none pa-4 bg-var-theme-background">
+        <div v-if="loading" class="d-flex justify-center py-8">
+          <VProgressCircular indeterminate color="primary" />
+        </div>
+        <div v-else-if="props.supplierConnections.length === 0" class="text-center py-8 text-disabled text-sm">
+          No se encontraron proveedores
+        </div>
+        <div v-else class="d-flex flex-column gap-4">
+          <VCard
+            v-for="item in props.supplierConnections"
+            :key="item.id"
+            class="mobile-card border shadow-none"
+          >
+            <VCardText class="pa-4">
+              <div class="d-flex justify-space-between align-start mb-3">
+                <div class="d-flex flex-column">
+                  <span class="text-xs font-weight-bold text-disabled mb-1">#{{ item.id }}</span>
+                  <span class="text-body-1 font-weight-black text-high-emphasis text-uppercase text-wrap">
+                    {{ item.name }}
+                  </span>
+                </div>
+                <VChip size="x-small" color="primary" variant="tonal">{{ item.type }}</VChip>
+              </div>
+
+              <div class="d-flex flex-column gap-2 mb-4">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-calendar-time" size="14" class="text-disabled" />
+                  <span class="text-xs text-medium-emphasis">
+                    Conexión: <span class="text-high-emphasis font-weight-medium">{{ item.last_connection || 'N/A' }}</span>
+                  </span>
+                </div>
+              </div>
+
+              <VDivider class="mb-4" />
+
+              <div class="d-flex align-center justify-space-between ga-2">
+                <VBtn
+                  variant="flat"
+                  color="primary"
+                  size="small"
+                  class="flex-grow-1"
+                  prepend-icon="tabler-eye"
+                  @click="emit('show-products', item)"
+                >
+                  Ver
+                </VBtn>
+                
+                <div class="d-flex ga-1">
+                  <VBtn
+                    icon="tabler-refresh"
+                    variant="tonal"
+                    color="info"
+                    size="small"
+                    :disabled="checkingApiId === item.id"
+                    @click="emit('update-products', item)"
+                  />
+                  <VBtn
+                    icon="tabler-percentage"
+                    variant="tonal"
+                    color="warning"
+                    size="small"
+                    @click="emit('open-discount-dialog', item)"
+                  />
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+
+          <VPagination
+            v-model="props.page"
+            :length="Math.ceil(totalSupplierConnections / itemsPerPage)"
+            :total-visible="3"
+            density="compact"
+            @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: itemsPerPage })"
+          />
+        </div>
+      </div>
+    </VCard>
+  </div>
 </template>
+
+<style scoped>
+.premium-table :deep(thead th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
+}
+
+.gap-2 { gap: 8px !important; }
+.gap-4 { gap: 16px !important; }
+.ga-1 { gap: 4px !important; }
+.ga-2 { gap: 8px !important; }
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.mobile-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-card:active {
+  transform: scale(0.98);
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>

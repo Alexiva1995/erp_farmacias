@@ -323,7 +323,6 @@ const hasActiveAdvancedFilters = computed(() => {
             </VList>
           </VMenu>
 
-          <!-- Añadir Producto (Solo Icono) -->
           <template v-if="mode === 'products' || mode === 'minimal'">
             <VBtn
               v-if="props.showAddButton"

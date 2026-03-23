@@ -1,6 +1,6 @@
 <script setup>
 import { useAuthStore } from "@/stores/auth";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -142,53 +142,141 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="profitability-filters-container">
-    <!-- Barra de Búsqueda Principal (Siempre Visible) -->
-    <div class="d-flex flex-wrap align-center gap-3 mb-6">
-      <div class="flex-grow-1" style="min-inline-size: 240px;">
-        <AppTextField
-          :model-value="props.searchQuery"
-          placeholder="Buscar por ID, Producto, C. Activo..."
-          prepend-inner-icon="tabler-search"
-          class="premium-input-compact"
-          density="compact"
-          hide-details
-          clearable
-          @update:model-value="emit('update:searchQuery', $event)"
-        />
-      </div>
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+    <VCardText class="pa-3">
+      <!-- Barra de Búsqueda Principal (Siempre Visible) -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="6" lg="5">
+          <AppTextField
+            :model-value="props.searchQuery"
+            placeholder="Buscar por ID, Producto, C. Activo..."
+            prepend-inner-icon="tabler-search"
+            class="premium-input-compact"
+            density="compact"
+            hide-details
+            clearable
+            @update:model-value="emit('update:searchQuery', $event)"
+          />
+        </VCol>
 
-      <div class="d-flex gap-2 flex-grow-1 flex-sm-grow-0 justify-sm-end">
-        <VBtn
-          :color="isFiltersVisible ? 'primary' : 'secondary'"
-          variant="tonal"
-          class="rounded-lg px-4 font-weight-black flex-grow-1 flex-sm-grow-0 h-38"
-          @click="isFiltersVisible = !isFiltersVisible"
-        >
-          <VIcon start icon="tabler-adjustments-horizontal" size="18" />
-          <span class="d-none d-sm-inline">FILTROS</span>
-          <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
-        </VBtn>
+        <VSpacer />
 
-        <VBtn
-          color="primary"
-          variant="flat"
-          class="rounded-lg px-4 font-weight-black shadow-sm flex-grow-1 flex-sm-grow-0 h-38"
-          prepend-icon="tabler-percentage"
-          @click="emit('add-profitability')"
-        >
-          ASIGNAR RENTABILIDAD
-        </VBtn>
-      </div>
-    </div>
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros Avanzados -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="isFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
+            @click="isFiltersVisible = !isFiltersVisible"
+          >
+            <VIcon :icon="isFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+          </VBtn>
 
-    <!-- Panel de Filtros Colapsable -->
-    <VExpandTransition>
-      <VCard v-if="isFiltersVisible" class="rounded-xl border-0 shadow-sm mb-6 bg-surface-variant-light overflow-hidden">
-        <VCardText class="pa-5">
+          <!-- Ordenar Por -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                variant="tonal"
+                color="secondary"
+                size="38"
+              >
+                <VIcon
+                  :icon="
+                    selectedSort
+                      ? sortOptions.find(
+                          (o) =>
+                            o.key === selectedSort.key &&
+                            o.order === selectedSort.order
+                        )?.icon || 'tabler-sort-ascending'
+                      : 'tabler-sort-ascending'
+                  "
+                  size="20"
+                />
+                <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+              <VListItem
+                v-for="(option, index) in sortOptions"
+                :key="index"
+                :active="
+                  selectedSort?.key === option.key &&
+                  selectedSort?.order === option.order
+                "
+                color="primary"
+                @click="handleSortClick(option)"
+              >
+                <template #prepend>
+                  <VIcon :icon="option.icon" size="20" class="me-3" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-bold">{{
+                  option.title
+                }}</VListItemTitle>
+              </VListItem>
+              <VDivider v-if="selectedSort" class="my-1 opacity-10" />
+              <VListItem v-if="selectedSort" color="error" @click="clearSortFilter">
+                <template #prepend>
+                  <VIcon icon="tabler-sort-ascending" size="20" class="me-3" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-bold text-error"
+                  >Limpiar Orden</VListItemTitle
+                >
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+          <!-- Asignar Rentabilidad -->
+          <VBtn
+            icon
+            color="primary"
+            variant="flat"
+            size="38"
+            @click="emit('add-profitability')"
+          >
+            <VIcon icon="tabler-percentage" size="20" />
+            <VTooltip activator="parent" location="top"
+              >Asignar Rentabilidad</VTooltip
+            >
+          </VBtn>
+
+          <!-- Exportar -->
+          <VBtn
+            icon
+            color="success"
+            variant="tonal"
+            size="38"
+            @click="emit('export')"
+          >
+            <VIcon icon="tabler-file-export" size="20" />
+            <VTooltip activator="parent" location="top">Exportar</VTooltip>
+          </VBtn>
+
+          <!-- Limpiar Filtros -->
+          <VBtn icon variant="text" color="secondary" size="38" @click="handleClear">
+            <VIcon icon="tabler-eraser" size="20" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
+      </VRow>
+
+      <!-- Panel de Filtros Colapsable -->
+      <VExpandTransition>
+        <div v-show="isFiltersVisible">
+          <VDivider class="my-4 border-opacity-10" />
+          
           <VRow>
             <VCol cols="12" sm="6" md="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Laboratorio</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                >Laboratorio</span
+              >
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
@@ -206,7 +294,10 @@ onMounted(() => {
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Disponibilidad Stock</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                >Disponibilidad Stock</span
+              >
               <VSelect
                 :model-value="props.stockStatusFilter"
                 :items="stockOptions"
@@ -221,7 +312,10 @@ onMounted(() => {
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Estado de Bloqueo</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                >Estado de Bloqueo</span
+              >
               <VSelect
                 :model-value="props.lockedValue"
                 :items="lockedOptions"
@@ -238,39 +332,21 @@ onMounted(() => {
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Criterio Orden</span>
-              <VMenu>
-                <template #activator="{ props: menuProps }">
-                  <VBtn v-bind="menuProps" variant="outlined" color="primary" density="compact" block class="rounded-lg h-38 font-weight-black">
-                    {{ sortOptions.find(o => o.key === selectedSort?.key && o.order === selectedSort?.order)?.title || 'ORDENAR POR' }}
-                    <VIcon end icon="tabler-chevron-down" size="16" />
-                  </VBtn>
-                </template>
-                <VList density="compact" class="rounded-lg py-1 border shadow-lg">
-                  <VListItem
-                    v-for="(option, index) in sortOptions"
-                    :key="index"
-                    :class="{ 'bg-primary-lighten-5': selectedSort?.key === option.key && selectedSort?.order === option.order }"
-                    @click="handleSortClick(option)"
-                  >
-                    <template #prepend>
-                      <VIcon :icon="option.icon" size="18" class="me-2" />
-                    </template>
-                    <VListItemTitle class="text-xs font-weight-bold">{{ option.title }}</VListItemTitle>
-                  </VListItem>
-                </VList>
-              </VMenu>
-            </VCol>
-
-            <VCol cols="12" sm="6" md="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Rango Vencimiento</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                >Rango Vencimiento</span
+              >
               <div class="d-flex gap-2">
                 <AppDateTimePicker
                   :model-value="props.startDate"
                   placeholder="Desde"
                   clearable
                   class="premium-input-compact"
-                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
                   @update:model-value="emit('update:startDate', $event)"
                 />
                 <AppDateTimePicker
@@ -278,31 +354,26 @@ onMounted(() => {
                   placeholder="Hasta"
                   clearable
                   class="premium-input-compact"
-                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
                   @update:model-value="emit('update:endDate', $event)"
                 />
               </div>
             </VCol>
           </VRow>
-
-          <div class="d-flex justify-end mt-4">
-            <VBtn
-              variant="text"
-              color="secondary"
-              size="small"
-              class="font-weight-black"
-              @click="handleClear"
-            >
-              LIMPIAR FILTROS
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VExpandTransition>
-  </div>
+        </div>
+      </VExpandTransition>
+    </VCardText>
+  </VCard>
 </template>
 
 <style scoped>
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;

@@ -44,107 +44,107 @@ const handleRefresh = () => {
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border shadow-sm overlap-overflow">
-    <VCardText class="pa-4">
-      <div class="d-flex align-center flex-wrap gap-4">
-        <!-- Búsqueda Principal -->
-        <div class="flex-grow-1 min-w-[200px]">
-          <VTextField
+  <VCard class="mb-6 rounded-lg border-0 shadow-sm overflow-visible">
+    <VCardText class="pa-3">
+      <VRow align="center" no-gutters class="gap-2 px-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" sm="5" md="4" lg="4">
+          <AppTextField
             v-model="filters.search"
-            prepend-inner-icon="tabler-search"
-            placeholder="Buscar por ID o Cliente..."
+            placeholder="BUSCAR POR ID O CLIENTE..."
             variant="outlined"
             density="compact"
             hide-details
-            class="bg-surface rounded-lg"
+            prepend-inner-icon="tabler-search"
+            class="premium-input shadow-sm"
+            clearable
           />
-        </div>
+        </VCol>
 
-        <!-- Acciones Rápidas -->
-        <div class="d-flex align-center gap-2">
-          <VTooltip text="Filtros de Fecha">
-            <template #activator="{ props: tooltip }">
-              <VBtn
-                v-bind="tooltip"
-                variant="tonal"
-                :color="isFiltersExpanded ? 'primary' : 'secondary'"
-                size="40"
-                class="rounded-lg"
-                @click="isFiltersExpanded = !isFiltersExpanded"
-              >
-                <VBadge
-                  v-if="activeFiltersCount > 0"
-                  :content="activeFiltersCount"
-                  color="error"
-                  location="top end"
-                  offset-x="-2"
-                  offset-y="-2"
-                >
-                  <VIcon icon="tabler-calendar-stats" size="20" />
-                </VBadge>
-                <VIcon v-else icon="tabler-calendar-stats" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
+        <VSpacer />
 
-          <VTooltip text="Refrescar Datos">
-            <template #activator="{ props: tooltip }">
-              <VBtn
-                v-bind="tooltip"
-                variant="tonal"
-                color="info"
-                size="40"
-                class="rounded-lg"
-                :loading="props.loading"
-                @click="handleRefresh"
-              >
-                <VIcon icon="tabler-refresh" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
-
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
-            v-if="activeFiltersCount > 0 || filters.search"
+            icon
+            variant="tonal"
+            :color="isFiltersExpanded ? 'primary' : 'secondary'"
+            size="38"
+            class="shadow-sm"
+            @click="isFiltersExpanded = !isFiltersExpanded"
+          >
+            <VIcon :icon="isFiltersExpanded ? 'tabler-calendar-off' : 'tabler-calendar-stats'" />
+            <VTooltip activator="parent" location="top">Filtros de Fecha</VTooltip>
+            <VBadge
+              v-if="activeFiltersCount > 0 && !isFiltersExpanded"
+              dot
+              color="error"
+              offset-x="3"
+              offset-y="-3"
+            />
+          </VBtn>
+
+          <!-- Refresh -->
+          <VBtn
+            icon
+            variant="tonal"
+            color="info"
+            size="38"
+            class="shadow-sm"
+            :loading="props.loading"
+            @click="handleRefresh"
+          >
+            <VIcon icon="tabler-refresh" />
+            <VTooltip activator="parent" location="top">Refrescar Datos</VTooltip>
+          </VBtn>
+
+          <VDivider
+            vertical
+            class="mx-1 my-2"
+          />
+
+          <!-- Limpiar Filtros -->
+          <VBtn
+            icon
             variant="text"
-            color="error"
-            density="compact"
-            class="text-caption font-weight-bold ml-2"
+            color="secondary"
+            size="38"
+            :disabled="!filters.search && !activeFiltersCount"
             @click="clearFilters"
           >
-            LIMPIAR
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>
-      </div>
+      </VRow>
 
-      <!-- Filtros Expandibles -->
+      <!-- Panel de Filtros Avanzados (Expandible) -->
       <VExpandTransition>
         <div v-show="isFiltersExpanded">
-          <VDivider class="my-4 border-dashed" />
-          <VRow>
+          <VDivider class="my-3 border-opacity-10" />
+          <VRow dense class="px-2 pb-2">
             <VCol cols="12" sm="6">
-              <div class="text-caption font-weight-bold mb-2 text-uppercase text-disabled">
-                Fecha Inicio
-              </div>
-              <VTextField
+              <AppTextField
                 v-model="filters.date_start"
                 type="date"
+                placeholder="FECHA INICIO"
                 variant="outlined"
                 density="compact"
                 hide-details
                 prepend-inner-icon="tabler-calendar-event"
+                class="premium-input shadow-sm"
               />
             </VCol>
             <VCol cols="12" sm="6">
-              <div class="text-caption font-weight-bold mb-2 text-uppercase text-disabled">
-                Fecha Fin
-              </div>
-              <VTextField
+              <AppTextField
                 v-model="filters.date_end"
                 type="date"
+                placeholder="FECHA FIN"
                 variant="outlined"
                 density="compact"
                 hide-details
                 prepend-inner-icon="tabler-calendar-plus"
+                class="premium-input shadow-sm"
               />
             </VCol>
           </VRow>
@@ -155,20 +155,33 @@ const handleRefresh = () => {
 </template>
 
 <style scoped>
-.overlap-overflow {
-  overflow: visible !important;
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.15;
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+.premium-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.15 !important;
+  color: rgba(var(--v-border-color), 1) !important;
 }
 
-:deep(.v-field__outline) {
-  --v-field-border-opacity: 0.12;
+.premium-input :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1 !important;
+  color: rgb(var(--v-theme-primary)) !important;
 }
 
-:deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1;
+.premium-input :deep(.v-field) {
+  border-radius: 8px !important;
+  background-color: white !important;
+}
+
+.premium-input :deep(.v-field__input),
+.premium-input :deep(.v-select__selection),
+.premium-input :deep(.v-select__selection-text) {
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 </style>

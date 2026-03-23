@@ -319,20 +319,17 @@ onMounted(() => {
       @add-prescription="handleAddPrescriptionModal"
     />
 
-    <VCard title="Ofertas de Recipes Médicos">
-      <div class="mb-2"></div>
-      <PrescriptionTable
-        :prescriptions="prescriptions"
-        :loading="loadingPrescription"
-        :total-prescriptions="totalPrescriptions"
-        :items-per-page="itemsPerPagePrescription"
-        :page="pagePrescription"
-        @update:options="updateTableOptionsPrescription"
-        @edit-prescription="handleEditPrescription"
-        @delete-prescription="handleDeletePrescription"
-        @view-prescription="handleViewPrescription"
-      />
-    </VCard>
+    <PrescriptionTable
+      :prescriptions="prescriptions"
+      :loading="loadingPrescription"
+      :total-prescriptions="totalPrescriptions"
+      :items-per-page="itemsPerPagePrescription"
+      :page="pagePrescription"
+      @update:options="updateTableOptionsPrescription"
+      @edit-prescription="handleEditPrescription"
+      @delete-prescription="handleDeletePrescription"
+      @view-prescription="handleViewPrescription"
+    />
 
     <PrescriptionModal
       v-model:is-dialog-visible="addPrescriptionModal"

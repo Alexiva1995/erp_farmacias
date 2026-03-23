@@ -3,94 +3,65 @@ import { computed, ref } from "vue";
 
 const props = defineProps({
   searchQuery: String,
-  selectedFrequency: [String, null],
-  isStrictSearch: Boolean,
-  frequencies: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false },
+  selectedMonth: Number,
+  selectedYear: Number,
+  selectedSort: Object,
+  availableMonths: Array,
+  availableYears: Array,
+  sortOptions: Array,
+  isLocked: Boolean,
+  loading: Boolean,
 });
 
 const emit = defineEmits([
   "update:searchQuery",
-  "update:selectedFrequency",
-  "update:isStrictSearch",
+  "update:selectedMonth",
+  "update:selectedYear",
   "clear",
-  "add-activity",
+  "lock-month",
   "sort",
 ]);
 
-const sortOptions = [
-  {
-    title: "Nombre A-Z",
-    icon: "tabler-sort-ascending-letters",
-    key: "activity",
-    order: "asc",
-  },
-  {
-    title: "Nombre Z-A",
-    icon: "tabler-sort-descending-letters",
-    key: "activity",
-    order: "desc",
-  },
-  {
-    title: "Frecuencia A-Z",
-    icon: "tabler-calendar",
-    key: "frequency",
-    order: "asc",
-  },
-  {
-    title: "Más Recientes",
-    icon: "tabler-clock",
-    key: "created_at",
-    order: "desc",
-  },
-];
-
-const selectedSort = ref(null);
+const isAdvancedFiltersVisible = ref(false);
 
 const handleSortClick = (option) => {
-  const sortFilter = { key: option.key, order: option.order };
-  selectedSort.value = sortFilter;
-  emit("sort", sortFilter);
-};
-
-const clearSortFilter = () => {
-  selectedSort.value = null;
-  emit("sort", { key: undefined, order: undefined });
+  emit("sort", option);
 };
 
 const getSelectedSortIcon = () => {
-  if (!selectedSort.value) return "tabler-sort-ascending";
-  const option = sortOptions.find(
+  if (!props.selectedSort) return "tabler-sort-ascending";
+  const option = props.sortOptions.find(
     (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order,
+      opt.key === props.selectedSort.key &&
+      opt.order === props.selectedSort.order
   );
   return option ? option.icon : "tabler-sort-ascending";
 };
 
 const isOptionSelected = (option) => {
   return (
-    selectedSort.value &&
-    selectedSort.value.key === option.key &&
-    selectedSort.value.order === option.order
+    props.selectedSort &&
+    props.selectedSort.key === option.key &&
+    props.selectedSort.order === option.order
   );
 };
-
-const isAdvancedFiltersVisible = ref(false);
 
 const toggleAdvancedFilters = () => {
   isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
 };
 
-const hasActiveAdvancedFilters = computed(() => {
-  return props.selectedFrequency || selectedSort.value;
-});
-
 const handleClear = () => {
   emit("clear");
-  clearSortFilter();
   isAdvancedFiltersVisible.value = false;
 };
+
+const hasActiveAdvancedFilters = computed(() => {
+  return (
+    props.selectedMonth !== new Date().getMonth() + 1 ||
+    props.selectedYear !== new Date().getFullYear() ||
+    (props.selectedSort && props.selectedSort.key !== "scores.total")
+  );
+});
 </script>
 
 <template>
@@ -102,25 +73,13 @@ const handleClear = () => {
         <VCol cols="12" md="4" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar actividad o descripción..."
+            placeholder="Buscar empleado..."
             prepend-inner-icon="tabler-search"
             clearable
             density="compact"
             persistent-placeholder
             hide-details
             @update:model-value="emit('update:searchQuery', $event)"
-          />
-        </VCol>
-
-        <!-- Búsqueda Estricta -->
-        <VCol cols="auto" class="d-none d-sm-flex">
-          <VCheckbox
-            :model-value="props.isStrictSearch"
-            label="Estricta"
-            color="primary"
-            density="compact"
-            hide-details
-            @update:model-value="emit('update:isStrictSearch', $event)"
           />
         </VCol>
 
@@ -162,7 +121,7 @@ const handleClear = () => {
             </template>
             <VList density="compact">
               <VListItem
-                v-for="(option, index) in sortOptions"
+                v-for="(option, index) in props.sortOptions"
                 :key="index"
                 :active="isOptionSelected(option)"
                 color="primary"
@@ -176,17 +135,28 @@ const handleClear = () => {
             </VList>
           </VMenu>
 
-          <!-- Añadir Actividad -->
+          <!-- Cerrar Mes -->
           <VBtn
+            v-if="!props.isLocked"
             icon
-            color="primary"
+            color="error"
             variant="flat"
             size="38"
-            @click="emit('add-activity')"
+            @click="emit('lock-month')"
           >
-            <VIcon icon="tabler-plus" />
-            <VTooltip activator="parent" location="top">Añadir Actividad</VTooltip>
+            <VIcon icon="tabler-lock" />
+            <VTooltip activator="parent" location="top">Cerrar Mes</VTooltip>
           </VBtn>
+          <VChip 
+            v-else 
+            color="success" 
+            variant="tonal" 
+            class="rounded-lg h-38 font-weight-black"
+            size="small"
+          >
+            <VIcon start icon="tabler-lock-check" size="18" />
+            HISTÓRICO
+          </VChip>
 
           <VDivider vertical class="mx-1 my-2" />
 
@@ -210,17 +180,29 @@ const handleClear = () => {
           <VDivider class="my-3 border-opacity-10" />
           
           <VRow dense>
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="6" md="3">
               <VSelect
-                :model-value="props.selectedFrequency"
-                :items="props.frequencies"
-                :loading="props.loading"
-                placeholder="Filtrar por Frecuencia"
+                :model-value="props.selectedMonth"
+                :items="props.availableMonths"
+                item-title="title"
+                item-value="value"
+                placeholder="Mes"
                 density="compact"
                 hide-details
-                clearable
                 prepend-inner-icon="tabler-calendar"
-                @update:model-value="emit('update:selectedFrequency', $event)"
+                @update:model-value="emit('update:selectedMonth', $event)"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" md="3">
+              <VSelect
+                :model-value="props.selectedYear"
+                :items="props.availableYears"
+                placeholder="Año"
+                density="compact"
+                hide-details
+                prepend-inner-icon="tabler-calendar-event"
+                @update:model-value="emit('update:selectedYear', $event)"
               />
             </VCol>
           </VRow>
@@ -236,5 +218,9 @@ const handleClear = () => {
 
 :deep(.v-field__input) {
   font-size: 0.8125rem !important;
+}
+
+.h-38 {
+  height: 38px !important;
 }
 </style>

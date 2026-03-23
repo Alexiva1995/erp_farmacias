@@ -27,6 +27,16 @@ const summaryStats = ref({
 // Catalogs
 const laboratories = ref([]);
 
+const isAdvancedFiltersVisible = ref(false);
+
+const hasActiveAdvancedFilters = computed(() => {
+  return selectedLaboratories.value.length > 0 || selectedFinalClassification.value !== null;
+});
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
+
 // Mapping quick date ranges
 const getDateRange = (rangeType) => {
   const end = new Date();
@@ -132,9 +142,11 @@ onMounted(() => {
 });
 
 const handleClearFilters = () => {
+  search.value = '';
   selectedDateRange.value = '30 days';
   selectedLaboratories.value = [];
   selectedFinalClassification.value = null;
+  isAdvancedFiltersVisible.value = false;
 };
 </script>
 
@@ -150,54 +162,133 @@ const handleClearFilters = () => {
     </VRow>
 
     <!-- Filters -->
-    <VCard class="mb-6">
-      <VCardText>
-        <VRow align="center">
-          <VCol cols="12" md="3">
-            <AppSelect
-              v-model="selectedDateRange"
-              :items="dateRangeOptions"
-              label="Período de Análisis"
-              hide-details="auto"
+    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-3">
+        <!-- Barra de Búsqueda Principal (Siempre Visible) -->
+        <VRow align="center" no-gutters class="gap-2">
+          <!-- Buscador Global -->
+          <VCol cols="12" md="4" lg="3">
+            <AppTextField
+              v-model="search"
+              placeholder="Buscar Producto, ID..."
+              prepend-inner-icon="tabler-search"
+              clearable
+              density="compact"
+              hide-details
+              class="premium-input-compact"
             />
           </VCol>
 
-          <VCol cols="12" md="3">
-            <AppAutocomplete
-              v-model="selectedLaboratories"
-              :items="laboratories"
-              item-title="name"
-              item-value="id"
-              label="Laboratorio"
-              multiple
-              chips
-              clearable
-              hide-details="auto"
+          <!-- Período de Análisis -->
+          <VCol cols="12" md="3" lg="3">
+            <AppSelect
+              v-model="selectedDateRange"
+              :items="dateRangeOptions"
+              placeholder="Período de Análisis"
+              density="compact"
+              hide-details
+              class="premium-select-compact"
+              prepend-inner-icon="tabler-calendar-stats"
             />
           </VCol>
-          <VCol cols="12" md="3">
-            <AppAutocomplete
-              v-model="selectedFinalClassification"
-              :items="classificationOptions"
-              label="Clasificación Final (AAX..)"
-              clearable
-              hide-details="auto"
-            />
-          </VCol>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-1">
+            <!-- Toggle Filtros -->
+            <VBtn
+              icon
+              variant="tonal"
+              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+              size="38"
+              @click="toggleAdvancedFilters"
+            >
+              <VBadge
+                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+                color="error"
+                dot
+                offset-x="2"
+                offset-y="-2"
+              >
+                <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              </VBadge>
+              <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            </VBtn>
+
+            <!-- Aplicar Filtros -->
+            <VBtn
+              icon
+              color="primary"
+              size="38"
+              :loading="loading"
+              @click="fetchReport"
+            >
+              <VIcon icon="tabler-player-play" size="20" />
+              <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+            <!-- Limpiar Filtros -->
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" size="20" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
+          </div>
         </VRow>
+
+        <!-- Panel de Filtros Avanzado -->
+        <VExpandTransition>
+          <div v-show="isAdvancedFiltersVisible">
+            <VDivider class="my-3 border-opacity-10" />
+            
+            <VRow>
+              <VCol cols="12" sm="6" md="6">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                  Laboratorios
+                </span>
+                <AppAutocomplete
+                  v-model="selectedLaboratories"
+                  :items="laboratories"
+                  item-title="name"
+                  item-value="id"
+                  placeholder="Seleccionar Laboratorios"
+                  multiple
+                  chips
+                  clearable
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="premium-select-compact"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="6">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                  Clasificación Final (AAX..)
+                </span>
+                <AppAutocomplete
+                  v-model="selectedFinalClassification"
+                  :items="classificationOptions"
+                  placeholder="Seleccionar Clasificación"
+                  clearable
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="premium-select-compact"
+                />
+              </VCol>
+            </VRow>
+          </div>
+        </VExpandTransition>
       </VCardText>
-      <VDivider />
-      <VCardActions class="pa-4 px-6">
-        <VBtn color="secondary" variant="outlined" @click="handleClearFilters">
-          <VIcon start icon="tabler-filter-off" />
-          Limpiar
-        </VBtn>
-        <VSpacer />
-        <VBtn color="primary" @click="fetchReport" :loading="loading">
-          <VIcon start icon="tabler-search" />
-          Aplicar Filtros
-        </VBtn>
-      </VCardActions>
     </VCard>
 
     <!-- Dashboard KPIs -->
@@ -230,24 +321,15 @@ const handleClearFilters = () => {
       </VCol>
     </VRow>
 
-    <!-- Data Table -->
-    <VCard>
-      <!-- Head de Tabla Buscar -->
-      <VCardText class="d-flex justify-space-between align-center py-4">
-        <div class="d-flex gap-2">
-          <h2 class="text-h6 font-weight-medium">Resultados del Analisis</h2>
-        </div>
-        <div style="width: 250px;">
-          <AppTextField
-            v-model="search"
-            placeholder="Buscar globalmente..."
-            density="compact"
-            hide-details
-            prepend-inner-icon="tabler-search"
-          />
-        </div>
+    <VCard class="border-0 shadow-sm overflow-hidden">
+      <!-- Head de Tabla -->
+      <VCardText class="d-flex justify-space-between align-center py-3">
+        <h2 class="text-h6 font-weight-bold d-flex align-center">
+          <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
+          Resultados del Análisis
+        </h2>
       </VCardText>
-      <VDivider />
+      <VDivider class="border-opacity-10" />
 
       <VDataTableServer
         v-model:items-per-page="itemsPerPage"
@@ -258,7 +340,7 @@ const handleClearFilters = () => {
         :items="items"
         :search="search"
         :loading="loading"
-        class="text-no-wrap"
+        class="premium-table rounded-lg"
         hover
         density="compact"
       >

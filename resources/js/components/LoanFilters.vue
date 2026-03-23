@@ -134,66 +134,62 @@ watch(() => currentUser.value?.id, () => {
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border shadow-sm overlap-overflow">
-    <VCardText class="pa-4">
-      <div class="d-flex align-center flex-wrap gap-4">
-        <!-- Búsqueda Principal -->
-        <div class="flex-grow-1 min-w-[240px]">
-          <VTextField
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+    <VCardText class="pa-3">
+      <!-- Barra de Búsqueda Principal (Siempre Visible) -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="6" lg="5">
+          <AppTextField
             :model-value="props.searchQuery"
             prepend-inner-icon="tabler-search"
             placeholder="Buscar préstamos por ID o referencia..."
-            variant="outlined"
             density="compact"
             hide-details
             clearable
-            class="bg-surface rounded-lg"
+            class="premium-input-compact"
             @update:model-value="emit('update:searchQuery', $event)"
           />
-        </div>
+        </VCol>
 
-        <!-- Acciones Rápidas -->
-        <div class="d-flex align-center gap-2">
-          <VTooltip text="Filtros Avanzados">
-            <template #activator="{ props: tooltip }">
-              <VBtn
-                v-bind="tooltip"
-                variant="tonal"
-                :color="isFiltersExpanded ? 'primary' : 'secondary'"
-                size="40"
-                class="rounded-lg"
-                @click="isFiltersExpanded = !isFiltersExpanded"
-              >
-                <VBadge
-                  v-if="activeFiltersCount > 0"
-                  :content="activeFiltersCount"
-                  color="error"
-                  location="top end"
-                  offset-x="-2"
-                  offset-y="-2"
-                >
-                  <VIcon icon="tabler-filter-plus" size="20" />
-                </VBadge>
-                <VIcon v-else icon="tabler-filter-plus" size="20" />
-              </VBtn>
-            </template>
-          </VTooltip>
+        <VSpacer />
 
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="isFiltersExpanded ? 'primary' : 'secondary'"
+            size="38"
+            @click="isFiltersExpanded = !isFiltersExpanded"
+          >
+            <VBadge
+              v-if="activeFiltersCount > 0"
+              :content="activeFiltersCount"
+              color="error"
+              location="top end"
+              offset-x="-2"
+              offset-y="-2"
+            >
+              <VIcon :icon="isFiltersExpanded ? 'tabler-filter-off' : 'tabler-filter-plus'" size="20" />
+            </VBadge>
+            <VIcon v-else :icon="isFiltersExpanded ? 'tabler-filter-off' : 'tabler-filter-plus'" size="20" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+          </VBtn>
+
+          <!-- Menú Ordenación -->
           <VMenu>
             <template #activator="{ props: menuProps }">
-              <VTooltip text="Ordenar por">
-                <template #activator="{ props: tooltip }">
-                  <VBtn
-                    v-bind="{ ...menuProps, ...tooltip }"
-                    variant="tonal"
-                    color="secondary"
-                    size="40"
-                    class="rounded-lg"
-                  >
-                    <VIcon icon="tabler-arrows-sort" size="20" />
-                  </VBtn>
-                </template>
-              </VTooltip>
+              <VBtn
+                v-bind="menuProps"
+                icon
+                variant="tonal"
+                color="secondary"
+                size="38"
+              >
+                <VIcon :icon="getSelectedSortIcon() || 'tabler-arrows-sort'" size="20" />
+                <VTooltip activator="parent" location="top">Ordenar por: {{ getSelectedSortTitle() || 'Criterio' }}</VTooltip>
+              </VBtn>
             </template>
             <VList density="compact" class="rounded-lg">
               <VListItem
@@ -211,36 +207,44 @@ watch(() => currentUser.value?.id, () => {
             </VList>
           </VMenu>
 
+          <!-- Añadir Préstamo -->
           <VBtn
             v-if="props.showAddButton"
+            icon
             color="primary"
-            class="rounded-lg shadow-sm"
+            size="38"
             @click="emit('add-loan')"
           >
-            <VIcon start icon="tabler-plus" size="18" />
-            <span v-if="!mobile">{{ props.addButtonText }}</span>
+            <VIcon icon="tabler-plus" size="20" />
+            <VTooltip activator="parent" location="top">{{ props.addButtonText }}</VTooltip>
           </VBtn>
 
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+          <!-- Limpiar Filtros (Siempre Visible) -->
           <VBtn
-            v-if="activeFiltersCount > 0 || props.searchQuery"
+            icon
             variant="text"
-            color="error"
-            density="compact"
-            class="text-xs font-weight-black ml-1"
+            color="secondary"
+            size="38"
             @click="handleClear"
           >
-            BORRAR
+            <VIcon icon="tabler-eraser" size="20" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>
-      </div>
+      </VRow>
 
-      <!-- Filtros Expandibles -->
+      <!-- Panel de Filtros Avanzado -->
       <VExpandTransition>
         <div v-show="isFiltersExpanded">
-          <VDivider class="my-4 border-dashed" />
+          <VDivider class="my-3 border-opacity-10" />
+          
           <VRow>
             <VCol cols="12" sm="6" md="3">
-              <div class="text-xs font-weight-black mb-2 text-uppercase text-disabled">Año del Préstamo</div>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                Año del Préstamo
+              </span>
               <VSelect
                 :model-value="props.selectedYear"
                 :items="props.loanYears"
@@ -252,13 +256,15 @@ watch(() => currentUser.value?.id, () => {
                 density="compact"
                 hide-details
                 clearable
-                class="rounded-lg"
+                class="premium-select-compact"
                 @update:model-value="emit('update:selectedYear', $event)"
               />
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <div class="text-xs font-weight-black mb-2 text-uppercase text-disabled">Estado del Préstamo</div>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                Estado del Préstamo
+              </span>
               <VSelect
                 :model-value="props.statusFilter"
                 :items="statusOptions"
@@ -269,32 +275,36 @@ watch(() => currentUser.value?.id, () => {
                 density="compact"
                 hide-details
                 clearable
-                class="rounded-lg"
+                class="premium-select-compact"
                 @update:model-value="emit('update:statusFilter', $event)"
               />
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <div class="text-xs font-weight-black mb-2 text-uppercase text-disabled">Desde Fecha</div>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                Desde Fecha
+              </span>
               <AppDateTimePicker
                 :model-value="props.startDate"
                 placeholder="Fecha inicio"
-                variant="outlined"
                 density="compact"
                 hide-details
+                class="premium-input-compact"
                 :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:startDate', $event)"
               />
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <div class="text-xs font-weight-black mb-2 text-uppercase text-disabled">Hasta Fecha</div>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                Hasta Fecha
+              </span>
               <AppDateTimePicker
                 :model-value="props.endDate"
                 placeholder="Fecha fin"
-                variant="outlined"
                 density="compact"
                 hide-details
+                class="premium-input-compact"
                 :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 @update:model-value="emit('update:endDate', $event)"
               />
@@ -303,7 +313,7 @@ watch(() => currentUser.value?.id, () => {
 
           <!-- Badges de Orden -->
           <div v-if="selectedSort" class="mt-4 d-flex align-center gap-2">
-            <span class="text-xs text-disabled font-weight-bold uppercase">ORDENADO POR:</span>
+            <span class="text-super-xs font-weight-black text-disabled uppercase">ORDENADO POR:</span>
             <VChip
               color="primary"
               variant="tonal"

@@ -60,164 +60,170 @@ const getPriceDiff = (current, offer) => {
 
 <template>
   <div class="assistant-report-container">
-    <!-- Vista Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
-      <VDataTableServer
-        :items-per-page="props.itemsPerPage"
-        :page="props.page"
-        :headers="headers"
-        :items="props.products"
-        :items-length="props.totalProduct"
-        :loading="props.loading"
-        :row-props="({ item }) => ({ class: rowClass(item) })"
-        class="premium-table text-no-wrap"
-        @update:options="(options) => emit('update:options', options)"
-      >
-        <!-- Producto -->
-        <template #item.name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="text-body-2 font-weight-black text-high-emphasis leading-tight">
-              {{ item.name }}
-              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 px-1" style="block-size: 14px; font-size: 0.6rem;">COL</VChip>
-            </span>
-            <span class="text-xxs text-disabled font-weight-medium uppercase mt-1">{{ item.active_ingredient || 'Sin ingrediente' }}</span>
-          </div>
-        </template>
-
-        <!-- Costo Actual -->
-        <template #item.unit_cost="{ item }">
-          <div class="d-flex flex-column align-center">
-            <span class="text-primary font-weight-black">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
-            <span class="text-xxs text-disabled mt-n1">Costo Ficha</span>
-          </div>
-        </template>
-
-        <!-- Mejor Oferta -->
-        <template #item.product_suppliers="{ item }">
-          <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center">
-            <div class="d-flex align-center gap-1">
-              <span class="font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}</span>
-              <VIcon icon="tabler-trending-down" size="14" color="success" class="opacity-70" />
-            </div>
-            <span class="text-xxs text-disabled text-truncate" style="max-inline-size: 100px;">{{ item.product_suppliers[0].supplier.name }}</span>
-          </div>
-          <span v-else class="text-xxs text-disabled italic">Sin ofertas</span>
-        </template>
-
-        <!-- Ventas y Stock -->
-        <template #item.total_sold_completed="{ item }">
-          <span class="font-weight-bold">{{ item.total_sold_completed || 0 }}</span>
-        </template>
-        
-        <template #item.lote_quantity="{ item }">
-          <VChip :color="item.lote_quantity > 0 ? 'secondary' : 'error'" variant="tonal" size="x-small" class="font-weight-black">
-            {{ item.lote_quantity || 0 }}
-          </VChip>
-        </template>
-
-        <!-- Análisis IA -->
-        <template #item.solicitar="{ item }">
-          <div class="d-flex align-center justify-end gap-2">
-            <VAvatar 
-              :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'secondary'" 
-              variant="tonal" 
-              size="32" 
-              class="rounded-lg"
-            >
-              <VIcon :icon="roundIaAnalysis(item.solicitar) > 0 ? 'tabler-plus' : roundIaAnalysis(item.solicitar) < 0 ? 'tabler-minus' : 'tabler-check'" size="16" />
-            </VAvatar>
-            <span 
-              class="text-h6 font-weight-black"
-              :class="roundIaAnalysis(item.solicitar) > 0 ? 'text-success' : roundIaAnalysis(item.solicitar) < 0 ? 'text-error' : 'text-disabled'"
-            >
-              {{ Math.abs(roundIaAnalysis(item.solicitar)) }}
-            </span>
-          </div>
-        </template>
-      </VDataTableServer>
-    </VCard>
-
-    <!-- Vista Móvil -->
-    <div v-else class="mobile-cards-view d-flex flex-column gap-4">
-      <div v-if="loading" class="d-flex justify-center py-10">
-        <VProgressCircular indeterminate color="primary" />
-      </div>
-      <template v-else>
-        <VCard 
-          v-for="item in props.products" 
-          :key="item.id" 
-          class="rounded-xl border-0 shadow-sm overflow-hidden row-decoration"
-          :class="rowClass(item)"
+    <VCard variant="outlined" class="rounded-lg elevation-0 bg-surface overflow-hidden">
+      <!-- Vista Escritorio -->
+      <div v-if="!mobile" class="d-none d-md-block">
+        <VDataTableServer
+          :items-per-page="props.itemsPerPage"
+          :page="props.page"
+          :headers="headers"
+          :items="props.products"
+          :items-length="props.totalProduct"
+          :loading="props.loading"
+          :row-props="({ item }) => ({ class: rowClass(item) })"
+          class="premium-table text-no-wrap"
+          @update:options="(options) => emit('update:options', options)"
         >
-          <div class="pa-4">
-            <div class="d-flex justify-space-between align-start mb-3">
-              <div class="flex-grow-1 min-w-0">
-                <div class="d-flex align-center gap-2 mb-1">
-                  <span class="text-xs font-weight-black text-disabled">#{{ item.id }}</span>
-                  <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="flat" density="compact" class="px-1 text-xxs leading-none">COL</VChip>
-                </div>
-                <h3 class="text-h6 font-weight-black leading-tight text-truncate">{{ item.name }}</h3>
-                <p class="text-xs text-disabled font-weight-medium mb-0">{{ item.laboratory?.name }}</p>
-              </div>
-
-              <div class="d-flex flex-column align-end">
-                <div 
-                  class="analysis-badge pa-2 rounded-lg d-flex flex-column align-center"
-                  :class="roundIaAnalysis(item.solicitar) > 0 ? 'bg-success-subtle' : roundIaAnalysis(item.solicitar) < 0 ? 'bg-error-subtle' : 'bg-secondary-subtle'"
-                >
-                  <span class="text-xxs font-weight-bold text-uppercase opacity-70">Sugerencia</span>
-                  <span class="text-h6 font-weight-black leading-none mt-1">
-                    {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }}
-                  </span>
-                </div>
-              </div>
+          <!-- Producto -->
+          <template #item.name="{ item }">
+            <div class="d-flex flex-column py-2">
+              <span class="text-body-2 font-weight-black text-high-emphasis leading-tight">
+                {{ item.name }}
+                <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 px-1" style="block-size: 14px; font-size: 0.6rem;">COL</VChip>
+              </span>
+              <span class="text-xxs text-disabled font-weight-medium uppercase mt-1">{{ item.active_ingredient || 'Sin ingrediente' }}</span>
             </div>
+          </template>
 
-            <VDivider class="opacity-10 mb-4" />
-
-            <VRow no-gutters class="gap-y-4">
-              <VCol cols="4" class="pe-2">
-                <div class="text-xxs font-weight-bold text-disabled text-uppercase mb-1 text-center">Stock</div>
-                <div class="d-flex justify-center">
-                  <VChip size="small" :color="item.lote_quantity > 0 ? 'secondary' : 'error'" variant="tonal" class="font-weight-black px-3 h-auto py-1">
-                    {{ item.lote_quantity || 0 }}
-                  </VChip>
-                </div>
-              </VCol>
-              
-              <VCol cols="4" class="px-2 border-s border-e opacity-80">
-                <div class="text-xxs font-weight-bold text-disabled text-uppercase mb-1 text-center">Ventas</div>
-                <div class="text-body-2 font-weight-black text-center">{{ item.total_sold_completed || 0 }}</div>
-              </VCol>
-
-              <VCol cols="4" class="ps-2 text-center">
-                <div class="text-xxs font-weight-bold text-disabled text-uppercase mb-1">Costo</div>
-                <div class="text-body-2 font-weight-black text-primary">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</div>
-              </VCol>
-            </VRow>
-
-            <div v-if="item.product_suppliers?.length" class="mt-4 pa-2 bg-light rounded-lg d-flex align-center justify-space-between">
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-tag" size="16" color="success" />
-                <span class="text-xs font-weight-bold text-success">{{ item.product_suppliers[0].supplier.name }}</span>
-              </div>
-              <span class="text-body-2 font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}</span>
+          <!-- Costo Actual -->
+          <template #item.unit_cost="{ item }">
+            <div class="d-flex flex-column align-center">
+              <span class="text-primary font-weight-black">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+              <span class="text-xxs text-disabled mt-n1">Costo Ficha</span>
             </div>
+          </template>
+
+          <!-- Mejor Oferta -->
+          <template #item.product_suppliers="{ item }">
+            <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center">
+              <div class="d-flex align-center gap-1">
+                <span class="font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}</span>
+                <VIcon icon="tabler-trending-down" size="14" color="success" class="opacity-70" />
+              </div>
+              <span class="text-xxs text-disabled text-truncate" style="max-inline-size: 100px;">{{ item.product_suppliers[0].supplier.name }}</span>
+            </div>
+            <span v-else class="text-xxs text-disabled italic">Sin ofertas</span>
+          </template>
+
+          <!-- Ventas y Stock -->
+          <template #item.total_sold_completed="{ item }">
+            <span class="font-weight-bold">{{ item.total_sold_completed || 0 }}</span>
+          </template>
+          
+          <template #item.lote_quantity="{ item }">
+            <VChip :color="item.lote_quantity > 0 ? 'secondary' : 'error'" variant="tonal" size="x-small" class="font-weight-black">
+              {{ item.lote_quantity || 0 }}
+            </VChip>
+          </template>
+
+          <!-- Análisis IA -->
+          <template #item.solicitar="{ item }">
+            <div class="d-flex align-center justify-end gap-2">
+              <VAvatar 
+                :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'secondary'" 
+                variant="tonal" 
+                size="32" 
+                class="rounded-lg"
+              >
+                <VIcon :icon="roundIaAnalysis(item.solicitar) > 0 ? 'tabler-plus' : roundIaAnalysis(item.solicitar) < 0 ? 'tabler-minus' : 'tabler-check'" size="16" />
+              </VAvatar>
+              <span 
+                class="text-h6 font-weight-black"
+                :class="roundIaAnalysis(item.solicitar) > 0 ? 'text-success' : roundIaAnalysis(item.solicitar) < 0 ? 'text-error' : 'text-disabled'"
+              >
+                {{ Math.abs(roundIaAnalysis(item.solicitar)) }}
+              </span>
+            </div>
+          </template>
+        </VDataTableServer>
+      </div>
+
+      <!-- Vista Móvil (Cards) -->
+      <div v-else class="d-block d-md-none pa-2">
+        <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
+        
+        <template v-if="props.products.length > 0">
+          <div class="d-flex flex-column gap-2">
+            <VCard
+              v-for="item in props.products"
+              :key="item.id"
+              variant="flat"
+              class="border mb-1 rounded-lg overflow-hidden"
+              :style="roundIaAnalysis(item.solicitar) > 0 ? 'border-inline-start: 4px solid #28c76f !important; background-color: rgba(40, 199, 111, 2%) !important;' : roundIaAnalysis(item.solicitar) < 0 ? 'border-inline-start: 4px solid #ea5455 !important; background-color: rgba(234, 84, 85, 2%) !important;' : ''"
+            >
+              <div class="pa-3">
+                <div class="d-flex justify-space-between align-start mb-2">
+                  <div class="flex-grow-1 pr-2">
+                    <div class="text-sm font-weight-black text-primary text-uppercase leading-tight truncate-2-lines mb-1">
+                      {{ item.name }}
+                    </div>
+                    <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs text-disabled">
+                      <span>{{ item.laboratory?.name || 'S/L' }}</span>
+                      <span>|</span>
+                      <span>{{ item.active_ingredient }}</span>
+                      <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-small" label class="ml-1 text-super-xs">COL</VChip>
+                    </div>
+                  </div>
+                  <div class="text-right d-flex flex-column align-end">
+                    <div 
+                      class="analysis-badge pa-1 px-2 rounded d-flex flex-column align-center"
+                      :class="roundIaAnalysis(item.solicitar) > 0 ? 'bg-success-subtle' : roundIaAnalysis(item.solicitar) < 0 ? 'bg-error-subtle' : 'bg-secondary-subtle'"
+                    >
+                      <span class="text-super-xs font-weight-black text-uppercase opacity-70">Análisis</span>
+                      <span class="text-sm font-weight-black leading-none mt-1">
+                        {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <VDivider class="my-2 border-opacity-10" />
+
+                <div class="grid-mobile-info">
+                  <div class="info-item">
+                    <span class="label">Stock</span>
+                    <span class="value">{{ item.lote_quantity || 0 }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Ventas</span>
+                    <span class="value">{{ item.total_sold_completed || 0 }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Costo Actual</span>
+                    <span class="value text-primary font-weight-bold">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+                  </div>
+                </div>
+
+                <div v-if="item.product_suppliers?.length" class="mt-3 pa-2 bg-var-theme-background rounded d-flex align-center justify-space-between border-dashed-thin">
+                  <div class="d-flex align-center gap-2">
+                    <VIcon icon="tabler-tag" size="14" color="success" />
+                    <span class="text-super-xs font-weight-black text-success text-truncate" style="max-inline-size: 100px;">{{ item.product_suppliers[0].supplier.name }}</span>
+                  </div>
+                  <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}</span>
+                </div>
+              </div>
+            </VCard>
           </div>
-        </VCard>
 
-        <!-- Paginación móvil simple -->
-        <div class="d-flex justify-center mt-2">
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
-            :total-visible="3"
-            density="compact"
-            @update:model-value="emit('update:options', { page: $event, itemsPerPage: props.itemsPerPage })"
-          />
+          <!-- Paginación Móvil -->
+          <div class="d-flex justify-center mt-4">
+            <VPagination
+              :model-value="props.page"
+              :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
+              :total-visible="3"
+              density="compact"
+              size="small"
+              @update:model-value="emit('update:options', { page: $event, itemsPerPage: props.itemsPerPage })"
+            />
+          </div>
+        </template>
+
+        <div v-else class="d-flex flex-column align-center py-12 text-disabled text-center">
+          <VIcon icon="tabler-package-off" size="48" class="mb-3" />
+          <span class="text-body-1 font-weight-medium">No hay productos filtrados</span>
         </div>
-      </template>
-    </div>
+      </div>
+    </VCard>
   </div>
 </template>
 
@@ -230,25 +236,38 @@ const getPriceDiff = (current, offer) => {
   text-transform: uppercase !important;
 }
 
-.row-needs td {
+:deep(.row-needs td) {
   background-color: rgba(var(--v-theme-success), 3%) !important;
 }
 
-.row-excess td {
+:deep(.row-excess td) {
   background-color: rgba(var(--v-theme-error), 3%) !important;
 }
 
-.row-decoration {
-  position: relative;
-  border-inline-start: 4px solid transparent !important;
+.grid-mobile-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
-.row-needs.row-decoration {
-  border-inline-start-color: rgb(var(--v-theme-success)) !important;
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.row-excess.row-decoration {
-  border-inline-start-color: rgb(var(--v-theme-error)) !important;
+.info-item .label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  font-weight: 800;
+  text-align: center;
+}
+
+.info-item .value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .bg-success-subtle {
@@ -270,8 +289,17 @@ const getPriceDiff = (current, offer) => {
   font-size: 0.65rem !important;
 }
 
-.bg-light {
-  background-color: rgba(var(--v-theme-on-surface), 4%);
+.text-super-xs {
+  font-size: 0.6rem !important;
+  line-height: 1;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3);
 }
 
 .leading-tight {
@@ -282,8 +310,12 @@ const getPriceDiff = (current, offer) => {
   line-height: 1;
 }
 
-.gap-y-4 {
-  row-gap: 16px;
+.truncate-2-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 </style>
 

@@ -13,6 +13,7 @@ const sortBy = ref();
 const orderBy = ref();
 
 // Filtros
+const search = ref("");
 const startDate = ref("");
 const endDate = ref("");
 const selectedLaboratory = ref(null);
@@ -21,6 +22,16 @@ const semaphoreFilter = ref(null);
 
 const laboratories = ref([]);
 const groups = ref([]);
+
+const isAdvancedFiltersVisible = ref(false);
+
+const hasActiveAdvancedFilters = computed(() => {
+  return startDate.value || endDate.value || selectedLaboratory.value || selectedGroup.value;
+});
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
 
 const fetchFilters = async () => {
   try {
@@ -43,6 +54,7 @@ const fetchReport = async () => {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    search: search.value,
     start_date: startDate.value,
     end_date: endDate.value,
     laboratory_id: selectedLaboratory.value,
@@ -71,11 +83,13 @@ onMounted(() => {
 });
 
 const handleClearFilters = () => {
+  search.value = "";
   startDate.value = "";
   endDate.value = "";
   selectedLaboratory.value = null;
   selectedGroup.value = null;
   semaphoreFilter.value = null;
+  isAdvancedFiltersVisible.value = false;
 };
 
 // VDataTable Config
@@ -108,7 +122,7 @@ const updateTableOptions = (options) => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, startDate, endDate, selectedLaboratory, selectedGroup, semaphoreFilter],
+  [page, itemsPerPage, sortBy, orderBy, search, startDate, endDate, selectedLaboratory, selectedGroup, semaphoreFilter],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchReport(), 500);
@@ -136,65 +150,160 @@ const formatMoney = (val) => {
 
 <template>
   <div>
-    <h1 class="text-h4 font-weight-bold mb-4">Reporte Margen Real por SKU 💰</h1>
-    <p class="text-body-1 mb-6 text-medium-emphasis">Descubre la rentabilidad real descontando mermas, vencidos y bonificaciones.</p>
+    <h1 class="text-h4 font-weight-bold mb-1">
+      <VIcon icon="tabler-coin" class="me-2 text-primary" />
+      Reporte Margen Real por SKU
+    </h1>
+    <p class="text-body-2 mb-6 text-medium-emphasis">Descubre la rentabilidad real descontando mermas, vencidos y bonificaciones.</p>
     
-    <VCard class="mb-6">
-      <VCardTitle class="pb-0">Filtros de Análisis</VCardTitle>
-      <VCardText>
-        <VRow>
-          <VCol cols="12" md="3">
-            <AppDateTimePicker
-              v-model="startDate"
-              label="Fecha Inicio"
-              placeholder="Seleccionar Fecha"
-            />
-          </VCol>
-          <VCol cols="12" md="3">
-            <AppDateTimePicker
-              v-model="endDate"
-              label="Fecha Fin"
-              placeholder="Seleccionar Fecha"
-            />
-          </VCol>
-          <VCol cols="12" md="3">
-            <AppAutocomplete
-              v-model="selectedLaboratory"
-              :items="laboratories"
-              item-title="name"
-              item-value="id"
-              label="Laboratorio / Proveedor"
-              placeholder="Todos"
+    <!-- Filtros Estandarizados -->
+    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-3">
+        <!-- Barra de Búsqueda Principal (Siempre Visible) -->
+        <VRow align="center" no-gutters class="gap-2">
+          <!-- Buscador SKU/Producto -->
+          <VCol cols="12" md="4" lg="4">
+            <AppTextField
+              v-model="search"
+              placeholder="Buscar por SKU o Nombre..."
+              prepend-inner-icon="tabler-search"
               clearable
+              density="compact"
+              hide-details
+              class="premium-input-compact"
             />
           </VCol>
-          <VCol cols="12" md="3">
+
+          <!-- Filtro Semáforo -->
+          <VCol cols="12" md="3" lg="3">
             <AppSelect
               v-model="semaphoreFilter"
               :items="[{title: '✅ Rentable (>25%)', value: 'verde'}, {title: '⚠️ Medio (10-25%)', value: 'amarillo'}, {title: '🚨 Peligro (<10%)', value: 'rojo'}, {title: '🏴 Pérdidas (<0%)', value: 'negro'}]"
-              label="Semáforo de Rentabilidad"
-              placeholder="Ver todos"
+              placeholder="Estado de Rentabilidad"
+              density="compact"
+              hide-details
               clearable
+              class="premium-select-compact"
+              prepend-inner-icon="tabler-traffic-lights"
             />
           </VCol>
-          <VCol cols="12" class="d-flex justify-end pt-0">
-             <VBtn variant="tonal" color="secondary" @click="handleClearFilters">
-               Limpiar Filtros
-             </VBtn>
-          </VCol>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-1">
+            <!-- Toggle Filtros -->
+            <VBtn
+              icon
+              variant="tonal"
+              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+              size="38"
+              @click="toggleAdvancedFilters"
+            >
+              <VBadge
+                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+                color="error"
+                dot
+                offset-x="2"
+                offset-y="-2"
+              >
+                <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              </VBadge>
+              <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            </VBtn>
+
+            <!-- Aplicar Filtros -->
+            <VBtn
+              icon
+              color="primary"
+              size="38"
+              :loading="loading"
+              @click="fetchReport"
+            >
+              <VIcon icon="tabler-player-play" size="20" />
+              <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+            <!-- Limpiar Filtros (Siempre Visible) -->
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" size="20" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
+          </div>
         </VRow>
+
+        <!-- Panel de Filtros Avanzado -->
+        <VExpandTransition>
+          <div v-show="isAdvancedFiltersVisible">
+            <VDivider class="my-3 border-opacity-10" />
+            
+            <VRow>
+              <VCol cols="12" sm="6" md="4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                  Fecha Inicio
+                </span>
+                <AppDateTimePicker
+                  v-model="startDate"
+                  placeholder="Seleccionar Fecha"
+                  density="compact"
+                  hide-details
+                  class="premium-input-compact"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                  Fecha Fin
+                </span>
+                <AppDateTimePicker
+                  v-model="endDate"
+                  placeholder="Seleccionar Fecha"
+                  density="compact"
+                  hide-details
+                  class="premium-input-compact"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                  Laboratorio / Proveedor
+                </span>
+                <AppAutocomplete
+                  v-model="selectedLaboratory"
+                  :items="laboratories"
+                  item-title="name"
+                  item-value="id"
+                  placeholder="Todos"
+                  clearable
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="premium-select-compact"
+                />
+              </VCol>
+            </VRow>
+          </div>
+        </VExpandTransition>
       </VCardText>
     </VCard>
 
-    <VCard>
+    <VCard class="border-0 shadow-sm overflow-hidden">
       <VDataTableServer
-        :items-per-page="itemsPerPage"
-        :page="page"
+        v-model:items-per-page="itemsPerPage"
+        v-model:page="page"
         :headers="headers"
         :items="skus"
         :items-length="totalItems"
         :loading="loading"
-        class="text-no-wrap"
+        class="premium-table rounded-lg"
         @update:options="updateTableOptions"
       >
         <template #item.product_name="{ item }">

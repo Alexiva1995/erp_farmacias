@@ -1,4 +1,5 @@
 <script setup>
+import ResignationFilters from "@/components/ResignationFilters.vue";
 import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
 import { toast } from "@/plugins/sweetalert";
 import axios from "@/plugins/axios";
@@ -12,7 +13,6 @@ const { mobile } = useDisplay();
 const loading = ref(false);
 const resignations = ref([]);
 const search = ref("");
-const isFilterVisible = ref(false);
 
 // Filtros avanzados
 const filters = ref({
@@ -63,7 +63,6 @@ const fetchResignations = async () => {
     const { data } = response;
 
     if (data.success) {
-      // Intentar extraer de data.data o directamente de data
       resignations.value = data.data || [];
     } else {
       toast.error("Error en la respuesta del servidor");
@@ -76,14 +75,15 @@ const fetchResignations = async () => {
   }
 };
 
-// Watchers para recarga automática
-watch([search, filters], () => {
-  fetchResignations();
-}, { deep: true });
-
-onMounted(() => {
-  fetchResignations();
-});
+const handleClearFilters = () => {
+  search.value = "";
+  filters.value = {
+    resignation_type: null,
+    date_from: null,
+    date_to: null,
+    status: null,
+  };
+};
 
 const openToggleConfirmDialog = (employeeId, currentStatus, employeeName) => {
   employeeToToggle.value = {
@@ -106,10 +106,7 @@ const confirmToggleStatus = async () => {
       `Empleado ${newStatus.value ? "activado" : "desactivado"} exitosamente`
     );
 
-    // Actualizar la lista
     fetchResignations();
-
-    // Cerrar modal
     showConfirmDialog.value = false;
     employeeToToggle.value = null;
     newStatus.value = null;
@@ -136,7 +133,6 @@ const downloadResignationPDF = async (resignation) => {
       }
     );
 
-    // Crear y descargar archivo PDF
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -162,17 +158,13 @@ const editResignation = async (resignation) => {
       html: `
         <div class="text-left">
           <p><strong>Empleado:</strong> ${resignation.employee_name}</p>
-          <p><strong>Identificación:</strong> ${
-            resignation.employee_identification
-          }</p>
+          <p><strong>Identificación:</strong> ${resignation.employee_identification}</p>
           <p><strong>Tipo:</strong> ${
             resignation.resignation_type === "voluntary"
               ? "Renuncia Voluntaria"
               : "Despido Injustificado"
           }</p>
-          <p><strong>Fecha Efectiva:</strong> ${formatDate(
-            resignation.effective_date
-          )}</p>
+          <p><strong>Fecha Efectiva:</strong> ${formatDate(resignation.effective_date)}</p>
         </div>
         <p class="mt-3">¿Desea editar esta carta de renuncia?</p>
       `,
@@ -186,13 +178,9 @@ const editResignation = async (resignation) => {
     });
 
     if (confirmed.isConfirmed) {
-      // Obtener los datos de la renuncia existente
-      const response = await axios.get(
-        `/rrhh/resignations/${resignation.id}/edit`
-      );
+      const response = await axios.get(`/rrhh/resignations/${resignation.id}/edit`);
 
       if (response.data.success) {
-        // Configurar para edición
         selectedEmployeeForResignation.value = {
           id: resignation.employee_id,
           name: resignation.employee_name.split(" ")[0],
@@ -221,17 +209,13 @@ const deleteResignation = async (resignation) => {
       html: `
         <div class="text-left">
           <p><strong>Empleado:</strong> ${resignation.employee_name}</p>
-          <p><strong>Identificación:</strong> ${
-            resignation.employee_identification
-          }</p>
+          <p><strong>Identificación:</strong> ${resignation.employee_identification}</p>
           <p><strong>Tipo:</strong> ${
             resignation.resignation_type === "voluntary"
               ? "Renuncia Voluntaria"
               : "Despido Injustificado"
           }</p>
-          <p><strong>Fecha Efectiva:</strong> ${formatDate(
-            resignation.effective_date
-          )}</p>
+          <p><strong>Fecha Efectiva:</strong> ${formatDate(resignation.effective_date)}</p>
         </div>
         <div class="alert alert-warning mt-3" style="background-color: transparent; border: 2px solid #ffc107; padding: 10px; border-radius: 5px; color: #ffc107;">
           <strong>⚠️ Advertencia:</strong> Esta acción eliminará la carta de renuncia. El empleado seguirá activo en el sistema.
@@ -249,28 +233,23 @@ const deleteResignation = async (resignation) => {
 
     if (confirmed.isConfirmed) {
       await axios.delete(`/rrhh/resignations/${resignation.id}`);
-
       toast.success("Renuncia eliminada exitosamente");
-      fetchResignations(); // Recargar la lista
+      fetchResignations();
     }
   } catch (error) {
     toast.error("No se pudo eliminar la renuncia");
   }
 };
 
-// Función para formatear fechas
 const formatDate = (dateString) => {
   if (!dateString) return "";
-
   const date = new Date(dateString);
   const day = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const year = date.getFullYear();
-
   return `${day}/${month}/${year}`;
 };
 
-// Función para manejar cuando se genera una renuncia (nueva o editada)
 const handleResignationGenerated = () => {
   showResignationDialog.value = false;
   isEditingResignation.value = false;
@@ -279,93 +258,26 @@ const handleResignationGenerated = () => {
   fetchResignations();
 };
 
-// El onMounted original será removido al final del script
+watch([search, filters], () => {
+  fetchResignations();
+}, { deep: true });
+
+onMounted(() => {
+  fetchResignations();
+});
 </script>
 
 <template>
   <div class="resignations-page pa-4">
     <!-- Barra de Búsqueda y Filtros -->
-    <VCard class="rounded-xl border-0 shadow-sm mb-6 overflow-hidden">
-      <VCardText class="pa-4">
-        <div class="d-flex align-center gap-3">
-          <AppTextField
-            v-model="search"
-            placeholder="Buscar por nombre o identificación..."
-            prepend-inner-icon="tabler-search"
-            class="flex-grow-1 premium-input-compact"
-            density="compact"
-            hide-details
-          />
-          <VBtn
-            :color="isFilterVisible ? 'primary' : 'secondary'"
-            variant="tonal"
-            class="rounded-lg px-6 font-weight-black"
-            @click="isFilterVisible = !isFilterVisible"
-          >
-            <VIcon start icon="tabler-filter" size="18" />
-            FILTROS
-            <VIcon end :icon="isFilterVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
-          </VBtn>
-        </div>
+    <ResignationFilters
+      v-model:search="search"
+      v-model:filters="filters"
+      @clear="handleClearFilters"
+    />
 
-        <VExpandTransition>
-          <div v-show="isFilterVisible">
-            <VDivider class="my-4 border-dashed opacity-30" />
-            <VRow>
-              <VCol cols="12" sm="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Tipo de Egreso</span>
-                <VSelect
-                  v-model="filters.resignation_type"
-                  :items="[
-                    { title: 'Todos', value: null },
-                    { title: 'Renuncia Voluntaria', value: 'voluntary' },
-                    { title: 'Despido Injustificado', value: 'unjustified_dismissal' }
-                  ]"
-                  placeholder="Seleccionar tipo"
-                  density="compact"
-                  hide-details
-                  class="premium-input-compact"
-                />
-              </VCol>
-              <VCol cols="12" sm="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha Desde</span>
-                <AppTextField
-                  v-model="filters.date_from"
-                  type="date"
-                  density="compact"
-                  hide-details
-                  class="premium-input-compact"
-                />
-              </VCol>
-              <VCol cols="12" sm="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha Hasta</span>
-                <AppTextField
-                  v-model="filters.date_to"
-                  type="date"
-                  density="compact"
-                  hide-details
-                  class="premium-input-compact"
-                />
-              </VCol>
-            </VRow>
-            <div class="d-flex justify-end mt-4">
-              <VBtn 
-                variant="text" 
-                color="secondary" 
-                size="small" 
-                class="font-weight-black" 
-                @click="filters = { resignation_type: null, date_from: null, date_to: null, status: null }"
-              >
-                LIMPIAR FILTROS
-              </VBtn>
-            </div>
-          </div>
-        </VExpandTransition>
-      </VCardText>
-    </VCard>
-
-    <!-- Contenido Principal: Tabla o Tarjetas Móviles -->
-    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden">
+    <!-- Listado: Tabla o Cards -->
+    <VCard class="rounded-lg border-0 shadow-sm overflow-hidden">
       <!-- Vista de Escritorio: Tabla Premium -->
       <VDataTable
         v-if="!mobile"
@@ -374,16 +286,17 @@ const handleResignationGenerated = () => {
         :loading="loading"
         :items-per-page="10"
         class="premium-table text-no-wrap"
+        density="compact"
       >
         <!-- Empleado -->
         <template #item.employee_name="{ item }">
           <div class="d-flex align-center gap-3 py-2">
-            <VAvatar color="primary" variant="tonal" size="32" class="rounded font-weight-black text-super-xs">
+            <VAvatar color="primary" variant="tonal" size="32" class="rounded font-weight-black text-xs">
               {{ item.employee_name.charAt(0) }}
             </VAvatar>
             <div class="d-flex flex-column">
               <span class="text-xs font-weight-black text-high-emphasis">{{ item.employee_name }}</span>
-              <span class="text-super-xs text-disabled">{{ item.employee_position || 'Cargo no especificado' }}</span>
+              <span class="text-xs text-disabled">{{ item.employee_position || 'Cargo no especificado' }}</span>
             </div>
           </div>
         </template>
@@ -458,10 +371,10 @@ const handleResignationGenerated = () => {
 
       <!-- Vista Móvil: Cards Premium -->
       <div v-else class="pa-4 bg-light">
-        <VRow>
+        <VRow dense>
           <VCol v-for="item in resignations" :key="item.id" cols="12">
-            <VCard class="rounded-xl border shadow-sm mb-4 overflow-hidden">
-              <div class="pa-4 border-b d-flex justify-space-between align-center">
+            <VCard class="rounded-lg border shadow-sm mb-2 overflow-hidden">
+              <div class="pa-3 border-b d-flex justify-space-between align-center">
                 <div class="d-flex align-center gap-3">
                   <VAvatar color="primary" variant="tonal" size="40" class="rounded font-weight-black">
                     {{ item.employee_name.charAt(0) }}
@@ -480,9 +393,9 @@ const handleResignationGenerated = () => {
                   {{ item.employee_status.toUpperCase() }}
                 </VChip>
               </div>
-              <VCardText class="pa-4">
+              <VCardText class="pa-3">
                 <div class="d-flex justify-space-between mb-2">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">Tipo de Egreso</span>
+                  <span class="text-xs font-weight-black text-disabled uppercase">Tipo de Egreso</span>
                   <VChip
                     :color="item.resignation_type === 'voluntary' ? 'success' : 'warning'"
                     size="x-small"
@@ -492,12 +405,12 @@ const handleResignationGenerated = () => {
                     {{ item.resignation_type === "voluntary" ? "JUSTIFICADA" : "INJUSTIFICADA" }}
                   </VChip>
                 </div>
-                <div class="d-flex justify-space-between mb-4">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">Fecha Efectiva</span>
+                <div class="d-flex justify-space-between mb-3">
+                  <span class="text-xs font-weight-black text-disabled uppercase">Fecha Efectiva</span>
                   <span class="text-xs font-weight-black text-high-emphasis tabular-nums">{{ formatDate(item.effective_date) }}</span>
                 </div>
                 
-                <VDivider class="border-dashed mb-4" />
+                <VDivider class="border-opacity-10 mb-3" />
                 
                 <div class="d-flex gap-2">
                   <VBtn block color="primary" variant="tonal" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="downloadResignationPDF(item)">
@@ -538,60 +451,58 @@ const handleResignationGenerated = () => {
 
     <!-- Modal de Confirmación -->
     <VDialog v-model="showConfirmDialog" max-width="500px" persistent>
-      <VCard>
-        <VCardTitle class="d-flex align-center">
+      <VCard class="rounded-lg overflow-hidden">
+        <VCardTitle class="d-flex align-center pa-4">
           <VIcon
             :icon="newStatus ? 'tabler-user-plus' : 'tabler-user-minus'"
             :color="newStatus ? 'success' : 'error'"
-            class="me-2"
+            class="me-3"
           />
-          <span class="headline">
+          <span class="text-h6 font-weight-black">
             {{ newStatus ? "Activar Empleado" : "Desactivar Empleado" }}
           </span>
         </VCardTitle>
 
         <VDivider />
 
-        <VCardText class="pt-4">
-          <div class="text-body-1 mb-4">
-            <strong>{{ employeeToToggle?.name }}</strong>
+        <VCardText class="pt-4 pa-4">
+          <div class="text-sm font-weight-black text-primary mb-4">
+            {{ employeeToToggle?.name }}
           </div>
 
-          <div v-if="newStatus" class="text-body-2">
-            <VIcon icon="tabler-info-circle" color="success" class="me-2" />
-            <strong>¿Está seguro de que desea activar este empleado?</strong>
+          <div v-if="newStatus" class="text-sm font-weight-medium">
+            <VIcon icon="tabler-info-circle" color="success" class="me-2" size="18" />
+            ¿Está seguro de que desea activar este empleado?
           </div>
 
-          <div v-else class="text-body-2">
-            <VIcon icon="tabler-info-circle" color="error" class="me-2" />
-            <strong>¿Está seguro de que desea desactivar este empleado?</strong>
+          <div v-else class="text-sm font-weight-medium">
+            <VIcon icon="tabler-info-circle" color="error" class="me-2" size="18" />
+            ¿Está seguro de que desea desactivar este empleado?
           </div>
 
           <VAlert
             :color="newStatus ? 'success' : 'error'"
             variant="tonal"
-            class="mt-4"
+            class="mt-4 rounded-lg"
           >
             <template #prepend>
               <VIcon :icon="newStatus ? 'tabler-eye' : 'tabler-eye-off'" />
             </template>
 
             <div v-if="newStatus">
-              <strong
-                >El empleado volverá a aparecer en la lista de empleados
-                activos</strong
+              <strong class="text-xs font-weight-black uppercase"
+                >El empleado volverá a aparecer en la lista</strong
               >
-              <div class="text-body-2 mt-1">
+              <div class="text-xs mt-1">
                 Podrá acceder al sistema y realizar sus funciones normalmente.
               </div>
             </div>
 
             <div v-else>
-              <strong
-                >El empleado ya no aparecerá en la lista de empleados
-                activos</strong
+              <strong class="text-xs font-weight-black uppercase"
+                >El empleado ya no aparecerá en la lista</strong
               >
-              <div class="text-body-2 mt-1">
+              <div class="text-xs mt-1">
                 No podrá acceder al sistema hasta que sea reactivado.
               </div>
             </div>
@@ -603,22 +514,23 @@ const handleResignationGenerated = () => {
         <VCardActions class="pa-4">
           <VBtn
             color="secondary"
-            variant="outlined"
+            variant="tonal"
             @click="cancelToggleStatus"
-            class="flex-grow-1"
+            class="flex-grow-1 rounded-lg font-weight-black"
           >
-            <VIcon icon="tabler-x" class="me-2" />
+            <VIcon icon="tabler-x" class="me-2" size="18" />
             Cancelar
           </VBtn>
           <VBtn
             :color="newStatus ? 'success' : 'error'"
             variant="flat"
             @click="confirmToggleStatus"
-            class="flex-grow-1"
+            class="flex-grow-1 rounded-lg font-weight-black"
           >
             <VIcon
-              :icon="newStatus ? 'tabler-check' : 'tabler-check'"
+              icon="tabler-check"
               class="me-2"
+              size="18"
             />
             {{ newStatus ? "Activar" : "Desactivar" }}
           </VBtn>
@@ -661,13 +573,12 @@ const handleResignationGenerated = () => {
   background: transparent !important;
 
   thead {
-    background: rgba(var(--v-theme-on-surface), 0.02);
-
     th {
-      background: transparent !important;
-      block-size: 48px !important;
+      color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+      font-size: 0.75rem !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-      color: rgb(var(--v-theme-disabled)) !important;
     }
   }
 
@@ -679,7 +590,6 @@ const handleResignationGenerated = () => {
     }
 
     td {
-      block-size: 56px !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
     }
   }
@@ -708,10 +618,6 @@ const handleResignationGenerated = () => {
   box-shadow:
     0 2px 12px -4px rgba(var(--v-shadow-key-umbra-opacity), 0.08),
     0 4px 20px -2px rgba(var(--v-shadow-key-penumbra-opacity), 0.04) !important;
-}
-
-.border-dashed {
-  border-style: dashed !important;
 }
 
 :deep(.v-data-table-footer) {

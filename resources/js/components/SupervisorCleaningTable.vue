@@ -95,13 +95,8 @@ const canReview = (item) => {
 
 const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
-
-  const cleanPath = photoPath.startsWith("/")
-    ? photoPath.substring(1)
-    : photoPath;
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-  return `${baseUrl}/storage/${cleanPath}`;
+  const baseUrl = import.meta.env.VITE_API_URL;
+  return `${baseUrl}/storage/${photoPath}`;
 };
 
 const getEmployeeInitials = (name) => {
@@ -114,20 +109,13 @@ const getEmployeeInitials = (name) => {
 };
 
 const getEmployeeColor = (employeeId) => {
-  const colors = [
-    "primary",
-    "secondary",
-    "success",
-    "info",
-    "warning",
-    "error",
-  ];
+  const colors = ["primary", "secondary", "success", "info", "warning", "error"];
   return colors[employeeId % colors.length];
 };
 </script>
 
 <template>
-  <VCard>
+  <VCard class="border-0 shadow-sm overflow-hidden">
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -135,23 +123,20 @@ const getEmployeeColor = (employeeId) => {
       :items="props.executions"
       :items-length="props.totalRecords"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="premium-table text-no-wrap"
+      density="compact"
       @update:options="(options) => emit('update:options', options)"
     >
       <!-- Empleado -->
       <template #item.employee_name="{ item }">
-        <div class="d-flex align-center gap-3">
-          <VAvatar
-            :color="getEmployeeColor(item.employee_id)"
-            size="38"
-            variant="tonal"
-          >
-            <span class="text-sm font-weight-medium">
+        <div class="d-flex align-center gap-3 py-2">
+          <VAvatar :color="getEmployeeColor(item.employee_id)" size="34" variant="tonal" class="rounded">
+            <span class="text-super-xs font-weight-black">
               {{ getEmployeeInitials(item.employee_name) }}
             </span>
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-body-1 font-weight-medium text-high-emphasis">
+            <span class="text-xs font-weight-black text-high-emphasis leading-tight">
               {{ item.employee_name }}
             </span>
           </div>
@@ -160,13 +145,13 @@ const getEmployeeColor = (employeeId) => {
 
       <!-- Actividad -->
       <template #item.activity_name="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-body-1 font-weight-medium">
+        <div class="d-flex flex-column py-1">
+          <span class="text-xs font-weight-black leading-tight">
             {{ item.activity_name }}
           </span>
           <!-- Mostrar razón de rechazo si existe -->
-          <span v-if="item.rejection_reason" class="text-xs text-error mt-1">
-            <VIcon icon="tabler-alert-circle" size="12" class="me-1" />
+          <span v-if="item.rejection_reason" class="text-super-xs text-error mt-1 font-weight-black">
+            <VIcon icon="tabler-alert-circle" size="10" class="me-1" />
             Motivo: {{ item.rejection_reason }}
           </span>
         </div>
@@ -175,12 +160,12 @@ const getEmployeeColor = (employeeId) => {
       <!-- Descripción -->
       <template #item.description="{ item }">
         <VTooltip location="top" max-width="300">
-          <template #activator="{ props: tooltipProps }">
-            <span v-bind="tooltipProps" class="text-sm text-medium-emphasis">
+          <template #activator="{ props: tp }">
+            <span v-bind="tp" class="text-xs text-medium-emphasis">
               {{
                 item.description
-                  ? item.description.length > 50
-                    ? item.description.substring(0, 50) + "..."
+                  ? item.description.length > 40
+                    ? item.description.substring(0, 40) + "..."
                     : item.description
                   : "Sin descripción"
               }}
@@ -192,46 +177,35 @@ const getEmployeeColor = (employeeId) => {
 
       <!-- Frecuencia -->
       <template #item.frequency="{ item }">
-        <VChip
-          :color="getFrequencyColor(item.frequency)"
-          size="small"
-          variant="tonal"
-        >
-          {{ item.frequency }}
+        <VChip :color="getFrequencyColor(item.frequency)" size="x-small" variant="tonal" class="rounded font-weight-black px-2">
+          {{ item.frequency.toUpperCase() }}
         </VChip>
       </template>
 
       <!-- Estado -->
       <template #item.status="{ item }">
-        <VChip
-          :color="getStatusColor(item.status)"
-          size="small"
-          variant="tonal"
-        >
-          <VIcon :icon="getStatusIcon(item.status)" size="14" class="me-1" />
-          {{ item.status }}
+        <VChip :color="getStatusColor(item.status)" size="x-small" variant="tonal" class="rounded font-weight-black px-2">
+          <VIcon :icon="getStatusIcon(item.status)" size="12" class="me-1" />
+          {{ item.status.toUpperCase() }}
         </VChip>
       </template>
 
       <!-- Fecha Límite -->
       <template #item.due_date="{ item }">
-        <span class="text-sm">
+        <span class="text-xs font-weight-black tabular-nums">
           {{ formatDate(item.due_date) }}
         </span>
       </template>
 
       <!-- Fecha Completada -->
       <template #item.completed_date="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-sm font-weight-medium">
+        <div class="d-flex flex-column py-1">
+          <span class="text-xs font-weight-black tabular-nums">
             {{ formatDateTime(item.completed_date) }}
           </span>
           <!-- Mostrar aprobador si existe -->
-          <span
-            v-if="item.approved_by && item.status === 'Completada'"
-            class="text-xs text-success mt-1"
-          >
-            <VIcon icon="tabler-user-check" size="12" class="me-1" />
+          <span v-if="item.approved_by && item.status === 'Completada'" class="text-super-xs text-success mt-1 font-weight-black">
+            <VIcon icon="tabler-user-check" size="10" class="me-1" />
             Por: {{ item.approved_by }}
           </span>
         </div>
@@ -240,168 +214,122 @@ const getEmployeeColor = (employeeId) => {
       <!-- Evidencia (Foto) -->
       <template #item.photo="{ item }">
         <div v-if="item.photo" class="d-flex justify-center">
-          <VMenu location="start">
+          <VMenu open-on-hover transition="scale-transition">
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
                 icon
                 variant="text"
-                size="small"
-                :color="item.status === 'Procesada' ? 'primary' : 'default'"
+                size="32"
+                :color="item.status === 'Procesada' ? 'primary' : 'secondary'"
+                class="rounded-lg"
               >
-                <VIcon icon="tabler-photo" size="20" />
-                <VTooltip activator="parent" location="top">
-                  Ver foto de evidencia
-                </VTooltip>
+                <VIcon icon="tabler-photo" size="18" />
+                <VTooltip activator="parent" location="top">Ver evidencia</VTooltip>
               </VBtn>
             </template>
-            <VCard max-width="500">
-              <VCardTitle
-                class="d-flex align-center justify-space-between pa-3"
-              >
-                <span class="text-body-1">Evidencia Fotográfica</span>
-                <VBtn
-                  icon
-                  variant="text"
-                  size="small"
-                  :href="getPhotoUrl(item.photo)"
-                  target="_blank"
-                >
-                  <VIcon icon="tabler-external-link" />
-                </VBtn>
-              </VCardTitle>
-              <VDivider />
-              <VImg
-                :src="getPhotoUrl(item.photo)"
-                cover
-                max-height="400"
-                class="bg-grey-lighten-2"
-              >
+            <VCard class="rounded-lg shadow-xl overflow-hidden" max-width="300">
+              <VImg :src="getPhotoUrl(item.photo)" cover aspect-ratio="1" class="bg-grey-lighten-2">
                 <template #error>
-                  <div
-                    class="d-flex flex-column align-center justify-center fill-height text-error pa-4"
-                  >
-                    <VIcon icon="tabler-photo-off" size="48" class="mb-2" />
-                    <span class="text-xs text-center"
-                      >No se pudo cargar la imagen</span
-                    >
+                  <div class="d-flex align-center justify-center fill-height text-error">
+                    <VIcon icon="tabler-photo-off" size="32" />
                   </div>
                 </template>
               </VImg>
-              <VDivider />
-              <VCardText v-if="item.notes" class="pa-3">
-                <div class="text-xs text-disabled mb-1">
-                  Notas del empleado:
-                </div>
-                <div class="text-sm">{{ item.notes }}</div>
-              </VCardText>
+              <VCardActions class="pa-2 bg-surface">
+                <VBtn
+                  block
+                  size="x-small"
+                  color="primary"
+                  variant="tonal"
+                  class="rounded-lg font-weight-black"
+                  :href="getPhotoUrl(item.photo)"
+                  target="_blank"
+                >
+                  <VIcon start icon="tabler-external-link" size="14" />
+                  Ampliar
+                </VBtn>
+              </VCardActions>
             </VCard>
           </VMenu>
         </div>
-        <div v-else class="d-flex justify-center">
-          <VTooltip location="top">
-            <template #activator="{ props: tooltipProps }">
-              <VIcon
-                v-bind="tooltipProps"
-                icon="tabler-photo-off"
-                size="20"
-                color="grey"
-              />
-            </template>
-            Sin evidencia
-          </VTooltip>
+        <div v-else class="d-flex justify-center opacity-30">
+          <VIcon icon="tabler-photo-off" size="18" color="grey" />
         </div>
       </template>
 
       <!-- Acciones -->
       <template #item.actions="{ item }">
         <div class="d-flex gap-1 justify-center">
-          <!-- Botón Revisar (solo si está Procesada) -->
-          <VBtn
-            v-if="canReview(item)"
-            size="small"
-            color="primary"
-            variant="elevated"
-            prepend-icon="tabler-eye-check"
-            @click="emit('review', item)"
-          >
-            Revisar
-          </VBtn>
-
-          <!-- Estado si ya fue revisada -->
-          <VBtn
-            v-else-if="item.status === 'Completada'"
-            size="small"
-            color="success"
-            variant="tonal"
-            disabled
-          >
-            <VIcon icon="tabler-check" size="16" class="me-1" />
-            Aprobada
-          </VBtn>
-
-          <VBtn
-            v-else-if="item.status === 'Vencida'"
-            size="small"
-            color="error"
-            variant="tonal"
-            disabled
-          >
-            <VIcon icon="tabler-alert-triangle" size="16" class="me-1" />
-            Vencida
-          </VBtn>
-
-          <VBtn
-            v-else-if="item.status === 'Cancelada'"
-            size="small"
-            color="secondary"
-            variant="tonal"
-            disabled
-          >
-            <VIcon icon="tabler-x" size="16" class="me-1" />
-            Cancelada
-          </VBtn>
-
-          <!-- Ver detalles (siempre disponible) -->
-          <IconBtn @click="emit('review', item)">
-            <VIcon icon="tabler-info-circle" />
-            <VTooltip activator="parent" location="top">
-              Ver Detalles
-            </VTooltip>
-          </IconBtn>
-        </div>
-      </template>
-
-      <!-- Mensaje cuando no hay datos -->
-      <template #no-data>
-        <div class="text-center py-8">
-          <VIcon icon="tabler-clipboard-off" size="64" color="grey-lighten-1" />
-          <div class="text-body-1 text-disabled mt-3">
-            No hay actividades para revisar
-          </div>
-          <div class="text-sm text-disabled">
-            Ajusta los filtros para ver más resultados
-          </div>
+          <VTooltip text="Revisar Actividad" location="top">
+            <template #activator="{ props: tp }">
+              <VBtn
+                v-bind="tp"
+                icon="tabler-eye-check"
+                variant="text"
+                :color="canReview(item) ? 'primary' : 'info'"
+                size="32"
+                class="rounded-lg"
+                @click="emit('review', item)"
+              />
+            </template>
+          </VTooltip>
         </div>
       </template>
 
       <!-- Paginación -->
       <template #bottom>
-        <VDivider />
-        <div class="d-flex justify-space-between align-center pa-4">
-          <div class="text-sm text-disabled">
-            Mostrando {{ props.executions.length }} de
-            {{ props.totalRecords }} registros
-          </div>
+        <VDivider class="opacity-10" />
+        <div class="d-flex align-center justify-space-between pa-4">
+          <span class="text-super-xs text-disabled font-weight-bold uppercase">
+            Total: {{ props.totalRecords }} registros
+          </span>
           <VPagination
             :model-value="props.page"
             :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
-            @update:model-value="
-              (newPage) => emit('update:options', { ...props, page: newPage })
-            "
+            size="small"
+            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
           />
         </div>
       </template>
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.premium-table) {
+  background: transparent !important;
+
+  thead th {
+    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  }
+
+  tbody tr {
+    transition: background-color 0.2s ease;
+    &:hover {
+      background-color: rgba(var(--v-theme-primary), 0.02) !important;
+    }
+    td {
+      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+    }
+  }
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.leading-tight {
+  line-height: 1.2;
+}
+
+.opacity-30 {
+  opacity: 0.3;
+}
+</style>

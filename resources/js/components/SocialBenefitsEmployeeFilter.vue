@@ -25,71 +25,74 @@ const hasActiveAdvancedFilters = computed(() => {
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border-1 border-opacity-10 shadow-sm overflow-visible">
-    <VCardText class="pa-4">
-      <VRow align="center" no-gutters>
+  <VCard class="mb-6 border-0 shadow-sm overflow-visible">
+    <VCardText class="pa-3">
+      <VRow align="center" no-gutters class="gap-2 px-2">
         <!-- Buscador Principal -->
-        <VCol cols="12" md="6" class="pe-md-4 mb-3 mb-md-0">
+        <VCol cols="12" sm="5" md="4" lg="4">
           <AppTextField
             v-model="search"
-            placeholder="BUSCAR POR NOMBRE, CÉDULA O CORREO..."
+            placeholder="BUSCAR EMPLEADO..."
             variant="outlined"
             density="compact"
             hide-details
             prepend-inner-icon="tabler-search"
-            class="premium-input-compact"
+            class="premium-input shadow-sm"
             clearable
           />
         </VCol>
 
-        <!-- Botones de Acción -->
-        <VCol cols="12" md="6" class="d-flex align-center gap-2">
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
+            icon
             variant="tonal"
-            color="secondary"
-            class="rounded-lg h-38"
-            :class="{ 'bg-primary-lighten-5 text-primary': isAdvancedFiltersVisible }"
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
+            class="shadow-sm"
             @click="toggleAdvancedFilters"
           >
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             <VBadge
-              v-if="hasActiveAdvancedFilters"
+              v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
               dot
               color="error"
-              offset-x="-2"
-              offset-y="-2"
-            >
-              <VIcon icon="tabler-filter" class="me-2" />
-            </VBadge>
-            <VIcon v-else icon="tabler-filter" class="me-2" />
-            Filtros
+              offset-x="3"
+              offset-y="-3"
+            />
           </VBtn>
 
+          <VDivider
+            vertical
+            class="mx-1 my-2"
+          />
+
+          <!-- Limpiar Filtros -->
           <VBtn
-            v-if="search || hasActiveAdvancedFilters"
-            variant="tonal"
+            icon
+            variant="text"
             color="secondary"
-            icon="tabler-eraser"
-            class="rounded-lg h-38"
+            size="38"
+            :disabled="!search && !hasActiveAdvancedFilters"
             @click="emit('clear')"
           >
             <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
-
-          <VSpacer />
-
-          <!-- Aquí podrían ir acciones globales de RRHH si fueran necesarias -->
-        </VCol>
+        </div>
       </VRow>
 
       <!-- Panel de Filtros Avanzados (Expandible) -->
       <VExpandTransition>
         <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-4 border-dashed" />
-          <VRow dense>
+          <VDivider class="my-3 border-opacity-10" />
+          <VRow dense class="px-2 pb-2">
             <VCol cols="12">
               <div class="text-caption text-disabled italic pa-2">
-                Más opciones de filtrado próximamente (por departamento, estado de liquidación, etc.)
+                Opciones adicionales de filtrado (departamento, estado, etc.) estarán disponibles en próximas actualizaciones.
               </div>
             </VCol>
           </VRow>
@@ -100,45 +103,37 @@ const hasActiveAdvancedFilters = computed(() => {
 </template>
 
 <style scoped>
-.premium-input-compact :deep(.v-field__outline) {
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow-primary-sm {
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.2) !important;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+.premium-input :deep(.v-field__outline) {
   --v-field-border-opacity: 0.15 !important;
   color: rgba(var(--v-border-color), 1) !important;
 }
 
-.premium-input-compact :deep(.v-field--focused .v-field__outline) {
+.premium-input :deep(.v-field--focused .v-field__outline) {
   --v-field-border-opacity: 1 !important;
   color: rgb(var(--v-theme-primary)) !important;
 }
 
-.premium-input-compact :deep(.v-field) {
-  border-radius: 10px !important;
-  min-height: 38px !important;
+.premium-input :deep(.v-field) {
+  border-radius: 8px !important;
   background-color: white !important;
 }
 
-.premium-input-compact :deep(.v-field__input) {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+.premium-input :deep(.v-field__input),
+.premium-input :deep(.v-select__selection),
+.premium-input :deep(.v-select__selection-text) {
   font-size: 0.75rem !important;
   font-weight: 700;
-  min-height: 38px !important;
   text-transform: uppercase;
-}
-
-.h-38 {
-  height: 38px !important;
-}
-
-.shadow-sm {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
-
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.4;
-}
-
-.gap-2 {
-  gap: 8px !important;
 }
 </style>

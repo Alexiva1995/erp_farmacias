@@ -275,66 +275,7 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <VContainer fluid class="pa-6">
-    <!-- Header Premium -->
-    <div class="premium-header mb-8 rounded-xl overflow-hidden shadow-sm">
-      <div class="header-gradient pa-8 relative-content">
-        <div class="d-flex align-center gap-4">
-          <VAvatar color="white" variant="flat" size="56" class="shadow-sm rounded-xl">
-            <VIcon icon="tabler-robot" color="primary" size="32" />
-          </VAvatar>
-          <div>
-            <div class="text-caption text-white opacity-80 font-weight-bold text-uppercase tracking-wider mb-1">
-              Suministros • Inteligencia Artificial
-            </div>
-            <h1 class="text-h3 font-weight-black text-white leading-none">Asistente de Pedidos</h1>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- KPIs Globales Premium -->
-    <VRow class="mb-8 overflow-hidden">
-      <VCol v-for="kpi in [
-        { title: 'Necesitan Reposición', value: kpiGlobal.necesitan, icon: 'tabler-alert-triangle', color: 'error', desc: 'Productos bajo stock' },
-        { title: 'Exceso de Stock', value: kpiGlobal.exceso, icon: 'tabler-package', color: 'warning', desc: 'Optimización requerida' },
-        { title: 'Stock Óptimo', value: kpiGlobal.ok, icon: 'tabler-circle-check', color: 'success', desc: 'Inventario saludable' }
-      ]" :key="kpi.title" cols="12" sm="4">
-        <VCard class="stats-card h-full rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
-          <!-- Decoración de fondo -->
-          <div class="card-bg-decoration">
-            <VIcon :icon="kpi.icon" />
-          </div>
-
-          <VCardText class="pa-5 relative-content">
-            <div class="d-flex align-center justify-space-between mb-4">
-              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                <VIcon :icon="kpi.icon" size="26" />
-              </VAvatar>
-
-              <div class="text-right">
-                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">{{ kpi.title }}</span>
-                <h4 class="text-h4 font-weight-black mt-1" :class="`text-${kpi.color}`">
-                  <template v-if="loadingStats">
-                    <VProgressCircular size="24" width="3" indeterminate :color="kpi.color" />
-                  </template>
-                  <template v-else>{{ kpi.value }}</template>
-                </h4>
-              </div>
-            </div>
-
-            <VDivider class="mb-3 opacity-20" />
-
-            <div class="d-flex align-center justify-space-between">
-              <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
-              <VIcon icon="tabler-trending-up" size="16" :color="kpi.color" class="opacity-50" />
-            </div>
-          </VCardText>
-          <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${kpi.color}))` }"></div>
-        </VCard>
-      </VCol>
-    </VRow>
-
+  <div>
     <!-- Filtros -->
     <SupplierIaOrderAssistantReportFilter
       v-model:selectProducts="selectProducts"
@@ -361,64 +302,9 @@ onMounted(async () => {
       :page="page"
       @update:options="updateTableOptionsTable"
     />
-  </VContainer>
+  </div>
 </template>
 
 <style scoped>
-.header-gradient {
-  position: relative;
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2c3e50 100%);
-}
-
-.premium-header {
-  position: relative;
-}
-
-.stats-card {
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.stats-card:hover {
-  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 15%) !important;
-  transform: translateY(-4px);
-}
-
-.card-bg-decoration {
-  position: absolute;
-  inset-block-start: -20px;
-  inset-inline-end: -20px;
-  opacity: 0.03;
-  pointer-events: none;
-  transform: rotate(-15deg);
-}
-
-.card-bg-decoration .v-icon {
-  font-size: 120px !important;
-}
-
-.relative-content {
-  position: relative;
-  z-index: 1;
-}
-
-.accent-border {
-  position: absolute;
-  block-size: 4px;
-  inset-block-end: 0;
-  inset-inline: 0;
-  opacity: 0.8;
-}
-
-.tracking-wider {
-  letter-spacing: 1px !important;
-}
-
-.leading-none {
-  line-height: 1;
-}
-
-.gap-4 {
-  gap: 16px;
-}
+/* Estilos originales (si los hay) */
 </style>

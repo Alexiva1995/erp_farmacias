@@ -291,20 +291,18 @@ onMounted(() => {
       @add-pack="handleAddPackModal"
     />
 
-    <VCard class="elevation-1 rounded-lg border-0 overflow-hidden mt-6">
-      <PackTable
-        :packs="packs"
-        :loading="loadingPack"
-        :total-packs="totalPacks"
-        :items-per-page="itemsPerPagePack"
-        :page="pagePack"
-        @update:options="updateTableOptionsPack"
-        @edit-pack="handleEditPack"
-        @delete-pack="handleDeletePack"
-        @view-pack="handleViewPack"
-        @toggle-status="handleToggleStatus"
-      />
-    </VCard>
+    <PackTable
+      :packs="packs"
+      :loading="loadingPack"
+      :total-packs="totalPacks"
+      :items-per-page="itemsPerPagePack"
+      :page="pagePack"
+      @update:options="updateTableOptionsPack"
+      @edit-pack="handleEditPack"
+      @delete-pack="handleDeletePack"
+      @view-pack="handleViewPack"
+      @toggle-status="handleToggleStatus"
+    />
 
     <PackModal
       v-model:is-dialog-visible="addPackModal"

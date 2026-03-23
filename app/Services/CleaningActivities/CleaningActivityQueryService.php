@@ -22,7 +22,7 @@ class CleaningActivityQueryService
     private function applyFilters(Builder $query, array $filters): Builder
     {
         if (!empty($filters['q'])) {
-            $query->search($filters['q']);
+            $query->search($filters['q'], $filters['isStrictSearch'] ?? false);
         }
 
         if (!empty($filters['frequency'])) {
@@ -60,6 +60,7 @@ class CleaningActivityQueryService
         $filters = [
             'q' => $request->q,
             'frequency' => $request->frequency,
+            'isStrictSearch' => $request->boolean('isStrictSearch'),
         ];
 
         $this->applyFilters($query, $filters);

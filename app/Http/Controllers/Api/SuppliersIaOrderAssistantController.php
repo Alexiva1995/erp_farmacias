@@ -101,6 +101,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
+        if ($request->filled("q")) {
+            $filtros["q"] = $request->q;
+        }
+
         if ($request->filled("stock")) {
             $filtros["stock"] = $request->stock;
         }
@@ -532,6 +536,7 @@ class SuppliersIaOrderAssistantController extends Controller
                 } else {
                     $stock = $items->lote_quantity ?? 0;
                     $ventas = $items->total_sold_completed ?? 0;
+                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
                     // demanda - stock - AO (positivo = necesita pedir, negativo = exceso)
                     $items->solicitar = $ventas - $stock - $aoActual;
                 }

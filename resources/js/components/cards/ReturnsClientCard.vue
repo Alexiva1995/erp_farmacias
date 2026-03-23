@@ -31,31 +31,60 @@ const handleSearchOrder = () => {
 };
 </script>
 <template>
-  <VCard class="mb-6 elevation-1 border-0 rounded-lg overflow-hidden">
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
     <VCardText class="pa-4">
-      <div class="d-flex align-end gap-3">
-        <AppTextField
-          placeholder="BUSCAR CLIENTE O N° ORDEN..."
-          clearable
-          density="compact"
-          prepend-inner-icon="tabler-search"
-          class="flex-grow-1 premium-input-compact"
-          hide-details
-          :model-value="identificationInput"
-          @update:model-value="updateIdentification"
-          @keyup.enter="handleSearchOrder"
-        />
-        <VBtn
-          color="primary"
-          variant="flat"
-          height="38"
-          class="font-weight-black rounded-lg text-xs shadow-sm"
-          @click="handleSearchOrder"
-        >
-          <VIcon icon="tabler-search" class="me-1" size="18" />
-          BUSCAR
-        </VBtn>
-      </div>
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Título/Icono -->
+        <div class="d-flex align-center gap-2 mr-4">
+          <VIcon icon="tabler-arrow-back-up" color="primary" size="24" />
+          <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Devoluciones</span>
+        </div>
+
+        <!-- Buscador Principal -->
+        <VCol cols="12" sm="5" md="4" lg="4">
+          <AppTextField
+            placeholder="BUSCAR CLIENTE O N° ORDEN..."
+            clearable
+            density="compact"
+            prepend-inner-icon="tabler-search"
+            hide-details
+            :model-value="identificationInput"
+            @update:model-value="updateIdentification"
+            @keyup.enter="handleSearchOrder"
+          />
+        </VCol>
+
+        <VSpacer />
+
+        <!-- Acciones (Solo Iconos) -->
+        <div class="d-flex align-center gap-1">
+          <!-- Botón Buscar -->
+          <VBtn
+            icon
+            variant="tonal"
+            color="primary"
+            size="38"
+            @click="handleSearchOrder"
+          >
+            <VIcon icon="tabler-search" size="20" />
+            <VTooltip activator="parent" location="top">Buscar Pedidos</VTooltip>
+          </VBtn>
+
+          <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Limpiar Búsqueda -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="emit('clear-search')"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Búsqueda</VTooltip>
+          </VBtn>
+        </div>
+      </VRow>
     </VCardText>
   </VCard>
 </template>
