@@ -96,7 +96,7 @@ const toggleAdvancedFilters = () => {
 </script>
 
 <template>
-  <VCard class="mb-6 border-0 shadow-sm overflow-hidden bg-surface">
+  <VCard class="mb-6 border shadow-sm overflow-hidden bg-surface">
     <VCardText class="pa-3">
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-2">

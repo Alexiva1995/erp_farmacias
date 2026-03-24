@@ -189,7 +189,7 @@ const handleClear = () => {
 </script>
 
 <template>
-  <VCard class="mb-6">
+  <VCard class="mb-6 rounded-lg border shadow-sm elevation-1">
     <VCardText class="pa-3">
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-2">

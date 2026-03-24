@@ -272,7 +272,7 @@ onMounted(() => {
     />
 
     <!-- Dashboard Premium de IVA -->
-    <VCard class="mb-8 rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard class="mb-8 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardTitle class="pa-4 px-6 d-flex align-center">
         <div class="d-flex align-center gap-2">
           <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
@@ -312,7 +312,7 @@ onMounted(() => {
         <VRow v-else class="match-height">
           <!-- Card Débito Fiscal -->
           <VCol cols="12" md="4">
-            <VCard class="rounded-xl border-0 premium-summary-card bg-warning-gradient overflow-hidden h-100">
+            <VCard class="rounded-lg border shadow-lg premium-summary-card bg-warning-gradient overflow-hidden h-100">
               <VCardText class="pa-6 d-flex flex-column align-center text-center">
                 <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg">
                   <VIcon icon="tabler-receipt-tax" size="24" color="white" />
@@ -334,7 +334,7 @@ onMounted(() => {
 
           <!-- Card Crédito Fiscal -->
           <VCol cols="12" md="4">
-            <VCard class="rounded-xl border-0 premium-summary-card bg-info-gradient overflow-hidden h-100">
+            <VCard class="rounded-lg border shadow-lg premium-summary-card bg-info-gradient overflow-hidden h-100">
               <VCardText class="pa-6 d-flex flex-column align-center text-center">
                 <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg">
                   <VIcon icon="tabler-receipt-refund" size="24" color="white" />
@@ -357,7 +357,7 @@ onMounted(() => {
           <!-- Card Resultado Final -->
           <VCol cols="12" md="4">
             <VCard
-              class="rounded-xl border-0 premium-summary-card overflow-hidden h-100 transition-all shadow-lg"
+              class="rounded-lg border shadow-lg premium-summary-card overflow-hidden h-100 transition-all shadow-lg"
               :style="{ background: getIvaStatus.gradient }"
             >
               <VCardText class="pa-6 d-flex flex-column align-center text-center">

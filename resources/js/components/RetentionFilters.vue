@@ -39,7 +39,7 @@ const handleEndDateUpdate = (val) => emit("update:endDate", val);
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+  <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Barra de Acciones Principal -->
     <VCardActions class="pa-4 px-6 d-flex align-center bg-surface">
       <div class="d-flex align-center gap-2">

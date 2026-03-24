@@ -23,7 +23,7 @@ const headers = [
 ];
 </script>
 <template>
-  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm">
+  <VCard variant="flat" border class="rounded-lg overflow-hidden shadow-sm">
     <template v-if="props.mobile">
        <VDataIterator
         :items="props.payments"
@@ -54,11 +54,11 @@ const headers = [
 
               <div class="mb-2">
                 <div class="text-body-2 font-weight-bold truncate">
-                  {{ item.raw.client?.name }} {{ item.raw.client?.last_name }}
+                  {{ item.raw.client }}
                 </div>
                 <div class="d-flex align-center gap-1 text-medium-emphasis" style="font-size: 0.7rem;">
                   <VIcon size="12">tabler-user-check</VIcon>
-                  <span>{{ item.raw.seller?.username }}</span>
+                  <span>{{ item.raw.seller }}</span>
                 </div>
               </div>
 
@@ -128,11 +128,11 @@ const headers = [
       </template>
 
       <template v-slot:item.client="{ item }">
-        {{ item.client?.name }} {{ item.client?.last_name }}
+        {{ item.client }}
       </template>
 
       <template v-slot:item.seller="{ item }">
-        {{ item.seller?.username }}
+        {{ item.seller }}
       </template>
 
       <template v-slot:item.amount="{ item }">
@@ -147,3 +147,21 @@ const headers = [
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.v-data-table-server .v-data-table-header__content span) {
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+:deep(.v-data-table-server .v-table__th) {
+  background-color: white !important;
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+</style>

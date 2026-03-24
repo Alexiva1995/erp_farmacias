@@ -54,7 +54,7 @@ const handleDelete = (id) => emit("delete-offer", id);
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.id }}</span>
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.months_to_expiration="{ item }">
@@ -135,13 +135,17 @@ const handleDelete = (id) => emit("delete-offer", id);
                 <div :class="`status-strip bg-${getStatusColor(item.raw.is_active)}`" />
                 <div class="pa-4 flex-grow-1">
                   <div class="d-flex justify-space-between align-center mb-3">
-                    <span class="text-super-xs font-weight-black text-primary uppercase">CANDIDATO #{{ item.raw.id }}</span>
+                    <div class="d-flex align-center gap-1">
+                      <span class="text-primary font-weight-black text-xs">{{ item.raw.id }}</span>
+                      <span class="text-disabled mx-1">|</span>
+                      <h3 class="text-sm font-weight-black text-high-emphasis uppercase mb-0">
+                        DENTRO DE {{ item.raw.months_to_expiration }} MESES
+                      </h3>
+                    </div>
                     <VChip :color="getStatusColor(item.raw.is_active)" size="x-small" variant="tonal" class="font-weight-black rounded">
                       {{ getStatusText(item.raw.is_active) }}
                     </VChip>
                   </div>
-
-                  <h3 class="text-sm font-weight-black text-high-emphasis uppercase mb-1">DENTRO DE {{ item.raw.months_to_expiration }} MESES</h3>
                   <div class="d-flex align-center gap-2 mb-3">
                     <VChip color="primary" size="x-small" variant="flat" class="font-weight-black rounded">
                       {{ item.raw.discount_percentage }}% DESC.
@@ -185,21 +189,18 @@ const handleDelete = (id) => emit("delete-offer", id);
 </template>
 
 <style scoped>
-.premium-table :deep(th) {
-  background-color: #f8fafc !important;
-  color: rgb(var(--v-theme-primary)) !important;
+.premium-table :deep(thead th) {
+  background-color: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
-  font-weight: 950 !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
 }
 
 .premium-table :deep(td) {
-  padding-block: 8px !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  color: #334155 !important;
-  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  padding-block: 12px !important;
 }
 
 .status-strip {

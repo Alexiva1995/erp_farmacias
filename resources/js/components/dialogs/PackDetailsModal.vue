@@ -124,7 +124,7 @@ const calculatePriceWithDiscount = (item) => {
             </VAvatar>
             <div class="d-flex flex-column">
               <span class="text-h5 font-weight-black leading-tight uppercase">
-                {{ props.pack.name }}
+                {{ (props.pack.name || '').toUpperCase() }}
               </span>
               <span class="text-super-xs font-weight-medium opacity-90 uppercase letter-spacing-1">
                 Detalles Completos de Oferta
@@ -147,7 +147,7 @@ const calculatePriceWithDiscount = (item) => {
           <!-- Información general del pack en tarjetas premium -->
           <VRow class="mb-6">
             <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="primary" class="pa-4 rounded-xl border-0 shadow-sm overflow-hidden relative">
+              <VCard variant="tonal" color="primary" class="pa-4 rounded-lg border-0 shadow-sm overflow-hidden relative">
                 <VIcon icon="tabler-currency-dollar" size="64" class="card-icon-bg opacity-10" />
                 <div class="relative z-10">
                   <span class="text-super-xs font-weight-black uppercase letter-spacing-1 d-block mb-1">Precio Total</span>
@@ -159,7 +159,7 @@ const calculatePriceWithDiscount = (item) => {
             </VCol>
 
             <VCol cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="success" class="pa-4 rounded-xl border-0 shadow-sm overflow-hidden relative">
+              <VCard variant="tonal" color="success" class="pa-4 rounded-lg border-0 shadow-sm overflow-hidden relative">
                 <VIcon icon="tabler-box" size="64" class="card-icon-bg opacity-10" />
                 <div class="relative z-10">
                   <span class="text-super-xs font-weight-black uppercase letter-spacing-1 d-block mb-1">Items</span>
@@ -174,7 +174,7 @@ const calculatePriceWithDiscount = (item) => {
               <VCard
                 variant="tonal"
                 :color="props.pack.is_active ? 'success' : 'error'"
-                class="pa-4 rounded-xl border-0 shadow-sm overflow-hidden relative"
+                class="pa-4 rounded-lg border-0 shadow-sm overflow-hidden relative"
               >
                 <VIcon :icon="props.pack.is_active ? 'tabler-check' : 'tabler-x'" size="64" class="card-icon-bg opacity-10" />
                 <div class="relative z-10">
@@ -187,7 +187,7 @@ const calculatePriceWithDiscount = (item) => {
             </VCol>
 
             <VCol v-if="props.pack.max_quantity" cols="12" sm="6" md="3">
-              <VCard variant="tonal" color="info" class="pa-4 rounded-xl border-0 shadow-sm overflow-hidden relative">
+              <VCard variant="tonal" color="info" class="pa-4 rounded-lg border-0 shadow-sm overflow-hidden relative">
                 <VIcon icon="tabler-shopping-cart" size="64" class="card-icon-bg opacity-10" />
                 <div class="relative z-10">
                   <span class="text-super-xs font-weight-black uppercase letter-spacing-1 d-block mb-1">Ventas Máx</span>
@@ -221,7 +221,7 @@ const calculatePriceWithDiscount = (item) => {
               ]"
               :items="packProducts"
               density="comfortable"
-              class="rounded-xl border-0 bg-transparent internal-table"
+              class="rounded-lg border-0 bg-transparent internal-table"
               no-data-text="No hay productos en este pack"
               hide-default-footer
             >
@@ -233,15 +233,16 @@ const calculatePriceWithDiscount = (item) => {
 
               <template #item.name="{ item }">
                 <div class="d-flex flex-column">
-                  <span class="text-body-2 font-weight-black text-high-emphasis">
-                    {{ item.name }}
+                  <span class="text-body-2 font-weight-black text-high-emphasis text-uppercase">
+                    {{ (item.name || '').toUpperCase() }}
                   </span>
-                  <span v-if="item.active_ingredient" class="text-super-xs text-medium-emphasis uppercase font-weight-medium">
-                    {{ item.active_ingredient }}
-                  </span>
-                  <span v-else class="text-super-xs text-disabled">
-                    ID: {{ item.id }}
-                  </span>
+                  <div class="d-flex align-center gap-1 text-super-xs mt-1">
+                    <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '—' }}</span>
+                    <span class="text-disabled mx-1">|</span>
+                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                      {{ item.laboratory || 'Genérico' }}
+                    </span>
+                  </div>
                 </div>
               </template>
 
@@ -271,7 +272,7 @@ const calculatePriceWithDiscount = (item) => {
 
             <!-- Vista de Tarjetas en Móvil -->
             <div v-else class="mobile-details-list">
-              <div v-if="packProducts.length === 0" class="text-center pa-8 rounded-xl border-dashed border-2 text-disabled">
+              <div v-if="packProducts.length === 0" class="text-center pa-8 rounded-lg border-dashed border-2 text-disabled">
                 No hay productos en este pack
               </div>
               <div v-else class="d-flex flex-column gap-4">
@@ -279,7 +280,7 @@ const calculatePriceWithDiscount = (item) => {
                   v-for="(item, index) in packProducts"
                   :key="index"
                   variant="outlined"
-                  class="product-detail-card rounded-xl border-opacity-25 shadow-none"
+                  class="product-detail-card rounded-lg border-opacity-25 shadow-none"
                 >
                   <VCardText class="pa-4">
                     <div class="d-flex align-center gap-3 mb-3">
@@ -288,14 +289,18 @@ const calculatePriceWithDiscount = (item) => {
                         <VIcon icon="tabler-package" size="20" />
                       </VAvatar>
                       <div class="d-flex flex-column flex-grow-1">
-                        <span class="text-body-2 font-weight-black text-high-emphasis leading-tight mb-1">{{ item.name }}</span>
+                        <span class="text-body-2 font-weight-black text-high-emphasis leading-tight mb-1 text-uppercase">{{ (item.name || '').toUpperCase() }}</span>
                         <div class="d-flex align-center gap-2">
                           <VChip color="primary" variant="flat" size="x-small" class="font-weight-black px-2">
                             {{ item.quantity }} UND
                           </VChip>
-                          <span v-if="item.active_ingredient" class="text-super-xs text-medium-emphasis uppercase font-weight-medium truncate" style="max-inline-size: 150px;">
-                            {{ item.active_ingredient }}
-                          </span>
+                          <div class="d-flex align-center gap-1 text-super-xs">
+                            <span class="text-disabled truncate" style="max-inline-size: 100px;">{{ item.active_ingredient || '—' }}</span>
+                            <span class="text-disabled mx-1">|</span>
+                            <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 80px;">
+                              {{ item.laboratory || 'Genérico' }}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -337,7 +342,7 @@ const calculatePriceWithDiscount = (item) => {
               variant="tonal"
               color="warning"
               icon="tabler-calendar-event"
-              class="rounded-xl"
+              class="rounded-lg"
             >
               <template #title>
                 <span class="text-caption font-weight-black uppercase letter-spacing-1">Fecha Límite de Oferta</span>
@@ -354,7 +359,7 @@ const calculatePriceWithDiscount = (item) => {
         <VBtn
           color="primary"
           variant="flat"
-          class="rounded-xl font-weight-black px-12 shadow-primary-lg"
+          class="rounded-lg font-weight-black px-12 shadow-primary-lg"
           block
           size="large"
           @click="handleClose"

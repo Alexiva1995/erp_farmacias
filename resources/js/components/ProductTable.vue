@@ -294,7 +294,7 @@ const handleMobilePageChange = (newPage) => {
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
                     <span class="text-primary text-xs">{{ item.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
-                    {{ item.name }}
+                    {{ item.name.toUpperCase() }}
                   </h3>
                   <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
                 </div>

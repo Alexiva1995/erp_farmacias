@@ -54,7 +54,7 @@ const getAvatarColor = (index) => {
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.employee_id="{ item }">
-        <span class="text-xs font-weight-black text-disabled">#{{ item.employee_id }}</span>
+        <span class="font-weight-black text-primary tabular-nums">{{ item.employee_id }}</span>
       </template>
 
       <template #item.employee_name="{ item }">
@@ -173,8 +173,8 @@ const getAvatarColor = (index) => {
                   <span class="text-sm font-weight-black text-high-emphasis leading-tight">
                     {{ item.employee_name }}
                   </span>
-                  <span class="text-super-xs text-disabled mt-1 font-weight-bold">
-                    ID: #{{ item.employee_id }} • {{ item.identification || 'Sin DNI' }}
+                  <span class="text-super-xs text-primary mt-1 font-weight-black uppercase">
+                    ID: {{ item.employee_id }} • {{ item.identification || 'Sin DNI' }}
                   </span>
                 </div>
                 <div class="d-flex gap-1">
@@ -247,10 +247,12 @@ const getAvatarColor = (index) => {
   background: transparent !important;
 
   thead th {
-    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+    background: white !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
     font-size: 0.75rem !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
+    letter-spacing: 0.05rem !important;
     border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
   }
 
@@ -260,6 +262,7 @@ const getAvatarColor = (index) => {
       background-color: rgba(var(--v-theme-primary), 0.02) !important;
     }
     td {
+      padding-block: 12px !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
     }
   }

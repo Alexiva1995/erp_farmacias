@@ -38,7 +38,7 @@ const hasActiveAdvancedFilters = computed(() => {
 </script>
 
 <template>
-  <VCard class="elevation-1 rounded-lg border-0 mb-6 overflow-hidden">
+  <VCard class="elevation-1 rounded-lg border shadow-sm mb-6 overflow-hidden">
     <VCardText class="pa-3 bg-white">
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-2 px-2">

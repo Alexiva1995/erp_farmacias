@@ -627,7 +627,7 @@ watch(
                 hide-details
                 min="1"
                 :max="item.product?.stock || 9999"
-                :error-messages="formErrors[`quantity_${index}`]"
+                :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
                 :disabled="loading || !item.product"
                 class="mx-auto compact-input-field text-center"
                 @update:model-value="calculateTotalPrice()"
@@ -801,7 +801,7 @@ watch(
                           hide-details
                           min="1"
                           :max="item.product?.stock || 9999"
-                          :error-messages="formErrors[`quantity_${index}`]"
+                          :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
                           :disabled="loading || !item.product"
                           class="premium-input-small"
                           @update:model-value="calculateTotalPrice()"
@@ -934,13 +934,14 @@ watch(
   border-color: rgb(var(--v-theme-primary)) !important;
 }
 
-.internal-table :deep(th) {
-  background-color: rgba(var(--v-theme-primary), 0.05) !important;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-size: 0.65rem !important;
-  font-weight: 950 !important;
+.internal-table :deep(thead th) {
+  background-color: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   letter-spacing: 0.5px;
   text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
 }
 
 .internal-table :deep(td) {

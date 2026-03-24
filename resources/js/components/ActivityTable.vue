@@ -18,11 +18,11 @@ const emit = defineEmits([
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, class: "font-weight-black text-super-xs" },
-  { title: "ACTIVIDAD", key: "activity", sortable: true, width: "35%", class: "font-weight-black text-super-xs" },
-  { title: "DESCRIPCIÓN", key: "description", sortable: false, width: "35%", class: "font-weight-black text-super-xs" },
-  { title: "FRECUENCIA", key: "frequency", sortable: true, class: "font-weight-black text-super-xs text-center", align: 'center' },
-  { title: "ACCIONES", key: "actions", sortable: false, align: "end", class: "font-weight-black text-super-xs text-right" },
+  { title: "ID", key: "id", sortable: true },
+  { title: "ACTIVIDAD", key: "activity", sortable: true, width: "35%" },
+  { title: "DESCRIPCIÓN", key: "description", sortable: false, width: "35%" },
+  { title: "FRECUENCIA", key: "frequency", sortable: true, align: 'center' },
+  { title: "ACCIONES", key: "actions", sortable: false, align: "end" },
 ];
 
 const getFrequencyColor = (frequency) => {
@@ -53,7 +53,7 @@ const getFrequencyIcon = (frequency) => {
 </script>
 
 <template>
-  <VCard class="overflow-hidden">
+  <VCard class="border shadow-sm overflow-hidden">
     <!-- Vista de Escritorio: Tabla Premium -->
     <VDataTableServer
       v-if="!mobile"
@@ -67,7 +67,7 @@ const getFrequencyIcon = (frequency) => {
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="text-xs font-weight-black text-disabled tabular-nums">#{{ item.id }}</span>
+        <span class="font-weight-black text-primary tabular-nums">{{ item.id }}</span>
       </template>
 
       <template #item.activity="{ item }">
@@ -124,7 +124,7 @@ const getFrequencyIcon = (frequency) => {
                 </VAvatar>
                 <div class="d-flex flex-column">
                   <span class="text-sm font-weight-black text-high-emphasis leading-tight">{{ item.activity }}</span>
-                  <span class="text-super-xs text-disabled uppercase font-weight-bold">ID: #{{ item.id }}</span>
+                  <span class="text-super-xs text-primary uppercase font-weight-black">{{ item.id }}</span>
                 </div>
               </div>
               <VChip
@@ -195,13 +195,16 @@ const getFrequencyIcon = (frequency) => {
   background: transparent !important;
 
   thead {
-    background: rgba(var(--v-theme-on-surface), 0.02);
+    background: white !important;
 
     th {
-      background: transparent !important;
-      block-size: 48px !important;
+      background: white !important;
+      color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+      font-size: 0.75rem !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05rem !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-      color: rgb(var(--v-theme-disabled)) !important;
     }
   }
 
@@ -213,7 +216,7 @@ const getFrequencyIcon = (frequency) => {
     }
 
     td {
-      block-size: 56px !important;
+      padding-block: 12px !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
     }
   }

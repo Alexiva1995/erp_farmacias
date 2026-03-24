@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Services\Credits\CreditsQueryService;
 use App\Services\Credits\CreditsActionService;
@@ -165,6 +165,7 @@ class CreditsController extends Controller
             ->join('clients', 'cp.client_id', '=', 'clients.id')
             ->join('users as seller', 'cp.seller_id', '=', 'seller.id')
             ->select([
+                'cp.id',
                 'payment.amount',
                 'payment.method',
                 'payment.currency',
@@ -217,6 +218,7 @@ class CreditsController extends Controller
         $payments = $query->paginate($itemsPerPage)
             ->through(function ($row) {
                 return [
+                    'id' => $row->id,
                     'amount' => $row->amount,
                     'method' => $row->method,
                     'currency' => $row->currency,

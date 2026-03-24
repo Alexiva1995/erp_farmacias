@@ -170,7 +170,7 @@ onMounted(() => {
     />
 
     <!-- Gestión de Retenciones con Pestañas -->
-    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardTitle class="pa-4 px-6 d-flex align-center">
         <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
           <VIcon icon="tabler-file-analytics" size="18" />

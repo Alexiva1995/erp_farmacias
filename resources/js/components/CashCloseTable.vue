@@ -53,17 +53,21 @@ const handleMobilePageChange = (newPage) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.product_id="{ item }">
-          <span class="text-xs font-weight-medium">{{ item.productId || item.product_id || "—" }}</span>
+          <span class="font-weight-black text-primary">{{ item.productId || item.product_id || "—" }}</span>
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
-            <span class="text-sm font-weight-black text-high-emphasis text-truncate" :title="item.product.name">
-              {{ item.product.name }}
+          <div class="d-flex flex-column text-normal-white py-1" style="max-inline-size: 320px;">
+            <span class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase text-truncate" :title="item.product.name">
+              {{ item.product.name.toUpperCase() }}
             </span>
-            <span class="text-xs text-primary font-weight-bold">
-              {{ item.product.laboratory?.name }}
-            </span>
+            <div class="d-flex align-center gap-1 text-super-xs mt-1">
+              <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.activeIngredient }}</span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                {{ item.product.laboratory?.name || 'S/L' }}
+              </span>
+            </div>
           </div>
         </template>
 
@@ -142,12 +146,14 @@ const handleMobilePageChange = (newPage) => {
             <!-- Cabecera: Producto | Acciones -->
             <div class="d-flex align-start justify-space-between mb-3">
               <div class="d-flex flex-column min-width-0">
-                <span class="text-sm font-weight-black text-primary text-truncate-1">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight text-truncate-1 mb-1">
                   {{ item.product.name.toUpperCase() }}
                 </span>
-                <span class="text-super-xs text-medium-emphasis font-weight-bold">
-                  {{ item.product.laboratory?.name }}
-                </span>
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product.activeIngredient }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.product.laboratory?.name || 'S/L' }}</span>
+                </div>
               </div>
               <IconBtn
                 v-if="!item.hasTraceability"
@@ -253,6 +259,16 @@ const handleMobilePageChange = (newPage) => {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.text-normal-white {
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
 }
 
 .gap-1 { gap: 4px !important; }

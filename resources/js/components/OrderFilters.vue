@@ -74,7 +74,7 @@ const handleBack = () => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden shadow-sm">
+  <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden shadow-sm">
     <VCardText class="pa-4">
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-3">
@@ -121,7 +121,7 @@ const handleBack = () => {
                 </template>
               </VTooltip>
             </template>
-            <VList density="compact" class="rounded-xl mt-1 py-2 shadow-lg border">
+            <VList density="compact" class="rounded-lg mt-1 py-2 shadow-lg border">
               <VListItem
                 v-for="(option, index) in sortOptions"
                 :key="index"

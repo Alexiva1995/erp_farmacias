@@ -270,15 +270,15 @@ const handleScan = (code) => {
                   <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2 shadow-sm">
                     {{ props.mode === 'adjustment' ? 'MODO CÍCLICO' : 'MODO RETORNO' }}
                   </VChip>
-                  <span v-if="props.productId" class="text-super-xs font-weight-black text-primary bg-primary-subtle px-1 rounded">
-                    ID: {{ props.productId }}
-                  </span>
                 </div>
-                <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-0 truncate">
-                  {{ props.productName }}
-                </h3>
-                <div v-if="props.laboratory" class="text-super-xs font-weight-bold text-disabled uppercase truncate">
-                  LAB: {{ props.laboratory }}
+                <div class="d-flex align-center gap-1 mt-1">
+                  <span class="text-primary font-weight-black text-xs">#{{ props.productId || '—' }}</span>
+                  <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-0 truncate">
+                    {{ props.productName }}
+                  </h3>
+                </div>
+                <div v-if="props.laboratory" class="text-super-xs font-weight-bold text-disabled uppercase truncate mt-0">
+                  <span class="text-primary font-weight-bold">{{ props.laboratory }}</span>
                 </div>
               </div>
             </div>
@@ -576,6 +576,14 @@ const handleScan = (code) => {
 
 .bg-light {
   background-color: #f8fafc !important;
+}
+
+.premium-table :deep(th) {
+  background-color: white !important;
+  color: inherit !important;
+  font-size: 0.73rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
 }
 
 .summary-grid {

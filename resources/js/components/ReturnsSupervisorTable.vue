@@ -117,14 +117,17 @@ const handleRejectReturn = async (item) => {
           </div>
         </template>
 
-        <template #item.product="{ item }">
+        <template v-slot:item.product="{ item }">
           <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black uppercase leading-tight truncate" style="max-inline-size: 250px;">
-              {{ item.product.name }}
-            </span>
-            <span v-if="item.product?.laboratory?.name" class="text-super-xs font-weight-bold text-disabled uppercase">
-              {{ item.product.laboratory.name }}
-            </span>
+            <div class="d-flex align-center gap-1 mb-0 pb-0">
+              <span class="text-primary font-weight-black text-xs">#{{ item.product?.id || item.product_id }}</span>
+              <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ item.product?.name || '—' }}</span>
+            </div>
+            <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
+              <span class="text-disabled" style="font-size: 0.75rem !important;">{{ item.product?.active_ingredient || '—' }}</span>
+              <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
+              <span class="text-primary font-weight-bold" style="font-size: 0.75rem !important;">{{ item.product?.laboratory?.name || item.product?.laboratory || '—' }}</span>
+            </div>
           </div>
         </template>
 
@@ -244,12 +247,15 @@ const handleRejectReturn = async (item) => {
           <!-- Producto y Detalles -->
           <div class="bg-light pa-3 rounded-lg mb-3 border border-dashed">
             <div class="d-flex flex-column overflow-hidden">
-              <span class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate">
-                {{ item.product.name }}
-              </span>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                {{ item.product?.laboratory?.name ?? 'SIN LABORATORIO' }}
-              </span>
+              <div class="d-flex align-center gap-1 mb-0 pb-0">
+                <span class="text-primary font-weight-black text-xs">#{{ item.product?.id || item.product_id }}</span>
+                <span class="text-xs font-weight-black text high-emphasis uppercase leading-tight truncate">{{ item.product?.name || "—" }}</span>
+              </div>
+              <div class="text-super-xs leading-tight d-flex align-center gap-1 mt-0 pt-0">
+                <span class="text-disabled font-weight-bold uppercase">{{ item.product?.active_ingredient || "—" }}</span>
+                <span class="text-disabled">|</span>
+                <span class="text-primary font-weight-bold uppercase">{{ item.product?.laboratory?.name || item.product?.laboratory || "—" }}</span>
+              </div>
               <div class="d-flex align-center gap-1 mt-1">
                 <VIcon icon="tabler-shopping-cart" size="12" class="text-primary" />
                 <span class="text-super-xs font-weight-black text-primary uppercase">CANTIDAD: {{ item.quantity }}</span>
@@ -288,9 +294,9 @@ const handleRejectReturn = async (item) => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: #f8fafc !important;
+  background-color: white !important;
   font-size: 0.75rem !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
 }

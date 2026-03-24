@@ -82,11 +82,13 @@ const handleMobilePageChange = (newPage) => {
                 {{ item.product.name.toUpperCase() }}
                 <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
               </span>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
-                <span class="mx-1">|</span>
-                {{ item.product.active_ingredient }}
-              </span>
+              <div class="d-flex align-center gap-1 text-super-xs mt-1">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.product.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -152,12 +154,12 @@ const handleMobilePageChange = (newPage) => {
                   </VChip>
                 </div>
                 <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate mb-1">
-                  {{ item.product?.name }}
+                  {{ item.product?.name.toUpperCase() }}
                 </h3>
-                <div class="text-super-xs text-disabled font-weight-bold uppercase truncate">
-                  <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
-                  <span class="mx-1">|</span>
-                  {{ item.product?.active_ingredient }}
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.product.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
             </div>

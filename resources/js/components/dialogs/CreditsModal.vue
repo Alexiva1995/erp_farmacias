@@ -770,7 +770,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
           <div class="flex-grow-1" style="flex: 1; overflow-y: auto;">
             <div class="pa-4">
               <!-- Resumen del Cliente y Crédito -->
-              <VCard variant="outlined" class="mb-4">
+              <VCard variant="outlined" class="mb-4 rounded-lg">
                 <VCardText>
                   <div class="d-flex align-center mb-3">
                     <VIcon icon="tabler-user" class="me-2" size="20" />
@@ -912,7 +912,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
               max-block-size: calc(100vh - 200px);
 "
           >
-            <VCard variant="outlined" class="flex-grow-1" style="display: flex; flex-direction: column;">
+            <VCard variant="outlined" class="flex-grow-1 rounded-lg" style="display: flex; flex-direction: column;">
               <VCardText style="flex: 1; overflow-y: auto;">
                 <div class="text-h6 font-weight-bold mb-4">Resumen de Pago</div>
 
