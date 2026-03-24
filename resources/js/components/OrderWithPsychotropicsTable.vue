@@ -22,11 +22,11 @@ const handleReferenceClick = (id) => {
 };
 
 const headers = [
-  { title: "ID Prod.", key: "product_id", sortable: true },
+  { title: "ID", key: "product_id", sortable: true, cellClass: "font-weight-black text-primary" },
   { title: "Operador", key: "user.username", sortable: true },
-  { title: "Stock A.", key: "stock_before", sortable: true, align: 'center' },
-  { title: "Canti.", key: "quantity", sortable: false, align: 'center' },
-  { title: "Stock F.", key: "stock_after", sortable: true, align: 'center' },
+  { title: "S. Ant", key: "stock_before", sortable: true, align: 'center' },
+  { title: "Cant.", key: "quantity", sortable: false, align: 'center' },
+  { title: "S. Fin", key: "stock_after", sortable: true, align: 'center' },
   { title: "Fecha", key: "movement_date", sortable: true },
   { title: "Tipo", key: "movement_type", sortable: true },
   { title: "Referencia", key: "reference", sortable: false, align: 'center' },
@@ -147,17 +147,17 @@ const handleMobilePageChange = (newPage) => {
           v-for="item in props.sales"
           :key="item.id"
           variant="flat"
-          class="border mb-1 overflow-hidden"
-          style="border-radius: 12px !important;"
+          class="border mb-2 overflow-hidden"
+          style="border-radius: 8px !important;"
         >
-          <div class="pa-4">
-            <div class="d-flex align-center justify-space-between mb-3">
+          <div class="pa-3">
+            <div class="d-flex align-center justify-space-between mb-2">
               <div class="d-flex align-center gap-2">
                 <VAvatar size="32" color="primary" variant="tonal">
-                  <span class="text-xs font-weight-bold text-uppercase">{{ item.movement_type?.charAt(0) }}</span>
+                  <span class="text-xs font-weight-black text-uppercase">{{ item.movement_type?.charAt(0) }}</span>
                 </VAvatar>
                 <div>
-                  <div class="text-xs font-weight-black text-uppercase tracking-wider">
+                  <div class="text-xs font-weight-black text-uppercase tracking-wider leading-tight">
                     {{ item.movement_type }}
                   </div>
                   <div class="text-super-xs text-disabled font-weight-bold">
@@ -170,55 +170,54 @@ const handleMobilePageChange = (newPage) => {
                 size="small"
                 label
                 variant="flat"
+                class="font-weight-black"
               >
                 {{ item.quantity > 0 ? `+${item.quantity}` : item.quantity }}
               </VChip>
             </div>
 
-            <div class="bg-var-theme-background-light rounded border-s-4 border-primary pa-3 mb-3">
+            <div class="bg-var-theme-background-light rounded border-s-4 border-primary pa-2 mb-2">
               <div class="d-flex align-center gap-2 mb-1">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Producto</span>
-                <span class="text-body-2 font-weight-black text-primary">{{ item.product_id }}</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">ID</span>
+                <span class="text-xs font-weight-black text-primary">{{ item.product_id }}</span>
               </div>
-              <div class="text-sm font-weight-black text-high-emphasis truncate uppercase">
-                {{ item.product?.name }}
-              </div>
-            </div>
-
-            <div class="d-grid mobile-stats-grid gap-3 mb-3">
-              <div class="stat-item">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black d-block mb-1">Stock Ant.</span>
-                <span class="text-caption font-weight-black text-high-emphasis">{{ item.stock_before }} UNDS</span>
-              </div>
-              <div class="stat-item text-center">
-                <VIcon icon="tabler-arrow-right" class="text-disabled" size="16" />
-              </div>
-              <div class="stat-item text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black d-block mb-1">Stock Fin.</span>
-                <span class="text-caption font-weight-black text-primary">{{ item.stock_after }} UNDS</span>
+              <div class="text-sm font-weight-black text-high-emphasis truncate text-uppercase leading-tight">
+                {{ item.product?.name || 'S/N' }}
               </div>
             </div>
 
-            <VDivider class="border-opacity-10 mb-3" />
+            <div class="d-flex justify-space-between align-center bg-var-theme-background-light px-3 py-2 rounded border-dashed-thin mb-2 text-center">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">S. Ant</span>
+                <span class="text-caption font-weight-black text-high-emphasis">{{ item.stock_before }}</span>
+              </div>
+              <div class="d-flex flex-column align-center">
+                <VIcon icon="tabler-arrow-right" class="text-disabled" size="14" />
+              </div>
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">S. Fin</span>
+                <span class="text-caption font-weight-black text-primary">{{ item.stock_after }}</span>
+              </div>
+            </div>
 
-            <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center justify-space-between pt-1">
               <div class="d-flex align-center gap-2">
                 <VAvatar size="24" color="secondary" variant="tonal">
                   <span class="text-super-xs font-weight-bold">{{ item.user?.username?.charAt(0).toUpperCase() }}</span>
                 </VAvatar>
-                <span class="text-super-xs font-weight-black text-medium-emphasis">{{ item.user?.username }}</span>
+                <span class="text-super-xs font-weight-black text-medium-emphasis uppercase">{{ item.user?.username }}</span>
               </div>
               
               <VBtn
                 v-if="item.order_id || item.invoice_id"
-                variant="outlined"
+                variant="tonal"
                 color="primary"
                 size="x-small"
                 class="font-weight-black"
-                rounded="pill"
                 @click="handleReferenceClick(item.id)"
               >
-                Ver Detalle #{{ item.order_id || item.invoice?.invoice_number || item.invoice_id }}
+                VER DETALLE #{{ item.order_id || item.invoice?.invoice_number || item.invoice_id }}
+                <VIcon icon="tabler-eye" class="ms-1" size="14" />
               </VBtn>
             </div>
           </div>
@@ -263,23 +262,23 @@ const handleMobilePageChange = (newPage) => {
   background-color: rgba(var(--v-border-color), 0.03);
 }
 
-.mobile-stats-grid {
-  display: grid;
-  align-items: center;
-  grid-template-columns: 1fr auto 1fr;
-}
-
-.stat-item {
-  min-inline-size: 0;
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
 .leading-none {
   line-height: normal !important;
 }
 
+.leading-tight { line-height: 1.2 !important; }
+
 .tracking-wider {
   letter-spacing: 0.05em !important;
 }
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 
 .truncate {
   overflow: hidden;
@@ -287,7 +286,10 @@ const handleMobilePageChange = (newPage) => {
   white-space: nowrap;
 }
 
-.gap-3 {
-  gap: 12px !important;
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 </style>

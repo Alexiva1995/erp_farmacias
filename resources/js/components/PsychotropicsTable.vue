@@ -12,9 +12,8 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "actionVer"]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true, width: "400px" },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
+  { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
+  { title: "Producto", key: "name", sortable: true, width: "450px" },
   { title: "Stock Válido", key: "valid_stock", sortable: false, align: 'center' },
   { title: "Próx. Vencimiento", key: "next_expiration", sortable: false, align: 'center' },
 ];
@@ -54,24 +53,25 @@ const handleMobilePageChange = (newPage) => {
               variant="tonal"
               rounded
               :image="item.photo_url"
-              class="border elevation-1"
+              class="border elevation-1 flex-shrink-0"
             />
-            <div class="d-flex flex-column text-normal-white">
-              <span class="text-h6 font-weight-black text-high-emphasis leading-tight">
-                {{ item.name?.toUpperCase() }}
-                <span v-if="item.iva == 1" class="text-primary-darken-1"> (G)</span>
-                <span v-if="item.is_colombian_origin == 1" class="text-info"> (COL)</span>
+            <div class="d-flex flex-column truncate" style="max-inline-size: 400px;">
+              <span class="text-sm font-weight-black text-high-emphasis leading-tight text-uppercase truncate">
+                {{ item.name || 'N/A' }}
+                <span v-if="item.iva == 1" class="text-primary font-weight-black"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-black"> (COL)</span>
               </span>
-              <span class="text-caption font-weight-bold text-disabled">{{ item.active_ingredient }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs mt-1">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient || "" }}</span>
+                <span class="text-disabled">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
 
-        <template #item.laboratory.name="{ item }">
-          <span class="text-body-2 font-weight-black text-primary text-uppercase">
-            {{ item.laboratory?.name || 'S/L' }}
-          </span>
-        </template>
 
         <template #item.valid_stock="{ item }">
           <VChip
@@ -145,7 +145,7 @@ const handleMobilePageChange = (newPage) => {
 
             <VDivider class="my-3 border-opacity-10" />
 
-            <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded mb-0">
+            <div class="d-flex justify-space-between align-center bg-var-theme-background-light px-3 py-2 rounded border-dashed-thin">
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Válido</span>
                 <VChip
@@ -195,26 +195,24 @@ const handleMobilePageChange = (newPage) => {
   background-color: #f8fafc !important;
 }
 
-.bg-var-theme-background {
+.bg-var-theme-background-light {
   background-color: rgba(var(--v-border-color), 0.05);
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
-.text-normal-white {
-  overflow-wrap: break-word;
-  white-space: normal;
-}
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 
-.leading-tight {
-  line-height: 1.2 !important;
-}
+.leading-tight { line-height: 1.2 !important; }
 
-.gap-3 {
-  gap: 12px !important;
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 </style>

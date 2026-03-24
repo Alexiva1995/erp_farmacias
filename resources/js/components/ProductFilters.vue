@@ -270,7 +270,7 @@ const hasActiveAdvancedFilters = computed(() => {
                 v-bind="menuProps" 
                 icon
                 variant="tonal" 
-                color="secondary"
+                :color="selectedSort ? 'primary' : 'info'"
                 size="38"
               >
                 <VIcon :icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'" />

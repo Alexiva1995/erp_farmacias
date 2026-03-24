@@ -94,7 +94,7 @@ const endDateModel = computed({
                 size="38"
                 v-bind="menuProps"
               >
-                <VIcon icon="tabler-download" />
+                <VIcon icon="tabler-file-export" />
                 <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
               </VBtn>
             </template>

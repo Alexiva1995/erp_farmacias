@@ -67,32 +67,20 @@ const nextExpirationDate = (product) => {
 
 const productHeaders = [
   { 
-    title: "id", 
+    title: "ID", 
     key: "id", 
     sortable: true,
-    cellClass: "d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell"
   },
-  { title: "Producto", key: "name", sortable: true, width: "40%" },
-  { 
-    title: "Laboratorio", 
-    key: "laboratory.name", 
-    sortable: true,
-    cellClass: "d-none d-md-table-cell",
-    headerClass: "d-none d-md-table-cell"
-  },
+  { title: "Producto", key: "name", sortable: true, width: "450px" },
   {
     title: "Stock",
     key: "valid_stock",
-    visible: true,
     sortable: true,
-    cellClass: "d-none d-sm-table-cell",
-    headerClass: "d-none d-sm-table-cell",
-    value: (item) => {
-      return item.stock_calculado;
-    },
+    align: 'center',
   },
-  { title: "Exp.", key: "next_expiration", sortable: true },
+  { title: "Exp.", key: "next_expiration", sortable: true, align: 'center' },
 ];
 </script>
 
@@ -134,50 +122,58 @@ const productHeaders = [
           class="rounded-lg"
         >
           <template #item.id="{ item }">
-            <span class="font-weight-medium">{{ item.id }}</span>
+            <span class="font-weight-black text-primary">{{ item.id }}</span>
           </template>
 
           <template #item.name="{ item }">
-            <div class="d-flex align-center gap-x-4">
+            <div class="d-flex align-center gap-x-4 py-2">
               <VAvatar
                 v-if="item.photo_url"
                 size="38"
                 variant="tonal"
                 rounded
                 :image="item.photo_url"
+                class="border flex-shrink-0"
               />
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column truncate" style="max-inline-size: 400px;">
                 <span
-                  class="text-body-1 font-weight-medium text-high-emphasis"
+                  class="text-sm font-weight-black text-high-emphasis leading-tight text-uppercase truncate"
                   :class="{ 
-                    'text-warning font-weight-bold': item.psychotropic == 1 || item.psychotropic === true
+                    'text-warning': item.psychotropic == 1 || item.psychotropic === true
                   }"
                 >
-                  <span class="d-inline d-sm-none text-primary font-weight-bold">[{{ item.id }}] </span>
-                  {{ item.name.toUpperCase() }}
+                  {{ item.name || 'N/A' }}
                   <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
                   <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
-                  <div v-if="item.laboratory" class="d-block d-md-none text-xs text-secondary italic">
-                    {{ item.laboratory.name }}
-                  </div>
                 </span>
-                <span class="text-sm text-disabled">{{
-                  item.active_ingredient
-                }}</span>
+                <div class="d-flex align-center gap-x-1 text-super-xs mt-1">
+                  <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || "" }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 100px;">
+                    {{ item.laboratory?.name || 'S/L' }}
+                  </span>
+                </div>
               </div>
             </div>
           </template>
 
-          <template #item["laboratory.name"]="{ item }">
-            <span>{{ item.laboratory?.name || "—" }}</span>
-          </template>
-
           <template #item.valid_stock="{ item }">
-            <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
+            <VChip
+              :color="(item.stock_calculado || 0) > 0 ? 'success' : 'error'"
+              size="x-small"
+              label
+              variant="flat"
+              class="font-weight-black"
+            >
+              {{ item.stock_calculado || 0 }} UNDS
+            </VChip>
           </template>
 
           <template #item.next_expiration="{ item }">
-            <span>{{ formatDate(nextExpirationDate(item)) }}</span>
+            <span class="text-caption font-weight-black text-high-emphasis">
+              <VIcon icon="tabler-calendar" size="14" class="me-1 text-warning" />
+              {{ formatDate(nextExpirationDate(item)) }}
+            </span>
           </template>
         </VDataTable>
       </VCardText>

@@ -21,9 +21,8 @@ const sortByModel = computed(() => {
 const emit = defineEmits(["update:options"]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true, width: "350px" },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
+  { title: "Producto", key: "name", sortable: true, width: "400px" },
   { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
@@ -75,23 +74,24 @@ const getDiffColor = (val) => {
               variant="tonal"
               rounded
               :image="item.photo_url"
-              class="border elevation-1"
+              class="border elevation-1 flex-shrink-0"
             />
-            <div class="d-flex flex-column text-normal-white">
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase">
-                {{ item.name }}
-                <span v-if="item.is_colombian_origin == 1" class="text-info"> (COL)</span>
+            <div class="d-flex flex-column truncate" style="max-inline-size: 350px;">
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
+                {{ item.name || 'N/A' }}
+                <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-black"> (COL)</span>
               </span>
-              <span class="text-super-xs font-weight-bold text-disabled">{{ item.active_ingredient }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs mt-1">
+                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || "" }}</span>
+                <span class="text-disabled">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
 
-        <template #item.laboratory.name="{ item }">
-          <span class="text-super-xs font-weight-black text-primary text-uppercase">
-            {{ item.laboratory?.name || 'S/L' }}
-          </span>
-        </template>
 
         <template #item.unit_cost="{ item }">
           <span class="font-weight-black text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
@@ -159,22 +159,17 @@ const getDiffColor = (val) => {
                 class="flex-shrink-0 border"
               />
               <div class="flex-grow-1 min-width-0">
-                <div class="d-flex align-center justify-space-between mb-1">
-                  <span class="text-primary font-weight-black text-xs">{{ item.id }}</span>
-                  <VChip
-                    :color="getDiffColor(item.diferencia_product)"
-                    size="x-small"
-                    variant="flat"
-                    class="font-weight-black"
-                  >
-                    DIF: {{ Math.ceil(parseFloat(item.diferencia_product || 0)) }}
-                  </VChip>
+                <div class="d-flex align-center justify-space-between mb-1 text-truncate">
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
+                    <span class="text-primary">#{{ item.id }}</span>
+                    <span class="mx-1 text-disabled">|</span>
+                    {{ item.name }}
+                  </h3>
                 </div>
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-1 truncate">
-                  {{ item.name }}
-                </h3>
-                <div class="text-super-xs text-disabled font-weight-bold uppercase truncate">
-                  {{ item.active_ingredient }}
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 140px;">{{ item.active_ingredient || '' }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 100px;">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
             </div>
@@ -182,19 +177,29 @@ const getDiffColor = (val) => {
             <VDivider class="my-3 border-opacity-10" />
 
             <!-- Grid de Información -->
-            <div class="d-grid mobile-stock-grid gap-3">
-              <div class="stat-box">
-                <span class="label">Laboratorio</span>
-                <span class="value text-primary">{{ item.laboratory?.name || 'S/L' }}</span>
+            <div class="bg-var-theme-background-light px-3 py-2 rounded mb-3 border-dashed-thin">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Actual</span>
+                  <VChip :color="item.lote_quantity > 0 ? 'success' : 'error'" size="x-small" label class="font-weight-black mt-1" variant="flat">
+                    {{ item.lote_quantity }} UNDS
+                  </VChip>
+                </div>
+                <div class="d-flex flex-column text-right">
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Costo Unidad</span>
+                  <span class="text-sm font-weight-black text-high-emphasis mt-1">{{ formatPrice(item.unit_cost) }}</span>
+                </div>
               </div>
-              <div class="stat-box text-center">
-                <span class="label">Costo</span>
-                <span class="value">{{ formatPrice(item.unit_cost) }}</span>
-              </div>
-              <div class="stat-box text-right">
-                <span class="label">Stock Actual</span>
-                <VChip :color="item.lote_quantity > 0 ? 'success' : 'error'" size="x-small" label class="font-weight-black mt-1">
-                  {{ item.lote_quantity }} UNDS
+
+              <div class="d-flex align-center justify-space-between pt-1 border-t border-opacity-10 mt-1">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Diferencia</span>
+                <VChip
+                  :color="getDiffColor(item.diferencia_product)"
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-black"
+                >
+                  {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product || 0)) }}
                 </VChip>
               </div>
             </div>
@@ -258,47 +263,22 @@ const getDiffColor = (val) => {
   transform: scale(0.98);
 }
 
-.mobile-stock-grid {
-  display: grid;
-  align-items: center;
-  grid-template-columns: 1fr 1fr 1fr;
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
-.stat-box .label {
-  display: block;
-  font-size: 0.6rem;
-  font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 
-.stat-box .value {
-  font-size: 0.75rem;
-  font-weight: 800;
+.leading-tight { line-height: 1.2 !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   text-transform: uppercase;
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.text-normal-white {
-  overflow-wrap: break-word;
-  white-space: normal;
-}
-
-.leading-tight {
-  line-height: 1.2 !important;
-}
-
-.gap-3 {
-  gap: 12px !important;
-}
-
-.flex-1 {
-  flex: 1;
-}
+.flex-1 { flex: 1; }
 </style>

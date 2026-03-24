@@ -28,7 +28,7 @@ const fetchLocations = async () => {
   loadingLocations.value = true;
   try {
     const response = await axios.get("/locations");
-    locationsList.value = response.data;
+    locationsList.value = response.data.data || response.data || [];
   } catch (error) {
     console.error("Error al cargar ubicaciones:", error);
     toast.error("No se pudieron cargar las ubicaciones.");
@@ -46,27 +46,27 @@ const headers = [
     title: "ID", 
     key: "id", 
     sortable: true,
-    cellClass: "d-none d-sm-table-cell",
-    headerClass: "d-none d-sm-table-cell"
+    cellClass: "font-weight-black text-primary",
   },
   { title: "Producto", key: "product.name", sortable: true },
   { 
     title: "Laboratorio", 
     key: "product.laboratory.name", 
     sortable: true,
+    visible: false,
     cellClass: "d-none d-md-table-cell",
     headerClass: "d-none d-md-table-cell"
   },
   { title: "# Lote", key: "lot_number", sortable: true },
   { 
-    title: "Cantidad", 
+    title: "Stock", 
     key: "quantity", 
     sortable: true,
     cellClass: "d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell"
   },
   { 
-    title: "Expiración", 
+    title: "Exp.", 
     key: "expiration_date", 
     sortable: true,
     cellClass: "d-none d-sm-table-cell",
@@ -125,33 +125,38 @@ const handleLocationSearch = (search) => {
         @update:options="(opts) => emit('update:options', opts)"
       >
         <template #item.id="{ item }">
-          {{ item.id }}
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex align-center gap-x-4">
+          <div class="d-flex align-center gap-x-4 py-2">
             <VAvatar
               v-if="item.product?.photo_url"
-              size="38"
+              size="44"
               variant="tonal"
               rounded
               :image="item.product.photo_url"
+              class="border elevation-1"
             />
             <div class="d-flex flex-column">
               <span
-                class="text-body-1 font-weight-medium text-high-emphasis"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
+                style="max-inline-size: 300px;"
                 :class="{
-                  'text-warning font-weight-bold':
-                    item.product?.psychotropic == 1 || item.product?.psychotropic === true,
+                  'text-warning': item.product?.psychotropic == 1 || item.product?.psychotropic === true,
                 }"
               >
-                {{ item.product?.name?.toUpperCase() || "—" }}
+                {{ item.product?.name || "—" }}
                 <span v-if="item.product?.iva == 1 || item.product?.iva === true"> (G)</span>
                 <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
               </span>
-              <span class="text-sm text-disabled">{{
-                item.product?.active_ingredient || ""
-              }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.product?.active_ingredient || "" }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.product?.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -165,7 +170,15 @@ const handleLocationSearch = (search) => {
         </template>
 
         <template #item.quantity="{ item }">
-          <span class="font-weight-medium">{{ item.quantity || 0 }}</span>
+          <VChip
+            :color="(item.quantity ?? 0) > 0 ? 'success' : 'error'"
+            label
+            size="x-small"
+            variant="tonal"
+            class="font-weight-black"
+          >
+            {{ item.quantity || 0 }}
+          </VChip>
         </template>
 
         <template #item.expiration_date="{ item }">
@@ -244,38 +257,43 @@ const handleLocationSearch = (search) => {
                 variant="tonal"
                 rounded
                 :image="item.product.photo_url"
-                class="flex-shrink-0 mt-1"
+                class="flex-shrink-0 mt-1 border"
               />
               <div class="flex-grow-1 min-width-0">
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                  <span class="text-primary mr-1">#{{ item.id }}</span>
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                  <span class="text-primary text-xs font-weight-black">#{{ item.id }}</span>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.product?.name || 'S/N' }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-primary font-weight-bold">{{ item.product?.laboratory?.name || 'S/L' }}</span>
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient || '' }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
             </div>
-
+ 
             <VDivider class="my-2 border-opacity-10" />
-
-            <div class="d-flex justify-space-between align-center px-1 mb-2">
+ 
+            <div class="d-flex justify-space-between align-center bg-var-theme-background-light px-3 py-2 rounded border-dashed-thin mb-2">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Lote</span>
-                <span class="text-xs font-weight-black text-primary">{{ item.lot_number || 'S/L' }}</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Vencimiento</span>
+                <span class="text-base font-weight-black">{{ formatDate(item.expiration_date) }}</span>
               </div>
               <div class="d-flex flex-column text-center">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock</span>
-                <span class="text-xs font-weight-black text-success">{{ item.quantity || 0 }} <small>UNDS</small></span>
-              </div>
-              <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Expira</span>
-                <span class="text-xs font-weight-medium">{{ formatDate(item.expiration_date) }}</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock</span>
+                <span class="text-base font-weight-black text-success">{{ item.quantity || 0 }} <small class="text-super-xs">UNDS</small></span>
               </div>
             </div>
 
-            <div class="bg-var-theme-background pa-2 rounded mt-2 text-center">
+            <div class="mt-2 bg-var-theme-background rounded pa-2 d-flex justify-space-between align-center border-s-4 border-warning">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Lote No.</span>
+                <span class="text-sm font-weight-black">{{ item.lot_number || 'S/L' }}</span>
+              </div>
+            </div>
+ 
+            <div class="mt-3">
               <!-- Edit Mode inside Card -->
               <div v-if="editingLotId === item.id">
                 <VAutocomplete
@@ -298,7 +316,7 @@ const handleLocationSearch = (search) => {
                   <VBtn color="primary" size="small" class="flex-grow-1" @click="saveInlineEdit(item)">Guardar</VBtn>
                 </div>
               </div>
-
+ 
               <!-- Display Mode -->
               <div v-else class="d-flex justify-center align-center py-1">
                 <VIcon icon="tabler-map-pin-off" size="14" color="error" class="me-2" />
@@ -306,15 +324,15 @@ const handleLocationSearch = (search) => {
               </div>
             </div>
           </div>
-
+ 
           <!-- Acciones Rectangulares Movil -->
           <div v-if="editingLotId !== item.id" class="d-flex border-t border-opacity-10">
             <VBtn
               block
               color="warning"
-              variant="text"
-              class="rounded-0"
-              height="40"
+              variant="flat"
+              class="rounded-0 font-weight-black"
+              height="44"
               prepend-icon="tabler-map-pin"
               @click="startEdit(item)"
             >
@@ -322,7 +340,7 @@ const handleLocationSearch = (search) => {
             </VBtn>
           </div>
         </VCard>
-
+ 
         <!-- Paginación Móvil -->
         <div class="d-flex justify-center mt-4 pb-2">
           <VPagination
@@ -345,11 +363,39 @@ const handleLocationSearch = (search) => {
   background: rgb(var(--v-theme-surface));
 }
 
+.truncate-2-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .text-super-xs {
   font-size: 0.65rem !important;
+  line-height: 1;
 }
 
 .bg-var-theme-background {
   background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.bg-var-theme-background-light {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 </style>

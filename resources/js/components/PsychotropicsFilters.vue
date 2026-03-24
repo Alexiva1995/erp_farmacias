@@ -349,7 +349,7 @@ watch(
                 density="compact"
                 hide-details
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                prepend_inner_icon="tabler-calendar-event"
+                prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:startDate', $event)"
               />
             </VCol>
@@ -362,7 +362,7 @@ watch(
                 density="compact"
                 hide-details
                 :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                prepend_inner_icon="tabler-calendar-event"
+                prepend-inner-icon="tabler-calendar-event"
                 @update:model-value="emit('update:endDate', $event)"
               />
             </VCol>

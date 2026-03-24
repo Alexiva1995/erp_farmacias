@@ -36,12 +36,18 @@ const emit = defineEmits([
 ]);
 
 const headers = [
-  { title: "ID", key: "product.id", sortable: true },
+  { 
+    title: "ID", 
+    key: "product.id", 
+    sortable: true,
+    cellClass: 'font-weight-black text-primary'
+  },
   { title: "Producto", key: "product.name", sortable: true },
   { 
     title: "Laboratorio", 
     key: "laboratory_name", 
     sortable: true,
+    visible: false,
     value: (item) => item.product?.laboratory?.name || "—"
   },
   { title: "Nº Lote", key: "lot_number", sortable: false },
@@ -94,22 +100,30 @@ const handleMobilePageChange = (newPage) => {
         class="text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #item.product.id="{ item }">
+          <span class="font-weight-black text-primary">{{ item.product?.id }}</span>
+        </template>
         <template #item.product.name="{ item }">
-          <div class="d-flex align-center gap-x-4">
+          <div class="d-flex align-center gap-x-4 py-2">
             <VAvatar
               v-if="item.product?.photo_url"
-              size="38"
+              size="44"
               variant="tonal"
               rounded
               :image="item.product.photo_url"
+              class="border elevation-1"
             />
             <div class="d-flex flex-column">
-              <span class="text-body-1 font-weight-medium text-high-emphasis">{{
-                item.product?.name?.toUpperCase() || ""
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase truncate" style="max-inline-size: 320px;">{{
+                item.product?.name || ""
               }}</span>
-              <span class="text-sm text-disabled">{{
-                item.product?.active_ingredient || ""
-              }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product?.active_ingredient || "" }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.product?.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -129,15 +143,17 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.quantity="{ item }">
-          <VChip
-            :color="item.quantity > 0 ? 'success' : 'error'"
-            label
-            size="small"
-            variant="tonal"
-            class="font-weight-bold"
-          >
-            {{ item.quantity }}
-          </VChip>
+          <div class="text-center">
+            <VChip
+              :color="item.quantity > 0 ? 'success' : 'error'"
+              label
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black"
+            >
+              {{ item.quantity }}
+            </VChip>
+          </div>
         </template>
 
         <template #item.actions="{ item }">
@@ -169,8 +185,7 @@ const handleMobilePageChange = (newPage) => {
           v-for="item in props.lots"
           :key="item.id"
           variant="flat"
-          class="border mb-1 overflow-hidden"
-          style="border-radius: 8px !important;"
+          class="product-mobile-card border mb-1 overflow-hidden"
         >
           <div class="pa-3">
             <div class="d-flex gap-3 align-start">
@@ -180,53 +195,55 @@ const handleMobilePageChange = (newPage) => {
                 variant="tonal"
                 rounded
                 :image="item.product.photo_url"
-                class="flex-shrink-0 mt-1"
+                class="flex-shrink-0 mt-1 border"
               />
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                    <span class="text-primary">{{ item.product?.id }}</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                    <span class="text-primary text-xs font-weight-black">{{ item.product?.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
                     {{ item.product?.name }}
                   </h3>
                 </div>
                 
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span class="text-medium-emphasis font-weight-medium">{{ item.product?.active_ingredient }}</span>
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient }}</span>
                   <span class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-uppercase">{{ item.product?.laboratory?.name || 'S/L' }}</span>
+                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
             </div>
-
+ 
             <VDivider class="my-3 border-opacity-10" />
-
+ 
             <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Expira</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Vencimiento</span>
                 <span :class="getExpirationColor(item.expiration_date)" class="text-base font-weight-black">
                   {{ formatDate(item.expiration_date) }}
                 </span>
               </div>
               <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Lote</span>
-                <span :class="item.quantity > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock Lote</span>
+                <span :class="(item.quantity ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
                   {{ item.quantity ?? 0 }} <small class="text-super-xs">UNDS</small>
                 </span>
               </div>
             </div>
             
-            <div class="mt-2 px-1">
-              <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Lote: </span>
-              <span class="text-super-xs font-weight-black">{{ item.lot_number }}</span>
+            <div class="mt-3 bg-var-theme-background-light rounded pa-2 d-flex justify-space-between align-center border-s-4 border-warning">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Lote No.</span>
+                <span class="text-sm font-weight-black">{{ item.lot_number }}</span>
+              </div>
             </div>
           </div>
-
+ 
           <VBtn 
             block 
             color="error" 
             variant="flat" 
-            class="rounded-0"
+            class="rounded-0 font-weight-black"
             height="44"
             prepend-icon="tabler-calendar-off" 
             @click="emit('expire-lot', item)"
@@ -252,6 +269,20 @@ const handleMobilePageChange = (newPage) => {
 </template>
 
 <style scoped>
+.product-mobile-card {
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
+}
+
+.truncate-2-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: 1;
@@ -265,6 +296,18 @@ const handleMobilePageChange = (newPage) => {
   background-color: rgba(var(--v-border-color), 0.05);
 }
 
+.bg-var-theme-background-light {
+  background-color: rgba(var(--v-border-color), 0.02);
+}
+
+.gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
 </style>
