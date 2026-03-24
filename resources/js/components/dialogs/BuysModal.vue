@@ -1612,8 +1612,9 @@ const getAvailableMethodsForCurrency = (currency) => {
     :fullscreen="$vuetify.display.xs"
     transition="dialog-bottom-transition"
     class="buys-modal-dialog"
+    scrollable
   >
-    <VCard class="rounded-xl overflow-hidden glass-card elevation-4">
+    <VCard class="rounded-xl glass-card elevation-4">
       <VCardTitle class="d-flex align-center pa-4 border-b bg-surface">
         <div class="d-flex align-center">
           <VIcon icon="tabler-shopping-cart-check" color="primary" class="me-3" size="28" />

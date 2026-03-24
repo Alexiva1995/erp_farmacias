@@ -529,32 +529,36 @@ const handleScan = (code) => {
       <VDivider />
 
       <VCardActions class="pa-4 bg-light border-t">
-        <div class="d-flex flex-column flex-sm-row gap-3 w-100">
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            size="large"
-            block
-            height="50"
-            class="flex-grow-1 font-weight-black rounded-lg text-button uppercase"
-            @click="closeDialog"
-          >
-            Regresar
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            size="large"
-            block
-            height="50"
-            class="flex-grow-1 font-weight-black rounded-lg shadow-primary text-button uppercase"
-            :disabled="!canSave"
-            @click="handleSave"
-          >
-            <VIcon icon="tabler-cloud-upload" class="me-2" />
-            Finalizar Distribución
-          </VBtn>
-        </div>
+        <VRow no-gutters class="w-100">
+          <VCol cols="12" sm="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeDialog"
+            >
+              Regresar
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :disabled="!canSave"
+              @click="handleSave"
+            >
+              <VIcon icon="tabler-cloud-upload" class="me-2" />
+              Finalizar Distribución
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
