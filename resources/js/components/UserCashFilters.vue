@@ -58,7 +58,7 @@ const hasAdvancedFilters = computed(() => true); // Siempre tiene rango de fecha
         color="info"
         variant="tonal"
         size="38"
-        class="rounded-lg ml-1"
+        class="ml-1"
         :loading="props.loading"
         @click="handleRefresh"
       >

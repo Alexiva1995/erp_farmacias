@@ -113,18 +113,14 @@ const hasAdvancedFilters = computed(() => {
   >
     <template #actions-extra>
       <VBtn
+        icon
         color="primary"
         variant="flat"
         size="38"
-        class="rounded-lg ml-1 font-weight-black shadow-primary"
         @click="emit('add-profitability')"
       >
-        <VIcon icon="tabler-percentage" size="20" class="d-sm-none" />
-        <span class="d-none d-sm-flex px-2">
-          <VIcon icon="tabler-percentage" size="18" class="mr-2" />
-          ASIGNAR RENTABILIDAD
-        </span>
-        <VTooltip activator="parent" location="top" class="d-sm-none">Asignar Rentabilidad</VTooltip>
+        <VIcon icon="tabler-percentage" />
+        <VTooltip activator="parent" location="top">Asignar Rentabilidad</VTooltip>
       </VBtn>
     </template>
 

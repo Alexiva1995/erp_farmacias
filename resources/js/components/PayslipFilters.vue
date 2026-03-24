@@ -81,7 +81,7 @@ const handleManualPayment = async () => {
         variant="tonal"
         color="secondary"
         size="38"
-        class="rounded-lg ml-1 d-none d-sm-flex"
+        class="ml-1 d-none d-sm-flex"
         :loading="props.loading"
         @click="emit('refresh')"
       >
@@ -94,7 +94,7 @@ const handleManualPayment = async () => {
         variant="tonal"
         size="38"
         icon
-        class="rounded-lg ml-1"
+        class="ml-1"
         @click="emit('download-bulk')"
       >
         <VIcon icon="tabler-download" size="20" />
@@ -106,7 +106,7 @@ const handleManualPayment = async () => {
         variant="tonal"
         size="38"
         icon
-        class="rounded-lg ml-1"
+        class="ml-1"
         :loading="isGenerating"
         :disabled="isGenerating"
         @click="handleManualPayment"

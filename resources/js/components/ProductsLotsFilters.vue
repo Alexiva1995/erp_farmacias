@@ -131,10 +131,9 @@ const hasAdvancedFilters = computed(() => {
       <VBtn
         v-if="props.isAdmin"
         icon
-        color="success"
-        variant="tonal"
+        color="primary"
+        variant="flat"
         size="38"
-        class="rounded-lg ml-1"
         :loading="props.addLotLoading"
         @click="emit('add-lot')"
       >

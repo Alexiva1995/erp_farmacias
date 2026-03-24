@@ -93,7 +93,7 @@ const hasAdvancedFilters = computed(() => {
         color="primary"
         variant="tonal"
         size="38"
-        class="rounded-lg ml-1"
+        class="ml-1"
         :loading="props.loading"
         @click="emit('refresh')"
       >

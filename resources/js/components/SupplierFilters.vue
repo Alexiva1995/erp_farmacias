@@ -30,26 +30,13 @@ const hasAdvancedFilters = computed(() => false);
     :has-advanced-filters="hasAdvancedFilters"
     :show-sort="true"
     :sort-options="sortOptions"
+    :show-add="true"
+    add-button-text="Añadir Proveedor"
     search-placeholder="Buscar por ID, Nombre o RIF del Proveedor..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
+    @add="emit('add-supplier')"
   >
-    <template #actions-extra>
-      <VBtn
-        color="primary"
-        variant="flat"
-        size="38"
-        class="rounded-lg ml-1 font-weight-black"
-        @click="emit('add-supplier')"
-      >
-        <VIcon icon="tabler-plus" size="20" class="d-sm-none" />
-        <span class="d-none d-sm-flex px-2">
-          <VIcon icon="tabler-plus" size="18" class="mr-2" />
-          Añadir Proveedor
-        </span>
-        <VTooltip activator="parent" location="top" class="d-sm-none">Añadir Proveedor</VTooltip>
-      </VBtn>
-    </template>
   </AppFilterBase>
 </template>

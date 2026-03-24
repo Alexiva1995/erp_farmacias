@@ -109,18 +109,15 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
 
     <template #actions-extra>
       <VBtn
+        icon
         color="primary"
         variant="elevated"
         size="38"
-        class="rounded-lg ml-1 bg-primary font-weight-black"
+        class="ml-1 bg-primary"
         @click="emit('generarPedido')"
       >
-        <VIcon icon="tabler-shopping-cart-plus" size="20" class="d-sm-none" />
-        <span class="d-none d-sm-flex px-2">
-          <VIcon icon="tabler-shopping-cart-plus" size="18" class="mr-2" />
-          GENERAR PEDIDO IA
-        </span>
-        <VTooltip activator="parent" location="top" class="d-sm-none">Generar Pedido Inteligente</VTooltip>
+        <VIcon icon="tabler-shopping-cart-plus" />
+        <VTooltip activator="parent" location="top">Generar Pedido Inteligente</VTooltip>
       </VBtn>
     </template>
 

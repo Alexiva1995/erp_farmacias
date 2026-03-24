@@ -43,7 +43,7 @@ const hasAdvancedFilters = computed(() =>
         variant="tonal"
         color="primary"
         size="38"
-        class="rounded-lg ml-1"
+        class="ml-1"
         :loading="props.loading"
         @click="emit('refresh')"
       >

@@ -46,33 +46,27 @@ const hasAdvancedFilters = computed(() =>
     <template #actions-extra>
       <!-- Botones principales del comparador -->
       <VBtn
+        icon
         color="info"
         variant="tonal"
         size="38"
-        class="rounded-lg ml-1"
+        class="ml-1"
         @click="emit('update-all-api')"
       >
-        <VIcon icon="tabler-cloud-download" size="20" class="d-sm-none" />
-        <span class="d-none d-sm-flex font-weight-black px-2">
-          <VIcon icon="tabler-cloud-download" size="18" class="mr-2" />
-          Actualizar Vía API
-        </span>
-        <VTooltip activator="parent" location="top" class="d-sm-none">Actualizar Vía API</VTooltip>
+        <VIcon icon="tabler-cloud-download" />
+        <VTooltip activator="parent" location="top">Actualizar Vía API</VTooltip>
       </VBtn>
 
       <VBtn
+        icon
         color="error"
         variant="tonal"
         size="38"
-        class="rounded-lg ml-1"
+        class="ml-1"
         @click="emit('open-delete-dialog')"
       >
-        <VIcon icon="tabler-trash" size="20" class="d-sm-none" />
-        <span class="d-none d-sm-flex font-weight-black px-2">
-          <VIcon icon="tabler-trash" size="18" class="mr-2" />
-          Eliminar Productos
-        </span>
-        <VTooltip activator="parent" location="top" class="d-sm-none">Eliminar Productos</VTooltip>
+        <VIcon icon="tabler-trash" />
+        <VTooltip activator="parent" location="top">Eliminar Productos</VTooltip>
       </VBtn>
     </template>
 

@@ -41,18 +41,15 @@ const hasAdvancedFilters = computed(() =>
       <VExpandTransition>
         <VBtn
           v-show="props.selectedCount > 0 && props.currentTab === 'pending'"
+          icon
           color="success"
           variant="flat"
           size="38"
-          class="rounded-lg ml-1 bg-success text-white"
+          class="ml-1"
           @click="emit('bulk-generate')"
         >
-          <VIcon icon="tabler-check" size="20" class="d-sm-none" />
-          <span class="d-none d-sm-flex font-weight-black pl-2 pr-1">
-            <VIcon icon="tabler-check" size="18" class="mr-2" />
-            GENERAR ({{ props.selectedCount }})
-          </span>
-          <VTooltip activator="parent" location="top" class="d-sm-none">Generar {{ props.selectedCount }} Retenciones</VTooltip>
+          <VIcon icon="tabler-check" />
+          <VTooltip activator="parent" location="top">Generar {{ props.selectedCount }} Retenciones</VTooltip>
         </VBtn>
       </VExpandTransition>
     </template>
