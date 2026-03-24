@@ -133,7 +133,7 @@ const handleClear = () => {
                 v-bind="menuProps"
                 icon
                 variant="tonal"
-                color="secondary"
+                color="info"
                 size="38"
               >
                 <VIcon :icon="selectedSortIcon" />
