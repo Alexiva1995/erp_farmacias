@@ -1,4 +1,7 @@
 <script setup>
+// Filtros para créditos a clientes
+import AppFilterBase from "@/components/AppFilterBase.vue";
+
 const props = defineProps({
   searchQuery: String,
 });
@@ -7,26 +10,10 @@ const emit = defineEmits(["update:searchQuery", "clear"]);
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="12" md="12">
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por Documento o Nombre del Cliente..."
-            clearable
-            @update:model-value="emit('update:searchQuery', $event)"
-          />
-        </VCol>
-      </VRow>
-    </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar
-      </VBtn>
-    </VCardActions>
-  </VCard>
+  <AppFilterBase
+    :search="props.searchQuery"
+    search-placeholder="Buscar por documento o nombre del cliente..."
+    @update:search="emit('update:searchQuery', $event)"
+    @clear="emit('clear')"
+  />
 </template>

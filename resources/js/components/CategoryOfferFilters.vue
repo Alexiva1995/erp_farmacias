@@ -1,11 +1,13 @@
 <script setup>
-import { computed, ref } from "vue";
+// Filtros para ofertas por categoría
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import { computed } from "vue";
 
 const props = defineProps({
-  idSearchQuery: { type: String, default: "" },
-  searchQuery: { type: String, default: "" },
-  isActive: { type: [String, Number, Boolean], default: "" },
-  addOfferLoading: { type: Boolean, default: false },
+  idSearchQuery:  { type: String,                      default: "" },
+  searchQuery:    { type: String,                      default: "" },
+  isActive:       { type: [String, Number, Boolean],   default: "" },
+  addOfferLoading:{ type: Boolean,                     default: false },
 });
 
 const emit = defineEmits([
@@ -16,181 +18,58 @@ const emit = defineEmits([
   "add-categories",
 ]);
 
-const isAdvancedFilterVisible = ref(false);
-
-const idSearchQuery = computed({
-  get: () => props.idSearchQuery,
-  set: (value) => emit("update:idSearchQuery", value),
-});
-
-const searchQuery = computed({
-  get: () => props.searchQuery,
-  set: (value) => emit("update:searchQuery", value),
-});
-
-const isActive = computed({
-  get: () => props.isActive,
-  set: (value) => emit("update:isActive", value),
-});
-
-const hasActiveAdvancedFilters = computed(() => {
-  return (idSearchQuery.value && idSearchQuery.value !== "") || 
-         (isActive.value !== "" && isActive.value !== null);
-});
+// Indicador de filtros avanzados activos
+const hasAdvancedFilters = computed(() =>
+  (props.idSearchQuery && props.idSearchQuery !== "") ||
+  (props.isActive !== "" && props.isActive !== null)
+);
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border-0 shadow-sm overflow-visible">
-    <VCardText class="pa-4">
-      <VRow align="center" no-gutters>
-        <!-- Búsqueda Principal -->
-        <VCol cols="12" md="6" class="pe-md-4 mb-3 mb-md-0">
-          <AppTextField
-            v-model="searchQuery"
-            placeholder="BUSCAR CATEGORÍA POR NOMBRE..."
-            variant="outlined"
-            density="compact"
-            hide-details
-            prepend-inner-icon="tabler-search"
-            class="premium-input-compact"
-            clearable
-          />
-        </VCol>
+  <AppFilterBase
+    :search="props.searchQuery"
+    :has-advanced-filters="hasAdvancedFilters"
+    :show-add="true"
+    :add-button-text="'Nueva Oferta'"
+    search-placeholder="Buscar categoría por nombre..."
+    search-icon="tabler-search"
+    @update:search="emit('update:searchQuery', $event)"
+    @clear="emit('clear')"
+    @add="emit('add-categories')"
+  >
+    <template #advanced-filters>
+      <!-- ID de Oferta -->
+      <VCol cols="12" sm="6" md="3">
+        <AppTextField
+          :model-value="props.idSearchQuery"
+          placeholder="ID de Oferta (ej: 125)"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-hash"
+          @update:model-value="emit('update:idSearchQuery', $event)"
+        />
+      </VCol>
 
-        <!-- Botones de Acción -->
-        <VCol cols="12" md="6" class="d-flex align-center gap-2">
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            class="rounded-lg h-38"
-            :class="{ 'bg-primary-lighten-5 text-primary': isAdvancedFilterVisible }"
-            @click="isAdvancedFilterVisible = !isAdvancedFilterVisible"
-          >
-            <VBadge
-              v-if="hasActiveAdvancedFilters"
-              dot
-              color="error"
-              offset-x="-2"
-              offset-y="-2"
-            >
-              <VIcon icon="tabler-filter" class="me-2" />
-            </VBadge>
-            <VIcon v-else icon="tabler-filter" class="me-2" />
-            Filtros
-          </VBtn>
-
-          <VBtn
-            v-if="searchQuery || hasActiveAdvancedFilters"
-            variant="tonal"
-            color="secondary"
-            icon="tabler-eraser"
-            class="rounded-lg h-38"
-            @click="emit('clear')"
-          />
-
-          <VSpacer />
-
-          <VBtn
-            color="primary"
-            variant="flat"
-            prepend-icon="tabler-plus"
-            :loading="props.addOfferLoading"
-            class="rounded-lg h-38 shadow-primary font-weight-black"
-            @click="emit('add-categories')"
-          >
-            NUEVA OFERTA
-          </VBtn>
-        </VCol>
-      </VRow>
-
-      <!-- Filtros Avanzados Colapsables -->
-      <VExpandTransition>
-        <div v-show="isAdvancedFilterVisible">
-          <VDivider class="my-4 border-dashed" />
-          <VRow dense>
-            <VCol cols="12" sm="6" md="4">
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">ID de Oferta</span>
-              <AppTextField
-                v-model="idSearchQuery"
-                placeholder="EJ: 125"
-                variant="outlined"
-                density="compact"
-                hide-details
-                prepend-inner-icon="tabler-hash"
-                class="premium-input-compact"
-                clearable
-              />
-            </VCol>
-            
-            <VCol cols="12" sm="6" md="4">
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado</span>
-              <VSelect
-                v-model="isActive"
-                :items="[
-                  { value: '', title: 'Todos los estados' },
-                  { value: 1, title: 'Activas' },
-                  { value: 0, title: 'Inactivas' },
-                ]"
-                item-title="title"
-                item-value="value"
-                variant="outlined"
-                density="compact"
-                hide-details
-                class="premium-input-compact"
-                clearable
-              />
-            </VCol>
-          </VRow>
-        </div>
-      </VExpandTransition>
-    </VCardText>
-  </VCard>
+      <!-- Estado -->
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.isActive"
+          :items="[
+            { value: '', title: 'Todos los estados' },
+            { value: 1,  title: 'Activas' },
+            { value: 0,  title: 'Inactivas' },
+          ]"
+          item-title="title"
+          item-value="value"
+          placeholder="Estado"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-circle-dot"
+          @update:model-value="emit('update:isActive', $event)"
+        />
+      </VCol>
+    </template>
+  </AppFilterBase>
 </template>
-
-<style scoped>
-.premium-input-compact :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.15 !important;
-  color: rgba(var(--v-border-color), 1) !important;
-}
-
-.premium-input-compact :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1 !important;
-  color: rgb(var(--v-theme-primary)) !important;
-}
-
-.premium-input-compact :deep(.v-field) {
-  border-radius: 8px !important;
-  min-height: 38px !important;
-  background-color: white !important;
-}
-
-.premium-input-compact :deep(.v-field__input) {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  font-size: 0.75rem !important;
-  font-weight: 700;
-  min-height: 38px !important;
-  text-transform: uppercase;
-}
-
-.h-38 {
-  height: 38px !important;
-}
-
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-}
-
-.shadow-primary {
-  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.2) !important;
-}
-
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.4;
-}
-
-.letter-spacing-1 {
-  letter-spacing: 1px !important;
-}
-</style>
