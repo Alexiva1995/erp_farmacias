@@ -72,16 +72,19 @@ const {
 
 const laboratories = ref([]);
 const users = ref([]);
+const locations = ref([]);
 const isLoadingFilters = ref(false);
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, usersResponse] = await Promise.all([
+    const [labResponse, usersResponse, locationResponse] = await Promise.all([
       axios.get("/laboratories"),
-      axios.get("/inventory/cycle/users-with-counts")
+      axios.get("/inventory/cycle/users-with-counts"),
+      axios.get("/locations")
     ]);
     laboratories.value = labResponse.data || [];
+    locations.value = locationResponse.data.data || locationResponse.data || [];
 
     if (usersResponse.data && Array.isArray(usersResponse.data)) {
       users.value = usersResponse.data.map(user => {
@@ -111,6 +114,7 @@ const fetchSelectOptions = async () => {
     toast.error("No se pudieron cargar los filtros.");
     laboratories.value = [];
     users.value = [];
+    locations.value = [];
   } finally {
     isLoadingFilters.value = false;
   }
@@ -204,6 +208,7 @@ const handleExport = async (format) => {
       :product-name="productForLotDistribution?.name || 'Producto'"
       :lots="productForLotDistribution?.lots || []"
       :target-quantity="productTargetQuantity || 0"
+      :locations="locations"
       mode="adjustment"
       @save="handleProductLots"
     />
@@ -219,6 +224,7 @@ const handleExport = async (format) => {
       :product-name="invoiceForLotDistribution?.name || 'Producto'"
       :lots="invoiceForLotDistribution?.lots || []"
       :target-quantity="invoiceTargetQuantity || 0"
+      :locations="locations"
       mode="adjustment"
       @save="handleInvoiceLots"
     />
@@ -234,6 +240,7 @@ const handleExport = async (format) => {
       :product-name="saleForLotDistribution?.name || 'Producto'"
       :lots="saleForLotDistribution?.lots || []"
       :target-quantity="saleTargetQuantity || 0"
+      :locations="locations"
       mode="adjustment"
       @save="handleSaleLots"
     />

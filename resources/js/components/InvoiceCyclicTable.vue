@@ -81,7 +81,11 @@ const handleMobilePageChange = (newPage) => {
                 {{ item.product.name.toUpperCase() }}
                 <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
               </span>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.product.active_ingredient }}</span>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">
+                <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
+                <span class="mx-1">|</span>
+                {{ item.product.active_ingredient }}
+              </span>
             </div>
           </div>
         </template>
@@ -150,6 +154,8 @@ const handleMobilePageChange = (newPage) => {
                   {{ item.product?.name }}
                 </h3>
                 <div class="text-super-xs text-disabled font-weight-bold uppercase truncate">
+                  <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
+                  <span class="mx-1">|</span>
                   {{ item.product?.active_ingredient }}
                 </div>
               </div>

@@ -64,60 +64,16 @@ const barcodeInput = ref("");
 const scannerLoading = ref(false);
 const scannerInputRef = ref(null);
 
-const locations = [
-  "E-001",
-  "E-002",
-  "E-003",
-  "E-004",
-  "E-005",
-  "G-001",
-  "G-002",
-  "G-003",
-  "G-004",
-  "G-005",
-  "G-006",
-  "G-007",
-  "G-008",
-  "G-009",
-  "G-010",
-  "G-011",
-  "G-012",
-  "G-013",
-  "G-014",
-  "G-015",
-  "G-016",
-  "G-017",
-  "G-018",
-  "G-019",
-  "G-020",
-  "G-021",
-  "G-022",
-  "G-023",
-  "G-024",
-  "I-001",
-  "I-002",
-  "I-003",
-  "I-004",
-  "I-005",
-  "I-006",
-  "I-007",
-  "I-008",
-  "I-009",
-  "I-010",
-  "I-011",
-  "I-012",
-  "I-013",
-  "I-014",
-  "I-015",
-  "I-016",
-  "N-001",
-  "D-001",
-  "M-001",
-  "M-002",
-  "M-003",
-  "M-004",
-  "M-005",
-].sort();
+const locations = ref([]);
+
+const fetchLocations = async () => {
+  try {
+    const response = await axios.get("/locations");
+    locations.value = response.data.data || response.data || [];
+  } catch (error) {
+    console.error("Error al cargar ubicaciones:", error);
+  }
+};
 
 const formattedPaymentRules = computed(() => {
   const rules = props.paymentRules.payment_rules;
@@ -419,6 +375,7 @@ onMounted(async () => {
   if (invoice.value) {
     await fetchInvoiceDetails(props.invoiceId);
   }
+  await fetchLocations();
 });
 
 watch(isEditMode, (newVal) => {
@@ -1678,6 +1635,8 @@ const detailsHeaders = computed(() => {
                   v-if="isLocationMode && !isItemReturned(item)"
                   :model-value="item.location"
                   :items="locations"
+                  item-title="name"
+                  item-value="name"
                   density="compact"
                   hide-details
                   variant="outlined"
@@ -1686,7 +1645,6 @@ const detailsHeaders = computed(() => {
                   :return-object="false"
                   auto-select-first
                   @update:model-value="updateLocation(item.id, $event)"
-                  @focus="updateLocation(item.id, null)"
                 />
                 <span
                   v-else
