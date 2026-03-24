@@ -35,9 +35,62 @@ class SuppliersIaOrderAssistantController extends Controller
             "paginate" => [],
         ];
 
+        $filtros = $this->prepararFiltros($request);
+
+        if ($respuesta["tipo_filtracion"] == "combinado") {
+            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+        } elseif ($respuesta["tipo_filtracion"] == "average") {
+            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+        } elseif ($respuesta["tipo_filtracion"] == "sales") {
+            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+        } else {
+            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+        }
+
+        return ApiResponse::success($respuesta, "ok", 200);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $filtros = $this->prepararFiltros($request);
+        
+        // Obtenemos todos los productos filtrados sin paginar
+        if ($request->tipo_filtracion == "combinado") {
+            // El servicio ya tiene un método para obtener sin paginar
+            $items = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
+        } elseif ($request->tipo_filtracion == "sales") {
+            $items = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
+        } else {
+            $items = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+        }
+
+        $stats = [
+            'necesitan' => 0,
+            'exceso' => 0,
+            'ok' => 0
+        ];
+
+        foreach ($items as $item) {
+            $solicitarRounded = $this->roundIaAnalysis($item->solicitar);
+            $loteQuantity = (float)($item->lote_quantity ?? 0);
+
+            if ($solicitarRounded > 0 || ($solicitarRounded == 0 && $loteQuantity <= 0)) {
+                $stats['necesitan']++;
+            } elseif ($solicitarRounded < 0) {
+                $stats['exceso']++;
+            } else {
+                $stats['ok']++;
+            }
+        }
+
+        return ApiResponse::success($stats, "ok", 200);
+    }
+
+    private function prepararFiltros(Request $request): array
+    {
         $filtros = [
-            "itemsPerPage" => $request->itemsPerPage,
-            "page" => $request->page,
+            "itemsPerPage" => $request->itemsPerPage ?? 10,
+            "page" => $request->page ?? 1,
             "tipo_filtracion" => $request->tipo_filtracion,
             "tipo_vista" => $request->tipo_vista,
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
@@ -46,6 +99,10 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
+        }
+
+        if ($request->filled("q")) {
+            $filtros["q"] = $request->q;
         }
 
         if ($request->filled("stock")) {
@@ -75,17 +132,25 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["previousDate"] = $previousDate->format("Y-m-d 00:00:00");
         }
 
-        if ($respuesta["tipo_filtracion"] == "combinado") {
-            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "average") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "sales") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
-        } else {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        }
+        return $filtros;
+    }
 
-        return ApiResponse::success($respuesta, "ok", 200);
+    private function roundIaAnalysis($value)
+    {
+        if ($value === null || $value === "" || !is_numeric($value)) return 0;
+        
+        $num = (float)$value;
+        if ($num == 0) return 0;
+        
+        $sign = $num > 0 ? 1 : -1;
+        $abs = abs($num);
+        $floor = floor($abs);
+        $decimal = $abs - $floor;
+        
+        $roundedAbs = $decimal > 0.333 ? ceil($abs) : $floor;
+        
+        $result = $roundedAbs * $sign;
+        return $result == 0 ? 0 : (int)$result;
     }
 
     public function generateListProductoToRequest(Request $request): JsonResponse
@@ -471,6 +536,7 @@ class SuppliersIaOrderAssistantController extends Controller
                 } else {
                     $stock = $items->lote_quantity ?? 0;
                     $ventas = $items->total_sold_completed ?? 0;
+                    $aoActual = $items->totalQuantityInAutoOrder ?? 0;
                     // demanda - stock - AO (positivo = necesita pedir, negativo = exceso)
                     $items->solicitar = $ventas - $stock - $aoActual;
                 }

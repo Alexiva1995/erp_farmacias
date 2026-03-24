@@ -55,7 +55,7 @@ const getVolumeRange = (scales) => {
 <template>
   <div class="company-offer-container">
     <!-- Desktop View -->
-    <VCard class="d-none d-md-block rounded-xl border-0 shadow-sm overflow-hidden">
+    <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
       <VDataTableServer
         v-model:items-per-page="props.itemsPerPage"
         v-model:page="props.page"
@@ -64,6 +64,7 @@ const getVolumeRange = (scales) => {
         :items-length="props.totalCompanies"
         :loading="props.loading"
         class="premium-table"
+        density="compact"
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
@@ -173,7 +174,7 @@ const getVolumeRange = (scales) => {
         <template #default="{ items }">
           <VRow dense>
             <VCol v-for="item in items" :key="item.id" cols="12" class="mb-4">
-              <VCard class="premium-card rounded-xl border-0 overflow-hidden shadow-sm flex-row d-flex h-100">
+              <VCard class="premium-card rounded-lg border-0 overflow-hidden shadow-sm flex-row d-flex h-100">
                 <div :class="`status-strip bg-${getStatusColor(item.raw.is_active)}`" />
                 <div class="pa-4 flex-grow-1">
                   <div class="d-flex justify-space-between align-center mb-3">
@@ -208,7 +209,7 @@ const getVolumeRange = (scales) => {
                         variant="tonal"
                         color="info"
                         size="36"
-                        class="rounded-xl shadow-sm"
+                        class="rounded-lg shadow-sm"
                         @click="emit('view-offer', item.raw)"
                       />
                       <VBtn
@@ -216,7 +217,7 @@ const getVolumeRange = (scales) => {
                         variant="tonal"
                         color="primary"
                         size="36"
-                        class="rounded-xl shadow-sm"
+                        class="rounded-lg shadow-sm"
                         @click="emit('edit-offer', item.raw)"
                       />
                       <VBtn
@@ -224,7 +225,7 @@ const getVolumeRange = (scales) => {
                         variant="tonal"
                         color="error"
                         size="36"
-                        class="rounded-xl shadow-sm"
+                        class="rounded-lg shadow-sm"
                         @click="emit('delete-offer', item.raw)"
                       />
                     </div>
@@ -244,12 +245,13 @@ const getVolumeRange = (scales) => {
   background-color: #f8fafc !important;
   color: rgb(var(--v-theme-primary)) !important;
   font-size: 0.75rem !important;
-  font-weight: 800 !important;
+  font-weight: 950 !important;
   letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
 }
 
 .premium-table :deep(td) {
+  padding-block: 8px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   color: #334155 !important;

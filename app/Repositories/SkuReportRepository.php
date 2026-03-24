@@ -25,23 +25,31 @@ class SkuReportRepository implements SkuReportRepositoryInterface
                 'products.id as product_id',
                 'products.barcode',
                 'products.name as product_name',
-                'laboratories.name as laboratory_name', // alias sugerido
-                'products.cost as current_cost', // o unit_cost_usd si es moneda fuerte
-                'products.price as list_price',
+                'laboratories.name as laboratory_name',
+                'products.unit_cost as current_cost', // Corregido
+                'products.sale_price as list_price', // Corregido
                 DB::raw('SUM(order_details.quantity) as total_sold'),
-                DB::raw('SUM(order_details.price * order_details.quantity) as total_revenue'), // Precio real cobrado
-                // El descuento real sumado en dinero: precio_lista - precio_vendido
+                DB::raw('SUM(order_details.price * order_details.quantity) as total_revenue'),
                 DB::raw('SUM((order_details.price_before_discount - order_details.price) * order_details.quantity) as total_discount_amount')
             )
-            ->where('orders.status', 'completed') // Solo ventas concretadas
+            ->where('orders.status', 'completed')
             ->groupBy(
                 'products.id',
                 'products.barcode',
                 'products.name',
                 'laboratories.name',
-                'products.cost',
-                'products.price'
+                'products.unit_cost',
+                'products.sale_price'
             );
+
+        // Filtro de Búsqueda Global
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function($q) use ($search) {
+                $q->where('products.name', 'LIKE', "%{$search}%")
+                  ->orWhere('products.barcode', 'LIKE', "%{$search}%");
+            });
+        }
 
         // Filtro de Fechas (usa la tabla orders)
         if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
@@ -67,16 +75,15 @@ class SkuReportRepository implements SkuReportRepositoryInterface
     public function getExpiredProducts(array $filters)
     {
         $query = ExpiredLog::query()
-            ->join('product_lots', 'expired_logs.product_lot_id', '=', 'product_lots.id')
             ->select(
-                'product_lots.product_id',
-                DB::raw('SUM(expired_logs.quantity) as total_expired_qty'),
-                DB::raw('SUM(expired_logs.quantity * product_lots.unit_cost) as total_expired_cost')
+                'product_id',
+                DB::raw('SUM(expired_quantity) as total_expired_qty'),
+                DB::raw('SUM(total_lost_value) as total_expired_cost')
             )
-            ->groupBy('product_lots.product_id');
+            ->groupBy('product_id');
 
         if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('expired_logs.created_at', [$filters['start_date'] . ' 00:00:00', $filters['end_date'] . ' 23:59:59']);
+            $query->whereBetween('created_at', [$filters['start_date'] . ' 00:00:00', $filters['end_date'] . ' 23:59:59']);
         }
 
         return $query->get()->keyBy('product_id');

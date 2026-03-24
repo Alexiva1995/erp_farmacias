@@ -253,6 +253,7 @@ const totalRefundAmount = computed(() => {
       :loading="props.loading"
       item-key="id"
       class="text-no-wrap premium-table"
+      density="compact"
       fixed-header
       height="auto"
       @update:options="(options) => emit('update:options', options)"
@@ -557,7 +558,7 @@ const totalRefundAmount = computed(() => {
 }
 
 .premium-table :deep(td) {
-  padding-block: 16px !important;
+  padding-block: 8px !important;
 }
 
 .header-gradient {

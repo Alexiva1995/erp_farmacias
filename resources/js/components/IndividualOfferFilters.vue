@@ -41,10 +41,10 @@ const hasActiveAdvancedFilters = computed(() => {
       <!-- Fila Principal: Búsqueda y Botones de Acción -->
       <VRow align="center" no-gutters class="gap-2">
         <!-- Buscador Principal -->
-        <VCol cols="12" md="6" lg="5">
+        <VCol cols="12" sm="5" md="4" lg="4">
           <AppTextField
             v-model="searchQuery"
-            placeholder="BUSCAR OFERTA POR NOMBRE DE PRODUCTO..."
+            placeholder="BUSCAR OFERTA POR PRODUCTO..."
             prepend-inner-icon="tabler-search"
             clearable
             density="compact"
@@ -64,7 +64,6 @@ const hasActiveAdvancedFilters = computed(() => {
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
             size="38"
-            class="rounded-lg"
             @click="toggleAdvancedFilters"
           >
             <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
@@ -78,9 +77,25 @@ const hasActiveAdvancedFilters = computed(() => {
             />
           </VBtn>
 
-          <VDivider vertical class="mx-1 my-2" />
+          <!-- Añadir Oferta -->
+          <VBtn
+            icon
+            color="primary"
+            variant="flat"
+            size="38"
+            :loading="props.addOfferLoading"
+            @click="emit('add-product')"
+          >
+            <VIcon icon="tabler-plus" />
+            <VTooltip activator="parent" location="top">Nueva Oferta</VTooltip>
+          </VBtn>
 
-          <!-- Limpiar Filtros (Solo Icono) -->
+          <VDivider
+            vertical
+            class="mx-1 my-2"
+          />
+
+          <!-- Limpiar Filtros -->
           <VBtn
             icon
             variant="text"
@@ -90,21 +105,6 @@ const hasActiveAdvancedFilters = computed(() => {
           >
             <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-          </VBtn>
-
-          <VDivider vertical class="mx-1 my-2" />
-
-          <!-- Añadir Oferta -->
-          <VBtn
-            color="primary"
-            variant="flat"
-            height="38"
-            class="rounded-lg font-weight-black px-4"
-            prepend-icon="tabler-plus"
-            :loading="props.addOfferLoading"
-            @click="emit('add-product')"
-          >
-            NUEVA OFERTA
           </VBtn>
         </div>
       </VRow>
@@ -150,7 +150,6 @@ const hasActiveAdvancedFilters = computed(() => {
 /* Forzar altura y alineación en todos los campos */
 .premium-input-compact :deep(.v-field) {
   border-radius: 8px !important;
-  min-block-size: 38px !important;
   padding-inline-start: 12px !important;
 }
 
@@ -160,7 +159,6 @@ const hasActiveAdvancedFilters = computed(() => {
   padding-block: 0 !important;
   font-size: 0.75rem !important;
   font-weight: 700;
-  min-block-size: 38px !important;
   text-transform: uppercase;
 }
 

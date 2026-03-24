@@ -120,7 +120,7 @@ const getRemainingMonths = (item) => {
       :items="props.loans"
       :items-length="props.totalLoans"
       :loading="props.loading"
-      class="premium-table rounded-xl border shadow-sm"
+      class="premium-table rounded-lg border shadow-sm"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
@@ -232,12 +232,12 @@ const getRemainingMonths = (item) => {
     <div v-else class="mobile-cards-container pa-4">
       <VRow v-if="props.loading">
         <VCol v-for="n in 5" :key="n" cols="12">
-          <VSkeletonLoader type="card" class="rounded-xl" />
+          <VSkeletonLoader type="card" class="rounded-lg" />
         </VCol>
       </VRow>
       <VRow v-else-if="props.loans.length > 0">
         <VCol v-for="item in props.loans" :key="item.id" cols="12">
-          <VCard class="rounded-xl border shadow-sm loan-card" variant="flat">
+          <VCard class="rounded-lg border shadow-sm loan-card" variant="flat">
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-start mb-3">
                 <div class="d-flex align-center gap-3">

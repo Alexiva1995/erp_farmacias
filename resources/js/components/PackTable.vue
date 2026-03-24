@@ -131,94 +131,96 @@ const handleToggleStatus = (pack) => {
       </div>
     </template>
 
-    <VDataTableServer
-      v-else
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.packs"
-      :items-length="props.totalPacks"
-      :loading="props.loading"
-      class="text-no-wrap premium-table"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <template #item.id="{ item }">
-        <VChip color="primary" size="small" variant="flat" class="font-weight-black shadow-sm">
-          #{{ item.id }}
-        </VChip>
-      </template>
+    <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
+      <VDataTableServer
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
+        :headers="headers"
+        :items="props.packs"
+        :items-length="props.totalPacks"
+        :loading="props.loading"
+        class="text-no-wrap premium-table"
+        density="compact"
+        @update:options="(options) => emit('update:options', options)"
+      >
+        <template #item.id="{ item }">
+          <VChip color="primary" size="small" variant="flat" class="font-weight-black shadow-sm">
+            #{{ item.id }}
+          </VChip>
+        </template>
 
-      <template #item.name="{ item }">
-        <span class="font-weight-bold text-high-emphasis">{{ item.name }}</span>
-      </template>
+        <template #item.name="{ item }">
+          <span class="font-weight-bold text-high-emphasis">{{ item.name }}</span>
+        </template>
 
-      <template #item.products_count="{ item }">
-        <VChip variant="tonal" color="info" size="small" class="font-weight-bold">
-          <VIcon start size="14">tabler-package</VIcon>
-          {{ Object.keys(item.pack_config || {}).length }}
-        </VChip>
-      </template>
+        <template #item.products_count="{ item }">
+          <VChip variant="tonal" color="info" size="small" class="font-weight-bold">
+            <VIcon start size="14">tabler-package</VIcon>
+            {{ Object.keys(item.pack_config || {}).length }}
+          </VChip>
+        </template>
 
-      <template #item.total_price="{ item }">
-        <span class="font-weight-950 text-success text-subtitle-2">
-          {{ formatCurrency(item.total_price) }}
-        </span>
-      </template>
+        <template #item.total_price="{ item }">
+          <span class="font-weight-950 text-success text-subtitle-2">
+            {{ formatCurrency(item.total_price) }}
+          </span>
+        </template>
 
-      <template #item.max_quantity="{ item }">
-        <span v-if="item.max_quantity" class="font-weight-medium">
-          {{ item.max_quantity }}
-        </span>
-        <span v-else class="text-disabled italic font-weight-medium">Ilimitado</span>
-      </template>
+        <template #item.max_quantity="{ item }">
+          <span v-if="item.max_quantity" class="font-weight-medium">
+            {{ item.max_quantity }}
+          </span>
+          <span v-else class="text-disabled italic font-weight-medium">Ilimitado</span>
+        </template>
 
-      <template #item.max_sale_date="{ item }">
-        <div class="d-flex align-center gap-1 text-medium-emphasis">
-          <VIcon icon="tabler-calendar" size="16" />
-          <span class="font-weight-medium">{{ formatDate(item.max_sale_date) }}</span>
-        </div>
-      </template>
+        <template #item.max_sale_date="{ item }">
+          <div class="d-flex align-center gap-1 text-medium-emphasis">
+            <VIcon icon="tabler-calendar" size="16" />
+            <span class="font-weight-medium">{{ formatDate(item.max_sale_date) }}</span>
+          </div>
+        </template>
 
-      <template #item.is_active="{ item }">
-        <VSwitch
-          :model-value="item.is_active"
-          density="compact"
-          color="success"
-          hide-details
-          class="d-inline-flex"
-          @update:model-value="handleToggleStatus(item)"
-        />
-      </template>
-
-      <template #item.actions="{ item }">
-        <div class="d-flex justify-center gap-1">
-          <VBtn
-            icon="tabler-eye"
-            variant="tonal"
-            size="32"
-            color="info"
-            class="rounded-lg shadow-sm"
-            @click="handleView(item)"
+        <template #item.is_active="{ item }">
+          <VSwitch
+            :model-value="item.is_active"
+            density="compact"
+            color="success"
+            hide-details
+            class="d-inline-flex"
+            @update:model-value="handleToggleStatus(item)"
           />
-          <VBtn
-            icon="tabler-edit"
-            variant="tonal"
-            size="32"
-            color="warning"
-            class="rounded-lg shadow-sm"
-            @click="handleEdit(item)"
-          />
-          <VBtn
-            icon="tabler-trash"
-            variant="tonal"
-            size="32"
-            color="error"
-            class="rounded-lg shadow-sm"
-            @click="handleDelete(item)"
-          />
-        </div>
-      </template>
-    </VDataTableServer>
+        </template>
+
+        <template #item.actions="{ item }">
+          <div class="d-flex justify-center gap-1">
+            <VBtn
+              icon="tabler-eye"
+              variant="tonal"
+              size="32"
+              color="info"
+              class="rounded-lg shadow-sm"
+              @click="handleView(item)"
+            />
+            <VBtn
+              icon="tabler-edit"
+              variant="tonal"
+              size="32"
+              color="warning"
+              class="rounded-lg shadow-sm"
+              @click="handleEdit(item)"
+            />
+            <VBtn
+              icon="tabler-trash"
+              variant="tonal"
+              size="32"
+              color="error"
+              class="rounded-lg shadow-sm"
+              @click="handleDelete(item)"
+            />
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
   </div>
 </template>
 

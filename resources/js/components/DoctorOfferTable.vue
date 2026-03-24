@@ -42,7 +42,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
 <template>
   <div class="doctor-offer-container">
     <!-- Desktop View -->
-    <VCard class="d-none d-md-block rounded-xl border-0 shadow-sm overflow-hidden">
+    <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
       <VDataTableServer
         v-model:items-per-page="props.itemsPerPage"
         v-model:page="props.page"
@@ -51,6 +51,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
         :items-length="props.totaldoctors"
         :loading="props.loading"
         class="premium-table"
+        density="compact"
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
@@ -153,7 +154,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
         <template #default="{ items }">
           <VRow dense>
             <VCol v-for="item in items" :key="item.id" cols="12" class="mb-4">
-              <VCard class="premium-card rounded-xl border-0 overflow-hidden shadow-sm flex-row d-flex h-100">
+              <VCard class="premium-card rounded-lg border-0 overflow-hidden shadow-sm flex-row d-flex h-100">
                 <div :class="`status-strip bg-${getStatusColor(item.raw.is_active)}`" />
                 <div class="pa-4 flex-grow-1">
                   <div class="d-flex justify-space-between align-center mb-3">
@@ -184,7 +185,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
                         variant="tonal"
                         color="info"
                         size="36"
-                        class="rounded-xl shadow-sm"
+                        class="rounded-lg shadow-sm"
                         @click="handleView(item.raw)"
                       />
                       <VBtn
@@ -192,7 +193,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
                         variant="tonal"
                         color="primary"
                         size="36"
-                        class="rounded-xl shadow-sm"
+                        class="rounded-lg shadow-sm"
                         @click="handleEdit(item.raw)"
                       />
                       <VBtn
@@ -200,7 +201,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
                         variant="tonal"
                         color="error"
                         size="36"
-                        class="rounded-xl shadow-sm"
+                        class="rounded-lg shadow-sm"
                         @click="handleDelete(item.raw)"
                       />
                     </div>
@@ -220,12 +221,13 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
   background-color: #f8fafc !important;
   color: rgb(var(--v-theme-primary)) !important;
   font-size: 0.75rem !important;
-  font-weight: 800 !important;
+  font-weight: 950 !important;
   letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
 }
 
 .premium-table :deep(td) {
+  padding-block: 8px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   color: #334155 !important;

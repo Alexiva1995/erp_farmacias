@@ -1,4 +1,6 @@
 <script setup>
+import { useDisplay } from "vuetify";
+
 const props = defineProps({
   purchaseOrders: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -14,8 +16,10 @@ const emit = defineEmits([
   "delete-purchaseOrder",
 ]);
 
+const { mobile } = useDisplay();
+
 const headers = [
-  { title: "Id", key: "id", sortable: false, width: "80px" },
+  { title: "Id", key: "id", sortable: false, width: "100px" },
   { title: "Proveedor", key: "supplier_name", sortable: false },
   { title: "Unidades", key: "total_quantity", sortable: false, align: "center" },
   { title: "Monto Total", key: "total_amount", sortable: false },
@@ -68,173 +72,285 @@ const formatTime = (dateString) => {
 </script>
 
 <template>
-  <VDataTableServer
-    v-model:items-per-page="props.itemsPerPage"
-    v-model:page="props.page"
-    :headers="headers"
-    :items="props.purchaseOrders"
-    :items-length="props.totalPurchaseOrders"
-    :loading="props.loading"
-    @update:options="emit('update:options', $event)"
-    hover
-    class="premium-po-table"
-  >
-    <!-- ID de Orden -->
-    <template #item.id="{ item }">
-      <div class="d-flex align-center">
-        <VAvatar
-          size="36"
-          variant="tonal"
-          color="primary"
-          class="font-weight-bold"
-        >
-          <span class="text-caption">#{{ item.id }}</span>
-        </VAvatar>
-      </div>
-    </template>
-
-    <!-- Proveedor -->
-    <template #item.supplier_name="{ item }">
-      <div class="d-flex flex-column py-2">
-        <span class="text-body-2 font-weight-bold text-high-emphasis">
-          {{ item.supplier_name }}
-        </span>
-        <div v-if="item.phone" class="d-flex align-center text-caption text-medium-emphasis mt-1">
-          <VIcon icon="tabler-phone" size="12" class="me-1 text-primary" />
-          {{ item.phone }}
+  <div class="purchase-orders-container">
+    <VDataTableServer
+      v-if="!mobile"
+      v-model:items-per-page="props.itemsPerPage"
+      v-model:page="props.page"
+      :headers="headers"
+      :items="props.purchaseOrders"
+      :items-length="props.totalPurchaseOrders"
+      :loading="props.loading"
+      @update:options="emit('update:options', $event)"
+      hover
+      class="premium-table"
+    >
+      <!-- ID de Orden -->
+      <template #item.id="{ item }">
+        <div class="d-flex align-center py-2">
+          <VAvatar
+            size="38"
+            variant="tonal"
+            color="primary"
+            class="font-weight-black rounded-lg"
+          >
+            <span class="text-xs">#{{ item.id }}</span>
+          </VAvatar>
         </div>
+      </template>
+
+      <!-- Proveedor -->
+      <template #item.supplier_name="{ item }">
+        <div class="d-flex flex-column py-2">
+          <span class="text-sm font-weight-black text-high-emphasis">
+            {{ item.supplier_name }}
+          </span>
+          <div v-if="item.phone" class="d-flex align-center text-xs text-disabled mt-1">
+            <VIcon icon="tabler-phone" size="14" class="me-1 text-primary" />
+            {{ item.phone }}
+          </div>
+        </div>
+      </template>
+
+      <!-- Unidades -->
+      <template #item.total_quantity="{ item }">
+        <VChip size="small" variant="tonal" color="secondary" class="font-weight-black rounded">
+          {{ item.total_quantity }} u.
+        </VChip>
+      </template>
+
+      <!-- Monto Total -->
+      <template #item.total_amount="{ item }">
+        <div class="d-flex flex-column">
+          <span class="font-weight-black text-primary text-sm">
+            $ {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+          </span>
+        </div>
+      </template>
+
+      <!-- Estado -->
+      <template #item.status="{ item }">
+        <VChip
+          :color="getStatusColor(item.status)"
+          size="x-small"
+          label
+          variant="tonal"
+          class="font-weight-black rounded"
+        >
+          {{ getStatusLabel(item.status) }}
+        </VChip>
+      </template>
+
+      <!-- Fecha -->
+      <template #item.order_date="{ item }">
+        <div class="d-flex flex-column">
+          <span class="text-sm font-weight-medium">
+            {{ formatDate(item.order_date) }}
+          </span>
+          <span v-if="formatTime(item.order_date)" class="text-xxs text-disabled">
+            {{ formatTime(item.order_date) }}
+          </span>
+        </div>
+      </template>
+
+      <!-- Fecha Entrega -->
+      <template #item.tentative_delivery_date="{ item }">
+         <div class="d-flex align-center gap-1">
+            <VIcon 
+              v-if="item.tentative_delivery_date" 
+              icon="tabler-truck" 
+              size="18" 
+              color="success-opacity" 
+            />
+            <span class="text-sm font-weight-bold" :class="item.tentative_delivery_date ? 'text-success' : 'text-disabled'">
+              {{ formatDate(item.tentative_delivery_date) }}
+            </span>
+         </div>
+      </template>
+
+      <!-- Acciones -->
+      <template #item.actions="{ item }">
+        <div class="d-flex align-center justify-center gap-2">
+          <VBtn
+            icon
+            size="32"
+            variant="flat"
+            color="primary"
+            class="rounded-lg shadow-sm"
+            @click="emit('manage', item)"
+          >
+            <VIcon icon="tabler-settings" size="18" />
+            <VTooltip activator="parent" location="top">Gestionar</VTooltip>
+          </VBtn>
+
+          <VBtn
+            v-if="isAdmin"
+            icon
+            size="32"
+            variant="tonal"
+            color="error"
+            class="rounded-lg"
+            @click="emit('delete-purchaseOrder', item.id)"
+          >
+            <VIcon icon="tabler-trash" size="18" />
+            <VTooltip activator="parent" location="top">Eliminar</VTooltip>
+          </VBtn>
+
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
+            color="success"
+            class="rounded-lg"
+            :disabled="!item.phone"
+            :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=Hola, envío orden de compra #${item.id}` : undefined"
+            target="_blank"
+          >
+            <VIcon icon="tabler-brand-whatsapp" size="18" />
+            <VTooltip activator="parent" location="top">WhatsApp</VTooltip>
+          </VBtn>
+        </div>
+      </template>
+    </VDataTableServer>
+
+    <!-- Vista Móvil (Cards) -->
+    <div v-else class="mobile-cards-view d-flex flex-column gap-4 pa-4 pb-16">
+      <template v-if="props.purchaseOrders.length > 0">
+        <VCard
+          v-for="item in props.purchaseOrders"
+          :key="item.id"
+          variant="flat"
+          border
+          class="rounded-xl overflow-hidden premium-card"
+        >
+          <div class="premium-card-header pa-4 bg-var-theme-background border-b position-relative">
+            <div class="d-flex justify-space-between align-start mb-2">
+              <div class="d-flex align-center gap-2">
+                <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg font-weight-black">
+                  <span class="text-xs">#{{ item.id }}</span>
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-xs text-disabled text-uppercase font-weight-black">ID Orden</span>
+                  <span class="text-xs font-weight-black text-primary uppercase">{{ formatDate(item.order_date) }}</span>
+                </div>
+              </div>
+              <VChip
+                :color="getStatusColor(item.status)"
+                size="x-small"
+                label
+                variant="tonal"
+                class="font-weight-black rounded"
+              >
+                {{ getStatusLabel(item.status) }}
+              </VChip>
+            </div>
+            <div class="text-sm font-weight-black text-high-emphasis mt-2 uppercase truncate">
+              {{ item.supplier_name }}
+            </div>
+            <div class="premium-card-decoration" :class="`bg-${getStatusColor(item.status)}-opacity`"></div>
+          </div>
+
+          <VCardText class="pa-4">
+            <VRow no-gutters class="gap-y-4">
+              <VCol cols="6">
+                <span class="text-xxs text-disabled text-uppercase d-block mb-1 font-weight-black">Monto Total</span>
+                <span class="text-sm font-weight-black text-primary">
+                  $ {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+                </span>
+              </VCol>
+              <VCol cols="6" class="text-right">
+                <span class="text-xxs text-disabled text-uppercase d-block mb-1 font-weight-black">Unidades</span>
+                <VChip size="x-small" variant="tonal" color="secondary" class="font-weight-black">
+                  {{ item.total_quantity }} u.
+                </VChip>
+              </VCol>
+              <VCol v-if="item.tentative_delivery_date" cols="12" class="mt-2 bg-success-opacity-2 pa-2 rounded-lg d-flex align-center gap-2">
+                <VIcon icon="tabler-truck" size="14" color="success" />
+                <span class="text-xs font-weight-bold text-success">Entrega: {{ formatDate(item.tentative_delivery_date) }}</span>
+              </VCol>
+            </VRow>
+
+            <div class="d-flex align-center gap-2 mt-4">
+              <VBtn
+                color="primary"
+                variant="tonal"
+                class="flex-grow-1 font-weight-black rounded-lg"
+                size="small"
+                @click="emit('manage', item)"
+              >
+                GESTIONAR
+              </VBtn>
+              
+              <VBtn
+                icon
+                variant="tonal"
+                color="success"
+                class="rounded-lg"
+                size="32"
+                :disabled="!item.phone"
+                :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=Hola, envío orden de compra #${item.id}` : undefined"
+                target="_blank"
+              >
+                <VIcon icon="tabler-brand-whatsapp" size="18" />
+              </VBtn>
+
+              <VBtn
+                v-if="isAdmin"
+                icon
+                variant="tonal"
+                color="error"
+                class="rounded-lg"
+                size="32"
+                @click="emit('delete-purchaseOrder', item.id)"
+              >
+                <VIcon icon="tabler-trash" size="18" />
+              </VBtn>
+            </div>
+          </VCardText>
+        </VCard>
+      </template>
+
+      <div v-else-if="!props.loading" class="text-center py-10 opacity-50">
+        <VIcon icon="tabler-clipboard-off" size="48" class="mb-2" />
+        <div class="text-xs font-weight-black uppercase">No hay órdenes de compra</div>
       </div>
-    </template>
-
-    <!-- Unidades -->
-    <template #item.total_quantity="{ item }">
-      <VChip size="small" variant="flat" color="secondary" class="font-weight-medium">
-        {{ item.total_quantity }} u.
-      </VChip>
-    </template>
-
-    <!-- Monto Total -->
-    <template #item.total_amount="{ item }">
-      <div class="d-flex flex-column">
-        <span class="font-weight-bold text-primary text-body-2">
-          $ {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-        </span>
-      </div>
-    </template>
-
-    <!-- Estado -->
-    <template #item.status="{ item }">
-      <VChip
-        :color="getStatusColor(item.status)"
-        size="x-small"
-        label
-        variant="tonal"
-        class="font-weight-bold"
-      >
-        {{ getStatusLabel(item.status) }}
-      </VChip>
-    </template>
-
-    <!-- Fecha -->
-    <template #item.order_date="{ item }">
-      <div class="d-flex flex-column">
-        <span class="text-body-2 font-medium">
-          {{ formatDate(item.order_date) }}
-        </span>
-        <span v-if="formatTime(item.order_date)" class="text-xxs text-medium-emphasis">
-          {{ formatTime(item.order_date) }}
-        </span>
-      </div>
-    </template>
-
-    <!-- Fecha Entrega -->
-    <template #item.tentative_delivery_date="{ item }">
-       <div class="d-flex align-center gap-1">
-          <VIcon 
-            v-if="item.tentative_delivery_date" 
-            icon="tabler-truck" 
-            size="16" 
-            color="success" 
-          />
-          <span class="text-body-2">{{ formatDate(item.tentative_delivery_date) }}</span>
-       </div>
-    </template>
-
-    <!-- Acciones -->
-    <template #item.actions="{ item }">
-      <div class="d-flex align-center justify-center gap-2">
-        <VTooltip text="Gestionar Orden" location="top">
-          <template #activator="{ props: tooltipProps }">
-            <VBtn
-              v-bind="tooltipProps"
-              icon
-              size="x-small"
-              variant="flat"
-              color="primary"
-              class="rounded-lg shadow-sm"
-              @click="emit('manage', item)"
-            >
-              <VIcon icon="tabler-settings" size="18" />
-            </VBtn>
-          </template>
-        </VTooltip>
-
-        <VTooltip v-if="isAdmin" text="Eliminar Orden" location="top">
-          <template #activator="{ props: tooltipProps }">
-            <VBtn
-              v-bind="tooltipProps"
-              icon
-              size="x-small"
-              variant="tonal"
-              color="error"
-              class="rounded-lg"
-              @click="emit('delete-purchaseOrder', item.id)"
-            >
-              <VIcon icon="tabler-trash" size="18" />
-            </VBtn>
-          </template>
-        </VTooltip>
-
-        <VTooltip text="WhatsApp" location="top">
-          <template #activator="{ props: tooltipProps }">
-            <VBtn
-              v-bind="tooltipProps"
-              icon
-              size="x-small"
-              variant="tonal"
-              color="success"
-              class="rounded-lg"
-              :disabled="!item.phone"
-              :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=Hola, envío orden de compra #${item.id}` : undefined"
-              target="_blank"
-            >
-              <VIcon icon="tabler-brand-whatsapp" size="18" />
-            </VBtn>
-          </template>
-        </VTooltip>
-      </div>
-    </template>
-  </VDataTableServer>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.premium-po-table {
-  border-radius: 0 !important;
+.text-xxs { font-size: 0.65rem !important; }
+.text-disabled { color: rgba(var(--v-theme-on-surface), var(--v-disabled-opacity)) !important; }
+
+.premium-card {
+  transition: all 0.2s ease;
 }
 
-.text-xxs {
-  font-size: 0.7rem;
+.premium-card:active {
+  transform: scale(0.98);
 }
 
-:deep(.v-data-table__th) {
-  background-color: rgb(var(--v-theme-surface)) !important;
-  color: rgb(var(--v-theme-on-surface), 0.6) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase;
+.premium-card-decoration {
+  position: absolute;
+  border-radius: 0 0 0 100%;
+  block-size: 60px;
+  inline-size: 60px;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  opacity: 0.1;
+  pointer-events: none;
 }
 
-.gap-2 {
-  gap: 8px;
+.bg-success-opacity { background: linear-gradient(135deg, rgb(var(--v-theme-success)) 0%, transparent 100%); }
+.bg-info-opacity { background: linear-gradient(135deg, rgb(var(--v-theme-info)) 0%, transparent 100%); }
+.bg-warning-opacity { background: linear-gradient(135deg, rgb(var(--v-theme-warning)) 0%, transparent 100%); }
+
+.bg-success-opacity-2 { background-color: rgba(var(--v-theme-success), 0.05) !important; }
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
+

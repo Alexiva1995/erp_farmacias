@@ -18,6 +18,7 @@ const orderBy = ref();
 
 const searchQuery = ref("");
 const selectedFrequency = ref(null);
+const isStrictSearch = ref(false);
 
 const frequencies = ref([
   { title: "Diaria", value: "Diaria" },
@@ -38,6 +39,7 @@ const fetchActivities = async () => {
   const params = {
     q: searchQuery.value,
     frequency: selectedFrequency.value,
+    isStrictSearch: isStrictSearch.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
@@ -62,7 +64,7 @@ const fetchActivities = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery, selectedFrequency],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, selectedFrequency, isStrictSearch],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchActivities(), 300);
@@ -70,7 +72,7 @@ watch(
   { deep: true }
 );
 
-watch([searchQuery, selectedFrequency], () => {
+watch([searchQuery, selectedFrequency, isStrictSearch], () => {
   page.value = 1;
 });
 
@@ -133,6 +135,7 @@ const handleDeleteActivity = async (id) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedFrequency.value = null;
+  isStrictSearch.value = false;
 };
 
 const handleAddActivity = () => {
@@ -190,6 +193,7 @@ const handleSort = (sortOptions) => {
     <ActivityFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedFrequency="selectedFrequency"
+      v-model:isStrictSearch="isStrictSearch"
       :frequencies="frequencies"
       :loading="loading"
       @clear="handleClearFilters"

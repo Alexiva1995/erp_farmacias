@@ -2,7 +2,7 @@
 import SupplierIaOrderAssistantReportFilter from '@/components/SupplierIaOrderAssistantReportFilter.vue';
 import axios from "@/plugins/axios";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch, computed } from 'vue';
 
 const laboratories = ref([]);
 const productosSelect = ref([]);
@@ -17,6 +17,19 @@ const items = ref([]);
 const selectedLaboratory = ref([]);
 const selectProducts = ref([]);
 const searchQuery = ref("");
+
+const isAdvancedFiltersVisible = ref(false);
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
+
+const hasActiveAdvancedFilters = computed(() => {
+  return (
+    selectedLaboratory.value?.length > 0 ||
+    selectProducts.value?.length > 0
+  );
+});
 
 const headers = [
   { title: "Producto", key: "product_name_inventory", sortable: true },
@@ -78,6 +91,10 @@ const handleAddUnits = (item) => {
   console.log("Añadir unidades para:", item.product_name_inventory);
 };
 
+const exportExcel = () => {
+  console.log("Exportando a excel...");
+};
+
 watch([page, itemsPerPage, sortBy, selectedLaboratory, selectProducts, searchQuery], () => {
   fetchOpportunities();
 }, { deep: true });
@@ -89,150 +106,339 @@ onMounted(() => {
 </script>
 
 <template>
-  <VContainer fluid>
-    <VRow class="mb-4">
-      <VCol cols="12">
-        <h1 class="text-h4 font-weight-bold text-primary">
-          <VIcon icon="tabler-trending-down" class="me-2" />
-          Oportunidades de Mercado
-        </h1>
-      </VCol>
-    </VRow>
-
-    <!-- Filtros Estandarizados -->
-    <VCard class="mb-6">
-      <VCardText>
-        <VRow align="center">
-          <VCol cols="12" md="4">
-            <AppAutocomplete
-              v-model="selectProducts"
-              :items="productosSelect"
-              placeholder="Seleccionar Productos"
-              item-title="name"
-              item-value="id"
-              multiple
-              chips
-              clearable
-              hide-details="auto"
-            />
-          </VCol>
-          <VCol cols="12" md="4">
-            <AppAutocomplete
-              v-model="selectedLaboratory"
-              :items="laboratories"
-              placeholder="Seleccionar Laboratorio"
-              item-title="name"
-              item-value="id"
-              multiple
-              chips
-              clearable
-              hide-details="auto"
-            />
-          </VCol>
-          <VCol cols="12" md="4">
+  <div>
+    <!-- Filtros Estandarizados (Search + Action Bar) -->
+    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-3">
+        <VRow align="center" no-gutters class="gap-2">
+          <!-- Buscador Principal -->
+          <VCol cols="12" md="6" lg="5">
             <AppTextField
               v-model="searchQuery"
-              placeholder="Buscar por nombre o barcode"
+              placeholder="Buscar por nombre o barcode..."
               prepend-inner-icon="tabler-search"
               clearable
-              hide-details="auto"
-            />
-          </VCol>
-        </VRow>
-      </VCardText>
-
-      <VDivider />
-
-      <VCardActions class="pa-4 px-6">
-        <VBtn color="secondary" variant="outlined" @click="handleClearFilters">
-          Limpiar Filtros
-        </VBtn>
-      </VCardActions>
-    </VCard>
-
-    <!-- Tabla de Resultados -->
-    <VCard elevation="0" border>
-      <VDataTableServer
-        v-model:items-per-page="itemsPerPage"
-        v-model:page="page"
-        v-model:sort-by="sortBy"
-        :headers="headers"
-        :items="items"
-        :items-length="totalItems"
-        :loading="loading"
-        hover
-        class="text-no-wrap"
-      >
-        <template #item.product_name_inventory="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="font-weight-bold text-wrap mb-1" style="line-height: 1.2;">
-              {{ item.product_name_inventory }}
-            </span>
-            <div class="d-flex flex-wrap ga-2">
-              <span class="text-caption text-medium-emphasis">
-                {{ item.active_ingredient_inventory }}
-              </span>
-              <span class="text-caption text-primary font-weight-medium">
-                {{ item.laboratory_name }}
-              </span>
-            </div>
-          </div>
-        </template>
-
-        <template #item.unit_cost_usd="{ item }">
-          <span class="font-weight-medium text-success">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
-        </template>
-
-        <template #item.effective_min_cost="{ item }">
-          <span class="text-medium-emphasis">{{ formatCurrency(item.effective_min_cost, 'USD') }}</span>
-        </template>
-
-        <template #item.saving_amount="{ item }">
-          <span class="text-success font-weight-bold">
-            {{ formatCurrency(item.saving_amount, 'USD') }}
-          </span>
-        </template>
-
-        <template #item.saving_percentage="{ item }">
-          <VChip color="success" size="x-small" label class="font-weight-bold">
-            {{ item.saving_percentage }}%
-          </VChip>
-        </template>
-
-        <template #item.actions="{ item }">
-          <div class="d-flex align-center ga-2 justify-center">
-            <VTextField
-              v-model="item.quantity_to_add"
-              type="number"
               density="compact"
               hide-details
-              variant="outlined"
-              class="quantity-input"
-              @keypress.enter="handleAddUnits(item)"
+              class="premium-input-compact"
             />
+          </VCol>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-1">
+            <!-- Toggle Filtros -->
             <VBtn
-              icon="tabler-plus"
-              color="primary"
+              icon
               variant="tonal"
-              size="small"
-              @click="handleAddUnits(item)"
-            />
+              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+              size="38"
+              @click="toggleAdvancedFilters"
+            >
+              <VBadge
+                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+                color="error"
+                dot
+                offset-x="2"
+                offset-y="-2"
+              >
+                <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              </VBadge>
+              <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            </VBtn>
+
+            <!-- Exportar Excel -->
+            <VBtn
+              icon
+              variant="tonal"
+              color="success"
+              size="38"
+              @click="exportExcel"
+            >
+              <VIcon icon="tabler-file-export" size="20" />
+              <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+            <!-- Limpiar Filtros (Siempre Visible) -->
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" size="20" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
           </div>
-        </template>
-      </VDataTableServer>
+        </VRow>
+      </VCardText>
     </VCard>
-  </VContainer>
+
+    <!-- Panel de Filtros Avanzados -->
+    <VExpandTransition>
+      <VCard v-show="isAdvancedFiltersVisible" class="mb-6 border-0 shadow-sm bg-var-theme-background-soft">
+        <VCardText class="pa-4">
+          <VRow>
+            <VCol cols="12" sm="6" md="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                Seleccionar Producto(s)
+              </span>
+              <VAutocomplete
+                v-model="selectProducts"
+                :items="productosSelect"
+                placeholder="Todos los productos"
+                item-title="name"
+                item-value="id"
+                multiple
+                chips
+                closable-chips
+                clearable
+                hide-details
+                density="compact"
+                variant="outlined"
+                class="premium-select-compact"
+                prepend-inner-icon="tabler-package"
+              />
+            </VCol>
+            <VCol cols="12" sm="6" md="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
+                Seleccionar Laboratorio(s)
+              </span>
+              <VAutocomplete
+                v-model="selectedLaboratory"
+                :items="laboratories"
+                placeholder="Todos los laboratorios"
+                item-title="name"
+                item-value="id"
+                multiple
+                chips
+                closable-chips
+                clearable
+                hide-details
+                density="compact"
+                variant="outlined"
+                class="premium-select-compact"
+                prepend-inner-icon="tabler-flask"
+              />
+            </VCol>
+            <VSpacer />
+            <VCol cols="12" md="auto" class="d-flex align-end">
+              <div class="text-caption text-disabled font-weight-medium mb-1">
+                <VIcon icon="tabler-info-circle" size="14" class="me-1" />
+                Filtrado por múltiples criterios
+              </div>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+    </VExpandTransition>
+
+    <!-- Tabla de Resultados (Unified VCard) -->
+    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+      <!-- Vista Desktop -->
+      <div class="d-none d-md-block">
+        <VDataTableServer
+          v-model:items-per-page="itemsPerPage"
+          v-model:page="page"
+          v-model:sort-by="sortBy"
+          :headers="headers"
+          :items="items"
+          :items-length="totalItems"
+          :loading="loading"
+          hover
+          density="compact"
+          class="text-no-wrap premium-table"
+        >
+          <template #item.product_name_inventory="{ item }">
+            <div class="d-flex flex-column py-2">
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
+                {{ item.product_name_inventory }}
+              </span>
+              <div class="d-flex flex-wrap ga-2 mt-1">
+                <span class="text-xs font-weight-medium text-disabled">
+                  {{ item.active_ingredient_inventory }}
+                </span>
+                <span class="text-xs font-weight-bold text-primary" style="opacity: 0.8 !important;">
+                  {{ item.laboratory_name }}
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <template #item.unit_cost_usd="{ item }">
+            <span class="font-weight-medium text-success">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
+          </template>
+
+          <template #item.effective_min_cost="{ item }">
+            <span class="text-medium-emphasis">{{ formatCurrency(item.effective_min_cost, 'USD') }}</span>
+          </template>
+
+          <template #item.saving_amount="{ item }">
+            <span class="text-success font-weight-bold">
+              {{ formatCurrency(item.saving_amount, 'USD') }}
+            </span>
+          </template>
+
+          <template #item.saving_percentage="{ item }">
+            <VChip color="success" size="x-small" label class="font-weight-bold">
+              {{ item.saving_percentage }}%
+            </VChip>
+          </template>
+
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center ga-2 justify-center">
+              <VTextField
+                v-model="item.quantity_to_add"
+                type="number"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="quantity-input"
+                @keypress.enter="handleAddUnits(item)"
+              />
+              <VBtn
+                icon="tabler-plus"
+                color="primary"
+                variant="tonal"
+                size="small"
+                @click="handleAddUnits(item)"
+              />
+            </div>
+          </template>
+        </VDataTableServer>
+      </div>
+
+      <!-- Vista Móvil (Cards) -->
+      <div class="d-md-none pa-2 bg-light-gray">
+        <div v-if="loading" class="d-flex justify-center pa-8">
+          <VProgressCircular indeterminate color="primary" />
+        </div>
+        <div v-else-if="items.length === 0" class="text-center pa-8 text-disabled">
+          No se encontraron oportunidades
+        </div>
+        <div v-else class="d-flex flex-column gap-2">
+          <VCard
+            v-for="item in items"
+            :key="item.id"
+            variant="flat"
+            class="mb-1 rounded-lg border shadow-sm bg-white"
+          >
+            <VCardText class="pa-4">
+              <div class="d-flex justify-space-between align-start mb-3">
+                <div class="flex-grow-1">
+                  <div class="text-subtitle-2 font-weight-black leading-tight mb-1">
+                    {{ item.product_name_inventory }}
+                  </div>
+                  <div class="d-flex flex-wrap ga-2 align-center">
+                    <span class="text-caption text-medium-emphasis">{{ item.active_ingredient_inventory }}</span>
+                    <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
+                      {{ item.laboratory_name }}
+                    </VChip>
+                  </div>
+                </div>
+                <VChip color="success" size="small" label class="font-weight-bold">
+                  {{ item.saving_percentage }}%
+                </VChip>
+              </div>
+
+              <VDivider class="mb-3 opacity-10" />
+
+              <VRow dense class="mb-3">
+                <VCol cols="6">
+                  <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Costo Actual</div>
+                  <div class="text-body-2 font-weight-bold text-success">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</div>
+                </VCol>
+                <VCol cols="6">
+                  <div class="text-caption text-disabled text-uppercase font-weight-bold mb-1">Ahorro Estimado</div>
+                  <div class="text-body-2 font-weight-bold text-success">{{ formatCurrency(item.saving_amount, 'USD') }}</div>
+                </VCol>
+              </VRow>
+
+              <div class="d-flex align-center justify-space-between bg-var-theme-background-soft pa-3 rounded-lg border border-dashed">
+                <div class="text-caption font-weight-bold text-medium-emphasis">Referencia Mín: {{ formatCurrency(item.effective_min_cost, 'USD') }}</div>
+                <div class="d-flex align-center ga-2">
+                  <VTextField
+                    v-model="item.quantity_to_add"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    class="quantity-input-mobile"
+                    bg-color="white"
+                  />
+                  <VBtn
+                    icon="tabler-plus"
+                    color="primary"
+                    variant="elevated"
+                    size="small"
+                    @click="handleAddUnits(item)"
+                  />
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+
+          <VPagination
+            v-model="page"
+            :length="Math.ceil(totalItems / itemsPerPage)"
+            density="compact"
+            class="mt-4"
+          />
+        </div>
+      </div>
+    </VCard>
+  </div>
 </template>
 
 <style scoped>
-.v-data-table :deep(thead th) {
+.gap-2 { gap: 8px !important; }
+.gap-4 { gap: 16px !important; }
+
+.premium-table :deep(thead th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
-  font-weight: bold !important;
-  letter-spacing: 0.05em !important;
+  font-weight: 700 !important;
   text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
+}
+
+.premium-table :deep(tbody tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
+}
+
+.bg-light-gray {
+  background-color: #f8f9fa;
 }
 
 .quantity-input {
+  inline-size: 80px;
+}
+
+.quantity-input-mobile {
   inline-size: 70px;
+}
+
+.bg-var-theme-background-soft {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
 }
 </style>

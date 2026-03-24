@@ -47,6 +47,7 @@ const calculateDiscountPrice = (price, discount) => {
         :items-length="props.totalOffer"
         :loading="props.loading"
         class="text-no-wrap premium-table"
+        density="compact"
         fixed-header
         height="auto"
         @update:options="(options) => $emit('update:options', options)"
@@ -245,6 +246,7 @@ const calculateDiscountPrice = (price, discount) => {
 }
 
 .premium-table :deep(td) {
+  padding-block: 8px !important;
   font-size: 0.8rem !important;
 }
 

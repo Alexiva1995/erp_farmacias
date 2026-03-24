@@ -9,21 +9,17 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits([
-  "update:options",
-  "view-products",
-  "edit-assignment",
-  "delete-assignment",
-]);
+const emit = defineEmits(["update:options", "edit-assignment", "delete-assignment"]);
 
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "ID", key: "employee_id", sortable: true, class: "font-weight-black text-super-xs" },
-  { title: "EMPLEADO", key: "employee_name", sortable: true, width: "35%", class: "font-weight-black text-super-xs" },
-  { title: "IDENTIFICACIÓN", key: "identification", sortable: false, width: "20%", class: "font-weight-black text-super-xs" },
-  { title: "PRODUCTOS", key: "products_count", sortable: true, align: "center", class: "font-weight-black text-super-xs text-center" },
-  { title: "ACCIONES", key: "actions", sortable: false, align: "end", class: "font-weight-black text-super-xs" },
+  { title: "ID", key: "employee_id", sortable: true },
+  { title: "Empleado", key: "employee_name", sortable: true, width: "25%" },
+  { title: "Identificación", key: "identification", sortable: false },
+  { title: "Productos Asignados", key: "products", sortable: false, width: "35%", align: "center" },
+  { title: "Total", key: "products_count", sortable: true, align: "center" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
 const getInitials = (name) => {
@@ -43,8 +39,8 @@ const getAvatarColor = (index) => {
 </script>
 
 <template>
-  <VCard class="rounded-xl border-0 shadow-sm overflow-hidden">
-    <!-- Vista Escritorio: Tabla Premium -->
+  <VCard class="border-0 shadow-sm overflow-hidden">
+    <!-- Vista de Escritorio -->
     <VDataTableServer
       v-if="!mobile"
       :items-per-page="props.itemsPerPage"
@@ -54,71 +50,76 @@ const getAvatarColor = (index) => {
       :items-length="props.totalRecords"
       :loading="props.loading"
       class="premium-table text-no-wrap"
+      density="compact"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.employee_id="{ item }">
-        <span class="text-xs font-weight-black text-disabled tabular-nums">#{{ item.employee_id }}</span>
+        <span class="text-xs font-weight-black text-disabled">#{{ item.employee_id }}</span>
       </template>
 
       <template #item.employee_name="{ item }">
         <div class="d-flex align-center gap-3 py-2">
-          <VAvatar
-            :color="getAvatarColor(item.employee_id)"
-            size="34"
-            variant="tonal"
-            class="rounded font-weight-black text-super-xs"
-          >
-            {{ getInitials(item.employee_name) }}
+          <VAvatar :color="getAvatarColor(item.employee_id)" size="34" variant="tonal" class="rounded">
+            <span class="text-super-xs font-weight-black">{{ getInitials(item.employee_name) }}</span>
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-xs font-weight-black text-high-emphasis leading-tight">{{ item.employee_name }}</span>
-            <span class="text-super-xs text-disabled mt-1">{{ item.is_active ? "Activo" : "Inactivo" }}</span>
+            <span class="text-xs font-weight-black text-high-emphasis leading-tight">
+              {{ item.employee_name }}
+            </span>
+            <span class="text-super-xs text-disabled mt-1 font-weight-bold uppercase">
+              {{ item.is_active ? "Activo" : "Inactivo" }}
+            </span>
           </div>
         </div>
       </template>
 
       <template #item.identification="{ item }">
-        <span class="text-xs text-medium-emphasis tabular-nums">{{ item.identification || "N/A" }}</span>
+        <span class="text-xs text-medium-emphasis font-weight-black tabular-nums">
+          {{ item.identification || "N/A" }}
+        </span>
       </template>
 
-      <template #item.products_count="{ item }">
-        <div class="d-flex justify-center">
+      <template #item.products="{ item }">
+        <div class="d-flex flex-wrap justify-center gap-1 max-w-ch-40 mx-auto">
           <VChip
-            :color="item.products_count > 0 ? 'success' : 'surface-variant'"
-            size="small"
-            class="font-weight-black rounded px-3"
-            variant="flat"
-            style="color: white !important; min-inline-size: 40px;"
+            v-for="prod in item.products"
+            :key="prod.id"
+            size="x-small"
+            color="primary"
+            variant="tonal"
+            class="rounded font-weight-black"
           >
-            {{ item.products_count }}
+            {{ prod.name }}
           </VChip>
+          <span v-if="item.products.length === 0" class="text-super-xs text-disabled">Sin productos</span>
         </div>
       </template>
 
+      <template #item.products_count="{ item }">
+        <VChip
+          :color="item.products_count > 0 ? 'info' : 'surface-variant'"
+          size="x-small"
+          variant="flat"
+          class="font-weight-black rounded px-3"
+          style="color: white !important; min-inline-size: 36px;"
+        >
+          {{ item.products_count }}
+        </VChip>
+      </template>
+
       <template #item.actions="{ item }">
-        <div class="d-flex justify-end gap-1">
-          <VTooltip text="Ver Productos" location="top">
+        <div class="d-flex gap-1 justify-center">
+          <VTooltip text="Editar Productos" location="top">
             <template #activator="{ props: tp }">
-              <VBtn v-bind="tp" icon="tabler-eye" variant="text" color="info" size="32" @click="emit('view-products', item)" />
+              <VBtn v-bind="tp" icon="tabler-edit" variant="text" color="primary" size="32" class="rounded-lg" @click="emit('edit-assignment', item)" />
             </template>
           </VTooltip>
-          <VTooltip text="Editar Asignación" location="top">
-            <template #activator="{ props: tp }">
-              <VBtn v-bind="tp" icon="tabler-edit" variant="text" color="warning" size="32" @click="emit('edit-assignment', item)" />
-            </template>
-          </VTooltip>
-          <VMenu>
+
+          <VMenu v-if="item.products.length > 0">
             <template #activator="{ props: menuProps }">
               <VTooltip text="Eliminar Producto" location="top">
                 <template #activator="{ props: tp }">
-                  <VBtn
-                    v-bind="{ ...menuProps, ...tp }"
-                    icon="tabler-trash"
-                    variant="text"
-                    color="error"
-                    size="32"
-                    :disabled="item.products.length === 0"
-                  />
+                  <VBtn v-bind="{ ...menuProps, ...tp }" icon="tabler-trash" variant="text" color="error" size="32" class="rounded-lg" />
                 </template>
               </VTooltip>
             </template>
@@ -131,7 +132,7 @@ const getAvatarColor = (index) => {
                 <template #prepend>
                   <VIcon icon="tabler-trash" size="16" color="error" class="me-2" />
                 </template>
-                <VListItemTitle class="text-xs font-weight-bold">{{ prod.name }}</VListItemTitle>
+                <VListItemTitle class="text-xs font-weight-black">{{ prod.name }}</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
@@ -144,152 +145,92 @@ const getAvatarColor = (index) => {
           <VPagination
             :model-value="props.page"
             :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
+            size="small"
             @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
           />
         </div>
       </template>
     </VDataTableServer>
 
-    <!-- Vista Móvil: Cards Premium -->
+    <!-- Vista Móvil -->
     <div v-else class="pa-4 bg-light">
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-4 rounded" />
+
+      <div v-if="props.employeeProducts.length === 0 && !props.loading" class="text-center pa-10">
+        <VIcon icon="tabler-package-off" size="48" class="text-disabled mb-2 opacity-20" />
+        <p class="text-disabled text-sm uppercase font-weight-black">No se encontraron empleados</p>
+      </div>
+
       <VRow>
         <VCol v-for="item in props.employeeProducts" :key="item.employee_id" cols="12">
-          <VCard class="rounded-xl border shadow-sm overflow-hidden">
-            <!-- Header tarjeta -->
-            <div class="pa-4 d-flex align-center gap-3 border-b bg-surface">
-              <VAvatar
-                :color="getAvatarColor(item.employee_id)"
-                size="44"
-                variant="tonal"
-                class="rounded font-weight-black"
-              >
-                {{ getInitials(item.employee_name) }}
-              </VAvatar>
-              <div class="flex-grow-1">
-                <span class="text-sm font-weight-black text-high-emphasis d-block leading-tight">{{ item.employee_name }}</span>
-                <span class="text-super-xs text-disabled uppercase font-weight-bold">ID: #{{ item.employee_id }}</span>
-              </div>
-              <div class="d-flex flex-column align-end gap-1">
-                <VChip
-                  :color="item.products_count > 0 ? 'success' : 'default'"
-                  size="x-small"
-                  class="font-weight-black rounded"
-                  variant="flat"
-                >
-                  {{ item.products_count }} productos
-                </VChip>
-                <VChip
-                  :color="item.is_active ? 'success' : 'error'"
-                  size="x-small"
-                  variant="tonal"
-                  class="font-weight-black rounded"
-                >
-                  {{ item.is_active ? "ACTIVO" : "INACTIVO" }}
-                </VChip>
-              </div>
-            </div>
-
-            <!-- Info extra -->
-            <VCardText class="pa-4 pb-0">
-              <div class="d-flex align-center gap-2 mb-3">
-                <VIcon icon="tabler-id" size="16" color="disabled" />
-                <span class="text-xs text-medium-emphasis">{{ item.identification || "Sin identificación" }}</span>
+          <VCard class="border-0 shadow-sm overflow-hidden">
+            <div class="pa-4">
+              <div class="d-flex align-center gap-3 mb-4">
+                <VAvatar :color="getAvatarColor(item.employee_id)" size="44" variant="tonal" class="rounded">
+                  <span class="text-body-1 font-weight-black">{{ getInitials(item.employee_name) }}</span>
+                </VAvatar>
+                <div class="d-flex flex-column flex-grow-1">
+                  <span class="text-sm font-weight-black text-high-emphasis leading-tight">
+                    {{ item.employee_name }}
+                  </span>
+                  <span class="text-super-xs text-disabled mt-1 font-weight-bold">
+                    ID: #{{ item.employee_id }} • {{ item.identification || 'Sin DNI' }}
+                  </span>
+                </div>
+                <div class="d-flex gap-1">
+                  <VBtn icon="tabler-edit" variant="tonal" color="primary" size="32" class="rounded" @click="emit('edit-assignment', item)" />
+                  <VMenu v-if="item.products.length > 0">
+                    <template #activator="{ props: menuProps }">
+                      <VBtn v-bind="menuProps" icon="tabler-trash" variant="tonal" color="error" size="32" class="rounded" />
+                    </template>
+                    <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+                      <VListItem
+                        v-for="prod in item.products"
+                        :key="prod.id"
+                        @click="emit('delete-assignment', item.employee_id, prod.id)"
+                      >
+                        <template #prepend>
+                          <VIcon icon="tabler-trash" size="16" color="error" class="me-2" />
+                        </template>
+                        <VListItemTitle class="text-xs font-weight-black">{{ prod.name }}</VListItemTitle>
+                      </VListItem>
+                    </VList>
+                  </VMenu>
+                </div>
               </div>
 
-              <!-- Chips de productos -->
-              <div v-if="item.products && item.products.length > 0" class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-2">Productos Asignados</span>
+              <VDivider class="mb-4 opacity-10" />
+
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled text-uppercase mb-2 d-flex justify-space-between align-center">
+                  <span>Productos Asignados</span>
+                  <VChip size="x-small" color="info" variant="flat" class="rounded px-2 font-weight-black">
+                    {{ item.products_count }}
+                  </VChip>
+                </div>
                 <div class="d-flex flex-wrap gap-1">
                   <VChip
-                    v-for="prod in item.products.slice(0, 3)"
+                    v-for="prod in item.products"
                     :key="prod.id"
                     size="x-small"
+                    color="secondary"
                     variant="tonal"
-                    color="primary"
+                    label
                     class="rounded font-weight-bold"
                   >
                     {{ prod.name }}
                   </VChip>
-                  <VChip
-                    v-if="item.products.length > 3"
-                    size="x-small"
-                    variant="tonal"
-                    color="secondary"
-                    class="rounded font-weight-bold"
-                  >
-                    +{{ item.products.length - 3 }} más
-                  </VChip>
+                  <div v-if="item.products.length === 0" class="text-super-xs text-disabled italic font-weight-medium">
+                    Sin productos asignados
+                  </div>
                 </div>
               </div>
-            </VCardText>
-
-            <VCardText class="pa-4 pt-2">
-              <VDivider class="border-dashed mb-3" />
-              <div class="d-flex gap-2">
-                <VBtn
-                  color="info"
-                  variant="tonal"
-                  size="small"
-                  class="rounded-lg flex-grow-1 font-weight-black"
-                  @click="emit('view-products', item)"
-                >
-                  <VIcon start icon="tabler-eye" size="16" />
-                  VER
-                </VBtn>
-                <VBtn
-                  color="warning"
-                  variant="tonal"
-                  size="small"
-                  class="rounded-lg flex-grow-1 font-weight-black"
-                  @click="emit('edit-assignment', item)"
-                >
-                  <VIcon start icon="tabler-edit" size="16" />
-                  EDITAR
-                </VBtn>
-                <VMenu v-if="item.products && item.products.length > 0">
-                  <template #activator="{ props: menuProps }">
-                    <VBtn
-                      v-bind="menuProps"
-                      color="error"
-                      variant="tonal"
-                      size="small"
-                      class="rounded-lg font-weight-black"
-                      icon="tabler-trash"
-                    />
-                  </template>
-                  <VList density="compact" class="rounded-lg py-1 border shadow-lg">
-                    <VListItem
-                      v-for="prod in item.products"
-                      :key="prod.id"
-                      @click="emit('delete-assignment', item.employee_id, prod.id)"
-                    >
-                      <template #prepend>
-                        <VIcon icon="tabler-trash" size="16" color="error" class="me-2" />
-                      </template>
-                      <VListItemTitle class="text-xs font-weight-bold">{{ prod.name }}</VListItemTitle>
-                    </VListItem>
-                  </VList>
-                </VMenu>
-              </div>
-            </VCardText>
+            </div>
           </VCard>
         </VCol>
       </VRow>
 
-      <!-- Empty State -->
-      <div v-if="props.employeeProducts.length === 0 && !props.loading" class="text-center py-12">
-        <VIcon icon="tabler-users-group" size="64" color="disabled" class="mb-4 opacity-20" />
-        <div class="text-sm font-weight-black text-disabled uppercase">Sin asignaciones registradas</div>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="props.loading" class="text-center py-12">
-        <VProgressCircular indeterminate color="primary" size="32" class="mb-4" />
-        <div class="text-super-xs font-weight-black text-disabled uppercase">Cargando empleados...</div>
-      </div>
-
-      <!-- Paginación Móvil -->
-      <div v-if="props.totalRecords > props.itemsPerPage" class="d-flex justify-center mt-4">
+      <div v-if="props.totalRecords > props.itemsPerPage" class="mt-6 d-flex justify-center">
         <VPagination
           :model-value="props.page"
           :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
@@ -306,21 +247,19 @@ const getAvatarColor = (index) => {
   background: transparent !important;
 
   thead th {
-    background: transparent !important;
-    block-size: 48px !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
     border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-    color: rgb(var(--v-theme-disabled)) !important;
   }
 
   tbody tr {
     transition: background-color 0.2s ease;
-
     &:hover {
       background-color: rgba(var(--v-theme-primary), 0.02) !important;
     }
-
     td {
-      block-size: 60px !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
     }
   }
@@ -332,15 +271,15 @@ const getAvatarColor = (index) => {
   line-height: 1;
 }
 
+.max-w-ch-40 {
+  max-width: 40ch;
+}
+
 .bg-light {
   background-color: rgba(var(--v-theme-on-surface), 0.015);
 }
 
 .leading-tight {
   line-height: 1.2;
-}
-
-.border-dashed {
-  border-style: dashed !important;
 }
 </style>

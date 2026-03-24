@@ -7,115 +7,150 @@
           <VIcon icon="tabler-history" color="primary" size="32" />
         </VAvatar>
         <div class="d-flex flex-column">
-          <span class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1">Finanzas / Historial</span>
-          <span class="text-h4 font-weight-black text-white leading-tight">Historial de Pagos</span>
+          <span
+            class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1"
+            >Finanzas / Historial</span
+          >
+          <span class="text-h4 font-weight-black text-white leading-tight"
+            >Historial de Pagos</span
+          >
         </div>
         <VSpacer />
-        <VIcon icon="tabler-receipt-2" size="100" class="position-absolute opacity-10" style="inset-block-end: -20px; inset-inline-end: -20px;" />
+        <VIcon
+          icon="tabler-receipt-2"
+          size="100"
+          class="position-absolute opacity-10"
+          style="inset-block-end: -20px; inset-inline-end: -20px"
+        />
       </div>
     </VCard>
 
-    <!-- Barra de Búsqueda y Filtros -->
-    <div class="d-flex flex-wrap align-center gap-3 mb-6">
-      <div class="flex-grow-1" style="min-inline-size: 280px;">
-        <AppTextField
-          v-model="searchQuery"
-          placeholder="Buscar factura, proveedor o referencia..."
-          prepend-inner-icon="tabler-search"
-          class="premium-input-compact"
-          density="compact"
-          hide-details
-          clearable
-          @input="handleSearch"
-        />
-      </div>
+    <!-- Barra de Búsqueda y Filtros Premium -->
+    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-3">
+        <!-- Fila Principal: Búsqueda y Acciones -->
+        <VRow align="center" no-gutters class="gap-2">
+          <!-- Buscador Principal -->
+          <VCol cols="12" md="6" lg="5">
+            <AppTextField
+              v-model="searchQuery"
+              placeholder="Buscar factura, proveedor o referencia..."
+              prepend-inner-icon="tabler-search"
+              class="premium-input-compact"
+              density="compact"
+              hide-details
+              clearable
+              @input="handleSearch"
+            />
+          </VCol>
 
-      <div class="d-flex gap-2 flex-grow-1 flex-sm-grow-0 justify-sm-end">
-        <VBtn
-          :color="isFiltersVisible ? 'primary' : 'secondary'"
-          variant="tonal"
-          class="rounded-lg px-4 font-weight-black flex-grow-1 flex-sm-grow-0 h-38"
-          @click="isFiltersVisible = !isFiltersVisible"
-        >
-          <VIcon start icon="tabler-filter" size="18" />
-          <span class="d-none d-sm-inline">FILTROS</span>
-          <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
-        </VBtn>
-      </div>
-    </div>
+          <VSpacer />
 
-    <!-- Panel de Filtros Avanzado -->
-    <VExpandTransition>
-      <VCard v-if="isFiltersVisible" class="rounded-xl border-0 shadow-sm mb-6 bg-surface-variant-light overflow-hidden">
-        <VCardText class="pa-5">
-          <VRow>
-            <VCol cols="12" sm="6" md="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Proveedor</span>
-              <VAutocomplete
-                v-model="selectedSupplier"
-                :items="suppliers"
-                item-title="name"
-                item-value="id"
-                placeholder="Todos los proveedores"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="premium-select-compact"
-                clearable
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6" md="2">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Moneda</span>
-              <VSelect
-                v-model="selectedCurrency"
-                :items="currencies"
-                item-title="label"
-                item-value="value"
-                placeholder="Moneda"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="premium-select-compact"
-                clearable
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6" md="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Desde</span>
-              <AppDateTimePicker
-                v-model="startDate"
-                placeholder="Fecha inicial"
-                class="premium-input-compact"
-                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6" md="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Hasta</span>
-              <AppDateTimePicker
-                v-model="endDate"
-                placeholder="Fecha final"
-                class="premium-input-compact"
-                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-              />
-            </VCol>
-          </VRow>
-
-          <div class="d-flex justify-end mt-4">
+          <div class="d-flex align-center gap-1">
+            <!-- Toggle Filtros -->
             <VBtn
-              variant="text"
-              color="secondary"
-              size="small"
-              class="font-weight-black"
-              @click="clearFilters"
+              icon
+              variant="tonal"
+              :color="isFiltersVisible ? 'primary' : 'secondary'"
+              size="38"
+              @click="isFiltersVisible = !isFiltersVisible"
             >
-              LIMPIAR FILTROS
+              <VIcon :icon="isFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+            <!-- Limpiar Filtros (Icono Circular) -->
+            <VBtn icon variant="text" color="secondary" size="38" @click="clearFilters">
+              <VIcon icon="tabler-eraser" size="20" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
           </div>
-        </VCardText>
-      </VCard>
-    </VExpandTransition>
+        </VRow>
+
+        <!-- Panel de Filtros Avanzado -->
+        <VExpandTransition>
+          <div v-show="isFiltersVisible">
+            <VDivider class="my-4 border-opacity-10" />
+            
+            <VRow>
+              <VCol cols="12" sm="6" md="4">
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                  >Proveedor</span
+                >
+                <VAutocomplete
+                  v-model="selectedSupplier"
+                  :items="suppliers"
+                  item-title="name"
+                  item-value="id"
+                  placeholder="Todos los proveedores"
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  class="premium-select-compact"
+                  clearable
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="2">
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                  >Moneda</span
+                >
+                <VSelect
+                  v-model="selectedCurrency"
+                  :items="currencies"
+                  item-title="label"
+                  item-value="value"
+                  placeholder="Moneda"
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  class="premium-select-compact"
+                  clearable
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="3">
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                  >Desde</span
+                >
+                <AppDateTimePicker
+                  v-model="startDate"
+                  placeholder="Fecha inicial"
+                  class="premium-input-compact"
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="3">
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
+                  >Hasta</span
+                >
+                <AppDateTimePicker
+                  v-model="endDate"
+                  placeholder="Fecha final"
+                  class="premium-input-compact"
+                  :config="{
+                    altInput: true,
+                    altFormat: 'Y-m-d',
+                    dateFormat: 'Y-m-d',
+                  }"
+                />
+              </VCol>
+            </VRow>
+          </div>
+        </VExpandTransition>
+      </VCardText>
+    </VCard>
 
     <!-- Tabla / Cards -->
     <div v-if="!$vuetify.display.smAndDown">
@@ -132,10 +167,17 @@
         >
           <template #item.payment_date="{ item }">
             <div class="d-flex align-center gap-2">
-              <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
+              <VAvatar
+                size="32"
+                color="primary"
+                variant="tonal"
+                class="rounded-lg"
+              >
                 <VIcon icon="tabler-calendar-event" size="16" />
               </VAvatar>
-              <span class="font-weight-bold">{{ formatDate(item.payment_date) }}</span>
+              <span class="font-weight-bold">{{
+                formatDate(item.payment_date)
+              }}</span>
             </div>
           </template>
 
@@ -150,7 +192,10 @@
               <span class="font-weight-black text-base">
                 {{ formatCurrency(item.amount, item.currency) }}
               </span>
-              <span v-if="normalizeCurrencyCode(item.currency) !== 'USD'" class="text-super-xs text-success font-weight-bold">
+              <span
+                v-if="normalizeCurrencyCode(item.currency) !== 'USD'"
+                class="text-super-xs text-success font-weight-bold"
+              >
                 REF: USD {{ formatNumber(item.amount_usd) }}
               </span>
             </div>
@@ -184,21 +229,38 @@
             >
               {{ item.reference }}
             </VChip>
-            <span v-else class="text-disabled italic text-xs">Sin referencia</span>
+            <span v-else class="text-disabled italic text-xs"
+              >Sin referencia</span
+            >
           </template>
 
           <template #item.user="{ item }">
             <div class="d-flex align-center gap-2">
-              <VAvatar size="28" color="secondary" variant="tonal" class="rounded-lg">
-                <span class="text-xs font-weight-black">{{ getUserInitials(item.user?.name) }}</span>
+              <VAvatar
+                size="28"
+                color="secondary"
+                variant="tonal"
+                class="rounded-lg"
+              >
+                <span class="text-xs font-weight-black">{{
+                  getUserInitials(item.user?.name)
+                }}</span>
               </VAvatar>
-              <span class="text-xs font-weight-medium">{{ item.user?.name || "Sistema" }}</span>
+              <span class="text-xs font-weight-medium">{{
+                item.user?.name || "Sistema"
+              }}</span>
             </div>
           </template>
 
           <template #item.actions="{ item }">
             <div class="d-flex gap-1 justify-center">
-              <IconBtn size="small" color="primary" variant="tonal" class="rounded-lg" @click="viewPaymentDetails(item)">
+              <IconBtn
+                size="small"
+                color="primary"
+                variant="tonal"
+                class="rounded-lg"
+                @click="viewPaymentDetails(item)"
+              >
                 <VIcon icon="tabler-eye" size="18" />
               </IconBtn>
               <IconBtn
@@ -225,14 +287,24 @@
         class="rounded-xl border-0 shadow-sm overflow-hidden"
       >
         <div class="pa-4 bg-surface-variant-light d-flex align-center gap-3">
-          <VAvatar size="48" color="primary" variant="tonal" class="rounded-lg shadow-sm">
+          <VAvatar
+            size="48"
+            color="primary"
+            variant="tonal"
+            class="rounded-lg shadow-sm"
+          >
             <VIcon icon="tabler-receipt" size="24" />
           </VAvatar>
           <div class="d-flex flex-column flex-grow-1">
-            <span class="text-base font-weight-black leading-tight truncate" style="max-inline-size: 180px;">
+            <span
+              class="text-base font-weight-black leading-tight truncate"
+              style="max-inline-size: 180px"
+            >
               {{ item.invoices?.[0]?.supplier?.name || "Proveedor N/A" }}
             </span>
-            <span class="text-xs text-disabled">{{ formatDate(item.payment_date) }}</span>
+            <span class="text-xs text-disabled">{{
+              formatDate(item.payment_date)
+            }}</span>
           </div>
           <VChip
             :color="getCurrencyColor(item.currency)"
@@ -248,14 +320,22 @@
         <div class="pa-4 pt-4">
           <div class="d-flex justify-space-between align-center mb-4">
             <div class="d-flex flex-column">
-              <span class="text-super-xs text-disabled font-weight-black uppercase">Monto Pagado</span>
+              <span
+                class="text-super-xs text-disabled font-weight-black uppercase"
+                >Monto Pagado</span
+              >
               <span class="text-xl font-weight-black text-primary">
                 {{ formatCurrency(item.amount, item.currency) }}
               </span>
             </div>
             <div class="text-right d-flex flex-column">
-              <span class="text-super-xs text-disabled font-weight-black uppercase">Ref. USD</span>
-              <span class="text-base font-weight-bold text-success">USD {{ formatNumber(item.amount_usd) }}</span>
+              <span
+                class="text-super-xs text-disabled font-weight-black uppercase"
+                >Ref. USD</span
+              >
+              <span class="text-base font-weight-bold text-success"
+                >USD {{ formatNumber(item.amount_usd) }}</span
+              >
             </div>
           </div>
 
@@ -284,7 +364,9 @@
       </VCard>
 
       <!-- Paginación Móvil -->
-      <VCard class="rounded-xl border-0 shadow-sm pa-3 d-flex justify-center align-center bg-surface">
+      <VCard
+        class="rounded-xl border-0 shadow-sm pa-3 d-flex justify-center align-center bg-surface"
+      >
         <VPagination
           v-model="page"
           :length="Math.ceil(totalPayments / itemsPerPage)"
@@ -297,19 +379,45 @@
     </div>
 
     <!-- Modal Detalles de Pago -->
-    <VDialog v-model="showPaymentModal" max-width="1000" persistent scrollable :fullscreen="$vuetify.display.smAndDown">
+    <VDialog
+      v-model="showPaymentModal"
+      max-width="1000"
+      persistent
+      scrollable
+      :fullscreen="$vuetify.display.smAndDown"
+    >
       <VCard class="rounded-xl overflow-hidden">
         <VCardTitle class="pa-0">
-          <div class="premium-dialog-header pa-5 d-flex align-center bg-primary">
-            <VAvatar size="40" color="rgba(255,255,255,0.2)" class="me-3 shadow-sm rounded-lg" variant="elevated">
+          <div
+            class="premium-dialog-header pa-5 d-flex align-center bg-primary"
+          >
+            <VAvatar
+              size="40"
+              color="rgba(255,255,255,0.2)"
+              class="me-3 shadow-sm rounded-lg"
+              variant="elevated"
+            >
               <VIcon icon="tabler-receipt-2" color="white" size="24" />
             </VAvatar>
             <div class="d-flex flex-column">
-              <span class="text-h6 font-weight-black text-white leading-tight">Detalles del Pago</span>
-              <span class="text-xs text-white opacity-80 uppercase font-weight-bold">Ref: {{ selectedPayment?.reference || 'N/A' }} | {{ formatDate(selectedPayment?.payment_date) }}</span>
+              <span class="text-h6 font-weight-black text-white leading-tight"
+                >Detalles del Pago</span
+              >
+              <span
+                class="text-xs text-white opacity-80 uppercase font-weight-bold"
+                >Ref: {{ selectedPayment?.reference || "N/A" }} |
+                {{ formatDate(selectedPayment?.payment_date) }}</span
+              >
             </div>
             <VSpacer />
-            <VBtn icon variant="tonal" color="white" size="small" class="rounded-lg" @click="showPaymentModal = false">
+            <VBtn
+              icon
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="showPaymentModal = false"
+            >
               <VIcon>tabler-x</VIcon>
             </VBtn>
           </div>
@@ -319,32 +427,74 @@
           <VRow>
             <!-- Resumen Financiero -->
             <VCol cols="12" md="5">
-              <VCard class="rounded-xl border-0 shadow-sm bg-surface-variant-light overflow-hidden mb-6">
+              <VCard
+                class="rounded-xl border-0 shadow-sm bg-surface-variant-light overflow-hidden mb-6"
+              >
                 <div class="pa-5 d-flex flex-column align-center text-center">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2">Total Pagado</span>
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase mb-2"
+                    >Total Pagado</span
+                  >
                   <span class="text-h3 font-weight-black text-primary mb-1">
-                    {{ formatCurrency(selectedPayment.amount, selectedPayment.currency) }}
+                    {{
+                      formatCurrency(
+                        selectedPayment.amount,
+                        selectedPayment.currency,
+                      )
+                    }}
                   </span>
-                  <div class="d-flex align-center gap-2 bg-white px-4 py-1 rounded-pill shadow-sm border">
-                    <VIcon icon="tabler-currency-dollar" size="18" color="success" />
-                    <span class="text-base font-weight-black text-success">USD {{ formatNumber(selectedPayment.amount_usd) }}</span>
+                  <div
+                    class="d-flex align-center gap-2 bg-white px-4 py-1 rounded-pill shadow-sm border"
+                  >
+                    <VIcon
+                      icon="tabler-currency-dollar"
+                      size="18"
+                      color="success"
+                    />
+                    <span class="text-base font-weight-black text-success"
+                      >USD {{ formatNumber(selectedPayment.amount_usd) }}</span
+                    >
                   </div>
                 </div>
 
                 <div class="pa-5 pt-0">
                   <VDivider class="border-dashed opacity-20 mb-5" />
-                  
-                  <div v-if="savingsPercentage > 0" class="savings-card pa-4 rounded-xl d-flex align-center">
-                    <VAvatar color="white" size="44" class="me-4 shadow-sm" variant="elevated">
-                      <VIcon icon="tabler-trending-down" color="success" size="24" />
+
+                  <div
+                    v-if="savingsPercentage > 0"
+                    class="savings-card pa-4 rounded-xl d-flex align-center"
+                  >
+                    <VAvatar
+                      color="white"
+                      size="44"
+                      class="me-4 shadow-sm"
+                      variant="elevated"
+                    >
+                      <VIcon
+                        icon="tabler-trending-down"
+                        color="success"
+                        size="24"
+                      />
                     </VAvatar>
                     <div>
-                      <div class="text-h5 font-weight-black text-success">{{ savingsPercentage }}%</div>
-                      <div class="text-super-xs font-weight-black text-disabled uppercase">Ahorro Detectado</div>
+                      <div class="text-h5 font-weight-black text-success">
+                        {{ savingsPercentage }}%
+                      </div>
+                      <div
+                        class="text-super-xs font-weight-black text-disabled uppercase"
+                      >
+                        Ahorro Detectado
+                      </div>
                     </div>
                   </div>
-                  <div v-else class="pa-4 bg-white rounded-xl border border-dashed d-flex align-center text-center justify-center min-h-60">
-                    <span class="text-xs font-weight-bold text-disabled uppercase">Sin descuentos registrados</span>
+                  <div
+                    v-else
+                    class="pa-4 bg-white rounded-xl border border-dashed d-flex align-center text-center justify-center min-h-60"
+                  >
+                    <span
+                      class="text-xs font-weight-bold text-disabled uppercase"
+                      >Sin descuentos registrados</span
+                    >
                   </div>
                 </div>
               </VCard>
@@ -352,17 +502,35 @@
               <!-- Detalles de Registro -->
               <VCard class="rounded-xl border-0 shadow-sm bg-white pa-5">
                 <div class="d-flex align-center mb-5">
-                  <VIcon icon="tabler-user-check" size="22" class="me-3 text-primary" />
+                  <VIcon
+                    icon="tabler-user-check"
+                    size="22"
+                    class="me-3 text-primary"
+                  />
                   <div>
-                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block">Registrado por</span>
-                    <span class="text-sm font-weight-black">{{ selectedPayment.user?.name || "Sistema" }}</span>
+                    <span
+                      class="text-super-xs font-weight-black text-disabled uppercase d-block"
+                      >Registrado por</span
+                    >
+                    <span class="text-sm font-weight-black">{{
+                      selectedPayment.user?.name || "Sistema"
+                    }}</span>
                   </div>
                 </div>
                 <div class="d-flex align-center">
-                  <VIcon icon="tabler-wallet" size="22" class="me-3 text-primary" />
+                  <VIcon
+                    icon="tabler-wallet"
+                    size="22"
+                    class="me-3 text-primary"
+                  />
                   <div>
-                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block">Método de Pago</span>
-                    <span class="text-sm font-weight-black text-capitalize">{{ selectedPayment.method || 'Transferencia' }}</span>
+                    <span
+                      class="text-super-xs font-weight-black text-disabled uppercase d-block"
+                      >Método de Pago</span
+                    >
+                    <span class="text-sm font-weight-black text-capitalize">{{
+                      selectedPayment.method || "Transferencia"
+                    }}</span>
                   </div>
                 </div>
               </VCard>
@@ -372,10 +540,15 @@
             <VCol cols="12" md="7">
               <div class="d-flex align-center gap-2 mb-4 ms-2">
                 <VIcon icon="tabler-file-invoice" size="20" color="primary" />
-                <span class="font-weight-black text-uppercase text-xs text-primary">Facturas Asociadas</span>
+                <span
+                  class="font-weight-black text-uppercase text-xs text-primary"
+                  >Facturas Asociadas</span
+                >
               </div>
-              
-              <VCard class="rounded-xl border shadow-sm overflow-hidden bg-white">
+
+              <VCard
+                class="rounded-xl border shadow-sm overflow-hidden bg-white"
+              >
                 <VList lines="two" class="pa-0">
                   <VListItem
                     v-for="invoice in selectedPayment.invoices"
@@ -383,33 +556,60 @@
                     class="border-b py-4"
                   >
                     <template #prepend>
-                      <VAvatar color="secondary" variant="tonal" rounded size="40" class="rounded-lg">
+                      <VAvatar
+                        color="secondary"
+                        variant="tonal"
+                        rounded
+                        size="40"
+                        class="rounded-lg"
+                      >
                         <VIcon icon="tabler-hash" size="22" />
                       </VAvatar>
                     </template>
                     <VListItemTitle class="font-weight-black text-base">
                       #{{ invoice.invoice_number }}
                     </VListItemTitle>
-                    <VListItemSubtitle class="text-xs font-weight-bold text-disabled uppercase mt-1">
+                    <VListItemSubtitle
+                      class="text-xs font-weight-bold text-disabled uppercase mt-1"
+                    >
                       {{ invoice.supplier?.name }}
                     </VListItemSubtitle>
                     <template #append>
                       <div class="text-right">
                         <div class="text-base font-weight-black">
-                          {{ formatNumber(invoice.total_amount, normalizeCurrencyCode(invoice.currency) === 'COP' ? 0 : 2) }}
-                          <span class="text-super-xs font-weight-black ms-1">{{ normalizeCurrencyCode(invoice.currency) }}</span>
+                          {{
+                            formatNumber(
+                              invoice.total_amount,
+                              normalizeCurrencyCode(invoice.currency) === "COP"
+                                ? 0
+                                : 2,
+                            )
+                          }}
+                          <span class="text-super-xs font-weight-black ms-1">{{
+                            normalizeCurrencyCode(invoice.currency)
+                          }}</span>
                         </div>
-                        <div class="text-xs font-weight-black text-success uppercase">
+                        <div
+                          class="text-xs font-weight-black text-success uppercase"
+                        >
                           USD {{ formatNumber(invoice.total_usd) }}
                         </div>
                       </div>
                     </template>
                   </VListItem>
                 </VList>
-                
-                <div class="bg-surface-variant-light pa-4 d-flex justify-space-between align-center border-t">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">Total Facturado</span>
-                  <span class="text-h6 font-weight-black text-high-emphasis">USD {{ formatNumber(selectedPayment.invoice_total_usd) }}</span>
+
+                <div
+                  class="bg-surface-variant-light pa-4 d-flex justify-space-between align-center border-t"
+                >
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase"
+                    >Total Facturado</span
+                  >
+                  <span class="text-h6 font-weight-black text-high-emphasis"
+                    >USD
+                    {{ formatNumber(selectedPayment.invoice_total_usd) }}</span
+                  >
                 </div>
               </VCard>
 
@@ -417,9 +617,14 @@
               <div v-if="selectedPayment.notes" class="mt-6">
                 <div class="d-flex align-center gap-2 mb-3 ms-2">
                   <VIcon icon="tabler-message-2" size="20" color="disabled" />
-                  <span class="font-weight-black text-uppercase text-xs text-disabled">Observaciones</span>
+                  <span
+                    class="font-weight-black text-uppercase text-xs text-disabled"
+                    >Observaciones</span
+                  >
                 </div>
-                <div class="pa-4 bg-surface-variant-light rounded-xl border border-dashed text-sm italic text-medium-emphasis">
+                <div
+                  class="pa-4 bg-surface-variant-light rounded-xl border border-dashed text-sm italic text-medium-emphasis"
+                >
                   "{{ selectedPayment.notes }}"
                 </div>
               </div>
@@ -428,12 +633,12 @@
         </VCardText>
 
         <VCardActions class="pa-4 pt-0">
-          <VBtn 
-            block 
-            variant="flat" 
-            color="secondary" 
+          <VBtn
+            block
+            variant="flat"
+            color="secondary"
             size="large"
-            class="rounded-xl font-weight-black shadow-sm" 
+            class="rounded-xl font-weight-black shadow-sm"
             @click="showPaymentModal = false"
           >
             CERRAR DETALLES
@@ -443,16 +648,35 @@
     </VDialog>
 
     <!-- Modal Comprobante Tagged -->
-    <VDialog v-model="showReceiptModal" max-width="700" :fullscreen="$vuetify.display.smAndDown">
+    <VDialog
+      v-model="showReceiptModal"
+      max-width="700"
+      :fullscreen="$vuetify.display.smAndDown"
+    >
       <VCard class="rounded-xl overflow-hidden">
         <VCardTitle class="pa-0">
-          <div class="premium-dialog-header pa-5 d-flex align-center bg-success">
-            <VAvatar size="40" color="rgba(255,255,255,0.2)" class="me-3 rounded-lg shadow-sm">
+          <div
+            class="premium-dialog-header pa-5 d-flex align-center bg-success"
+          >
+            <VAvatar
+              size="40"
+              color="rgba(255,255,255,0.2)"
+              class="me-3 rounded-lg shadow-sm"
+            >
               <VIcon icon="tabler-file-dollar" color="white" size="24" />
             </VAvatar>
-            <span class="text-h6 font-weight-black text-white">Comprobante Digitall</span>
+            <span class="text-h6 font-weight-black text-white"
+              >Comprobante Digitall</span
+            >
             <VSpacer />
-            <VBtn icon variant="tonal" color="white" size="small" class="rounded-lg" @click="showReceiptModal = false">
+            <VBtn
+              icon
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="showReceiptModal = false"
+            >
               <VIcon>tabler-x</VIcon>
             </VBtn>
           </div>
@@ -466,14 +690,22 @@
             cover
           >
             <template #placeholder>
-              <div class="d-flex align-center justify-center h-100 bg-surface-variant-light">
+              <div
+                class="d-flex align-center justify-center h-100 bg-surface-variant-light"
+              >
                 <VProgressCircular indeterminate color="primary" />
               </div>
             </template>
           </VImg>
         </VCardText>
         <VCardActions class="pa-4 pt-0">
-          <VBtn block color="success" variant="tonal" class="rounded-xl font-weight-black" @click="showReceiptModal = false">
+          <VBtn
+            block
+            color="success"
+            variant="tonal"
+            class="rounded-xl font-weight-black"
+            @click="showReceiptModal = false"
+          >
             ENTENDIDO
           </VBtn>
         </VCardActions>
@@ -516,12 +748,17 @@ const receiptUrl = ref("");
 const headers = [
   { title: "FECHA", key: "payment_date", sortable: true },
   { title: "PROVEEDOR", key: "supplier", sortable: false },
-  { title: "FAC. USD", key: "invoice_total_usd", sortable: true, align: 'center' },
+  {
+    title: "FAC. USD",
+    key: "invoice_total_usd",
+    sortable: true,
+    align: "center",
+  },
   { title: "MONTO PAGADO", key: "amount", sortable: true },
-  { title: "MONEDA", key: "currency", sortable: true, align: 'center' },
+  { title: "MONEDA", key: "currency", sortable: true, align: "center" },
   { title: "REFERENCIA", key: "reference", sortable: true },
   { title: "REGISTRO", key: "user", sortable: false },
-  { title: "ACCIONES", key: "actions", sortable: false, align: 'center' },
+  { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
 ];
 
 const currencies = [
@@ -533,7 +770,8 @@ const currencies = [
 const savingsPercentage = computed(() => {
   if (!selectedPayment.value) return 0;
   const paidUSD = parseFloat(selectedPayment.value.amount_usd) || 0;
-  const invoiceTotalUSD = parseFloat(selectedPayment.value.invoice_total_usd) || 0;
+  const invoiceTotalUSD =
+    parseFloat(selectedPayment.value.invoice_total_usd) || 0;
   if (invoiceTotalUSD <= 0) return 0;
   const savingsUSD = invoiceTotalUSD - paidUSD;
   const percentage = (savingsUSD / invoiceTotalUSD) * 100;
@@ -557,9 +795,14 @@ const fetchPaymentHistory = async () => {
     };
 
     // Filtro de nulos
-    Object.keys(params).forEach(key => (params[key] === null || params[key] === "") && delete params[key]);
+    Object.keys(params).forEach(
+      (key) =>
+        (params[key] === null || params[key] === "") && delete params[key],
+    );
 
-    const response = await axios.get("/api/finances/payment-history", { params });
+    const response = await axios.get("/api/finances/payment-history", {
+      params,
+    });
 
     if (response.data.status === "success" || response.data.success) {
       payments.value = response.data.data.data || [];
@@ -574,7 +817,9 @@ const fetchPaymentHistory = async () => {
 
 const fetchSuppliers = async () => {
   try {
-    const response = await axios.get("/api/finances/pending-payments/suppliers");
+    const response = await axios.get(
+      "/api/finances/pending-payments/suppliers",
+    );
     if (response.data.status === "success" || response.data.success) {
       suppliers.value = response.data.data || [];
     }
@@ -628,11 +873,15 @@ watch([selectedSupplier, selectedCurrency, startDate, endDate], () => {
 });
 
 // Formateadores
-const formatDate = (date) => date ? new Date(date).toLocaleDateString("es-ES") : "N/A";
+const formatDate = (date) =>
+  date ? new Date(date).toLocaleDateString("es-ES") : "N/A";
 
 const formatNumber = (num, decimals = 2) => {
   if (num === null || num === undefined) return "0.00";
-  return new Intl.NumberFormat("es-ES", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);
+  return new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(num);
 };
 
 const formatCurrency = (amount, currency) => {
@@ -644,7 +893,12 @@ const formatCurrency = (amount, currency) => {
 
 const getUserInitials = (name) => {
   if (!name) return "S";
-  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 };
 
 const normalizeCurrencyCode = (currency) => {
@@ -675,7 +929,11 @@ onMounted(() => {
 }
 
 .premium-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #34495e 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #34495e 100%
+  );
 }
 
 .bg-surface-variant-light {
@@ -732,7 +990,11 @@ onMounted(() => {
 }
 
 .premium-dialog-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2c3e50 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #2c3e50 100%
+  );
 }
 
 .truncate {

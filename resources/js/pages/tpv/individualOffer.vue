@@ -225,10 +225,6 @@ onMounted(async () => {
       @add-product="handleAddIndividualOfferModal"
     />
 
-    <div class="d-flex align-center justify-space-between mb-4">
-      <h1 class="text-h5 font-weight-black text-primary uppercase letter-spacing-1">Ofertas Individuales</h1>
-    </div>
-
     <IndividualOfferTable
       :products-offer="productDataOffer.data || []"
       :loading="loadingProduct"

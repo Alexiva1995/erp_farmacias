@@ -1,5 +1,6 @@
 <script setup>
 import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
+import EmployeeMonthFilters from "@/components/EmployeeMonthFilters.vue";
 import axios from "axios";
 import { computed, onMounted, ref, watch } from "vue";
 
@@ -12,9 +13,8 @@ const selectedMonth = ref(currentMonth);
 const selectedYear = ref(currentYear);
 
 const searchQuery = ref("");
-const selectedSort = ref({ key: "total", order: "desc" });
+const selectedSort = ref({ key: "scores.total", order: "desc" });
 const isLocked = ref(false);
-const isFiltersVisible = ref(false);
 
 const sortOptions = [
   {
@@ -58,7 +58,6 @@ const handleClear = () => {
   selectedMonth.value = currentMonth;
   selectedYear.value = currentYear;
   selectedSort.value = { key: "scores.total", order: "desc" };
-  isFiltersVisible.value = false;
 };
 
 // Generar lista de meses
@@ -240,116 +239,19 @@ const formatCurrency = (amount) =>
       </VCol>
     </VRow>
 
-    <!-- Barra de Búsqueda y Acciones Rápidas (Siempre visible) -->
-    <div class="d-flex flex-wrap align-center gap-3 mb-6">
-      <div class="flex-grow-1" style="min-inline-size: 240px;">
-        <AppTextField
-          v-model="searchQuery"
-          placeholder="Buscar empleado..."
-          prepend-inner-icon="tabler-search"
-          class="premium-input-compact"
-          density="compact"
-          hide-details
-          clearable
-        />
-      </div>
-
-      <div class="d-flex gap-2 flex-grow-1 flex-sm-grow-0 justify-sm-end">
-        <VBtn
-          :color="isFiltersVisible ? 'primary' : 'secondary'"
-          variant="tonal"
-          class="rounded-lg px-4 font-weight-black flex-grow-1 flex-sm-grow-0"
-          @click="isFiltersVisible = !isFiltersVisible"
-        >
-          <VIcon start icon="tabler-filter" size="18" />
-          <span class="d-none d-sm-inline">FILTROS</span>
-          <VIcon end :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-chevron-down'" size="16" />
-        </VBtn>
-
-        <VBtn
-          v-if="!isLocked"
-          color="error"
-          variant="flat"
-          class="rounded-lg px-4 font-weight-black shadow-sm flex-grow-1 flex-sm-grow-0"
-          @click="handleLockMonth"
-        >
-          <VIcon start icon="tabler-lock" size="18" />
-          <span class="d-none d-sm-inline">CERRAR MES</span>
-          <VIcon icon="tabler-lock" size="18" class="d-sm-none" />
-        </VBtn>
-        <VChip v-else color="success" variant="elevated" class="rounded-lg px-4 h-38 font-weight-black" prepend-icon="tabler-lock-check">
-          HISTÓRICO
-        </VChip>
-      </div>
-    </div>
-
-    <!-- Panel de Filtros Colapsable -->
-    <VExpandTransition>
-      <VCard v-if="isFiltersVisible" class="rounded-xl border-0 shadow-sm mb-6 bg-surface-variant-light overflow-hidden">
-        <VCardText class="pa-5">
-          <div class="d-flex align-center gap-2 mb-4">
-            <VIcon icon="tabler-adjustments-horizontal" size="20" color="primary" />
-            <span class="font-weight-black text-uppercase text-xs text-primary">Ajustes de Análisis</span>
-          </div>
-          <VRow>
-            <VCol cols="12" sm="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Periodo (Mes)</span>
-              <VSelect
-                v-model="selectedMonth"
-                :items="availableMonths"
-                item-title="title"
-                item-value="value"
-                placeholder="Mes"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="premium-select-compact"
-              />
-            </VCol>
-            
-            <VCol cols="12" sm="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Periodo (Año)</span>
-              <VSelect
-                v-model="selectedYear"
-                :items="availableYears"
-                placeholder="Año"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="premium-select-compact"
-              />
-            </VCol>
-            
-            <VCol cols="12" sm="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Ordenar Por</span>
-              <VSelect
-                v-model="selectedSort.key"
-                :items="sortOptions"
-                item-title="title"
-                item-value="key"
-                placeholder="Ordenar por..."
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="premium-select-compact"
-              />
-            </VCol>
-          </VRow>
-
-          <div class="d-flex justify-end mt-4">
-            <VBtn
-              variant="text"
-              color="secondary"
-              size="small"
-              class="font-weight-black"
-              @click="handleClear"
-            >
-              LIMPIAR FILTROS
-            </VBtn>
-          </div>
-        </VCardText>
-      </VCard>
-    </VExpandTransition>
+    <EmployeeMonthFilters
+      v-model:searchQuery="searchQuery"
+      v-model:selectedMonth="selectedMonth"
+      v-model:selectedYear="selectedYear"
+      :selected-sort="selectedSort"
+      :available-months="availableMonths"
+      :available-years="availableYears"
+      :sort-options="sortOptions"
+      :is-locked="isLocked"
+      @clear="handleClear"
+      @lock-month="handleLockMonth"
+      @sort="handleSortClick"
+    />
 
     <EmployeeMonthTable :items="calculatedEmployees" />
   </VContainer>

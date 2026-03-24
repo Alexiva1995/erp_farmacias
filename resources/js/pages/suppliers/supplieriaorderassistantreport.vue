@@ -275,69 +275,7 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <VContainer fluid class="px-0 py-4">
-    <!-- KPIs globales -->
-    <VRow class="mb-5">
-      <VCol cols="12" sm="4">
-        <VCard class="kpi-ia-card" elevation="0">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="error" variant="tonal" size="44" rounded>
-              <VIcon icon="tabler-alert-circle" size="22" />
-            </VAvatar>
-            <div class="flex-grow-1">
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Necesitan Reposición</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-error">
-                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="error" /></template>
-                  <template v-else>{{ kpiGlobal.necesitan }}</template>
-                </span>
-                <span class="text-caption text-disabled">productos</span>
-              </div>
-            </div>
-            <VChip color="primary" variant="tonal" size="x-small">Reporte IA</VChip>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VCard class="kpi-ia-card" elevation="0">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="warning" variant="tonal" size="44" rounded>
-              <VIcon icon="tabler-package" size="22" />
-            </VAvatar>
-            <div>
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Exceso de Stock</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-warning">
-                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="warning" /></template>
-                  <template v-else>{{ kpiGlobal.exceso }}</template>
-                </span>
-                <span class="text-caption text-disabled">productos</span>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VCard class="kpi-ia-card" elevation="0">
-          <VCardText class="pa-4 d-flex align-center gap-4">
-            <VAvatar color="success" variant="tonal" size="44" rounded>
-              <VIcon icon="tabler-circle-check" size="22" />
-            </VAvatar>
-            <div>
-              <div class="text-caption text-disabled text-uppercase font-weight-bold">Stock Óptimo</div>
-              <div class="d-flex align-center gap-2">
-                <span class="text-h5 font-weight-black text-success">
-                  <template v-if="loadingStats"><VProgressCircular size="20" indeterminate color="success" /></template>
-                  <template v-else>{{ kpiGlobal.ok }}</template>
-                </span>
-                <span class="text-caption text-disabled">productos</span>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
-
+  <div>
     <!-- Filtros -->
     <SupplierIaOrderAssistantReportFilter
       v-model:selectProducts="selectProducts"
@@ -356,39 +294,17 @@ onMounted(async () => {
     />
 
     <!-- Tabla -->
-    <div class="mt-4">
-      <SupplierAssistantReportTable
-        :products="statuModule.items"
-        :total-product="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptionsTable"
-      />
-    </div>
-  </VContainer>
+    <SupplierAssistantReportTable
+      :products="statuModule.items"
+      :total-product="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @update:options="updateTableOptionsTable"
+    />
+  </div>
 </template>
 
 <style scoped>
-.kpi-ia-card {
-  border: 1px solid rgba(var(--v-border-color), 0.12);
-  border-radius: 8px !important;
-  transition: all 0.2s ease;
-}
-
-.kpi-ia-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 6%) !important;
-  transform: translateY(-2px);
-}
-</style>
-
-<style>
-/* Forzar eliminación de padding del layout boxed solicitado por el usuario */
-.layout-wrapper.layout-content-width-boxed .layout-content-wrapper > main > .v-container {
-  padding-inline: 0 !important;
-}
-
-#app > div > div > div > div.layout-wrapper.layout-nav-type-vertical.layout-navbar-sticky.layout-footer-static.layout-content-width-boxed.layout-overlay-nav > div.layout-content-wrapper > main > div > div {
-  padding-inline: 0 !important;
-}
+/* Estilos originales (si los hay) */
 </style>

@@ -1,39 +1,5 @@
 <script setup>
-import axios from "@/plugins/axios";
-import { computed, ref, watch } from "vue";
-
-const searchProduct = ref("");
-const remoteProducts = ref([]);
-const isSearching = ref(false);
-
-const loadRemoteProducts = async (query = "") => {
-  if (query.length < 2 && !/^\d+$/.test(query)) {
-    remoteProducts.value = [];
-    return;
-  }
-  isSearching.value = true;
-  try {
-    const response = await axios.get("/products", {
-      params: { q: query, itemsPerPage: 50 },
-    });
-    remoteProducts.value = response.data.data.map((p) => ({
-      title: `${p.id} - ${p.name}`,
-      value: p.id,
-    }));
-  } catch (error) {
-    console.error("Error buscando productos:", error);
-  } finally {
-    isSearching.value = false;
-  }
-};
-
-let searchDebounce;
-watch(searchProduct, (val) => {
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    loadRemoteProducts(val);
-  }, 400);
-});
+import { computed, ref } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -98,13 +64,13 @@ const clearSortFilter = () => {
 };
 
 const getSelectedSortIcon = () => {
-  if (!selectedSort.value) return null;
+  if (!selectedSort.value) return "tabler-sort-ascending";
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order,
+      opt.order === selectedSort.value.order
   );
-  return option ? option.icon : null;
+  return option ? option.icon : "tabler-sort-ascending";
 };
 
 const isOptionSelected = (option) => {
@@ -118,28 +84,32 @@ const isOptionSelected = (option) => {
 const handleClear = () => {
   emit("clear");
   clearSortFilter();
-  isAdvancedFiltersVisible.value = false;
 };
 
 const hasActiveAdvancedFilters = computed(() => {
-  return props.selectedProduct || selectedSort.value;
+  return props.selectedProduct;
 });
+
+const toggleAdvancedFilters = () => {
+  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+};
 </script>
 
 <template>
-  <VCard class="mb-6">
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
     <VCardText class="pa-3">
-      <!-- Fila Principal: Búsqueda y Acciones -->
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-2">
         <!-- Buscador Principal -->
         <VCol cols="12" md="5" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
-            placeholder="Buscar empleado por nombre..."
+            placeholder="Buscar por nombre de empleado..."
             prepend-inner-icon="tabler-search"
+            clearable
             density="compact"
             hide-details
-            clearable
+            class="premium-input"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
@@ -153,16 +123,16 @@ const hasActiveAdvancedFilters = computed(() => {
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
             size="38"
-            @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
+            @click="toggleAdvancedFilters"
           >
-            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
             <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             <VBadge
               v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
               color="error"
               dot
-              offset-x="3"
-              offset-y="-3"
+              offset-x="2"
+              offset-y="-2"
             />
           </VBtn>
 
@@ -176,11 +146,11 @@ const hasActiveAdvancedFilters = computed(() => {
                 color="secondary"
                 size="38"
               >
-                <VIcon :icon="selectedSort ? getSelectedSortIcon() : 'tabler-sort-ascending'" />
+                <VIcon :icon="getSelectedSortIcon()" size="20" />
                 <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
               </VBtn>
             </template>
-            <VList density="compact">
+            <VList density="compact" class="rounded-lg py-1 border shadow-lg">
               <VListItem
                 v-for="(option, index) in sortOptions"
                 :key="index"
@@ -189,15 +159,35 @@ const hasActiveAdvancedFilters = computed(() => {
                 @click="handleSortClick(option)"
               >
                 <template #prepend>
-                  <VIcon :icon="option.icon" size="20" />
+                  <VIcon :icon="option.icon" size="20" class="me-3" />
                 </template>
-                <VListItemTitle>{{ option.title }}</VListItemTitle>
+                <VListItemTitle class="text-xs font-weight-bold">{{ option.title }}</VListItemTitle>
+              </VListItem>
+              <VDivider v-if="selectedSort" class="my-1 opacity-10" />
+              <VListItem v-if="selectedSort" color="error" @click="clearSortFilter">
+                <template #prepend>
+                  <VIcon icon="tabler-sort-ascending" size="20" class="me-3" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-bold text-error">Limpiar Orden</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
 
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
 
-          <!-- Limpiar -->
+          <!-- Agregar Asignación -->
+          <VBtn
+            icon
+            color="primary"
+            variant="flat"
+            size="38"
+            @click="emit('add-assignment')"
+          >
+            <VIcon icon="tabler-plus" size="20" />
+            <VTooltip activator="parent" location="top">Asignar Producto</VTooltip>
+          </VBtn>
+
+          <!-- Limpiar Filtros -->
           <VBtn
             icon
             variant="text"
@@ -205,31 +195,30 @@ const hasActiveAdvancedFilters = computed(() => {
             size="38"
             @click="handleClear"
           >
-            <VIcon icon="tabler-eraser" />
+            <VIcon icon="tabler-eraser" size="20" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>
       </VRow>
 
-      <!-- Panel Colapsable -->
+      <!-- Panel de Filtros Avanzados Colapsable -->
       <VExpandTransition>
         <div v-show="isAdvancedFiltersVisible">
           <VDivider class="my-3 border-opacity-10" />
+
           <VRow dense>
             <VCol cols="12" sm="6" md="4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Producto</span>
               <VAutocomplete
                 :model-value="props.selectedProduct"
-                v-model:search="searchProduct"
-                :items="remoteProducts"
-                :loading="isSearching || props.loading"
-                item-title="title"
-                item-value="value"
-                placeholder="Filtrar por producto..."
+                :items="props.products"
+                :loading="props.loading"
+                placeholder="Seleccionar producto"
+                clearable
                 density="compact"
                 hide-details
-                clearable
-                :no-filter="true"
-                prepend-inner-icon="tabler-pill"
+                class="premium-input-compact"
+                prepend-inner-icon="tabler-package"
                 @update:model-value="emit('update:selectedProduct', $event)"
               />
             </VCol>
@@ -239,3 +228,28 @@ const hasActiveAdvancedFilters = computed(() => {
     </VCardText>
   </VCard>
 </template>
+
+<style scoped>
+.premium-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+.premium-input-compact :deep(.v-field__input) {
+  font-size: 0.8125rem !important;
+  min-block-size: 38px !important;
+  padding-block: 0 !important;
+}
+
+.premium-input-compact :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+</style>

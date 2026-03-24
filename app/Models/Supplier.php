@@ -44,7 +44,8 @@ class Supplier extends Model
         'payment_due_reference',
         'invoice_date_reference',
         'address',
-        'public_token'
+        'public_token',
+        'is_indexed'
     ];
 
     protected $casts = [

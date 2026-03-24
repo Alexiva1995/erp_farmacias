@@ -218,7 +218,8 @@ const handleUpdateAllApi = () => {
             "El proceso de actualización ha iniciado en segundo plano.",
           );
         }
-      } catch (error) {
+      } catch (error)
+      {
         console.error(error);
         toast.error("No se pudo iniciar el proceso de actualización.");
       }
@@ -714,49 +715,42 @@ const handleOpenPublicLink = (supplier) => {
       v-model:isDialogVisible="isDeleteDialogVisible"
       @submit="handleDeleteOldProducts"
     />
-    <VCard class="mb-6">
-      <VCardText>
-        <VTabs v-model="tab">
-          <VTab value="suppliers"> Proveedores</VTab>
-          <VTab value="products"> Productos</VTab>
-        </VTabs>
-        <ComparatorCatalogFiltersDialog
-          v-if="tab === 'products'"
-          v-model:is-dialog-visible="isCatalogFiltersDialogVisible"
-          v-model:selected-laboratory="selectedLaboratory"
-          v-model:selected-group="selectedGroup"
-          v-model:selected-origin="selectedOrigin"
-          v-model:selected-supplier="searchedSupplier"
-          v-model:enable-discounts="enableDiscounts"
-          v-model:enable-usd-amount-col="enableUsdAmountCol"
-          v-model:enable-discount-col="enableDiscountCol"
-          v-model:is-strict-search="isStrictSearch"
-          :laboratories="laboratories"
-          :groups="groups"
-          :origins="origins"
-          :suppliers="suppliers"
-          @clear="handleClearProductsFilters"
-          @update-all-api="handleUpdateAllApi"
-        />
 
-        <ComparatorNeedsFiltersDialog
-          v-if="tab === 'products'"
-          v-model:is-dialog-visible="isNeedsFiltersDialogVisible"
-          v-model:selected-laboratory="needsLaboratory"
-          v-model:selected-group="needsGroup"
-          v-model:tipo_de_filtracion="tipo_de_filtracion"
-          v-model:lapso_de_tiempo="lapso_de_tiempo"
-          v-model:stock="stock"
-          v-model:select-con-descuento="con_descuento"
-          :laboratories="laboratories"
-          :groups="groups"
-          @clear="handleClearFilters"
-          @open-delete-dialog="isDeleteDialogVisible = true"
-        />
-        
-        <!-- HEADER ELIMINADO PARA MAXIMIZAR ESPACIO VERTICAL -->
+    <!-- Tabs Container (Standard) -->
+    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+      <VCardText class="pa-0">
+        <VTabs v-model="tab" color="primary" grow>
+          <VTab value="suppliers">
+            <VIcon icon="tabler-truck-delivery" class="me-2" />
+            Proveedores
+          </VTab>
+          <VTab value="products">
+            <VIcon icon="tabler-package" class="me-2" />
+            Productos
+          </VTab>
+        </VTabs>
       </VCardText>
     </VCard>
+
+    <!-- Dialogs remain the same but can be triggered from new headers -->
+    <ComparatorCatalogFiltersDialog
+      v-if="tab === 'products'"
+      v-model:is-dialog-visible="isCatalogFiltersDialogVisible"
+      v-model:selected-laboratory="selectedLaboratory"
+      v-model:selected-group="selectedGroup"
+      v-model:selected-origin="selectedOrigin"
+      v-model:selected-supplier="searchedSupplier"
+      v-model:enable-discounts="enableDiscounts"
+      v-model:enable-usd-amount-col="enableUsdAmountCol"
+      v-model:enable-discount-col="enableDiscountCol"
+      v-model:is-strict-search="isStrictSearch"
+      :laboratories="laboratories"
+      :groups="groups"
+      :origins="origins"
+      :suppliers="suppliers"
+      @clear="handleClearProductsFilters"
+      @update-all-api="handleUpdateAllApi"
+    />
 
     <VTabsWindow v-model="tab">
       <VTabsWindowItem value="suppliers">
@@ -802,7 +796,19 @@ const handleOpenPublicLink = (supplier) => {
               v-model:sortBy="sortOptions"
               @update:options="updateProductsTableOptions"
               @send-product="handleAddItemToAutoOrder"
-              @open-filters="isCatalogFiltersDialogVisible = true"
+              
+              :laboratories="listLaboratories"
+              v-model:selected-laboratory="searchedLaboratory"
+              :groups="groups"
+              v-model:selected-group="searchedGroup"
+              :origins="origins"
+              v-model:selected-origin="searchedOrigin"
+              :suppliers="suppliers"
+              v-model:selected-supplier="searchedSupplier"
+              v-model:enable-discounts="enableDiscounts"
+              v-model:enable-usd-amount-col="enableUsdAmountCol"
+              v-model:enable-discount-col="enableDiscountCol"
+              @sync-apis="handleUpdateAllApi"
             />
           </VCol>
 
@@ -821,7 +827,16 @@ const handleOpenPublicLink = (supplier) => {
               @select-product="handleSelectProductFromTop"
               @delete="handleToggleOrder"
               @save-analysis="handleSaveAnalysis"
-              @open-filters="isNeedsFiltersDialogVisible = true"
+
+              :laboratories="listLaboratories"
+              v-model:selected-laboratory="needsLaboratory"
+              :groups="groups"
+              v-model:selected-group="needsGroup"
+              v-model:tipo_de_filtracion="tipo_de_filtracion"
+              v-model:lapso_de_tiempo="lapso_de_tiempo"
+              v-model:stock="stock"
+              v-model:select-con-descuento="con_descuento"
+              @delete-old="isDeleteDialogVisible = true"
             />
           </VCol>
         </VRow>
@@ -829,3 +844,45 @@ const handleOpenPublicLink = (supplier) => {
     </VTabsWindow>
   </div>
 </template>
+
+<style scoped>
+.premium-header {
+  position: relative;
+  background: #fff;
+}
+
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2b3a8c 100%);
+  position: relative;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.tracking-wider {
+  letter-spacing: 0.1em;
+}
+
+.leading-none {
+  line-height: 1;
+}
+
+.gap-x-4 {
+  column-gap: 1rem;
+}
+
+.ga-2 {
+  gap: 0.5rem;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>

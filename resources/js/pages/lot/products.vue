@@ -23,8 +23,8 @@ const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 
-const laboratories = ref([]);
 const origins = ref([]);
+const locations = ref([]);
 const isLoadingFilters = ref(false);
 
 const isCreateDialogVisible = ref(false);
@@ -46,12 +46,14 @@ const { isAdmin } = useAuthStore();
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse] = await Promise.all([
+    const [labResponse, originResponse, locationResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
+      axios.get("/locations"),
     ]);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
+    locations.value = locationResponse.data.data || locationResponse.data || [];
   } catch (error) {
     toast.error("No se pudieron cargar los filtros.");
   } finally {
@@ -322,6 +324,7 @@ const handleUpdateLot = async (lotsToSave) => {
       :products="availableProducts"
       :suppliers="availableSuppliers"
       :origins="origins"
+      :locations="locations"
       @save="handleCreateLot"
     />
 

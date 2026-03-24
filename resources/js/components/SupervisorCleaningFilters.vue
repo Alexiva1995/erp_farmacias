@@ -1,6 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -23,19 +23,18 @@ const emit = defineEmits([
 
 const employees = ref([]);
 const loadingEmployees = ref(false);
+const isAdvancedFiltersVisible = ref(false);
 
-// Estados disponibles
 const statusOptions = [
-  { title: "Procesada (Pendiente revisión)", value: "Procesada" },
+  { title: "Procesada (Revisión)", value: "Procesada" },
   { title: "Completada (Aprobada)", value: "Completada" },
   { title: "Vencida", value: "Vencida" },
   { title: "Cancelada", value: "Cancelada" },
 ];
 
-// Opciones de ordenamiento
 const sortOptions = [
   {
-    title: "Más Urgente (Procesadas primero)",
+    title: "Más Urgente",
     icon: "tabler-clock-exclamation",
     key: "status",
     order: "asc",
@@ -53,34 +52,15 @@ const sortOptions = [
     order: "desc",
   },
   {
-    title: "Actividad A-Z",
-    icon: "tabler-sort-ascending",
-    key: "activity_name",
-    order: "asc",
-  },
-  {
-    title: "Actividad Z-A",
-    icon: "tabler-sort-descending",
-    key: "activity_name",
-    order: "desc",
-  },
-  {
     title: "Más Recientes",
     icon: "tabler-calendar-down",
     key: "completed_date",
     order: "desc",
   },
-  {
-    title: "Más Antiguas",
-    icon: "tabler-calendar-up",
-    key: "completed_date",
-    order: "asc",
-  },
 ];
 
 const selectedSort = ref(null);
 
-// Obtener empleados para el filtro
 const fetchEmployees = async () => {
   loadingEmployees.value = true;
   try {
@@ -113,24 +93,14 @@ const clearSortFilter = () => {
   emit("sort", { key: undefined, order: undefined });
 };
 
-const getSelectedSortTitle = () => {
-  if (!selectedSort.value) return null;
-  const option = sortOptions.find(
-    (opt) =>
-      opt.key === selectedSort.value.key &&
-      opt.order === selectedSort.value.order
-  );
-  return option ? option.title : null;
-};
-
 const getSelectedSortIcon = () => {
-  if (!selectedSort.value) return null;
+  if (!selectedSort.value) return "tabler-sort-ascending";
   const option = sortOptions.find(
     (opt) =>
       opt.key === selectedSort.value.key &&
       opt.order === selectedSort.value.order
   );
-  return option ? option.icon : null;
+  return option ? option.icon : "tabler-sort-ascending";
 };
 
 const isOptionSelected = (option) => {
@@ -146,182 +116,210 @@ const handleClear = () => {
   clearSortFilter();
 };
 
-const hasActiveFilters = () => {
+const hasActiveAdvancedFilters = computed(() => {
   return (
-    props.searchQuery ||
     props.selectedEmployee ||
     props.dateFrom ||
     props.dateTo ||
     (props.selectedStatus && props.selectedStatus !== "Procesada")
   );
-};
+});
 </script>
 
 <template>
-  <VCard title="Revisión de Actividades de Limpieza" class="mb-6">
-    <VCardText>
-      <VRow>
-        <!-- Búsqueda -->
-        <VCol cols="12" sm="6" md="4">
+  <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+    <VCardText class="pa-3">
+      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" md="5" lg="4">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar empleado o actividad..."
             prepend-inner-icon="tabler-search"
             clearable
+            density="compact"
+            hide-details
+            class="premium-input"
             @update:model-value="emit('update:searchQuery', $event)"
           />
         </VCol>
 
-        <!-- Filtro por Estado -->
-        <VCol cols="12" sm="6" md="4">
-          <VSelect
-            :model-value="props.selectedStatus"
-            :items="statusOptions"
-            :loading="props.loading"
-            label="Estado"
-            placeholder="Filtrar por estado"
-            prepend-inner-icon="tabler-flag"
-            clearable
-            @update:model-value="emit('update:selectedStatus', $event)"
-          />
-        </VCol>
+        <VSpacer />
 
-        <!-- Filtro por Empleado -->
-        <VCol cols="12" sm="6" md="4">
-          <VSelect
-            :model-value="props.selectedEmployee"
-            :items="employees"
-            :loading="loadingEmployees"
-            label="Empleado"
-            placeholder="Filtrar por empleado"
-            prepend-inner-icon="tabler-user"
-            clearable
-            @update:model-value="emit('update:selectedEmployee', $event)"
-          />
-        </VCol>
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros Avanzados -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
+            size="38"
+            class="rounded-lg"
+            @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
+          >
+            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            <VBadge
+              v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+              color="error"
+              dot
+              offset-x="2"
+              offset-y="-2"
+            />
+          </VBtn>
 
-        <!-- Fecha Desde -->
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.dateFrom"
-            label="Fecha Desde"
-            placeholder="Selecciona fecha inicial"
-            prepend-inner-icon="tabler-calendar"
-            clearable
-            @update:model-value="emit('update:dateFrom', $event)"
-          />
-        </VCol>
+          <!-- Ordenar Por -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                variant="tonal"
+                color="secondary"
+                size="38"
+                class="rounded-lg"
+              >
+                <VIcon :icon="getSelectedSortIcon()" size="20" />
+                <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+              <VListItem
+                v-for="(option, index) in sortOptions"
+                :key="index"
+                :active="isOptionSelected(option)"
+                color="primary"
+                @click="handleSortClick(option)"
+              >
+                <template #prepend>
+                  <VIcon :icon="option.icon" size="20" class="me-3" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-bold">{{ option.title }}</VListItemTitle>
+              </VListItem>
+              <VDivider v-if="selectedSort" class="my-1 opacity-10" />
+              <VListItem v-if="selectedSort" color="error" @click="clearSortFilter">
+                <template #prepend>
+                  <VIcon icon="tabler-sort-ascending" size="20" class="me-3" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-bold text-error">Limpiar Orden</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
-        <!-- Fecha Hasta -->
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.dateTo"
-            label="Fecha Hasta"
-            placeholder="Selecciona fecha final"
-            prepend-inner-icon="tabler-calendar"
-            clearable
-            @update:model-value="emit('update:dateTo', $event)"
-          />
-        </VCol>
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+          <!-- Limpiar Filtros -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            class="rounded-lg"
+            @click="handleClear"
+          >
+            <VIcon icon="tabler-eraser" size="20" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
+
+      <!-- Panel de Filtros Avanzados Colapsable -->
+      <VExpandTransition>
+        <div v-show="isAdvancedFiltersVisible">
+          <VDivider class="my-3 border-opacity-10" />
+          
+          <VRow dense>
+            <!-- Estado -->
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Estado</span>
+              <VSelect
+                :model-value="props.selectedStatus"
+                :items="statusOptions"
+                :loading="props.loading"
+                placeholder="Todos"
+                density="compact"
+                hide-details
+                clearable
+                class="premium-input-compact"
+                prepend-inner-icon="tabler-flag"
+                @update:model-value="emit('update:selectedStatus', $event)"
+              />
+            </VCol>
+
+            <!-- Empleado -->
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Empleado</span>
+              <VAutocomplete
+                :model-value="props.selectedEmployee"
+                :items="employees"
+                :loading="loadingEmployees"
+                placeholder="Filtrar empleado"
+                density="compact"
+                hide-details
+                clearable
+                class="premium-input-compact"
+                prepend-inner-icon="tabler-user"
+                @update:model-value="emit('update:selectedEmployee', $event)"
+              />
+            </VCol>
+
+            <!-- Fecha Desde -->
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Desde</span>
+              <AppDateTimePicker
+                :model-value="props.dateFrom"
+                placeholder="Fecha inicial"
+                density="compact"
+                hide-details
+                clearable
+                class="premium-input-compact"
+                prepend-inner-icon="tabler-calendar-event"
+                @update:model-value="emit('update:dateFrom', $event)"
+              />
+            </VCol>
+
+            <!-- Fecha Hasta -->
+            <VCol cols="12" sm="6" md="3">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Hasta</span>
+              <AppDateTimePicker
+                :model-value="props.dateTo"
+                placeholder="Fecha final"
+                density="compact"
+                hide-details
+                clearable
+                class="premium-input-compact"
+                prepend-inner-icon="tabler-calendar-event"
+                @update:model-value="emit('update:dateTo', $event)"
+              />
+            </VCol>
+          </VRow>
+        </div>
+      </VExpandTransition>
     </VCardText>
-
-    <VDivider />
-
-    <VCardActions class="pa-4 px-6 d-flex flex-wrap gap-4">
-      <!-- Botón Limpiar Filtros -->
-      <VBtn
-        color="secondary"
-        variant="outlined"
-        prepend-icon="tabler-filter-off"
-        @click="handleClear"
-      >
-        Limpiar Filtros
-        <VBadge
-          v-if="hasActiveFilters()"
-          color="error"
-          :content="
-            [
-              props.searchQuery,
-              props.selectedEmployee,
-              props.dateFrom,
-              props.dateTo,
-              props.selectedStatus !== 'Procesada'
-                ? props.selectedStatus
-                : null,
-            ].filter(Boolean).length
-          "
-          inline
-          class="ms-2"
-        />
-      </VBtn>
-
-      <!-- Menú de Ordenamiento -->
-      <div class="d-flex align-center gap-2">
-        <VMenu>
-          <template #activator="{ props: menuProps }">
-            <VBtn v-bind="menuProps" variant="tonal">
-              Ordenar Por
-              <VIcon end icon="tabler-chevron-down" />
-            </VBtn>
-          </template>
-          <VList>
-            <VListItem
-              v-for="(option, index) in sortOptions"
-              :key="index"
-              :class="{ 'bg-primary-lighten-5': isOptionSelected(option) }"
-              @click="handleSortClick(option)"
-            >
-              <template #prepend>
-                <VIcon :icon="option.icon" size="20" class="me-2" />
-              </template>
-              <VListItemTitle>{{ option.title }}</VListItemTitle>
-              <template #append>
-                <VIcon
-                  v-if="isOptionSelected(option)"
-                  icon="tabler-check"
-                  size="16"
-                  color="primary"
-                />
-              </template>
-            </VListItem>
-          </VList>
-        </VMenu>
-
-        <!-- Chip de ordenamiento activo -->
-        <VChip
-          v-if="selectedSort"
-          color="primary"
-          variant="tonal"
-          size="small"
-          closable
-          @click:close="clearSortFilter"
-        >
-          <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-          {{ getSelectedSortTitle() }}
-        </VChip>
-      </div>
-
-      <VSpacer />
-
-      <!-- Indicador de filtros activos -->
-      <div v-if="hasActiveFilters()" class="d-flex align-center gap-2">
-        <VIcon icon="tabler-filter" size="20" color="primary" />
-        <span class="text-sm text-primary">
-          {{
-            [
-              props.searchQuery,
-              props.selectedEmployee,
-              props.dateFrom,
-              props.dateTo,
-              props.selectedStatus !== "Procesada"
-                ? props.selectedStatus
-                : null,
-            ].filter(Boolean).length
-          }}
-          filtro(s) activo(s)
-        </span>
-      </div>
-    </VCardActions>
   </VCard>
 </template>
+
+<style scoped>
+.premium-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+.premium-input-compact :deep(.v-field__input) {
+  font-size: 0.8125rem !important;
+  min-block-size: 38px !important;
+  padding-block: 0 !important;
+}
+
+.premium-input-compact :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+</style>

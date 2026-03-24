@@ -16,6 +16,7 @@ const returns = ref([]);
 const sellers = ref([]);
 const totalReturns = ref(0);
 const loading = ref(false);
+const locations = ref([]);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -36,6 +37,7 @@ const updateTableOptions = (options) => {
 onMounted(() => {
   fetchReturn();
   fetchSellers();
+  fetchLocations();
 });
 
 let debounceTimer;
@@ -82,6 +84,15 @@ const fetchSellers = async () => {
     sellers.value = data.data;
   } catch (error) {
     toast.error("No se pudo obtener el listado de vendedores");
+  }
+};
+
+const fetchLocations = async () => {
+  try {
+    const { data } = await axios.get("/locations");
+    locations.value = data.data || data;
+  } catch (error) {
+    console.error("Error al cargar ubicaciones:", error);
   }
 };
 
@@ -207,6 +218,7 @@ watch(
     :product-name="returnForLotDistribution?.product?.name ?? 'Producto'"
     :lots="lotsForDistribution"
     :target-quantity="returnForLotDistribution?.quantity ?? 0"
+    :locations="locations"
     @save="handleLotsDistributed"
   />
 </template>

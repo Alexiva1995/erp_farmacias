@@ -53,7 +53,7 @@ const getFrequencyIcon = (frequency) => {
 </script>
 
 <template>
-  <VCard class="rounded-xl border-0 shadow-sm overflow-hidden">
+  <VCard class="overflow-hidden">
     <!-- Vista de Escritorio: Tabla Premium -->
     <VDataTableServer
       v-if="!mobile"
@@ -116,7 +116,7 @@ const getFrequencyIcon = (frequency) => {
     <div v-else class="pa-4 bg-light">
       <VRow>
         <VCol v-for="item in props.activities" :key="item.id" cols="12">
-          <VCard class="rounded-xl border shadow-sm mb-4 overflow-hidden">
+          <VCard class="rounded-lg border shadow-sm mb-4 overflow-hidden">
             <div class="pa-4 border-b d-flex justify-space-between align-center bg-surface">
               <div class="d-flex align-center gap-3">
                 <VAvatar color="primary" variant="tonal" size="40" class="rounded font-weight-black">

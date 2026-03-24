@@ -40,11 +40,11 @@ const hasActiveAdvancedFilters = computed(() => {
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border-0 shadow-sm overflow-visible">
+  <VCard class="mb-6 rounded-lg border-0 shadow-sm overflow-visible">
     <VCardText class="pa-4">
-      <VRow align="center" no-gutters>
-        <!-- Búsqueda Principal -->
-        <VCol cols="12" md="6" class="pe-md-4 mb-3 mb-md-0">
+      <VRow align="center" no-gutters class="gap-2">
+        <!-- Buscador Principal -->
+        <VCol cols="12" sm="5" md="4" lg="4">
           <AppTextField
             v-model="searchQuery"
             placeholder="BUSCAR CATEGORÍA POR NOMBRE..."
@@ -57,12 +57,15 @@ const hasActiveAdvancedFilters = computed(() => {
           />
         </VCol>
 
-        <!-- Botones de Acción -->
-        <VCol cols="12" md="6" class="d-flex align-center gap-2">
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
+            icon
             variant="tonal"
             color="secondary"
-            class="rounded-lg h-38"
+            size="38"
             :class="{ 'bg-primary-lighten-5 text-primary': isAdvancedFilterVisible }"
             @click="isAdvancedFilterVisible = !isAdvancedFilterVisible"
           >
@@ -73,46 +76,53 @@ const hasActiveAdvancedFilters = computed(() => {
               offset-x="-2"
               offset-y="-2"
             >
-              <VIcon icon="tabler-filter" class="me-2" />
+              <VIcon icon="tabler-filter" />
             </VBadge>
-            <VIcon v-else icon="tabler-filter" class="me-2" />
-            Filtros
+            <VIcon v-else icon="tabler-filter" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
           </VBtn>
 
+          <!-- Añadir Oferta -->
           <VBtn
-            v-if="searchQuery || hasActiveAdvancedFilters"
-            variant="tonal"
-            color="secondary"
-            icon="tabler-eraser"
-            class="rounded-lg h-38"
-            @click="emit('clear')"
-          />
-
-          <VSpacer />
-
-          <VBtn
+            icon
             color="primary"
             variant="flat"
-            prepend-icon="tabler-plus"
+            size="38"
             :loading="props.addOfferLoading"
-            class="rounded-lg h-38 shadow-primary font-weight-black"
             @click="emit('add-categories')"
           >
-            NUEVA OFERTA
+            <VIcon icon="tabler-plus" />
+            <VTooltip activator="parent" location="top">Nueva Oferta</VTooltip>
           </VBtn>
-        </VCol>
+
+          <VDivider
+            vertical
+            class="mx-1 my-2"
+          />
+
+          <!-- Limpiar Filtros -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            @click="emit('clear')"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
 
       <!-- Filtros Avanzados Colapsables -->
       <VExpandTransition>
         <div v-show="isAdvancedFilterVisible">
-          <VDivider class="my-4 border-dashed" />
+          <VDivider class="my-4 border-opacity-10" />
           <VRow dense>
             <VCol cols="12" sm="6" md="4">
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">ID de Oferta</span>
               <AppTextField
                 v-model="idSearchQuery"
-                placeholder="EJ: 125"
+                placeholder="ID DE OFERTA..."
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -123,7 +133,6 @@ const hasActiveAdvancedFilters = computed(() => {
             </VCol>
             
             <VCol cols="12" sm="6" md="4">
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado</span>
               <VSelect
                 v-model="isActive"
                 :items="[
@@ -131,6 +140,7 @@ const hasActiveAdvancedFilters = computed(() => {
                   { value: 1, title: 'Activas' },
                   { value: 0, title: 'Inactivas' },
                 ]"
+                placeholder="ESTADO DE OFERTA"
                 item-title="title"
                 item-value="value"
                 variant="outlined"
@@ -160,7 +170,6 @@ const hasActiveAdvancedFilters = computed(() => {
 
 .premium-input-compact :deep(.v-field) {
   border-radius: 8px !important;
-  min-height: 38px !important;
   background-color: white !important;
 }
 
@@ -169,7 +178,6 @@ const hasActiveAdvancedFilters = computed(() => {
   padding-bottom: 0 !important;
   font-size: 0.75rem !important;
   font-weight: 700;
-  min-height: 38px !important;
   text-transform: uppercase;
 }
 
@@ -183,14 +191,5 @@ const hasActiveAdvancedFilters = computed(() => {
 
 .shadow-primary {
   box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.2) !important;
-}
-
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.4;
-}
-
-.letter-spacing-1 {
-  letter-spacing: 1px !important;
 }
 </style>

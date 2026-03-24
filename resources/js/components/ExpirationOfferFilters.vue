@@ -56,11 +56,11 @@ const monthsOptions = [
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border-0 shadow-sm overflow-visible">
-    <VCardText class="pa-4">
-      <VRow align="center" no-gutters>
+  <VCard class="mb-6 rounded-lg border-0 shadow-sm overflow-visible">
+    <VCardText class="pa-3">
+      <VRow align="center" no-gutters class="gap-2 px-2">
         <!-- Búsqueda Principal -->
-        <VCol cols="12" md="6" class="pe-md-4 mb-3 mb-md-0">
+        <VCol cols="12" sm="5" md="4" lg="4">
           <AppTextField
             v-model="searchQuery"
             placeholder="BUSCAR POR DESCUENTO O MESES..."
@@ -68,91 +68,101 @@ const monthsOptions = [
             density="compact"
             hide-details
             prepend-inner-icon="tabler-search"
-            class="premium-input-compact"
+            class="premium-input shadow-sm"
             clearable
             :disabled="props.loading"
           />
         </VCol>
 
-        <!-- Botones de Acción -->
-        <VCol cols="12" md="6" class="d-flex align-center gap-2">
+        <VSpacer />
+
+        <div class="d-flex align-center gap-1">
+          <!-- Toggle Filtros -->
           <VBtn
+            icon
             variant="tonal"
-            color="secondary"
-            class="rounded-lg h-38"
-            :class="{ 'bg-primary-lighten-5 text-primary': isAdvancedFilterVisible }"
+            :color="isAdvancedFilterVisible ? 'primary' : 'secondary'"
+            size="38"
+            class="shadow-sm"
             @click="isAdvancedFilterVisible = !isAdvancedFilterVisible"
             :disabled="props.loading"
           >
+            <VIcon :icon="isAdvancedFilterVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             <VBadge
-              v-if="hasActiveAdvancedFilters"
-              dot
+              v-if="hasActiveAdvancedFilters && !isAdvancedFilterVisible"
               color="error"
-              offset-x="-2"
-              offset-y="-2"
-            >
-              <VIcon icon="tabler-filter" class="me-2" />
-            </VBadge>
-            <VIcon v-else icon="tabler-filter" class="me-2" />
-            Filtros
+              dot
+              offset-x="3"
+              offset-y="-3"
+            />
           </VBtn>
 
+          <!-- Añadir Oferta -->
           <VBtn
-            v-if="searchQuery || hasActiveAdvancedFilters"
-            variant="tonal"
-            color="secondary"
-            icon="tabler-eraser"
-            class="rounded-lg h-38"
-            @click="emit('clear')"
-            :disabled="props.loading"
-          />
-
-          <VSpacer />
-
-          <VBtn
+            icon
             color="primary"
             variant="flat"
-            prepend-icon="tabler-plus"
+            size="38"
+            class="shadow-primary-sm"
             :loading="props.addOfferLoading"
-            class="rounded-lg h-38 shadow-primary font-weight-black"
             @click="emit('add-expiration-offer')"
           >
-            NUEVA OFERTA
+            <VIcon icon="tabler-plus" />
+            <VTooltip activator="parent" location="top">Añadir Nueva Oferta</VTooltip>
           </VBtn>
-        </VCol>
+
+          <VDivider
+            vertical
+            class="mx-1 my-2"
+          />
+
+          <!-- Limpiar Filtros -->
+          <VBtn
+            icon
+            variant="text"
+            color="secondary"
+            size="38"
+            :disabled="(!searchQuery && !hasActiveAdvancedFilters) || props.loading"
+            @click="emit('clear')"
+          >
+            <VIcon icon="tabler-eraser" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+        </div>
       </VRow>
 
       <!-- Filtros Avanzados Colapsables -->
       <VExpandTransition>
         <div v-show="isAdvancedFilterVisible">
-          <VDivider class="my-4 border-dashed" />
-          <VRow dense>
+          <VDivider class="my-3 border-opacity-10" />
+          <VRow dense class="px-2">
             <VCol cols="12" sm="6" md="4">
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado de Oferta</span>
               <VSelect
                 v-model="status"
                 :items="statusOptions"
+                placeholder="ESTADO DE OFERTA"
                 item-title="title"
                 item-value="value"
                 variant="outlined"
                 density="compact"
                 hide-details
-                class="premium-input-compact mb-4 mb-sm-0"
+                class="premium-input shadow-sm mb-4 mb-sm-0"
                 :disabled="props.loading"
               />
             </VCol>
             
             <VCol cols="12" sm="6" md="4">
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Meses de Vencimiento</span>
               <VSelect
                 v-model="months"
                 :items="monthsOptions"
+                placeholder="MESES DE VENCIMIENTO"
                 item-title="title"
                 item-value="value"
                 variant="outlined"
                 density="compact"
                 hide-details
-                class="premium-input-compact"
+                class="premium-input shadow-sm"
                 :disabled="props.loading"
               />
             </VCol>
@@ -164,49 +174,37 @@ const monthsOptions = [
 </template>
 
 <style scoped>
-.premium-input-compact :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.15 !important;
-  color: rgba(var(--v-border-color), 1) !important;
-}
-
-.premium-input-compact :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1 !important;
-  color: rgb(var(--v-theme-primary)) !important;
-}
-
-.premium-input-compact :deep(.v-field) {
-  border-radius: 8px !important;
-  min-height: 38px !important;
-  background-color: white !important;
-}
-
-.premium-input-compact :deep(.v-field__input) {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  font-size: 0.75rem !important;
-  font-weight: 700;
-  min-height: 38px !important;
-  text-transform: uppercase;
-}
-
-.h-38 {
-  height: 38px !important;
-}
-
 .shadow-sm {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
-.shadow-primary {
+.shadow-primary-sm {
   box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.2) !important;
 }
 
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.4;
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+.premium-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.15 !important;
+  color: rgba(var(--v-border-color), 1) !important;
 }
 
-.letter-spacing-1 {
-  letter-spacing: 1px !important;
+.premium-input :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1 !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.premium-input :deep(.v-field) {
+  border-radius: 8px !important;
+  background-color: white !important;
+}
+
+.premium-input :deep(.v-field__input),
+.premium-input :deep(.v-select__selection),
+.premium-input :deep(.v-select__selection-text) {
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 </style>
