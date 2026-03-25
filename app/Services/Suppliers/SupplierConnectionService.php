@@ -202,15 +202,43 @@ class SupplierConnectionService
                 $url = $payloadDef['url'] ?? $connection->path;
                 $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : $payloadDef);
 
-                $productResponse = $this->fetchFromAPI($token, $requestData, $client, $url, $payloadDef['method'] ?? 'post');
+                $allProducts = [];
+                $currentUrl = $url;
                 
-                // Detectar si los productos vienen en una clave específica
-                $productsRaw = $productResponse;
-                if (isset($productResponse['articulos']) && is_array($productResponse['articulos'])) {
-                    $productsRaw = $productResponse['articulos'];
+                while ($currentUrl) {
+                    $productResponse = $this->fetchFromAPI($token, $requestData, $client, $currentUrl, $payloadDef['method'] ?? 'post');
+                    
+                    // Detectar si los productos vienen en una clave específica
+                    $pageData = $productResponse;
+                    $nextPageUrl = null;
+                    
+                    if (isset($productResponse['articulos']) && is_array($productResponse['articulos'])) {
+                        if (isset($productResponse['articulos']['data'])) {
+                            // Estructura paginada (Laravel standard)
+                            $pageData = $productResponse['articulos']['data'];
+                            $nextPageUrl = $productResponse['articulos']['next_page_url'] ?? null;
+                        } else {
+                            $pageData = $productResponse['articulos'];
+                        }
+                    } elseif (isset($productResponse['data']) && is_array($productResponse['data'])) {
+                         $pageData = $productResponse['data'];
+                         $nextPageUrl = $productResponse['next_page_url'] ?? null;
+                    }
+
+                    if (is_array($pageData)) {
+                        $allProducts = array_merge($allProducts, $pageData);
+                    } else {
+                        // Si no es un array, probablemente es un error o el fin
+                        break;
+                    }
+                    
+                    $currentUrl = $nextPageUrl;
+                    
+                    // Si no hay paginación detectada, romper el bucle después de la primera pasada
+                    if (!$nextPageUrl) break;
                 }
 
-                $productCsvString = $this->convertJsonArrayToCsvString($productsRaw);
+                $productCsvString = $this->convertJsonArrayToCsvString($allProducts);
                 $productData = $this->parseDynamicContent($productCsvString, $connection);
             }
 
@@ -353,14 +381,23 @@ class SupplierConnectionService
             $headerMap = array_flip(array_map('trim', $headers));
         }
 
-        $barcodeKey = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
+        $barcodeKeySearch = collect($structure)->first(fn($f) => ($f["target"] ?? null) === "barcode_match");
+        $barcodeKeyIndex = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
 
         foreach ($lines as $line) {
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
             $cols = explode(';', $line);
-            $barcodes[] = trim($cols[$barcodeKey] ?? "");
+
+            $idx = $barcodeKeyIndex;
+            if (!empty($headerMap) && isset($barcodeKeySearch['file_field']) && isset($headerMap[$barcodeKeySearch['file_field']])) {
+                $idx = $headerMap[$barcodeKeySearch['file_field']];
+            }
+
+            if ($idx !== false) {
+                $barcodes[] = trim($cols[$idx] ?? "");
+            }
         }
 
         $barcodes = array_unique(array_filter($barcodes));
