@@ -153,7 +153,7 @@ const nextExpirationDate = (product) => {
 </script>
 
 <template>
-  <VCard>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Desktop Table -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -163,10 +163,11 @@ const nextExpirationDate = (product) => {
         :items-per-page="itemsPerPage"
         :page="page"
         :loading="loading"
+        class="text-no-wrap premium-table"
         @update:options="(opts) => emit('update:options', opts)"
       >
         <template #item.id="{ item }">
-          {{ item.id }}
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
@@ -275,8 +276,7 @@ const nextExpirationDate = (product) => {
         <VCard
           v-for="item in products"
           :key="item.id"
-          variant="flat"
-          class="product-mobile-card border mb-2 overflow-hidden"
+          class="product-mobile-card border shadow-sm mb-2 overflow-hidden"
         >
           <div class="pa-3">
             <div class="d-flex gap-3 align-start mb-2">
@@ -290,7 +290,7 @@ const nextExpirationDate = (product) => {
               />
               <div class="flex-grow-1 min-width-0">
                 <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                  <span class="text-primary">#{{ item.id }}</span>
+                  <span class="text-primary">{{ item.id }}</span>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.name }}
                 </h3>
@@ -382,6 +382,21 @@ const nextExpirationDate = (product) => {
 .product-mobile-card {
   border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
+}
+
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

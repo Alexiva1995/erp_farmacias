@@ -172,7 +172,7 @@ const clearFormErrors = () => {
 </script>
 
 <template>
-  <div>
+  <div :class="$vuetify.display.mobile ? 'pa-0' : 'pa-4'">
     <GroupFilters
       v-model:searchQuery="searchQuery"
       v-model:isStrictSearch="isStrictSearch"
