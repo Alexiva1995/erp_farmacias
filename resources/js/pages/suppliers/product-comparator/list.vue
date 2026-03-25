@@ -691,33 +691,7 @@ const handleOpenPublicLink = (supplier) => {
 
 <template>
   <div class="product-comparator-view pb-12">
-    <!-- Header Premium (Tarjeta Flotante) -->
-    <VCard class="mx-6 mt-6 mb-6 rounded-lg border shadow-sm overflow-hidden">
-      <div class="header-bg pa-6">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-          <div class="d-flex align-center gap-4">
-            <VAvatar
-              size="54"
-              color="white"
-              variant="flat"
-              class="rounded-lg shadow-soft"
-            >
-              <VIcon icon="tabler-arrows-exchange" color="primary" size="28" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-                Comparador de Productos
-              </h1>
-              <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-                Optimización de compras y mapeo de proveedores
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </VCard>
-
-    <div class="px-6 d-flex flex-column gap-6">
+    <div class="px-6 mt-6 d-flex flex-column gap-6">
     <ShowSupplierProductsDialog
       v-model="isShowSupplierProductsDialogActive"
       :selectedSupplier="supplierOption"
@@ -879,14 +853,6 @@ const handleOpenPublicLink = (supplier) => {
   min-block-size: 100vh;
 }
 
-.header-bg {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
-}
-
-.letter-spacing-tight { letter-spacing: -0.02em; }
-.letter-spacing-widest { letter-spacing: 0.1em !important; }
-
-.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
 </style>
 
 <style scoped>
