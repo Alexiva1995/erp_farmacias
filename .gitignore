@@ -43,7 +43,7 @@ dist-ssr
 
 .eslintrc-auto-import.json
 components.d.ts
-public/build.zip
+public/*.zip
 typed-router.d.ts
 
 # server.php (router local para php artisan serve, no existe en vendor en algunas instalaciones)
