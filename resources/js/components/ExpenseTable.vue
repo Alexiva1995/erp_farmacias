@@ -44,7 +44,7 @@ const headers = [
     >
       <!-- ID -->
       <template #item.id="{ item }">
-        <span class="font-weight-black text-primary text-xs">#{{ item.id }}</span>
+        <span class="font-weight-black text-primary text-sm">{{ item.id }}</span>
       </template>
 
       <!-- Nombre / Descripción -->
@@ -76,7 +76,7 @@ const headers = [
       <!-- Monto -->
       <template #item.amount="{ item }">
         <div class="d-flex flex-column align-end py-2">
-          <span class="text-base font-weight-black text-error">
+          <span class="text-sm font-weight-black text-error">
             {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP$' }}
             {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
           </span>
@@ -100,7 +100,7 @@ const headers = [
 
       <!-- Fecha -->
       <template #item.created_at="{ item }">
-        <span class="text-xs font-weight-black text-medium-emphasis">
+        <span class="text-sm font-weight-black text-medium-emphasis">
           {{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
         </span>
       </template>
@@ -138,7 +138,7 @@ const headers = [
             v-for="item in props.items"
             :key="item.id"
             variant="flat"
-            class="rounded-xl border shadow-sm pa-4 bg-white position-relative overflow-hidden"
+            class="rounded-lg border shadow-sm pa-4 bg-white position-relative overflow-hidden"
           >
             <!-- Línea de Estado lateral -->
             <div 
@@ -148,7 +148,7 @@ const headers = [
 
             <div class="d-flex justify-space-between align-start mb-3 ml-2">
               <div class="d-flex align-center gap-2">
-                <span class="text-h6 font-weight-black text-primary">#{{ item.id }}</span>
+                <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
                 <VChip
                   size="x-small"
                   :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
@@ -159,7 +159,7 @@ const headers = [
                 </VChip>
               </div>
               <div class="text-right">
-                <span class="text-h6 font-weight-black text-error">
+                <span class="text-sm font-weight-black text-error">
                   {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP$' }}
                   {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
                 </span>
@@ -220,7 +220,7 @@ const headers = [
         </div>
       </template>
 
-      <div v-else class="text-center py-12 text-disabled uppercase font-weight-bold border-2 border-dashed rounded-xl">
+      <div v-else class="text-center py-12 text-disabled uppercase font-weight-bold border-2 border-dashed rounded-lg">
         No se encontraron gastos
       </div>
     </div>
@@ -229,10 +229,12 @@ const headers = [
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: #f8fafc !important;
+  background-color: white !important;
   block-size: 52px !important;
-  font-size: 0.7rem !important;
-  font-weight: 800 !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -252,6 +254,7 @@ const headers = [
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .w-1 { width: 4px !important; }

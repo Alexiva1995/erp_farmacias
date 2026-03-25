@@ -306,5 +306,5 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* Estilos originales (si los hay) */
+/* Estilos originales */
 </style>

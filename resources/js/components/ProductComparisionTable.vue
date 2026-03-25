@@ -70,7 +70,7 @@ const headers = [
   <div class="comparator-table-container">
     <!-- Barra de Búsqueda y Filtros Rápidos (Standard) -->
     <!-- Barra de Búsqueda y Filtros Rápidos (Estandarizado) -->
-    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
           <!-- Título/Icono -->
@@ -113,7 +113,7 @@ const headers = [
     </VCard>
 
     <!-- Tabla Principal (Unified VCard) -->
-    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -129,7 +129,7 @@ const headers = [
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.id="{ item }">
-            <span class="text-xs font-weight-medium text-disabled">#{{ item.id }}</span>
+            <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
           </template>
 
           <template #item.name="{ item }">
@@ -310,12 +310,14 @@ const headers = [
 </template>
 
 <style scoped>
-.premium-table :deep(thead th) {
+.premium-table :deep(th) {
+  background-color: #fff !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .text-xs {

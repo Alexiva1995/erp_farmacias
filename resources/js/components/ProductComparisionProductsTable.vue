@@ -142,7 +142,7 @@ const headers = computed(() =>
 <template>
   <div class="comparator-products-container">
     <!-- Header de Sección y Búsqueda (Estandarizado) -->
-    <VCard class="mb-4 border-0 shadow-sm overflow-hidden">
+    <VCard class="mb-4 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
           <!-- Título/Icono -->
@@ -348,7 +348,7 @@ const headers = computed(() =>
     </VAlert>
 
     <!-- Tabla Principal (Unified VCard) -->
-    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -366,13 +366,21 @@ const headers = computed(() =>
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2">
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap">
-                {{ item.name }}
-              </span>
-              <span class="text-xs text-disabled">
-                {{ item.laboratory_name }} • {{ item.supplier_name }}
-              </span>
+            <div class="d-flex align-center py-2">
+              <div class="d-flex flex-column overflow-hidden">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
+                  <span class="text-primary mr-2">{{ item.id }}</span>
+                  <span class="text-disabled mr-2">|</span>
+                  {{ item.name.toUpperCase() }}
+                </span>
+                <div class="d-flex align-center gap-1 text-super-xs">
+                  <span class="text-primary font-weight-black uppercase truncate" style="max-inline-size: 150px;">
+                    {{ item.laboratory_name || 'S/L' }}
+                  </span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.supplier_name }}</span>
+                </div>
+              </div>
             </div>
           </template>
 
@@ -511,12 +519,19 @@ const headers = computed(() =>
 </template>
 
 <style scoped>
-.premium-table :deep(thead th) {
+.premium-table :deep(th) {
+  background-color: #fff !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 
 .text-xs { font-size: 0.75rem !important; }

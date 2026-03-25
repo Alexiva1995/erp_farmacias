@@ -2,7 +2,6 @@
 import axios from "@/plugins/axios";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { faLock, faUnlock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
 library.add(faLock, faUnlock);
 
@@ -20,8 +19,7 @@ const emit = defineEmits(["refresh", "update:options", "editProduct"]);
 const headers = [
   { title: "id", key: "id", sortable: true },
   { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: true },
-  { title: "Costo", key: "cost_price", sortable: true },
+  { title: "Costo", key: "unit_cost", sortable: true },
   { title: "Precio Venta", key: "sale_price", sortable: true },
   { title: "% Utilidad", key: "profitability", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
@@ -157,10 +155,11 @@ const formatPrice = (price) => {
 
 const getCalculatedSalePrice = (item) => {
   const cost = parseFloat(item.unit_cost || 0);
-  const perc = item.profitability?.is_locked == "1" 
-    ? parseFloat(item.profitability.profitability_percentage || 0)
-    : parseFloat(props.profitability || 0);
-  
+  const perc =
+    item.profitability?.is_locked == "1"
+      ? parseFloat(item.profitability.profitability_percentage || 0)
+      : parseFloat(props.profitability || 0);
+
   const salePrice = cost * (1 + perc / 100);
   return item.iva == 1 ? salePrice * 1.16 : salePrice;
 };
@@ -175,7 +174,10 @@ const getProfitabilityPercentage = (item) => {
 <template>
   <div class="profitability-table-wrapper">
     <!-- Vista Escritorio: Tabla Premium -->
-    <VCard v-if="!$vuetify.display.smAndDown" class="rounded-xl border-0 shadow-sm overflow-hidden">
+    <VCard
+      v-if="!$vuetify.display.smAndDown"
+      class="rounded-lg border shadow-sm overflow-hidden bg-surface"
+    >
       <VDataTableServer
         :items-per-page="props.itemsPerPage"
         :page="props.page"
@@ -187,47 +189,47 @@ const getProfitabilityPercentage = (item) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span :class="['font-weight-black', item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary']">
+          <span
+            :class="[
+              'font-weight-black',
+              item.profitability?.is_locked == '1'
+                ? 'text-error'
+                : 'text-primary',
+            ]"
+          >
             {{ item.id }}
           </span>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-3 py-3">
-            <VAvatar
-              v-if="item.photo_url"
-              size="42"
-              variant="tonal"
-              class="rounded-lg shadow-sm"
-              :image="item.photo_url"
-            />
-            <VAvatar
-              v-else
-              size="42"
-              color="primary"
-              variant="tonal"
-              class="rounded-lg font-weight-black"
-            >
-              {{ item.name.charAt(0) }}
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-base font-weight-black text-high-emphasis">
-                {{ item.name }}
-                <VChip v-if="item.iva == 1" color="success" size="x-small" density="compact" class="ms-1 font-weight-black">IVA</VChip>
-                <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-small" density="compact" class="ms-1 font-weight-black">COL</VChip>
+          <div class="d-flex align-center gap-x-3 py-2">
+            <div class="d-flex flex-column min-width-0">
+              <span
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                :class="{ 
+                  'text-warning': item.psychotropic == 1 || item.psychotropic === true
+                }"
+                style="max-inline-size: 320px;"
+                :title="item.name"
+              >
+                {{ item.name.toUpperCase() }}
+                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <span class="text-xs text-disabled">{{ item.active_ingredient }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
 
-        <template #item.laboratory.name="{ item }">
-          <VChip variant="tonal" color="secondary" size="small" class="font-weight-bold px-3">
-            {{ item.laboratory?.name || 'N/A' }}
-          </VChip>
-        </template>
+        <!-- Eliminado Laboratory.name ya que está integrado en Name -->
 
-        <template #item.cost_price="{ item }">
+        <template #item.unit_cost="{ item }">
           <span class="font-weight-black text-high-emphasis">
             {{ formatPrice(item.unit_cost) }}
           </span>
@@ -235,10 +237,21 @@ const getProfitabilityPercentage = (item) => {
 
         <template #item.sale_price="{ item }">
           <div class="d-flex flex-column">
-            <span :class="['font-weight-black text-lg', item.profitability?.is_locked == '1' ? 'text-error' : 'text-success']">
+            <span
+              :class="[
+                'font-weight-black text-lg',
+                item.profitability?.is_locked == '1'
+                  ? 'text-error'
+                  : 'text-success',
+              ]"
+            >
               {{ formatPrice(getCalculatedSalePrice(item)) }}
             </span>
-            <span v-if="item.iva == 1" class="text-super-xs text-success font-weight-bold uppercase">IVA INCLUIDO</span>
+            <span
+              v-if="item.iva == 1"
+              class="text-super-xs text-success font-weight-bold uppercase"
+              >IVA INCLUIDO</span
+            >
           </div>
         </template>
 
@@ -248,12 +261,21 @@ const getProfitabilityPercentage = (item) => {
               :model-value="getProfitabilityPercentage(item)"
               size="32"
               width="3"
-              :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
+              :color="
+                item.profitability?.is_locked == '1' ? 'error' : 'primary'
+              "
               class="font-weight-black text-xs"
             >
               {{ getProfitabilityPercentage(item) }}
             </VProgressCircular>
-            <span :class="['font-weight-black', item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary']">
+            <span
+              :class="[
+                'font-weight-black',
+                item.profitability?.is_locked == '1'
+                  ? 'text-error'
+                  : 'text-primary',
+              ]"
+            >
               {{ getProfitabilityPercentage(item) }}%
             </span>
           </div>
@@ -266,19 +288,43 @@ const getProfitabilityPercentage = (item) => {
               color="primary"
               variant="tonal"
               class="rounded-lg"
-              @click="emit('editProduct', item.profitability?.id, item.profitability?.profitability_percentage, item.id, item.profitability?.is_locked)"
+              @click="
+                emit(
+                  'editProduct',
+                  item.profitability?.id,
+                  item.profitability?.profitability_percentage,
+                  item.id,
+                  item.profitability?.is_locked,
+                )
+              "
             >
               <VIcon icon="tabler-edit" size="18" />
             </IconBtn>
-            
+
             <IconBtn
               size="small"
-              :color="item.profitability?.is_locked == '1' ? 'error' : 'secondary'"
+              :color="
+                item.profitability?.is_locked == '1' ? 'error' : 'secondary'
+              "
               variant="tonal"
               class="rounded-lg"
-              @click="productExistProfitability(item.id, item.profitability?.id, props.profitability, item.profitability?.is_locked)"
+              @click="
+                productExistProfitability(
+                  item.id,
+                  item.profitability?.id,
+                  props.profitability,
+                  item.profitability?.is_locked,
+                )
+              "
             >
-              <VIcon :icon="item.profitability?.is_locked == '1' ? 'tabler-lock' : 'tabler-lock-open'" size="18" />
+              <VIcon
+                :icon="
+                  item.profitability?.is_locked == '1'
+                    ? 'tabler-lock'
+                    : 'tabler-lock-open'
+                "
+                size="18"
+              />
             </IconBtn>
           </div>
         </template>
@@ -290,8 +336,11 @@ const getProfitabilityPercentage = (item) => {
       <VCard
         v-for="item in props.products"
         :key="item.id"
-        class="rounded-xl border-0 shadow-sm overflow-hidden"
-        :class="{ 'border-error border-opacity-30': item.profitability?.is_locked == '1' }"
+        class="rounded-lg border shadow-sm overflow-hidden"
+        :class="{
+          'border-error border-primary-opacity-30':
+            item.profitability?.is_locked == '1',
+        }"
       >
         <div class="pa-4 bg-surface-variant-light d-flex align-center gap-3">
           <VAvatar
@@ -303,12 +352,18 @@ const getProfitabilityPercentage = (item) => {
           >
             <span v-if="!item.photo_url">{{ item.name.charAt(0) }}</span>
           </VAvatar>
-          
-          <div class="d-flex flex-column flex-grow-1">
-            <span class="text-base font-weight-black leading-tight">
-              {{ item.name }}
+
+          <div class="d-flex flex-column flex-grow-1 min-width-0">
+            <span class="text-base font-weight-black text-high-emphasis text-uppercase text-truncate">
+              {{ item.id }} | {{ item.name }}
             </span>
-            <span class="text-xs text-disabled">{{ item.laboratory?.name }}</span>
+            <div class="d-flex align-center gap-1 text-super-xs mt-1">
+              <span class="text-disabled truncate">{{ item.active_ingredient }}</span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate">
+                {{ item.laboratory?.name || 'S/L' }}
+              </span>
+            </div>
           </div>
 
           <VChip
@@ -325,14 +380,29 @@ const getProfitabilityPercentage = (item) => {
         <div class="pa-4 pt-4">
           <div class="d-flex justify-space-between align-center mb-4">
             <div class="d-flex flex-column">
-              <span class="text-super-xs text-disabled font-weight-black uppercase">Precio de Venta</span>
-              <span :class="['text-xl font-weight-black', item.profitability?.is_locked == '1' ? 'text-error' : 'text-success']">
+              <span
+                class="text-super-xs text-disabled font-weight-black uppercase"
+                >Precio de Venta</span
+              >
+              <span
+                :class="[
+                  'text-xl font-weight-black',
+                  item.profitability?.is_locked == '1'
+                    ? 'text-error'
+                    : 'text-success',
+                ]"
+              >
                 {{ formatPrice(getCalculatedSalePrice(item)) }}
               </span>
             </div>
             <div class="text-right d-flex flex-column">
-              <span class="text-super-xs text-disabled font-weight-black uppercase">Costo Base</span>
-              <span class="text-base font-weight-bold text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
+              <span
+                class="text-super-xs text-disabled font-weight-black uppercase"
+                >Costo Base</span
+              >
+              <span class="text-base font-weight-bold text-high-emphasis">{{
+                formatPrice(item.unit_cost)
+              }}</span>
             </div>
           </div>
 
@@ -343,31 +413,63 @@ const getProfitabilityPercentage = (item) => {
               color="primary"
               class="rounded-lg font-weight-black flex-grow-1"
               prepend-icon="tabler-edit"
-              @click="emit('editProduct', item.profitability?.id, item.profitability?.profitability_percentage, item.id, item.profitability?.is_locked)"
+              @click="
+                emit(
+                  'editProduct',
+                  item.profitability?.id,
+                  item.profitability?.profitability_percentage,
+                  item.id,
+                  item.profitability?.is_locked,
+                )
+              "
             >
               Editar
             </VBtn>
             <VBtn
               variant="tonal"
-              :color="item.profitability?.is_locked == '1' ? 'error' : 'secondary'"
+              :color="
+                item.profitability?.is_locked == '1' ? 'error' : 'secondary'
+              "
               class="rounded-lg px-4"
-              @click="productExistProfitability(item.id, item.profitability?.id, props.profitability, item.profitability?.is_locked)"
+              @click="
+                productExistProfitability(
+                  item.id,
+                  item.profitability?.id,
+                  props.profitability,
+                  item.profitability?.is_locked,
+                )
+              "
             >
-              <VIcon :icon="item.profitability?.is_locked == '1' ? 'tabler-lock' : 'tabler-lock-open'" />
+              <VIcon
+                :icon="
+                  item.profitability?.is_locked == '1'
+                    ? 'tabler-lock'
+                    : 'tabler-lock-open'
+                "
+              />
             </VBtn>
           </div>
         </div>
       </VCard>
 
       <!-- Paginación Móvil Simplificada -->
-      <VCard class="rounded-xl border-0 shadow-sm pa-3 d-flex justify-center align-center bg-surface">
+      <VCard
+        class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface"
+      >
         <VPagination
           :model-value="props.page"
           :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
           total-visible="3"
           density="comfortable"
           active-color="primary"
-          @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: props.itemsPerPage, sortBy: [] })"
+          @update:model-value="
+            (val) =>
+              emit('update:options', {
+                page: val,
+                itemsPerPage: props.itemsPerPage,
+                sortBy: [],
+              })
+          "
         />
       </VCard>
     </div>
@@ -387,11 +489,18 @@ const getProfitabilityPercentage = (item) => {
 
 :deep(.premium-table) {
   .v-data-table-header th {
-    background-color: rgba(var(--v-theme-surface-variant), 0.05) !important;
-    text-transform: uppercase;
-    font-size: 0.7rem !important;
-    font-weight: 900 !important;
-    letter-spacing: 1px !important;
+    background: white !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05rem !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  }
+
+  .v-data-table__td {
+    padding-block: 12px !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
   }
 
   .v-data-table__tr:hover {

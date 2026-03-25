@@ -467,7 +467,7 @@ const isSpecialTaxpayer = computed(() => {
           :loading="loading"
           @requestCloseCash="handleRequestCloseCash"
         />
-        <VAlert v-else-if="!loading" type="info" variant="tonal" class="rounded-xl">
+        <VAlert v-else-if="!loading" type="info" variant="tonal" class="rounded-lg">
           No hay datos de cierre de caja disponibles.
         </VAlert>
       </VCol>
@@ -483,7 +483,7 @@ const isSpecialTaxpayer = computed(() => {
 
       <!-- Histórico de Cierre -->
       <VCol cols="12" md="4">
-        <VCard class="rounded-xl border shadow-sm h-100">
+        <VCard class="rounded-lg border shadow-sm h-100">
           <VCardTitle class="px-6 py-4 border-b d-flex align-center gap-2">
             <VIcon icon="tabler-history" color="primary" />
             <span class="text-h6 font-weight-black uppercase">Historial</span>
@@ -502,7 +502,7 @@ const isSpecialTaxpayer = computed(() => {
 
       <!-- Lista de Órdenes -->
       <VCol cols="12" md="8">
-        <VCard class="rounded-xl border shadow-sm h-100">
+        <VCard class="rounded-lg border shadow-sm h-100">
           <VCardTitle class="px-6 py-4 border-b d-flex align-center gap-2">
             <VIcon icon="tabler-list-details" color="primary" />
             <span class="text-h6 font-weight-black uppercase">Órdenes del Turno</span>

@@ -20,7 +20,7 @@ const changeIcon  = computed(() => props.isPositive ? "tabler-trending-up" : "ta
       <VCard class="kpi-card" elevation="0">
         <VCardText class="pa-5">
           <div class="d-flex align-center justify-space-between mb-3">
-            <VAvatar color="primary" variant="tonal" size="44" rounded>
+            <VAvatar color="primary" variant="tonal" size="44" rounded-lg>
               <VIcon icon="tabler-chart-bar" size="22" />
             </VAvatar>
             <VChip
@@ -44,7 +44,7 @@ const changeIcon  = computed(() => props.isPositive ? "tabler-trending-up" : "ta
       <VCard class="kpi-card" elevation="0">
         <VCardText class="pa-5">
           <div class="d-flex align-center mb-3">
-            <VAvatar color="secondary" variant="tonal" size="44" rounded>
+            <VAvatar color="secondary" variant="tonal" size="44" rounded-lg>
               <VIcon icon="tabler-calendar-stats" size="22" />
             </VAvatar>
           </div>
@@ -59,7 +59,7 @@ const changeIcon  = computed(() => props.isPositive ? "tabler-trending-up" : "ta
       <VCard class="kpi-card" elevation="0">
         <VCardText class="pa-5">
           <div class="d-flex align-center mb-3">
-            <VAvatar :color="changeColor" variant="tonal" size="44" rounded>
+            <VAvatar :color="changeColor" variant="tonal" size="44" rounded-lg>
               <VIcon :icon="changeIcon" size="22" />
             </VAvatar>
           </div>
@@ -76,7 +76,7 @@ const changeIcon  = computed(() => props.isPositive ? "tabler-trending-up" : "ta
       <VCard class="kpi-card" :color="changeColor" variant="tonal" elevation="0">
         <VCardText class="pa-5">
           <div class="d-flex align-center mb-3">
-            <VAvatar :color="changeColor" variant="elevated" size="44" rounded>
+            <VAvatar :color="changeColor" variant="elevated" size="44" rounded-lg>
               <VIcon icon="tabler-activity" size="22" class="text-white" />
             </VAvatar>
           </div>
@@ -93,7 +93,7 @@ const changeIcon  = computed(() => props.isPositive ? "tabler-trending-up" : "ta
 <style scoped>
 .kpi-card {
   border: 1px solid rgba(var(--v-border-color), 0.1);
-  border-radius: 16px !important;
+  border-radius: 8px !important;
   transition: box-shadow 0.2s ease;
 }
 

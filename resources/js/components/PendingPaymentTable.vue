@@ -130,7 +130,7 @@ const getInitials = (name) => {
 <template>
   <div class="mt-4">
     <!-- Vista Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VDataTable
         :headers="headers"
         :items="props.pendingPayments"
@@ -247,7 +247,7 @@ const getInitials = (name) => {
         <VCard
           v-for="item in props.pendingPayments"
           :key="item.id"
-          class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+          class="rounded-lg border shadow-sm premium-card overflow-hidden"
           :class="{ 'card-selected': isTableInvoiceSelected(item) }"
           @click="emit('toggle-selection', item)"
         >
@@ -337,7 +337,7 @@ const getInitials = (name) => {
     <!-- Barra de Selección Móvil Flotante -->
     <VSlideYReverseTransition>
       <div v-if="mobile && props.selectedTableInvoices.length > 0" class="mobile-action-bar pa-4">
-        <VCard color="primary" class="rounded-xl shadow-lg pa-4 d-flex align-center justify-space-between border-0">
+        <VCard color="primary" class="rounded-lg shadow-lg pa-4 d-flex align-center justify-space-between border-0">
           <div class="d-flex align-center gap-3">
             <VAvatar color="white" variant="tonal" size="32" class="rounded-lg">
               <span class="text-xs font-weight-black text-white">{{ props.selectedTableInvoices.length }}</span>
@@ -355,17 +355,20 @@ const getInitials = (name) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  height: 44px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.premium-table :deep(.v-data-table-header th) {
-  height: 44px !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  color: rgba(var(--v-theme-on-surface), 0.5) !important;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

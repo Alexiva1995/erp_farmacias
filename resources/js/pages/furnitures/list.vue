@@ -223,38 +223,81 @@ const handleSort = (sortOptions) => {
 </script>
 
 <template>
-  <div>
-    <FurnitureFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedYear="selectedYear"
-      v-model:depreciationFilter="depreciationFilter"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
-      :acquisition-years="acquisitionYears"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @add-furniture="handleAddFurniture"
-      @sort="handleSort"
-    />
+  <div class="furniture-view pb-12">
+    <!-- Header Premium -->
+    <div class="header-bg pa-6 mb-6">
+      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+        <div class="d-flex align-center gap-4">
+          <VAvatar
+            size="54"
+            color="white"
+            variant="flat"
+            class="rounded-lg shadow-soft"
+          >
+            <VIcon icon="tabler-armchair" color="primary" size="28" />
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+              Inventario de Mobiliario
+            </h1>
+            <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+              Control y Segmentación de Activos Fijos
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <FurnitureTable
-      :furniture="furniture"
-      :loading="loading"
-      :total-furniture="totalFurniture"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @edit-furniture="handleEditFurniture"
-      @delete-furniture="handleDeleteFurniture"
-    />
+    <div class="px-6">
+      <FurnitureFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedYear="selectedYear"
+        v-model:depreciationFilter="depreciationFilter"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        :acquisition-years="acquisitionYears"
+        :loading="isLoadingFilters"
+        @clear="handleClearFilters"
+        @add-furniture="handleAddFurniture"
+        @sort="handleSort"
+      />
 
-    <FurnitureEditDialog
-      v-model="isEditDialogVisible"
-      :furniture="currentFurniture"
-      :acquisition-years="acquisitionYears"
-      :errors="furnitureFormErrors"
-      @save="handleSaveFurniture"
-      @clear-errors="clearFormErrors"
-    />
+      <FurnitureTable
+        :furniture="furniture"
+        :loading="loading"
+        :total-furniture="totalFurniture"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @edit-furniture="handleEditFurniture"
+        @delete-furniture="handleDeleteFurniture"
+      />
+
+      <FurnitureEditDialog
+        v-model="isEditDialogVisible"
+        :furniture="currentFurniture"
+        :acquisition-years="acquisitionYears"
+        :errors="furnitureFormErrors"
+        @save="handleSaveFurniture"
+        @clear-errors="clearFormErrors"
+      />
+    </div>
   </div>
 </template>
+
+<style scoped>
+.furniture-view {
+  background-color: #f8fafc;
+  min-block-size: 100vh;
+}
+
+.header-bg {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
+  border-block-end: 1px solid rgba(255, 255, 255, 10%);
+}
+
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
+
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+</style>

@@ -50,7 +50,7 @@ const getAvatarColor = (id) => {
 <template>
   <div class="mt-4">
     <!-- Vista Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardItem class="pa-4 pb-0">
         <template #prepend>
           <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
@@ -79,21 +79,21 @@ const getAvatarColor = (id) => {
               {{ (item.seller?.username ?? '?').charAt(0).toUpperCase() }}
             </VAvatar>
             <div class="d-flex flex-column">
-              <span class="text-xs font-weight-black text-high-emphasis">{{ formatUsername(item.seller?.username) }}</span>
-              <span class="text-super-xs text-disabled uppercase">#ID-{{ item.id }}</span>
+              <span class="text-sm font-weight-black text-primary">{{ item.seller?.username }}</span>
+              <span class="text-xs font-weight-medium text-disabled uppercase">ID: {{ item.id }}</span>
             </div>
           </div>
         </template>
 
         <!-- Monedas -->
         <template #item.total_usd="{ item }">
-          <span class="text-xs font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
+          <span class="text-sm font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
         </template>
         <template #item.total_cop="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
         </template>
         <template #item.total_bs="{ item }">
-          <span class="text-xs font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+          <span class="text-sm font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
         </template>
         <template #item.total_sales="{ item }">
           <VChip size="x-small" variant="flat" color="primary" class="font-weight-black rounded px-2">
@@ -139,7 +139,7 @@ const getAvatarColor = (id) => {
       <VCard
         v-for="item in props.sellerCash"
         :key="item.id"
-        class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+        class="rounded-lg border shadow-sm premium-card overflow-hidden"
       >
         <div class="premium-card-decoration" :class="item.status === 'closed' ? 'bg-success-opacity' : 'bg-warning-opacity'"></div>
         
@@ -151,7 +151,7 @@ const getAvatarColor = (id) => {
               </VAvatar>
               <div class="d-flex flex-column">
                 <span class="text-sm font-weight-black leading-tight">{{ formatUsername(item.seller?.username) }}</span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">Cierre #{{ item.id }}</span>
+                  <span class="text-sm font-weight-black text-disabled uppercase">Cierre {{ item.id }}</span>
               </div>
             </div>
             <VChip
@@ -212,7 +212,7 @@ const getAvatarColor = (id) => {
         </VCardText>
       </VCard>
 
-      <VAlert v-if="props.sellerCash.length === 0" type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-if="props.sellerCash.length === 0" type="info" variant="tonal" class="rounded-lg">
         No hay cierres de vendedores en este periodo.
       </VAlert>
     </div>
@@ -220,17 +220,20 @@ const getAvatarColor = (id) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  block-size: 44px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.premium-table :deep(.v-data-table-header th) {
-  block-size: 44px !important;
-  color: rgba(var(--v-theme-on-surface), 50%) !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

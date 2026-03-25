@@ -44,12 +44,12 @@ const formatDate = (dateStr) => {
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-bold text-primary">#{{ item.id }}</span>
+        <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
       </template>
 
       <template #item.date="{ item }">
         <div class="d-flex flex-column">
-          <span class="text-body-2 font-weight-medium">{{ formatDate(item.closing_date) }}</span>
+          <span class="text-sm font-weight-medium">{{ formatDate(item.closing_date) }}</span>
           <span class="text-xs text-disabled">{{ item.created_at ? new Date(item.created_at).toLocaleTimeString() : '' }}</span>
         </div>
       </template>
@@ -75,15 +75,15 @@ const formatDate = (dateStr) => {
     <div v-else class="mobile-cards-container pa-4">
       <VRow>
         <VCol v-for="item in props.closing" :key="item.id" cols="12">
-          <VCard class="rounded-xl border shadow-sm history-card" variant="flat">
+          <VCard class="rounded-lg border shadow-sm history-card" variant="flat">
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-start mb-3">
                 <div class="d-flex align-center gap-3">
-                  <VAvatar color="primary" variant="tonal" rounded size="40" class="rounded-lg">
+                  <VAvatar color="primary" variant="tonal" size="40" class="rounded-lg">
                     <VIcon icon="tabler-hash" size="20" />
                   </VAvatar>
                   <div>
-                    <div class="text-h6 font-weight-black text-primary leading-none">#{{ item.id }}</div>
+                    <div class="text-lg font-weight-black text-primary leading-none">{{ item.id }}</div>
                     <div class="text-caption text-disabled font-weight-medium uppercase mt-1">
                       Cierre Final
                     </div>
@@ -133,17 +133,20 @@ const formatDate = (dateStr) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 2%) !important;
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  block-size: 44px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.premium-table :deep(.v-data-table-header th) {
-  block-size: 44px !important;
-  color: rgba(var(--v-theme-on-surface), 50%) !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .history-card {

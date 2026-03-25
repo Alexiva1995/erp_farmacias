@@ -31,7 +31,7 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-xl border shadow-sm overflow-hidden bg-surface">
+  <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Header: Búsqueda y Botón de Colapso -->
     <div class="pa-4 d-flex align-center flex-wrap gap-4">
       <VTextField
@@ -99,7 +99,7 @@ const emit = defineEmits([
     <VExpandTransition>
       <div v-show="isFiltersVisible">
         <VDivider />
-        <div class="pa-5 bg-surface-variant-light">
+        <div class="pa-5 bg-white">
           <VRow>
             <VCol cols="12" sm="6" md="3">
               <span class="text-super-xs font-weight-black text-primary uppercase d-block mb-2">Clasificación</span>

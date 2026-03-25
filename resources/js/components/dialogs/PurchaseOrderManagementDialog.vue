@@ -205,7 +205,7 @@ watch(
     persistent
     scrollable
   >
-    <VCard class="management-dialog rounded-xl-mobile overflow-hidden">
+    <VCard class="management-dialog rounded-lg overflow-hidden">
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center text-white">
           <div class="d-flex align-center gap-3">
@@ -213,7 +213,7 @@ watch(
               <VIcon icon="tabler-clipboard-list" color="white" />
             </VAvatar>
             <div>
-              <div class="text-h6 font-weight-black leading-tight">Gestión de Orden #{{ purchaseOrder.id }}</div>
+              <div class="text-h6 font-weight-black leading-tight">Orden de Compra {{ purchaseOrder.id }}</div>
               <div class="text-caption text-white opacity-80 font-weight-bold uppercase truncate" style="max-inline-size: 250px;">
                 {{ purchaseOrder.supplier_name }}
               </div>
@@ -252,7 +252,7 @@ watch(
                 :color="getStatusColor(purchaseOrder.status)"
                 size="x-small"
                 label
-                variant="flat"
+                variant="tonal"
                 class="font-weight-black rounded"
               >
                 {{ getStatusLabel(purchaseOrder.status) }}
@@ -450,10 +450,25 @@ watch(
   white-space: nowrap;
 }
 
+.premium-table :deep(th) {
+  background-color: white !important;
+  block-size: 52px !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.premium-table :deep(td) {
+  padding-block: 8px !important;
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+}
+
 @media (max-width: 600px) {
-  .rounded-xl-mobile {
+  .management-dialog {
     border-radius: 0 !important;
   }
 }
 </style>
-

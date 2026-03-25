@@ -73,7 +73,7 @@ function rowClass(item) {
 
 <template>
   <div class="assistant-table-container">
-    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -96,20 +96,30 @@ function rowClass(item) {
             </div>
           </template>
 
-          <!-- Producto -->
+          <!-- ID -->
+          <template #item.id="{ item }">
+            <span class="text-sm font-weight-black text-primary">
+              {{ item.id }}
+            </span>
+          </template>
+
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-1" style="max-inline-size: 220px;">
+            <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
               <span
-                class="text-body-2 font-weight-medium text-high-emphasis text-truncate"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 'text-primary': item.psychotropic == 1 }"
                 :title="item.name"
               >
-                {{ item.name }}
+                {{ item.name.toUpperCase() }}
               </span>
-              <span class="text-caption text-disabled text-truncate">
-                {{ item.active_ingredient }}
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
-              </span>
+              </div>
             </div>
           </template>
 
@@ -283,6 +293,25 @@ function rowClass(item) {
 </template>
 
 <style scoped>
+:deep(.v-data-table-header) {
+  background-color: #fff !important;
+}
+
+:deep(.v-data-table-header th) {
+  border-inline-end: 1px solid rgba(var(--v-border-color), 0.05);
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+:deep(.v-data-table-header th:last-child) {
+  border-inline-end: none;
+}
+
+:deep(.assistant-data-table) {
+  font-size: 0.875rem !important;
+}
+
 :deep(.row-needs td) {
   background-color: rgba(40, 199, 111, 4%) !important;
 }

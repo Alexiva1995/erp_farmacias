@@ -33,7 +33,7 @@ function rowClass(item) {
 </script>
 
 <template>
-  <VCard variant="outlined" class="rounded-lg">
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <VTable
       v-if="productosTable.length > 0"
       density="compact"
@@ -41,7 +41,7 @@ function rowClass(item) {
     >
       <thead>
         <tr>
-          <th class="ps-4">Proveedor</th>
+          <th class="ps-6">Proveedor</th>
           <th>ID</th>
           <th style="min-inline-size: 250px;">Producto</th>
           <th class="text-end">Ventas</th>
@@ -50,39 +50,43 @@ function rowClass(item) {
           <th class="text-center">Diferencia</th>
           <th class="text-end">Stock</th>
           <th class="text-end">Análisis</th>
-          <th style="inline-size: 140px;" class="text-center pe-4">Sugerencia</th>
+          <th style="inline-size: 140px;" class="text-center pe-6">Sugerencia</th>
         </tr>
       </thead>
 
       <tbody>
         <tr v-for="item in productosTable" :key="item.uuid" :class="rowClass(item)">
-          <td class="ps-4 py-2">
+          <td class="ps-6 py-2">
             <div class="d-flex flex-column" style="max-inline-size: 150px;">
-              <span class="text-body-2 font-weight-bold text-truncate">{{ item.supplier.name }}</span>
-              <span class="text-caption text-error text-truncate font-weight-bold">Precio Elevado</span>
+              <span class="text-sm font-weight-black text-uppercase truncate">{{ item.supplier.name }}</span>
+              <span class="text-super-xs text-error font-weight-bold uppercase letter-spacing-widest">Precio Elevado</span>
             </div>
           </td>
           <td>
-            <span class="text-caption text-disabled">#{{ item.product.id }}</span>
+            <span class="text-sm font-weight-black text-primary">{{ item.product.id }}</span>
           </td>
 
-          <td style="max-inline-size: 250px;">
+          <td style="max-inline-size: 320px;">
             <div class="d-flex align-center py-1">
               <VAvatar
                 v-if="item.product.photo_url"
                 size="32"
                 rounded
                 variant="tonal"
-                class="me-2"
+                class="me-3"
                 :image="item.product.photo_url"
               />
               <div class="d-flex flex-column overflow-hidden">
-                <span class="text-body-2 font-weight-medium text-high-emphasis text-truncate" :title="item.product.name">
-                  {{ item.product.name }}
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product.name">
+                  {{ item.product.name.toUpperCase() }}
                 </span>
-                <span class="text-caption text-disabled text-truncate">
-                  {{ item.product.laboratory?.name || "Sin Laboratorio" }}
-                </span>
+                <div class="d-flex align-center gap-1 text-super-xs">
+                  <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.product.active_ingredient }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                    {{ item.product.laboratory?.name || 'S/L' }}
+                  </span>
+                </div>
               </div>
             </div>
           </td>
@@ -145,7 +149,7 @@ function rowClass(item) {
             </VTooltip>
           </td>
 
-          <td class="pe-4">
+          <td class="pe-6">
             <VTextField
               type="number"
               v-model="item.reponer"
@@ -169,6 +173,18 @@ function rowClass(item) {
 </template>
 
 <style scoped>
+thead th {
+  background-color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+tbody td {
+  font-size: 0.875rem !important;
+}
+
 .row-needs {
   background-color: rgba(40, 199, 111, 4%) !important;
 }
@@ -189,5 +205,12 @@ function rowClass(item) {
 .text-xs {
   font-size: 0.75rem;
 }
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
 </style>
 
