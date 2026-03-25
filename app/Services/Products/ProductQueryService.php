@@ -51,13 +51,6 @@ class ProductQueryService
             $query->where('is_deleted', !$filters['is_active']);
         }
 
-        if (!empty($filters['is_pending'])) {
-            $query->where(function ($q) {
-                // Ensure we only look for items with null barcode that are NOT deleted
-                $q->whereNull('barcode')->where('is_deleted', false);
-            });
-        }
-
         // Si hay productId, priorizar búsqueda directa por ID (omitir filtro q para evitar conflictos)
         if (!empty($filters['productId'])) {
             $query->where('products.id', (int) $filters['productId']);
