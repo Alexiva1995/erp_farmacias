@@ -810,53 +810,9 @@ class InventoryCycleActionService
                 $model->counted_quantity = $model->system_quantity + $newDiscrepancy;
                 $model->save();
 
-                // Ajustar el stock en los lotes
-                $product = $model->product;
-                
-                if ($difference > 0) {
-                    // Sobrante adicional o reducción de faltante: sumamos al stock
-                    $lot = $product->lots()
-                        ->where('expiration_date', '>=', now())
-                        ->orderBy('expiration_date', 'asc')
-                        ->first();
-
-                    if (!$lot) {
-                        $lot = $product->lots()->orderBy('created_at', 'desc')->first();
-                    }
-
-                    if ($lot) {
-                        $lot->quantity += $difference;
-                        $lot->save();
-                    }
-                } else {
-                    // Faltante adicional o reducción de sobrante: restamos del stock
-                    $reductionLeft = abs($difference);
-                    $lots = $product->lots()
-                        ->where('quantity', '>', 0)
-                        ->orderBy('expiration_date', 'asc')
-                        ->get();
-
-                    foreach ($lots as $lot) {
-                        if ($reductionLeft <= 0) break;
-
-                        $toReduce = min($lot->quantity, $reductionLeft);
-                        $lot->quantity -= $toReduce;
-                        $lot->save();
-                        $reductionLeft -= $toReduce;
-                    }
-
-                    if ($reductionLeft > 0) {
-                        $lastLot = $product->lots()->orderBy('expiration_date', 'desc')->first();
-                        if ($lastLot) {
-                            $lastLot->quantity -= $reductionLeft;
-                            $lastLot->save();
-                        }
-                    }
-                }
-
                 return [
                     'success' => true,
-                    'message' => 'Discrepancia actualizada y stock ajustado correctamente.',
+                    'message' => 'Discrepancia actualizada correctamente (solo registro).',
                     'data' => $model
                 ];
 
