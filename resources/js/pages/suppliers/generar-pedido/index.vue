@@ -446,62 +446,92 @@ function eliminarItemOrden(payload){
 </script>
 <template>
   <LoaderComponent :loadingApp="module.loadingApp" />
-  <div>
-    <NavegationIaAutoOrder
-      :index-navegacion="indexNavegacion"
-      :encontrados="KPIS_ENCONTRADOS"
-      :no-encontrados="KPIS_NO_ENCONTRADOS"
-      @actualizar-index-navegacion="actualizarIndexNavegacion"
-    />
+  <div class="generate-order-view pb-12 text-sm">
+    <!-- Header Premium (Tarjeta Flotante) -->
+    <VCard class="mx-6 mt-6 mb-6 rounded-lg border shadow-sm overflow-hidden">
+      <div class="header-bg pa-6">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+          <div class="d-flex align-center gap-4">
+            <VAvatar
+              size="54"
+              color="white"
+              variant="flat"
+              class="rounded-lg shadow-soft"
+            >
+              <VIcon icon="tabler-shopping-cart-plus" color="primary" size="28" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+                Generar Pedido Inteligente
+              </h1>
+              <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+                Revisión paso a paso de productos para reposición
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </VCard>
 
-    <VCard class="mb-6" v-if="indexNavegacion == 1">
-      <template #title>
-        Productos con Costo Elevado
-        <VChip
-          color="primary"
-          variant="tonal"
-          size="small"
-          @click:close="clearSortFilter"
-        >
-          {{
-            module.productoFallas.filter((pro) => pro.increase == true).length
-          }}
-        </VChip>
-      </template>
-      <ProductsExceededToleranceTable :list="module.productoFallas" />
-    </VCard>
-    <VCard class="mb-6" v-if="indexNavegacion == 2">
-      <template #title>
-        Productos con Costo Bajo
-        <VChip
-          color="primary"
-          variant="tonal"
-          size="small"
-          @click:close="clearSortFilter"
-        >
-          {{
-            module.productoFallas.filter((pro) => pro.increase == false).length
-          }}
-        </VChip>
-      </template>
-      <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
-    </VCard>
-    <VCard class="mb-6" v-if="indexNavegacion == 3">
-      <template #title>
-        Productos con Precio Estable
-        <VChip
-          color="primary"
-          variant="tonal"
-          size="small"
-          @click:close="clearSortFilter"
-        >
-          {{
-            module.productoFallas.filter((pro) => pro.increase === null).length
-          }}
-        </VChip>
-      </template>
-      <ProductsStablePriceTable :list="module.productoFallas" />
-    </VCard>
+    <div class="px-6 d-flex flex-column gap-6">
+      <NavegationIaAutoOrder
+        :index-navegacion="indexNavegacion"
+        :encontrados="KPIS_ENCONTRADOS"
+        :no-encontrados="KPIS_NO_ENCONTRADOS"
+        @actualizar-index-navegacion="actualizarIndexNavegacion"
+      />
+
+      <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 1">
+        <template #title>
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-trending-up" color="error" size="22" />
+            <span class="text-h6 font-weight-black">Productos con Costo Elevado</span>
+            <VChip
+              color="error"
+              variant="tonal"
+              size="small"
+              class="font-weight-black"
+            >
+              {{ module.productoFallas.filter((pro) => pro.increase == true).length }}
+            </VChip>
+          </div>
+        </template>
+        <ProductsExceededToleranceTable :list="module.productoFallas" />
+      </VCard>
+      <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 2">
+        <template #title>
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-trending-down" color="success" size="22" />
+            <span class="text-h6 font-weight-black">Productos con Costo Bajo</span>
+            <VChip
+              color="success"
+              variant="tonal"
+              size="small"
+              class="font-weight-black"
+            >
+              {{ module.productoFallas.filter((pro) => pro.increase == false).length }}
+            </VChip>
+          </div>
+        </template>
+        <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
+      </VCard>
+      <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 3">
+        <template #title>
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-minus" color="info" size="22" />
+            <span class="text-h6 font-weight-black">Productos con Precio Estable</span>
+            <VChip
+              color="info"
+              variant="tonal"
+              size="small"
+              class="font-weight-black"
+            >
+              {{ module.productoFallas.filter((pro) => pro.increase === null).length }}
+            </VChip>
+          </div>
+        </template>
+        <ProductsStablePriceTable :list="module.productoFallas" />
+      </VCard>
 
     <div v-if="indexNavegacion == 4">
       <VRow>
@@ -588,11 +618,37 @@ function eliminarItemOrden(payload){
       </VRow>
     </div>
   </div>
+</div>
 </template>
 
 <style scoped>
+.generate-order-view {
+  background-color: #f8fafc;
+  min-block-size: 100vh;
+}
+
+.header-bg {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
+}
+
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
+
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+
 .bg-light-primary {
   background-color: rgba(var(--v-theme-primary), 0.04);
+}
+
+.text-h4 {
+  color: rgb(var(--v-theme-on-surface));
+  letter-spacing: -0.5px !important;
+}
+
+:deep(.v-card-title) {
+  padding: 1.25rem 1.5rem !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+  background-color: #fff;
 }
 </style>
 

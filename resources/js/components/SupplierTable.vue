@@ -50,7 +50,7 @@ const headers = [
 
 <template>
   <div class="supplier-table-container">
-    <VCard v-if="!mobile" class="shadow-sm border-0">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm">
       <VDataTableServer
         :items-per-page="props.itemsPerPage"
         :page="props.page"
@@ -63,7 +63,7 @@ const headers = [
       >
         <!-- Columnas personalizadas existentes -->
         <template #item.id="{ item }">
-          <span class="text-caption font-weight-bold text-disabled">#{{ item.id }}</span>
+          <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
@@ -71,7 +71,7 @@ const headers = [
             <VAvatar size="32" color="primary" variant="tonal">
               <span class="text-caption font-weight-bold">{{ item.name.charAt(0) }}</span>
             </VAvatar>
-            <span class="text-body-2 font-weight-medium text-high-emphasis">
+            <span class="text-sm font-weight-bold text-high-emphasis">
               {{ item.name }}
             </span>
           </div>
@@ -206,17 +206,17 @@ const headers = [
         <VCard
           v-for="item in props.suppliers"
           :key="item.id"
-          class="supplier-mobile-card border-0"
+          class="supplier-mobile-card rounded-lg border shadow-sm"
         >
           <VCardText class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex align-center gap-3">
                 <VAvatar color="primary" variant="tonal" size="40">
-                  <span class="text-h6 font-weight-bold">{{ item.name.charAt(0) }}</span>
+                  <span class="text-sm font-weight-black">{{ item.name.charAt(0) }}</span>
                 </VAvatar>
                 <div>
-                  <div class="text-subtitle-1 font-weight-bold line-clamp-1">{{ item.name }}</div>
-                  <div class="text-caption text-disabled">ID: #{{ item.id }}</div>
+                  <div class="text-sm font-weight-bold line-clamp-1">{{ item.name }}</div>
+                  <div class="text-xs text-disabled">ID: {{ item.id }}</div>
                 </div>
               </div>
               <div class="d-flex align-center gap-1">
@@ -247,7 +247,7 @@ const headers = [
               </div>
             </div>
 
-            <div class="d-flex justify-space-between align-center mt-2 pa-2 bg-light-surface rounded-pill">
+            <div class="d-flex justify-space-between align-center mt-2 pa-2 bg-light-surface rounded-lg border">
               <div class="d-flex gap-2">
                 <VTooltip text="WhatsApp Ventas" location="top">
                   <template #activator="{ props }">
@@ -356,20 +356,22 @@ const headers = [
 }
 
 .premium-data-table :deep(th) {
-  background-color: #f8fafc !important;
-  color: #64748b !important;
-  font-size: 0.7rem !important;
-  font-weight: 700;
+  background-color: white !important;
+  block-size: 52px !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .premium-data-table :deep(td) {
   padding-block: 12px !important;
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
 }
 
 .supplier-mobile-card {
-  border-radius: 16px;
   box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 5%) !important;
   transition: transform 0.2s;
 }

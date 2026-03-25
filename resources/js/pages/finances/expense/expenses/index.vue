@@ -64,7 +64,7 @@ const kpis = [
             size="54"
             color="white"
             variant="flat"
-            class="rounded-xl shadow-soft"
+            class="rounded-lg shadow-soft"
           >
             <VIcon icon="tabler-receipt" color="primary" size="28" />
           </VAvatar>
@@ -89,7 +89,7 @@ const kpis = [
         >
           <VCard
             variant="flat"
-            class="rounded-xl overflow-hidden shadow-soft kpi-card bg-white"
+            class="rounded-lg border shadow-sm overflow-hidden kpi-card bg-white"
           >
             <div class="d-flex align-center pa-4">
               <VAvatar
@@ -132,7 +132,7 @@ const kpis = [
       />
 
       <!-- === TABLA CON TABS === -->
-      <VCard variant="flat" class="rounded-xl border shadow-sm bg-surface overflow-hidden">
+      <VCard variant="flat" class="rounded-lg border shadow-sm bg-surface overflow-hidden">
         <!-- Tabs de estado -->
         <VTabs
           v-model="activeTab"

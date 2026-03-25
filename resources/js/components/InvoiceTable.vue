@@ -72,7 +72,7 @@ const processedInvoices = computed(() => {
 </script>
 
 <template>
-  <VCard>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <VDataTableServer
       :items-per-page="props.itemsPerPage"
       :page="props.page"
@@ -80,7 +80,9 @@ const processedInvoices = computed(() => {
       :items="processedInvoices"
       :items-length="props.totalInvoices"
       :loading="props.loading"
-      class="text-no-wrap invoice-table"
+      hover
+      density="compact"
+      class="text-no-wrap premium-table"
       :row-props="
         (data) => ({
           class:
@@ -89,6 +91,9 @@ const processedInvoices = computed(() => {
       "
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.id="{ item }">
+        <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+      </template>
       <template #item.supplier\.name="{ item }">
         <span class="font-weight-medium">{{ item.supplier.name }}</span>
       </template>
@@ -199,12 +204,22 @@ const processedInvoices = computed(() => {
 </template>
 
 <style scoped>
-.invoice-table :deep(.highlighted-row) {
+.premium-table :deep(th) {
+  background-color: #fff !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.highlighted-row {
   background-color: rgba(var(--v-theme-primary), 0.08) !important;
   transition: background-color 0.3s ease;
 }
 
-.invoice-table :deep(.highlighted-row:hover) {
+.highlighted-row:hover {
   background-color: rgba(var(--v-theme-primary), 0.12) !important;
 }
 </style>

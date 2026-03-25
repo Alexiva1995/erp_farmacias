@@ -46,7 +46,7 @@ const getAvatarColor = (id) => {
 <template>
   <div class="mt-4">
     <!-- Vista Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardItem class="pa-4 pb-0">
         <template #prepend>
           <VAvatar color="info" variant="tonal" size="38" class="rounded-lg">
@@ -73,25 +73,25 @@ const getAvatarColor = (id) => {
             <VAvatar size="32" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg font-weight-black text-xs">
               <VIcon icon="tabler-calendar" size="16" />
             </VAvatar>
-            <span class="text-xs font-weight-black uppercase">{{ fmtDate(item.created_at) }}</span>
+            <span class="text-sm font-weight-black uppercase">{{ fmtDate(item.created_at) }}</span>
           </div>
         </template>
 
         <template #item.total_usd="{ item }">
-          <span class="text-xs font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
+          <span class="text-sm font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
         </template>
         <template #item.total_cop="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
         </template>
         <template #item.total_bs="{ item }">
-          <span class="text-xs font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+          <span class="text-sm font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
         </template>
 
         <template #item.usd_delivered="{ item }">
-          <span class="text-xs font-weight-bold">{{ fmtUsd(item.usd_delivered) }}</span>
+          <span class="text-sm font-weight-bold">{{ fmtUsd(item.usd_delivered) }}</span>
         </template>
         <template #item.cop_delivered="{ item }">
-          <span class="text-xs font-weight-bold">{{ fmtCop(item.cop_delivered) }}</span>
+          <span class="text-sm font-weight-bold">{{ fmtCop(item.cop_delivered) }}</span>
         </template>
         <template #item.bs_mobile="{ item }">
           <span class="text-xs font-weight-medium text-info">{{ fmtBs(item.bs_mobile) }}</span>
@@ -127,7 +127,7 @@ const getAvatarColor = (id) => {
       <VCard
         v-for="item in props.dailyCash"
         :key="item.id"
-        class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+        class="rounded-lg border shadow-sm premium-card overflow-hidden"
       >
         <VCardText class="pa-5">
           <div class="d-flex align-center justify-space-between mb-4">
@@ -137,7 +137,7 @@ const getAvatarColor = (id) => {
               </VAvatar>
               <div class="d-flex flex-column">
                 <span class="text-sm font-weight-black leading-tight uppercase">{{ fmtDate(item.created_at) }}</span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">Consolidado Diario #{{ item.id }}</span>
+                <span class="text-xs text-disabled font-weight-bold uppercase">Consolidado Diario {{ item.id }}</span>
               </div>
             </div>
             <VChip color="info" variant="tonal" size="x-small" class="font-weight-black rounded px-2">
@@ -218,7 +218,7 @@ const getAvatarColor = (id) => {
         </VCardText>
       </VCard>
 
-      <VAlert v-if="props.dailyCash.length === 0" type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-if="props.dailyCash.length === 0" type="info" variant="tonal" class="rounded-lg">
         No hay registros diarios encontrados.
       </VAlert>
     </div>
@@ -226,17 +226,20 @@ const getAvatarColor = (id) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  block-size: 44px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.premium-table :deep(.v-data-table-header th) {
-  block-size: 44px !important;
-  color: rgba(var(--v-theme-on-surface), 50%) !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

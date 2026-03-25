@@ -126,20 +126,20 @@ const hasCreditPayment = (rawData) => {
       :expanded="expandedRows"
     >
       <template v-slot:item.id="{ item }">
-        <span class="font-weight-bold text-primary">#{{ item.id }}</span>
+        <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
       </template>
 
       <template v-slot:item.identification="{ item }">
-        <span class="text-body-2">{{ item.client?.identification_type }} {{ item.client?.identification }}</span>
+        <span class="text-sm">{{ item.client?.identification_type }} {{ item.client?.identification }}</span>
       </template>
 
       <template v-slot:item.client_full_name="{ item }">
-        <span class="text-body-2 font-weight-medium">{{ item.client?.name }} {{ item.client?.last_name }}</span>
+        <span class="text-sm font-weight-medium">{{ item.client?.name }} {{ item.client?.last_name }}</span>
       </template>
 
       <template v-slot:item.total_amount="{ item }">
         <div class="d-flex align-center gap-2">
-          <span class="font-weight-bold">{{ item.total_amount }}</span>
+          <span class="text-sm font-weight-bold">{{ item.total_amount }}</span>
           <VBtn
             v-if="item.has_multiple_currencies"
             icon="tabler-info-circle"
@@ -163,7 +163,7 @@ const hasCreditPayment = (rawData) => {
       </template>
 
       <template #item.date="{ item }">
-        <span class="text-body-2">{{ formatDate(item.order_date) }}</span>
+        <span class="text-sm">{{ formatDate(item.order_date) }}</span>
       </template>
 
       <template #item.actions="{ item }">
@@ -208,15 +208,15 @@ const hasCreditPayment = (rawData) => {
     <div v-else class="mobile-cards-container pa-4">
       <VRow>
         <VCol v-for="item in props.orders" :key="item.id" cols="12">
-          <VCard class="rounded-xl border shadow-sm order-card" variant="flat">
+          <VCard class="rounded-lg border shadow-sm order-card" variant="flat">
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-start mb-3">
                 <div class="d-flex align-center gap-3">
-                  <VAvatar color="primary" variant="tonal" rounded size="40" class="rounded-lg">
+                  <VAvatar color="primary" variant="tonal" size="40" class="rounded-lg">
                     <VIcon icon="tabler-shopping-cart" size="20" />
                   </VAvatar>
                   <div>
-                    <div class="text-h6 font-weight-black text-primary leading-none">#{{ item.id }}</div>
+                    <div class="text-lg font-weight-black text-primary leading-none">{{ item.id }}</div>
                     <div class="text-caption text-disabled font-weight-medium uppercase mt-1">
                       {{ formatDate(item.order_date) }}
                     </div>
@@ -257,8 +257,8 @@ const hasCreditPayment = (rawData) => {
               <div class="d-flex justify-space-between align-end">
                 <div>
                   <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Monto Total</div>
-                  <div class="text-h6 font-weight-bold">
-                    {{ item.total_amount }} 
+                    <div class="text-lg font-weight-bold">
+                      {{ item.total_amount }} 
                     <VChip
                       :color="hasCreditPayment(item.payment_methods) ? 'error' : 'primary'"
                       variant="tonal"
@@ -310,17 +310,20 @@ const hasCreditPayment = (rawData) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 2%) !important;
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  block-size: 44px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.premium-table :deep(.v-data-table-header th) {
-  block-size: 44px !important;
-  color: rgba(var(--v-theme-on-surface), 50%) !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .order-card {

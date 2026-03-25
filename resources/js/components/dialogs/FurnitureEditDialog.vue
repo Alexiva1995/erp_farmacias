@@ -135,7 +135,7 @@ const submitForm = () => {
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
     @update:model-value="closeDialog"
   >
-    <VCard v-if="formData" class="rounded-xl border shadow-sm overlap-overflow">
+    <VCard v-if="formData" class="rounded-lg border shadow-sm overlap-overflow">
       <!-- Header Premium -->
       <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b bg-surface">
         <div class="d-flex align-center gap-3">
@@ -239,7 +239,7 @@ const submitForm = () => {
               <span class="text-subtitle-2 font-weight-black uppercase text-primary">Resumen de Valoración</span>
             </div>
 
-            <VCard variant="tonal" color="secondary" class="rounded-xl border-dashed overflow-hidden">
+            <VCard variant="tonal" color="secondary" class="rounded-lg border-dashed overflow-hidden">
               <VCardText class="pa-4 bg-surface-variant bg-opacity-10">
                 <VRow>
                   <VCol cols="6" class="pr-2">

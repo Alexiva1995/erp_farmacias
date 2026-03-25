@@ -1,7 +1,7 @@
 <template>
   <VContainer fluid class="payment-history-page pa-4">
     <!-- Header Premium -->
-    <VCard class="header-main-card mb-6 overflow-hidden border-0 shadow-lg">
+    <VCard class="header-main-card mb-6 overflow-hidden border shadow-sm rounded-lg">
       <div class="premium-header pa-6 d-flex align-center gap-4">
         <VAvatar size="64" color="white" variant="elevated" class="shadow-sm">
           <VIcon icon="tabler-history" color="primary" size="32" />
@@ -26,7 +26,7 @@
     </VCard>
 
     <!-- Barra de Búsqueda y Filtros Premium -->
-    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
+    <VCard class="mb-6 border rounded-lg shadow-sm overflow-hidden">
       <VCardText class="pa-3">
         <!-- Fila Principal: Búsqueda y Acciones -->
         <VRow align="center" no-gutters class="gap-2">
@@ -154,7 +154,7 @@
 
     <!-- Tabla / Cards -->
     <div v-if="!$vuetify.display.smAndDown">
-      <VCard class="rounded-xl border-0 shadow-sm overflow-hidden">
+      <VCard class="rounded-lg border shadow-sm overflow-hidden">
         <VDataTableServer
           v-model:items-per-page="itemsPerPage"
           :headers="headers"
@@ -284,7 +284,7 @@
       <VCard
         v-for="item in payments"
         :key="item.id"
-        class="rounded-xl border-0 shadow-sm overflow-hidden"
+        class="rounded-lg border shadow-sm overflow-hidden"
       >
         <div class="pa-4 bg-surface-variant-light d-flex align-center gap-3">
           <VAvatar
@@ -365,7 +365,7 @@
 
       <!-- Paginación Móvil -->
       <VCard
-        class="rounded-xl border-0 shadow-sm pa-3 d-flex justify-center align-center bg-surface"
+        class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface"
       >
         <VPagination
           v-model="page"
@@ -386,7 +386,7 @@
       scrollable
       :fullscreen="$vuetify.display.smAndDown"
     >
-      <VCard class="rounded-xl overflow-hidden">
+      <VCard class="rounded-lg overflow-hidden">
         <VCardTitle class="pa-0">
           <div
             class="premium-dialog-header pa-5 d-flex align-center bg-primary"
@@ -428,7 +428,7 @@
             <!-- Resumen Financiero -->
             <VCol cols="12" md="5">
               <VCard
-                class="rounded-xl border-0 shadow-sm bg-surface-variant-light overflow-hidden mb-6"
+                class="rounded-lg border shadow-sm bg-surface-variant-light overflow-hidden mb-6"
               >
                 <div class="pa-5 d-flex flex-column align-center text-center">
                   <span
@@ -462,7 +462,7 @@
 
                   <div
                     v-if="savingsPercentage > 0"
-                    class="savings-card pa-4 rounded-xl d-flex align-center"
+                    class="savings-card pa-4 rounded-lg d-flex align-center"
                   >
                     <VAvatar
                       color="white"
@@ -489,7 +489,7 @@
                   </div>
                   <div
                     v-else
-                    class="pa-4 bg-white rounded-xl border border-dashed d-flex align-center text-center justify-center min-h-60"
+                    class="pa-4 bg-white rounded-lg border border-dashed d-flex align-center text-center justify-center min-h-60"
                   >
                     <span
                       class="text-xs font-weight-bold text-disabled uppercase"
@@ -500,7 +500,7 @@
               </VCard>
 
               <!-- Detalles de Registro -->
-              <VCard class="rounded-xl border-0 shadow-sm bg-white pa-5">
+              <VCard class="rounded-lg border shadow-sm bg-white pa-5">
                 <div class="d-flex align-center mb-5">
                   <VIcon
                     icon="tabler-user-check"
@@ -547,7 +547,7 @@
               </div>
 
               <VCard
-                class="rounded-xl border shadow-sm overflow-hidden bg-white"
+                class="rounded-lg border shadow-sm overflow-hidden bg-white"
               >
                 <VList lines="two" class="pa-0">
                   <VListItem
@@ -623,7 +623,7 @@
                   >
                 </div>
                 <div
-                  class="pa-4 bg-surface-variant-light rounded-xl border border-dashed text-sm italic text-medium-emphasis"
+                  class="pa-4 bg-surface-variant-light rounded-lg border border-dashed text-sm italic text-medium-emphasis"
                 >
                   "{{ selectedPayment.notes }}"
                 </div>
@@ -638,7 +638,7 @@
             variant="flat"
             color="secondary"
             size="large"
-            class="rounded-xl font-weight-black shadow-sm"
+            class="rounded-lg font-weight-black shadow-sm"
             @click="showPaymentModal = false"
           >
             CERRAR DETALLES
@@ -653,7 +653,7 @@
       max-width="700"
       :fullscreen="$vuetify.display.smAndDown"
     >
-      <VCard class="rounded-xl overflow-hidden">
+      <VCard class="rounded-lg overflow-hidden">
         <VCardTitle class="pa-0">
           <div
             class="premium-dialog-header pa-5 d-flex align-center bg-success"
@@ -685,7 +685,7 @@
           <VImg
             :src="receiptUrl"
             alt="Comprobante de Pago"
-            class="rounded-xl border shadow-lg mx-auto"
+            class="rounded-lg border shadow-lg mx-auto"
             max-height="600"
             cover
           >
@@ -703,7 +703,7 @@
             block
             color="success"
             variant="tonal"
-            class="rounded-xl font-weight-black"
+            class="rounded-lg font-weight-black"
             @click="showReceiptModal = false"
           >
             ENTENDIDO
@@ -956,11 +956,18 @@ onMounted(() => {
 
 :deep(.premium-table) {
   .v-data-table-header th {
-    background-color: rgba(var(--v-theme-surface-variant), 0.05) !important;
-    text-transform: uppercase;
+    background: white !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
     font-size: 0.75rem !important;
-    font-weight: 900 !important;
-    letter-spacing: 1px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05rem !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  }
+
+  .v-data-table__td {
+    padding-block: 12px !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
   }
 }
 

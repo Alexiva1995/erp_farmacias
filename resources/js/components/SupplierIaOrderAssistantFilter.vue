@@ -113,11 +113,11 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
         color="primary"
         variant="elevated"
         size="38"
-        class="ml-1 bg-primary"
+        class="ml-1 shadow-sm rounded-lg"
         @click="emit('generarPedido')"
       >
-        <VIcon icon="tabler-shopping-cart-plus" />
-        <VTooltip activator="parent" location="top">Generar Pedido Inteligente</VTooltip>
+        <VIcon icon="tabler-shopping-cart-plus" size="20" />
+        <VTooltip activator="parent" location="top">Generar Pedido IA</VTooltip>
       </VBtn>
     </template>
 
@@ -197,16 +197,19 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="1" class="d-flex align-center">
-        <VSwitch
-          :model-value="props.isColombian"
-          label="Col."
-          color="primary"
-          hide-details
-          density="compact"
-          @update:model-value="emit('update:isColombian', $event)"
-        />
-        <VTooltip activator="parent" location="top">Solo Origen Colombia</VTooltip>
+      <VCol cols="12" sm="6" md="2">
+        <div class="d-flex align-center h-100 px-2 rounded border border-opacity-10 bg-var-theme-background">
+          <VSwitch
+            :model-value="props.isColombian"
+            label="Solo Colombia"
+            color="info"
+            hide-details
+            density="compact"
+            class="ms-1 font-weight-bold text-xs"
+            @update:model-value="emit('update:isColombian', $event)"
+          />
+          <VTooltip activator="parent" location="top">Filtrar solo por productos de origen Colombia</VTooltip>
+        </div>
       </VCol>
     </template>
   </AppFilterBase>

@@ -86,10 +86,10 @@ const hasData = computed(() => grandTotal.value > 0);
 </script>
 
 <template>
-  <VCard class="rounded-xl border" elevation="0">
+  <VCard class="rounded-lg border shadow-sm" elevation="0">
     <VCardItem class="pa-5 pb-0">
       <template #prepend>
-        <VAvatar color="primary" variant="tonal" rounded>
+        <VAvatar color="primary" variant="tonal" class="rounded-lg">
           <VIcon icon="tabler-report-money" />
         </VAvatar>
       </template>

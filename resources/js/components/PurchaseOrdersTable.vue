@@ -83,20 +83,11 @@ const formatTime = (dateString) => {
       :loading="props.loading"
       @update:options="emit('update:options', $event)"
       hover
-      class="premium-table"
+      class="premium-table rounded-lg border shadow-sm"
     >
       <!-- ID de Orden -->
       <template #item.id="{ item }">
-        <div class="d-flex align-center py-2">
-          <VAvatar
-            size="38"
-            variant="tonal"
-            color="primary"
-            class="font-weight-black rounded-lg"
-          >
-            <span class="text-xs">#{{ item.id }}</span>
-          </VAvatar>
-        </div>
+        <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
       </template>
 
       <!-- Proveedor -->
@@ -221,14 +212,12 @@ const formatTime = (dateString) => {
           :key="item.id"
           variant="flat"
           border
-          class="rounded-xl overflow-hidden premium-card"
+          class="rounded-lg overflow-hidden premium-card"
         >
           <div class="premium-card-header pa-4 bg-var-theme-background border-b position-relative">
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="d-flex align-center gap-2">
-                <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg font-weight-black">
-                  <span class="text-xs">#{{ item.id }}</span>
-                </VAvatar>
+                <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
                 <div class="d-flex flex-column">
                   <span class="text-xs text-disabled text-uppercase font-weight-black">ID Orden</span>
                   <span class="text-xs font-weight-black text-primary uppercase">{{ formatDate(item.order_date) }}</span>
@@ -319,7 +308,21 @@ const formatTime = (dateString) => {
 </template>
 
 <style scoped>
-.text-xxs { font-size: 0.65rem !important; }
+.premium-table :deep(th) {
+  background-color: white !important;
+  block-size: 52px !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.premium-table :deep(td) {
+  padding-block: 12px !important;
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+}
 .text-disabled { color: rgba(var(--v-theme-on-surface), var(--v-disabled-opacity)) !important; }
 
 .premium-card {

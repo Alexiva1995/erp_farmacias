@@ -47,7 +47,7 @@ const getSeries = (item) => {
 };
 
 const headers = [
-  { title: "id", key: "id", sortable: true },
+  { title: "ID", key: "id", sortable: true, width: '70px' },
   { title: "Producto", key: "name", sortable: true },
   { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
   { title: "Costo", key: "unit_cost", sortable: true },
@@ -93,7 +93,7 @@ const groupBy = [{ key: "group.name" }];
 
 <template>
   <div class="assistant-table-container">
-    <VCard variant="outlined" class="rounded-lg elevation-0 bg-surface overflow-hidden">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -107,20 +107,29 @@ const groupBy = [{ key: "group.name" }];
           :group-by="groupBy"
           @update:options="(options) => emit('update:options', options)"
         >
-          <template #item.name="{ item }">
-            <div class="d-flex align-center gap-x-4">
-              <div class="d-flex flex-column py-1">
-                <span
-                  class="text-body-2 font-weight-medium text-high-emphasis"
-                  :class="{ 'text-primary': item.psychotropic == 1 }"
-                >
-                  {{ item.name }}
-                </span>
+          <!-- ID -->
+          <template #item.id="{ item }">
+            <span class="text-sm font-weight-black text-primary">
+              {{ item.id }}
+            </span>
+          </template>
 
-                <span class="text-caption text-disabled">
-                  {{ item.active_ingredient }}
-                  <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+          <template #item.name="{ item }">
+            <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
+              <span
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                :class="{ 'text-primary': item.psychotropic == 1 }"
+                :title="item.name"
+              >
+                {{ item.name.toUpperCase() }}
+              </span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.laboratory?.name || 'S/L' }}
                 </span>
+                <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
               </div>
             </div>
           </template>
@@ -262,6 +271,25 @@ const groupBy = [{ key: "group.name" }];
 </template>
 
 <style scoped>
+:deep(.v-data-table-header) {
+  background-color: #fff !important;
+}
+
+:deep(.v-data-table-header th) {
+  border-inline-end: 1px solid rgba(var(--v-border-color), 0.05);
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+:deep(.v-data-table-header th:last-child) {
+  border-inline-end: none;
+}
+
+:deep(.assistant-data-table) {
+  font-size: 0.875rem !important;
+}
+
 .grid-mobile-info {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

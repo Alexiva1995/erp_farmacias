@@ -62,7 +62,7 @@ const getAvatarColor = (id) => {
 <template>
   <div class="mt-4">
     <!-- Vista Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VDataTableServer
         :headers="headers"
         :items-per-page="props.itemsPerPage"
@@ -74,7 +74,7 @@ const getAvatarColor = (id) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+          <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.payslip_date="{ item }">
@@ -82,18 +82,18 @@ const getAvatarColor = (id) => {
             <VAvatar :color="getAvatarColor(item.id)" variant="tonal" size="30" class="rounded-lg">
               <VIcon icon="tabler-calendar" size="16" />
             </VAvatar>
-            <span class="text-xs font-weight-bold text-high-emphasis uppercase">
+            <span class="text-sm font-weight-bold text-high-emphasis uppercase">
               {{ formatDate(item.payslip_date) }}
             </span>
           </div>
         </template>
 
         <template #item.total="{ item }">
-          <span class="text-xs font-weight-bold">{{ formatCurrency(item.total, item.currency) }}</span>
+          <span class="text-sm font-weight-bold">{{ formatCurrency(item.total, item.currency) }}</span>
         </template>
 
         <template #item.payed="{ item }">
-          <span v-if="item.status === 1" class="text-xs font-weight-black text-success">
+          <span v-if="item.status === 1" class="text-sm font-weight-black text-success">
             {{ formatCurrency(item.payed, item.currency) }}
           </span>
           <span v-else class="text-xs text-disabled font-weight-medium">PENDIENTE</span>
@@ -184,7 +184,7 @@ const getAvatarColor = (id) => {
         <VCard
           v-for="item in props.items"
           :key="item.id"
-          class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+          class="rounded-lg border shadow-sm premium-card overflow-hidden"
         >
           <div class="premium-card-decoration" :class="item.status === 1 ? 'bg-success-opacity' : 'bg-warning-opacity'"></div>
           
@@ -195,7 +195,7 @@ const getAvatarColor = (id) => {
                   <VIcon icon="tabler-file-spreadsheet" size="18" />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Nómina #{{ item.id }}</span>
+                  <span class="text-sm font-weight-black text-disabled uppercase leading-tight">Nómina {{ item.id }}</span>
                   <span class="text-sm font-weight-black text-primary leading-tight uppercase">{{ formatDate(item.payslip_date) }}</span>
                 </div>
               </div>
@@ -257,7 +257,7 @@ const getAvatarColor = (id) => {
         </VCard>
       </template>
 
-      <VAlert v-else type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         No hay registros de nómina encontrados.
       </VAlert>
     </div>
@@ -265,17 +265,20 @@ const getAvatarColor = (id) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  block-size: 44px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.premium-table :deep(.v-data-table-header th) {
-  block-size: 44px !important;
-  color: rgba(var(--v-theme-on-surface), 50%) !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.05em !important;
-  text-transform: uppercase !important;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

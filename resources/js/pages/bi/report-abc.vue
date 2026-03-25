@@ -69,7 +69,8 @@ const classificationOptions = [
 ];
 
 const headers = [
-  { title: 'Producto / Lab', key: 'name', sortable: true },
+  { title: 'ID', key: 'id', sortable: true, width: '80px' },
+  { title: 'PRODUCTO', key: 'name', sortable: true },
   { title: 'Volumen y Ventas', key: 'sold_units', align: 'end', sortable: true },
   { title: 'Rentabilidad (Margen / Costo)', key: 'margin_percentage', align: 'end', sortable: true },
   { title: 'Inventario (Status)', key: 'current_stock', align: 'end', sortable: true },
@@ -321,7 +322,7 @@ const handleClearFilters = () => {
       </VCol>
     </VRow>
 
-    <VCard class="border-0 shadow-sm overflow-hidden">
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Head de Tabla -->
       <VCardText class="d-flex justify-space-between align-center py-3">
         <h2 class="text-h6 font-weight-bold d-flex align-center">
@@ -340,15 +341,29 @@ const handleClearFilters = () => {
         :items="items"
         :search="search"
         :loading="loading"
-        class="premium-table rounded-lg"
+        class="premium-table"
         hover
         density="compact"
       >
+        <template #item.id="{ item }">
+          <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+        </template>
+
         <!-- Combinación: Producto y Laboratorio -->
         <template #item.name="{ item }">
           <div class="d-flex flex-column py-2">
-            <span class="font-weight-bold text-high-emphasis text-base">{{ item.name }}</span>
-            <span class="text-sm text-medium-emphasis">ID: {{ item.id }} | Lab: <span class="font-weight-medium">{{ item.laboratory_name }}</span></span>
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
+              {{ item.name.toUpperCase() }}
+            </span>
+            <div class="d-flex align-center gap-1 text-super-xs">
+              <span class="text-disabled truncate" style="max-inline-size: 200px;">
+                {{ item.active_ingredient || item.active_ingredient_inventory || 'SIN INGREDIENTE' }}
+              </span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                {{ item.laboratory_name || 'S/L' }}
+              </span>
+            </div>
           </div>
         </template>
 
@@ -412,3 +427,27 @@ const handleClearFilters = () => {
     </VCard>
   </VContainer>
 </template>
+
+<style scoped>
+.premium-table :deep(th) {
+  background-color: #fff !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.bg-light-primary { background-color: rgba(var(--v-theme-primary), 0.08); }
+.bg-light-success { background-color: rgba(var(--v-theme-success), 0.08); }
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+</style>

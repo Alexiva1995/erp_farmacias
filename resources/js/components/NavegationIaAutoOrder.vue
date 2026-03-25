@@ -15,9 +15,9 @@ const pasos = [
 </script>
 
 <template>
-  <VCard class="mb-5 overflow-hidden" variant="outlined">
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Header con KPIs minimalistas -->
-    <div class="d-flex align-center justify-space-between px-6 pt-4 pb-2 border-b bg-light-section">
+    <div class="d-flex align-center justify-space-between px-6 py-3 border-b bg-var-theme-background">
       <div class="d-flex align-center gap-2">
         <span class="text-subtitle-2 font-weight-black text-uppercase text-disabled me-2">Análisis de Fallas:</span>
         <VTooltip text="Productos que tienen oferta de proveedores">
@@ -119,28 +119,42 @@ const pasos = [
 </template>
 
 <style scoped>
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.03);
+}
+
 .step-avatar {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .step-item {
-  transition: opacity 0.2s;
+  position: relative;
+  transition: all 0.2s ease;
+  z-index: 1;
 }
 
 .step-item:hover .step-avatar {
-  transform: scale(1.1);
+  transform: translateY(-2px) scale(1.05);
 }
 
 .step-connector {
   flex-shrink: 0;
-  border-radius: 2px;
-  background: rgba(var(--v-border-color), 0.3);
-  block-size: 2px;
-  inline-size: 32px;
-  transition: background 0.3s;
+  border-radius: 4px;
+  background: rgba(var(--v-border-color), 0.15);
+  block-size: 3px;
+  inline-size: 40px;
+  transition: all 0.4s ease;
 }
 
 .step-connector-done {
   background: rgb(var(--v-theme-success));
+}
+
+.step-active span {
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.step-done span {
+  color: rgb(var(--v-theme-success)) !important;
 }
 </style>

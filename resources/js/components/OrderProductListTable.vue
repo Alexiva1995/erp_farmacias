@@ -35,7 +35,7 @@ const groupBy = [{ key: 'supplier.name' }]
 </script>
 
 <template>
-  <VCard variant="outlined" class="rounded-lg">
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <VDataTableVirtual
       :headers="headers"
       :items="sortedList"
@@ -68,13 +68,21 @@ const groupBy = [{ key: 'supplier.name' }]
 
       <!-- Producto -->
       <template #item.product.name="{ item }">
-        <div class="d-flex flex-column py-1 overflow-hidden" style="max-inline-size: 250px;">
-          <span class="text-body-2 font-weight-medium text-high-emphasis text-truncate" :title="item.product.name">
-            {{ item.product.name }}
-          </span>
-          <span class="text-caption text-disabled text-truncate">
-            ID: #{{ item.product.id }}
-          </span>
+        <div class="d-flex align-center py-2" style="max-inline-size: 320px;">
+          <div class="d-flex flex-column overflow-hidden">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product.name">
+              <span class="text-primary mr-1">{{ item.product.id }}</span>
+              <span class="text-disabled mr-1">|</span>
+              {{ item.product.name.toUpperCase() }}
+            </span>
+            <div class="d-flex align-center gap-1 text-super-xs">
+              <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.product.active_ingredient }}</span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 100px;">
+                {{ item.product.laboratory?.name || 'S/L' }}
+              </span>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -134,8 +142,20 @@ const groupBy = [{ key: 'supplier.name' }]
 </template>
 
 <style scoped>
-.premium-order-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02);
+:deep(.v-data-table-header) {
+  background-color: #fff !important;
+}
+
+:deep(.v-data-table-header th) {
+  border-inline-end: 1px solid rgba(var(--v-border-color), 0.05);
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+}
+
+:deep(.v-data-table-header th:last-child) {
+  border-inline-end: none;
 }
 
 .reponer-input-small {
@@ -153,6 +173,11 @@ const groupBy = [{ key: 'supplier.name' }]
 
 :deep(.v-data-table-group-header-row) {
   background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 </style>
 

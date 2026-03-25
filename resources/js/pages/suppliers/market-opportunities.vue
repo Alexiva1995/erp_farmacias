@@ -106,10 +106,37 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <!-- Filtros Estandarizados (Search + Action Bar) -->
-    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
-      <VCardText class="pa-3">
+  <div class="market-opportunities-view pb-12">
+    <!-- Header Premium (Tarjeta Flotante) -->
+    <VCard class="mx-6 mt-6 mb-6 rounded-lg border shadow-sm overflow-hidden">
+      <div class="header-bg pa-6">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+          <div class="d-flex align-center gap-4">
+            <VAvatar
+              size="54"
+              color="white"
+              variant="flat"
+              class="rounded-lg shadow-soft"
+            >
+              <VIcon icon="tabler-bulb" color="primary" size="28" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+                Oportunidades de Mercado
+              </h1>
+              <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+                Análisis de brecha de precios y ahorros potenciales
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </VCard>
+
+    <div class="px-6 d-flex flex-column gap-6">
+      <!-- Filtros Estandarizados (Search + Action Bar) -->
+      <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+        <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
           <!-- Buscador Principal -->
           <VCol cols="12" md="6" lg="5">
@@ -237,8 +264,8 @@ onMounted(() => {
       </VCard>
     </VExpandTransition>
 
-    <!-- Tabla de Resultados (Unified VCard) -->
-    <VCard class="border-0 shadow-sm overflow-hidden bg-surface">
+      <!-- Tabla de Resultados (Unified VCard) -->
+      <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Vista Desktop -->
       <div class="d-none d-md-block">
         <VDataTableServer
@@ -251,20 +278,25 @@ onMounted(() => {
           :loading="loading"
           hover
           density="compact"
-          class="text-no-wrap premium-table"
+          class="text-no-wrap premium-table overflow-hidden"
+          @update:options="fetchOpportunities"
         >
+          <!-- ID (Prefix in the same cell as name) -->
           <template #item.product_name_inventory="{ item }">
-            <div class="d-flex flex-column py-2">
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
-                {{ item.product_name_inventory }}
-              </span>
-              <div class="d-flex flex-wrap ga-2 mt-1">
-                <span class="text-xs font-weight-medium text-disabled">
-                  {{ item.active_ingredient_inventory }}
+            <div class="d-flex align-center py-2">
+              <div class="d-flex flex-column overflow-hidden">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product_name_inventory">
+                  <span class="text-primary mr-2">{{ item.id }}</span>
+                  <span class="text-disabled mr-2">|</span>
+                  {{ item.product_name_inventory.toUpperCase() }}
                 </span>
-                <span class="text-xs font-weight-bold text-primary" style="opacity: 0.8 !important;">
-                  {{ item.laboratory_name }}
-                </span>
+                <div class="d-flex align-center gap-1 text-super-xs">
+                  <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient_inventory || 'SIN INGREDIENTE' }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                    {{ item.laboratory_name || 'S/L' }}
+                  </span>
+                </div>
               </div>
             </div>
           </template>
@@ -392,18 +424,40 @@ onMounted(() => {
       </div>
     </VCard>
   </div>
+</div>
 </template>
 
 <style scoped>
 .gap-2 { gap: 8px !important; }
 .gap-4 { gap: 16px !important; }
 
-.premium-table :deep(thead th) {
+.premium-table :deep(th) {
+  background-color: #fff !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.market-opportunities-view {
+  background-color: #f8fafc;
+  min-block-size: 100vh;
+}
+
+.header-bg {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
+}
+
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
+
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 
 .text-xs {

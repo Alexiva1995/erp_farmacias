@@ -14,9 +14,9 @@ const { mobile } = useDisplay();
 
 // ... (headers definition stays same)
 const headers = [
-  { title: "id", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: "id", key: "id", sortable: true, width: '80px' },
+  { title: "Producto", key: "name", sortable: true, minWidth: '320px' },
+  { title: "Laboratorio", key: "laboratory.name", sortable: false, minWidth: '150px' },
   { title: "Costo Actual", key: "unit_cost", sortable: false, align: 'center' },
   { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
@@ -60,7 +60,7 @@ const getPriceDiff = (current, offer) => {
 
 <template>
   <div class="assistant-report-container">
-    <VCard variant="outlined" class="rounded-lg elevation-0 bg-surface overflow-hidden">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <!-- Vista Escritorio -->
       <div v-if="!mobile" class="d-none d-md-block">
         <VDataTableServer
@@ -76,13 +76,26 @@ const getPriceDiff = (current, offer) => {
         >
           <!-- Producto -->
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2">
-              <span class="text-body-2 font-weight-black text-high-emphasis leading-tight">
-                {{ item.name }}
-                <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 px-1" style="block-size: 14px; font-size: 0.6rem;">COL</VChip>
-              </span>
-              <span class="text-xxs text-disabled font-weight-medium uppercase mt-1">{{ item.active_ingredient || 'Sin ingrediente' }}</span>
+            <div class="d-flex align-center py-2">
+              <div class="d-flex flex-column overflow-hidden">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
+                  {{ item.name.toUpperCase() }}
+                  <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 px-1 font-weight-black" style="font-size: 0.6rem;">COL</VChip>
+                </span>
+                <div class="d-flex align-center gap-1 text-super-xs">
+                  <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || 'SIN INGREDIENTE' }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                    {{ item.laboratory?.name || 'S/L' }}
+                  </span>
+                </div>
+              </div>
             </div>
+          </template>
+
+          <!-- ID -->
+          <template #item.id="{ item }">
+            <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
           </template>
 
           <!-- Costo Actual -->
@@ -229,11 +242,12 @@ const getPriceDiff = (current, offer) => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: rgba(var(--v-theme-on-surface), 2%) !important;
-  font-size: 0.7rem !important;
-  font-weight: 800 !important;
+  background-color: #fff !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   letter-spacing: 0.5px !important;
   text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 :deep(.row-needs td) {
@@ -290,7 +304,7 @@ const getPriceDiff = (current, offer) => {
 }
 
 .text-super-xs {
-  font-size: 0.6rem !important;
+  font-size: 0.65rem !important;
   line-height: 1;
 }
 

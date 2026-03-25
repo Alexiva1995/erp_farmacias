@@ -94,9 +94,9 @@ const handleClearFilters = () => {
 
 // VDataTable Config
 const headers = [
+  { title: 'ID', key: 'id', sortable: true, width: '80px' },
   { title: 'SKU/Barras', key: 'barcode', sortable: false },
-  { title: 'Producto', key: 'product_name', sortable: true },
-  { title: 'Laboratorio', key: 'laboratory_name', sortable: false },
+  { title: 'PRODUCTO', key: 'product_name', sortable: true },
   { title: 'Vendidos', key: 'total_sold', sortable: true },
   { title: 'Costo Unit.', key: 'current_cost', sortable: false },
   { title: 'Precio Lista', key: 'list_price', sortable: false },
@@ -295,7 +295,7 @@ const formatMoney = (val) => {
       </VCardText>
     </VCard>
 
-    <VCard class="border-0 shadow-sm overflow-hidden">
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VDataTableServer
         v-model:items-per-page="itemsPerPage"
         v-model:page="page"
@@ -303,11 +303,28 @@ const formatMoney = (val) => {
         :items="skus"
         :items-length="totalItems"
         :loading="loading"
-        class="premium-table rounded-lg"
+        class="premium-table"
         @update:options="updateTableOptions"
       >
+        <template #item.id="{ item }">
+          <span class="text-sm font-weight-black text-primary">{{ item.id || item.product_id }}</span>
+        </template>
+
         <template #item.product_name="{ item }">
-          <span class="font-weight-medium text-primary">{{ item.product_name }}</span>
+          <div class="d-flex flex-column py-2">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product_name">
+              {{ item.product_name.toUpperCase() }}
+            </span>
+            <div class="d-flex align-center gap-1 text-super-xs">
+              <span class="text-disabled truncate" style="max-inline-size: 200px;">
+                {{ item.active_ingredient || item.active_ingredient_inventory || 'SIN INGREDIENTE' }}
+              </span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                {{ item.laboratory_name || 'S/L' }}
+              </span>
+            </div>
+          </div>
         </template>
         
         <template #item.current_cost="{ item }">
@@ -363,7 +380,24 @@ const formatMoney = (val) => {
 </template>
 
 <style scoped>
+.premium-table :deep(th) {
+  background-color: #fff !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
 .text-dark {
   color: #212121 !important;
 }
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.gap-1 { gap: 4px !important; }
 </style>

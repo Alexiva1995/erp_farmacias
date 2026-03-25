@@ -170,60 +170,194 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <!-- Filtros -->
-    <SupplierIaOrderAssistantFilter
-      v-model:selectConDescuento="con_descuento"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedGroup="selectedGroup"
-      v-model:tipo_de_vista="tipo_de_vista"
-      v-model:tipo_de_filtracion="tipo_de_filtracion"
-      v-model:lapso_de_tiempo="lapso_de_tiempo"
-      v-model:stock="stock"
-      v-model:isColombian="isColombian"
-      v-model:searchQuery="searchQuery"
-      :groups="groups"
-      :laboratories="laboratories"
-      :tipo_de_filtracion="tipo_de_filtracion"
-      :tipo_de_vista="tipo_de_vista"
-      :lapso_de_tiempo="lapso_de_tiempo"
-      :stock="stock"
-      :isColombian="isColombian"
-      @clear="handleClearFilters"
-      @generarPedido="generarPedido"
-    />
+  <div class="assistant-ia-view pb-12">
+    <!-- Header Premium (Tarjeta Flotante) -->
+    <VCard class="mx-6 mt-6 mb-6 rounded-lg border shadow-sm overflow-hidden">
+      <div class="header-bg pa-6">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+          <div class="d-flex align-center gap-4">
+            <VAvatar
+              size="54"
+              color="white"
+              variant="flat"
+              class="rounded-lg shadow-soft"
+            >
+              <VIcon icon="tabler-robot" color="primary" size="28" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+                Asistente de Pedidos IA
+              </h1>
+              <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+                Análisis Inteligente de Stock y Reposición
+              </span>
+            </div>
+          </div>
 
-    <!-- Tabla -->
-    <div class="mt-4">
-      <SupplierIaOrderAssistantGrupoTable
-        v-if="tipo_de_vista == true"
-        :products="statuModule.items"
-        :total-product="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptionsTable"
+          <VBtn
+            color="white"
+            variant="elevated"
+            prepend-icon="tabler-shopping-cart-plus"
+            class="font-weight-black rounded-lg shadow-sm text-primary"
+            size="large"
+            @click="generarPedido"
+          >
+            Generar Pedido Inteligente
+          </VBtn>
+        </div>
+      </div>
+    </VCard>
+
+    <div class="px-6 d-flex flex-column gap-6">
+      <!-- KPIs Rápidos -->
+      <VRow>
+        <VCol v-for="(kpi, index) in [
+          { title: 'Necesitan Reponer', value: kpiGlobal.necesitan, color: 'success', icon: 'tabler-arrow-up-circle', desc: 'Productos bajo stock' },
+          { title: 'En Exceso', value: kpiGlobal.exceso, color: 'error', icon: 'tabler-arrow-down-circle', desc: 'Sobre el promedio' },
+          { title: 'Stock OK', value: kpiGlobal.ok, color: 'info', icon: 'tabler-circle-check', desc: 'Nivel óptimo' },
+          { title: 'Inversión Sugerida', value: 'Análisis IA', color: 'primary', icon: 'tabler-brain', desc: 'Optimización de capital' }
+        ]" :key="index" cols="12" sm="6" md="3">
+          <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
+            <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${kpi.color}), 0.1), transparent)` }"></div>
+
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar
+                  :color="kpi.color"
+                  variant="tonal"
+                  size="48"
+                  rounded="lg"
+                  class="elevation-1"
+                >
+                  <VIcon :icon="kpi.icon" size="26" />
+                </VAvatar>
+
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">{{ kpi.title }}</span>
+                  <h4 class="text-h4 font-weight-black mt-1">
+                    <VProgressCircular v-if="loadingStats" indeterminate size="24" width="2" color="primary" />
+                    <template v-else>{{ kpi.value }}</template>
+                  </h4>
+                </div>
+              </div>
+
+              <VDivider class="mb-3 opacity-20" />
+
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">
+                  {{ kpi.desc }}
+                </span>
+                <VIcon icon="tabler-trending-up" size="16" :color="kpi.color" class="opacity-50" />
+              </div>
+            </VCardText>
+            <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${kpi.color}))` }"></div>
+          </VCard>
+        </VCol>
+      </VRow>
+
+      <!-- Filtros -->
+      <SupplierIaOrderAssistantFilter
+        v-model:selectConDescuento="con_descuento"
+        v-model:selectedLaboratory="selectedLaboratory"
+        v-model:selectedGroup="selectedGroup"
+        v-model:tipo_de_vista="tipo_de_vista"
+        v-model:tipo_de_filtracion="tipo_de_filtracion"
+        v-model:lapso_de_tiempo="lapso_de_tiempo"
+        v-model:stock="stock"
+        v-model:isColombian="isColombian"
+        v-model:searchQuery="searchQuery"
+        :groups="groups"
+        :laboratories="laboratories"
+        :tipo_de_filtracion="tipo_de_filtracion"
+        :tipo_de_vista="tipo_de_vista"
+        :lapso_de_tiempo="lapso_de_tiempo"
+        :stock="stock"
+        :isColombian="isColombian"
+        @clear="handleClearFilters"
+        @generarPedido="generarPedido"
       />
-      <SupplierIaOrderAssistantIndividualTable
-        v-else
-        :products="statuModule.items"
-        :total-product="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptionsTable"
-      />
+
+      <!-- Tabla -->
+      <div class="assistant-content">
+        <SupplierIaOrderAssistantGrupoTable
+          v-if="tipo_de_vista == true"
+          :products="statuModule.items"
+          :total-product="statuModule.total"
+          :loading="loading"
+          :items-per-page="itemsPerPage"
+          :page="page"
+          @update:options="updateTableOptionsTable"
+        />
+        <SupplierIaOrderAssistantIndividualTable
+          v-else
+          :products="statuModule.items"
+          :total-product="statuModule.total"
+          :loading="loading"
+          :items-per-page="itemsPerPage"
+          :page="page"
+          @update:options="updateTableOptionsTable"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Estilos originales del asistente (si los hay) */
-</style>
+.assistant-ia-view {
+  background-color: #f8fafc;
+  min-block-size: 100vh;
+}
 
-<style>
-/* Ajustes de layout para el asistente */
-.layout-wrapper.layout-content-width-boxed .layout-content-wrapper > main > .v-container {
-  padding-inline: 0 !important;
+.header-bg {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
+}
+
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
+
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+
+.stats-card {
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 80%) !important;
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-5px);
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 100px;
+  filter: blur(40px);
+  inline-size: 100px;
+  inset-block-start: -20px;
+  inset-inline-end: -20px;
+  pointer-events: none;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 70%;
+  border-end-end-radius: 4px;
+  border-start-end-radius: 4px;
+  inline-size: 4px;
+  inset-block-start: 15%;
+  inset-inline-start: 0;
+  opacity: 0.8;
+}
+
+.text-h4 {
+  color: rgb(var(--v-theme-on-surface));
+  letter-spacing: -0.5px !important;
 }
 </style>

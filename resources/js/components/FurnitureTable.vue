@@ -97,7 +97,7 @@ const formatDepreciation = (rate) => {
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-black text-primary">#{{ item.id }}</span>
+        <span class="font-weight-black text-primary text-sm">{{ item.id }}</span>
       </template>
 
       <template #item.name="{ item }">
@@ -106,7 +106,7 @@ const formatDepreciation = (rate) => {
             <VIcon icon="tabler-sofa" size="18" />
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-body-2 font-weight-bold text-high-emphasis leading-tight">
+            <span class="text-sm font-weight-bold text-high-emphasis leading-tight">
               {{ item.name }}
             </span>
           </div>
@@ -115,7 +115,7 @@ const formatDepreciation = (rate) => {
 
       <template #item.acquisition_year="{ item }">
         <div class="d-flex flex-column align-center">
-          <span class="text-body-2 font-weight-medium">{{ item.acquisition_year }}</span>
+          <span class="text-sm font-weight-medium">{{ item.acquisition_year }}</span>
           <VChip
             :color="getAgeStatus(item.acquisition_year).color"
             variant="tonal"
@@ -128,7 +128,7 @@ const formatDepreciation = (rate) => {
       </template>
 
       <template #item.cost="{ item }">
-        <span class="text-body-2 font-weight-semibold">{{ formatPrice(item.cost) }}</span>
+        <span class="text-sm font-weight-semibold">{{ formatPrice(item.cost) }}</span>
       </template>
 
       <template #item.annual_depreciation_rate="{ item }">
@@ -138,13 +138,13 @@ const formatDepreciation = (rate) => {
             :color="item.annual_depreciation_rate > 15 ? 'error' : 'success'"
             size="16"
           />
-          <span class="text-body-2">{{ formatDepreciation(item.annual_depreciation_rate) }}</span>
+          <span class="text-sm font-weight-medium text-medium-emphasis">{{ formatDepreciation(item.annual_depreciation_rate) }}</span>
         </div>
       </template>
 
       <template #item.current_value="{ item }">
         <div class="d-flex flex-column">
-          <span class="text-body-2 font-weight-bold text-primary">
+          <span class="text-sm font-weight-bold text-primary">
             {{ formatPrice(calculateCurrentValue(item)) }}
           </span>
           <span class="text-xs text-disabled font-weight-medium">
@@ -223,7 +223,7 @@ const formatDepreciation = (rate) => {
                   <div>
                     <div class="text-subtitle-1 font-weight-black text-high-emphasis leading-none">{{ item.name }}</div>
                     <div class="text-caption text-disabled font-weight-bold uppercase mt-1">
-                      #{{ item.id }} • Adquirido en {{ item.acquisition_year }}
+                      {{ item.id }} • Adquirido en {{ item.acquisition_year }}
                     </div>
                   </div>
                 </div>
@@ -302,17 +302,20 @@ const formatDepreciation = (rate) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 2%) !important;
-}
-
-.premium-table :deep(.v-data-table-header th) {
-  block-size: 48px !important;
-  color: rgba(var(--v-theme-on-surface), 50%) !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
+.premium-table :deep(th) {
+  background-color: white !important;
+  block-size: 52px !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.premium-table :deep(td) {
+  padding-block: 12px !important;
+  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
 }
 
 .furniture-card {
