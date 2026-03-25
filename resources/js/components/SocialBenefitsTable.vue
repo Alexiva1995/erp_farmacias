@@ -44,7 +44,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
 <template>
   <div class="social-benefits-container">
     <!-- Vista de Escritorio -->
-    <VCard class="d-none d-md-block border-0 shadow-sm overflow-hidden">
+    <VCard class="border shadow-sm overflow-hidden rounded-lg">
       <VDataTableServer
         :headers="headers"
         :items-per-page="props.itemsPerPage"
@@ -57,22 +57,22 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="text-xs font-weight-medium text-disabled">#{{ item.id }}</span>
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.full_name="{ item }">
           <div class="d-flex flex-column py-2">
             <span class="text-sm font-weight-black text-high-emphasis uppercase">{{ item.name }} {{ item.last_name }}</span>
-            <span class="text-xs text-disabled uppercase">{{ item.position?.name || 'Cargo no especificado' }}</span>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.position?.name || 'Cargo no especificado' }}</span>
           </div>
         </template>
 
         <template #item.identification="{ item }">
-          <span class="text-xs font-weight-bold text-medium-emphasis">{{ item.identification }}</span>
+          <span class="text-sm font-weight-black text-high-emphasis">{{ item.identification }}</span>
         </template>
 
         <template #item.email="{ item }">
-          <span class="text-xs font-weight-medium text-medium-emphasis">{{ item.email }}</span>
+          <span class="text-sm font-weight-black text-medium-emphasis">{{ item.email }}</span>
         </template>
 
         <template #item.settlement_date="{ item }">
@@ -172,13 +172,15 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                 <div :class="`status-strip bg-${getStatusColor(item.raw.settlement_date)}`" />
                 <div class="pa-3 flex-grow-1">
                   <div class="d-flex justify-space-between align-center mb-2">
-                    <span class="text-xs font-weight-medium text-disabled">#{{ item.raw.id }}</span>
+                    <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                      <span class="text-primary text-xs">{{ item.raw.id }}</span>
+                      <span class="mx-1 text-disabled">|</span>
+                      {{ item.raw.name }} {{ item.raw.last_name }}
+                    </h3>
                     <VChip :color="getStatusColor(item.raw.settlement_date)" size="x-small" variant="tonal" class="font-weight-black rounded">
                       {{ getStatusText(item.raw.settlement_date) }}
                     </VChip>
                   </div>
-
-                  <h3 class="text-sm font-weight-black text-high-emphasis uppercase mb-1 truncate-2-lines">{{ item.raw.name }} {{ item.raw.last_name }}</h3>
                   <div class="d-flex align-center gap-2 mb-2">
                     <VIcon icon="tabler-id" size="14" class="text-disabled" />
                     <span class="text-xs font-weight-bold text-medium-emphasis">{{ item.raw.identification }}</span>
@@ -235,13 +237,18 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
 
 <style scoped>
 .premium-table :deep(th) {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  background-color: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
+  letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
 }
 
 .premium-table :deep(td) {
+  padding-block: 12px !important;
+  color: #334155 !important;
   border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
 }
 
@@ -260,6 +267,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .text-super-xs {

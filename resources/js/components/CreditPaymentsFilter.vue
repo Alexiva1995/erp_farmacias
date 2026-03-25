@@ -1,9 +1,11 @@
 <script setup>
-import AppDateTimePicker from "@/@core/components/app-form-elements/AppDateTimePicker.vue";
+// Filtros para pagos de crédito — cliente, fecha y moneda
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import { computed } from "vue";
 
 const props = defineProps({
-  client: String,
-  date: String,
+  client:   String,
+  date:     String,
   currency: String,
 });
 
@@ -15,46 +17,45 @@ const emit = defineEmits([
 ]);
 
 const currencies = ["USD", "COP", "BS"];
+
+const hasAdvancedFilters = computed(() => !!(props.date || props.currency));
 </script>
 
 <template>
-  <VCard class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="4">
-          <AppTextField
-            :model-value="props.client"
-            placeholder="Buscar por cliente"
-            clearable
-            @update:model-value="emit('update:client', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="4">
-          <AppDateTimePicker
-            :model-value="props.date"
-            placeholder="Buscar por fecha de pago"
-            clearable
-            @update:model-value="emit('update:date', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="4">
-          <VSelect
-            :model-value="props.currency"
-            :items="currencies"
-            label="Moneda"
-            clearable
-            @update:model-value="emit('update:currency', $event)"
-          />
-        </VCol>
-      </VRow>
-    </VCardText>
+  <AppFilterBase
+    :search="props.client"
+    :has-advanced-filters="hasAdvancedFilters"
+    search-placeholder="Buscar por cliente..."
+    @update:search="emit('update:client', $event)"
+    @clear="emit('clear')"
+  >
+    <template #advanced-filters>
+      <!-- Fecha de pago -->
+      <VCol cols="12" sm="6" md="4">
+        <AppDateTimePicker
+          :model-value="props.date"
+          placeholder="Fecha de pago"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-calendar-event"
+          @update:model-value="emit('update:date', $event)"
+        />
+      </VCol>
 
-    <VDivider />
-
-    <VCardActions class="pa-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar
-      </VBtn>
-    </VCardActions>
-  </VCard>
+      <!-- Moneda -->
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.currency"
+          :items="currencies"
+          placeholder="Moneda"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-currency-dollar"
+          @update:model-value="emit('update:currency', $event)"
+        />
+      </VCol>
+    </template>
+  </AppFilterBase>
 </template>

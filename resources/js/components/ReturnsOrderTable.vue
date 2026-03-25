@@ -260,14 +260,7 @@ const totalRefundAmount = computed(() => {
     >
       <!-- ID Column -->
       <template #item.id="{ item }">
-        <VChip
-          color="primary"
-          size="small"
-          variant="flat"
-          class="font-weight-black shadow-sm"
-        >
-          #{{ item.id }}
-        </VChip>
+        <span class="text-primary font-weight-black">#{{ item.id }}</span>
       </template>
 
       <!-- Client Column -->
@@ -380,8 +373,15 @@ const totalRefundAmount = computed(() => {
                     class="mt-n1"
                   />
                   <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                    <span class="text-body-2 font-weight-black truncate text-high-emphasis leading-tight">{{ detailItem.product?.name }}</span>
-                    <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ detailItem.product?.laboratory?.name }}</span>
+                    <div class="d-flex align-center gap-1 mb-0 pb-0">
+                      <span class="text-primary font-weight-black text-xs">#{{ detailItem.product?.id || detailItem.product_id }}</span>
+                      <span class="text-body-2 font-weight-black truncate text-high-emphasis leading-tight">{{ detailItem.product?.name }}</span>
+                    </div>
+                    <div class="text-super-xs leading-tight d-flex align-center gap-1 mt-0 pt-0">
+                      <span class="text-disabled font-weight-bold uppercase">{{ detailItem.product?.active_ingredient || '—' }}</span>
+                      <span class="text-disabled">|</span>
+                      <span class="text-primary font-weight-bold uppercase">{{ detailItem.product?.laboratory?.name || detailItem.product?.laboratory || '—' }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -439,16 +439,15 @@ const totalRefundAmount = computed(() => {
           >
             <template #item.product.name="{ item: detailItem }">
               <div class="d-flex flex-column py-2">
-                <span class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight">
-                  {{ detailItem.product ? detailItem.product.name : "N/A" }}
-                </span>
-                <span
-                  v-if="detailItem.product?.laboratory?.name"
-                  class="text-super-xs font-weight-bold text-disabled uppercase mt-1"
-                >
-                  <VIcon icon="tabler-building-factory" size="10" class="me-1" />
-                  {{ detailItem.product.laboratory.name }}
-                </span>
+                <div class="d-flex align-center gap-1 mb-0 pb-0">
+                  <span class="text-primary font-weight-black text-xs">#{{ detailItem.product?.id || detailItem.product_id }}</span>
+                  <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ detailItem.product?.name || '—' }}</span>
+                </div>
+                <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
+                  <span class="text-disabled" style="font-size: 0.75rem !important;">{{ detailItem.product?.active_ingredient || '—' }}</span>
+                  <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
+                  <span class="text-primary font-weight-bold" style="font-size: 0.75rem !important;">{{ detailItem.product?.laboratory?.name || detailItem.product?.laboratory || '—' }}</span>
+                </div>
               </div>
             </template>
 
@@ -550,10 +549,9 @@ const totalRefundAmount = computed(() => {
 }
 
 .premium-table :deep(th) {
-  background-color: #f8fafc !important;
-  color: rgb(var(--v-theme-primary)) !important;
+  background-color: white !important;
   font-size: 0.73rem !important;
-  font-weight: 950 !important;
+  font-weight: 700 !important;
   text-transform: uppercase !important;
 }
 

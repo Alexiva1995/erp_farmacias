@@ -49,7 +49,7 @@ const getInitials = (name) => {
 <template>
   <div class="mb-6">
     <!-- Vista de Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardTitle class="pa-4 d-flex align-center">
         <VAvatar color="warning" variant="tonal" size="32" class="me-3 rounded-lg">
           <VIcon icon="tabler-receipt" size="18" />
@@ -74,12 +74,12 @@ const getInitials = (name) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.order_id="{ item }">
-          <span class="text-xs font-weight-black text-primary">#{{ item.order_id }}</span>
+          <span class="font-weight-black text-primary">#{{ item.order_id }}</span>
         </template>
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex flex-column">
-            <span class="text-xs font-weight-bold">{{ item.invoice_number }}</span>
+            <span class="font-weight-black text-primary">{{ item.invoice_number }}</span>
             <span class="text-super-xs text-disabled">{{ formatDate(item.invoice_date) }}</span>
           </div>
         </template>
@@ -90,8 +90,8 @@ const getInitials = (name) => {
               <span class="text-super-xs font-weight-black">{{ getInitials(item.business_name) }}</span>
             </VAvatar>
             <div class="d-flex flex-column truncate" style="max-width: 250px;">
-              <span class="text-xs font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.business_name }}</span>
-              <span class="text-super-xs text-disabled truncate">{{ item.identification }}</span>
+              <span class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.business_name }}</span>
+              <span class="text-super-xs text-primary font-weight-black uppercase truncate">{{ item.identification }}</span>
             </div>
           </div>
         </template>
@@ -142,7 +142,7 @@ const getInitials = (name) => {
         <VCard
           v-for="item in props.fiscalData"
           :key="item.order_id"
-          class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+          class="rounded-lg border shadow-sm premium-card overflow-hidden"
         >
           <div class="premium-card-decoration bg-warning-opacity"></div>
           
@@ -206,7 +206,7 @@ const getInitials = (name) => {
         </div>
       </template>
 
-      <VAlert v-else type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         No hay registros de ventas para este período.
       </VAlert>
     </div>
@@ -219,13 +219,18 @@ const getInitials = (name) => {
 }
 
 .premium-table :deep(.v-data-table-header th) {
-  height: 44px !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  color: rgba(var(--v-theme-on-surface), 0.5) !important;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

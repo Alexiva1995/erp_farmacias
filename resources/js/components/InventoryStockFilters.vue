@@ -267,7 +267,7 @@ const handleClear = () => {
             <VCol cols="12" md="6" class="d-flex flex-wrap align-center gap-x-3 ps-4">
               <VCheckbox
                 :model-value="props.expProd"
-                label="Próximos a Expirar"
+                label="Prox. Exp."
                 color="error"
                 density="compact"
                 hide-details
@@ -275,7 +275,7 @@ const handleClear = () => {
               />
               <VCheckbox
                 :model-value="props.isColombian"
-                label="Solo COL"
+                label="COL"
                 color="info"
                 density="compact"
                 hide-details

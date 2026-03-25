@@ -33,12 +33,13 @@ const isEditingResignation = ref(false);
 const existingResignationData = ref(null);
 
 const headers = [
-  { title: "EMPLEADO", key: "employee_name", class: "font-weight-black text-super-xs" },
-  { title: "IDENTIFICACIÓN", key: "employee_identification", class: "font-weight-black text-super-xs" },
-  { title: "TIPO", key: "resignation_type", class: "font-weight-black text-super-xs" },
-  { title: "FECHA EFECTIVA", key: "effective_date", class: "font-weight-black text-super-xs text-center", align: 'center' },
-  { title: "ESTADO", key: "employee_status", class: "font-weight-black text-super-xs text-center", align: 'center' },
-  { title: "ACCIONES", key: "actions", sortable: false, class: "font-weight-black text-super-xs text-right", align: 'end' },
+  { title: "ID", key: "id", sortable: true },
+  { title: "EMPLEADO", key: "employee_name" },
+  { title: "IDENTIFICACIÓN", key: "employee_identification" },
+  { title: "TIPO", key: "resignation_type" },
+  { title: "FECHA EFECTIVA", key: "effective_date", align: 'center' },
+  { title: "ESTADO", key: "employee_status", align: 'center' },
+  { title: "ACCIONES", key: "actions", sortable: false, align: 'end' },
 ];
 
 // Métodos
@@ -277,7 +278,7 @@ onMounted(() => {
     />
 
     <!-- Listado: Tabla o Cards -->
-    <VCard class="rounded-lg border-0 shadow-sm overflow-hidden">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden">
       <!-- Vista de Escritorio: Tabla Premium -->
       <VDataTable
         v-if="!mobile"
@@ -288,6 +289,9 @@ onMounted(() => {
         class="premium-table text-no-wrap"
         density="compact"
       >
+        <template #item.id="{ item }">
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
+        </template>
         <!-- Empleado -->
         <template #item.employee_name="{ item }">
           <div class="d-flex align-center gap-3 py-2">
@@ -295,8 +299,8 @@ onMounted(() => {
               {{ item.employee_name.charAt(0) }}
             </VAvatar>
             <div class="d-flex flex-column">
-              <span class="text-xs font-weight-black text-high-emphasis">{{ item.employee_name }}</span>
-              <span class="text-xs text-disabled">{{ item.employee_position || 'Cargo no especificado' }}</span>
+              <span class="text-sm font-weight-black text-high-emphasis uppercase">{{ item.employee_name }}</span>
+              <span class="text-super-xs text-disabled uppercase font-weight-bold">{{ item.employee_position || 'Cargo no especificado' }}</span>
             </div>
           </div>
         </template>
@@ -315,7 +319,7 @@ onMounted(() => {
 
         <!-- Fecha -->
         <template #item.effective_date="{ item }">
-          <div class="text-xs font-weight-black text-high-emphasis tabular-nums">
+          <div class="text-sm font-weight-black text-high-emphasis tabular-nums">
             {{ formatDate(item.effective_date) }}
           </div>
         </template>
@@ -380,8 +384,12 @@ onMounted(() => {
                     {{ item.employee_name.charAt(0) }}
                   </VAvatar>
                   <div class="d-flex flex-column">
-                    <span class="text-sm font-weight-black text-high-emphasis leading-tight">{{ item.employee_name }}</span>
-                    <span class="text-xs text-disabled">{{ item.employee_identification }}</span>
+                    <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                      <span class="text-primary text-xs">{{ item.id }}</span>
+                      <span class="mx-1 text-disabled">|</span>
+                      {{ item.employee_name }}
+                    </h3>
+                    <span class="text-xs text-disabled font-weight-bold">{{ item.employee_identification }}</span>
                   </div>
                 </div>
                 <VChip
@@ -574,11 +582,13 @@ onMounted(() => {
 
   thead {
     th {
-      color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+      background-color: white !important;
+      color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
       font-size: 0.75rem !important;
       font-weight: 700 !important;
+      letter-spacing: 0.05rem !important;
       text-transform: uppercase !important;
-      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+      border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
     }
   }
 
@@ -590,7 +600,9 @@ onMounted(() => {
     }
 
     td {
-      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+      padding-block: 12px !important;
+      color: #334155 !important;
+      border-block-end: 1px solid rgba(var(--v-border-color), 0.03) !important;
     }
   }
 }

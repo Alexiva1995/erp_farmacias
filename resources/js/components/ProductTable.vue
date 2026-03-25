@@ -31,7 +31,7 @@ const headers = ref([
     key: "id", 
     sortable: true, 
     visible: true,
-    cellClass: 'd-none d-sm-table-cell',
+    cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
     headerClass: 'd-none d-sm-table-cell'
   },
   {
@@ -45,7 +45,7 @@ const headers = ref([
     title: "Laboratorio",
     key: "laboratory.name",
     sortable: true,
-    visible: true,
+    visible: false,
     cellClass: 'd-none d-md-table-cell',
     headerClass: 'd-none d-md-table-cell'
   },
@@ -66,7 +66,7 @@ const headers = ref([
     headerClass: 'd-none d-lg-table-cell'
   },
   {
-    title: "Precio Venta",
+    title: "P.V.P",
     key: "sale_price",
     sortable: true,
     visible: props.mode !== "inventory" && authStore.isAdmin,
@@ -155,7 +155,7 @@ const handleMobilePageChange = (newPage) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="text-xs font-weight-medium text-disabled">{{ item.id }}</span>
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
@@ -173,9 +173,13 @@ const handleMobilePageChange = (newPage) => {
                 <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <span class="text-xs text-disabled text-truncate" style="max-inline-size: 320px;">{{
-                item.active_ingredient
-              }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -290,7 +294,7 @@ const handleMobilePageChange = (newPage) => {
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
                     <span class="text-primary text-xs">{{ item.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
-                    {{ item.name }}
+                    {{ item.name.toUpperCase() }}
                   </h3>
                   <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
                 </div>
@@ -313,7 +317,7 @@ const handleMobilePageChange = (newPage) => {
                 </span>
               </div>
               <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Precio Venta ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
                 <span class="text-base font-weight-black text-primary">
                   {{ formatPrice(calculateSalePriceWithIva(item)) }}
                 </span>
@@ -414,6 +418,7 @@ const handleMobilePageChange = (newPage) => {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .border-dashed-thin {

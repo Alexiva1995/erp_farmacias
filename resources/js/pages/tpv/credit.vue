@@ -403,7 +403,7 @@ watch(
 <template>
 
   <!-- Contenedor Premium de Filtros -->
-  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden shadow-sm bg-surface">
+  <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden shadow-sm bg-surface">
     <VCardText class="pa-4">
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-3 flex-nowrap">

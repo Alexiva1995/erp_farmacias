@@ -15,7 +15,7 @@ watch(
   () => props.modelValue,
   (newValue) => {
     identificationInput.value = newValue;
-  }
+  },
 );
 
 const updateIdentification = (value) => {
@@ -37,7 +37,10 @@ const handleSearchOrder = () => {
         <!-- Título/Icono -->
         <div class="d-flex align-center gap-2 mr-4">
           <VIcon icon="tabler-arrow-back-up" color="primary" size="24" />
-          <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Devoluciones</span>
+          <span
+            class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline"
+            >Devoluciones</span
+          >
         </div>
 
         <!-- Buscador Principal -->
@@ -67,7 +70,9 @@ const handleSearchOrder = () => {
             @click="handleSearchOrder"
           >
             <VIcon icon="tabler-search" size="20" />
-            <VTooltip activator="parent" location="top">Buscar Pedidos</VTooltip>
+            <VTooltip activator="parent" location="top"
+              >Buscar Pedidos</VTooltip
+            >
           </VBtn>
 
           <VDivider vertical class="mx-1 my-2" />
@@ -81,7 +86,9 @@ const handleSearchOrder = () => {
             @click="emit('clear-search')"
           >
             <VIcon icon="tabler-eraser" />
-            <VTooltip activator="parent" location="top">Limpiar Búsqueda</VTooltip>
+            <VTooltip activator="parent" location="top"
+              >Limpiar Búsqueda</VTooltip
+            >
           </VBtn>
         </div>
       </VRow>
@@ -105,7 +112,9 @@ const handleSearchOrder = () => {
   min-block-size: 38px !important;
 }
 
-.text-xs { font-size: 0.75rem !important; }
+.text-xs {
+  font-size: 0.75rem !important;
+}
 
 .shadow-sm {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 8%) !important;

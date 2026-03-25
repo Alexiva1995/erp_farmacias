@@ -679,7 +679,7 @@ const getIva = (product, currency) => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden glass-card shadow-lg elevation-2">
+  <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden elevation-1">
     <!-- Header estilo Cotización -->
     <VCardItem class="pa-3 border-b bg-surface">
       <div class="d-flex align-center justify-space-between w-100 gap-3">
@@ -907,11 +907,15 @@ const getIva = (product, currency) => {
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex align-center gap-2 flex-wrap">
                   <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
-                    {{ product.title }} 
-                    <span v-if="product.laboratory && product.laboratory !== 'N/A'" class="text-disabled font-weight-bold ml-1">
-                      - {{ product.laboratory }}
-                    </span>
+                    {{ (product.title || '').toUpperCase() }}
                   </h3>
+                  <div class="d-flex align-center gap-1 text-super-xs mt-1">
+                    <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ product.active_ingredient || '—' }}</span>
+                    <span class="text-disabled mx-1">|</span>
+                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                      {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
+                    </span>
+                  </div>
 
                   <!-- Desglose de Precios Inline (Inmediatamente después del título) -->
                   <div class="d-flex align-center gap-1 flex-wrap">

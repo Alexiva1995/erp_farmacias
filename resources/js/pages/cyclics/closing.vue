@@ -56,6 +56,7 @@ const fetchData = async () => {
       product: { 
         id: item.product_id,
         name: item.product_name, 
+        activeIngredient: item.active_ingredient,
         sale_price: item.product_sale_price,
         unit_cost: item.product_unit_cost,
         laboratory: { name: item.laboratory_name }

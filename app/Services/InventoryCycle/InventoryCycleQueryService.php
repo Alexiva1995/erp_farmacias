@@ -585,6 +585,7 @@ class InventoryCycleQueryService
                 'discrepancies.source_type',
                 'discrepancies.updated_at as processed_date',
                 'products.name as product_name',
+                'products.active_ingredient as active_ingredient',
                 'products.sale_price as product_sale_price',
                 'products.unit_cost as product_unit_cost',
                 'laboratories.name as laboratory_name',

@@ -33,7 +33,7 @@ const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.user?.role_id === 1);
 </script>
 <template>
-  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm">
+  <VCard variant="flat" border class="rounded-lg overflow-hidden shadow-sm">
     <template v-if="props.mobile">
       <VDataIterator
         :items="props.credits"
@@ -185,7 +185,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
       </template>
 
       <template v-slot:item.client_identification="{ item }">
-        <span class="font-weight-medium">{{ item.client.identification_type }}{{ item.client.identification }}</span>
+        <span class="text-primary font-weight-black">{{ item.client.identification_type }}{{ item.client.identification }}</span>
       </template>
 
       <template v-slot:item.client_full_name="{ item }">
@@ -266,3 +266,21 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.v-data-table-server .v-data-table-header__content span) {
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+:deep(.v-data-table-server .v-table__th) {
+  background-color: white !important;
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+</style>

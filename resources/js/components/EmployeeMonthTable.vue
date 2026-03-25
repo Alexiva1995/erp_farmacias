@@ -57,7 +57,7 @@ const formatCurrency = (amount) =>
 <template>
   <div class="employee-month-table-container">
     <!-- Vista de Escritorio: Tabla Premium -->
-    <VCard v-if="!$vuetify.display.smAndDown" class="rounded-xl border-0 shadow-sm overflow-hidden">
+    <VCard v-if="!$vuetify.display.smAndDown" class="rounded-lg border shadow-sm overflow-hidden">
       <VDataTable
         :headers="headers"
         :items="props.items"
@@ -67,14 +67,14 @@ const formatCurrency = (amount) =>
         <!-- Custom Headers with Tooltips -->
         <template v-for="header in headers" :key="header.key" #[`header.${header.key}`]="{ column }">
           <div class="d-flex align-center gap-1 justify-center" v-if="header.key !== 'name' && header.key !== 'scores.total'">
-            <span class="text-super-xs font-weight-black text-uppercase">{{ column.title }}</span>
+            <span class="text-uppercase">{{ column.title }}</span>
             <VTooltip location="top" :text="getScoreInfo(header.key).desc">
               <template #activator="{ props: tooltipProps }">
                 <VIcon v-bind="tooltipProps" icon="tabler-info-circle" size="14" class="text-disabled" />
               </template>
             </VTooltip>
           </div>
-          <span v-else class="text-super-xs font-weight-black text-uppercase">{{ column.title }}</span>
+          <span v-else class="text-uppercase">{{ column.title }}</span>
         </template>
 
         <template #item.name="{ item }">
@@ -108,7 +108,7 @@ const formatCurrency = (amount) =>
               <span :class="['font-weight-black', props.items.indexOf(item) === 0 ? 'text-warning' : 'text-high-emphasis']">
                 {{ item.name }} {{ item.last_name }}
               </span>
-              <span class="text-super-xs text-disabled uppercase">ID: {{ item.identification || item.id }}</span>
+              <span class="text-super-xs text-primary uppercase font-weight-black">ID: {{ item.identification || item.id }}</span>
             </div>
           </div>
         </template>
@@ -160,7 +160,7 @@ const formatCurrency = (amount) =>
       <VCard
         v-for="(item, index) in props.items"
         :key="item.id"
-        class="performance-card-mobile rounded-xl border-0 shadow-sm overflow-hidden"
+        class="performance-card-mobile rounded-lg border shadow-sm overflow-hidden"
         :class="{ 'leader-card-border': index === 0 }"
       >
         <!-- Header del Card -->
@@ -257,12 +257,22 @@ const formatCurrency = (amount) =>
 
 :deep(.premium-performance-table) {
   .v-data-table-header th {
-    background-color: rgba(var(--v-theme-surface-variant), 0.05) !important;
-    text-transform: uppercase;
+    background: white !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05rem !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
   }
 
   .v-data-table__tr:hover {
     background-color: rgba(var(--v-theme-primary), 0.02) !important;
+  }
+
+  .v-data-table__td {
+    padding-block: 12px !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
   }
 }
 

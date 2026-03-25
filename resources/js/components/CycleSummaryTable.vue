@@ -28,7 +28,13 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "view-cycle-details"]);
 
 const headers = ref([
-  { title: "#", key: "cycle_id", sortable: true, align: "center" },
+  { 
+    title: "#", 
+    key: "cycle_id", 
+    sortable: true, 
+    align: "center",
+    cellClass: "font-weight-black text-primary",
+  },
   { title: "Fec. Inicio", key: "start_date", sortable: true, align: "center" },
   { title: "Fec. Fin", key: "end_date", sortable: true, align: "center" },
   { title: "Estado", key: "cycle_status", sortable: true, align: "center" },
@@ -86,7 +92,7 @@ const handleMobilePageChange = (newPage) => {
 </script>
 
 <template>
-  <VCard class="mt-4">
+  <VCard class="mt-4 rounded-lg">
     <!-- Vista de Escritorio (Tabla) -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -103,17 +109,21 @@ const handleMobilePageChange = (newPage) => {
         density="compact"
       >
         <template #item.cycle_id="{ item: cycle }">
-          <VChip color="primary" variant="tonal" size="x-small" label class="text-xs">
-            {{ cycle.cycle_id }}
-          </VChip>
+          <span class="font-weight-black text-primary">{{ cycle.cycle_id }}</span>
         </template>
 
         <template #item.start_date="{ item: cycle }">
-          <span class="text-sm font-weight-medium">{{ formatDate(cycle.start_date) }}</span>
+          <div class="d-flex align-center justify-center gap-1">
+            <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
+            <span class="text-sm font-weight-medium">{{ formatDate(cycle.start_date) }}</span>
+          </div>
         </template>
-
+        
         <template #item.end_date="{ item: cycle }">
-          <span class="text-sm font-weight-medium">{{ formatDate(cycle.end_date) }}</span>
+          <div class="d-flex align-center justify-center gap-1">
+            <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
+            <span class="text-sm font-weight-medium">{{ formatDate(cycle.end_date) }}</span>
+          </div>
         </template>
 
         <template #item.cycle_status="{ item: cycle }">
@@ -203,7 +213,7 @@ const handleMobilePageChange = (newPage) => {
           v-for="cycle in props.cycles"
           :key="cycle.cycle_id"
           variant="flat"
-          class="cycle-mobile-card border mb-1"
+          class="cycle-mobile-card border mb-2 premium-card"
         >
           <div class="pa-3">
             <!-- Cabecera Compacta: ID + Fechas | Acciones + Estado -->
@@ -319,7 +329,7 @@ const handleMobilePageChange = (newPage) => {
 
 :deep(.v-data-table td) {
   block-size: auto !important;
-  padding-block: 8px !important;
+  padding-block: 10px !important;
   padding-inline: 16px !important;
 }
 
@@ -328,5 +338,14 @@ const handleMobilePageChange = (newPage) => {
   font-weight: 600 !important;
   padding-block: 10px !important;
   padding-inline: 16px !important;
+}
+
+.premium-card {
+  border-radius: 12px !important;
+  transition: transform 0.2s ease;
+}
+
+.premium-card:active {
+  transform: scale(0.98);
 }
 </style>

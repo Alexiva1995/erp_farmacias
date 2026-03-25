@@ -127,7 +127,7 @@ const setDateAno = () => {
 };
 
 const headers = [
-  { title: "id", key: "id", sortable: true },
+  { title: "ID", key: "id", sortable: true },
   { title: "Identificación", key: "identification", sortable: true },
   { title: "Cliente", key: "client_full_name", sortable: true },
   { title: "Vendedor", key: "seller.username", sortable: true },
@@ -138,7 +138,7 @@ const headers = [
 ];
 
 const headersAll = [
-  { title: "id", key: "id", sortable: true },
+  { title: "ID", key: "id", sortable: true },
   { title: "Identificación", key: "identification", sortable: true },
   { title: "Cliente", key: "client_full_name", sortable: true },
   { title: "Vendedor", key: "seller.username", sortable: true },
@@ -538,6 +538,7 @@ const printOrder = async (orderId) => {
         id: detail.product?.id ?? detail.product_id,
         product_id: detail.product_id ?? detail.product?.id,
         title: detail.product?.name,
+        active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
         taxRate: detail.product?.iva,
@@ -650,6 +651,7 @@ const printOrderThermal54 = async (orderId) => {
         id: detail.product?.id ?? detail.product_id,
         product_id: detail.product_id ?? detail.product?.id,
         title: detail.product?.name,
+        active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
         taxRate: detail.product?.iva,
@@ -723,6 +725,7 @@ const handleViewOrder = async (orderId) => {
         id: detail.product?.id ?? detail.product_id,
         product_id: detail.product_id ?? detail.product?.id,
         title: detail.product?.name,
+        active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
         taxRate: detail.product?.iva,
@@ -835,7 +838,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 <template>
   <div>
     <!-- Contenedor Premium de Filtros -->
-    <VCard variant="flat" border class="mb-6 rounded-xl overflow-hidden shadow-sm bg-surface">
+    <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden shadow-sm bg-surface">
       <VCardText class="pa-4">
         <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
         <VRow align="center" no-gutters class="gap-3 flex-nowrap">
@@ -1158,7 +1161,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
         />
       </VWindowItem>
       <VWindowItem :value="4">
-        <VCard>
+        <VCard variant="flat" border class="rounded-lg overflow-hidden elevation-1">
           <VDataTableServer
             :items="quotations"
             :headers="headersQuotations"
@@ -1166,9 +1169,12 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
             :loading="loadingQuotations"
             :items-per-page="itemsPerPageQuotations"
             :page="pageQuotations"
-            class="text-no-wrap"
+            class="text-no-wrap quotation-table-premium"
             @update:options="updateTableOptionsQuotations"
           >
+            <template #item.id="{ item }">
+              <span class="text-primary font-weight-black">#{{ item.id }}</span>
+            </template>
             <template #item.client_display="{ item }">
               {{ item.client ? `${item.client.name || ''} ${item.client.last_name || ''}`.trim() || item.client.identification : '—' }}
             </template>
@@ -1176,7 +1182,9 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
               {{ item.creator?.username ? capitalizeFirstAndLastName(item.creator.username) : '—' }}
             </template>
             <template #item.total="{ item }">
-              {{ Number(item.total ?? 0).toLocaleString('es', { minimumFractionDigits: 2 }) }}
+              <span class="font-weight-bold">
+                {{ Number(item.total ?? 0).toLocaleString('es', { minimumFractionDigits: 2 }) }}
+              </span>
             </template>
             <template #item.created_at="{ item }">
               {{ formatQuotationDate(item.created_at) }}
@@ -1279,5 +1287,14 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
 
 .border-t.border-b {
   border-color: rgba(var(--v-border-color), 0.1) !important;
+}
+
+:deep(.quotation-table-premium) {
+  .v-data-table-header th {
+    background-color: #fff !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  }
 }
 </style>

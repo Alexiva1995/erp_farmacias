@@ -33,7 +33,7 @@ const hasActiveAdvancedFilters = computed(() => {
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-lg border-0 shadow-sm overflow-visible">
+  <VCard class="mb-6 rounded-lg border shadow-sm overflow-visible">
     <VCardText class="pa-3">
       <VRow align="center" no-gutters class="gap-2 px-2">
         <!-- Laboratorio (Visible) -->

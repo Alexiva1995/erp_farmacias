@@ -79,11 +79,11 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   
-  // Timeout de seguridad: si el guard tarda más de 3 segundos, permitir navegación
+  // Timeout de seguridad: si el guard tarda más de 10 segundos, permitir navegación
   const safetyTimeout = setTimeout(() => {
     console.warn('[ROUTER] Timeout de seguridad alcanzado, permitiendo navegación')
     safeNext()
-  }, 3000)
+  }, 10000)
   
   try {
     const authStore = useAuthStore()
@@ -97,7 +97,7 @@ router.beforeEach(async (to, from, next) => {
       
       try {
         fetchUserPromise = authStore.fetchUser()
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500))
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 8000))
         await Promise.race([fetchUserPromise, timeoutPromise])
         console.log('[ROUTER] Usuario obtenido o timeout alcanzado')
       } catch (fetchError) {
@@ -111,7 +111,7 @@ router.beforeEach(async (to, from, next) => {
       // Si ya hay una llamada en curso, esperar a que termine (con timeout)
       console.log('[ROUTER] Esperando a que termine fetchUser en curso...')
       try {
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500))
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 8000))
         await Promise.race([fetchUserPromise, timeoutPromise])
       } catch (error) {
         console.warn('[ROUTER] Error esperando fetchUser:', error)

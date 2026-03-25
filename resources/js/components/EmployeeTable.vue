@@ -15,6 +15,7 @@ const props = defineProps({
 const { mobile } = useDisplay();
 
 const headers = [
+  { title: "ID", key: "id", sortable: true },
   { title: "EMPLEADO", key: "name", sortable: false },
   { title: "IDENTIFICACIÓN", key: "identification", sortable: false },
   { title: "CONTACTO", key: "email", sortable: false },
@@ -142,25 +143,29 @@ const confirmGenerateResignation = async (employee) => {
       class="rounded-xl overflow-hidden premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.id="{ item }">
+        <span class="font-weight-black text-primary">{{ item.id }}</span>
+      </template>
+
       <template #item.name="{ item }">
         <div class="d-flex align-center gap-3 py-1">
           <VAvatar size="34" :color="item.is_active ? 'primary' : 'secondary'" variant="tonal" class="rounded-lg">
             <span class="text-xs font-weight-bold">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-body-2 font-weight-black text-high-emphasis leading-tight">{{ item.name }} {{ item.last_name }}</span>
-            <span class="text-super-xs text-medium-emphasis uppercase font-weight-medium letter-spacing-05">ID: {{ item.id }}</span>
+            <span class="text-sm font-weight-black text-high-emphasis leading-tight uppercase">{{ item.name }} {{ item.last_name }}</span>
+            <span class="text-super-xs text-medium-emphasis uppercase font-weight-medium letter-spacing-05">{{ item.position?.name || 'Cargo no especificado' }}</span>
           </div>
         </div>
       </template>
 
       <template #item.identification="{ item }">
-        <span class="text-caption font-weight-bold text-medium-emphasis">{{ item.identification }}</span>
+        <span class="text-sm font-weight-black text-high-emphasis">{{ item.identification }}</span>
       </template>
 
       <template #item.email="{ item }">
         <div class="d-flex flex-column py-1">
-          <span class="text-caption font-weight-medium text-high-emphasis leading-tight">{{ item.email }}</span>
+          <span class="text-sm font-weight-black text-high-emphasis leading-tight">{{ item.email }}</span>
           <span v-if="item.phone" class="text-super-xs text-disabled">{{ item.phone }}</span>
         </div>
       </template>
@@ -258,8 +263,12 @@ const confirmGenerateResignation = async (employee) => {
                   <span class="text-h6 font-weight-black">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-body-1 font-weight-950 text-high-emphasis leading-tight">{{ item.name }} {{ item.last_name }}</span>
-                  <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">ID: {{ item.identification }}</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                    <span class="text-primary text-xs">{{ item.id }}</span>
+                    <span class="mx-1 text-disabled">|</span>
+                    {{ item.name }} {{ item.last_name }}
+                  </h3>
+                  <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">{{ item.identification }}</span>
                 </div>
               </div>
               
@@ -333,17 +342,18 @@ const confirmGenerateResignation = async (employee) => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: #f8fafc !important;
-  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
-  color: #64748b !important;
-  font-size: 0.7rem !important;
-  font-weight: 950 !important;
-  letter-spacing: 1px;
+  background-color: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
 }
 
 .premium-table :deep(td) {
-  padding-block: 6px !important;
+  padding-block: 12px !important;
+  color: #334155 !important;
 }
 
 .employee-mobile-card {

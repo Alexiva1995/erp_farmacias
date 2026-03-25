@@ -256,7 +256,7 @@ const productLineLabel = (product) => {
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
   >
-    <VCard class="order-view-card rounded-xl border shadow-sm">
+    <VCard class="order-view-card rounded-lg border shadow-sm">
       <VCardTitle class="order-view-header d-flex align-center flex-wrap gap-2 px-4 py-3 border-b bg-surface">
         <div class="d-flex align-center gap-3">
           <VAvatar color="primary" variant="tonal" rounded class="rounded-lg shadow-sm">
@@ -306,8 +306,18 @@ const productLineLabel = (product) => {
               </thead>
               <tbody>
                 <tr v-for="(product, idx) in orderProducts" :key="product.id || product.product_id || idx" class="products-table-row">
-                  <td class="product-cell">
-                    <span class="product-line-full">{{ productLineLabel(product) }}</span>
+                  <td class="product-cell py-3">
+                    <div class="d-flex flex-column">
+                      <div class="d-flex align-center gap-1 mb-0 pb-0">
+                        <span class="text-primary font-weight-black text-xs">#{{ productId(product) }}</span>
+                        <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ product.title }}</span>
+                      </div>
+                      <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
+                        <span class="text-disabled" style="font-size: 0.75rem !important;">{{ product.active_ingredient || '—' }}</span>
+                        <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
+                        <span class="text-primary font-weight-bold" style="font-size: 0.75rem !important;">{{ product.laboratory || '—' }}</span>
+                      </div>
+                    </div>
                     <span
                       v-if="activeDiscount && product.price_before_discount != null"
                       class="text-caption text-decoration-line-through text-error d-block mt-1"
@@ -484,13 +494,13 @@ const productLineLabel = (product) => {
   inline-size: 52px;
   text-align: center;
 }
-.product-cell { min-inline-size: 0; }
+.product-cell { 
+  min-inline-size: 0; 
+  vertical-align: middle !important;
+}
 
 .product-line-full {
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  word-break: break-word;
+  display: none;
 }
 
 .table-amount {

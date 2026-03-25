@@ -23,13 +23,14 @@ const date = (order) => {
   const time = new Date(order);
   return time.toISOString().split("T")[0];
 };
-
 </script>
 
 <template>
   <div class="returns-general-container">
     <!-- Vista de Escritorio (Tabla Premium) -->
-    <VCard class="d-none d-md-block elevation-1 border-0 rounded-lg overflow-hidden">
+    <VCard
+      class="d-none d-md-block elevation-1 border-0 rounded-lg overflow-hidden"
+    >
       <VDataTableServer
         v-model:expanded="expanded"
         :items-per-page="props.itemsPerPage"
@@ -44,12 +45,14 @@ const date = (order) => {
         height="auto"
         @update:options="(options) => emit('update:options', options)"
       >
-        <template #item.id="{ item }">
-          <span class="font-weight-black text-secondary">#{{ item.id }}</span>
+        <template v-slot:item.id="{ item }">
+          <span class="text-primary font-weight-black">#{{ item.id }}</span>
         </template>
 
-        <template #item.order_id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.order_id }}</span>
+        <template v-slot:item.order_id="{ item }">
+          <span class="text-primary font-weight-black"
+            >#{{ item.order_id }}</span
+          >
         </template>
 
         <template #item.client="{ item }">
@@ -57,7 +60,10 @@ const date = (order) => {
             <VAvatar size="24" color="primary" variant="tonal" class="rounded">
               <VIcon icon="tabler-user" size="14" />
             </VAvatar>
-            <span class="font-weight-bold truncate" style="max-inline-size: 150px;">
+            <span
+              class="font-weight-bold truncate"
+              style="max-inline-size: 150px"
+            >
               {{ item.order?.seller?.username ?? "—" }}
             </span>
           </div>
@@ -65,7 +71,8 @@ const date = (order) => {
 
         <template #item.identificacion="{ item }">
           <span class="text-xs font-weight-bold text-medium-emphasis uppercase">
-            {{ item.order.client.identification_type }}{{ item.order.client.identification }}
+            {{ item.order.client.identification_type
+            }}{{ item.order.client.identification }}
           </span>
         </template>
 
@@ -78,18 +85,45 @@ const date = (order) => {
         <template #item.date="{ item }">
           <div class="d-flex align-center gap-1">
             <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
-            <span class="text-xs font-weight-bold">{{ date(item.return_date) }}</span>
+            <span class="text-xs font-weight-bold">{{
+              date(item.return_date)
+            }}</span>
           </div>
         </template>
 
-        <template #item.product="{ item }">
+        <template v-slot:item.product="{ item }">
           <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black uppercase leading-tight truncate" style="max-inline-size: 250px;">
-              {{ item.product.name }}
-            </span>
-            <span v-if="item.product?.laboratory?.name" class="text-super-xs font-weight-bold text-disabled uppercase">
-              {{ item.product.laboratory.name }}
-            </span>
+            <div class="d-flex align-center gap-1 mb-0 pb-0">
+              <span class="text-primary font-weight-black text-xs"
+                >#{{ item.product?.id || item.product_id }}</span
+              >
+              <span
+                class="text-subtitle-2 font-weight-black text-uppercase leading-tight"
+                style="font-size: 0.85rem !important"
+                >{{ item.product?.name || "—" }}</span
+              >
+            </div>
+            <div
+              class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0"
+            >
+              <span
+                class="text-disabled"
+                style="font-size: 0.75rem !important"
+                >{{ item.product?.active_ingredient || "—" }}</span
+              >
+              <span class="text-disabled" style="font-size: 0.75rem !important"
+                >|</span
+              >
+              <span
+                class="text-primary font-weight-bold"
+                style="font-size: 0.75rem !important"
+                >{{
+                  item.product?.laboratory?.name ||
+                  item.product?.laboratory ||
+                  "—"
+                }}</span
+              >
+            </div>
           </div>
         </template>
 
@@ -101,8 +135,8 @@ const date = (order) => {
               item.status == null
                 ? 'warning'
                 : item.status === 'Approved'
-                ? 'success'
-                : 'error'
+                  ? 'success'
+                  : 'error'
             "
           >
             <template #prepend>
@@ -113,12 +147,18 @@ const date = (order) => {
                   item.status == null
                     ? 'tabler-clock-filled'
                     : item.status === 'Approved'
-                    ? 'tabler-circle-check-filled'
-                    : 'tabler-circle-x-filled'
+                      ? 'tabler-circle-check-filled'
+                      : 'tabler-circle-x-filled'
                 "
               />
             </template>
-            {{ item.status == null ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Rechazado' }}
+            {{
+              item.status == null
+                ? "Pendiente"
+                : item.status === "Approved"
+                  ? "Aprobado"
+                  : "Rechazado"
+            }}
           </VChip>
         </template>
       </VDataTableServer>
@@ -129,20 +169,29 @@ const date = (order) => {
       <div v-if="props.loading" class="d-flex justify-center py-8">
         <VProgressCircular indeterminate color="primary" />
       </div>
-      
-      <div v-else-if="props.returns.length === 0" class="text-center py-8 bg-white rounded-lg border border-dashed">
+
+      <div
+        v-else-if="props.returns.length === 0"
+        class="text-center py-8 bg-white rounded-lg border border-dashed"
+      >
         <VIcon icon="tabler-trash-x" size="48" color="disabled" class="mb-2" />
-        <div class="text-sm font-weight-black text-disabled uppercase">No hay registros de devoluciones</div>
+        <div class="text-sm font-weight-black text-disabled uppercase">
+          No hay registros de devoluciones
+        </div>
       </div>
 
-      <div v-for="item in props.returns" :key="item.id" class="premium-card mb-4 bg-white rounded-lg elevation-2 overflow-hidden border-0">
+      <div
+        v-for="item in props.returns"
+        :key="item.id"
+        class="premium-card mb-4 bg-white rounded-lg elevation-2 overflow-hidden border-0"
+      >
         <!-- Badge Lateral de Estado -->
-        <div 
-          class="status-strip" 
+        <div
+          class="status-strip"
           :class="{
             'bg-warning': item.status == null,
             'bg-success': item.status === 'Approved',
-            'bg-error': item.status === 'Rejected'
+            'bg-error': item.status === 'Rejected',
           }"
         ></div>
 
@@ -150,38 +199,80 @@ const date = (order) => {
           <!-- Cabecera Tarjeta -->
           <div class="d-flex justify-space-between align-center mb-3">
             <div class="d-flex align-center gap-2">
-              <span class="text-xs font-weight-black text-secondary">#{{ item.id }}</span>
+              <span class="text-xs font-weight-black text-primary"
+                >#{{ item.id }}</span
+              >
               <VDivider vertical length="12" class="mx-1" />
-              <span class="text-xs font-weight-black text-primary">ORDEN: #{{ item.order_id }}</span>
+              <span class="text-xs font-weight-black text-primary"
+                >ORDEN: #{{ item.order_id }}</span
+              >
             </div>
-            
+
             <VChip
               size="x-small"
               variant="tonal"
               class="font-weight-black rounded-sm uppercase"
-              :color="item.status == null ? 'warning' : item.status === 'Approved' ? 'success' : 'error'"
+              :color="
+                item.status == null
+                  ? 'warning'
+                  : item.status === 'Approved'
+                    ? 'success'
+                    : 'error'
+              "
             >
-              {{ item.status == null ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Rechazado' }}
+              {{
+                item.status == null
+                  ? "Pendiente"
+                  : item.status === "Approved"
+                    ? "Aprobado"
+                    : "Rechazado"
+              }}
             </VChip>
           </div>
 
           <!-- Producto y Detalles -->
           <div class="bg-light pa-3 rounded-lg mb-3 border border-dashed">
             <div class="d-flex flex-column overflow-hidden">
-              <span class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate">
-                {{ item.product.name }}
-              </span>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                {{ item.product?.laboratory?.name ?? 'SIN LABORATORIO' }}
-              </span>
+              <div class="d-flex align-center gap-1 mb-0 pb-0">
+                <span class="text-primary font-weight-black text-xs"
+                  >#{{ item.product?.id || item.product_id }}</span
+                >
+                <span
+                  class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate"
+                  >{{ item.product?.name || "—" }}</span
+                >
+              </div>
+              <div
+                class="text-super-xs leading-tight d-flex align-center gap-1 mt-0 pt-0"
+              >
+                <span class="text-disabled uppercase">{{
+                  item.product?.active_ingredient || "—"
+                }}</span>
+                <span class="text-disabled">|</span>
+                <span class="text-primary font-weight-bold uppercase">{{
+                  item.product?.laboratory?.name ||
+                  item.product?.laboratory ||
+                  "—"
+                }}</span>
+              </div>
               <div class="d-flex align-center justify-space-between mt-1">
                 <div class="d-flex align-center gap-1">
-                  <VIcon icon="tabler-shopping-cart" size="12" class="text-primary" />
-                  <span class="text-super-xs font-weight-black text-primary uppercase">CANT: {{ item.quantity }}</span>
+                  <VIcon
+                    icon="tabler-shopping-cart"
+                    size="12"
+                    class="text-primary"
+                  />
+                  <span
+                    class="text-super-xs font-weight-black text-primary uppercase"
+                    >CANT: {{ item.quantity }}</span
+                  >
                 </div>
                 <div class="d-flex align-center gap-1">
                   <VIcon icon="tabler-user" size="12" class="text-disabled" />
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.order?.seller?.username }}</span>
+                  <span
+                    class="text-super-xs font-weight-bold text-disabled uppercase"
+                    >{{ item.order?.seller?.username }}</span
+                  >
                 </div>
               </div>
             </div>
@@ -191,10 +282,14 @@ const date = (order) => {
           <div class="d-flex justify-space-between align-center pt-1">
             <div class="d-flex align-center gap-1">
               <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
-              <span class="text-super-xs font-weight-bold text-disabled">{{ date(item.return_date) }}</span>
+              <span class="text-super-xs font-weight-bold text-disabled">{{
+                date(item.return_date)
+              }}</span>
             </div>
             <div class="d-flex align-center gap-1 text-end">
-              <span class="text-sm font-weight-black text-success">${{ Number(item.amount_refunded).toFixed(2) }}</span>
+              <span class="text-sm font-weight-black text-success"
+                >${{ Number(item.amount_refunded).toFixed(2) }}</span
+              >
             </div>
           </div>
         </div>
@@ -208,7 +303,14 @@ const date = (order) => {
           :length="Math.ceil(props.totalReturns / props.itemsPerPage)"
           density="compact"
           color="primary"
-          @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: props.itemsPerPage, sortBy: [] })"
+          @update:model-value="
+            (val) =>
+              emit('update:options', {
+                page: val,
+                itemsPerPage: props.itemsPerPage,
+                sortBy: [],
+              })
+          "
         />
       </div>
     </div>
@@ -217,9 +319,9 @@ const date = (order) => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: #f8fafc !important;
+  background-color: white !important;
   font-size: 0.75rem !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
 }

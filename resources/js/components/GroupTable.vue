@@ -20,7 +20,7 @@ const headers = [
     title: "ID", 
     key: "id", 
     width: "10%",
-    cellClass: "d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell"
   },
   { title: "Nombre", key: "name" },
@@ -81,7 +81,7 @@ const updateOptions = (options) => {
           class="group-mobile-card border mb-2 overflow-hidden"
         >
           <div class="pa-3">
-            <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase">
+            <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate">
               <span class="text-primary">#{{ item.id }}</span>
               <span class="mx-1 text-disabled">|</span>
               {{ item.name }}

@@ -100,7 +100,7 @@ const renderSellerName = (item) => {
 };
 </script>
 <template>
-  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm">
+  <VCard variant="flat" border class="rounded-lg overflow-hidden shadow-sm">
     <template v-if="mobile">
       <VDataIterator
         :items="props.orders"
@@ -221,6 +221,10 @@ const renderSellerName = (item) => {
         />
       </template>
 
+      <template v-slot:item.id="{ item }">
+        <span class="text-primary font-weight-black">#{{ item.id }}</span>
+      </template>
+
       <template v-slot:item.identification="{ item }">
         {{ renderIdentification(item) }}
       </template>
@@ -330,3 +334,14 @@ const renderSellerName = (item) => {
     </VDataTableServer>
   </VCard>
 </template>
+
+<style scoped>
+:deep(.v-data-table) {
+  .v-data-table-header th {
+    background-color: #fff !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  }
+}
+</style>

@@ -80,7 +80,7 @@ const toggleSelection = (id) => {
 <template>
   <div class="mt-4">
     <!-- Vista de Escritorio -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VDataTableServer
         v-model="selectedModel"
         :items-per-page="props.itemsPerPage"
@@ -105,7 +105,7 @@ const toggleSelection = (id) => {
         <template #item.number="{ item }">
           <div class="d-flex align-center gap-2 py-2">
             <VIcon icon="tabler-hash" size="14" color="disabled" />
-            <span class="text-xs font-weight-black text-primary">{{ item.number }}</span>
+            <span class="font-weight-black text-primary">{{ item.number }}</span>
           </div>
         </template>
 
@@ -129,7 +129,7 @@ const toggleSelection = (id) => {
         <template #item.invoice_number="{ item }">
           <div class="d-flex align-center gap-2">
             <VIcon icon="tabler-receipt" size="16" color="disabled" />
-            <span class="text-xs font-weight-black">{{ item.invoice_number }}</span>
+            <span class="font-weight-black text-primary">{{ item.invoice_number }}</span>
           </div>
         </template>
 
@@ -197,7 +197,7 @@ const toggleSelection = (id) => {
         <VCard
           v-for="item in props.invoices"
           :key="item.id || item.order_id"
-          class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+          class="rounded-lg border shadow-sm premium-card overflow-hidden"
           :class="{ 'card-selected': isItemSelected(item.id) && props.currentTab === 'pending' }"
           @click="props.currentTab === 'pending' ? toggleSelection(item.id) : null"
         >
@@ -312,7 +312,7 @@ const toggleSelection = (id) => {
         </div>
       </template>
 
-      <VAlert v-else type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         {{ props.currentTab === 'pending' ? 'No hay facturas pendientes de retención.' : 'No se han generado comprobantes para este período.' }}
       </VAlert>
     </div>
@@ -325,13 +325,18 @@ const toggleSelection = (id) => {
 }
 
 .premium-table :deep(.v-data-table-header th) {
-  height: 44px !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  color: rgba(var(--v-theme-on-surface), 0.5) !important;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {

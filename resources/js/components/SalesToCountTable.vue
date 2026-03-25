@@ -91,20 +91,24 @@ const handleMobilePageChange = (newPage) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="text-xs font-weight-medium text-disabled">{{ item.id }}</span>
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3 py-2">
             <div class="d-flex flex-column min-width-0">
               <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 320px;">
-                {{ item.name }}
+                {{ item.name.toUpperCase() }}
                 <span v-if="item.iva == 1" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <span class="text-xs text-disabled text-truncate" style="max-inline-size: 320px;">{{
-                item.active_ingredient
-              }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs mt-1">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -168,7 +172,7 @@ const handleMobilePageChange = (newPage) => {
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight text-truncate">
                     <span class="text-primary text-xs">{{ item.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
-                    {{ item.name }}
+                    {{ item.name.toUpperCase() }}
                   </h3>
                 </div>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">

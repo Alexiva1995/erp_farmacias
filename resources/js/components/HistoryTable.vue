@@ -14,7 +14,7 @@ const emit = defineEmits(["update:options", "show-detailHistory"]);
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "Fecha", key: "invoice_date", sortable: true },
+  { title: "FECHA", key: "invoice_date", sortable: true },
   { title: "# Factura", key: "invoice_number", sortable: true },
   { title: "Razón Social", key: "business_name", sortable: true, width: "30%" },
   { title: "ID Fiscal", key: "id", sortable: true },
@@ -32,20 +32,32 @@ const formatCurrency = (value) => {
 };
 
 const getAvatarColor = (id) => {
-  const colors = ["primary", "secondary", "success", "info", "warning", "error"];
+  const colors = [
+    "primary",
+    "secondary",
+    "success",
+    "info",
+    "warning",
+    "error",
+  ];
   return colors[id % colors.length];
 };
 
 const getInitials = (name) => {
   if (!name) return "F";
-  return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
 };
 </script>
 
 <template>
   <div>
     <!-- Vista de Escritorio (Desktop Table) -->
-    <VCard v-if="!mobile" class="rounded-xl border-0 shadow-sm overflow-hidden">
+    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden">
       <VDataTableServer
         :items-per-page="props.itemsPerPage"
         :page="props.page"
@@ -57,13 +69,17 @@ const getInitials = (name) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.invoice_date="{ item }">
-          <span class="text-xs font-weight-medium">{{ item.invoice_date }}</span>
+          <span class="text-xs font-weight-medium">{{
+            item.invoice_date
+          }}</span>
         </template>
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex align-center gap-2">
             <VIcon icon="tabler-hash" size="14" color="disabled" />
-            <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
+            <span class="text-xs font-weight-black text-primary">{{
+              item.invoice_number
+            }}</span>
           </div>
         </template>
 
@@ -75,35 +91,53 @@ const getInitials = (name) => {
               variant="tonal"
               class="rounded-lg"
             >
-              <span class="text-xs font-weight-black">{{ getInitials(item.business_name) }}</span>
+              <span class="text-xs font-weight-black">{{
+                getInitials(item.business_name)
+              }}</span>
             </VAvatar>
-            <div class="d-flex flex-column truncate-text" style="max-width: 250px;">
-              <span class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate">
+            <div
+              class="d-flex flex-column truncate-text"
+              style="max-width: 250px"
+            >
+              <span
+                class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate"
+              >
                 {{ item.business_name }}
               </span>
               <span class="text-super-xs text-disabled truncate">
-                {{ item.address || 'Sin dirección' }}
+                {{ item.address || "Sin dirección" }}
               </span>
             </div>
           </div>
         </template>
 
         <template #item.id="{ item }">
-          <VChip size="x-small" variant="tonal" color="secondary" class="font-weight-black rounded">
+          <VChip
+            size="x-small"
+            variant="tonal"
+            color="secondary"
+            class="font-weight-black rounded"
+          >
             {{ item.id }}
           </VChip>
         </template>
 
         <template #item.exempt_amount="{ item }">
-          <span class="text-xs font-weight-medium">{{ formatCurrency(item.exempt_amount) }}</span>
+          <span class="text-xs font-weight-medium">{{
+            formatCurrency(item.exempt_amount)
+          }}</span>
         </template>
 
         <template #item.iva_amount="{ item }">
-          <span class="text-xs font-weight-medium text-error">{{ formatCurrency(item.iva_amount) }}</span>
+          <span class="text-xs font-weight-medium text-error">{{
+            formatCurrency(item.iva_amount)
+          }}</span>
         </template>
 
         <template #item.total_amount="{ item }">
-          <span class="text-sm font-weight-black text-success">{{ formatCurrency(item.total_amount) }}</span>
+          <span class="text-sm font-weight-black text-success">{{
+            formatCurrency(item.total_amount)
+          }}</span>
         </template>
 
         <template #item.actions="{ item }">
@@ -117,7 +151,9 @@ const getInitials = (name) => {
               @click="emit('show-detailHistory', item)"
             >
               <VIcon icon="tabler-eye" size="18" />
-              <VTooltip activator="parent" location="top">Ver Detalle Fiscal</VTooltip>
+              <VTooltip activator="parent" location="top"
+                >Ver Detalle Fiscal</VTooltip
+              >
             </VBtn>
           </div>
         </template>
@@ -125,7 +161,9 @@ const getInitials = (name) => {
         <template #bottom>
           <VDivider class="opacity-10" />
           <div class="d-flex align-center justify-space-between pa-4">
-            <span class="text-super-xs text-disabled font-weight-bold uppercase">
+            <span
+              class="text-super-xs text-disabled font-weight-bold uppercase"
+            >
               Total: {{ props.totalHistories }} registros
             </span>
             <VPagination
@@ -133,7 +171,9 @@ const getInitials = (name) => {
               :length="Math.ceil(props.totalHistories / props.itemsPerPage)"
               size="small"
               class="premium-pagination"
-              @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+              @update:model-value="
+                (newPage) => emit('update:options', { ...props, page: newPage })
+              "
             />
           </div>
         </template>
@@ -150,11 +190,11 @@ const getInitials = (name) => {
         <VCard
           v-for="item in props.histories"
           :key="item.id"
-          class="rounded-xl border-0 shadow-md premium-card overflow-hidden"
+          class="rounded-lg border shadow-sm premium-card overflow-hidden"
           @click="emit('show-detailHistory', item)"
         >
           <div class="premium-card-decoration"></div>
-          
+
           <VCardText class="pa-5">
             <!-- Cabecera: Factura y Monto -->
             <div class="d-flex align-center justify-space-between mb-4">
@@ -168,17 +208,27 @@ const getInitials = (name) => {
                   <VIcon icon="tabler-receipt-2" size="20" />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-h6 font-weight-black leading-none mb-1 text-primary">
+                  <span
+                    class="text-h6 font-weight-black leading-none mb-1 text-primary"
+                  >
                     #{{ item.invoice_number }}
                   </span>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">Factura Fiscal</span>
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase"
+                    >Factura Fiscal</span
+                  >
                 </div>
               </div>
               <div class="d-flex flex-column align-end">
-                <span class="text-h6 font-weight-black text-success leading-none mb-1">
+                <span
+                  class="text-h6 font-weight-black text-success leading-none mb-1"
+                >
                   {{ formatCurrency(item.total_amount) }}
                 </span>
-                <span class="text-super-xs font-weight-black text-disabled uppercase">Monto Total</span>
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase"
+                  >Monto Total</span
+                >
               </div>
             </div>
 
@@ -186,26 +236,43 @@ const getInitials = (name) => {
 
             <!-- Razón Social -->
             <div class="mb-4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Razón Social y Dirección</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1"
+                >Razón Social y Dirección</span
+              >
               <div class="d-flex flex-column">
-                <span class="text-sm font-weight-bold text-high-emphasis text-capitalize leading-tight mb-1">
+                <span
+                  class="text-sm font-weight-bold text-high-emphasis text-capitalize leading-tight mb-1"
+                >
                   {{ item.business_name }}
                 </span>
                 <span class="text-xs text-disabled truncate-text leading-tight">
-                  {{ item.address || 'Sin dirección registrada' }}
+                  {{ item.address || "Sin dirección registrada" }}
                 </span>
               </div>
             </div>
 
             <!-- Detalles Rápidos -->
             <div class="d-flex gap-3 mb-4">
-              <div class="premium-stat-box flex-grow-1 pa-2 rounded-lg bg-surface-variant-opacity-2">
-                <span class="text-super-xs text-disabled font-weight-bold uppercase d-block">ID Fiscal</span>
+              <div
+                class="premium-stat-box flex-grow-1 pa-2 rounded-lg bg-surface-variant-opacity-2"
+              >
+                <span
+                  class="text-super-xs text-disabled font-weight-bold uppercase d-block"
+                  >ID Fiscal</span
+                >
                 <span class="text-xs font-weight-black">#{{ item.id }}</span>
               </div>
-              <div class="premium-stat-box flex-grow-1 pa-2 rounded-lg bg-surface-variant-opacity-2">
-                <span class="text-super-xs text-disabled font-weight-bold uppercase d-block">Fecha</span>
-                <span class="text-xs font-weight-black">{{ item.invoice_date }}</span>
+              <div
+                class="premium-stat-box flex-grow-1 pa-2 rounded-lg bg-surface-variant-opacity-2"
+              >
+                <span
+                  class="text-super-xs text-disabled font-weight-bold uppercase d-block"
+                  >Fecha</span
+                >
+                <span class="text-xs font-weight-black">{{
+                  item.invoice_date
+                }}</span>
               </div>
             </div>
 
@@ -232,12 +299,14 @@ const getInitials = (name) => {
             size="small"
             rounded="circle"
             class="premium-pagination"
-            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+            @update:model-value="
+              (newPage) => emit('update:options', { ...props, page: newPage })
+            "
           />
         </div>
       </template>
 
-      <VAlert v-else type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         No se encontraron registros fiscales en este rango.
       </VAlert>
     </div>
@@ -250,13 +319,18 @@ const getInitials = (name) => {
 }
 
 .premium-table :deep(.v-data-table-header th) {
-  height: 48px !important;
-  font-size: 0.65rem !important;
-  font-weight: 900 !important;
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  color: rgba(var(--v-theme-on-surface), 0.5) !important;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {
@@ -293,7 +367,11 @@ const getInitials = (name) => {
   right: 0;
   width: 100px;
   height: 100px;
-  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.06) 0%, transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-primary), 0.06) 0%,
+    transparent 100%
+  );
   border-radius: 0 0 0 100%;
 }
 
@@ -308,7 +386,7 @@ const getInitials = (name) => {
 .premium-pagination :deep(.v-btn) {
   background-color: white !important;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
 }
 
 .premium-pagination :deep(.v-pagination__item--active .v-btn) {

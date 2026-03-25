@@ -61,7 +61,6 @@ const headers = [
   { title: "ID", key: "id", sortable: true, width: "70px" },
   { title: "Stock", key: "valid_stock_sum", sortable: true, width: "80px", align: "center" },
   { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory_name", sortable: true },
   { title: "USD", key: "sale_price", sortable: true, align: "end" },
   { title: "Bs", key: "price_bs", sortable: true, align: "end" },
   { title: "COP", key: "price_cop", sortable: true, align: "end" },
@@ -186,7 +185,7 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 </script>
 
 <template>
-  <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm elevation-2">
+  <VCard variant="flat" border class="rounded-lg overflow-hidden elevation-1">
     <!-- Vista Escritorio -->
     <VDataTableServer
       v-model:options="options"
@@ -236,15 +235,14 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
               Expira (-{{ item.discount_percentage }}%)
             </VChip>
           </span>
-          <span class="text-super-xs font-weight-bold text-disabled uppercase mt-1" style="white-space: normal;">
-            {{ item.active_ingredient }}
+          <span class="text-super-xs mt-1">
+            <span class="text-disabled font-weight-medium text-uppercase">{{ item.active_ingredient || '—' }}</span>
+            <span class="text-disabled mx-1">|</span>
+            <span class="text-primary font-weight-black text-uppercase">{{ item.laboratory_name || 'Genérico' }}</span>
           </span>
         </div>
       </template>
 
-      <template #item.laboratory_name="{ item }">
-        <span class="text-caption font-weight-bold text-medium-emphasis uppercase">{{ item.laboratory_name }}</span>
-      </template>
 
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
@@ -341,7 +339,7 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
     </VDataTableServer>
 
     <!-- Vista Móvil (Cards) -->
-    <div class="d-block d-md-none pa-3 bg-light">
+    <div class="d-block d-md-none pa-3">
       <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-3" />
       
       <div v-if="props.products.length === 0 && !props.loading" class="text-center py-10 text-disabled">
@@ -374,8 +372,12 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
               {{ item.name }}
             </h3>
             
-            <div class="text-super-xs text-disabled font-weight-bold uppercase mb-3">
-              {{ item.active_ingredient }} <span class="mx-1">•</span> {{ item.laboratory_name || 'GENÉRICO' }}
+            <div class="d-flex align-center gap-1 text-super-xs mt-1">
+              <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '—' }}</span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                {{ item.laboratory_name || 'Genérico' }}
+              </span>
             </div>
             
             <div class="d-flex gap-1 mb-3">
@@ -504,11 +506,9 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 
 <style scoped>
 .premium-table :deep(thead th) {
-  background-color: rgba(var(--v-theme-primary), 0.02) !important;
   color: rgba(var(--v-theme-on-surface), 0.6) !important;
   font-size: 0.75rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.5px;
+  font-weight: 700 !important;
   text-transform: uppercase;
 }
 
@@ -553,7 +553,7 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 }
 
 .premium-mobile-card {
-  border-radius: 16px !important;
+  border-radius: 8px !important;
   background: white !important;
   transition: all 0.2s ease;
 }

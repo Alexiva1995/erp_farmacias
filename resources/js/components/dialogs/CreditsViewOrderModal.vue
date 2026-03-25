@@ -365,10 +365,18 @@ watch([filterClient, filterDate, filterCurrency], () => {
                       :key="detail.id || detail.product_id || dIdx"
                       class="products-table-row"
                     >
-                      <td class="product-cell">
-                        <span class="product-line-full">
-                          {{ productLineLabel(detail) }}
-                        </span>
+                      <td class="product-cell py-2">
+                        <div class="d-flex flex-column">
+                          <div class="d-flex align-center gap-1 mb-0 pb-0">
+                            <span class="text-primary font-weight-black text-xs">#{{ detail.product?.id || detail.product_id }}</span>
+                            <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ detail.product?.name || detail.product?.title || '—' }}</span>
+                          </div>
+                          <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
+                            <span class="text-disabled" style="font-size: 0.75rem !important;">{{ detail.product?.active_ingredient || '—' }}</span>
+                            <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
+                            <span class="text-primary font-weight-bold" style="font-size: 0.75rem !important;">{{ detail.product?.laboratory?.name || detail.product?.laboratory || '—' }}</span>
+                          </div>
+                        </div>
                       </td>
                       <td class="text-end table-amount">
                         {{
@@ -662,11 +670,21 @@ watch([filterClient, filterDate, filterCurrency], () => {
   background: rgba(var(--v-theme-primary), 0.1);
   color: rgb(var(--v-theme-primary));
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
   padding-block: 4px;
   padding-inline: 8px;
   text-align: start;
+  text-transform: uppercase;
+}
+
+.product-cell { 
+  min-inline-size: 0; 
+  vertical-align: middle !important;
+}
+
+.product-line-full {
+  display: none;
 }
 
 .products-table th.text-end {

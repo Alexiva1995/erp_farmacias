@@ -243,18 +243,15 @@ onMounted(async () => {
       @clear="limpiarFiltros"
       @action-sortiar="sortiar"
     />
-    <VCard>
-      <VDivider />
-      <LotteryTable
-        :items="statuModule.items"
-        :total="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        :sort-by="sortBy"
-        :order-by="orderBy"
-        @update:options="updateTableOptionsTable"
-      />
-    </VCard>
+    <LotteryTable
+      :items="statuModule.items"
+      :total="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
+      @update:options="updateTableOptionsTable"
+    />
   </div>
 </template>

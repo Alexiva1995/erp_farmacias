@@ -68,7 +68,6 @@ class SupplierConnectionService
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
 
-
         if ($connection->path === '/') {
             // Listar todos los archivos en la raíz
             $files = @ftp_nlist($ftp, $connection->path);
@@ -158,6 +157,7 @@ class SupplierConnectionService
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
                     }
+                    @unlink($tempInvoice);
                 }
             }
         }

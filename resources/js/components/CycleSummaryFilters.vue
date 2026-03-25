@@ -182,12 +182,12 @@ watch(
 </script>
 
 <template>
-  <VCard class="mb-6">
+  <VCard class="mb-6 rounded-lg">
     <VCardText class="pa-3">
       <!-- Fila Principal -->
       <VRow align="center" no-gutters class="gap-2">
         <VCol cols="12" md="4">
-          <h3 class="text-h6 mb-0">Historial de Ciclos</h3>
+          <h3 class="text-lg font-weight-black text-high-emphasis mb-0">Historial de Ciclos</h3>
         </VCol>
 
         <VSpacer />

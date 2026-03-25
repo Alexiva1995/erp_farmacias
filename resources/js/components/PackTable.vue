@@ -71,9 +71,12 @@ const handleToggleStatus = (pack) => {
               class="rounded-lg pa-3"
             >
               <div class="d-flex justify-space-between align-start mb-2">
-                <div class="d-flex flex-column">
-                  <span class="text-caption font-weight-bold text-primary leading-tight">PACK #{{ item.raw.id }}</span>
-                  <h3 class="text-body-1 font-weight-black text-high-emphasis leading-tight mt-1">{{ item.raw.name }}</h3>
+                <div class="d-flex align-center gap-1 mb-1">
+                  <span class="text-primary font-weight-black text-xs">{{ item.raw.id }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-0">
+                    {{ item.raw.name.toUpperCase() }}
+                  </h3>
                 </div>
                 <VSwitch
                   :model-value="item.raw.is_active"
@@ -144,13 +147,11 @@ const handleToggleStatus = (pack) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <VChip color="primary" size="small" variant="flat" class="font-weight-black shadow-sm">
-            #{{ item.id }}
-          </VChip>
+          <span class="text-primary font-weight-black">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
-          <span class="font-weight-bold text-high-emphasis">{{ item.name }}</span>
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
         </template>
 
         <template #item.products_count="{ item }">
@@ -161,7 +162,7 @@ const handleToggleStatus = (pack) => {
         </template>
 
         <template #item.total_price="{ item }">
-          <span class="font-weight-950 text-success text-subtitle-2">
+          <span class="font-weight-black text-primary text-subtitle-2">
             {{ formatCurrency(item.total_price) }}
           </span>
         </template>
@@ -225,13 +226,14 @@ const handleToggleStatus = (pack) => {
 </template>
 
 <style scoped>
-.premium-table :deep(th) {
-  background-color: #f8fafc !important;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-size: 0.73rem !important;
-  font-weight: 950 !important;
+.premium-table :deep(thead th) {
+  background-color: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   letter-spacing: 0.5px;
   text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
 }
 
 .premium-table :deep(td) {

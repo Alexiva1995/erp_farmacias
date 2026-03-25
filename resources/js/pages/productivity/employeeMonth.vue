@@ -169,7 +169,7 @@ const formatCurrency = (amount) =>
     <!-- Header Summary / Leaderboard -->
     <VRow v-if="calculatedEmployees.length" class="mb-6" dense>
       <VCol cols="12" md="4">
-        <VCard class="leader-card h-100 overflow-hidden border-0 shadow-lg position-relative">
+        <VCard class="leader-card h-100 overflow-hidden border shadow-lg position-relative rounded-lg">
           <div class="premium-header pa-5 d-flex align-center gap-4">
             <VAvatar size="70" class="leader-avatar border-2 border-white shadow-lg">
               <VImg v-if="calculatedEmployees[0].photo" :src="calculatedEmployees[0].photo" />
@@ -194,7 +194,7 @@ const formatCurrency = (amount) =>
       </VCol>
 
       <VCol cols="12" md="8">
-        <VCard class="h-100 border-0 shadow-sm rounded-xl overflow-hidden">
+        <VCard class="h-100 border shadow-sm rounded-lg overflow-hidden">
           <VCardText class="d-flex align-center h-100 pa-6 bg-surface-variant-light">
             <VRow class="w-100 text-center align-center">
               <VCol cols="6" sm="3">

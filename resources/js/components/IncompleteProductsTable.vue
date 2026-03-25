@@ -38,20 +38,16 @@ const headers = [
     title: "ID", 
     key: "id", 
     sortable: true,
-    cellClass: "d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell"
   },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Laboratorio", key: "laboratory", sortable: true },
+  { title: "Producto", key: "name", sortable: true, width: "450px" },
   { title: "Barcode", key: "barcode", sortable: true },
   {
     title: "Stock",
     key: "valid_stock",
     visible: true,
-    sortable: true,
-    value: (item) => {
-      return item.stock_calculado;
-    },
+    align: 'center',
     cellClass: "d-none d-md-table-cell",
     headerClass: "d-none d-md-table-cell"
   },
@@ -59,6 +55,7 @@ const headers = [
     title: "Exp.", 
     key: "next_expiration", 
     sortable: true,
+    align: 'center',
     cellClass: "d-none d-md-table-cell",
     headerClass: "d-none d-md-table-cell"
   },
@@ -250,35 +247,44 @@ const nextExpirationDate = (product) => {
         @update:options="(opts) => emit('update:options', opts)"
       >
         <template #item.id="{ item }">
-          {{ item.id }}
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-x-4">
+          <div class="d-flex align-center gap-x-4 py-2">
             <VAvatar
               v-if="item.photo_url"
               size="38"
               variant="tonal"
               rounded
               :image="item.photo_url"
+              class="border flex-shrink-0"
             />
-            <div class="d-flex flex-column">
-              <span
-                class="text-body-1 font-weight-medium text-high-emphasis"
-                :class="{
-                  'text-warning font-weight-bold':
-                    item.psychotropic == 1 || item.psychotropic === true,
-                }"
-              >
-                {{ item.name.toUpperCase() }}
-                <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
-              </span>
-              <span class="text-sm text-disabled">
-                {{ item.active_ingredient }}
-                <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" class="ms-1">Falta Lab</VChip>
-                <VChip v-if="isMissing(item, 'barcode')" size="x-small" color="error" class="ms-1">Falta Barcode</VChip>
-              </span>
+            <div class="d-flex flex-column truncate" style="max-inline-size: 400px;">
+              <div class="d-flex align-center gap-x-1 truncate">
+                <span
+                  class="text-sm font-weight-black text-high-emphasis leading-tight text-uppercase truncate"
+                  :class="{
+                    'text-warning':
+                      item.psychotropic == 1 || item.psychotropic === true,
+                  }"
+                >
+                  {{ item.name || 'N/A' }}
+                  <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
+                  <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+                </span>
+                <div class="d-flex gap-1 flex-shrink-0">
+                  <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" variant="flat" class="font-weight-black text-uppercase" style="font-size: 10px !important;">Falta Lab</VChip>
+                  <VChip v-if="isMissing(item, 'barcode')" size="x-small" color="error" variant="flat" class="font-weight-black text-uppercase" style="font-size: 10px !important;">Falta Barcode</VChip>
+                </div>
+              </div>
+              <div class="d-flex align-center gap-x-1 text-super-xs mt-1">
+                <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || "" }}</span>
+                <span class="text-disabled">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 100px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -318,11 +324,6 @@ const nextExpirationDate = (product) => {
               "
             />
           </template>
-          <template v-else>
-            <div class="d-flex align-center gap-2">
-              <span>{{ item.laboratory?.name || "—" }}</span>
-            </div>
-          </template>
         </template>
 
         <template #item.barcode="{ item }">
@@ -356,11 +357,22 @@ const nextExpirationDate = (product) => {
         </template>
 
         <template #item.valid_stock="{ item }">
-          <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
+          <VChip
+            :color="(item.stock_calculado || 0) > 0 ? 'success' : 'error'"
+            size="x-small"
+            label
+            variant="flat"
+            class="font-weight-black"
+          >
+            {{ item.stock_calculado || 0 }} UNDS
+          </VChip>
         </template>
 
         <template #item.next_expiration="{ item }">
-          <span>{{ nextExpirationDate(item) }}</span>
+          <span class="text-caption font-weight-black text-high-emphasis">
+            <VIcon icon="tabler-calendar" size="14" class="me-1 text-warning" />
+            {{ nextExpirationDate(item) }}
+          </span>
         </template>
 
         <template #item.origin="{ item }">
@@ -449,31 +461,42 @@ const nextExpirationDate = (product) => {
                 class="flex-shrink-0 mt-1"
               />
               <div class="flex-grow-1 min-width-0">
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
                   <span class="text-primary mr-1">#{{ item.id }}</span>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.name }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-medium-emphasis font-weight-medium">{{ item.active_ingredient }}</span>
-                  <span v-if="item.laboratory" class="text-disabled">|</span>
-                  <span v-if="item.laboratory" class="text-primary font-weight-bold">{{ item.laboratory.name }}</span>
+                  <span class="text-medium-emphasis font-weight-medium truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 100px;">
+                    {{ item.laboratory?.name || 'S/L' }}
+                  </span>
                 </div>
               </div>
             </div>
 
             <VDivider class="my-2 border-opacity-10" />
 
-            <div class="d-flex justify-space-between align-center px-1 mb-2">
+            <div class="bg-var-theme-background-light px-3 py-2 rounded mb-3 border-dashed-thin d-flex justify-space-between align-center">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock</span>
-                <span class="text-xs font-weight-black" :class="item.stock_calculado > 0 ? 'text-success' : 'text-error'">
-                  {{ item.stock_calculado || 0 }} <small>UNDS</small>
-                </span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock</span>
+                <VChip
+                  :color="(item.stock_calculado || 0) > 0 ? 'success' : 'error'"
+                  size="x-small"
+                  label
+                  variant="flat"
+                  class="font-weight-black mt-1"
+                >
+                  {{ item.stock_calculado || 0 }} UNDS
+                </VChip>
               </div>
               <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Expl.</span>
-                <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Próx. Exp.</span>
+                <span class="text-xs font-weight-black text-high-emphasis mt-1">
+                  <VIcon icon="tabler-calendar" size="12" class="me-1 text-warning" />
+                  {{ nextExpirationDate(item) }}
+                </span>
               </div>
             </div>
 
@@ -605,5 +628,13 @@ const nextExpirationDate = (product) => {
 
 .bg-var-theme-background {
   background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.bg-var-theme-background-light {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 </style>

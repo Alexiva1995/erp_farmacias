@@ -404,7 +404,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <VCard min-height="280" class="d-flex flex-column rounded-xl elevation-2">
+  <VCard min-height="280" border variant="flat" class="d-flex flex-column rounded-lg elevation-1">
     <VCardText class="d-flex flex-column pb-0 mb-4">
       <VRow>
         <VCol cols="12">
@@ -570,24 +570,26 @@ onMounted(() => {
                 </div>
               </template>
 
-              <VListItemTitle class="font-weight-medium mx-3">
-                <div class="d-flex align-center flex-wrap gap-2">
-                  <span class="text-subtitle-2 font-weight-950 text-high-emphasis">
-                    {{ product.title }}
-                  </span>
+              <VListItemTitle class="mx-3">
+                <div class="d-flex align-center gap-1 mb-0 pb-0">
+                  <span class="text-primary font-weight-black text-xs">#{{ product.id }}</span>
+                  <span class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight">{{ (product.title || '').toUpperCase() }}</span>
                   <VChip
                     v-if="product.discount_percentage > 0"
                     color="error"
                     size="x-small"
                     variant="flat"
-                    class="font-weight-black"
+                    class="ms-1 font-weight-black"
                   >
                     {{ parseFloat(product.discount_percentage) }}%
-                    {{ product.discount_type ? `(${product.discount_type})` : "" }}
                   </VChip>
                 </div>
-                <div class="text-super-xs text-medium-emphasis font-weight-bold">
-                  {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
+                <div class="d-flex align-center gap-1 text-super-xs mt-0 pt-0">
+                  <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ product.active_ingredient || '—' }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                    {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
+                  </span>
                 </div>
               </VListItemTitle>
 

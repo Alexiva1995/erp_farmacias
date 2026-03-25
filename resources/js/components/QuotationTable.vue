@@ -101,7 +101,7 @@ const handleMobilePageChange = (newPage) => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="rounded-xl overflow-hidden elevation-2">
+  <VCard variant="flat" border class="rounded-lg overflow-hidden elevation-1">
     <!-- Vista de Escritorio -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -132,12 +132,17 @@ const handleMobilePageChange = (newPage) => {
 
         <template #item.name="{ item }">
           <div class="d-flex flex-column py-2">
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase leading-tight">
-              {{ item.name }}
+            <div class="d-flex align-center gap-1 mb-0 pb-0">
+              <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
+              <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ item.name.toUpperCase() }}</span>
               <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-bold">IVA</VChip>
               <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 font-weight-bold">COL</VChip>
-            </span>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.active_ingredient }}</span>
+            </div>
+            <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
+              <span class="text-disabled" style="font-size: 0.75rem !important;">{{ item.active_ingredient || '—' }}</span>
+              <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
+              <span class="text-primary font-weight-bold uppercase" style="font-size: 0.75rem !important;">{{ item.laboratory?.name || 'S/L' }}</span>
+            </div>
           </div>
         </template>
 
@@ -194,7 +199,7 @@ const handleMobilePageChange = (newPage) => {
     </div>
 
     <!-- Vista de Móvil (Cards) -->
-    <div class="d-block d-md-none pa-3 bg-light">
+    <div class="d-block d-md-none pa-3">
       <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-3" />
       
       <div v-if="props.products.length === 0 && !props.loading" class="text-center py-10 text-disabled">
@@ -222,17 +227,22 @@ const handleMobilePageChange = (newPage) => {
               </VChip>
             </div>
 
-            <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-1">
-              {{ item.name }}
-            </h3>
+            <div class="d-flex align-center gap-1 mb-1">
+              <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
+              <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
+                {{ item.name.toUpperCase() }}
+              </h3>
+            </div>
             
-            <div class="text-super-xs text-disabled font-weight-bold uppercase mb-3">
-              {{ item.active_ingredient }} <span class="mx-1">•</span> {{ item.laboratory?.name || 'GENÉRICO' }}
+            <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mb-3">
+              <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '—' }}</span>
+              <span class="text-disabled">|</span>
+              <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
             </div>
             
             <div class="d-flex gap-1 mb-3">
-              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="flat" class="font-weight-black">IVA</VChip>
-              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="flat" class="font-weight-black">COL</VChip>
+              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="flat" class="font-weight-black px-2 shadow-sm">IVA</VChip>
+              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="flat" class="font-weight-black px-2 shadow-sm">COL</VChip>
             </div>
 
             <VDivider class="my-3 border-opacity-10" />
@@ -313,7 +323,7 @@ const handleMobilePageChange = (newPage) => {
 }
 
 .premium-mobile-card {
-  border-radius: 16px !important;
+  border-radius: 8px !important;
   background: white;
   transition: all 0.2s ease;
 }
@@ -345,11 +355,10 @@ const handleMobilePageChange = (newPage) => {
 }
 
 .quotation-table-premium :deep(thead th) {
-  background-color: rgba(var(--v-theme-primary), 0.02) !important;
+  background-color: white !important;
   font-size: 0.75rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
 }
 
 .leading-tight {
