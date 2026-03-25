@@ -1,14 +1,16 @@
 <script setup>
-import { ref } from 'vue';
+// Filtros Estado de Resultados (Income Statement)
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import { computed } from "vue";
 
 const props = defineProps({
   startDate: { type: String, default: null },
   endDate:   { type: String, default: null },
 });
 
-const emit = defineEmits(['update:startDate', 'update:endDate', 'clear']);
+const emit = defineEmits(["update:startDate", "update:endDate", "clear"]);
 
-const isFiltersVisible = ref(false);
+const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
 
 function setQuickFilter(days) {
   const today = new Date();
@@ -35,120 +37,70 @@ function setQuickFilter(days) {
 </script>
 
 <template>
-  <div class="income-statement-filters mb-6">
-    <VCard class="rounded-xl border shadow-sm overflow-hidden bg-surface">
-      <!-- Header / Barra de Búsqueda Persistente -->
-      <div class="pa-4 d-flex align-center flex-wrap gap-4">
-        <div class="d-flex align-center gap-2 flex-grow-1">
-          <VAvatar color="primary" variant="tonal" size="40" class="rounded-lg">
-            <VIcon icon="tabler-filter" size="22" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-black leading-none">Filtros</span>
-            <span class="text-super-xs text-disabled font-weight-bold uppercase mt-1">Refina los resultados del periodo</span>
-          </div>
-        </div>
-
-        <div class="d-flex align-center gap-2">
-          <VBtn
-            variant="tonal"
-            :color="isFiltersVisible ? 'primary' : 'secondary'"
-            size="small"
-            class="rounded-lg font-weight-black"
-            @click="isFiltersVisible = !isFiltersVisible"
-          >
-            <VIcon :icon="isFiltersVisible ? 'tabler-chevron-up' : 'tabler-adjustments-horizontal'" start size="18" />
-            {{ isFiltersVisible ? 'Ocultar Filtros' : 'Filtros Avanzados' }}
-          </VBtn>
-          
-          <VBtn 
-            icon="tabler-refresh" 
-            variant="text" 
-            color="secondary" 
-            size="small" 
-            class="rounded-lg"
-            @click="$emit('clear')"
-          />
-        </div>
+  <AppFilterBase
+    :search="''"
+    :has-advanced-filters="hasAdvancedFilters"
+    search-placeholder="Filtros del período..."
+    @clear="emit('clear')"
+  >
+    <!-- Para IncomeStatement no hay buscador de texto, usamos slot search para fechas y quick actions -->
+    <template #search>
+      <div class="d-flex align-center gap-2 flex-grow-1 min-width-0 w-100">
+        <!-- Vence Desde -->
+        <AppDateTimePicker
+          :model-value="props.startDate"
+          placeholder="Desde"
+          clearable
+          density="compact"
+          hide-details
+          class="flex-grow-1"
+          style="min-width: 130px;"
+          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          prepend-inner-icon="tabler-calendar-event"
+          @update:model-value="emit('update:startDate', $event)"
+        />
+        
+        <span class="text-disabled d-none d-sm-inline">—</span>
+        
+        <!-- Vence Hasta -->
+        <AppDateTimePicker
+          :model-value="props.endDate"
+          placeholder="Hasta"
+          clearable
+          density="compact"
+          hide-details
+          class="flex-grow-1"
+          style="min-width: 130px;"
+          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          prepend-inner-icon="tabler-calendar-event"
+          @update:model-value="emit('update:endDate', $event)"
+        />
       </div>
+    </template>
 
-      <!-- Panel Expandible de Filtros Avanzados -->
-      <VExpandTransition>
-        <div v-show="isFiltersVisible">
-          <VDivider />
-          <div class="pa-5 bg-surface-variant-light">
-            <VRow>
-              <VCol cols="12" md="4">
-                <div class="d-flex flex-column gap-1 mb-4">
-                  <span class="text-super-xs font-weight-black text-primary uppercase">Rango de Fecha Personalizado</span>
-                  <div class="d-flex gap-2 align-center mt-1">
-                    <AppDateTimePicker
-                      :model-value="props.startDate"
-                      placeholder="Desde"
-                      clearable
-                      class="premium-input-compact"
-                      :config="{ altInput: true, altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
-                      @update:model-value="$emit('update:startDate', $event)"
-                    />
-                    <span class="text-disabled">—</span>
-                    <AppDateTimePicker
-                      :model-value="props.endDate"
-                      placeholder="Hasta"
-                      clearable
-                      class="premium-input-compact"
-                      :config="{ altInput: true, altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
-                      @update:model-value="$emit('update:endDate', $event)"
-                    />
-                  </div>
-                </div>
-              </VCol>
-
-              <VCol cols="12" md="8">
-                <span class="text-super-xs font-weight-black text-primary uppercase d-block mb-2">Accesos Rápidos</span>
-                <div class="d-flex flex-wrap gap-2">
-                  <VBtn
-                    v-for="opt in [
-                      { label: 'Todo', value: 'all' },
-                      { label: '15 días', value: 15 },
-                      { label: '30 días', value: 30 },
-                      { label: '60 días', value: 60 },
-                      { label: 'Mes Actual', value: 'current_month' },
-                      { label: 'Mes Pasado', value: 'last_month' }
-                    ]"
-                    :key="opt.value"
-                    variant="tonal"
-                    size="small"
-                    color="primary"
-                    class="rounded-lg font-weight-bold"
-                    @click="setQuickFilter(opt.value)"
-                  >
-                    {{ opt.label }}
-                  </VBtn>
-                </div>
-              </VCol>
-            </VRow>
-          </div>
-        </div>
-      </VExpandTransition>
-    </VCard>
-  </div>
+    <template #search-extra>
+      <!-- Menú de Accesos Rápidos -->
+      <VMenu location="bottom end">
+        <template #activator="{ props: menuProps }">
+          <VBtn
+            v-bind="menuProps"
+            variant="tonal"
+            color="primary"
+            class="d-none d-md-flex rounded-lg h-100"
+            prepend-icon="tabler-calendar-time"
+          >
+            Rápido
+          </VBtn>
+        </template>
+        <VList density="compact">
+          <VListItem @click="setQuickFilter('all')"><VListItemTitle>Todo</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter(15)"><VListItemTitle>15 días</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter(30)"><VListItemTitle>30 días</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter(60)"><VListItemTitle>60 días</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('current_month')"><VListItemTitle>Mes Actual</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('last_month')"><VListItemTitle>Mes Pasado</VListItemTitle></VListItem>
+        </VList>
+      </VMenu>
+    </template>
+  </AppFilterBase>
 </template>
-
-<style scoped>
-.text-super-xs {
-  font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-}
-
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.05);
-}
-
-:deep(.premium-input-compact) {
-  .v-field__input {
-    font-size: 0.85rem !important;
-    min-block-size: 38px !important;
-    padding-block: 0 !important;
-  }
-}
-</style>

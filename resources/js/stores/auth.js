@@ -21,20 +21,29 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchUser() {
-    try {
-      const response = await axios.get('/user')
-      user.value = response.data
-      updateAbility(user.value);
-    } catch (error) {
-      user.value = null;
-      updateAbility(null);
-      // Solo mostrar error si no es un 401 (no autenticado), que es esperado
-      if (error.response?.status !== 401) {
-        console.error('No se pudo obtener el usuario.', error)
+    let retries = 3;
+    while (retries >= 0) {
+      try {
+        const response = await axios.get('/user');
+        user.value = response.data;
+        updateAbility(user.value);
+        break;
+      } catch (error) {
+        if (error.response?.status === 401 || error.response?.status === 419) {
+          user.value = null;
+          updateAbility(null);
+          break; // Confirmado no autenticado
+        } else if (retries > 0) {
+          console.warn(`Error al obtener usuario. Reintentos restantes: ${retries}. (Posible bloqueo por múltiples pestañas)`, error);
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          retries--;
+        } else {
+          console.error('Fallo definitivo al obtener el usuario.', error);
+          break; // Fin de reintentos
+        }
       }
-    } finally {
-        isLoaded.value = true;
     }
+    isLoaded.value = true;
   }
 
   async function logout() {
