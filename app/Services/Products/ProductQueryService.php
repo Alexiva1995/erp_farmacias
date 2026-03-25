@@ -190,6 +190,7 @@ class ProductQueryService
         $orderBy = in_array(strtolower($orderBy), ['asc', 'desc']) ? strtolower($orderBy) : 'asc';
 
         switch ($sortBy) {
+            case 'laboratory':
             case 'laboratory.name':
                 return $query->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
                     ->orderBy('laboratories.name', $orderBy);
