@@ -789,4 +789,85 @@ class InventoryCycleActionService
             }
         });
     }
+
+    public function updateDiscrepancy($model, $newDiscrepancy): array
+    {
+        return DB::transaction(function () use ($model, $newDiscrepancy) {
+            try {
+                $oldDiscrepancy = $model->discrepancy;
+                $difference = $newDiscrepancy - $oldDiscrepancy;
+
+                if ($difference === 0) {
+                    return [
+                        'success' => true,
+                        'message' => 'No hay cambios en la discrepancia.',
+                        'data' => $model
+                    ];
+                }
+
+                // Actualizar el registro del conteo
+                $model->discrepancy = $newDiscrepancy;
+                $model->counted_quantity = $model->system_quantity + $newDiscrepancy;
+                $model->save();
+
+                // Ajustar el stock en los lotes
+                $product = $model->product;
+                
+                if ($difference > 0) {
+                    // Sobrante adicional o reducción de faltante: sumamos al stock
+                    $lot = $product->lots()
+                        ->where('expiration_date', '>=', now())
+                        ->orderBy('expiration_date', 'asc')
+                        ->first();
+
+                    if (!$lot) {
+                        $lot = $product->lots()->orderBy('created_at', 'desc')->first();
+                    }
+
+                    if ($lot) {
+                        $lot->quantity += $difference;
+                        $lot->save();
+                    }
+                } else {
+                    // Faltante adicional o reducción de sobrante: restamos del stock
+                    $reductionLeft = abs($difference);
+                    $lots = $product->lots()
+                        ->where('quantity', '>', 0)
+                        ->orderBy('expiration_date', 'asc')
+                        ->get();
+
+                    foreach ($lots as $lot) {
+                        if ($reductionLeft <= 0) break;
+
+                        $toReduce = min($lot->quantity, $reductionLeft);
+                        $lot->quantity -= $toReduce;
+                        $lot->save();
+                        $reductionLeft -= $toReduce;
+                    }
+
+                    if ($reductionLeft > 0) {
+                        $lastLot = $product->lots()->orderBy('expiration_date', 'desc')->first();
+                        if ($lastLot) {
+                            $lastLot->quantity -= $reductionLeft;
+                            $lastLot->save();
+                        }
+                    }
+                }
+
+                return [
+                    'success' => true,
+                    'message' => 'Discrepancia actualizada y stock ajustado correctamente.',
+                    'data' => $model
+                ];
+
+            } catch (\Exception $e) {
+                Log::error('Error en updateDiscrepancy', [
+                    'model_id' => $model->id,
+                    'new_discrepancy' => $newDiscrepancy,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
+            }
+        });
+    }
 }
