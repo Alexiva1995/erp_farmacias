@@ -16,12 +16,12 @@ const emit = defineEmits([
 ]);
 
 const headers = [
-  { 
-    title: "ID", 
-    key: "id", 
+  {
+    title: "ID",
+    key: "id",
     width: "10%",
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
-    headerClass: "d-none d-sm-table-cell"
+    headerClass: "d-none d-sm-table-cell",
   },
   { title: "Nombre", key: "name" },
   { title: "Acción", key: "actions", sortable: false, align: "end" },
@@ -33,7 +33,7 @@ const updateOptions = (options) => {
 </script>
 
 <template>
-  <VCard>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Desktop Table -->
     <div class="d-none d-sm-block">
       <VDataTableServer
@@ -44,9 +44,14 @@ const updateOptions = (options) => {
         :items-per-page="itemsPerPage"
         :page="page"
         item-value="id"
-        class="text-no-wrap"
+        class="text-no-wrap premium-table"
         @update:options="updateOptions"
       >
+        <!-- ID -->
+        <template #item.id="{ item }">
+          <span class="font-weight-black text-primary">{{ item.id }}</span>
+        </template>
+
         <!-- Acciones -->
         <template #item.actions="{ item }">
           <div class="d-flex gap-1 justify-end">
@@ -72,17 +77,19 @@ const updateOptions = (options) => {
       <div v-if="loading && groups.length === 0" class="pa-5 text-center">
         <VProgressCircular indeterminate color="primary" />
       </div>
-      
+
       <div class="pa-2">
         <VCard
           v-for="item in groups"
           :key="item.id"
           variant="flat"
-          class="group-mobile-card border mb-2 overflow-hidden"
+          class="group-mobile-card border shadow-sm mb-2 overflow-hidden"
         >
           <div class="pa-3">
-            <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate">
-              <span class="text-primary">#{{ item.id }}</span>
+            <h3
+              class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
+            >
+              <span class="text-primary">{{ item.id }}</span>
               <span class="mx-1 text-disabled">|</span>
               {{ item.name }}
             </h3>
@@ -148,5 +155,23 @@ const updateOptions = (options) => {
 .group-mobile-card {
   border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
+}
+
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-high-emphasis-opacity)
+  ) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 </style>
