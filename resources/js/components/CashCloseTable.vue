@@ -1,5 +1,8 @@
 <script setup>
 import { formatDate, formatPrice } from "@/utils/formatters";
+import { ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -9,7 +12,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "delete"]);
+const emit = defineEmits(["update:options", "delete", "refresh"]);
 
 const headers = [
   { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
@@ -21,6 +24,44 @@ const headers = [
   { title: "Monto", key: "amount", align: "end", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
+
+const editingId = ref(null);
+const editingValue = ref(0);
+const isSaving = ref(false);
+
+const startEdit = (item) => {
+  editingId.value = item.id;
+  editingValue.value = item.discrepancy;
+};
+
+const cancelEdit = () => {
+  editingId.value = null;
+  editingValue.value = 0;
+};
+
+const saveEdit = async (item) => {
+  if (isSaving.value) return;
+  
+  isSaving.value = true;
+  try {
+    const response = await axios.patch(`/inventory/count/${item.sourceType}/${item.id}/discrepancy`, {
+      discrepancy: editingValue.value
+    });
+    
+    if (response.data.success) {
+      toast.success("Discrepancia actualizada correctamente.");
+      emit("refresh");
+      cancelEdit();
+    } else {
+      toast.error(response.data.message || "Error al actualizar.");
+    }
+  } catch (error) {
+    console.error("Error al guardar discrepancia:", error);
+    toast.error(error.response?.data?.message || "Error al guardar los cambios.");
+  } finally {
+    isSaving.value = false;
+  }
+};
 
 const handleDelete = (item) => {
   emit("delete", item);
@@ -72,7 +113,19 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.discrepancy="{ item }">
+          <div v-if="editingId === item.id" class="d-flex align-center justify-center gap-1" style="inline-size: 150px;">
+            <AppTextField
+              v-model.number="editingValue"
+              type="number"
+              density="compact"
+              hide-details
+              autofocus
+              @keyup.enter="saveEdit(item)"
+              @keyup.esc="cancelEdit"
+            />
+          </div>
           <VChip
+            v-else
             :color="item.discrepancy > 0 ? 'success' : 'error'"
             label
             size="x-small"
@@ -111,18 +164,42 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.actions="{ item }">
-          <IconBtn
-            v-if="!item.hasTraceability"
-            color="error"
-            size="small"
-            @click="handleDelete(item)"
-          >
-            <VIcon icon="tabler-trash" />
-            <VTooltip activator="parent">Eliminar registro</VTooltip>
-          </IconBtn>
-          <VIcon v-else icon="tabler-info-circle" size="small" color="secondary">
-            <VTooltip activator="parent">Tiene movimientos en trazabilidad</VTooltip>
-          </VIcon>
+          <div class="d-flex align-center justify-center gap-1">
+            <template v-if="editingId === item.id">
+              <IconBtn color="success" size="small" :loading="isSaving" @click="saveEdit(item)">
+                <VIcon icon="tabler-check" />
+                <VTooltip activator="parent">Guardar</VTooltip>
+              </IconBtn>
+              <IconBtn color="secondary" size="small" @click="cancelEdit">
+                <VIcon icon="tabler-x" />
+                <VTooltip activator="parent">Cancelar</VTooltip>
+              </IconBtn>
+            </template>
+            <template v-else>
+              <IconBtn
+                v-if="$can('manage', 'admin')"
+                color="primary"
+                size="small"
+                @click="startEdit(item)"
+              >
+                <VIcon icon="tabler-edit" />
+                <VTooltip activator="parent">Editar discrepancia</VTooltip>
+              </IconBtn>
+
+              <IconBtn
+                v-if="!item.hasTraceability"
+                color="error"
+                size="small"
+                @click="handleDelete(item)"
+              >
+                <VIcon icon="tabler-trash" />
+                <VTooltip activator="parent">Eliminar registro</VTooltip>
+              </IconBtn>
+              <VIcon v-else icon="tabler-info-circle" size="small" color="secondary">
+                <VTooltip activator="parent">Tiene movimientos en trazabilidad</VTooltip>
+              </VIcon>
+            </template>
+          </div>
         </template>
       </VDataTableServer>
     </div>
@@ -155,25 +232,57 @@ const handleMobilePageChange = (newPage) => {
                   <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.product.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
-              <IconBtn
-                v-if="!item.hasTraceability"
-                variant="tonal"
-                color="error"
-                size="32"
-                class="rounded"
-                @click="handleDelete(item)"
-              >
-                <VIcon icon="tabler-trash" size="18" />
-              </IconBtn>
+              <div class="d-flex align-center gap-1">
+                <template v-if="editingId === item.id">
+                  <IconBtn color="success" variant="tonal" size="32" :loading="isSaving" @click="saveEdit(item)">
+                    <VIcon icon="tabler-check" size="18" />
+                  </IconBtn>
+                  <IconBtn color="secondary" variant="tonal" size="32" @click="cancelEdit">
+                    <VIcon icon="tabler-x" size="18" />
+                  </IconBtn>
+                </template>
+                <template v-else>
+                  <IconBtn
+                    v-if="$can('manage', 'admin')"
+                    variant="tonal"
+                    color="primary"
+                    size="32"
+                    class="rounded"
+                    @click="startEdit(item)"
+                  >
+                    <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                  <IconBtn
+                    v-if="!item.hasTraceability"
+                    variant="tonal"
+                    color="error"
+                    size="32"
+                    class="rounded"
+                    @click="handleDelete(item)"
+                  >
+                    <VIcon icon="tabler-trash" size="18" />
+                  </IconBtn>
+                </template>
+              </div>
             </div>
 
             <VDivider class="my-3 border-opacity-10" />
 
             <!-- Resumen de Cantidades y Montos -->
             <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column" style="min-inline-size: 80px;">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Diferencia</span>
+                <div v-if="editingId === item.id" class="mt-1">
+                  <AppTextField
+                    v-model.number="editingValue"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    @keyup.enter="saveEdit(item)"
+                  />
+                </div>
                 <VChip
+                  v-else
                   :color="item.discrepancy > 0 ? 'success' : 'error'"
                   size="x-small"
                   label

@@ -418,6 +418,7 @@ const handleDeleteItem = async (item) => {
       :page="page"
       @update:options="updateTableOptions"
       @delete="handleDeleteItem"
+      @refresh="fetchData"
     />
   </div>
 </template>

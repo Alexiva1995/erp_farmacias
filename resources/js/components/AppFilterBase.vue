@@ -25,6 +25,9 @@ const props = defineProps({
 
   // Card flat (sin elevación)
   flat: { type: Boolean, default: false },
+
+  // Controlar visibilidad de filtros avanzados
+  showAdvanced: { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -115,6 +118,7 @@ const handleClear = () => {
 
           <!-- Toggle panel avanzado -->
           <VBtn
+            v-if="showAdvanced"
             icon
             variant="tonal"
             :color="isPanelVisible ? 'primary' : 'secondary'"

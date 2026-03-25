@@ -789,4 +789,41 @@ class InventoryCycleActionService
             }
         });
     }
+
+    public function updateDiscrepancy($model, $newDiscrepancy): array
+    {
+        return DB::transaction(function () use ($model, $newDiscrepancy) {
+            try {
+                $oldDiscrepancy = $model->discrepancy;
+                $difference = $newDiscrepancy - $oldDiscrepancy;
+
+                if ($difference === 0) {
+                    return [
+                        'success' => true,
+                        'message' => 'No hay cambios en la discrepancia.',
+                        'data' => $model
+                    ];
+                }
+
+                // Actualizar el registro del conteo
+                $model->discrepancy = $newDiscrepancy;
+                $model->counted_quantity = $model->system_quantity + $newDiscrepancy;
+                $model->save();
+
+                return [
+                    'success' => true,
+                    'message' => 'Discrepancia actualizada correctamente (solo registro).',
+                    'data' => $model
+                ];
+
+            } catch (\Exception $e) {
+                Log::error('Error en updateDiscrepancy', [
+                    'model_id' => $model->id,
+                    'new_discrepancy' => $newDiscrepancy,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
+            }
+        });
+    }
 }

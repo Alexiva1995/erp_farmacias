@@ -816,4 +816,56 @@ class InventoryCycleController extends Controller
             }
         });
     }
+
+    public function updateDiscrepancy(Request $request, $sourceType, $id)
+    {
+        // Solo administradores pueden editar discrepancias en el cierre
+        if ((int) Auth::user()->role_id !== 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permisos para realizar esta acción.'
+            ], 403);
+        }
+
+        $request->validate([
+            'discrepancy' => 'required|numeric'
+        ]);
+
+        try {
+            $modelClass = null;
+            switch ($sourceType) {
+                case 'product_count':
+                    $modelClass = \App\Models\ProductCount::class;
+                    break;
+                case 'invoice_count':
+                    $modelClass = \App\Models\InvoiceCount::class;
+                    break;
+                case 'sale_count':
+                    $modelClass = \App\Models\SaleCount::class;
+                    break;
+                default:
+                    return response()->json(['success' => false, 'message' => 'Tipo de fuente no válido.'], 400);
+            }
+
+            $record = $modelClass::findOrFail($id);
+            $result = $this->inventoryCycleActionService->updateDiscrepancy($record, $request->input('discrepancy'));
+
+            if ($result['success']) {
+                return response()->json($result);
+            } else {
+                return response()->json($result, 400);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error en updateDiscrepancy Controller', [
+                'sourceType' => $sourceType,
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

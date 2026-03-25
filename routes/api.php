@@ -195,6 +195,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post('{countId}/process', [InventoryCycleController::class, 'processCountAction']);
             Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
             Route::delete('{sourceType}/{id}', [InventoryCycleController::class, 'deleteCount']);
+            Route::patch('{sourceType}/{id}/discrepancy', [InventoryCycleController::class, 'updateDiscrepancy']);
         });
         Route::prefix("statistics")->group(function () {
             Route::get("/", [InventoryCycleController::class, "getCountStatistics"])->name("inventory.statistics");

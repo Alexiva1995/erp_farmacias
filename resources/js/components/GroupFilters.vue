@@ -20,6 +20,7 @@ const emit = defineEmits([
   <AppFilterBase
     :search="props.searchQuery"
     :show-add="true"
+    :show-advanced="false"
     add-button-text="Añadir Grupo"
     search-placeholder="Buscar por nombre, descripción..."
     @update:search="emit('update:searchQuery', $event)"
