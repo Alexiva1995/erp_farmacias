@@ -5,6 +5,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 const sales = ref([]);
 const totalSales = ref(0);
@@ -81,6 +82,10 @@ watch([searchQuery, startDate, endDate, movementType], () => {
 });
 
 onMounted(() => {
+  const route = useRoute();
+  if (route.query.q) {
+    searchQuery.value = route.query.q;
+  }
   fetchSales();
 });
 

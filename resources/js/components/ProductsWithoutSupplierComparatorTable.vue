@@ -319,7 +319,13 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
               />
               <div class="d-flex flex-column overflow-hidden">
                 <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
-                  <span class="text-primary mr-2">{{ item.id }}</span>
+                  <a
+                    :href="'/inventory/traceability?q=' + item.id"
+                    target="_blank"
+                    class="text-decoration-none text-primary mr-2"
+                  >
+                    {{ item.id }}
+                  </a>
                   <span class="text-disabled mr-2">|</span>
                   {{ item.name.toUpperCase() }}
                   <span v-if="item.is_colombian_origin == 1" class="text-xs opacity-60 ml-1">(COL)</span>
@@ -419,7 +425,16 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                     {{ item.name }}
                     <span v-if="item.is_colombian_origin == 1" class="text-xs opacity-60 ml-1">(COL)</span>
                   </span>
-                  <span class="text-xs text-disabled d-block mt-1">#{{ item.id }} • {{ item.laboratory?.name }}</span>
+                  <span class="text-xs text-disabled d-block mt-1">
+                    #<a
+                      :href="'/inventory/traceability?q=' + item.id"
+                      target="_blank"
+                      class="text-decoration-none text-primary font-weight-bold"
+                    >
+                      {{ item.id }}
+                    </a>
+                    • {{ item.laboratory?.name }}
+                  </span>
                 </div>
                 <VChip
                   :color="roundIaAnalysis(item.solicitar ?? 0) > 0 ? 'success' : 'error'"

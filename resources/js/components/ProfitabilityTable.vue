@@ -189,16 +189,16 @@ const getProfitabilityPercentage = (item) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span
+          <a
+            :href="'/inventory/traceability?q=' + item.id"
+            target="_blank"
+            class="text-decoration-none font-weight-black"
             :class="[
-              'font-weight-black',
-              item.profitability?.is_locked == '1'
-                ? 'text-error'
-                : 'text-primary',
+              item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary',
             ]"
           >
             {{ item.id }}
-          </span>
+          </a>
         </template>
 
         <template #item.name="{ item }">
@@ -355,7 +355,18 @@ const getProfitabilityPercentage = (item) => {
 
           <div class="d-flex flex-column flex-grow-1 min-width-0">
             <span class="text-base font-weight-black text-high-emphasis text-uppercase text-truncate">
-              {{ item.id }} | {{ item.name }}
+              <a
+                :href="'/inventory/traceability?q=' + item.id"
+                target="_blank"
+                class="text-decoration-none font-weight-black"
+                :class="[
+                  item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary',
+                ]"
+              >
+                {{ item.id }}
+              </a>
+              <span class="mx-1 text-disabled">|</span>
+              {{ item.name }}
             </span>
             <div class="d-flex align-center gap-1 text-super-xs mt-1">
               <span class="text-disabled truncate">{{ item.active_ingredient }}</span>

@@ -369,7 +369,13 @@ const headers = computed(() =>
             <div class="d-flex align-center py-2">
               <div class="d-flex flex-column overflow-hidden">
                 <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
-                  <span class="text-primary mr-2">{{ item.id }}</span>
+                  <a
+                    :href="'/inventory/traceability?q=' + item.id"
+                    target="_blank"
+                    class="text-decoration-none text-primary mr-2"
+                  >
+                    {{ item.id }}
+                  </a>
                   <span class="text-disabled mr-2">|</span>
                   {{ item.name.toUpperCase() }}
                 </span>
