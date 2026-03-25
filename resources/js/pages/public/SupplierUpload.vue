@@ -38,7 +38,11 @@ const handleUpload = async () => {
   isError.value = false
 
   const formData = new FormData()
-  formData.append('file', file.value)
+  if (file.value && Array.isArray(file.value)) {
+    formData.append('file', file.value[0])
+  } else {
+    formData.append('file', file.value)
+  }
   formData.append('exchange_rate', exchangeRate.value)
 
   try {

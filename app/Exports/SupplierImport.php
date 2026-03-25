@@ -64,11 +64,41 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             if ($value === null || $value === '') {
                 return null;
             }
+
+            // 1. Quitar todo lo que no sea dígito, coma, punto o signo menos
             $clean = preg_replace('/[^\d,.\-]/', '', (string) $value);
-            if (preg_match('/[a-z]/i', $clean)) {
-                return null;
+
+            // 2. Si empieza por puntos o comas (sobras de prefijos como Bs.F.), quitarlos del inicio
+            $clean = ltrim($clean, '.,');
+
+            // 3. Identificar cuál es el separador decimal
+            $lastComma = strrpos($clean, ',');
+            $lastDot = strrpos($clean, '.');
+
+            if ($lastComma !== false && $lastDot !== false) {
+                if ($lastComma > $lastDot) {
+                    // Coma es decimal (ej: 1.234,56)
+                    $clean = str_replace('.', '', $clean);
+                    $clean = str_replace(',', '.', $clean);
+                } else {
+                    // Punto es decimal (ej: 1,234.56)
+                    $clean = str_replace(',', '', $clean);
+                }
+            } elseif ($lastComma !== false) {
+                // Solo hay coma. Si hay más de una, es separador de miles.
+                if (substr_count($clean, ',') > 1) {
+                    $clean = str_replace(',', '', $clean);
+                } else {
+                    // Una sola coma: asumimos decimal
+                    $clean = str_replace(',', '.', $clean);
+                }
+            } elseif ($lastDot !== false) {
+                // Solo hay punto. Si hay más de uno, es separador de miles.
+                if (substr_count($clean, '.') > 1) {
+                    $clean = str_replace('.', '', $clean);
+                }
             }
-            $clean = str_replace(',', '.', $clean);
+
             $float = (float) $clean;
             return is_finite($float) ? $float : null;
         };
