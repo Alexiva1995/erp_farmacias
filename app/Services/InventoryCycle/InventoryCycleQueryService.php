@@ -64,7 +64,7 @@ class InventoryCycleQueryService
                     AND ABS(TIMESTAMPDIFF(SECOND, created_at, pc.updated_at)) < 30
                 ) as has_traceability")
             ])
-            ->when(!$includePending, fn ($q) => $q->where('pc.status', '!=', 'pending'))
+            ->when(!$includePending, fn ($q) => $q->where('pc.status', 'approved'))
             ->when($cycleId, fn ($q) => $q->where('pc.cycle_id', $cycleId));
 
         $invoiceCounts = InvoiceCount::query()
@@ -90,7 +90,7 @@ class InventoryCycleQueryService
                     AND ABS(TIMESTAMPDIFF(SECOND, created_at, ic.updated_at)) < 30
                 ) as has_traceability")
             ])
-            ->when(!$includePending, fn ($q) => $q->where('ic.status', '!=', 'pending'))
+            ->when(!$includePending, fn ($q) => $q->where('ic.status', 'approved'))
             ->when($cycleId, fn ($q) => $q->where('ic.cycle_id', $cycleId));
 
         $saleCounts = SaleCount::query()
@@ -116,7 +116,7 @@ class InventoryCycleQueryService
                     AND ABS(TIMESTAMPDIFF(SECOND, created_at, sc.updated_at)) < 30
                 ) as has_traceability")
             ])
-            ->when(!$includePending, fn ($q) => $q->where('sc.status', '!=', 'pending'))
+            ->when(!$includePending, fn ($q) => $q->where('sc.status', 'approved'))
             ->when($cycleId, fn ($q) => $q->where('sc.cycle_id', $cycleId));
 
         return $productCounts->unionAll($invoiceCounts)->unionAll($saleCounts);

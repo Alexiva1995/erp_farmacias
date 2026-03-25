@@ -43,6 +43,7 @@ const headers = [
   },
   { title: "Producto", key: "name", sortable: true, width: "450px" },
   { title: "Barcode", key: "barcode", sortable: true },
+  { title: "Laboratorio", key: "laboratory", sortable: true },
   {
     title: "Stock",
     key: "valid_stock",
@@ -323,6 +324,11 @@ const nextExpirationDate = (product) => {
                   : 'No hay laboratorios disponibles.'
               "
             />
+          </template>
+          <template v-else>
+            <div class="d-flex align-center gap-2">
+              <span :class="{ 'text-error font-weight-black': !item.laboratory }">{{ item.laboratory?.name || "FALTA" }}</span>
+            </div>
           </template>
         </template>
 

@@ -551,6 +551,9 @@ class InventoryCycleActionService
         $invoiceCount->discrepancy      = $finalDiscrepancy;
         $invoiceCount->status           = 'approved';
         $invoiceCount->supervisor_id    = Auth::id();
+        $invoiceCount->correction_difference = $isCorrection
+            ? abs($invoiceCount->getOriginal('counted_quantity') - $finalQuantity)
+            : 0;
         $invoiceCount->save();
 
         $invoiceCount->load(['product', 'user', 'distributions.productLot']);
@@ -746,6 +749,9 @@ class InventoryCycleActionService
         $saleCount->discrepancy      = $finalDiscrepancy;
         $saleCount->status           = 'approved';
         $saleCount->supervisor_id    = Auth::id();
+        $saleCount->correction_difference = $isCorrection
+            ? abs($saleCount->getOriginal('counted_quantity') - $finalQuantity)
+            : 0;
         $saleCount->save();
 
         $saleCount->load(['product', 'user', 'distributions.productLot']);

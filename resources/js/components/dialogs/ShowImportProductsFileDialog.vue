@@ -59,7 +59,11 @@ const submitForm = async () => {
   if (currency.value !== null && currency.value !== "") {
     form.append("currency", currency.value);
   }
-  form.append("file", file.value);
+  if (file.value && Array.isArray(file.value)) {
+    form.append("file", file.value[0]);
+  } else {
+    form.append("file", file.value);
+  }
 
   try {
     toast.info(
