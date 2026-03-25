@@ -766,7 +766,7 @@
     {
         "supplier_id": "27",
         "type": "ftp",
-        "host": "dronena.com",
+        "host": "ftp.dronena.com",
         "port": null,
         "username": "D719-foraneo",
         "password": "eyJpdiI6Ilc5T1hqTlpzd2N4WUdYWEkzVFBVVkE9PSIsInZhbHVlIjoiQ0ZUbXNwdDllcXRNUENrSDdna3I0UT09IiwibWFjIjoiNTY0OTE4NDhjOWUxMjkwZmM4ZWQ5NGRiNGFmNmZjMmIzNmYxYWM5NWRmOWQ1NzM0MzhkNTgzNDhiNzNkMDI0OCIsInRhZyI6IiJ9",
