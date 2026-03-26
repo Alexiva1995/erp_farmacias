@@ -68,7 +68,7 @@ const headers = [
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3">
-            <VAvatar size="32" color="primary" variant="tonal">
+            <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
               <span class="text-caption font-weight-bold">{{ item.name.charAt(0) }}</span>
             </VAvatar>
             <span class="text-sm font-weight-bold text-high-emphasis">
@@ -114,10 +114,9 @@ const headers = [
           <div class="d-flex flex-column align-end">
             <VChip
               :color="item.debt > 0 ? 'error' : 'success'"
-              label
               size="small"
               variant="flat"
-              class="font-weight-bold"
+              class="font-weight-bold rounded-lg"
             >
               {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
             </VChip>
@@ -158,9 +157,14 @@ const headers = [
 
             <VMenu location="bottom end">
               <template #activator="{ props }">
-                <IconBtn v-bind="props" size="small">
-                  <VIcon icon="tabler-dots-vertical" size="18" />
-                </IconBtn>
+                <VBtn
+                  v-bind="props"
+                  icon="tabler-dots-vertical"
+                  variant="tonal"
+                  color="secondary"
+                  size="30"
+                  class="rounded-circle shadow-sm"
+                />
               </template>
 
               <VList density="compact" min-width="200">
@@ -386,9 +390,10 @@ const headers = [
 
 .line-clamp-1 {
   display: -webkit-box;
-  overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
 }
 
 .bg-light-surface {

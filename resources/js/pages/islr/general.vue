@@ -147,7 +147,7 @@ onMounted(() => {
     <VAlert
       variant="tonal"
       color="info"
-      class="mb-6 rounded-xl border-dashed border-info py-2"
+      class="mb-6 rounded-lg border-dashed border-info py-2"
     >
       <div class="d-flex align-center justify-space-between w-100 px-2">
         <div class="d-flex align-center gap-2">
@@ -175,7 +175,7 @@ onMounted(() => {
     <VRow class="match-height mb-6">
       <!-- Card Renta Bruta -->
       <VCol cols="12" md="4">
-        <VCard class="rounded-xl border-0 premium-summary-card bg-success-gradient overflow-hidden h-100 shadow-md">
+        <VCard class="rounded-lg border-0 premium-summary-card bg-success-gradient overflow-hidden h-100 shadow-md">
           <VCardText class="pa-6 d-flex flex-column align-center text-center">
             <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg">
               <VIcon icon="tabler-cash-banknote" size="24" color="white" />
@@ -197,7 +197,7 @@ onMounted(() => {
 
       <!-- Card Monto con Deducciones -->
       <VCol cols="12" md="4">
-        <VCard class="rounded-xl border-0 premium-summary-card bg-primary-gradient overflow-hidden h-100 shadow-md">
+        <VCard class="rounded-lg border-0 premium-summary-card bg-primary-gradient overflow-hidden h-100 shadow-md">
           <VCardText class="pa-6 d-flex flex-column align-center text-center">
             <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg">
               <VIcon icon="tabler-receipt-2" size="24" color="white" />
@@ -219,7 +219,7 @@ onMounted(() => {
 
       <!-- Card Impuesto Estimado -->
       <VCol cols="12" md="4">
-        <VCard class="rounded-xl border-0 premium-summary-card bg-warning-gradient overflow-hidden h-100 shadow-md pulse-hover">
+        <VCard class="rounded-lg border-0 premium-summary-card bg-warning-gradient overflow-hidden h-100 shadow-md pulse-hover">
           <VCardText class="pa-6 d-flex flex-column align-center text-center">
             <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg shadow-sm">
               <VIcon icon="tabler-calculator-tax" size="24" color="white" />
@@ -244,7 +244,7 @@ onMounted(() => {
     </VRow>
 
     <!-- Detalle Financiero Consolidado -->
-    <VCard class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border-0 shadow-sm overflow-hidden bg-surface">
       <VCardTitle class="pa-4 px-6 d-flex align-center">
         <VAvatar color="secondary" variant="tonal" size="32" class="me-3 rounded-lg">
           <VIcon icon="tabler-report-money" size="18" />
@@ -257,7 +257,7 @@ onMounted(() => {
       <VCardText class="pa-6">
         <VRow :dense="mobile">
           <VCol cols="12" md="4">
-            <div class="d-flex align-center gap-4 pa-4 rounded-xl bg-surface-variant-opacity-2 border border-dashed border-disabled">
+            <div class="d-flex align-center gap-4 pa-4 rounded-lg bg-surface-variant-opacity-2 border border-dashed border-disabled">
               <VAvatar color="success" variant="tonal" size="48" class="rounded-lg">
                 <VIcon icon="tabler-trending-up" size="24" />
               </VAvatar>
@@ -269,7 +269,7 @@ onMounted(() => {
           </VCol>
           
           <VCol cols="12" md="4">
-            <div class="d-flex align-center gap-4 pa-4 rounded-xl bg-surface-variant-opacity-2 border border-dashed border-disabled">
+            <div class="d-flex align-center gap-4 pa-4 rounded-lg bg-surface-variant-opacity-2 border border-dashed border-disabled">
               <VAvatar color="warning" variant="tonal" size="48" class="rounded-lg">
                 <VIcon icon="tabler-receipt" size="24" />
               </VAvatar>
@@ -281,7 +281,7 @@ onMounted(() => {
           </VCol>
 
           <VCol cols="12" md="4">
-            <div class="d-flex align-center gap-4 pa-4 rounded-xl bg-surface-variant-opacity-2 border border-dashed border-disabled">
+            <div class="d-flex align-center gap-4 pa-4 rounded-lg bg-surface-variant-opacity-2 border border-dashed border-disabled">
               <VAvatar color="error" variant="tonal" size="48" class="rounded-lg">
                 <VIcon icon="tabler-scissors" size="24" />
               </VAvatar>

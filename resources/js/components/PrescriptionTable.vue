@@ -120,7 +120,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                   variant="tonal"
                   color="info"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="handleView(item)"
                 />
               </template>
@@ -133,7 +133,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                   variant="tonal"
                   color="primary"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="handleEdit(item)"
                 />
               </template>
@@ -146,7 +146,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                   variant="tonal"
                   color="error"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="handleDelete(item)"
                 />
               </template>
@@ -206,7 +206,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                         variant="tonal"
                         color="info"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="handleView(item.raw)"
                       />
                       <VBtn
@@ -214,7 +214,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                         variant="tonal"
                         color="primary"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="handleEdit(item.raw)"
                       />
                       <VBtn
@@ -222,7 +222,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                         variant="tonal"
                         color="error"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="handleDelete(item.raw)"
                       />
                     </div>

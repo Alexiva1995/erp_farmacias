@@ -152,20 +152,34 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
               variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
               <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
               <VBadge
                 v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
                 color="error"
                 dot
-                offset-x="3"
-                offset-y="-3"
+                offset-x="2"
+                offset-y="-2"
               />
             </VBtn>
 
-            <VDivider vertical class="mx-1 my-2" />
+            <!-- Borrar Productos Antiguos (Movido desde el panel avanzado) -->
+            <VBtn
+              icon
+              variant="tonal"
+              color="error"
+              size="38"
+              class="rounded-circle shadow-sm"
+              @click="emit('delete-old')"
+            >
+              <VIcon icon="tabler-trash" size="20" />
+              <VTooltip activator="parent" location="top">Borrar Productos Antiguos</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
 
             <!-- Limpiar Filtros -->
             <VBtn
@@ -173,9 +187,10 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
               variant="text"
               color="secondary"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="emit('update:search-query', '')"
             >
-              <VIcon icon="tabler-eraser" />
+              <VIcon icon="tabler-eraser" size="20" />
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
           </div>
@@ -269,17 +284,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                 />
               </VCol>
 
-              <VCol cols="12" class="d-flex justify-end mt-2">
-                <VBtn
-                  color="error"
-                  variant="tonal"
-                  size="small"
-                  prepend-icon="tabler-trash"
-                  @click="emit('delete-old')"
-                >
-                  Borrar Antiguos
-                </VBtn>
-              </VCol>
+
             </VRow>
           </div>
         </VExpandTransition>
@@ -379,9 +384,10 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                   <VBtn
                     v-bind="tooltipProps"
                     icon="tabler-trash"
-                    variant="text"
+                    variant="tonal"
                     color="secondary"
                     size="small"
+                    class="rounded-circle shadow-sm"
                     @click.stop="emit('delete', item)"
                   />
                 </template>

@@ -215,7 +215,7 @@ const getRemainingMonths = (item) => {
           :color="getLoanStatus(item).color"
           variant="tonal"
           size="small"
-          class="font-weight-bold"
+          class="font-weight-bold rounded-lg"
         >
           <template #prepend>
             <VIcon :icon="getLoanStatus(item).icon" size="14" class="mr-1" />
@@ -226,33 +226,29 @@ const getRemainingMonths = (item) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex justify-center gap-2">
-          <VTooltip text="Editar">
-            <template #activator="{ props: tooltip }">
-              <VBtn
-                v-bind="tooltip"
-                icon="tabler-edit"
-                variant="tonal"
-                color="warning"
-                size="32"
-                class="rounded-lg"
-                @click="emit('edit-loan', item)"
-              />
-            </template>
-          </VTooltip>
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
+            color="warning"
+            class="rounded-circle shadow-sm"
+            @click="emit('edit-loan', item)"
+          >
+            <VIcon icon="tabler-edit" size="18" />
+            <VTooltip activator="parent" location="top">Editar</VTooltip>
+          </VBtn>
 
-          <VTooltip text="Eliminar">
-            <template #activator="{ props: tooltip }">
-              <VBtn
-                v-bind="tooltip"
-                icon="tabler-trash"
-                variant="tonal"
-                color="error"
-                size="32"
-                class="rounded-lg"
-                @click="emit('delete-loan', item.id)"
-              />
-            </template>
-          </VTooltip>
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
+            color="error"
+            class="rounded-circle shadow-sm"
+            @click="emit('delete-loan', item.id)"
+          >
+            <VIcon icon="tabler-trash" size="18" />
+            <VTooltip activator="parent" location="top">Eliminar</VTooltip>
+          </VBtn>
         </div>
       </template>
 

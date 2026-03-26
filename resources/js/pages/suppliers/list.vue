@@ -21,6 +21,8 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 const searchQuery = ref("");
+const debtFilter = ref(null);
+const minScore = ref(null);
 
 const stats = ref({
   total_debt: 0,
@@ -80,6 +82,8 @@ const fetchSuppliers = async () => {
   loading.value = true;
   const params = {
     q: searchQuery.value,
+    debtStatus: debtFilter.value,
+    minScore: minScore.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
@@ -164,6 +168,8 @@ onMounted(() => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
+  debtFilter.value = null;
+  minScore.value = null;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -342,7 +348,7 @@ const clearFormErrors = () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, debtFilter, minScore],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
@@ -350,7 +356,7 @@ watch(
   { deep: true }
 );
 
-watch([searchQuery], () => {
+watch([searchQuery, debtFilter, minScore], () => {
   page.value = 1;
 });
 
@@ -363,13 +369,35 @@ const updateTableOptions = (options) => {
 </script>
 
 <template>
-  <div class="d-flex flex-column gap-6">
-    <SupplierFilters
-      v-model:searchQuery="searchQuery"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-      @add-supplier="handleAddSupplier"
-    />
+  <div class="suppliers-view px-6 mt-6 pb-12">
+    <!-- === HEADER Y KPIS === -->
+    <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
+      <div class="header-bg pa-6">
+        <div class="d-flex align-center gap-4">
+          <VAvatar size="54" color="white" variant="flat" class="rounded-lg shadow-soft">
+            <VIcon icon="tabler-truck-delivery" color="primary" size="28" />
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+              Gestión de Proveedores
+            </h1>
+            <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+              Directorio y Control Comercial de Abastecimiento
+            </span>
+          </div>
+        </div>
+      </div>
+    </VCard>
+
+    <div class="d-flex flex-column gap-6">
+      <SupplierFilters
+        v-model:searchQuery="searchQuery"
+        v-model:debtFilter="debtFilter"
+        v-model:minScore="minScore"
+        @clear="handleClearFilters"
+        @sort="handleSort"
+        @add-supplier="handleAddSupplier"
+      />
 
     <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
 
@@ -417,5 +445,17 @@ const updateTableOptions = (options) => {
       :supplier="connectionSupplier"
       @saved="fetchSuppliers"
     />
-</div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.header-bg {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
+  border-block-end: 1px solid rgba(255, 255, 255, 10%);
+}
+
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+</style>

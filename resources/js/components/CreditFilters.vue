@@ -12,7 +12,8 @@ const emit = defineEmits(["update:searchQuery", "clear"]);
 <template>
   <AppFilterBase
     :search="props.searchQuery"
-    search-placeholder="Buscar por documento o nombre del cliente..."
+    :show-advanced="false"
+    search-placeholder="Buscar por cliente, identificación o documento..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   />

@@ -401,101 +401,20 @@ watch(
 </script>
 
 <template>
-
   <!-- Contenedor Premium de Filtros -->
-  <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden shadow-sm bg-surface">
-    <VCardText class="pa-4">
-      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
-      <VRow align="center" no-gutters class="gap-3 flex-nowrap">
-        <VCol class="flex-grow-1">
-          <AppTextField
-            v-model="searchQuery"
-            placeholder="Buscar por Identificación, Nombre o Documento..."
-            prepend-inner-icon="tabler-search"
-            clearable
-            hide-details
-            density="compact"
-            class="filter-search-input font-weight-bold"
-          />
-        </VCol>
+  <CreditFilters
+    v-if="activeTab === 0"
+    v-model:search-query="searchQuery"
+    @clear="clearFilters"
+  />
 
-        <VCol cols="auto" class="d-flex gap-2">
-          <VTooltip location="top" text="Filtros Avanzados">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn
-                v-bind="tooltipProps"
-                :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-                variant="tonal"
-                density="comfortable"
-                class="rounded-lg"
-                icon="tabler-filter"
-                @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
-              />
-            </template>
-          </VTooltip>
-
-          <VTooltip location="top" text="Limpiar Filtros">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn
-                v-bind="tooltipProps"
-                color="secondary"
-                variant="tonal"
-                density="comfortable"
-                class="rounded-lg"
-                icon="tabler-trash"
-                @click="clearPaymentFilters"
-              />
-            </template>
-          </VTooltip>
-        </VCol>
-      </VRow>
-
-      <!-- Panel de Filtros Avanzados (Colapsable) -->
-      <VExpandTransition>
-        <div v-show="isAdvancedFiltersVisible">
-          <VRow class="mt-4 px-1 gap-y-4">
-            <VCol cols="12" sm="3">
-              <AppDateTimePicker
-                v-model="dateFilter"
-                placeholder="Fecha"
-                prepend-inner-icon="tabler-calendar"
-                clearable
-                hide-details
-                density="compact"
-                :config="{
-                  altInput: true,
-                  altFormat: 'Y-m-d',
-                  dateFormat: 'Y-m-d',
-                }"
-              />
-            </VCol>
-            <VCol cols="12" sm="3">
-              <VSelect
-                v-model="currencyFilter"
-                placeholder="Moneda"
-                prepend-inner-icon="tabler-coin"
-                :items="['COP', 'USD', 'BS']"
-                clearable
-                hide-details
-                density="compact"
-                variant="outlined"
-              />
-            </VCol>
-            <VCol v-if="activeTab === 1 && !isVendedor" cols="12" sm="3">
-               <AppTextField
-                v-model="clientFilter"
-                placeholder="Filtro ID Cliente"
-                prepend-inner-icon="tabler-user-search"
-                clearable
-                hide-details
-                density="compact"
-              />
-            </VCol>
-          </VRow>
-        </div>
-      </VExpandTransition>
-    </VCardText>
-  </VCard>
+  <CreditPaymentsFilters
+    v-if="activeTab === 1 && !isVendedor"
+    v-model:client="clientFilter"
+    v-model:date="dateFilter"
+    v-model:currency="currencyFilter"
+    @clear="clearPaymentFilters"
+  />
 
   <!-- Pestañas de Navegación -->
   <VTabs v-model="activeTab" class="mb-4 credits-tabs" density="comfortable">

@@ -56,61 +56,65 @@ const kpis = [
   <div class="expenses-view pb-12">
     <LoaderComponent :loadingApp="statuModule.loadingApp" />
 
-    <!-- Header Premium -->
-    <div class="header-bg pa-6 mb-6">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-        <div class="d-flex align-center gap-4">
-          <VAvatar
-            size="54"
-            color="white"
-            variant="flat"
-            class="rounded-lg shadow-soft"
-          >
-            <VIcon icon="tabler-receipt" color="primary" size="28" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-              Gestión de Gastos
-            </h1>
-            <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-              Control Detallado de Egresos Operativos
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- KPIs Rápidos -->
-      <VRow class="mt-8">
-        <VCol
-          v-for="kpi in kpis"
-          :key="kpi.key"
-          cols="12"
-          sm="4"
-        >
-          <VCard
-            variant="flat"
-            class="rounded-lg border shadow-sm overflow-hidden kpi-card bg-white"
-          >
-            <div class="d-flex align-center pa-4">
+    <!-- === HEADER Y KPIS === -->
+    <div class="px-6 mt-6">
+      <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
+        <div class="header-bg pa-6">
+          <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+            <div class="d-flex align-center gap-4">
               <VAvatar
-                size="48"
-                :color="kpi.color"
-                variant="tonal"
-                class="rounded-lg me-4"
+                size="54"
+                color="white"
+                variant="flat"
+                class="rounded-lg shadow-soft"
               >
-                <VIcon :icon="kpi.icon" size="24" />
+                <VIcon icon="tabler-receipt" color="primary" size="28" />
               </VAvatar>
               <div class="d-flex flex-column">
-                <span class="text-xs font-weight-black text-disabled uppercase letter-spacing-widest">{{ kpi.title }}</span>
-                <span class="text-h5 font-weight-black leading-tight">
-                  {{ stats[kpi.key] || 0 }}
-                  <span class="text-xs text-disabled">Items</span>
+                <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+                  Gestión de Gastos
+                </h1>
+                <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+                  Control Detallado de Egresos Operativos
                 </span>
               </div>
             </div>
-          </VCard>
-        </VCol>
-      </VRow>
+          </div>
+
+          <!-- KPIs Rápidos -->
+          <VRow class="mt-8">
+            <VCol
+              v-for="kpi in kpis"
+              :key="kpi.key"
+              cols="12"
+              sm="4"
+            >
+              <VCard
+                variant="flat"
+                class="rounded-lg border shadow-sm overflow-hidden kpi-card bg-white"
+              >
+                <div class="d-flex align-center pa-4">
+                  <VAvatar
+                    size="48"
+                    :color="kpi.color"
+                    variant="tonal"
+                    class="rounded-lg me-4"
+                  >
+                    <VIcon :icon="kpi.icon" size="24" />
+                  </VAvatar>
+                  <div class="d-flex flex-column">
+                    <span class="text-xs font-weight-black text-disabled uppercase letter-spacing-widest">{{ kpi.title }}</span>
+                    <span class="text-h5 font-weight-black leading-tight">
+                      {{ stats[kpi.key] || 0 }}
+                      <span class="text-xs text-disabled">Items</span>
+                    </span>
+                  </div>
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
+        </div>
+      </VCard>
     </div>
 
     <!-- === FILTROS === -->

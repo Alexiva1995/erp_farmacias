@@ -127,7 +127,7 @@ const getVolumeRange = (scales) => {
                   variant="tonal"
                   color="info"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="emit('view-offer', item)"
                 />
               </template>
@@ -140,7 +140,7 @@ const getVolumeRange = (scales) => {
                   variant="tonal"
                   color="primary"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="emit('edit-offer', item)"
                 />
               </template>
@@ -153,7 +153,7 @@ const getVolumeRange = (scales) => {
                   variant="tonal"
                   color="error"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="emit('delete-offer', item)"
                 />
               </template>
@@ -214,7 +214,7 @@ const getVolumeRange = (scales) => {
                         variant="tonal"
                         color="info"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="emit('view-offer', item.raw)"
                       />
                       <VBtn
@@ -222,7 +222,7 @@ const getVolumeRange = (scales) => {
                         variant="tonal"
                         color="primary"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="emit('edit-offer', item.raw)"
                       />
                       <VBtn
@@ -230,7 +230,7 @@ const getVolumeRange = (scales) => {
                         variant="tonal"
                         color="error"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="emit('delete-offer', item.raw)"
                       />
                     </div>

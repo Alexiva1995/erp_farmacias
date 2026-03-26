@@ -224,28 +224,32 @@ const handleSort = (sortOptions) => {
 
 <template>
   <div class="furniture-view pb-12">
-    <!-- Header Premium -->
-    <div class="header-bg pa-6 mb-6">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-        <div class="d-flex align-center gap-4">
-          <VAvatar
-            size="54"
-            color="white"
-            variant="flat"
-            class="rounded-lg shadow-soft"
-          >
-            <VIcon icon="tabler-armchair" color="primary" size="28" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-              Inventario de Mobiliario
-            </h1>
-            <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-              Control y Segmentación de Activos Fijos
-            </span>
+    <!-- === HEADER Y KPIS === -->
+    <div class="px-6 mt-6">
+      <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
+        <div class="header-bg pa-6">
+          <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+            <div class="d-flex align-center gap-4">
+              <VAvatar
+                size="54"
+                color="white"
+                variant="flat"
+                class="rounded-lg shadow-soft"
+              >
+                <VIcon icon="tabler-armchair" color="primary" size="28" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
+                  Inventario de Mobiliario
+                </h1>
+                <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
+                  Control y Segmentación de Activos Fijos
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </VCard>
     </div>
 
     <div class="px-6">

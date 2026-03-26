@@ -92,7 +92,7 @@ const headers = [
           size="x-small"
           :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
           variant="flat"
-          class="font-weight-black uppercase px-2"
+          class="font-weight-black uppercase px-2 rounded-lg"
         >
           {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
         </VChip>
@@ -107,21 +107,34 @@ const headers = [
 
       <!-- Acciones -->
       <template #item.acciones="{ item }">
-        <div class="d-flex align-center justify-center gap-1">
-          <IconBtn @click="() => verImagne(item)" :disabled="!item.url_file" size="small">
-            <VIcon icon="tabler-eye" :color="item.url_file ? 'info' : 'grey-lighten-1'" size="18" />
-          </IconBtn>
+        <div class="d-flex align-center justify-center gap-2">
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
+            color="info"
+            class="rounded-circle shadow-sm"
+            :disabled="!item.url_file"
+            @click="() => verImagne(item)"
+          >
+            <VIcon icon="tabler-eye" size="18" />
+            <VTooltip activator="parent" location="top">Ver Recibo</VTooltip>
+          </VBtn>
           
-          <IconBtn
+          <VBtn
             v-if="item.status === 'Pending' || item.status === 'Pendiente'"
+            icon
+            size="32"
+            variant="tonal"
             color="success"
-            size="small"
+            class="rounded-circle shadow-sm"
             :disabled="statuModule.loadingItems.has(item.id)"
             @click="() => emit('approve', item.id)"
           >
             <VProgressCircular v-if="statuModule.loadingItems.has(item.id)" indeterminate size="18" width="2" />
             <VIcon v-else icon="tabler-circle-check" size="18" />
-          </IconBtn>
+            <VTooltip activator="parent" location="top">Aprobar Gasto</VTooltip>
+          </VBtn>
         </div>
       </template>
     </VDataTableServer>

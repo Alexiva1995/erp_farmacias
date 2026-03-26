@@ -159,7 +159,6 @@ const handleRejectReturn = async (item) => {
             {{ item.status == null ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Rechazado' }}
           </VChip>
         </template>
-
         <template #item.actions="{ item }">
           <div v-if="item.status == null" class="d-flex align-center gap-2">
             <VBtn
@@ -167,7 +166,7 @@ const handleRejectReturn = async (item) => {
               size="x-small"
               color="success"
               variant="tonal"
-              class="rounded shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="handleApproveReturn(item)"
             >
               <VIcon icon="tabler-circle-check" size="18" />
@@ -178,7 +177,7 @@ const handleRejectReturn = async (item) => {
               size="x-small"
               color="error"
               variant="tonal"
-              class="rounded shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="handleRejectReturn(item)"
             >
               <VIcon icon="tabler-circle-x" size="18" />
@@ -224,22 +223,24 @@ const handleRejectReturn = async (item) => {
             
             <div class="d-flex gap-2" v-if="item.status == null">
               <VBtn 
-                size="x-small" 
+                icon="tabler-circle-check"
+                size="32" 
                 color="success" 
-                variant="flat" 
-                class="rounded font-weight-black"
+                variant="tonal" 
+                class="rounded-circle shadow-sm"
                 @click="handleApproveReturn(item)"
               >
-                APROBAR
+                <VTooltip activator="parent" location="top">Aprobar</VTooltip>
               </VBtn>
               <VBtn 
-                size="x-small" 
+                icon="tabler-circle-x"
+                size="32" 
                 color="error" 
                 variant="tonal" 
-                class="rounded font-weight-black"
+                class="rounded-circle shadow-sm"
                 @click="handleRejectReturn(item)"
               >
-                RECHAZAR
+                <VTooltip activator="parent" location="top">Rechazar</VTooltip>
               </VBtn>
             </div>
           </div>

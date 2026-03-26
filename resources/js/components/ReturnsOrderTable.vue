@@ -218,6 +218,7 @@ const totalRefundAmount = computed(() => {
                   variant="tonal"
                   color="info"
                   size="32"
+                  class="rounded-circle shadow-sm"
                   @click="openProductsModal(item.raw)"
                 />
               </div>
@@ -299,7 +300,7 @@ const totalRefundAmount = computed(() => {
           size="small"
           variant="tonal"
           icon
-          class="rounded-lg shadow-sm"
+          class="rounded-circle shadow-sm"
           @click.stop="openProductsModal(item)"
         >
           <VIcon icon="tabler-package" />
@@ -343,7 +344,7 @@ const totalRefundAmount = computed(() => {
               variant="tonal"
               color="white"
               size="small"
-              class="rounded-lg"
+              class="rounded-circle"
               @click="closeProductsModal"
             >
               <VIcon>tabler-x</VIcon>

@@ -107,7 +107,7 @@ const statistics = computed(() => [
 
 <style scoped>
 .stats-card {
-  border-radius: 16px;
+  border-radius: 8px !important;
   backdrop-filter: blur(8px);
   background: rgba(var(--v-theme-surface), 80%) !important;
   box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 5%) !important;

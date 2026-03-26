@@ -150,15 +150,11 @@ const formatMoney = (val) => {
 
 <template>
   <div>
-    <h1 class="text-h4 font-weight-bold mb-1">
-      <VIcon icon="tabler-coin" class="me-2 text-primary" />
-      Reporte Margen Real por SKU
-    </h1>
-    <p class="text-body-2 mb-6 text-medium-emphasis">Descubre la rentabilidad real descontando mermas, vencidos y bonificaciones.</p>
+
     
     <!-- Filtros Estandarizados -->
-    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
-      <VCardText class="pa-3">
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
+      <VCardText class="pa-4">
         <!-- Barra de Búsqueda Principal (Siempre Visible) -->
         <VRow align="center" no-gutters class="gap-2">
           <!-- Buscador SKU/Producto -->
@@ -197,6 +193,7 @@ const formatMoney = (val) => {
               variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="toggleAdvancedFilters"
             >
               <VBadge
@@ -215,8 +212,10 @@ const formatMoney = (val) => {
             <!-- Aplicar Filtros -->
             <VBtn
               icon
+              variant="flat"
               color="primary"
               size="38"
+              class="rounded-circle shadow-sm"
               :loading="loading"
               @click="fetchReport"
             >
@@ -232,6 +231,7 @@ const formatMoney = (val) => {
               variant="text"
               color="secondary"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="handleClearFilters"
             >
               <VIcon icon="tabler-eraser" size="20" />
@@ -247,46 +247,40 @@ const formatMoney = (val) => {
             
             <VRow>
               <VCol cols="12" sm="6" md="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                  Fecha Inicio
-                </span>
                 <AppDateTimePicker
                   v-model="startDate"
-                  placeholder="Seleccionar Fecha"
+                  placeholder="Fecha Inicio"
                   density="compact"
                   hide-details
                   class="premium-input-compact"
+                  prepend-inner-icon="tabler-calendar"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" md="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                  Fecha Fin
-                </span>
                 <AppDateTimePicker
                   v-model="endDate"
-                  placeholder="Seleccionar Fecha"
+                  placeholder="Fecha Fin"
                   density="compact"
                   hide-details
                   class="premium-input-compact"
+                  prepend-inner-icon="tabler-calendar-check"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" md="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                  Laboratorio / Proveedor
-                </span>
                 <AppAutocomplete
                   v-model="selectedLaboratory"
                   :items="laboratories"
                   item-title="name"
                   item-value="id"
-                  placeholder="Todos"
+                  placeholder="Laboratorio / Proveedor"
                   clearable
                   variant="outlined"
                   density="compact"
                   hide-details
                   class="premium-select-compact"
+                  prepend-inner-icon="tabler-flask"
                 />
               </VCol>
             </VRow>

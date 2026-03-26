@@ -4,14 +4,18 @@ import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed, ref } from "vue";
 
 const props = defineProps({
-  startDate: { type: [String, null], default: null },
-  endDate:   { type: [String, null], default: null },
-  loading:   { type: Boolean, default: false },
+  searchQuery: { type: String, default: "" },
+  startDate:   { type: [String, null], default: null },
+  endDate:     { type: [String, null], default: null },
+  selectedStatus: { type: [Number, null], default: null },
+  loading:     { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
+  "update:searchQuery",
   "update:startDate",
   "update:endDate",
+  "update:selectedStatus",
   "clear",
   "generated",
   "download-bulk",
@@ -20,7 +24,12 @@ const emit = defineEmits([
 
 const isGenerating = ref(false);
 
-const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
+const statusOptions = [
+  { title: "Finalizada", value: 1 },
+  { title: "Pendiente",  value: 0 },
+];
+
+const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate || props.selectedStatus !== null));
 
 const handleManualPayment = async () => {
   isGenerating.value = true;
@@ -34,67 +43,63 @@ const handleManualPayment = async () => {
 
 <template>
   <AppFilterBase
-    :search="''"
+    :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
-    search-placeholder="Filtros del período..."
+    search-placeholder="Buscar por ID..."
+    @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >
-    <!-- Sobre-escribimos el search para poner las fechas principales si no hay búsqueda por texto -->
-    <template #search>
-      <div class="d-flex align-center gap-2 flex-grow-1 min-width-0 w-100">
-        <!-- Fecha Inicial -->
+    <template #advanced-filters>
+      <!-- Rango de Fechas -->
+      <VCol cols="12" sm="6" md="4">
         <AppDateTimePicker
           :model-value="props.startDate"
-          placeholder="Fecha Inicial"
+          placeholder="Desde"
           clearable
           density="compact"
           hide-details
-          class="flex-grow-1"
-          style="min-width: 130px;"
           :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           prepend-inner-icon="tabler-calendar"
           @update:model-value="emit('update:startDate', $event)"
         />
+      </VCol>
 
-        <span class="text-disabled d-none d-sm-inline">—</span>
-
-        <!-- Fecha Final -->
+      <VCol cols="12" sm="6" md="4">
         <AppDateTimePicker
           :model-value="props.endDate"
-          placeholder="Fecha Final"
+          placeholder="Hasta"
           clearable
           density="compact"
           hide-details
-          class="flex-grow-1"
-          style="min-width: 130px;"
           :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           prepend-inner-icon="tabler-calendar-check"
           @update:model-value="emit('update:endDate', $event)"
         />
-      </div>
+      </VCol>
+
+      <!-- Estado -->
+      <VCol cols="12" sm="6" md="4">
+        <VSelect
+          :model-value="props.selectedStatus"
+          :items="statusOptions"
+          placeholder="Estado de Nómina"
+          clearable
+          density="compact"
+          hide-details
+          variant="outlined"
+          prepend-inner-icon="tabler-list-check"
+          @update:model-value="emit('update:selectedStatus', $event)"
+        />
+      </VCol>
     </template>
 
     <template #actions-extra>
-      <!-- Actualizar -->
-      <VBtn
-        icon
-        variant="tonal"
-        color="secondary"
-        size="38"
-        class="ml-1 d-none d-sm-flex"
-        :loading="props.loading"
-        @click="emit('refresh')"
-      >
-        <VIcon icon="tabler-refresh" size="20" />
-        <VTooltip activator="parent" location="top">Actualizar Datos</VTooltip>
-      </VBtn>
-
       <VBtn
         color="success"
         variant="tonal"
         size="38"
         icon
-        class="ml-1"
+        class="rounded-circle shadow-sm"
         @click="emit('download-bulk')"
       >
         <VIcon icon="tabler-download" size="20" />
@@ -106,7 +111,7 @@ const handleManualPayment = async () => {
         variant="tonal"
         size="38"
         icon
-        class="ml-1"
+        class="rounded-circle shadow-sm"
         :loading="isGenerating"
         :disabled="isGenerating"
         @click="handleManualPayment"
@@ -117,3 +122,9 @@ const handleManualPayment = async () => {
     </template>
   </AppFilterBase>
 </template>
+
+<style scoped>
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+</style>

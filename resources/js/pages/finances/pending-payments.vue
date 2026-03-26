@@ -197,7 +197,7 @@ watch([searchQuery, selectedSupplier, startDate, endDate, showOverdueOnly], () =
     />
 
     <!-- Cabecera de Tabla Premium (Escritorio) -->
-    <VCard v-if="!mobile" class="mb-4 rounded-xl border-0 shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="mb-4 rounded-lg border-0 shadow-sm overflow-hidden bg-surface">
       <VCardTitle class="pa-4 px-6 d-flex align-center">
         <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
           <VIcon icon="tabler-list-check" size="18" />

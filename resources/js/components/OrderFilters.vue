@@ -1,5 +1,6 @@
 <script setup>
-import { computed, defineProps, ref } from "vue";
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import { computed } from "vue";
 
 const props = defineProps({
   searchQuery: String,
@@ -26,8 +27,6 @@ const emit = defineEmits([
   "sort",
 ]);
 
-const isAdvancedFiltersVisible = ref(false);
-
 const stockOptions = [
   { title: "Con Stock", value: true },
   { title: "Sin Stock", value: false },
@@ -44,28 +43,21 @@ const sortOptions = [
   { title: "Fecha pronto a Vencer", icon: "tabler-calendar-time", key: "next_expiration", order: "asc" },
 ];
 
-const selectedSort = computed(() => {
-  if (!props.sortBy) return null;
-  return sortOptions.find(o => o.key === props.sortBy && o.order === props.orderBy) || 
-         { key: props.sortBy, order: props.orderBy, title: props.sortBy, icon: "tabler-arrow-up" };
+const hasAdvancedFilters = computed(() => {
+  return (
+    props.selectedLaboratory !== null ||
+    props.selectedOrigin !== null ||
+    props.stockStatusFilter !== null ||
+    props.isStrictSearch
+  );
 });
 
-const isOptionSelected = (option) => props.sortBy === option.key && props.orderBy === option.order;
-const getSelectedSortTitle = () => selectedSort.value?.title || props.sortBy;
-const getSelectedSortIcon = () => selectedSort.value?.icon || "tabler-arrow-up";
-
-const toggleAdvancedFilters = () => {
-  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+const handleSort = (sortData) => {
+  emit("sort", sortData);
 };
 
-const clearFilters = () => {
-  emit('clear');
-};
-
-const clearSortFilter = () => emit("clear-sort");
-
-const handleSortClick = (option) => {
-  emit("sort", { key: option.key, order: option.order });
+const handleClear = () => {
+  emit("clear");
 };
 
 const handleBack = () => {
@@ -74,202 +66,102 @@ const handleBack = () => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden shadow-sm">
-    <VCardText class="pa-4">
-      <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
-      <VRow align="center" no-gutters class="gap-3">
-        <VCol class="flex-grow-1">
-          <AppTextField
-            :model-value="props.searchQuery"
-            placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
-            prepend-inner-icon="tabler-search"
-            clearable
-            hide-details
-            density="compact"
-            class="filter-search-input font-weight-bold"
-            @update:model-value="emit('update:searchQuery', $event)"
-          />
-        </VCol>
+  <AppFilterBase
+    :search="props.searchQuery"
+    search-placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
+    show-sort
+    :sort-options="sortOptions"
+    :has-advanced-filters="hasAdvancedFilters"
+    :loading="props.loading"
+    @update:search="emit('update:searchQuery', $event)"
+    @clear="handleClear"
+    @sort="handleSort"
+  >
+    <!-- Slot extra: Búsqueda Estricta -->
+    <template #search-extra>
+      <VCol cols="auto" class="d-none d-sm-flex">
+        <VCheckbox
+          :model-value="props.isStrictSearch"
+          label="Estricta"
+          color="primary"
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:isStrictSearch', $event)"
+        />
+      </VCol>
+    </template>
 
-        <VCol cols="auto" class="d-flex gap-1 mt-1">
-          <VTooltip location="top" text="Filtros Avanzados">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn
-                v-bind="tooltipProps"
-                :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-                variant="tonal"
-                density="comfortable"
-                class="rounded-lg"
-                icon="tabler-filter"
-                @click="toggleAdvancedFilters"
-              />
-            </template>
-          </VTooltip>
+    <!-- Slot acciones extra: Botón Volver -->
+    <template #actions-extra>
+      <VBtn
+        icon="tabler-arrow-back"
+        variant="tonal"
+        color="primary"
+        size="38"
+        @click="handleBack"
+      >
+        <VIcon icon="tabler-arrow-back" />
+        <VTooltip activator="parent" location="top">Volver</VTooltip>
+      </VBtn>
+    </template>
 
-          <VMenu>
-            <template #activator="{ props: menuProps }">
-              <VTooltip location="top" text="Ordenar Resultados">
-                <template #activator="{ props: tooltipProps }">
-                  <VBtn 
-                    v-bind="{ ...menuProps, ...tooltipProps }" 
-                    variant="tonal" 
-                    color="secondary" 
-                    density="comfortable"
-                    class="rounded-lg"
-                    icon="tabler-sort-ascending"
-                  />
-                </template>
-              </VTooltip>
-            </template>
-            <VList density="compact" class="rounded-lg mt-1 py-2 shadow-lg border">
-              <VListItem
-                v-for="(option, index) in sortOptions"
-                :key="index"
-                :active="isOptionSelected(option)"
-                color="primary"
-                @click="handleSortClick(option)"
-              >
-                <template #prepend>
-                  <VIcon :icon="option.icon" size="18" class="me-3" />
-                </template>
-                <VListItemTitle class="font-weight-bold text-caption uppercase">{{ option.title }}</VListItemTitle>
-                <template #append v-if="isOptionSelected(option)">
-                  <VIcon icon="tabler-check" size="16" color="primary" />
-                </template>
-              </VListItem>
-            </VList>
-          </VMenu>
-
-          <VTooltip location="top" text="Limpiar Filtros">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn
-                v-bind="tooltipProps"
-                color="secondary"
-                variant="tonal"
-                density="comfortable"
-                class="rounded-lg"
-                icon="tabler-trash"
-                @click="clearFilters"
-              />
-            </template>
-          </VTooltip>
-
-          <VTooltip location="top" text="Volver">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn
-                v-bind="tooltipProps"
-                color="primary"
-                variant="tonal"
-                density="comfortable"
-                class="rounded-lg"
-                icon="tabler-arrow-back"
-                @click="handleBack"
-              />
-            </template>
-          </VTooltip>
-        </VCol>
-      </VRow>
-
-      <!-- Panel de Filtros Avanzados -->
-      <VExpandTransition>
-        <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-4 border-opacity-10" />
-          <VRow>
-            <VCol cols="12" sm="4">
-              <VSelect
-                :model-value="props.stockStatusFilter"
-                label="Estado de Stock"
-                :items="stockOptions"
-                density="compact"
-                variant="outlined"
-                clearable
-                hide-details
-                prepend-inner-icon="tabler-box"
-                class="font-weight-bold"
-                @update:model-value="emit('update:stockStatusFilter', $event)"
-              />
-            </VCol>
-            <VCol cols="12" sm="4">
-              <VSelect
-                :model-value="props.selectedLaboratory"
-                label="Laboratorio"
-                :items="props.laboratories"
-                item-title="name"
-                item-value="id"
-                density="compact"
-                variant="outlined"
-                clearable
-                hide-details
-                prepend-inner-icon="tabler-flask"
-                class="font-weight-bold"
-                @update:model-value="emit('update:selectedLaboratory', $event)"
-              />
-            </VCol>
-            <VCol cols="12" sm="4">
-              <VSelect
-                :model-value="props.selectedOrigin"
-                label="Origen"
-                :items="props.origins"
-                item-title="name"
-                item-value="id"
-                density="compact"
-                variant="outlined"
-                clearable
-                hide-details
-                prepend-inner-icon="tabler-world"
-                class="font-weight-bold"
-                @update:model-value="emit('update:selectedOrigin', $event)"
-              />
-            </VCol>
-          </VRow>
-
-          <div class="mt-4 d-flex align-center gap-4">
-            <div class="d-flex align-center gap-2">
-              <VSwitch
-                :model-value="props.isStrictSearch"
-                density="compact"
-                color="primary"
-                hide-details
-                @update:model-value="emit('update:isStrictSearch', $event)"
-              />
-              <span class="text-caption font-weight-black uppercase letter-spacing-1">Búsqueda Estricta</span>
-            </div>
-
-            <VChipGroup v-if="selectedSort" class="ms-auto" selected-class="text-primary">
-              <VChip
-                color="primary"
-                variant="tonal"
-                size="small"
-                closable
-                label
-                class="font-weight-black uppercase"
-                @click:close="clearSortFilter"
-              >
-                <VIcon :icon="getSelectedSortIcon()" size="14" class="me-1" />
-                {{ getSelectedSortTitle() }}
-              </VChip>
-            </VChipGroup>
-          </div>
-        </div>
-      </VExpandTransition>
-    </VCardText>
-  </VCard>
+    <!-- Slot Filtros Avanzados -->
+    <template #advanced-filters>
+      <VCol cols="12" sm="4">
+        <VSelect
+          :model-value="props.stockStatusFilter"
+          placeholder="Estado de Stock"
+          :items="stockOptions"
+          density="compact"
+          variant="outlined"
+          clearable
+          hide-details
+          prepend-inner-icon="tabler-box"
+          @update:model-value="emit('update:stockStatusFilter', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VSelect
+          :model-value="props.selectedLaboratory"
+          placeholder="Laboratorio"
+          :items="props.laboratories"
+          item-title="name"
+          item-value="id"
+          density="compact"
+          variant="outlined"
+          clearable
+          hide-details
+          prepend-inner-icon="tabler-flask"
+          @update:model-value="emit('update:selectedLaboratory', $event)"
+        />
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VSelect
+          :model-value="props.selectedOrigin"
+          placeholder="Origen"
+          :items="props.origins"
+          item-title="name"
+          item-value="id"
+          density="compact"
+          variant="outlined"
+          clearable
+          hide-details
+          prepend-inner-icon="tabler-world"
+          @update:model-value="emit('update:selectedOrigin', $event)"
+        />
+      </VCol>
+    </template>
+  </AppFilterBase>
 </template>
 
 <style scoped>
-.filter-search-input :deep(.v-field__input) {
-  font-size: 0.875rem !important;
-}
-
 .letter-spacing-1 {
   letter-spacing: 1px !important;
 }
 
-.gap-2 { gap: 8px !important; }
-.gap-3 { gap: 12px !important; }
-.gap-4 { gap: 16px !important; }
-
 .text-caption {
   font-size: 0.7rem !important;
 }
+
+.gap-2 { gap: 8px !important; }
 </style>

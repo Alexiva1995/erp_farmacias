@@ -221,10 +221,10 @@ const getInitials = (name) => {
         <template #item.actions="{ item }">
           <VBtn
             icon
-            variant="text"
+            variant="tonal"
             size="32"
             color="success"
-            class="rounded-lg shadow-sm"
+            class="rounded-circle shadow-sm"
             @click="emit('process-payment', item)"
           >
             <VIcon icon="tabler-credit-card" size="18" />
@@ -329,7 +329,7 @@ const getInitials = (name) => {
         </VCard>
       </template>
 
-      <VAlert v-else type="info" variant="tonal" class="rounded-xl">
+      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         No hay pagos pendientes registrados.
       </VAlert>
     </div>

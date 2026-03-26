@@ -129,11 +129,11 @@ const formattedTotalQuotation = computed(() => {
 </script>
 
 <template>
-  <VCard min-height="280" class="d-flex flex-column glass-card elevation-0">
-    <VCardItem class="header-glass pa-4">
+  <VCard min-height="280" variant="flat" border class="d-flex flex-column rounded-lg overflow-hidden shadow-sm bg-surface">
+    <VCardItem class="pa-4 border-b">
       <div class="d-flex align-center justify-space-between w-100">
         <div class="d-flex align-center gap-2">
-          <VAvatar color="primary" variant="tonal" size="32">
+          <VAvatar color="primary" variant="tonal" size="32" class="rounded-lg">
             <VIcon icon="tabler-calculator" size="18" />
           </VAvatar>
           <VCardTitle class="text-h6 font-weight-black text-primary">Cotización</VCardTitle>
@@ -170,13 +170,13 @@ const formattedTotalQuotation = computed(() => {
       </div>
     </VCardItem>
 
-    <VCardText class="flex-grow-1 d-flex flex-column pa-4 bg-glass-surface">
+    <VCardText class="flex-grow-1 d-flex flex-column pa-4">
       <VList class="card-list bg-transparent" density="compact" nav>
         <VListItem
           v-for="item in breakdownItems"
           :key="item.title"
-          class="rounded-lg mb-1 transition-all"
-          :class="item.isDiscount ? 'bg-error-lighten-5' : 'bg-white-opacity-50'"
+          class="rounded-lg mb-2 border transition-all"
+          :class="item.isDiscount ? 'bg-error-lighten-5 border-error border-opacity-25' : 'bg-surface border-opacity-10'"
         >
           <VListItemTitle class="text-subtitle-2 font-weight-bold" :class="item.isDiscount ? 'text-error' : 'text-high-emphasis'">
             {{ item.title }}
@@ -196,13 +196,13 @@ const formattedTotalQuotation = computed(() => {
 
       <VSpacer />
       
-      <div class="total-section mt-4 pa-5 rounded-xl shadow-primary-glass transition-all">
-        <div class="d-flex align-center justify-space-between">
+      <div class="total-section mt-4 pa-5 rounded-lg shadow-sm transition-all bg-primary">
+        <div class="d-flex align-center justify-space-between text-white">
           <div class="d-flex flex-column">
-            <span class="text-super-xs font-weight-black text-white-opacity-70 uppercase letter-spacing-1">Total a Pagar</span>
-            <h4 class="text-h4 font-weight-950 text-white leading-none mt-1">Total</h4>
+            <span class="text-super-xs font-weight-bold uppercase letter-spacing-1 opacity-75">Total a Pagar</span>
+            <h4 class="text-h4 font-weight-black leading-none mt-1">Total</h4>
           </div>
-          <div class="text-h3 font-weight-950 text-white text-shadow-sm">
+          <div class="text-h3 font-weight-black">
             {{ formattedTotalQuotation }}
           </div>
         </div>
@@ -212,55 +212,6 @@ const formattedTotalQuotation = computed(() => {
 </template>
 
 <style scoped>
-.glass-card {
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(var(--v-theme-primary), 10%) !important;
-  background: rgba(255, 255, 255, 70%) !important;
-  border-radius: 24px !important;
-  overflow: hidden;
-}
-
-.header-glass {
-  border-block-end: 1px solid rgba(var(--v-theme-primary), 5%);
-}
-
-.bg-glass-surface {
-  background: rgba(var(--v-theme-primary), 2%);
-}
-
-.bg-white-opacity-50 {
-  background: rgba(255, 255, 255, 50%) !important;
-}
-
-.text-white-opacity-70 {
-  color: rgba(255, 255, 255, 70%) !important;
-}
-
-.total-section {
-  position: relative;
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173f1f 100%);
-  overflow: hidden;
-}
-
-.total-section::before {
-  position: absolute;
-  inset-block-start: -50%;
-  inset-inline-start: -50%;
-  content: "";
-  inline-size: 200%;
-  block-size: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 10%) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.shadow-primary-glass {
-  box-shadow: 0 12px 24px -8px rgba(var(--v-theme-primary), 40%) !important;
-}
-
-.text-shadow-sm {
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 10%);
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
 }
@@ -277,8 +228,19 @@ const formattedTotalQuotation = computed(() => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.total-section:hover {
-  box-shadow: 0 16px 32px -12px rgba(var(--v-theme-primary), 50%) !important;
-  transform: translateY(-2px);
+.total-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.total-section::before {
+  position: absolute;
+  inset-block-start: -50%;
+  inset-inline-start: -50%;
+  content: "";
+  inline-size: 200%;
+  block-size: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
 }
 </style>

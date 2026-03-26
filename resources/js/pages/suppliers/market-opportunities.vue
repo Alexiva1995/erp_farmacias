@@ -18,18 +18,10 @@ const selectedLaboratory = ref([]);
 const selectProducts = ref([]);
 const searchQuery = ref("");
 
-const isAdvancedFiltersVisible = ref(false);
-
-const toggleAdvancedFilters = () => {
-  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
-};
-
-const hasActiveAdvancedFilters = computed(() => {
-  return (
-    selectedLaboratory.value?.length > 0 ||
-    selectProducts.value?.length > 0
-  );
-});
+const hasActiveAdvancedFilters = computed(() => (
+  selectedLaboratory.value?.length > 0 ||
+  selectProducts.value?.length > 0
+));
 
 const headers = [
   { title: "Producto", key: "product_name_inventory", sortable: true },
@@ -134,135 +126,57 @@ onMounted(() => {
     </VCard>
 
     <div class="px-6 d-flex flex-column gap-6">
-      <!-- Filtros Estandarizados (Search + Action Bar) -->
-      <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
-        <VCardText class="pa-4">
-        <VRow align="center" no-gutters class="gap-2">
-          <!-- Buscador Principal -->
-          <VCol cols="12" md="6" lg="5">
-            <AppTextField
-              v-model="searchQuery"
-              placeholder="Buscar por nombre o barcode..."
-              prepend-inner-icon="tabler-search"
+      <!-- Filtros Estandarizados (AppFilterBase) -->
+      <AppFilterBase
+        v-model:search="searchQuery"
+        :has-advanced-filters="hasActiveAdvancedFilters"
+        search-placeholder="Buscar por nombre o barcode..."
+        show-export
+        @clear="handleClearFilters"
+        @export="exportExcel"
+      >
+        <template #advanced-filters>
+          <!-- Selección de Producto(s) -->
+          <VCol cols="12" sm="6" md="6">
+            <VAutocomplete
+              v-model="selectProducts"
+              :items="productosSelect"
+              placeholder="Seleccionar Producto(s)"
+              item-title="name"
+              item-value="id"
+              multiple
+              chips
+              closable-chips
               clearable
-              density="compact"
               hide-details
-              class="premium-input-compact"
+              density="compact"
+              variant="outlined"
+              class="premium-select-compact"
+              prepend-inner-icon="tabler-package"
             />
           </VCol>
 
-          <VSpacer />
-
-          <div class="d-flex align-center gap-1">
-            <!-- Toggle Filtros -->
-            <VBtn
-              icon
-              variant="tonal"
-              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="38"
-              @click="toggleAdvancedFilters"
-            >
-              <VBadge
-                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
-                color="error"
-                dot
-                offset-x="2"
-                offset-y="-2"
-              >
-                <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
-              </VBadge>
-              <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
-              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
-            </VBtn>
-
-            <!-- Exportar Excel -->
-            <VBtn
-              icon
-              variant="tonal"
-              color="success"
-              size="38"
-              @click="exportExcel"
-            >
-              <VIcon icon="tabler-file-export" size="20" />
-              <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
-            </VBtn>
-
-            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
-
-            <!-- Limpiar Filtros (Siempre Visible) -->
-            <VBtn
-              icon
-              variant="text"
-              color="secondary"
-              size="38"
-              @click="handleClearFilters"
-            >
-              <VIcon icon="tabler-eraser" size="20" />
-              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-            </VBtn>
-          </div>
-        </VRow>
-      </VCardText>
-    </VCard>
-
-    <!-- Panel de Filtros Avanzados -->
-    <VExpandTransition>
-      <VCard v-show="isAdvancedFiltersVisible" class="mb-6 border-0 shadow-sm bg-var-theme-background-soft">
-        <VCardText class="pa-4">
-          <VRow>
-            <VCol cols="12" sm="6" md="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                Seleccionar Producto(s)
-              </span>
-              <VAutocomplete
-                v-model="selectProducts"
-                :items="productosSelect"
-                placeholder="Todos los productos"
-                item-title="name"
-                item-value="id"
-                multiple
-                chips
-                closable-chips
-                clearable
-                hide-details
-                density="compact"
-                variant="outlined"
-                class="premium-select-compact"
-                prepend-inner-icon="tabler-package"
-              />
-            </VCol>
-            <VCol cols="12" sm="6" md="4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                Seleccionar Laboratorio(s)
-              </span>
-              <VAutocomplete
-                v-model="selectedLaboratory"
-                :items="laboratories"
-                placeholder="Todos los laboratorios"
-                item-title="name"
-                item-value="id"
-                multiple
-                chips
-                closable-chips
-                clearable
-                hide-details
-                density="compact"
-                variant="outlined"
-                class="premium-select-compact"
-                prepend-inner-icon="tabler-flask"
-              />
-            </VCol>
-            <VSpacer />
-            <VCol cols="12" md="auto" class="d-flex align-end">
-              <div class="text-caption text-disabled font-weight-medium mb-1">
-                <VIcon icon="tabler-info-circle" size="14" class="me-1" />
-                Filtrado por múltiples criterios
-              </div>
-            </VCol>
-          </VRow>
-        </VCardText>
-      </VCard>
-    </VExpandTransition>
+          <!-- Selección de Laboratorio(s) -->
+          <VCol cols="12" sm="6" md="6">
+            <VAutocomplete
+              v-model="selectedLaboratory"
+              :items="laboratories"
+              placeholder="Seleccionar Laboratorio(s)"
+              item-title="name"
+              item-value="id"
+              multiple
+              chips
+              closable-chips
+              clearable
+              hide-details
+              density="compact"
+              variant="outlined"
+              class="premium-select-compact"
+              prepend-inner-icon="tabler-flask"
+            />
+          </VCol>
+        </template>
+      </AppFilterBase>
 
       <!-- Tabla de Resultados (Unified VCard) -->
       <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
@@ -337,6 +251,7 @@ onMounted(() => {
                 color="primary"
                 variant="tonal"
                 size="small"
+                class="rounded-circle shadow-sm"
                 @click="handleAddUnits(item)"
               />
             </div>
@@ -405,8 +320,9 @@ onMounted(() => {
                   <VBtn
                     icon="tabler-plus"
                     color="primary"
-                    variant="elevated"
+                    variant="tonal"
                     size="small"
+                    class="rounded-circle shadow-sm"
                     @click="handleAddUnits(item)"
                   />
                 </div>

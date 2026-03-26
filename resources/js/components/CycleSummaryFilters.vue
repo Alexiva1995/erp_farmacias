@@ -1,4 +1,5 @@
 <script setup>
+import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
 import { computed, onMounted, ref, watch } from "vue";
 
@@ -147,12 +148,8 @@ const isOptionSelected = (option) => {
   );
 };
 
-const toggleAdvancedFilters = () => {
-  isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
-};
-
 const hasActiveAdvancedFilters = computed(() => {
-  return (
+  return !!(
     props.startDate ||
     props.endDate ||
     props.cycleStatus ||
@@ -182,134 +179,58 @@ watch(
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-lg">
-    <VCardText class="pa-3">
-      <!-- Fila Principal -->
-      <VRow align="center" no-gutters class="gap-2">
-        <VCol cols="12" md="4">
-          <h3 class="text-lg font-weight-black text-high-emphasis mb-0">Historial de Ciclos</h3>
-        </VCol>
+  <AppFilterBase
+    :has-advanced-filters="hasActiveAdvancedFilters"
+    :show-sort="true"
+    :sort-options="sortOptions"
+    @clear="handleClear"
+    @sort="handleSortClick"
+  >
+    <!-- Reemplazamos el buscador por el filtro de Estado del Ciclo -->
+    <template #search>
+      <VAutocomplete
+        :model-value="props.cycleStatus"
+        :items="cycleStatusOptions"
+        :loading="props.loading"
+        placeholder="Estado del Ciclo"
+        item-title="title"
+        item-value="value"
+        clearable
+        density="compact"
+        hide-details
+        prepend-inner-icon="tabler-list-check"
+        @update:model-value="emit('update:cycleStatus', $event)"
+      />
+    </template>
 
-        <VSpacer />
+    <template #advanced-filters>
+      <VCol cols="12" sm="6" md="6">
+        <AppDateTimePicker
+          :model-value="props.startDate"
+          placeholder="Fecha Inicial"
+          clearable
+          density="compact"
+          hide-details
+          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          prepend-inner-icon="tabler-calendar-event"
+          @update:model-value="emit('update:startDate', $event)"
+        />
+      </VCol>
 
-        <div class="d-flex align-center gap-1">
-          <!-- Toggle Filtros -->
-          <VBtn
-            icon
-            variant="tonal"
-            :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            size="38"
-            @click="toggleAdvancedFilters"
-          >
-            <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
-            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
-            <VBadge
-              v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
-              color="error"
-              dot
-              offset-x="3"
-              offset-y="-3"
-            />
-          </VBtn>
-
-          <!-- Ordenar Por -->
-          <VMenu>
-            <template #activator="{ props: menuProps }">
-              <VBtn 
-                v-bind="menuProps" 
-                icon
-                variant="tonal" 
-                color="secondary"
-                size="38"
-              >
-                <VIcon :icon="selectedSort ? getSelectedSortIcon : 'tabler-sort-ascending'" />
-                <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
-              </VBtn>
-            </template>
-            <VList density="compact">
-              <VListItem
-                v-for="(option, index) in sortOptions"
-                :key="index"
-                :active="isOptionSelected(option)"
-                color="primary"
-                @click="handleSortClick(option)"
-              >
-                <template #prepend>
-                  <VIcon :icon="option.icon" size="20" />
-                </template>
-                <VListItemTitle>{{ option.title }}</VListItemTitle>
-              </VListItem>
-            </VList>
-          </VMenu>
-
-          <VDivider vertical class="mx-1 my-2" />
-
-          <!-- Limpiar Filtros -->
-          <VBtn
-            icon
-            variant="text"
-            color="secondary"
-            size="38"
-            @click="handleClear"
-          >
-            <VIcon icon="tabler-eraser" />
-            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-          </VBtn>
-        </div>
-      </VRow>
-
-      <!-- Panel de Filtros Colapsable -->
-      <VExpandTransition>
-        <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-3 border-opacity-10" />
-          
-          <VRow dense>
-            <VCol cols="12" sm="6" md="4">
-              <AppDateTimePicker
-                :model-value="props.startDate"
-                placeholder="Fecha Inicial"
-                clearable
-                density="compact"
-                hide-details
-                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                prepend-inner-icon="tabler-calendar-event"
-                @update:model-value="emit('update:startDate', $event)"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6" md="4">
-              <AppDateTimePicker
-                :model-value="props.endDate"
-                placeholder="Fecha Final"
-                clearable
-                density="compact"
-                hide-details
-                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                prepend-inner-icon="tabler-calendar-event"
-                @update:model-value="emit('update:endDate', $event)"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="12" md="4">
-              <VAutocomplete
-                :model-value="props.cycleStatus"
-                :items="cycleStatusOptions"
-                :loading="props.loading"
-                placeholder="Estado del Ciclo"
-                item-title="title"
-                item-value="value"
-                clearable
-                density="compact"
-                hide-details
-                prepend-inner-icon="tabler-list-check"
-                @update:model-value="emit('update:cycleStatus', $event)"
-              />
-            </VCol>
-          </VRow>
-        </div>
-      </VExpandTransition>
-    </VCardText>
-  </VCard>
+      <VCol cols="12" sm="6" md="6">
+        <AppDateTimePicker
+          :model-value="props.endDate"
+          placeholder="Fecha Final"
+          clearable
+          density="compact"
+          hide-details
+          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          prepend-inner-icon="tabler-calendar-event"
+          @update:model-value="emit('update:endDate', $event)"
+        />
+      </VCol>
+    </template>
+  </AppFilterBase>
 </template>
 
 <style scoped>

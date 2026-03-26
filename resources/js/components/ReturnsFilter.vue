@@ -48,11 +48,11 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="6" md="3">
         <AppDateTimePicker
           :model-value="props.startDate"
-          placeholder="Fecha Inicial"
+          placeholder="Desde"
           clearable
           density="compact"
           hide-details
-          prepend-inner-icon="tabler-calendar-event"
+          prepend-inner-icon="tabler-calendar"
           :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           @update:model-value="emit('update:startDate', $event)"
         />
@@ -62,11 +62,11 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="6" md="3">
         <AppDateTimePicker
           :model-value="props.endDate"
-          placeholder="Fecha Final"
+          placeholder="Hasta"
           clearable
           density="compact"
           hide-details
-          prepend-inner-icon="tabler-calendar-event"
+          prepend-inner-icon="tabler-calendar"
           :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           @update:model-value="emit('update:endDate', $event)"
         />

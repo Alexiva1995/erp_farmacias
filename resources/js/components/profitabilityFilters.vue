@@ -115,8 +115,9 @@ const hasAdvancedFilters = computed(() => {
       <VBtn
         icon
         color="primary"
-        variant="flat"
+        variant="tonal"
         size="38"
+        class="rounded-circle shadow-sm"
         @click="emit('add-profitability')"
       >
         <VIcon icon="tabler-percentage" />

@@ -295,7 +295,7 @@ onMounted(() => {
           size="38"
           :loading="loading"
           @click="fetchAllData"
-          class="rounded-lg"
+          class="rounded-circle shadow-sm"
         />
       </VCardTitle>
 

@@ -73,11 +73,7 @@ const headers = [
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
-          <!-- Título/Icono -->
-          <div class="d-flex align-center gap-2 mr-4">
-            <VIcon icon="tabler-link" color="primary" size="20" />
-            <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Conectores</span>
-          </div>
+
 
           <!-- Buscador Principal -->
           <VCol cols="12" sm="5" md="4" lg="4">

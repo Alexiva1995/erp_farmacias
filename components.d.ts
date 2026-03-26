@@ -219,6 +219,7 @@ declare module 'vue' {
     PackModal: typeof import('./resources/js/components/dialogs/PackModal.vue')['default']
     PacksFilters: typeof import('./resources/js/components/PacksFilters.vue')['default']
     PackTable: typeof import('./resources/js/components/PackTable.vue')['default']
+    PaymentHistoryFilters: typeof import('./resources/js/components/PaymentHistoryFilters.vue')['default']
     PaymentProvidersDialog: typeof import('./resources/js/components/dialogs/PaymentProvidersDialog.vue')['default']
     PaymentRuleEditDialog: typeof import('./resources/js/components/dialogs/PaymentRuleEditDialog.vue')['default']
     PaymentTable: typeof import('./resources/js/components/PaymentTable.vue')['default']

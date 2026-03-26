@@ -4,6 +4,7 @@ import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
 
 const props = defineProps({
+  searchQuery:        { type: String,  default: "" },
   selectConDescuento: Boolean,
   tipo_de_vista:      Boolean,
   tipo_de_filtracion: String,
@@ -17,6 +18,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
+  "update:searchQuery",
   "update:selectConDescuento",
   "update:tipo_de_vista",
   "update:tipo_de_filtracion",
@@ -60,60 +62,31 @@ const stockOpciones = [
   { title: "Todos",  value: "all"    },
 ];
 
-const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
+const hasAdvancedFilters = computed(() => (
+  !!(props.selectedGroup?.length || props.isColombian || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'all')
+));
 </script>
 
 <template>
   <AppFilterBase
-    :search="''"
-    :force-advanced="true"
+    :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
-    search-placeholder="..."
+    search-placeholder="Buscar producto..."
+    @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >
-    <!-- Sustituir barra de búsqueda por botón de IA / parámetros base -->
-    <template #search>
-      <div class="d-flex align-center flex-grow-1 w-100 gap-2">
-        <!-- Laboratorio (múltiple) -->
-        <VAutocomplete
-          :model-value="props.selectedLaboratory"
-          :items="props.laboratories"
-          placeholder="Laboratorio (Múltiple)"
-          item-title="name"
-          item-value="id"
-          clearable
-          multiple
-          chips
-          closable-chips
-          density="compact"
-          hide-details
-          class="flex-grow-1"
-          style="min-width: 150px"
-          @update:model-value="emit('update:selectedLaboratory', $event)"
-        />
-
-        <!-- Lapso Tiempo -->
-        <VSelect
-          :model-value="props.lapso_de_tiempo"
-          :items="lapsoDeTiempoOpciones"
-          placeholder="Lapso Tiempo"
-          clearable
-          density="compact"
-          hide-details
-          class="flex-grow-1"
-          style="max-width: 200px"
-          @update:model-value="emit('update:lapso_de_tiempo', $event)"
-        />
-      </div>
+    <!-- Barra Principal -->
+    <template #search-extra>
+      <!-- Solo búsqueda en la barra principal -->
     </template>
 
     <template #actions-extra>
       <VBtn
         icon
         color="primary"
-        variant="elevated"
+        variant="flat"
         size="38"
-        class="ml-1 shadow-sm rounded-lg"
+        class="ml-1 shadow-sm rounded-circle"
         @click="emit('generarPedido')"
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
@@ -122,6 +95,25 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
     </template>
 
     <template #advanced-filters>
+      <!-- Laboratorio (múltiple) -->
+      <VCol cols="12" sm="6" md="3">
+        <VAutocomplete
+          :model-value="props.selectedLaboratory"
+          :items="props.laboratories"
+          placeholder="Laboratorios"
+          item-title="name"
+          item-value="id"
+          clearable
+          multiple
+          chips
+          closable-chips
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-building-factory-2"
+          @update:model-value="emit('update:selectedLaboratory', $event)"
+        />
+      </VCol>
+
       <!-- Grupo (múltiple) -->
       <VCol cols="12" sm="6" md="3">
         <VAutocomplete
@@ -136,8 +128,21 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
           closable-chips
           density="compact"
           hide-details
-          variant="outlined"
+          prepend-inner-icon="tabler-category"
           @update:model-value="emit('update:selectedGroup', $event)"
+        />
+      </VCol>
+
+      <!-- Lapso Tiempo -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.lapso_de_tiempo"
+          :items="lapsoDeTiempoOpciones"
+          placeholder="Periodo"
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-calendar-time"
+          @update:model-value="emit('update:lapso_de_tiempo', $event)"
         />
       </VCol>
 
@@ -146,11 +151,10 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
         <VSelect
           :model-value="props.tipo_de_filtracion"
           :items="tipoFiltracionOpcion"
-          placeholder="Calcular Por"
-          clearable
+          placeholder="Cálculo"
           density="compact"
           hide-details
-          variant="outlined"
+          prepend-inner-icon="tabler-math-function"
           @update:model-value="emit('update:tipo_de_filtracion', $event)"
         />
       </VCol>
@@ -160,11 +164,10 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
         <VSelect
           :model-value="props.tipo_de_vista"
           :items="tipoDeVistaOpcion"
-          placeholder="Vista (Agrupado)"
-          clearable
+          placeholder="Vista"
           density="compact"
           hide-details
-          variant="outlined"
+          prepend-inner-icon="tabler-layout-grid"
           @update:model-value="emit('update:tipo_de_vista', $event)"
         />
       </VCol>
@@ -174,11 +177,10 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
         <VSelect
           :model-value="props.selectConDescuento"
           :items="precio"
-          placeholder="Precio"
-          clearable
+          placeholder="Precios"
           density="compact"
           hide-details
-          variant="outlined"
+          prepend-inner-icon="tabler-currency-dollar"
           @update:model-value="emit('update:selectConDescuento', $event)"
         />
       </VCol>
@@ -188,27 +190,26 @@ const hasAdvancedFilters = computed(() => true); // Siempre forzado para IA
         <VSelect
           :model-value="props.stock"
           :items="stockOpciones"
-          placeholder="Stock Analizado"
-          clearable
+          placeholder="Stock"
           density="compact"
           hide-details
-          variant="outlined"
+          prepend-inner-icon="tabler-box"
           @update:model-value="emit('update:stock', $event)"
         />
       </VCol>
 
       <VCol cols="12" sm="6" md="2">
-        <div class="d-flex align-center h-100 px-2 rounded border border-opacity-10 bg-var-theme-background">
+        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
           <VSwitch
             :model-value="props.isColombian"
-            label="Solo Colombia"
+            label="Colombia"
             color="info"
             hide-details
             density="compact"
             class="ms-1 font-weight-bold text-xs"
             @update:model-value="emit('update:isColombian', $event)"
           />
-          <VTooltip activator="parent" location="top">Filtrar solo por productos de origen Colombia</VTooltip>
+          <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
         </div>
       </VCol>
     </template>

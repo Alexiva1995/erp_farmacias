@@ -15,8 +15,8 @@ const hasAdvancedFilters = computed(() => false);
 <template>
   <AppFilterBase
     :search="props.search"
-    :has-advanced-filters="hasAdvancedFilters"
-    search-placeholder="Buscar por Nombre, Cédula o Correo..."
+    :show-advanced="false"
+    search-placeholder="Buscar por nombre, cédula o correo..."
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
   />

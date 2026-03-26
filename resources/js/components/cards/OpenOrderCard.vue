@@ -762,7 +762,6 @@ const getIva = (product, currency) => {
             variant="tonal"
             color="error"
             size="x-small"
-            class="rounded-lg"
             @click="handleCancelarOrder"
           />
         </div>
@@ -883,7 +882,6 @@ const getIva = (product, currency) => {
                   size="24" 
                   variant="text" 
                   color="primary" 
-                  class="rounded-sm" 
                   @click="handleDecrement(product)" 
                   :disabled="product.selectedQuantity <= 1 || !!product.pack_id" 
                 />
@@ -897,7 +895,6 @@ const getIva = (product, currency) => {
                   size="24" 
                   variant="text" 
                   color="primary" 
-                  class="rounded-sm" 
                   @click="handleIncrement(product)" 
                   :disabled="product.selectedQuantity >= product.availableQuantity || !!product.pack_id" 
                 />
@@ -1051,8 +1048,7 @@ const getIva = (product, currency) => {
 
 <style scoped>
 .glass-card {
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 95%) !important;
+  background: white !important;
 }
 
 .product-row {
