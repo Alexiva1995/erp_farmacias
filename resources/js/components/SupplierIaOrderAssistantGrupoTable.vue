@@ -109,9 +109,13 @@ const groupBy = [{ key: "group.name" }];
         >
           <!-- ID -->
           <template #item.id="{ item }">
-            <span class="text-sm font-weight-black text-primary">
+            <a
+              :href="'/inventory/traceability?q=' + item.id"
+              target="_blank"
+              class="text-decoration-none text-sm font-weight-black text-primary"
+            >
               {{ item.id }}
-            </span>
+            </a>
           </template>
 
           <template #item.name="{ item }">
@@ -190,9 +194,13 @@ const groupBy = [{ key: "group.name" }];
               <div class="pa-3">
                 <div class="d-flex justify-space-between align-start mb-2">
                   <div class="flex-grow-1 pr-2">
-                    <div class="text-sm font-weight-black text-primary text-uppercase leading-tight truncate-2-lines mb-1">
+                    <a
+                      :href="'/inventory/traceability?q=' + item.id"
+                      target="_blank"
+                      class="text-decoration-none text-sm font-weight-black text-primary text-uppercase leading-tight truncate-2-lines mb-1"
+                    >
                       {{ item.name }}
-                    </div>
+                    </a>
                     <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs text-disabled">
                       <span>{{ item.active_ingredient }}</span>
                       <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-small" label class="ml-1 text-super-xs">COL</VChip>

@@ -98,9 +98,13 @@ function rowClass(item) {
 
           <!-- ID -->
           <template #item.id="{ item }">
-            <span class="text-sm font-weight-black text-primary">
+            <a
+              :href="'/inventory/traceability?q=' + item.id"
+              target="_blank"
+              class="text-decoration-none text-sm font-weight-black text-primary"
+            >
               {{ item.id }}
-            </span>
+            </a>
           </template>
 
           <template #item.name="{ item }">
@@ -210,9 +214,13 @@ function rowClass(item) {
               <div class="pa-3">
                 <div class="d-flex justify-space-between align-start mb-2">
                   <div class="flex-grow-1 pr-2">
-                    <div class="text-sm font-weight-black text-primary text-uppercase leading-tight truncate-2-lines mb-1">
+                    <a
+                      :href="'/inventory/traceability?q=' + item.id"
+                      target="_blank"
+                      class="text-decoration-none text-sm font-weight-black text-primary text-uppercase leading-tight truncate-2-lines mb-1"
+                    >
                       {{ item.name }}
-                    </div>
+                    </a>
                     <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs text-disabled">
                       <span>{{ item.laboratory?.name || 'S/L' }}</span>
                       <span>|</span>

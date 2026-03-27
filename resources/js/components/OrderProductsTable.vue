@@ -201,7 +201,13 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
       hover
     >
       <template #item.id="{ item }">
-        <span class="font-weight-black text-primary">{{ item.id }}</span>
+        <a
+          :href="'/inventory/traceability?q=' + item.id"
+          target="_blank"
+          class="text-decoration-none font-weight-black text-primary"
+        >
+          {{ item.id }}
+        </a>
       </template>
 
       <template #item.valid_stock_sum="{ item }">
@@ -357,7 +363,13 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
         >
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-2">
-              <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
+              <a
+                :href="'/inventory/traceability?q=' + item.id"
+                target="_blank"
+                class="text-decoration-none text-primary font-weight-black text-xs"
+              >
+                #{{ item.id }}
+              </a>
               <VChip
                 :color="item.valid_stock_sum > 0 ? 'success' : 'error'"
                 size="x-small"

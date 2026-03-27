@@ -94,9 +94,13 @@ const date = (order) => {
         <template v-slot:item.product="{ item }">
           <div class="d-flex flex-column py-2">
             <div class="d-flex align-center gap-1 mb-0 pb-0">
-              <span class="text-primary font-weight-black text-xs"
-                >#{{ item.product?.id || item.product_id }}</span
+              <a
+                :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                target="_blank"
+                class="text-decoration-none text-primary font-weight-black text-xs"
               >
+                #{{ item.product?.id || item.product_id }}
+              </a>
               <span
                 class="text-subtitle-2 font-weight-black text-uppercase leading-tight"
                 style="font-size: 0.85rem !important"
@@ -234,9 +238,13 @@ const date = (order) => {
           <div class="bg-light pa-3 rounded-lg mb-3 border border-dashed">
             <div class="d-flex flex-column overflow-hidden">
               <div class="d-flex align-center gap-1 mb-0 pb-0">
-                <span class="text-primary font-weight-black text-xs"
-                  >#{{ item.product?.id || item.product_id }}</span
+                <a
+                  :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                  target="_blank"
+                  class="text-decoration-none text-primary font-weight-black text-xs"
                 >
+                  #{{ item.product?.id || item.product_id }}
+                </a>
                 <span
                   class="text-xs font-weight-black text-high-emphasis uppercase leading-tight truncate"
                   >{{ item.product?.name || "—" }}</span

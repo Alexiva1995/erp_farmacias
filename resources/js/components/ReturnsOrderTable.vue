@@ -375,7 +375,13 @@ const totalRefundAmount = computed(() => {
                   />
                   <div class="d-flex flex-column flex-grow-1 overflow-hidden">
                     <div class="d-flex align-center gap-1 mb-0 pb-0">
-                      <span class="text-primary font-weight-black text-xs">#{{ detailItem.product?.id || detailItem.product_id }}</span>
+                      <a
+                        :href="'/inventory/traceability?q=' + (detailItem.product?.id || detailItem.product_id)"
+                        target="_blank"
+                        class="text-decoration-none text-primary font-weight-black text-xs"
+                      >
+                        #{{ detailItem.product?.id || detailItem.product_id }}
+                      </a>
                       <span class="text-body-2 font-weight-black truncate text-high-emphasis leading-tight">{{ detailItem.product?.name }}</span>
                     </div>
                     <div class="text-super-xs leading-tight d-flex align-center gap-1 mt-0 pt-0">
@@ -441,7 +447,13 @@ const totalRefundAmount = computed(() => {
             <template #item.product.name="{ item: detailItem }">
               <div class="d-flex flex-column py-2">
                 <div class="d-flex align-center gap-1 mb-0 pb-0">
-                  <span class="text-primary font-weight-black text-xs">#{{ detailItem.product?.id || detailItem.product_id }}</span>
+                  <a
+                    :href="'/inventory/traceability?q=' + (detailItem.product?.id || detailItem.product_id)"
+                    target="_blank"
+                    class="text-decoration-none text-primary font-weight-black text-xs"
+                  >
+                    #{{ detailItem.product?.id || detailItem.product_id }}
+                  </a>
                   <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ detailItem.product?.name || '—' }}</span>
                 </div>
                 <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">

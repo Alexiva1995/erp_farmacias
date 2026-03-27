@@ -285,7 +285,13 @@ onMounted(() => {
           @update:options="(options) => updateTableOptions(options)"
         >
           <template #item.id="{ item }">
-            <span class="font-weight-black text-primary">{{ item.id }}</span>
+            <a
+              :href="'/inventory/traceability?q=' + item.id"
+              target="_blank"
+              class="text-decoration-none font-weight-black text-primary"
+            >
+              {{ item.id }}
+            </a>
           </template>
 
           <template #item.name="{ item }">
