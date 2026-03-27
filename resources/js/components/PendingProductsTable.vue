@@ -94,7 +94,13 @@ const nextExpirationDate = (product) => {
       @update:options="(opts) => emit('update:options', opts)"
     >
       <template #item.id="{ item }">
-        {{ item.id }}
+        <a
+          :href="'/inventory/traceability?q=' + item.id"
+          target="_blank"
+          class="text-decoration-none font-weight-black text-primary"
+        >
+          {{ item.id }}
+        </a>
       </template>
 
       <template #item.name="{ item }">

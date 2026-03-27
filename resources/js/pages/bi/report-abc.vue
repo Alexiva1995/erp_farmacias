@@ -340,7 +340,13 @@ const handleClearFilters = () => {
         density="compact"
       >
         <template #item.id="{ item }">
-          <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + item.id"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.id }}
+          </a>
         </template>
 
         <!-- Combinación: Producto y Laboratorio -->

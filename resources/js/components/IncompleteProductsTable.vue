@@ -248,7 +248,13 @@ const nextExpirationDate = (product) => {
         @update:options="(opts) => emit('update:options', opts)"
       >
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + item.id"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.id }}
+          </a>
         </template>
 
         <template #item.name="{ item }">
@@ -468,7 +474,13 @@ const nextExpirationDate = (product) => {
               />
               <div class="flex-grow-1 min-width-0">
                 <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                  <span class="text-primary mr-1">#{{ item.id }}</span>
+                  <a
+                    :href="'/inventory/traceability?q=' + item.id"
+                    target="_blank"
+                    class="text-decoration-none text-primary mr-1"
+                  >
+                    #{{ item.id }}
+                  </a>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.name }}
                 </h3>

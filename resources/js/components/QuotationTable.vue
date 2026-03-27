@@ -116,7 +116,13 @@ const handleMobilePageChange = (newPage) => {
         hover
       >
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + item.id"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.id }}
+          </a>
         </template>
 
         <template #item.valid_stock_sum="{ item }">
@@ -216,7 +222,13 @@ const handleMobilePageChange = (newPage) => {
         >
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-2">
-              <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
+              <a
+                :href="'/inventory/traceability?q=' + item.id"
+                target="_blank"
+                class="text-decoration-none text-primary font-weight-black text-xs"
+              >
+                #{{ item.id }}
+              </a>
               <VChip
                 :color="item.valid_stock_sum > 0 ? 'success' : 'error'"
                 size="x-small"
@@ -228,7 +240,13 @@ const handleMobilePageChange = (newPage) => {
             </div>
 
             <div class="d-flex align-center gap-1 mb-1">
-              <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
+              <a
+                :href="'/inventory/traceability?q=' + item.id"
+                target="_blank"
+                class="text-decoration-none text-primary font-weight-black text-xs"
+              >
+                #{{ item.id }}
+              </a>
               <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
                 {{ item.name.toUpperCase() }}
               </h3>

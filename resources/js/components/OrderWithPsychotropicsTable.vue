@@ -74,7 +74,13 @@ const handleMobilePageChange = (newPage) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.product_id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.product_id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + item.product_id"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.product_id }}
+          </a>
         </template>
 
         <template #item.user.username="{ item }">
@@ -179,7 +185,13 @@ const handleMobilePageChange = (newPage) => {
             <div class="bg-var-theme-background-light rounded border-s-4 border-primary pa-2 mb-2">
               <div class="d-flex align-center gap-2 mb-1">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">ID</span>
-                <span class="text-xs font-weight-black text-primary">{{ item.product_id }}</span>
+                <a
+                  :href="'/inventory/traceability?q=' + item.product_id"
+                  target="_blank"
+                  class="text-decoration-none text-xs font-weight-black text-primary"
+                >
+                  {{ item.product_id }}
+                </a>
               </div>
               <div class="text-sm font-weight-black text-high-emphasis truncate text-uppercase leading-tight">
                 {{ item.product?.name || 'S/N' }}

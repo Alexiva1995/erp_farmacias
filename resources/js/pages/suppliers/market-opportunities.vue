@@ -24,6 +24,7 @@ const hasActiveAdvancedFilters = computed(() => (
 ));
 
 const headers = [
+  { title: "ID", key: "product_id", sortable: true, width: "80px" },
   { title: "Producto", key: "product_name_inventory", sortable: true },
   { title: "Costo Actual", key: "unit_cost_usd", align: "end", sortable: true },
   { title: "Mín. Referencia", key: "effective_min_cost", align: "end", sortable: true },
@@ -195,13 +196,21 @@ onMounted(() => {
           class="text-no-wrap premium-table overflow-hidden"
           @update:options="fetchOpportunities"
         >
-          <!-- ID (Prefix in the same cell as name) -->
+          <template #item.product_id="{ item }">
+            <a
+              :href="'/inventory/traceability?q=' + item.product_id"
+              target="_blank"
+              class="text-decoration-none font-weight-black text-primary"
+            >
+              {{ item.product_id }}
+            </a>
+          </template>
+
+          <!-- Producto -->
           <template #item.product_name_inventory="{ item }">
             <div class="d-flex align-center py-2">
               <div class="d-flex flex-column overflow-hidden">
                 <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product_name_inventory">
-                  <span class="text-primary mr-2">{{ item.id }}</span>
-                  <span class="text-disabled mr-2">|</span>
                   {{ item.product_name_inventory.toUpperCase() }}
                 </span>
                 <div class="d-flex align-center gap-1 text-super-xs">
@@ -277,8 +286,17 @@ onMounted(() => {
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-start mb-3">
                 <div class="flex-grow-1">
-                  <div class="text-subtitle-2 font-weight-black leading-tight mb-1">
-                    {{ item.product_name_inventory }}
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <a
+                      :href="'/inventory/traceability?q=' + item.product_id"
+                      target="_blank"
+                      class="text-decoration-none text-xs font-weight-black text-primary"
+                    >
+                      #{{ item.product_id }}
+                    </a>
+                    <div class="text-subtitle-2 font-weight-black leading-tight truncate">
+                      {{ item.product_name_inventory }}
+                    </div>
                   </div>
                   <div class="d-flex flex-wrap ga-2 align-center">
                     <span class="text-caption text-medium-emphasis">{{ item.active_ingredient_inventory }}</span>

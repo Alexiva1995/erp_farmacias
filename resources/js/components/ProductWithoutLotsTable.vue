@@ -37,6 +37,15 @@ const headers = [
       class="text-no-wrap"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #item.id="{ item }">
+        <a
+          :href="'/inventory/traceability?q=' + item.product?.id"
+          target="_blank"
+          class="text-decoration-none font-weight-black text-primary"
+        >
+          {{ item.id }}
+        </a>
+      </template>
       <template #item.product.name="{ item }">
         <div class="d-flex align-center gap-x-4">
           <VAvatar

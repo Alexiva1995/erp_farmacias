@@ -301,7 +301,13 @@ const formatMoney = (val) => {
         @update:options="updateTableOptions"
       >
         <template #item.id="{ item }">
-          <span class="text-sm font-weight-black text-primary">{{ item.id || item.product_id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + (item.id || item.product_id)"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.id || item.product_id }}
+          </a>
         </template>
 
         <template #item.product_name="{ item }">

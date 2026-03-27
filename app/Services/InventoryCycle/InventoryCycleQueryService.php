@@ -305,7 +305,7 @@ class InventoryCycleQueryService
                 $defaultSortColumn = ($tableName === 'product_counts' && $query->getQuery()->wheres && in_array('confirmed', array_column($query->getQuery()->wheres, 'values')))
                     ? 'processed_at'
                     : 'created_at';
-                return $query->orderBy($defaultSortColumn, 'desc');
+                return $query->orderBy($defaultSortColumn, 'asc');
         }
     }
 
@@ -342,8 +342,15 @@ class InventoryCycleQueryService
                     ->orderBy(DB::raw('MIN(product_lots.expiration_date)'), $orderBy)
                     ->select('products.*');
 
+            case 'latest_sale_date':
+                return $query->orderBy('latest_sale_date', $orderBy);
+
             default:
-                return $query->orderBy('products.id', 'asc');
+                // Si existe la columna virtual latest_sale_date, ordenar por ella por defecto
+                if (str_contains($query->toSql(), 'latest_sale_date')) {
+                    return $query->orderBy('latest_sale_date', $orderBy);
+                }
+                return $query->orderBy('products.id', $orderBy);
         }
     }
 
@@ -391,7 +398,7 @@ class InventoryCycleQueryService
 
         $query = $this->applyFiltersToCount($query, $filters);
         $query = $this->applyNotAuthUserFilterToCount($query);
-        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
     }
@@ -556,7 +563,7 @@ class InventoryCycleQueryService
 
         $query = $this->applyFiltersToCount($query, $filters);
         $query = $this->applyNotAuthUserFilterToCount($query);
-        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
     }
@@ -880,25 +887,45 @@ class InventoryCycleQueryService
         $cycleStartDate = $activeCycle?->start_date;
 
         $afterCycleStart = $cycleStartDate ? Carbon::parse($cycleStartDate)->addSecond() : null;
-        $query->whereHas('orderDetails.order', function ($subQuery) use ($afterCycleStart) {
-            $subQuery->where('status', 'completed')
-                ->where('order_date', '>=', '2026-01-25');
+        $activeCycleId = $activeCycle?->id;
+
+        $query->addSelect([
+            'latest_sale_date' => DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereColumn('order_details.product_id', 'products.id')
+                ->where('orders.status', 'completed')
+                ->where(function ($q) use ($afterCycleStart) {
+                    if ($afterCycleStart) {
+                        $q->where('orders.order_date', '>', $afterCycleStart);
+                    } else {
+                        $q->where('orders.order_date', '>=', '2026-01-25');
+                    }
+                })
+                ->selectRaw('MAX(orders.order_date)')
+        ]);
+
+        $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
+            $sub->select(DB::raw(1))
+                ->from('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereColumn('order_details.product_id', 'products.id')
+                ->where('orders.status', 'completed');
+
             if ($afterCycleStart) {
-                $subQuery->where('order_date', '>', $afterCycleStart);
+                $sub->where('orders.order_date', '>', $afterCycleStart);
+            } else {
+                $sub->where('orders.order_date', '>=', '2026-01-25');
             }
-            $subQuery->whereHas('cashClosing', function ($cashQuery) {
-                $cashQuery->where('status', 'closed')
-                    ->where('closing_date', '>=', '2026-01-25');
-                $cashQuery->has('dailyClosure');
+
+            // Solo mostrar si no hay un conteo posterior a esta venta en el ciclo actual
+            $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
+                $countSub->select(DB::raw(1))
+                    ->from('sales_counts')
+                    ->whereColumn('sales_counts.product_id', 'products.id')
+                    ->where('sales_counts.cycle_id', $activeCycleId)
+                    ->whereRaw('sales_counts.created_at >= orders.order_date');
             });
         });
-
-        $activeCycleId = $activeCycle?->id;
-        if ($activeCycleId) {
-            $query->whereDoesntHave('saleCounts', function (Builder $sub) use ($activeCycleId) {
-                $sub->where('cycle_id', $activeCycleId);
-            });
-        }
 
         $filters = [
             'q' => $request->q,
@@ -960,7 +987,7 @@ class InventoryCycleQueryService
 
         $query = $this->applyFiltersToCount($query, $filters);
         $query = $this->applyNotAuthUserFilterToCount($query);
-        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'desc'));
+        $query = $this->applySortingToCount($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
     }

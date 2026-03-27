@@ -73,7 +73,13 @@ const calculateDiscountPrice = (price, discount) => {
       >
         <!-- ID Column -->
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + item.product?.id"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.id }}
+          </a>
         </template>
 
         <!-- Product Column -->
@@ -209,9 +215,13 @@ const calculateDiscountPrice = (price, discount) => {
           <!-- Cabecera Tarjeta -->
           <div class="d-flex justify-space-between align-center mb-3">
             <div class="d-flex align-center gap-1">
-              <span class="text-primary font-weight-black text-xs">{{
-                item.id
-              }}</span>
+              <a
+                :href="'/inventory/traceability?q=' + item.product?.id"
+                target="_blank"
+                class="text-decoration-none text-primary font-weight-black text-xs"
+              >
+                {{ item.id }}
+              </a>
               <span class="text-disabled mx-1">|</span>
               <h3
                 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-0"

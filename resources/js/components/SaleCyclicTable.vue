@@ -66,9 +66,13 @@ const handleMobilePageChange = (newPage) => {
         hover
       >
         <template #item.product_id="{ item }">
-          <span class="font-weight-black text-primary">
+          <a
+            :href="'/inventory/traceability?q=' + (item.productId ?? item.product_id)"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
             {{ item.productId ?? item.product_id ?? "—" }}
-          </span>
+          </a>
         </template>
 
         <template #item.product.name="{ item }">
@@ -138,9 +142,13 @@ const handleMobilePageChange = (newPage) => {
             <div class="d-flex gap-3 align-start mb-3">
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center justify-space-between mb-1">
-                  <span class="text-primary font-weight-black text-xs">
+                  <a
+                    :href="'/inventory/traceability?q=' + (item.productId ?? item.product_id)"
+                    target="_blank"
+                    class="text-decoration-none text-primary font-weight-black text-xs"
+                  >
                     {{ item.productId ?? item.product_id }}
-                  </span>
+                  </a>
                   <VChip
                     :color="getDiscrepancyColor(item.discrepancy)"
                     size="x-small"

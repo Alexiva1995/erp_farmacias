@@ -80,7 +80,12 @@ const headers = [
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.product_id }}</span>
+          <a
+            :href="'/inventory/traceability?q=' + item.product_id"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.product_id }}
+          </a>
         </template>
 
         <template #item.product.name="{ item }">
@@ -180,7 +185,12 @@ const headers = [
               />
               <div class="flex-grow-1 min-width-0">
                 <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight text-truncate">
-                  <span class="text-primary">#{{ item.product_id }}</span>
+                  <a
+                    :href="'/inventory/traceability?q=' + item.product_id"
+                    class="text-decoration-none text-primary"
+                  >
+                    #{{ item.product_id }}
+                  </a>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.product?.name || 'S/N' }}
                 </h3>
