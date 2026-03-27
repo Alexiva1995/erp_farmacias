@@ -89,6 +89,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  foreignOrdersCount: {
+    type: Number,
+    default: 0,
+  },
+  allForeignSalesSpe: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -109,6 +117,14 @@ const progressStages = [0, 100];
 const currentStageIndex = ref(0);
 
 const invoiceSwitch = ref(false);
+const isFifthForeignSale = computed(() => {
+  return (props.foreignOrdersCount + 1) % 5 === 0;
+});
+
+const shouldApplySpeRules = computed(() => {
+  return isFifthForeignSale.value || props.allForeignSalesSpe;
+});
+
 const changeAmountUSD = ref(0);
 const productsPanelExpanded = ref([0]); // Panel de productos expandido por defecto (0 = primer panel expandido)
 const selectedCurrencyTab = ref(props.selectedCurrency); // Pestaña de moneda seleccionada (inicializada con la moneda del pedido)
@@ -673,17 +689,20 @@ const handleCompletePurchase = () => {
       );
       emit(
         "purchase-completed",
-        props.orderData.id,
+        props.orderData?.id,
         validPayments,
         hasCreditPayment.value,
         changeAmountInCop.value,
         changeAmountInUsd.value,
         {
-          invoice_switch: invoiceSwitch.value,
+          invoice_switch: invoiceSwitch.value || shouldApplySpeRules.value,
           spe:
             selectedCurrencyTab.value !== "BS" ||
             props.orderData?.client?.is_spe ||
+            shouldApplySpeRules.value ||
             false,
+          spe_surcharge_rate: shouldApplySpeRules.value ? 1 : null,
+          generate_invoice: shouldApplySpeRules.value ? true : invoiceSwitch.value,
         },
         changeAmount.value,
       );
@@ -715,7 +734,7 @@ const resetProgress = () => {
       _amountError: false,
     },
   ];
-  invoiceSwitch.value = props.selectedCurrency !== "BS";
+  invoiceSwitch.value = props.selectedCurrency !== "BS" || shouldApplySpeRules.value;
   // ELIMINAR: speSwitch.value = false;
 };
 
@@ -773,7 +792,7 @@ watch(
   (newCurrency) => {
     // El switch se ajusta automáticamente según la moneda:
     // Habilitado para USD/COP (monedas distintas a BS), Deshabilitado para BS.
-    invoiceSwitch.value = newCurrency !== "BS";
+    invoiceSwitch.value = (newCurrency !== "BS") || shouldApplySpeRules.value;
   },
 );
 
@@ -1600,7 +1619,7 @@ const getAvailableMethodsForCurrency = (currency) => {
   return methods.filter((m) => {
     // El método 'credit' está disponible en USD
     if (m.value === "balance") {
-      return currency === "USD" && props.orderData.client?.balance > 0;
+      return currency === "USD" && props.orderData?.client?.balance > 0;
     }
     return true;
   });

@@ -23,6 +23,10 @@ import {
 } from "vue";
 
 const activeTab = ref("products");
+const isSpecialTaxpayer = ref(false);
+const allForeignSalesSpe = ref(false);
+const foreignOrdersCount = ref(0);
+const exchangeRates = ref({});
 const packs = ref([]);
 const totalPacks = ref(0);
 const loadingPacks = ref(false);
@@ -74,9 +78,6 @@ const speSurchargeAmount = ref(0);
 
 const isFinishingOrder = ref(false);
 
-const isSpecialTaxpayer = ref(false);
-
-const exchangeRates = ref({});
 const ratesLoaded = ref(false);
 const isCurrencyChanging = ref(false);
 
@@ -227,6 +228,7 @@ const fetchGeneralSettings = async () => {
   try {
     const { data } = await axios.get("/general-settings");
     isSpecialTaxpayer.value = data.special_taxpayer_status === "activa";
+    allForeignSalesSpe.value = !!data.all_foreign_sales_spe;
   } catch (error) {
     console.error("Error al cargar configuración", error);
     toast.error("Error al cargar configuración");
@@ -922,34 +924,38 @@ const fetchOpenOrder = async () => {
     );
     const response = await axios.get("/tpv/order/seller/my-open-order");
     console.log("[ORDER_USER] Respuesta recibida:", response.data);
-    if (
-      response.data.data &&
-      response.data.data.order &&
-      response.data.data.order.pending_order
-    ) {
-      openOrderData.value = response.data.data.order.pending_order;
-      reservedOrderData.value = response.data.data.order.reserved_order;
-      selectedClient.value = response.data.data.order.pending_order.client;
-      hasOpenOrder.value = true;
-      if (openOrderData.value.currency) {
-        selectedDisplayCurrency.value =
-          openOrderData.value.currency.toUpperCase();
-      }
-      if (openOrderData.value.details) {
-        orderItems.value = openOrderData.value.details.map((item) =>
-          formatOrderItemForFrontend(item),
-        );
+    if (response.data.data && response.data.data.order) {
+      if (response.data.data.order.pending_order) {
+        openOrderData.value = response.data.data.order.pending_order;
+        reservedOrderData.value = response.data.data.order.reserved_order;
+        selectedClient.value = response.data.data.order.pending_order.client;
+        hasOpenOrder.value = true;
+        if (openOrderData.value.currency) {
+          selectedDisplayCurrency.value =
+            openOrderData.value.currency.toUpperCase();
+        }
+        if (openOrderData.value.details) {
+          orderItems.value = openOrderData.value.details.map((item) =>
+            formatOrderItemForFrontend(item),
+          );
+        } else {
+          orderItems.value = [];
+        }
       } else {
+        hasOpenOrder.value = false;
+        openOrderData.value = null;
+        reservedOrderData.value = null;
+        selectedClient.value = null;
         orderItems.value = [];
       }
-      console.log("llamando la orden");
-      console.log(orderItems);
+      foreignOrdersCount.value = response.data.data.foreign_orders_count || 0;
     } else {
       hasOpenOrder.value = false;
       openOrderData.value = null;
       reservedOrderData.value = null;
       selectedClient.value = null;
       orderItems.value = [];
+      foreignOrdersCount.value = 0;
     }
   } catch (error) {
     console.error("Error al verificar orden abierta del vendedor:", error);
@@ -2408,11 +2414,11 @@ const handleBuysCompletion = async (
       currentTypeName = "recipe";
     }
 
-    let taxable_base = appliesSpecialTax.value ? totalOrderAmount.value : 0.0;
-    let spe_surcharge_rate = appliesSpecialTax.value ? 3.0 : 0.0;
-    let spe_surcharge_amount = appliesSpecialTax.value
-      ? specialTaxAmount.value
-      : 0.0;
+    let taxable_base = (appliesSpecialTax.value || switchStates.spe_surcharge_rate) ? totalOrderAmount.value : 0.0;
+    let spe_surcharge_rate = switchStates.spe_surcharge_rate || (appliesSpecialTax.value ? 3.0 : 0.0);
+    let spe_surcharge_amount = (switchStates.spe_surcharge_rate && !appliesSpecialTax.value) 
+      ? (totalOrderAmount.value * (switchStates.spe_surcharge_rate / 100)) 
+      : (appliesSpecialTax.value ? specialTaxAmount.value : 0.0);
 
     const safeChangeAmount = isNaN(parseFloat(changeAmount))
       ? 0
@@ -2428,7 +2434,7 @@ const handleBuysCompletion = async (
     formData.append("client_id", selectedClient.value?.id || "");
     formData.append("seller_id", currentUser.value?.id || "");
     formData.append("balance_used", balanceUsed ? 1 : 0);
-    formData.append("generate_invoice", switchStates.invoice_switch ? 1 : 0);
+    formData.append("generate_invoice", (switchStates.invoice_switch || switchStates.generate_invoice) ? 1 : 0);
     formData.append("credit", credit ? 1 : 0);
     formData.append("changeAmount", safeChangeAmount);
     formData.append("changeAmountUSD", safeChangeAmountUSD);
@@ -3300,6 +3306,8 @@ onUnmounted(() => {
       :active-company-offers="activeCompanyOffers || []"
       :global-discount="currentGlobalDiscountDetails || null"
       :is-special-taxpayer="isSpecialTaxpayer || false"
+      :all-foreign-sales-spe="allForeignSalesSpe || false"
+      :foreign-orders-count="foreignOrdersCount || 0"
       @printTicke-completed="printTickeCompletion"
       @finish-and-reload="finalizeAndCheckPending"
     />

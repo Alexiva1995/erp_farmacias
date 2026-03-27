@@ -13,6 +13,12 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class OrderQueryService
 {
+    public function getForeignOrdersCount(): int
+    {
+        return Order::where('status', Order::COMPLETED)
+            ->where('currency', '!=', 'BS')
+            ->count();
+    }
 
     private function getBaseQuery($valor, ?string $startDate = null, ?string $endDate = null): Builder
     {
