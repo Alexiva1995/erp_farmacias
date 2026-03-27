@@ -12,7 +12,8 @@ class GeneralSettingController extends Controller
     {
         return GeneralSetting::firstOrCreate([], [
             'fiscal_mode' => 'demo',
-            'special_taxpayer_status' => 'desactivada'
+            'special_taxpayer_status' => 'desactivada',
+            'all_foreign_sales_spe' => false
         ]);
     }
 
@@ -21,6 +22,7 @@ class GeneralSettingController extends Controller
         $request->validate([
             'fiscal_mode' => 'required|string|in:demo,activa',
             'special_taxpayer_status' => 'required|string|in:activa,desactivada',
+            'all_foreign_sales_spe' => 'nullable|boolean',
         ]);
         $setting = GeneralSetting::first();
         if ($setting) {

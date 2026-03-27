@@ -895,8 +895,8 @@ class InventoryCycleQueryService
 
         $activeCycleId = $activeCycle?->id;
         if ($activeCycleId) {
-            $query->whereDoesntHave('saleCounts', function (Builder $subQuery) use ($activeCycleId) {
-                $subQuery->where('cycle_id', $activeCycleId);
+            $query->whereDoesntHave('saleCounts', function (Builder $sub) use ($activeCycleId) {
+                $sub->where('cycle_id', $activeCycleId);
             });
         }
 

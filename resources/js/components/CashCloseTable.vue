@@ -159,10 +159,10 @@ const handleMobilePageChange = (newPage) => {
 
         <template #item.amount="{ item }">
           <span
-            :class="item.discrepancy > 0 ? 'text-success' : 'text-error'"
+            :class="(editingId === item.id ? editingValue : item.discrepancy) > 0 ? 'text-success' : 'text-error'"
             class="text-sm font-weight-black"
           >
-            {{ formatPrice(item.product.sale_price * item.discrepancy) }}
+            {{ formatPrice(item.product.sale_price * (editingId === item.id ? editingValue : item.discrepancy)) }}
           </span>
         </template>
 
@@ -186,7 +186,7 @@ const handleMobilePageChange = (newPage) => {
                 @click="startEdit(item)"
               >
                 <VIcon icon="tabler-edit" />
-                <VTooltip activator="parent">Editar discrepancia</VTooltip>
+                <VTooltip activator="parent">Editar cantidad</VTooltip>
               </IconBtn>
 
               <IconBtn
@@ -254,6 +254,7 @@ const handleMobilePageChange = (newPage) => {
                     @click="startEdit(item)"
                   >
                     <VIcon icon="tabler-edit" size="18" />
+                    <VTooltip activator="parent">Editar cantidad</VTooltip>
                   </IconBtn>
                   <IconBtn
                     v-if="!item.hasTraceability"
@@ -305,9 +306,9 @@ const handleMobilePageChange = (newPage) => {
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Monto Total</span>
                 <span 
                   class="text-sm font-weight-black"
-                  :class="item.discrepancy > 0 ? 'text-success' : 'text-error'"
+                  :class="(editingId === item.id ? editingValue : item.discrepancy) > 0 ? 'text-success' : 'text-error'"
                 >
-                  {{ formatPrice(item.product.sale_price * item.discrepancy) }}
+                  {{ formatPrice(item.product.sale_price * (editingId === item.id ? editingValue : item.discrepancy)) }}
                 </span>
               </div>
             </div>

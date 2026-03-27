@@ -10,7 +10,12 @@ class GeneralSetting extends Model
     protected $fillable = [
         'fiscal_mode',
         'special_taxpayer_status',
+        'all_foreign_sales_spe',
         'rif',
         'address',
+    ];
+
+    protected $casts = [
+        'all_foreign_sales_spe' => 'boolean',
     ];
 }

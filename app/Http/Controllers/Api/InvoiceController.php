@@ -47,8 +47,8 @@ class InvoiceController extends Controller
     {
         $rules = [
             'supplier_id' => 'required|exists:suppliers,id',
-            'invoice_number' => 'required|string|max:50',
-            'control_number' => 'required|string|max:50',
+            'invoice_number' => 'required|string|max:100|unique:invoices,invoice_number',
+            'control_number' => 'required|string|max:100',
             'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
             'exp_date' => 'required|date',
             'payment_date' => 'nullable|date|after_or_equal:received_date',
@@ -70,7 +70,11 @@ class InvoiceController extends Controller
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         }
 
-        $validator = Validator::make($request->all(), $rules);
+        $messages = [
+            'invoice_number.unique' => 'El número de factura ya ha sido registrado en el sistema.',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);
@@ -164,8 +168,13 @@ class InvoiceController extends Controller
     {
         $rules = [
             'supplier_id' => 'required|exists:suppliers,id',
-            'invoice_number' => 'required|string|max:50',
-            'control_number' => 'required|string|max:50',
+            'invoice_number' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('invoices', 'invoice_number')->ignore($invoice->id)
+            ],
+            'control_number' => 'required|string|max:100',
             'exp_date' => 'required|date',
             'payment_date' => 'nullable|date|after_or_equal:received_date',
             'received_date' => 'required|date',
@@ -186,7 +195,12 @@ class InvoiceController extends Controller
             $rules['exchange_rate'] = 'nullable|numeric';
             $rules['total_usd'] = 'nullable|numeric|gt:0';
         }
-        $validator = Validator::make($request->all(), $rules);
+
+        $messages = [
+            'invoice_number.unique' => 'El número de factura ya ha sido registrado en el sistema.',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);

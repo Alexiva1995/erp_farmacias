@@ -82,14 +82,17 @@ class OrderController extends Controller
             }
 
             $openOrder = $this->orderActionService->getMyOpenOrder($sellerId);
+            $foreignOrdersCount = $this->orderQueryService->getForeignOrdersCount();
 
             if ($openOrder) {
                 return ApiResponse::success([
                     'order' => $openOrder,
+                    'foreign_orders_count' => $foreignOrdersCount
                 ], "Orden abierta de vendedor encontrada.", 200);
             } else {
                 return ApiResponse::success([
-                    'order' => null
+                    'order' => null,
+                    'foreign_orders_count' => $foreignOrdersCount
                 ], "No se encontró orden abierta para el vendedor.", 200);
             }
         } catch (\Exception $e) {

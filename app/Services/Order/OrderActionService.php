@@ -834,6 +834,7 @@ class OrderActionService
             $orderId->taxable_base = $request->taxable_base ?? 0;
             $orderId->spe_surcharge_rate = $request->spe_surcharge_rate ?? 0;
             $orderId->spe_surcharge_amount = $request->spe_surcharge_amount ?? 0;
+            $orderId->order_date = Carbon::now();
 
             // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
             // The sale movement will be created, and then when ProductLotObserver fires (if withoutEvents didn't work),
