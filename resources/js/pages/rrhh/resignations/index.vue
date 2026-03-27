@@ -341,13 +341,13 @@ onMounted(() => {
           <div class="d-flex justify-end gap-1">
             <VTooltip text="Descargar" location="top">
               <template #activator="{ props }">
-                <VBtn v-bind="props" icon="tabler-file-download" variant="text" color="primary" size="32" @click="downloadResignationPDF(item)" />
+                <VBtn v-bind="props" icon="tabler-file-download" variant="tonal" color="primary" size="32" class="rounded-circle shadow-sm" @click="downloadResignationPDF(item)" />
               </template>
             </VTooltip>
 
             <VTooltip text="Editar" location="top">
               <template #activator="{ props }">
-                <VBtn v-bind="props" icon="tabler-edit" variant="text" color="info" size="32" @click="editResignation(item)" />
+                <VBtn v-bind="props" icon="tabler-edit" variant="tonal" color="info" size="32" class="rounded-circle shadow-sm" @click="editResignation(item)" />
               </template>
             </VTooltip>
 
@@ -356,9 +356,10 @@ onMounted(() => {
                 <VBtn 
                   v-bind="props" 
                   :icon="item.employee_status === 'Activo' ? 'tabler-user-minus' : 'tabler-user-plus'" 
-                  variant="text" 
+                  variant="tonal" 
                   :color="item.employee_status === 'Activo' ? 'warning' : 'success'" 
                   size="32" 
+                  class="rounded-circle shadow-sm"
                   @click="openToggleConfirmDialog(item.employee_id, item.employee_status === 'Activo', item.employee_name)" 
                 />
               </template>
@@ -366,7 +367,7 @@ onMounted(() => {
 
             <VTooltip text="Eliminar" location="top">
               <template #activator="{ props }">
-                <VBtn v-bind="props" icon="tabler-trash" variant="text" color="error" size="32" @click="deleteResignation(item)" />
+                <VBtn v-bind="props" icon="tabler-trash" variant="tonal" color="error" size="32" class="rounded-circle shadow-sm" @click="deleteResignation(item)" />
               </template>
             </VTooltip>
           </div>
@@ -420,30 +421,18 @@ onMounted(() => {
                 
                 <VDivider class="border-opacity-10 mb-3" />
                 
-                <div class="d-flex gap-2">
-                  <VBtn block color="primary" variant="tonal" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="downloadResignationPDF(item)">
-                    <VIcon start icon="tabler-file-download" size="16" />
-                    Bajar
-                  </VBtn>
-                  <VBtn block color="info" variant="tonal" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="editResignation(item)">
-                    <VIcon start icon="tabler-edit" size="16" />
-                    Editar
-                  </VBtn>
-                  <VMenu location="bottom end">
-                    <template #activator="{ props }">
-                      <VBtn v-bind="props" color="secondary" variant="tonal" size="small" class="rounded-lg" icon="tabler-dots-vertical" />
-                    </template>
-                    <VList density="compact" class="rounded-lg py-1 border shadow-lg">
-                      <VListItem @click="openToggleConfirmDialog(item.employee_id, item.employee_status === 'Activo', item.employee_name)">
-                        <template #prepend><VIcon :icon="item.employee_status === 'Activo' ? 'tabler-user-minus' : 'tabler-user-plus'" size="18" :color="item.employee_status === 'Activo' ? 'warning' : 'success'" /></template>
-                        <VListItemTitle class="text-xs font-weight-bold">{{ item.employee_status === 'Activo' ? 'Desactivar' : 'Activar' }}</VListItemTitle>
-                      </VListItem>
-                      <VListItem @click="deleteResignation(item)" class="text-error">
-                        <template #prepend><VIcon icon="tabler-trash" size="18" color="error" /></template>
-                        <VListItemTitle class="text-xs font-weight-bold">Eliminar</VListItemTitle>
-                      </VListItem>
-                    </VList>
-                  </VMenu>
+                <div class="d-flex gap-1 justify-end">
+                   <VBtn icon="tabler-file-download" color="primary" variant="tonal" size="32" class="rounded-circle shadow-sm" @click="downloadResignationPDF(item)" />
+                   <VBtn icon="tabler-edit" color="info" variant="tonal" size="32" class="rounded-circle shadow-sm" @click="editResignation(item)" />
+                   <VBtn 
+                     :icon="item.employee_status === 'Activo' ? 'tabler-user-minus' : 'tabler-user-plus'" 
+                     variant="tonal" 
+                     :color="item.employee_status === 'Activo' ? 'warning' : 'success'" 
+                     size="32" 
+                     class="rounded-circle shadow-sm"
+                     @click="openToggleConfirmDialog(item.employee_id, item.employee_status === 'Activo', item.employee_name)" 
+                   />
+                   <VBtn icon="tabler-trash" color="error" variant="tonal" size="32" class="rounded-circle shadow-sm" @click="deleteResignation(item)" />
                 </div>
               </VCardText>
             </VCard>

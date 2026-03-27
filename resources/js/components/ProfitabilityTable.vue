@@ -194,7 +194,9 @@ const getProfitabilityPercentage = (item) => {
             target="_blank"
             class="text-decoration-none font-weight-black"
             :class="[
-              item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary',
+              item.profitability?.is_locked == '1'
+                ? 'text-error'
+                : 'text-primary',
             ]"
           >
             {{ item.id }}
@@ -206,21 +208,42 @@ const getProfitabilityPercentage = (item) => {
             <div class="d-flex flex-column min-width-0">
               <span
                 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
-                :class="{ 
-                  'text-warning': item.psychotropic == 1 || item.psychotropic === true
+                :class="{
+                  'text-warning':
+                    item.psychotropic == 1 || item.psychotropic === true,
                 }"
-                style="max-inline-size: 320px;"
+                style="max-inline-size: 320px"
                 :title="item.name"
               >
                 {{ item.name.toUpperCase() }}
-                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
-                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
+                <span
+                  v-if="item.iva == 1 || item.iva === true"
+                  class="text-xs text-disabled"
+                >
+                  (G)</span
+                >
+                <span
+                  v-if="
+                    item.is_colombian_origin == 1 ||
+                    item.is_colombian_origin === true
+                  "
+                  class="text-xs text-disabled"
+                >
+                  (COL)</span
+                >
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span
+                  class="text-disabled truncate"
+                  style="max-inline-size: 200px"
+                  >{{ item.active_ingredient }}</span
+                >
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
-                  {{ item.laboratory?.name || 'S/L' }}
+                <span
+                  class="text-primary font-weight-black text-uppercase truncate"
+                  style="max-inline-size: 150px"
+                >
+                  {{ item.laboratory?.name || "S/L" }}
                 </span>
               </div>
             </div>
@@ -354,13 +377,17 @@ const getProfitabilityPercentage = (item) => {
           </VAvatar>
 
           <div class="d-flex flex-column flex-grow-1 min-width-0">
-            <span class="text-base font-weight-black text-high-emphasis text-uppercase text-truncate">
+            <span
+              class="text-base font-weight-black text-high-emphasis text-uppercase text-truncate"
+            >
               <a
                 :href="'/inventory/traceability?q=' + item.id"
                 target="_blank"
                 class="text-decoration-none font-weight-black"
                 :class="[
-                  item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary',
+                  item.profitability?.is_locked == '1'
+                    ? 'text-error'
+                    : 'text-primary',
                 ]"
               >
                 {{ item.id }}
@@ -369,10 +396,14 @@ const getProfitabilityPercentage = (item) => {
               {{ item.name }}
             </span>
             <div class="d-flex align-center gap-1 text-super-xs mt-1">
-              <span class="text-disabled truncate">{{ item.active_ingredient }}</span>
+              <span class="text-disabled truncate">{{
+                item.active_ingredient
+              }}</span>
               <span class="text-disabled mx-1">|</span>
-              <span class="text-primary font-weight-black text-uppercase truncate">
-                {{ item.laboratory?.name || 'S/L' }}
+              <span
+                class="text-primary font-weight-black text-uppercase truncate"
+              >
+                {{ item.laboratory?.name || "S/L" }}
               </span>
             </div>
           </div>
@@ -501,7 +532,10 @@ const getProfitabilityPercentage = (item) => {
 :deep(.premium-table) {
   .v-data-table-header th {
     background: white !important;
-    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+    color: rgba(
+      var(--v-theme-on-surface),
+      var(--v-high-emphasis-opacity)
+    ) !important;
     font-size: 0.75rem !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;

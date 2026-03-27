@@ -155,7 +155,7 @@ const calculateDiscountPrice = (price, discount) => {
               size="x-small"
               color="warning"
               variant="tonal"
-              class="rounded shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="$emit('edit-offer', item)"
             >
               <VIcon icon="tabler-edit" size="18" />
@@ -168,7 +168,7 @@ const calculateDiscountPrice = (price, discount) => {
               size="x-small"
               color="error"
               variant="tonal"
-              class="rounded shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="$emit('delete-offer', item.id)"
             >
               <VIcon icon="tabler-trash" size="18" />
@@ -237,7 +237,7 @@ const calculateDiscountPrice = (price, discount) => {
                 size="x-small"
                 color="warning"
                 variant="tonal"
-                class="rounded"
+                class="rounded-circle shadow-sm"
                 @click="$emit('edit-offer', item)"
               />
               <VBtn
@@ -245,7 +245,7 @@ const calculateDiscountPrice = (price, discount) => {
                 size="x-small"
                 color="error"
                 variant="tonal"
-                class="rounded"
+                class="rounded-circle shadow-sm"
                 @click="$emit('delete-offer', item.id)"
               />
             </div>

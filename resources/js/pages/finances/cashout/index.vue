@@ -151,7 +151,7 @@ onMounted(() => {
         <VSpacer class="d-none d-md-block" />
         
         <!-- KPI Destacado -->
-        <VCard variant="tonal" color="white" class="rounded-xl px-6 py-2 border-opacity-10 d-none d-sm-block">
+        <VCard variant="tonal" color="white" class="rounded-lg px-6 py-2 border-opacity-10 d-none d-sm-block">
           <div class="d-flex flex-column align-end">
             <span class="text-super-xs font-weight-black text-white opacity-70 uppercase mb-1">Balance Consolidado</span>
             <span class="text-h5 font-weight-black text-white">
@@ -201,7 +201,7 @@ onMounted(() => {
 }
 
 .header-main-card {
-  border-radius: 24px !important;
+  border-radius: 8px !important;
 }
 
 .text-super-xs {

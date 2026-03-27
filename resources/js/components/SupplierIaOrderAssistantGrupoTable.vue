@@ -159,6 +159,7 @@ const groupBy = [{ key: "group.name" }];
               :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'"
               variant="tonal"
               size="small"
+              class="rounded-lg"
             >
               {{ item.totalQuantityInAutoOrder || 0 }}
             </VChip>

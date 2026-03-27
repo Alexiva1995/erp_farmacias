@@ -85,31 +85,14 @@ onMounted(() => {
 
 <template>
   <div class="balance-premium">
-    <VRow class="mb-6">
-        <VCol cols="12">
-            <div class="d-flex align-center justify-space-between">
-                <div>
-                    <h4 class="text-h4 font-weight-bold mb-1">Balance General</h4>
-                    <p class="text-body-1 opacity-70">Análisis detallado de la salud financiera de la farmacia</p>
-                </div>
-                <VBtn 
-                    variant="tonal" 
-                    prepend-icon="tabler-refresh" 
-                    :loading="loading"
-                    @click="fetchBalance"
-                >
-                    Actualizar Datos
-                </VBtn>
-            </div>
-        </VCol>
-    </VRow>
+    <!-- El header y botón de actualizar se eliminaron por solicitud del usuario -->
 
     <!-- CARDS DE RATIOS -->
-    <VRow class="mb-6">
+    <VRow class="mb-6 mt-2">
         <VCol cols="12" md="4">
-            <VCard elevation="2" class="h-100">
+            <VCard class="h-100 rounded-lg border shadow-sm">
                 <VCardText class="d-flex align-center">
-                    <VAvatar color="primary" variant="tonal" rounded size="52" class="me-4 text-h5">
+                    <VAvatar color="primary" variant="tonal" class="rounded-lg me-4 text-h5" size="52">
                         <VIcon icon="tabler-scale" />
                     </VAvatar>
                     <div>
@@ -123,9 +106,9 @@ onMounted(() => {
             </VCard>
         </VCol>
         <VCol cols="12" md="4">
-            <VCard elevation="2" class="h-100">
+            <VCard class="h-100 rounded-lg border shadow-sm">
                 <VCardText class="d-flex align-center">
-                    <VAvatar color="info" variant="tonal" rounded size="52" class="me-4 text-h5">
+                    <VAvatar color="info" variant="tonal" class="rounded-lg me-4 text-h5" size="52">
                         <VIcon icon="tabler-shield-check" />
                     </VAvatar>
                     <div>
@@ -137,7 +120,7 @@ onMounted(() => {
             </VCard>
         </VCol>
         <VCol cols="12" md="4">
-            <VCard elevation="3" :color="balance.equity >= 0 ? 'primary' : 'error'" class="h-100">
+            <VCard :color="balance.equity >= 0 ? 'primary' : 'error'" class="h-100 rounded-lg shadow-soft border-0">
                 <VCardText class="text-center py-6 text-white">
                     <p class="mb-1 text-uppercase text-caption font-weight-bold">Patrimonio Neto</p>
                     <h3 class="text-h3 font-weight-black">{{ formatCurrency(balance.equity) }}</h3>
@@ -149,7 +132,7 @@ onMounted(() => {
     <VRow>
       <!-- COLUMNA DE ACTIVOS -->
       <VCol cols="12" lg="7">
-        <VCard elevation="2">
+        <VCard class="rounded-lg border shadow-sm">
             <VCardItem>
                 <VCardTitle class="d-flex align-center">
                     <VIcon icon="tabler-trending-up" color="success" class="me-2" />
@@ -215,7 +198,7 @@ onMounted(() => {
                         </VListItem>
                     </VList>
                     <div class="px-6 pb-6 pt-2">
-                        <VAlert color="success" variant="tonal" rounded density="compact">
+                        <VAlert color="success" variant="tonal" class="rounded-lg" density="compact">
                             <div class="d-flex justify-space-between align-center">
                                 <span class="text-caption font-weight-bold text-uppercase">Total Activos Netos</span>
                                 <span class="text-h6 font-weight-black">{{ formatCurrency(balance.assets.total_neto) }}</span>
@@ -229,7 +212,7 @@ onMounted(() => {
 
       <!-- COLUMNA DE PASIVOS -->
       <VCol cols="12" lg="5">
-        <VCard elevation="2" class="mb-6">
+        <VCard class="mb-6 rounded-lg border shadow-sm">
             <VCardItem>
                 <VCardTitle class="d-flex align-center">
                     <VIcon icon="tabler-trending-down" color="error" class="me-2" />
@@ -267,7 +250,7 @@ onMounted(() => {
         </VCard>
 
         <!-- GRÁFICO RESUMEN -->
-        <VCard elevation="2">
+        <VCard class="rounded-lg border shadow-sm">
             <VCardText>
                 <VueApexCharts
                     type="bar"
@@ -285,7 +268,10 @@ onMounted(() => {
 <style lang="scss">
 .balance-premium {
   .v-card {
-    border-radius: 12px;
+    border-radius: 8px !important;
   }
+}
+.shadow-soft {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
 }
 </style>

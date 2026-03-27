@@ -121,7 +121,7 @@ const handleSelect = (wallet) => {
             <VCard
               :variant="isSelected(wallet) ? 'flat' : 'outlined'"
               :class="[
-                'cursor-pointer wallet-card pa-3 h-100 rounded-xl border-0 shadow-sm transition-all',
+                'cursor-pointer wallet-card pa-3 h-100 rounded-lg border-0 shadow-sm transition-all',
                 isSelected(wallet) ? `bg-${currencyConfig[section.currency]?.color}-lighten-5 ring-primary` : 'bg-white'
               ]"
               @click="handleSelect(wallet)"
@@ -175,7 +175,7 @@ const handleSelect = (wallet) => {
     <!-- Skeleton loader -->
     <VRow v-else>
       <VCol v-for="i in 6" :key="i" cols="6" sm="4" md="3" lg="2">
-        <VSkeletonLoader type="card" height="120" class="rounded-xl" />
+        <VSkeletonLoader type="card" height="120" class="rounded-lg" />
       </VCol>
     </VRow>
   </div>

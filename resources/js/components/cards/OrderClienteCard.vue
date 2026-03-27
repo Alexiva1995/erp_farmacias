@@ -49,7 +49,7 @@ const loadQuotation = () => {
 </script>
 
 <template>
-  <VCard variant="flat" border class="mb-4 rounded-xl overflow-hidden glass-card shadow-sm">
+  <VCard variant="flat" border class="mb-4 rounded-lg overflow-hidden glass-card shadow-sm">
     <VCardText class="pa-3">
       <VRow v-if="!props.selectedClient || !props.selectedClient.id" align="center" justify="center">
         <VCol cols="12" md="8">
@@ -81,7 +81,6 @@ const loadQuotation = () => {
               variant="tonal"
               height="44"
               width="44"
-              class="rounded-lg"
               @click="reservadaPedido"
             />
           </div>
@@ -90,7 +89,7 @@ const loadQuotation = () => {
 
       <VRow v-else no-gutters>
         <VCol cols="12">
-          <div class="client-alert-premium d-flex align-center pa-4 rounded-xl border border-primary-lighten-4">
+          <div class="client-alert-premium d-flex align-center pa-4 rounded-lg border border-primary-lighten-4">
             <VAvatar color="primary" variant="tonal" size="48" class="me-4 rounded-lg">
               <VIcon icon="tabler-user" size="24" />
             </VAvatar>
@@ -115,8 +114,7 @@ const loadQuotation = () => {
 
 <style scoped>
 .glass-card {
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 80%) !important;
+  background: white !important;
 }
 
 .client-alert-premium {

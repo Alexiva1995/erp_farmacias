@@ -10,8 +10,10 @@ const page = ref(1);
 const totalPayslips = ref(0);
 const itemsPerPage = ref(10);
 const payslips = ref([]);
+const searchQuery = ref("");
 const startDate = ref(null);
 const endDate = ref(null);
+const selectedStatus = ref(null);
 
 const selectedPayslip = ref(null);
 const showFinalizeDialog = ref(false);
@@ -23,8 +25,10 @@ const fetchPayslips = async () => {
       params: {
         page: page.value,
         itemsPerPage: itemsPerPage.value,
+        search: searchQuery.value,
         startDate: startDate.value,
         endDate: endDate.value,
+        status: selectedStatus.value,
       },
     });
     payslips.value = data.data.data;
@@ -36,13 +40,15 @@ const fetchPayslips = async () => {
   }
 };
 
-watch([page, itemsPerPage, startDate, endDate], () => {
+watch([page, itemsPerPage, searchQuery, startDate, endDate, selectedStatus], () => {
   fetchPayslips();
 });
 
 const handleClearFilters = () => {
+  searchQuery.value = "";
   startDate.value = null;
   endDate.value = null;
+  selectedStatus.value = null;
   page.value = 1;
 };
 
@@ -159,8 +165,10 @@ const handleDownloadBulk = async () => {
 
     <!-- Filtros Premium Colapsables -->
     <PayslipFilters
+      v-model:search-query="searchQuery"
       v-model:start-date="startDate"
       v-model:end-date="endDate"
+      v-model:selected-status="selectedStatus"
       :loading="loading"
       @clear="handleClearFilters"
       @generated="handleManualPayment"

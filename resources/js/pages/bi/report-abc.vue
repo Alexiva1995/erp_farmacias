@@ -153,18 +153,11 @@ const handleClearFilters = () => {
 
 <template>
   <VContainer fluid>
-    <VRow class="mb-2">
-      <VCol cols="12">
-        <h1 class="text-h4 font-weight-bold text-primary">
-          <VIcon icon="tabler-chart-pie" class="me-2" />
-          Reporte ABC Multicriterio
-        </h1>
-      </VCol>
-    </VRow>
 
-    <!-- Filters -->
-    <VCard class="mb-6 border-0 shadow-sm overflow-hidden">
-      <VCardText class="pa-3">
+
+    <!-- Filtros Estandarizados -->
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
+      <VCardText class="pa-4">
         <!-- Barra de Búsqueda Principal (Siempre Visible) -->
         <VRow align="center" no-gutters class="gap-2">
           <!-- Buscador Global -->
@@ -202,6 +195,7 @@ const handleClearFilters = () => {
               variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="toggleAdvancedFilters"
             >
               <VBadge
@@ -220,8 +214,10 @@ const handleClearFilters = () => {
             <!-- Aplicar Filtros -->
             <VBtn
               icon
+              variant="flat"
               color="primary"
               size="38"
+              class="rounded-circle shadow-sm"
               :loading="loading"
               @click="fetchReport"
             >
@@ -237,6 +233,7 @@ const handleClearFilters = () => {
               variant="text"
               color="secondary"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="handleClearFilters"
             >
               <VIcon icon="tabler-eraser" size="20" />
@@ -252,9 +249,6 @@ const handleClearFilters = () => {
             
             <VRow>
               <VCol cols="12" sm="6" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                  Laboratorios
-                </span>
                 <AppAutocomplete
                   v-model="selectedLaboratories"
                   :items="laboratories"
@@ -263,27 +257,27 @@ const handleClearFilters = () => {
                   placeholder="Seleccionar Laboratorios"
                   multiple
                   chips
+                  closable-chips
                   clearable
                   variant="outlined"
                   density="compact"
                   hide-details
                   class="premium-select-compact"
+                  prepend-inner-icon="tabler-flask"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">
-                  Clasificación Final (AAX..)
-                </span>
                 <AppAutocomplete
                   v-model="selectedFinalClassification"
                   :items="classificationOptions"
-                  placeholder="Seleccionar Clasificación"
+                  placeholder="Seleccionar Clasificación (AAX...)"
                   clearable
                   variant="outlined"
                   density="compact"
                   hide-details
                   class="premium-select-compact"
+                  prepend-inner-icon="tabler-tags"
                 />
               </VCol>
             </VRow>
@@ -295,7 +289,7 @@ const handleClearFilters = () => {
     <!-- Dashboard KPIs -->
     <VRow class="mb-6">
       <VCol cols="12" md="4">
-        <VCard elevation="1" class="h-100 bg-light-primary text-center pa-2">
+        <VCard border class="rounded-lg shadow-sm h-100 bg-light-primary text-center pa-2">
           <VCardText>
             <div class="text-overline mb-1 text-primary">Ventas de Página</div>
             <div class="text-h5 font-weight-bold">{{ formatCurrency(summaryStats.total_volume) }}</div>
@@ -303,7 +297,7 @@ const handleClearFilters = () => {
         </VCard>
       </VCol>
       <VCol cols="12" md="4">
-        <VCard elevation="1" class="h-100 bg-light-success text-center pa-2">
+        <VCard border class="rounded-lg shadow-sm h-100 bg-light-success text-center pa-2">
           <VCardText>
             <div class="text-overline mb-1 text-success">Productos Estrella (AAX/AAY)</div>
             <div class="text-h5 font-weight-bold">{{ summaryStats.aax_products }}</div>
@@ -311,7 +305,7 @@ const handleClearFilters = () => {
         </VCard>
       </VCol>
       <VCol cols="12" md="4">
-        <VCard elevation="1" class="h-100 text-center pa-2">
+        <VCard border class="rounded-lg shadow-sm h-100 text-center pa-2">
           <VCardText>
             <div class="text-overline mb-1">Margen Promedio Global</div>
             <div class="text-h5 font-weight-bold" :class="summaryStats.avg_margin > 0 ? 'text-primary' : 'text-error'">

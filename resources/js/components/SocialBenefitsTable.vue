@@ -102,7 +102,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="primary"
                     size="32"
-                    class="rounded-lg shadow-sm"
+                    class="rounded-circle shadow-sm"
                     @click="emit('fire-employee', item)"
                   />
                 </template>
@@ -118,7 +118,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="primary"
                     size="32"
-                    class="rounded-lg shadow-sm"
+                    class="rounded-circle shadow-sm"
                     @click="emit('download-settlement', item)"
                   />
                 </template>
@@ -132,7 +132,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="warning"
                     size="32"
-                    class="rounded-lg shadow-sm"
+                    class="rounded-circle shadow-sm"
                     @click="emit('upload-signed', item)"
                   />
                 </template>
@@ -146,7 +146,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="success"
                     size="32"
-                    class="rounded-lg shadow-sm"
+                    class="rounded-circle shadow-sm"
                     @click="emit('download-signed', item)"
                   />
                 </template>
@@ -195,34 +195,33 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     </div>
 
                     <div class="d-flex gap-1">
-                       <template v-if="!item.raw.settlement_date">
-                         <VBtn
-                           icon="tabler-file-analytics"
-                           variant="tonal"
-                           color="primary"
-                           size="32"
-                           class="rounded-lg shadow-sm"
-                           @click="emit('fire-employee', item.raw)"
-                         />
-                       </template>
-                       <template v-else>
-                         <VBtn
-                           icon="tabler-file-type-pdf"
-                           variant="tonal"
-                           color="primary"
-                           size="32"
-                           class="rounded-lg shadow-sm"
-                           @click="emit('download-settlement', item.raw)"
-                         />
-                         <VBtn
-                           icon="tabler-cloud-upload"
-                           variant="tonal"
-                           color="warning"
-                           size="32"
-                           class="rounded-lg shadow-sm"
-                           @click="emit('upload-signed', item.raw)"
-                         />
-                       </template>
+                        <VBtn
+                          v-if="!item.raw.settlement_date"
+                          icon="tabler-file-analytics"
+                          variant="tonal"
+                          color="primary"
+                          size="32"
+                          class="rounded-circle shadow-sm"
+                          @click="emit('fire-employee', item.raw)"
+                        />
+                        <template v-else>
+                          <VBtn
+                            icon="tabler-file-type-pdf"
+                            variant="tonal"
+                            color="primary"
+                            size="32"
+                            class="rounded-circle shadow-sm"
+                            @click="emit('download-settlement', item.raw)"
+                          />
+                          <VBtn
+                            icon="tabler-cloud-upload"
+                            variant="tonal"
+                            color="warning"
+                            size="32"
+                            class="rounded-circle shadow-sm"
+                            @click="emit('upload-signed', item.raw)"
+                          />
+                        </template>
                     </div>
                   </div>
                 </div>

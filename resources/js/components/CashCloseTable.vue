@@ -1,8 +1,11 @@
 <script setup>
+import { useAbility } from "@casl/vue";
 import { formatDate, formatPrice } from "@/utils/formatters";
 import { ref } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+
+const { can } = useAbility();
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -177,7 +180,7 @@ const handleMobilePageChange = (newPage) => {
             </template>
             <template v-else>
               <IconBtn
-                v-if="$can('manage', 'admin')"
+                v-if="can('manage', 'admin')"
                 color="primary"
                 size="small"
                 @click="startEdit(item)"
@@ -243,7 +246,7 @@ const handleMobilePageChange = (newPage) => {
                 </template>
                 <template v-else>
                   <IconBtn
-                    v-if="$can('manage', 'admin')"
+                    v-if="can('manage', 'admin')"
                     variant="tonal"
                     color="primary"
                     size="32"

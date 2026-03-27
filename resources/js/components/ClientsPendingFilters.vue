@@ -18,7 +18,7 @@ const options = [
 <template>
   <AppFilterBase
     :search="''"
-    :has-advanced-filters="props.status !== null && props.status !== undefined && props.status !== ''"
+    :show-advanced="false"
     search-placeholder="Buscar..."
     @clear="emit('clear')"
   >

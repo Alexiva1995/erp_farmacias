@@ -105,7 +105,7 @@ const formatDate = (dateString) => {
                   variant="tonal"
                   color="primary"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="emit('edit-offer', item)"
                 />
               </template>
@@ -118,7 +118,7 @@ const formatDate = (dateString) => {
                   variant="tonal"
                   color="error"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="emit('delete-offer', item.id)"
                 />
               </template>
@@ -175,7 +175,7 @@ const formatDate = (dateString) => {
                         variant="tonal"
                         color="primary"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="emit('edit-offer', item.raw)"
                       />
                       <VBtn
@@ -183,7 +183,7 @@ const formatDate = (dateString) => {
                         variant="tonal"
                         color="error"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="emit('delete-offer', item.raw.id)"
                       />
                     </div>

@@ -148,7 +148,7 @@ const hasAdvancedFilters = computed(() => {
         color="error"
         variant="tonal"
         size="38"
-        class="rounded-lg ml-1"
+        class="ml-1"
         @click="emit('clean-zero-quantity')"
       >
         <VIcon icon="tabler-trash-x" />

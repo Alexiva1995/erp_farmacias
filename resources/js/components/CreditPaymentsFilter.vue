@@ -25,7 +25,7 @@ const hasAdvancedFilters = computed(() => !!(props.date || props.currency));
   <AppFilterBase
     :search="props.client"
     :has-advanced-filters="hasAdvancedFilters"
-    search-placeholder="Buscar por cliente..."
+    search-placeholder="Buscar por cliente o identificación..."
     @update:search="emit('update:client', $event)"
     @clear="emit('clear')"
   >
@@ -34,11 +34,11 @@ const hasAdvancedFilters = computed(() => !!(props.date || props.currency));
       <VCol cols="12" sm="6" md="4">
         <AppDateTimePicker
           :model-value="props.date"
-          placeholder="Fecha de pago"
+          placeholder="Fecha"
           clearable
           density="compact"
           hide-details
-          prepend-inner-icon="tabler-calendar-event"
+          prepend-inner-icon="tabler-calendar"
           @update:model-value="emit('update:date', $event)"
         />
       </VCol>
@@ -52,7 +52,8 @@ const hasAdvancedFilters = computed(() => !!(props.date || props.currency));
           clearable
           density="compact"
           hide-details
-          prepend-inner-icon="tabler-currency-dollar"
+          prepend-inner-icon="tabler-coin"
+          variant="outlined"
           @update:model-value="emit('update:currency', $event)"
         />
       </VCol>

@@ -25,132 +25,18 @@
       </div>
     </VCard>
 
-    <!-- Barra de Búsqueda y Filtros Premium -->
-    <VCard class="mb-6 border rounded-lg shadow-sm overflow-hidden">
-      <VCardText class="pa-3">
-        <!-- Fila Principal: Búsqueda y Acciones -->
-        <VRow align="center" no-gutters class="gap-2">
-          <!-- Buscador Principal -->
-          <VCol cols="12" md="6" lg="5">
-            <AppTextField
-              v-model="searchQuery"
-              placeholder="Buscar factura, proveedor o referencia..."
-              prepend-inner-icon="tabler-search"
-              class="premium-input-compact"
-              density="compact"
-              hide-details
-              clearable
-              @input="handleSearch"
-            />
-          </VCol>
-
-          <VSpacer />
-
-          <div class="d-flex align-center gap-1">
-            <!-- Toggle Filtros -->
-            <VBtn
-              icon
-              variant="tonal"
-              :color="isFiltersVisible ? 'primary' : 'secondary'"
-              size="38"
-              @click="isFiltersVisible = !isFiltersVisible"
-            >
-              <VIcon :icon="isFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
-              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
-            </VBtn>
-
-            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
-
-            <!-- Limpiar Filtros (Icono Circular) -->
-            <VBtn icon variant="text" color="secondary" size="38" @click="clearFilters">
-              <VIcon icon="tabler-eraser" size="20" />
-              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-            </VBtn>
-          </div>
-        </VRow>
-
-        <!-- Panel de Filtros Avanzado -->
-        <VExpandTransition>
-          <div v-show="isFiltersVisible">
-            <VDivider class="my-4 border-opacity-10" />
-            
-            <VRow>
-              <VCol cols="12" sm="6" md="4">
-                <span
-                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
-                  >Proveedor</span
-                >
-                <VAutocomplete
-                  v-model="selectedSupplier"
-                  :items="suppliers"
-                  item-title="name"
-                  item-value="id"
-                  placeholder="Todos los proveedores"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="premium-select-compact"
-                  clearable
-                />
-              </VCol>
-
-              <VCol cols="12" sm="6" md="2">
-                <span
-                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
-                  >Moneda</span
-                >
-                <VSelect
-                  v-model="selectedCurrency"
-                  :items="currencies"
-                  item-title="label"
-                  item-value="value"
-                  placeholder="Moneda"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="premium-select-compact"
-                  clearable
-                />
-              </VCol>
-
-              <VCol cols="12" sm="6" md="3">
-                <span
-                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
-                  >Desde</span
-                >
-                <AppDateTimePicker
-                  v-model="startDate"
-                  placeholder="Fecha inicial"
-                  class="premium-input-compact"
-                  :config="{
-                    altInput: true,
-                    altFormat: 'Y-m-d',
-                    dateFormat: 'Y-m-d',
-                  }"
-                />
-              </VCol>
-
-              <VCol cols="12" sm="6" md="3">
-                <span
-                  class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1"
-                  >Hasta</span
-                >
-                <AppDateTimePicker
-                  v-model="endDate"
-                  placeholder="Fecha final"
-                  class="premium-input-compact"
-                  :config="{
-                    altInput: true,
-                    altFormat: 'Y-m-d',
-                    dateFormat: 'Y-m-d',
-                  }"
-                />
-              </VCol>
-            </VRow>
-          </div>
-        </VExpandTransition>
-      </VCardText>
-    </VCard>
+    <!-- Filtros Premium -->
+    <PaymentHistoryFilters
+      v-model:search-query="searchQuery"
+      v-model:selected-supplier="selectedSupplier"
+      v-model:selected-currency="selectedCurrency"
+      v-model:start-date="startDate"
+      v-model:end-date="endDate"
+      :suppliers="suppliers"
+      :loading="loading"
+      @clear="clearFilters"
+      @refresh="fetchPaymentHistory"
+    />
 
     <!-- Tabla / Cards -->
     <div v-if="!$vuetify.display.smAndDown">
@@ -715,6 +601,7 @@
 </template>
 
 <script setup>
+import PaymentHistoryFilters from "@/components/PaymentHistoryFilters.vue";
 import axios from "axios";
 import { computed, onMounted, ref, watch } from "vue";
 

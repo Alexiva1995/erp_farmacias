@@ -174,20 +174,34 @@ const headers = computed(() =>
               variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
               <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
               <VBadge
                 v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
                 color="error"
                 dot
-                offset-x="3"
-                offset-y="-3"
+                offset-x="2"
+                offset-y="-2"
               />
             </VBtn>
 
-            <VDivider vertical class="mx-1 my-2" />
+            <!-- Sincronizar APIs (Movido desde el panel avanzado) -->
+            <VBtn
+              icon
+              variant="tonal"
+              color="info"
+              size="38"
+              class="rounded-circle shadow-sm"
+              @click="emit('sync-apis')"
+            >
+              <VIcon icon="tabler-cloud-download" size="20" />
+              <VTooltip activator="parent" location="top">Actualizar APIs</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
 
             <!-- Limpiar Filtros -->
             <VBtn
@@ -195,9 +209,10 @@ const headers = computed(() =>
               variant="text"
               color="secondary"
               size="38"
+              class="rounded-circle shadow-sm"
               @click="$emit('update:searchQuery', '')"
             >
-              <VIcon icon="tabler-eraser" />
+              <VIcon icon="tabler-eraser" size="20" />
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
           </div>
@@ -311,16 +326,6 @@ const headers = computed(() =>
                   />
                   
                   <VSpacer />
-
-                  <VBtn
-                    color="info"
-                    variant="tonal"
-                    size="small"
-                    prepend-icon="tabler-cloud-download"
-                    @click="emit('sync-apis')"
-                  >
-                    APIs
-                  </VBtn>
                 </div>
               </VCol>
             </VRow>
@@ -430,6 +435,7 @@ const headers = computed(() =>
                 variant="flat"
                 color="primary"
                 size="small"
+                class="rounded-circle shadow-sm"
                 @click="emit('send-product', { id: item.id, quantity: getQty(item.id) })"
               />
             </div>

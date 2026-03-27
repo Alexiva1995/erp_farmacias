@@ -97,7 +97,7 @@ const handleDelete = (id) => emit("delete-offer", id);
                   variant="tonal"
                   color="primary"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="handleEdit(item)"
                 />
               </template>
@@ -110,7 +110,7 @@ const handleDelete = (id) => emit("delete-offer", id);
                   variant="tonal"
                   color="error"
                   size="32"
-                  class="rounded-lg shadow-sm"
+                  class="rounded-circle shadow-sm"
                   @click="handleDelete(item.id)"
                 />
               </template>
@@ -165,7 +165,7 @@ const handleDelete = (id) => emit("delete-offer", id);
                         variant="tonal"
                         color="primary"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="handleEdit(item.raw)"
                       />
                       <VBtn
@@ -173,7 +173,7 @@ const handleDelete = (id) => emit("delete-offer", id);
                         variant="tonal"
                         color="error"
                         size="36"
-                        class="rounded-lg shadow-sm"
+                        class="rounded-circle shadow-sm"
                         @click="handleDelete(item.raw.id)"
                       />
                     </div>

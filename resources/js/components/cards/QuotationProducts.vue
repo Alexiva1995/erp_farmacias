@@ -459,12 +459,10 @@ onMounted(() => {
               variant="tonal"
               color="primary"
               size="40"
-              icon
-              class="rounded-lg"
+              icon="tabler-search"
+              class="rounded-circle"
               @click="emit('search-client')"
-            >
-              <VIcon icon="tabler-search" size="20" />
-            </VBtn>
+            />
           </div>
         </VCol>
       </VRow>
@@ -608,7 +606,7 @@ onMounted(() => {
                     size="32"
                     color="error"
                     variant="tonal"
-                    class="rounded-lg"
+                    class="rounded-circle"
                     @click="removeQuotationProduct(product.id)"
                   />
                 </div>
@@ -619,38 +617,30 @@ onMounted(() => {
       </div>
     </VCardText>
 
-    <VCardActions class="pa-4 bg-primary-lighten-5 border-t border-opacity-10">
+    <VCardActions class="pa-4 border-t border-opacity-10">
       <div class="d-flex justify-space-between w-100 gap-2">
         <VTooltip text="Limpiar Cotización" location="top">
           <template #activator="{ props: tProps }">
-            <VBtn v-bind="tProps" icon variant="tonal" color="error" class="rounded-lg" @click="remove">
-              <VIcon icon="tabler-trash" />
-            </VBtn>
+            <VBtn v-bind="tProps" icon="tabler-trash" variant="tonal" color="error" class="rounded-circle" @click="remove" />
           </template>
         </VTooltip>
 
         <div class="d-flex gap-2">
           <VTooltip text="Imprimir Ticket" location="top">
             <template #activator="{ props: tProps }">
-              <VBtn v-bind="tProps" icon variant="tonal" color="primary" class="rounded-lg" @click="handlePrintButtonClick">
-                <VIcon icon="tabler-printer" />
-              </VBtn>
+              <VBtn v-bind="tProps" icon="tabler-printer" variant="tonal" color="primary" class="rounded-circle" @click="handlePrintButtonClick" />
             </template>
           </VTooltip>
           
           <VTooltip text="Copiar Mensaje" location="top">
             <template #activator="{ props: tProps }">
-              <VBtn v-bind="tProps" icon variant="tonal" color="info" class="rounded-lg" @click="handleCopyWhatsappMessage">
-                <VIcon icon="tabler-copy" />
-              </VBtn>
+              <VBtn v-bind="tProps" icon="tabler-copy" variant="tonal" color="info" class="rounded-circle" @click="handleCopyWhatsappMessage" />
             </template>
           </VTooltip>
 
           <VTooltip text="Enviar WhatsApp" location="top">
             <template #activator="{ props: tProps }">
-              <VBtn v-bind="tProps" icon variant="tonal" color="success" class="rounded-lg" @click="handleShareButtonClick">
-                <VIcon icon="tabler-brand-whatsapp" />
-              </VBtn>
+              <VBtn v-bind="tProps" icon="tabler-brand-whatsapp" variant="tonal" color="success" class="rounded-circle" @click="handleShareButtonClick" />
             </template>
           </VTooltip>
 
@@ -658,7 +648,7 @@ onMounted(() => {
             variant="flat" 
             color="primary" 
             prepend-icon="tabler-circle-check"
-            class="rounded-lg px-6 font-weight-black"
+            class="rounded-lg px-6 font-weight-bold"
             @click="handleSaveQuotation"
           >
             Finalizar

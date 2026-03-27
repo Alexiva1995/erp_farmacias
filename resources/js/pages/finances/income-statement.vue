@@ -16,6 +16,8 @@ const page = ref(1);
 
 const startDate = ref(null);
 const endDate = ref(null);
+const searchQuery = ref("");
+const selectedType = ref(null);
 
 const headers = [
   { title: "FECHA", key: "date", sortable: true },
@@ -33,6 +35,8 @@ const loadSummary = async () => {
     const params = new URLSearchParams();
     if (startDate.value) params.append("start_date", startDate.value);
     if (endDate.value) params.append("end_date", endDate.value);
+    if (searchQuery.value) params.append("search", searchQuery.value);
+    if (selectedType.value) params.append("type", selectedType.value);
 
     const response = await axios.get(
       `/finances/income-statement/summary?${params}`,
@@ -53,6 +57,8 @@ const loadDetails = async () => {
     const params = new URLSearchParams();
     if (startDate.value) params.append("start_date", startDate.value);
     if (endDate.value) params.append("end_date", endDate.value);
+    if (searchQuery.value) params.append("search", searchQuery.value);
+    if (selectedType.value) params.append("type", selectedType.value);
     params.append("page", page.value);
     params.append("per_page", itemsPerPage.value);
 
@@ -84,6 +90,8 @@ const updateOptions = (opts) => {
 const clearFilters = () => {
   startDate.value = null;
   endDate.value = null;
+  searchQuery.value = "";
+  selectedType.value = null;
   loadData();
 };
 
@@ -110,7 +118,7 @@ onMounted(() => {
   loadDetails(); // Cargar detalles iniciales también
 });
 
-watch([startDate, endDate], () => loadData());
+watch([startDate, endDate, searchQuery, selectedType], () => loadData());
 </script>
 
 <template>
@@ -145,8 +153,10 @@ watch([startDate, endDate], () => loadData());
 
     <!-- Filtros Colapsables -->
     <IncomeStatementFilters
+      v-model:searchQuery="searchQuery"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      v-model:selectedType="selectedType"
       @clear="clearFilters"
     />
 
@@ -423,7 +433,7 @@ watch([startDate, endDate], () => loadData());
                 :color="item.profit >= 0 ? 'success' : 'error'"
                 variant="tonal"
                 size="small"
-                class="font-weight-black px-4 rounded-xl"
+                class="font-weight-black px-4 rounded-lg"
               >
                 {{ item.profit >= 0 ? "+" : ""
                 }}{{ formatCurrency(item.profit) }}

@@ -104,6 +104,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                         variant="tonal"
                         color="success"
                         size="32"
+                        class="rounded-circle shadow-sm"
                         :disabled="item.raw.status === 2"
                         @click="emit('open-payment-modal', item.raw)"
                       />
@@ -114,6 +115,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                     variant="tonal"
                     color="info"
                     size="32"
+                    class="rounded-circle shadow-sm"
                     @click="emit('view-order-modal', item.raw)"
                   />
                   <VBtn
@@ -121,6 +123,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                     variant="tonal"
                     color="secondary"
                     size="32"
+                    class="rounded-circle shadow-sm"
                     @click="emit('print-order', item.raw)"
                   />
                   <VBtn
@@ -129,6 +132,7 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
                     variant="tonal"
                     color="error"
                     size="32"
+                    class="rounded-circle shadow-sm"
                     @click="emit('delete-credit', item.raw)"
                   />
                 </div>

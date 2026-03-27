@@ -28,6 +28,11 @@ const props = defineProps({
 
   // Controlar visibilidad de filtros avanzados
   showAdvanced: { type: Boolean, default: true },
+
+  // Control de grid (Ancho de columna de búsqueda)
+  searchCols:   { type: [Number, String], default: 12 },
+  searchMdCols: { type: [Number, String], default: 4 },
+  searchLgCols: { type: [Number, String], default: 4 },
 });
 
 const emit = defineEmits([
@@ -90,8 +95,8 @@ const handleClear = () => {
       <!-- ── Fila Principal: Buscador + Acciones ──────────────────────── -->
       <VRow align="center" no-gutters class="gap-2">
 
-        <!-- Slot de búsqueda (md=4, lg=4) — por defecto AppTextField estándar -->
-        <VCol cols="12" md="4" lg="4">
+        <!-- Slot de búsqueda (Configurable vía props) — por defecto AppTextField estándar -->
+        <VCol :cols="searchCols" :md="searchMdCols" :lg="searchLgCols">
           <slot name="search">
             <AppTextField
               :model-value="search"
@@ -123,6 +128,7 @@ const handleClear = () => {
             variant="tonal"
             :color="isPanelVisible ? 'primary' : 'secondary'"
             size="38"
+            class="rounded-circle shadow-sm"
             @click="togglePanel"
           >
             <VIcon :icon="isPanelVisible ? 'tabler-filter-off' : 'tabler-filter'" />
@@ -139,6 +145,7 @@ const handleClear = () => {
                 variant="tonal"
                 color="info"
                 size="38"
+                class="rounded-circle shadow-sm"
               >
                 <VIcon :icon="selectedSortIcon" />
                 <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
@@ -169,6 +176,7 @@ const handleClear = () => {
                 color="success"
                 variant="tonal"
                 size="38"
+                class="rounded-circle shadow-sm"
               >
                 <VIcon icon="tabler-file-export" />
                 <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
@@ -200,6 +208,7 @@ const handleClear = () => {
             color="primary"
             variant="flat"
             size="38"
+            class="rounded-circle shadow-sm"
             @click="emit('add')"
           >
             <VIcon icon="tabler-plus" />
@@ -214,6 +223,7 @@ const handleClear = () => {
             variant="text"
             color="secondary"
             size="38"
+            class="rounded-circle"
             @click="handleClear"
           >
             <VIcon icon="tabler-eraser" />

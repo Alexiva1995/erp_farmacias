@@ -316,7 +316,7 @@ const handleClearFilters = () => {
         v-model="activeTab"
         color="primary"
         grow
-        class="premium-tabs rounded-lg border bg-surface overflow-hidden shadow-xs"
+        class="premium-tabs rounded-lg border bg-surface overflow-hidden shadow-sm"
         density="comfortable"
       >
         <VTab
@@ -371,35 +371,26 @@ const handleClearFilters = () => {
 </template>
 
 <style scoped>
+.stats-card:hover {
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-5px);
+}
+
 .stats-card {
+  border-radius: 8px !important;
   backdrop-filter: blur(8px);
   background: rgba(var(--v-theme-surface), 80%) !important;
   transition: all 0.3s ease;
 }
 
 .header-bg {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    #4a90e2 100%
-  );
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
+  border-block-end: 1px solid rgba(255, 255, 255, 10%);
 }
 
-.letter-spacing-tight {
-  letter-spacing: -0.02em;
-}
-.letter-spacing-widest {
-  letter-spacing: 0.1em !important;
-}
-
-.shadow-soft {
-  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
-}
-
-.stats-card:hover {
-  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
-  transform: translateY(-5px);
-}
+.letter-spacing-tight { letter-spacing: -0.02em; }
+.letter-spacing-widest { letter-spacing: 0.1em !important; }
+.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
 
 .card-bg-decoration {
   position: absolute;
@@ -463,7 +454,6 @@ const handleClearFilters = () => {
 }
 
 .purchase-orders-view {
-  background-color: #f8fafc;
   min-block-size: 100vh;
 }
 
@@ -515,9 +505,5 @@ const handleClearFilters = () => {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 5%);
 }
 
-@media (max-width: 600px) {
-  .rounded-xl-mobile {
-    border-radius: 0 !important;
-  }
-}
+/* Mobile specific adjustments if needed */
 </style>

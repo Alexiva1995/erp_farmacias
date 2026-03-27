@@ -107,9 +107,9 @@ const handleToggleStatus = (pack) => {
                   </span>
                 </div>
                 <div class="d-flex gap-1">
-                  <VBtn icon="tabler-eye" variant="tonal" color="info" size="32" @click="handleView(item.raw)" />
-                  <VBtn icon="tabler-edit" variant="tonal" color="warning" size="32" @click="handleEdit(item.raw)" />
-                  <VBtn icon="tabler-trash" variant="tonal" color="error" size="32" @click="handleDelete(item.raw)" />
+                  <VBtn icon="tabler-eye" variant="tonal" color="info" size="32" class="rounded-circle shadow-sm" @click="handleView(item.raw)" />
+                  <VBtn icon="tabler-edit" variant="tonal" color="warning" size="32" class="rounded-circle shadow-sm" @click="handleEdit(item.raw)" />
+                  <VBtn icon="tabler-trash" variant="tonal" color="error" size="32" class="rounded-circle shadow-sm" @click="handleDelete(item.raw)" />
                 </div>
               </div>
             </VCard>
@@ -199,7 +199,7 @@ const handleToggleStatus = (pack) => {
               variant="tonal"
               size="32"
               color="info"
-              class="rounded-lg shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="handleView(item)"
             />
             <VBtn
@@ -207,7 +207,7 @@ const handleToggleStatus = (pack) => {
               variant="tonal"
               size="32"
               color="warning"
-              class="rounded-lg shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="handleEdit(item)"
             />
             <VBtn
@@ -215,7 +215,7 @@ const handleToggleStatus = (pack) => {
               variant="tonal"
               size="32"
               color="error"
-              class="rounded-lg shadow-sm"
+              class="rounded-circle shadow-sm"
               @click="handleDelete(item)"
             />
           </div>

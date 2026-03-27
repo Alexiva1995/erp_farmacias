@@ -105,7 +105,7 @@ const formatTime = (dateString) => {
 
       <!-- Unidades -->
       <template #item.total_quantity="{ item }">
-        <VChip size="small" variant="tonal" color="secondary" class="font-weight-black rounded">
+        <VChip size="small" variant="tonal" color="secondary" class="font-weight-black rounded-lg">
           {{ item.total_quantity }} u.
         </VChip>
       </template>
@@ -124,9 +124,8 @@ const formatTime = (dateString) => {
         <VChip
           :color="getStatusColor(item.status)"
           size="x-small"
-          label
           variant="tonal"
-          class="font-weight-black rounded"
+          class="font-weight-black rounded-lg"
         >
           {{ getStatusLabel(item.status) }}
         </VChip>
@@ -165,9 +164,9 @@ const formatTime = (dateString) => {
           <VBtn
             icon
             size="32"
-            variant="flat"
+            variant="tonal"
             color="primary"
-            class="rounded-lg shadow-sm"
+            class="rounded-circle shadow-sm"
             @click="emit('manage', item)"
           >
             <VIcon icon="tabler-settings" size="18" />
@@ -180,7 +179,7 @@ const formatTime = (dateString) => {
             size="32"
             variant="tonal"
             color="error"
-            class="rounded-lg"
+            class="rounded-circle shadow-sm"
             @click="emit('delete-purchaseOrder', item.id)"
           >
             <VIcon icon="tabler-trash" size="18" />
@@ -192,7 +191,7 @@ const formatTime = (dateString) => {
             size="32"
             variant="tonal"
             color="success"
-            class="rounded-lg"
+            class="rounded-circle shadow-sm"
             :disabled="!item.phone"
             :href="item.phone ? `https://wa.me/${item.phone.replace(/\D/g, '')}?text=Hola, envío orden de compra #${item.id}` : undefined"
             target="_blank"

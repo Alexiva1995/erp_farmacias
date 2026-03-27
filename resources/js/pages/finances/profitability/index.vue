@@ -57,7 +57,9 @@ const fetchProducts = async () => {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
-    ...(stockStatusFilter.value !== null && { hasStock: stockStatusFilter.value }),
+    ...(stockStatusFilter.value !== null && {
+      hasStock: stockStatusFilter.value,
+    }),
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
@@ -97,7 +99,12 @@ const addProfitability = () => {
   dialog.value = true;
 };
 
-const editProductProfitability = (profitability_id = null, percentage = 0, id_product, is_locked = 1) => {
+const editProductProfitability = (
+  profitability_id = null,
+  percentage = 0,
+  id_product,
+  is_locked = 1,
+) => {
   editDialog.value = true;
   productProfitability.value = {
     id: profitability_id,
@@ -137,17 +144,40 @@ function reloadTable() {
 // Watchers
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate, lockedValue],
+  [
+    page,
+    itemsPerPage,
+    sortBy,
+    orderBy,
+    searchQuery,
+    selectedLaboratory,
+    selectedOrigin,
+    stockStatusFilter,
+    startDate,
+    endDate,
+    lockedValue,
+  ],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
-watch([searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate, lockedValue], () => {
-  page.value = 1;
-});
+watch(
+  [
+    searchQuery,
+    selectedLaboratory,
+    selectedOrigin,
+    stockStatusFilter,
+    startDate,
+    endDate,
+    lockedValue,
+  ],
+  () => {
+    page.value = 1;
+  },
+);
 
 // Lifecycle
 onMounted(() => {
@@ -158,11 +188,16 @@ onMounted(() => {
 // Computed for summary
 const avgPrice = computed(() => {
   if (!products.value.length) return 0;
-  return products.value.reduce((acc, p) => acc + (parseFloat(p.unit_cost) || 0), 0) / products.value.length;
+  return (
+    products.value.reduce((acc, p) => acc + (parseFloat(p.unit_cost) || 0), 0) /
+    products.value.length
+  );
 });
 
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat("es-US", { style: "currency", currency: "USD" }).format(amount);
+  new Intl.NumberFormat("es-US", { style: "currency", currency: "USD" }).format(
+    amount,
+  );
 </script>
 
 <template>
@@ -170,54 +205,113 @@ const formatCurrency = (amount) =>
     <!-- Header Premium -->
     <VRow class="mb-6" dense>
       <VCol cols="12" md="4">
-        <VCard class="header-main-card h-100 overflow-hidden border-0 shadow-lg position-relative">
+        <VCard
+          class="header-main-card h-100 overflow-hidden border-0 shadow-lg position-relative"
+        >
           <div class="premium-header pa-5 d-flex align-center gap-4">
-            <VAvatar size="64" color="white" variant="elevated" class="shadow-sm">
+            <VAvatar
+              size="64"
+              color="white"
+              variant="elevated"
+              class="shadow-sm"
+            >
               <VIcon icon="tabler-chart-pie" color="primary" size="32" />
             </VAvatar>
             <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1">Configuración Global</span>
-              <span class="text-h5 font-weight-black text-white leading-tight mb-1">Rentabilidad</span>
+              <span
+                class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1"
+                >Configuración Global</span
+              >
+              <span
+                class="text-h5 font-weight-black text-white leading-tight mb-1"
+                >Rentabilidad</span
+              >
               <div class="d-flex align-center gap-2">
-                <span class="text-h4 font-weight-black text-white">{{ profitability }}%</span>
-                <VChip color="white" size="x-small" variant="tonal" class="font-weight-black">POR DEFECTO</VChip>
+                <span class="text-h4 font-weight-black text-white"
+                  >{{ profitability }}%</span
+                >
+                <VChip
+                  color="white"
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-black"
+                  >POR DEFECTO</VChip
+                >
               </div>
             </div>
-            <VIcon icon="tabler-trending-up" size="80" class="position-absolute opacity-10" style="inset-block-end: -10px; inset-inline-end: -10px;" />
+            <VIcon
+              icon="tabler-trending-up"
+              size="80"
+              class="position-absolute opacity-10"
+              style="inset-block-end: -10px; inset-inline-end: -10px"
+            />
           </div>
         </VCard>
       </VCol>
 
       <VCol cols="12" md="8">
-        <VCard class="h-100 border-0 shadow-sm rounded-xl overflow-hidden">
-          <VCardText class="d-flex align-center h-100 pa-6 bg-surface-variant-light">
+        <VCard class="h-100 border-0 shadow-sm rounded-lg overflow-hidden">
+          <VCardText
+            class="d-flex align-center h-100 pa-6 bg-surface-variant-light"
+          >
             <VRow class="w-100 text-center align-center">
               <VCol cols="6" sm="3">
                 <div class="d-flex flex-column align-center">
-                  <VAvatar color="primary" variant="tonal" size="40" class="mb-2">
+                  <VAvatar
+                    color="primary"
+                    variant="tonal"
+                    size="40"
+                    class="mb-2"
+                  >
                     <VIcon icon="tabler-package" size="20" />
                   </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Productos</span>
-                  <span class="text-h6 font-weight-black">{{ totalProduct }}</span>
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
+                    >Productos</span
+                  >
+                  <span class="text-h6 font-weight-black">{{
+                    totalProduct
+                  }}</span>
                 </div>
               </VCol>
               <VCol cols="6" sm="3">
                 <div class="d-flex flex-column align-center">
-                  <VAvatar color="success" variant="tonal" size="40" class="mb-2">
+                  <VAvatar
+                    color="success"
+                    variant="tonal"
+                    size="40"
+                    class="mb-2"
+                  >
                     <VIcon icon="tabler-currency-dollar" size="20" />
                   </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Costo Promedio</span>
-                  <span class="text-h6 font-weight-black text-success">{{ formatCurrency(avgPrice) }}</span>
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
+                    >Costo Promedio</span
+                  >
+                  <span class="text-h6 font-weight-black text-success">{{
+                    formatCurrency(avgPrice)
+                  }}</span>
                 </div>
               </VCol>
               <VCol cols="6" sm="3">
                 <div class="d-flex flex-column align-center">
-                  <VAvatar color="warning" variant="tonal" size="40" class="mb-2">
+                  <VAvatar
+                    color="warning"
+                    variant="tonal"
+                    size="40"
+                    class="mb-2"
+                  >
                     <VIcon icon="tabler-lock" size="20" />
                   </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Bloqueados</span>
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
+                    >Bloqueados</span
+                  >
                   <span class="text-h6 font-weight-black text-warning">
-                    {{ products.filter(p => p.profitability?.is_locked == '1').length }}
+                    {{
+                      products.filter((p) => p.profitability?.is_locked == "1")
+                        .length
+                    }}
                   </span>
                 </div>
               </VCol>
@@ -226,7 +320,10 @@ const formatCurrency = (amount) =>
                   <VAvatar color="info" variant="tonal" size="40" class="mb-2">
                     <VIcon icon="tabler-history" size="20" />
                   </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Última Act.</span>
+                  <span
+                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
+                    >Última Act.</span
+                  >
                   <span class="text-h6 font-weight-black text-info">HOY</span>
                 </div>
               </VCol>
@@ -290,7 +387,11 @@ const formatCurrency = (amount) =>
 }
 
 .premium-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2c3e50 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #2c3e50 100%
+  );
 }
 
 .text-super-xs {
@@ -304,11 +405,13 @@ const formatCurrency = (amount) =>
 }
 
 .header-main-card {
-  border-radius: 24px !important;
+  border-radius: 8px !important;
 }
 
 :deep(.v-card) {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .header-main-card:hover {
