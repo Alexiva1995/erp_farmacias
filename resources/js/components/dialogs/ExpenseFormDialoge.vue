@@ -255,40 +255,63 @@ async function submitForm() {
     :fullscreen="$vuetify.display.smAndDown"
     transition="dialog-bottom-transition"
   >
-    <VCard class="overflow-visible rounded-xl">
-      <!-- Header Estilizado -->
-      <VCardTitle class="d-flex align-center pa-2 px-6 header-gradient bg-primary">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="rgba(255,255,255,0.2)" size="38" class="rounded-lg">
-            <VIcon icon="tabler-file-invoice" color="white" size="22" />
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-file-invoice"
+              size="24"
+              color="primary"
+            />
           </VAvatar>
-          <div class="d-flex flex-column">
-            <h3 class="text-h6 font-weight-black text-white leading-normal">
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
               {{ props.titulo }}
-            </h3>
-            <span class="text-xs text-white opacity-70 font-weight-bold uppercase letter-spacing-widest">Módulo de Gastos</span>
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Módulo de Gestión de Gastos • Farmacia Barrio Sucre
+              </span>
+            </div>
           </div>
+          <VSpacer />
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="close"
+          />
         </div>
-        <VSpacer />
-        <VBtn
-          icon="tabler-x"
-          variant="text"
-          color="white"
-          density="comfortable"
-          @click="close"
-        />
       </VCardTitle>
 
-      <VCardText class="pa-0">
-        <div class="pa-6 pb-2">
-          <!-- Información General -->
-          <div class="d-flex align-center gap-2 mb-4">
-            <VIcon icon="tabler-info-circle" color="primary" size="20" />
-            <span class="text-sm font-weight-black text-primary uppercase letter-spacing-widest">Información General</span>
-          </div>
-          
+      <VCardText class="pa-4 pa-sm-6 bg-light">
+        <!-- Información General -->
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Información General del Gasto</span>
+        </div>
+
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+        >
           <VRow>
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VTextField
                 v-model="props.formData.name"
                 :error-messages="props.formError.name"
@@ -301,7 +324,10 @@ async function submitForm() {
                 hide-details="auto"
               />
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol
+              cols="12"
+              sm="6"
+            >
               <VSelect
                 v-model="props.formData.category_id"
                 label="Categoría"
@@ -317,7 +343,11 @@ async function submitForm() {
                 hide-details="auto"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="4">
+            <VCol
+              cols="12"
+              sm="6"
+              md="4"
+            >
               <VSelect
                 v-model="props.formData.currency"
                 label="Moneda"
@@ -330,7 +360,11 @@ async function submitForm() {
                 hide-details="auto"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="4">
+            <VCol
+              cols="12"
+              sm="6"
+              md="4"
+            >
               <VSelect
                 v-model="props.formData.count"
                 label="Método de Pago"
@@ -350,7 +384,11 @@ async function submitForm() {
                 hide-details="auto"
               />
             </VCol>
-            <VCol cols="12" sm="6" md="4">
+            <VCol
+              cols="12"
+              sm="6"
+              md="4"
+            >
               <AppDateTimePicker
                 v-model="props.formData.expense_date"
                 :error-messages="props.formError.expense_date"
@@ -363,7 +401,12 @@ async function submitForm() {
                 hide-details="auto"
               />
             </VCol>
-            <VCol v-if="props.type_of_expense === 'recurrente'" cols="12" sm="6" md="4">
+            <VCol
+              v-if="props.type_of_expense === 'recurrente'"
+              cols="12"
+              sm="6"
+              md="4"
+            >
               <VSelect
                 v-model="props.formData.recurrence"
                 label="Recurrencia"
@@ -377,58 +420,85 @@ async function submitForm() {
               />
             </VCol>
           </VRow>
-        </div>
+        </VCard>
 
         <!-- Sección Financiera -->
-        <div class="bg-surface-variant-light pa-6 my-2 border-y">
-          <div class="d-flex align-center gap-2 mb-4">
-            <VIcon icon="tabler-receipt-2" color="primary" size="20" />
-            <span class="text-sm font-weight-black text-primary uppercase letter-spacing-widest">Detalles Financieros</span>
-          </div>
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator secondary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles Financieros e Impuestos</span>
+        </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border-dashed">
-            <VRow>
-              <VCol cols="6" md="3">
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+        >
+          <VRow>
+            <VCol
+              cols="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Monto Exento</span>
                 <VTextField
                   v-model.number="props.formData.exempt_amount"
                   :error-messages="props.formError.exempt_amount"
-                  label="Exento IVA"
+                  placeholder="0.00"
                   type="number"
                   variant="underlined"
                   density="compact"
                   :prefix="getCurrencySymbol"
                   hide-details="auto"
+                  class="font-weight-black"
                 />
-              </VCol>
-              <VCol cols="6" md="3">
+              </div>
+            </VCol>
+            <VCol
+              cols="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Base Imponible</span>
                 <VTextField
                   v-model.number="props.formData.taxable_base"
                   :error-messages="props.formError.taxable_base"
-                  label="Base Imponible"
+                  placeholder="0.00"
                   type="number"
                   variant="underlined"
                   density="compact"
                   :prefix="getCurrencySymbol"
                   hide-details="auto"
+                  class="font-weight-black"
                 />
-              </VCol>
-              <VCol cols="6" md="3">
+              </div>
+            </VCol>
+            <VCol
+              cols="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">IVA (16%)</span>
                 <VTextField
                   v-model.number="props.formData.tax_amount"
-                  label="IVA (16%)"
+                  placeholder="0.00"
                   type="number"
                   variant="underlined"
                   density="compact"
                   :prefix="getCurrencySymbol"
                   readonly
                   hide-details="auto"
-                  class="text-disabled"
+                  class="text-disabled font-weight-bold"
                 />
-              </VCol>
-              <VCol cols="6" md="3">
+              </div>
+            </VCol>
+            <VCol
+              cols="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-error uppercase mb-1">Total Factura</span>
                 <VTextField
                   v-model.number="props.formData.total_amount"
-                  label="Total Factura"
+                  placeholder="0.00"
                   type="number"
                   variant="underlined"
                   density="compact"
@@ -437,51 +507,68 @@ async function submitForm() {
                   class="font-weight-black text-error"
                   hide-details="auto"
                 />
-              </VCol>
-            </VRow>
+              </div>
+            </VCol>
+          </VRow>
 
-            <VRow v-if="shouldShowExchangeRate || props.formData.total_amount" class="mt-4 pt-4 border-t border-dashed">
-              <VCol v-if="shouldShowExchangeRate" cols="12" sm="6">
-                <VTextField
-                  v-model.number="props.formData.exchange_rate"
-                  :error-messages="props.formError.exchange_rate"
-                  label="Tasa de Cambio (BCV)"
-                  type="number"
-                  variant="solo"
-                  density="compact"
-                  flat
-                  bg-color="grey-lighten-4"
-                  prepend-inner-icon="tabler-trending-up"
-                  hide-details="auto"
-                />
-              </VCol>
-              <VCol cols="12" :sm="shouldShowExchangeRate ? 6 : 12">
-                <div class="pa-3 rounded-lg bg-error-lighten-5 d-flex justify-space-between align-center border border-error border-opacity-25">
-                  <div class="d-flex align-center gap-2 font-weight-black text-error text-xs uppercase">
-                    <VIcon icon="tabler-currency-dollar" size="18" />
-                    Equivalencia USD
-                  </div>
-                  <div class="text-h6 font-weight-black text-error">
-                    ${{ Number(props.formData.total_usd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
-                  </div>
+          <VRow
+            v-if="shouldShowExchangeRate || props.formData.total_amount"
+            class="mt-4 pt-4 border-t border-dashed"
+          >
+            <VCol
+              v-if="shouldShowExchangeRate"
+              cols="12"
+              sm="6"
+            >
+              <VTextField
+                v-model.number="props.formData.exchange_rate"
+                :error-messages="props.formError.exchange_rate"
+                label="Tasa de Cambio (Oficial)"
+                type="number"
+                variant="solo"
+                density="compact"
+                flat
+                bg-color="grey-lighten-4"
+                prepend-inner-icon="tabler-trending-up"
+                class="rounded-lg font-weight-bold"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol
+              cols="12"
+              :sm="shouldShowExchangeRate ? 6 : 12"
+            >
+              <div class="pa-3 rounded-lg bg-error bg-opacity-10 d-flex justify-space-between align-center border border-error border-opacity-20 animate__animated animate__fadeIn">
+                <div class="d-flex align-center gap-2 font-weight-black text-error text-xs uppercase">
+                  <VIcon
+                    icon="tabler-currency-dollar"
+                    size="18"
+                  />
+                  EQUIVALENCIA USD
                 </div>
-              </VCol>
-            </VRow>
-          </VCard>
+                <div class="text-h6 font-weight-black text-error leading-none">
+                  ${{ Number(props.formData.total_usd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                </div>
+              </div>
+            </VCol>
+          </VRow>
+        </VCard>
+
+        <!-- Documentación -->
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Documentación y Comprobantes</span>
         </div>
 
-        <!-- Archivo Adjunto -->
-        <div class="pa-6">
-          <div class="d-flex align-center gap-2 mb-4">
-            <VIcon icon="tabler-paperclip" color="primary" size="20" />
-            <span class="text-sm font-weight-black text-primary uppercase letter-spacing-widest">Documentación</span>
-          </div>
-          
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-xl border shadow-sm"
+        >
           <VRow>
             <VCol cols="12">
               <VFileInput
                 v-model="invoiceFile"
-                label="Comprobante / Factura"
+                label="Subir Comprobante / Factura"
                 accept="image/*,application/pdf"
                 variant="outlined"
                 density="comfortable"
@@ -493,12 +580,25 @@ async function submitForm() {
                 chips
                 :error-messages="fileUploadError"
                 @update:model-value="handleFileUpload"
-                placeholder="Haz clic o arrastra un archivo aquí"
+                placeholder="Haz clic o arrastra el archivo aquí"
                 hide-details="auto"
               >
                 <template #selection="{ fileNames }">
-                  <template v-for="fileName in fileNames" :key="fileName">
-                    <VChip size="small" label color="primary" class="me-2 font-weight-black">
+                  <template
+                    v-for="fileName in fileNames"
+                    :key="fileName"
+                  >
+                    <VChip
+                      size="small"
+                      label
+                      color="primary"
+                      class="me-2 font-weight-black shadow-sm"
+                    >
+                      <VIcon
+                        start
+                        icon="tabler-paperclip"
+                        size="14"
+                      />
                       {{ fileName }}
                     </VChip>
                   </template>
@@ -507,58 +607,91 @@ async function submitForm() {
 
               <!-- Preview Section -->
               <VExpandTransition>
-                <div v-if="invoicePreview" class="mt-4 d-flex justify-center border-dashed rounded-xl pa-4 bg-grey-lighten-5 position-relative">
+                <div
+                  v-if="invoicePreview"
+                  class="mt-6 d-flex justify-center border-dashed rounded-xl pa-4 bg-light position-relative"
+                >
                   <VBtn
-                    icon="tabler-x"
-                    size="x-small"
+                    icon="tabler-circle-x"
+                    size="small"
                     color="error"
                     variant="flat"
-                    class="position-absolute top-0 right-0 ma-2 z-index-1"
+                    class="position-absolute top-0 right-0 ma-n2 z-index-1 shadow-sm"
                     @click="clearSelectedFile"
                   />
                   <VImg
                     :src="invoicePreview"
                     max-height="300"
                     contain
-                    class="rounded-lg shadow-sm"
+                    class="rounded-lg shadow-sm border bg-white"
                   />
                 </div>
               </VExpandTransition>
               
-              <div class="d-flex align-center gap-2 mt-3 text-disabled">
-                <VIcon icon="tabler-alert-circle" size="14" />
-                <span class="text-xs font-weight-bold uppercase letter-spacing-widest">JPG, PNG, PDF (Máx. 5MB)</span>
+              <div class="d-flex align-center gap-2 mt-4 text-disabled">
+                <VIcon
+                  icon="tabler-info-circle"
+                  size="14"
+                />
+                <span class="text-super-xs font-weight-black uppercase letter-spacing-1">Soporte aceptado: JPG, PNG, PDF (Máx. 5MB)</span>
               </div>
             </VCol>
           </VRow>
-        </div>
+        </VCard>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-6 bg-surface d-flex gap-3">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          size="large"
-          class="rounded-lg font-weight-black flex-grow-1"
-          prepend-icon="tabler-arrow-left"
-          @click="close"
+      <VCardActions class="pa-4 bg-white border-t px-6">
+        <VRow
+          no-gutters
+          class="w-100"
         >
-          Regresar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="elevated"
-          size="large"
-          class="rounded-lg font-weight-black flex-grow-1"
-          prepend-icon="tabler-device-floppy"
-          :loading="isUploading"
-          :disabled="isUploading"
-          @click="submitForm"
-        >
-          Guardar Gasto
-        </VBtn>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="close"
+            >
+              <VIcon
+                start
+                icon="tabler-arrow-left"
+                size="18"
+              />
+              Regresar
+            </VBtn>
+          </VCol>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="50"
+              block
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="isUploading"
+              :disabled="isUploading"
+              @click="submitForm"
+            >
+              <VIcon
+                start
+                icon="tabler-device-floppy"
+                size="18"
+              />
+              Guardar Gasto
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -566,44 +699,77 @@ async function submitForm() {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 5%);
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.header-indicator.secondary {
+  background-color: rgb(var(--v-theme-secondary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .border-dashed {
   border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
-.shadow-soft {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 8%) !important;
+.z-index-1 {
+  z-index: 10;
 }
 
-.letter-spacing-widest {
-  letter-spacing: 0.1em !important;
+.italic {
+  font-style: italic;
 }
 
-.leading-normal {
-  line-height: 1.2 !important;
+:deep(.v-field--variant-underlined .v-field__input) {
+  font-weight: 900 !important;
+  font-size: 1.1rem !important;
 }
 
-.bg-error-lighten-5 {
-  background-color: rgba(234, 84, 85, 8%) !important;
+:deep(.v-field--variant-underlined .v-label) {
+  font-weight: 800 !important;
+  font-size: 0.7rem !important;
+  text-transform: uppercase !important;
+  opacity: 0.8 !important;
 }
-
-:deep(.v-field--variant-underlined) {
-  .v-label {
-    opacity: 0.6 !important;
-    text-transform: uppercase !important;
-  }
-
-  .v-field__input {
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-  }
-}
-
-.z-index-1 { z-index: 1; }
 </style>

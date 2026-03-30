@@ -378,7 +378,10 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     Route::prefix('rrhh')->group(function () {
-        Route::get('/employee-performance', [EmployeePerformanceController::class, 'index']);
+        Route::prefix('employee-performance')->group(function () {
+            Route::get('/', [EmployeePerformanceController::class, 'index']);
+            Route::post('/lock', [EmployeePerformanceController::class, 'lockMonth']);
+        });
         Route::prefix('employees')->group(function () {
             Route::get('/', [EmployeeController::class, 'list']);
             Route::post('/', [EmployeeController::class, 'store']);
@@ -711,10 +714,6 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/stats', [EmployeeCleaningActivityController::class, 'stats']);
     });
 
-    Route::prefix('employee-performance')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'index']);
-        Route::post('/lock', [\App\Http\Controllers\Api\EmployeePerformanceController::class, 'lockMonth']);
-    });
 
     Route::prefix('my-cleaning-activities')->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);

@@ -42,8 +42,8 @@ const formatDate = (dateString) => {
     <!-- Desktop View -->
     <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
       <VDataTableServer
-        v-model:items-per-page="props.itemsPerPage"
-        v-model:page="props.page"
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
         :headers="headers"
         :items="props.categoriesOffer"
         :items-length="props.totalOffer"
@@ -134,6 +134,8 @@ const formatDate = (dateString) => {
         :items="props.categoriesOffer"
         :items-length="props.totalOffer"
         :loading="props.loading"
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
         @update:options="(options) => emit('update:options', options)"
       >
         <template #default="{ items }">

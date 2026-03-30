@@ -2,6 +2,7 @@
 import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
 import EmployeeMonthFilters from "@/components/EmployeeMonthFilters.vue";
 import axios from "axios";
+import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
 
 const employees = ref([]);
@@ -101,16 +102,44 @@ const fetchEmployees = async () => {
 };
 
 const handleLockMonth = async () => {
-  try {
-    const response = await axios.post("/api/rrhh/employee-performance/lock", {
-      month: selectedMonth.value,
-      year: selectedYear.value,
+  const monthTitle = availableMonths.value.find(m => m.value === selectedMonth.value)?.title;
+
+  const { isConfirmed } = await Swal.fire({
+    title: "¿Cerrar este mes?",
+    text: `Se bloquearán los puntajes de ${monthTitle} ${selectedYear.value}. Esta acción no se puede deshacer.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Sí, cerrar mes",
+    cancelButtonText: "Cancelar",
+    background: "#fff",
+    showLoaderOnConfirm: true,
+    preConfirm: async () => {
+      try {
+        const response = await axios.post("/api/rrhh/employee-performance/lock", {
+          month: selectedMonth.value,
+          year: selectedYear.value,
+        });
+        if (!response.data.status) {
+          throw new Error(response.data.message || "Error al procesar");
+        }
+        return response.data;
+      } catch (error) {
+        Swal.showValidationMessage(`Error: ${error.response?.data?.message || error.message}`);
+      }
+    },
+    allowOutsideClick: () => !Swal.isLoading(),
+  });
+
+  if (isConfirmed) {
+    await Swal.fire({
+      title: "¡Mes Cerrado!",
+      text: "Los datos han sido persistidos correctamente.",
+      icon: "success",
+      confirmButtonColor: "#1e5128",
     });
-    if (response.data && response.data.status) {
-      await fetchEmployees();
-    }
-  } catch (error) {
-    console.error("Error locking month:", error);
+    await fetchEmployees();
   }
 };
 

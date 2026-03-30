@@ -1,19 +1,27 @@
 <template>
   <VContainer fluid class="payment-history-page pa-4">
     <!-- Header Premium -->
-    <VCard class="header-main-card mb-6 overflow-hidden border shadow-sm rounded-lg">
+    <VCard class="header-main-card mb-6 overflow-hidden border-0 shadow-sm rounded-lg">
       <div class="premium-header pa-6 d-flex align-center gap-4">
-        <VAvatar size="64" color="white" variant="elevated" class="shadow-sm">
-          <VIcon icon="tabler-history" color="primary" size="32" />
+        <VAvatar
+          size="56"
+          color="white"
+          variant="flat"
+          class="shadow-sm rounded-lg elevation-1"
+        >
+          <VIcon
+            icon="tabler-history"
+            color="primary"
+            size="28"
+          />
         </VAvatar>
-        <div class="d-flex flex-column">
-          <span
-            class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1"
-            >Finanzas / Historial</span
-          >
-          <span class="text-h4 font-weight-black text-white leading-tight"
-            >Historial de Pagos</span
-          >
+        <div class="d-flex flex-column leading-none">
+          <span class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1">
+            Finanzas / Historial
+          </span>
+          <h1 class="text-h4 font-weight-black text-white leading-tight">
+            Historial de Pagos
+          </h1>
         </div>
         <VSpacer />
         <VIcon
@@ -271,52 +279,65 @@
       persistent
       scrollable
       :fullscreen="$vuetify.display.smAndDown"
+      :transition="$vuetify.display.smAndDown ? 'dialog-bottom-transition' : 'scale-transition'"
     >
-      <VCard class="rounded-lg overflow-hidden">
+      <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
         <VCardTitle class="pa-0">
-          <div
-            class="premium-dialog-header pa-5 d-flex align-center bg-primary"
-          >
+          <div class="premium-dialog-header pa-4 d-flex align-center shadow-sm">
             <VAvatar
               size="40"
-              color="rgba(255,255,255,0.2)"
-              class="me-3 shadow-sm rounded-lg"
-              variant="elevated"
+              color="white"
+              variant="flat"
+              class="me-3 shadow-sm rounded-lg elevation-1"
             >
-              <VIcon icon="tabler-receipt-2" color="white" size="24" />
+              <VIcon
+                icon="tabler-receipt-2"
+                color="primary"
+                size="24"
+              />
             </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-h6 font-weight-black text-white leading-tight"
-                >Detalles del Pago</span
-              >
-              <span
-                class="text-xs text-white opacity-80 uppercase font-weight-bold"
-                >Ref: {{ selectedPayment?.reference || "N/A" }} |
-                {{ formatDate(selectedPayment?.payment_date) }}</span
-              >
+            <div class="d-flex flex-column leading-none">
+              <h3 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                Detalles del Pago
+              </h3>
+              <div class="d-flex align-center gap-2 mt-1">
+                <span
+                  class="text-white opacity-75 uppercase font-weight-bold"
+                  style="font-size: 0.6rem; letter-spacing: 0.05em;"
+                >
+                  Ref: {{ selectedPayment?.reference || 'N/A' }} · {{ formatDate(selectedPayment?.payment_date) }}
+                </span>
+              </div>
             </div>
             <VSpacer />
             <VBtn
-              icon
+              icon="tabler-x"
               variant="tonal"
               color="white"
               size="small"
               class="rounded-lg"
               @click="showPaymentModal = false"
-            >
-              <VIcon>tabler-x</VIcon>
-            </VBtn>
+            />
           </div>
         </VCardTitle>
 
-        <VCardText v-if="selectedPayment" class="pa-6">
+        <VCardText
+          v-if="selectedPayment"
+          class="pa-4 pa-sm-6 bg-light"
+        >
           <VRow>
             <!-- Resumen Financiero -->
-            <VCol cols="12" md="5">
-              <VCard
-                class="rounded-lg border shadow-sm bg-surface-variant-light overflow-hidden mb-6"
-              >
-                <div class="pa-5 d-flex flex-column align-center text-center">
+            <VCol
+              cols="12"
+              md="5"
+            >
+              <div class="d-flex align-center gap-2 mb-4">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Resumen del Pago</span>
+              </div>
+
+              <VCard class="rounded-xl border shadow-sm bg-white overflow-hidden mb-6">
+                <div class="pa-6 d-flex flex-column align-center text-center">
                   <span
                     class="text-super-xs font-weight-black text-disabled uppercase mb-2"
                     >Total Pagado</span
@@ -423,13 +444,13 @@
             </VCol>
 
             <!-- Facturas -->
-            <VCol cols="12" md="7">
-              <div class="d-flex align-center gap-2 mb-4 ms-2">
-                <VIcon icon="tabler-file-invoice" size="20" color="primary" />
-                <span
-                  class="font-weight-black text-uppercase text-xs text-primary"
-                  >Facturas Asociadas</span
-                >
+            <VCol
+              cols="12"
+              md="7"
+            >
+              <div class="d-flex align-center gap-2 mb-4">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Facturas Asociadas</span>
               </div>
 
               <VCard
@@ -518,16 +539,16 @@
           </VRow>
         </VCardText>
 
-        <VCardActions class="pa-4 pt-0">
+        <VCardActions class="pa-4 bg-light border-t">
           <VBtn
             block
             variant="flat"
             color="secondary"
-            size="large"
-            class="rounded-lg font-weight-black shadow-sm"
+            height="50"
+            class="rounded-lg font-weight-black shadow-sm text-button uppercase"
             @click="showPaymentModal = false"
           >
-            CERRAR DETALLES
+            Cerrar Detalles
           </VBtn>
         </VCardActions>
       </VCard>
@@ -819,8 +840,26 @@ onMounted(() => {
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #34495e 100%
+    #1e5128 100%
   );
+}
+
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
 }
 
 .bg-surface-variant-light {
@@ -829,8 +868,7 @@ onMounted(() => {
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-  line-height: 1;
+  line-height: normal;
 }
 
 .h-38 {
@@ -887,8 +925,12 @@ onMounted(() => {
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #2c3e50 100%
+    #1e5128 100%
   );
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .truncate {

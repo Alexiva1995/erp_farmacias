@@ -74,7 +74,16 @@ const closeModal = () => {
 const formattedOrderDate = computed(() => {
   const date = props.orderData?.order_date ?? props.orderData?.created_at;
   if (!date) return "—";
-  return formatDateTime(date, "datetime");
+  
+  const d = new Date(date);
+  return d.toLocaleString("es-ES", {
+    day : "2-digit",
+    month : "2-digit",
+    year : "numeric",
+    hour : "2-digit",
+    minute : "2-digit",
+    hour12: true
+  }).replace(',', ' ·');
 });
 
 const paymentBadge = computed(() => {
@@ -256,117 +265,198 @@ const productLineLabel = (product) => {
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
   >
-    <VCard class="order-view-card rounded-lg border shadow-sm">
-      <VCardTitle class="order-view-header d-flex align-center flex-wrap gap-2 px-4 py-3 border-b bg-surface">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg shadow-sm">
-            <VIcon icon="tabler-receipt" />
+    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden">
+      <!-- Premium Header -->
+      <VCardTitle class="pa-0">
+        <div class="premium-header pa-4 d-flex align-center gap-3">
+          <VAvatar
+            size="40"
+            color="white"
+            class="shadow-sm rounded-lg"
+          >
+            <VIcon
+              icon="tabler-receipt"
+              color="primary"
+              size="24"
+            />
           </VAvatar>
-          <div>
-            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">Orden #{{ orderData.id }}</h3>
-            <span class="text-xs text-disabled font-weight-medium uppercase">{{ formattedOrderDate }}</span>
+          <div class="d-flex flex-column leading-none">
+            <h3 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Orden #{{ orderData.id }}
+            </h3>
+            <div class="d-flex align-center gap-1 mt-1">
+              <VIcon icon="tabler-calendar-time" size="10" color="white" class="opacity-75" />
+              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem; letter-spacing: 0.05em;">
+                {{ formattedOrderDate }}
+              </span>
+            </div>
           </div>
-        </div>
-        <VSpacer />
-        <div class="d-flex align-center gap-2">
-          <VChip :color="paymentBadge.color" size="x-small" variant="tonal" class="font-weight-bold">
-            {{ paymentBadge.label }}
-          </VChip>
-          <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
+          <VSpacer />
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeModal"
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="px-4 pb-4 pt-3">
-        <!-- Cajero | Cliente -->
-        <div class="order-view-data mb-4">
-          <div class="data-block-unified rounded pa-3 d-flex">
-            <div class="data-half flex-grow-1">
-              <span class="data-label d-block">Cajero</span>
-              <span class="data-value">{{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}</span>
-            </div>
-            <div class="data-divider" />
-            <div class="data-half flex-grow-1">
-              <span class="data-label d-block">Cliente</span>
-              <span class="data-value">{{ orderData.client?.name || "" }} {{ orderData.client?.last_name || "" }}{{ orderData.client?.identification ? ` · ${orderData.client.identification_type || ""} ${orderData.client.identification}` : "" }}</span>
-            </div>
+      <VCardText class="pa-0 bg-light">
+        <div class="pa-4 pa-sm-6">
+          <!-- Document Info -->
+          <div class="d-flex align-center gap-2 mb-4">
+            <div class="header-indicator" />
+            <span class="text-subtitle-2 font-weight-black text-uppercase text-primary">Información del Documento</span>
           </div>
-        </div>
 
-        <!-- Tabla de productos -->
-        <div class="order-view-products mb-4">
-          <div class="products-table-wrapper rounded overflow-hidden">
-            <table class="products-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th class="text-end">Unit.</th>
-                  <th class="quantity-col">Cant.</th>
-                  <th class="text-end">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(product, idx) in orderProducts" :key="product.id || product.product_id || idx" class="products-table-row">
-                  <td class="product-cell py-3">
-                    <div class="d-flex flex-column">
-                      <div class="d-flex align-center gap-1 mb-0 pb-0">
-                        <span class="text-primary font-weight-black text-xs">#{{ productId(product) }}</span>
-                        <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ product.title }}</span>
-                      </div>
-                      <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
-                        <span class="text-disabled" style="font-size: 0.75rem !important;">{{ product.active_ingredient || '—' }}</span>
-                        <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
-                        <span class="text-primary font-weight-bold" style="font-size: 0.75rem !important;">{{ product.laboratory || '—' }}</span>
-                      </div>
-                    </div>
-                    <span
-                      v-if="activeDiscount && product.price_before_discount != null"
-                      class="text-caption text-decoration-line-through text-error d-block mt-1"
-                    >
-                      {{ formatAmountOnly(product.price_before_discount, selectedCurrency) }}
+          <VCard variant="flat" class="rounded-lg border shadow-sm mb-6 bg-white overflow-hidden">
+            <VCardText class="pa-4">
+              <VRow dense>
+                <VCol cols="12" sm="6">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Fecha de Emisión</span>
+                    <span class="text-sm font-weight-bold">{{ formattedOrderDate }}</span>
+                  </div>
+                </VCol>
+                <VCol cols="12" sm="6">
+                  <div class="d-flex flex-column align-sm-end">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Método de Pago</span>
+                    <VChip :color="paymentBadge.color" size="x-small" variant="tonal" class="font-weight-black">
+                      {{ paymentBadge.label }}
+                    </VChip>
+                  </div>
+                </VCol>
+
+                <VCol cols="12">
+                  <VDivider class="my-3 opacity-10" />
+                </VCol>
+
+                <VCol cols="12" sm="6">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Cajero / Vendedor</span>
+                    <span class="text-sm font-weight-bold text-primary">
+                      {{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}
                     </span>
-                  </td>
-                  <td class="text-end table-amount">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
-                  <td class="quantity-cell">{{ product.selectedQuantity }}</td>
-                  <td class="text-end table-amount font-weight-medium">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                </VCol>
+                <VCol cols="12" sm="6">
+                  <div class="d-flex flex-column align-sm-end">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Cliente</span>
+                    <span class="text-sm font-weight-bold text-truncate" style="max-width: 100%;">
+                      {{ orderData.client?.name || "Sin Identificar" }} {{ orderData.client?.last_name || "" }}
+                    </span>
+                    <span v-if="orderData.client?.identification" class="text-super-xs text-disabled">
+                      {{ orderData.client.identification_type || "" }} {{ orderData.client.identification }}
+                    </span>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
+
+          <!-- Products Table -->
+          <div class="d-flex align-center gap-2 mb-4">
+            <div class="header-indicator" />
+            <span class="text-subtitle-2 font-weight-black text-uppercase text-primary">Detalle de Productos</span>
           </div>
+
+          <VCard variant="flat" class="rounded-lg border shadow-sm mb-6 bg-white overflow-hidden">
+            <div class="products-table-wrapper">
+              <table class="products-table">
+                <thead>
+                  <tr>
+                    <th class="ps-4">Producto</th>
+                    <th class="text-end">Unit.</th>
+                    <th class="text-center">Cant.</th>
+                    <th class="text-end pe-4">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(product, idx) in orderProducts" :key="product.id || product.product_id || idx" class="products-table-row">
+                    <td class="product-cell ps-4 py-3">
+                      <div class="d-flex flex-column">
+                        <div class="d-flex align-center gap-1">
+                          <span class="text-primary font-weight-black text-xs">#{{ productId(product) }}</span>
+                          <span class="text-sm font-weight-black text-uppercase truncate-text">{{ product.title }}</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mt-1">
+                          <span class="text-super-xs text-disabled font-weight-medium">{{ product.active_ingredient || 'Sin Componente' }}</span>
+                          <span class="text-super-xs text-disabled">|</span>
+                          <span class="text-super-xs text-primary font-weight-black">{{ product.laboratory || 'Sin Laboratorio' }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-end table-amount font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" variant="tonal" class="font-weight-black">{{ product.selectedQuantity }}</VChip>
+                    </td>
+                    <td class="text-end table-amount font-weight-black pe-4">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </VCard>
+
+          <!-- Summary -->
+          <VCard variant="flat" class="rounded-lg border shadow-sm bg-white overflow-hidden">
+            <VCardText class="pa-4">
+              <div class="summary-list d-flex flex-column gap-2">
+                <div v-if="activeDiscount" class="summary-row">
+                  <span class="summary-label">{{ activeDiscount.label }}</span>
+                  <span class="summary-value text-error">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
+                </div>
+                <div v-if="isSpecialTaxpayer" class="summary-row">
+                  <span class="summary-label">Recargo SPE (3%)</span>
+                  <span class="summary-value">{{ props.orderData?.spe_surcharge_amount }} {{ selectedCurrency }}</span>
+                </div>
+                <div v-if="credit" class="summary-row">
+                  <span class="summary-label">Crédito Acumulado</span>
+                  <span class="summary-value text-primary font-weight-black">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
+                </div>
+                <div v-if="debtPayments.length" class="summary-row">
+                  <span class="summary-label">Saldo Pendiente</span>
+                  <span class="summary-value text-warning font-weight-black">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
+                </div>
+
+                <template v-if="normalPayments.length">
+                  <div v-for="(payment, pIndex) in normalPayments" :key="`pay-${pIndex}`" class="summary-row">
+                    <span class="summary-label">{{ getPaymentMethodLabel(payment.method, payment.currency) }}</span>
+                    <span class="summary-value font-weight-bold">{{ formatCurrency(payment.amount || 0, payment.currency) }}</span>
+                  </div>
+                </template>
+
+                <div v-if="changeAmount" class="summary-row">
+                  <span class="summary-label">Cambio Entregado</span>
+                  <span class="summary-value text-success font-weight-black">{{ formatCurrency(changeAmount, "COP") }}</span>
+                </div>
+
+                <VDivider class="my-2 opacity-10" />
+
+                <div class="d-flex align-center justify-space-between pt-1">
+                  <span class="text-h6 font-weight-black text-primary">TOTAL</span>
+                  <div class="d-flex flex-column align-end">
+                    <span class="text-h4 font-weight-black text-primary leading-none">{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mt-1">Sujeto a cambios del día</span>
+                  </div>
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
         </div>
 
-        <!-- Resumen de pago (compacto) -->
-        <div class="order-view-summary rounded pa-3">
-          <div v-if="activeDiscount" class="summary-row">
-            <span class="summary-label">{{ activeDiscount.label }}</span>
-            <span class="summary-value">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
-          </div>
-          <div v-if="isSpecialTaxpayer" class="summary-row">
-            <span class="summary-label">Recargo SPE (3%)</span>
-            <span class="summary-value">{{ props.orderData?.spe_surcharge_amount }} {{ selectedCurrency }}</span>
-          </div>
-          <div v-if="credit" class="summary-row">
-            <span class="summary-label">Crédito</span>
-            <span class="summary-value">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
-          </div>
-          <div v-if="debtPayments.length" class="summary-row">
-            <span class="summary-label">Saldo</span>
-            <span class="summary-value">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
-          </div>
-          <template v-if="normalPayments.length">
-            <div v-for="(payment, pIndex) in normalPayments" :key="`pay-${pIndex}`" class="summary-row">
-              <span class="summary-label">{{ getPaymentMethodLabel(payment.method, payment.currency) }}</span>
-              <span class="summary-value">{{ formatCurrency(payment.amount || 0, payment.currency) }}</span>
-            </div>
-          </template>
-          <div v-if="changeAmount" class="summary-row">
-            <span class="summary-label">Devolución</span>
-            <span class="summary-value">{{ formatCurrency(changeAmount, "COP") }}</span>
-          </div>
-          <VDivider class="summary-divider" />
-          <div class="summary-row total-row">
-            <span class="total-label">Total</span>
-            <span class="total-amount">{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
-          </div>
+        <!-- Action Buttons -->
+        <div class="pa-4 pa-sm-6 pt-0">
+          <VBtn
+            block
+            color="secondary"
+            variant="tonal"
+            class="rounded-lg h-50 font-weight-black text-xs"
+            @click="closeModal"
+          >
+            CERRAR PESTAÑA
+          </VBtn>
         </div>
       </VCardText>
     </VCard>
@@ -375,258 +465,122 @@ const productLineLabel = (product) => {
 
 <style scoped>
 .order-view-dialog :deep(.v-overlay__content) {
-  align-items: flex-start;
+  align-items: center;
   padding-block: 0.75rem;
   padding-inline: 0;
 }
 
 .order-view-card {
-  background: rgb(var(--v-theme-surface));
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 8%);
+  background: white;
 }
 
-/* Chips x-small en el modal: 30px altura, 13px fuente */
-.order-view-card :deep(.v-chip:not(.v-chip--pill).v-chip--size-x-small) {
-  --v-chip-height: 30px;
-
-  font-size: 13px;
-  min-block-size: 30px;
-  padding-block: 4px;
-  padding-inline: 10px;
+.premium-header {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.order-view-card :deep(.v-chip__underlay) {
-  border-radius: 6px;
-  margin: 2px;
+.header-indicator {
+  inline-size: 4px;
+  block-size: 18px;
+  background-color: #3b82f6;
+  border-radius: 4px;
 }
 
-.order-view-header {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-block-end: none;
+.bg-light {
+  background-color: #f8faff !important;
 }
 
-.section-title {
-  color: rgb(var(--v-theme-primary));
+.h-50 {
+  block-size: 50px !important;
 }
 
-.section-label {
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+.order-view-card :deep(.v-chip.v-chip--size-x-small) {
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
 }
 
-/* Cards de datos: etiquetas más grandes y legibles */
-.data-label {
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-block-end: 2px;
-}
-
-.data-value {
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  font-size: 0.9375rem;
-  font-weight: 500;
-}
-
-.data-block-unified {
-  background: rgba(var(--v-theme-primary), 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
-}
-
-.data-half {
-  min-inline-size: 0;
-  padding-block: 0;
-  padding-inline: 12px;
-}
-
-.data-divider {
-  flex-shrink: 0;
-  background: rgba(var(--v-theme-primary), 0.18);
-  inline-size: 1px;
-}
-
-/* Tabla: más aire, jerarquía visual en producto */
 .products-table-wrapper {
-  background: rgba(var(--v-theme-primary), 0.04);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
-  max-block-size: 280px;
-  overflow-y: auto;
+  inline-size: 100%;
 }
 
 .products-table {
   border-collapse: collapse;
-  font-size: 0.8125rem;
   inline-size: 100%;
 }
 
 .products-table th {
-  background: rgba(var(--v-theme-primary), 0.1);
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1.2;
-  padding-block: 4px;
-  padding-inline: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding-block: 10px;
+  padding-inline: 12px;
   text-align: start;
+  text-transform: uppercase;
 }
-.products-table th.text-end { text-align: end; }
 
 .products-table td {
-  border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity, 0.12));
-  line-height: 1.25;
-  padding-block: 4px;
-  padding-inline: 8px;
-  vertical-align: top;
-}
-
-.products-table-row:nth-child(even) {
-  background: rgba(var(--v-theme-primary), 0.04);
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  padding-block: 12px;
+  padding-inline: 12px;
 }
 
 .products-table-row:last-child td {
   border-block-end: none;
 }
 
-.quantity-cell {
-  inline-size: 52px;
-  text-align: center;
-}
-.product-cell { 
-  min-inline-size: 0; 
-  vertical-align: middle !important;
-}
-
-.product-line-full {
-  display: none;
+.products-table-row:hover {
+  background-color: rgba(var(--v-theme-primary), 0.02);
 }
 
 .table-amount {
-  color: rgba(var(--v-theme-on-surface), 0.9);
-  font-size: 0.8125rem;
-}
-
-/* Resumen de pago */
-.order-view-summary {
-  background: rgba(var(--v-theme-primary), 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .summary-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-block-size: 1.5rem;
-  padding-block: 4px;
-  padding-inline: 0;
 }
 
 .summary-label {
-  color: rgba(var(--v-theme-on-surface), 0.78);
-  font-size: 0.8125rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .summary-value {
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.875rem;
 }
 
-.summary-divider {
-  margin-block: 6px !important;
-  margin-inline: 0 !important;
+.leading-none {
+  line-height: 1 !important;
 }
 
-.total-row {
-  padding-block-start: 2px;
+.truncate-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.total-label {
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.9375rem;
-  font-weight: 700;
-}
-
-.total-amount {
-  color: rgb(var(--v-theme-primary));
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.header-date {
-  color: rgba(var(--v-theme-on-surface), 0.75);
-  font-size: 0.8125rem;
-}
-
-/* — Modo oscuro: contraste y elevación — */
 .v-theme--dark .order-view-card {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 35%);
+  background: #1e1e1e !important;
 }
 
-.v-theme--dark .order-view-header {
-  background: rgba(255, 255, 255, 6%);
+.v-theme--dark .bg-light {
+  background-color: #252525 !important;
 }
 
-.v-theme--dark .section-title,
-.v-theme--dark .section-label,
-.v-theme--dark .header-date {
-  color: rgba(255, 255, 255, 90%);
+.v-theme--dark .bg-white {
+  background-color: #2a2a2a !important;
 }
 
-.v-theme--dark .data-label {
-  color: rgba(255, 255, 255, 60%);
-}
-
-.v-theme--dark .data-value {
-  color: rgba(255, 255, 255, 92%);
-}
-
-.v-theme--dark .data-block-unified {
-  background: rgba(255, 255, 255, 6%);
-}
-
-.v-theme--dark .data-divider {
-  background: rgba(255, 255, 255, 12%);
-}
-
-.v-theme--dark .products-table-wrapper {
-  background: rgba(255, 255, 255, 5%);
-}
-
-.v-theme--dark .products-table th {
-  background: rgba(255, 255, 255, 8%);
-  color: rgba(255, 255, 255, 90%);
-}
-
-.v-theme--dark .product-line-full {
-  color: rgba(255, 255, 255, 92%);
-}
-
-.v-theme--dark .table-amount {
-  color: rgba(255, 255, 255, 90%);
-}
-
-.v-theme--dark .products-table-row:nth-child(even) {
-  background: rgba(255, 255, 255, 3%);
-}
-
-.v-theme--dark .order-view-summary {
-  background: rgba(255, 255, 255, 7%);
-}
-
-.v-theme--dark .summary-label {
-  color: rgba(255, 255, 255, 70%);
-}
-
-.v-theme--dark .summary-value {
-  color: rgba(255, 255, 255, 92%);
-}
-
-.v-theme--dark .total-label,
-.v-theme--dark .total-amount {
-  color: rgba(255, 255, 255, 100%);
+.v-theme--dark .header-indicator {
+  background-color: #60a5fa;
 }
 </style>

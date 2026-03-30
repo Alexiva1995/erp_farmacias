@@ -57,54 +57,141 @@ const closeDialog = () => {
 <template>
   <VDialog
     :model-value="props.isDialogVisible"
-    max-width="350"
+    max-width="460"
     @update:model-value="closeDialog"
   >
-    <VCard elevation="10" border="sm" class="overflow-hidden">
-      <!-- Header -->
-      <VCardTitle class="bg-primary text-white d-flex align-center pa-4">
-        <VIcon icon="tabler-link" class="me-2" />
-        <span>Link de Carga Público</span>
-        <VSpacer />
-        <VBtn
-          icon="tabler-x"
-          variant="text"
-          color="white"
-          density="compact"
-          @click="closeDialog"
-        />
+    <VCard class="detail-dialog-card overflow-hidden">
+      <!-- Header Premium Institucional -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+            <VIcon icon="tabler-link" color="primary" size="22" />
+          </VAvatar>
+          <div class="d-flex flex-column leading-none text-white">
+            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
+              Link de Carga Público
+            </h2>
+            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+              {{ props.selectedSupplier?.name ?? 'Proveedor' }}
+            </span>
+          </div>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="closeDialog" />
+        </div>
       </VCardTitle>
 
-      <VCardText class="pa-6 d-flex flex-column align-center gap-4 text-center">
-        <!-- Botón de Copiar (Aparece primero si el link ya existe) -->
-        <VBtn
-          v-if="publicToken"
-          color="success"
-          size="x-large"
-          variant="elevated"
-          block
-          prepend-icon="tabler-copy"
-          @click="copyToClipboard"
-          class="font-weight-bold"
-        >
-          Copiar Link
-        </VBtn>
+      <VCardText class="pa-4 pa-sm-5 bg-light">
 
-        <!-- Botón de Generar / Regenerar -->
-        <VBtn
-          :color="publicToken ? 'warning' : 'primary'"
-          :size="publicToken ? 'large' : 'x-large'"
-          :variant="publicToken ? 'tonal' : 'elevated'"
-          block
-          :loading="loading"
-          :prepend-icon="publicToken ? 'tabler-refresh' : 'tabler-plus'"
-          @click="generateToken"
-          class="font-weight-bold"
-        >
-          {{ publicToken ? 'Generar Nuevo Link' : 'Generar Link' }}
-        </VBtn>
+        <!-- URL Preview (si existe) -->
+        <template v-if="publicToken">
+          <div class="d-flex align-center gap-2 mb-3">
+            <div class="header-indicator primary shadow-sm" />
+            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Enlace Generado</span>
+          </div>
+
+          <VCard variant="flat" class="pa-3 bg-white rounded-xl border shadow-sm mb-4">
+            <div class="d-flex align-center gap-2 mb-1">
+              <VIcon icon="tabler-world" size="14" color="success" />
+              <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">URL Pública</span>
+            </div>
+            <div class="url-preview text-xs font-weight-black text-primary pa-2 rounded-lg">
+              {{ publicUrl }}
+            </div>
+          </VCard>
+        </template>
+
+        <template v-else>
+          <VAlert type="info" variant="tonal" density="compact" icon="tabler-info-circle" class="rounded-xl">
+            <span class="text-super-xs font-weight-black">
+              Genera un enlace público para que el proveedor <strong>{{ props.selectedSupplier?.name }}</strong> pueda cargar sus productos directamente.
+            </span>
+          </VAlert>
+        </template>
+
+        <!-- Acciones -->
+        <div class="d-flex flex-column gap-3 mt-4">
+          <VBtn
+            v-if="publicToken"
+            color="success"
+            variant="flat"
+            height="50"
+            block
+            class="font-weight-black rounded-lg uppercase"
+            @click="copyToClipboard"
+          >
+            <VIcon start icon="tabler-copy" size="18" />
+            Copiar Enlace
+          </VBtn>
+
+          <VBtn
+            :color="publicToken ? 'warning' : 'primary'"
+            :variant="publicToken ? 'tonal' : 'flat'"
+            height="50"
+            block
+            :loading="loading"
+            class="font-weight-black rounded-lg uppercase"
+            :class="!publicToken ? 'shadow-primary' : ''"
+            @click="generateToken"
+          >
+            <VIcon start :icon="publicToken ? 'tabler-refresh' : 'tabler-plus'" size="18" />
+            {{ publicToken ? 'Generar Nuevo Link' : 'Generar Link' }}
+          </VBtn>
+
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            height="44"
+            block
+            class="font-weight-black rounded-lg uppercase"
+            @click="closeDialog"
+          >
+            Cerrar
+          </VBtn>
+        </div>
+
       </VCardText>
     </VCard>
   </VDialog>
 </template>
 
+<style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 { letter-spacing: 1px !important; }
+.leading-none { line-height: 1 !important; }
+.leading-tight { line-height: 1.25 !important; }
+
+.url-preview {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+  border: 1px dashed rgba(var(--v-theme-primary), 0.25);
+  word-break: break-all;
+  line-height: 1.5;
+}
+</style>

@@ -101,17 +101,6 @@ const getLineTotal = (detail) => {
   return unitPrice * qty;
 };
 
-const productLineLabel = (detail) => {
-  const product = detail.product || {};
-  const id = product.id ?? product.product_id ?? null;
-  const name = product.name ?? product.title ?? "—";
-  const lab = product.laboratory?.name ?? product.laboratory ?? "";
-  const parts = [id != null ? String(id) : null, name, lab || null].filter(
-    Boolean
-  );
-  return parts.join(" - ");
-};
-
 const fetchPayments = async () => {
   const clientId = clientInfo.value?.id ?? props.creditsData?.[0]?.client_id ?? props.creditsData?.[0]?.client?.id;
   if (!clientId) return;
@@ -162,13 +151,6 @@ const filteredPaymentRows = computed(() => {
     filtered = filtered.filter((r) => r.currency === filterCurrency.value);
   }
   return filtered;
-});
-
-const totalPaid = computed(() => {
-  return filteredPaymentRows.value.reduce(
-    (sum, r) => sum + (parseFloat(r.amount) || 0),
-    0
-  );
 });
 
 const fetchExchangeRates = async () => {
@@ -268,303 +250,253 @@ watch([filterClient, filterDate, filterCurrency], () => {
 <template>
   <VDialog
     v-model="dialogVisible"
-    max-width="560"
+    max-width="700"
     persistent
-    content-class="order-view-dialog"
+    scrollable
+    transition="dialog-bottom-transition"
+    class="premium-dialog"
   >
-    <VCard class="order-view-card rounded-lg">
-      <!-- Header con info del cliente -->
-      <VCardTitle
-        class="order-view-header d-flex align-center flex-wrap gap-2 pt-3 px-3 pb-2"
-      >
-        <span class="text-subtitle-1 font-weight-bold section-title">
-          Detalle de Créditos
-        </span>
-        <VChip
-          color="primary"
-          size="x-small"
-          variant="tonal"
-          density="compact"
-        >
-          Crédito
-        </VChip>
-        <VSpacer />
-        <VBtn icon variant="text" size="x-small" @click="closeModal">
-          <VIcon size="18">tabler-x</VIcon>
-        </VBtn>
+    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
+      <!-- Cabecera Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-report-money" color="primary" size="24" />
+            </VAvatar>
+            <div>
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Estado de Cuenta</h2>
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
+                Detalle de Créditos y Pagos
+              </span>
+            </div>
+          </div>
+
+          <VSpacer />
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="small"
+            @click="closeModal"
+            class="rounded-lg"
+          >
+            <VIcon size="20">tabler-x</VIcon>
+          </VBtn>
+        </div>
       </VCardTitle>
 
-      <VCardText class="px-4 pb-4 pt-3">
-        <!-- Cajero | Cliente (en créditos no hay cajero de la venta original) -->
-        <div class="order-view-data mb-4">
-          <div class="data-block-unified rounded pa-3 d-flex">
-            <div class="data-half flex-grow-1">
-              <span class="data-label d-block">Cliente</span>
-              <span class="data-value">
-                {{ clientInfo?.name || "" }}
-                {{ clientInfo?.last_name || "" }}
-              </span>
-            </div>
-            <div class="data-divider" />
-            <div class="data-half flex-grow-1">
-              <span class="data-label d-block">Documento</span>
-              <span class="data-value">
-                {{ clientInfo?.identification_type || "" }}
-                {{ clientInfo?.identification || "—" }}
-              </span>
-            </div>
-          </div>
-        </div>
+      <VDivider />
 
-        <!-- Órdenes agrupadas (últimas 10 por página) -->
-        <div
-          v-for="(credit, idx) in paginatedCredits"
-          :key="credit.id || credit.order?.id || idx"
-          class="mb-4"
-        >
-          <div class="order-block rounded overflow-hidden">
-            <div
-              class="order-block-header d-flex align-center flex-wrap gap-2 py-2 px-3"
-            >
-              <span class="text-subtitle-2 font-weight-bold section-title">
-                Orden #{{ credit.order?.id ?? "—" }}
-              </span>
-              <VChip
-                size="x-small"
-                variant="tonal"
-                :color="getCurrencyChipColor(credit.order?.currency)"
-                density="compact"
-              >
-                {{ credit.order?.currency || "USD" }}
-              </VChip>
-              <span class="header-date text-caption">
-                {{
-                  formatDateTime(
-                    credit.order?.created_at || credit.credit_date,
-                    "datetime"
-                  )
-                }}
-              </span>
+      <VCardText class="pa-0 bg-light">
+        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-height: 75vh;">
+          <!-- Información del Cliente -->
+          <VCard variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 mb-6">
+            <div class="d-flex align-center gap-2 mb-4">
+              <div class="header-indicator primary"></div>
+              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Información del Tarjetahabiente</span>
             </div>
 
-            <!-- Tabla de productos -->
-            <div class="order-view-products">
-              <div class="products-table-wrapper rounded overflow-hidden">
-                <table class="products-table">
-                  <thead>
-                    <tr>
-                      <th>Producto</th>
-                      <th class="text-end">Unit.</th>
-                      <th class="quantity-col">Cant.</th>
-                      <th class="text-end">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="(detail, dIdx) in credit.order?.details || []"
-                      :key="detail.id || detail.product_id || dIdx"
-                      class="products-table-row"
-                    >
-                      <td class="product-cell py-2">
-                        <div class="d-flex flex-column">
-                          <div class="d-flex align-center gap-1 mb-0 pb-0">
-                            <span class="text-primary font-weight-black text-xs">#{{ detail.product?.id || detail.product_id }}</span>
-                            <span class="text-subtitle-2 font-weight-black text-uppercase leading-tight" style="font-size: 0.85rem !important;">{{ detail.product?.name || detail.product?.title || '—' }}</span>
-                          </div>
-                          <div class="text-caption leading-tight d-flex align-center gap-1 mt-0 pt-0">
-                            <span class="text-disabled" style="font-size: 0.75rem !important;">{{ detail.product?.active_ingredient || '—' }}</span>
-                            <span class="text-disabled" style="font-size: 0.75rem !important;">|</span>
-                            <span class="text-primary font-weight-bold" style="font-size: 0.75rem !important;">{{ detail.product?.laboratory?.name || detail.product?.laboratory || '—' }}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="text-end table-amount">
-                        {{
-                          formatAmountOnly(
-                            getItemPriceByCurrency(
-                              detail,
-                              credit.order?.currency
-                            ),
-                            credit.order?.currency
-                          )
-                        }}
-                      </td>
-                      <td class="quantity-cell">{{ detail.quantity }}</td>
-                      <td class="text-end table-amount font-weight-medium">
-                        {{
-                          formatAmountOnly(
-                            getLineTotal(detail),
-                            credit.order?.currency
-                          )
-                        }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+            <VRow dense>
+              <VCol cols="12" sm="7">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs text-disabled font-weight-bold uppercase mb-1">Nombre Completo</span>
+                  <span class="text-subtitle-1 font-weight-black text-high-emphasis">
+                    {{ clientInfo?.name || "" }} {{ clientInfo?.last_name || "" }}
+                  </span>
+                </div>
+              </VCol>
+              <VCol cols="12" sm="5">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs text-disabled font-weight-bold uppercase mb-1">Identificación</span>
+                  <span class="text-subtitle-1 font-weight-black text-high-emphasis">
+                    {{ clientInfo?.identification_type || "" }}{{ clientInfo?.identification || "—" }}
+                  </span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCard>
 
-        <div v-if="totalPagesOrders > 1" class="d-flex justify-center align-center gap-2 my-3">
-          <VBtn
-            icon
-            variant="tonal"
-            size="small"
-            :disabled="pageOrders <= 1"
-            @click="prevPageOrders"
-          >
-            <VIcon icon="tabler-chevron-left" />
-          </VBtn>
-          <span class="text-caption">Página {{ pageOrders }} de {{ totalPagesOrders }}</span>
-          <VBtn
-            icon
-            variant="tonal"
-            size="small"
-            :disabled="pageOrders >= totalPagesOrders"
-            @click="nextPageOrders"
-          >
-            <VIcon icon="tabler-chevron-right" />
-          </VBtn>
-        </div>
-
-        <!-- Totales globales -->
-        <div class="order-view-summary rounded pa-3 mb-4">
-          <div class="summary-row">
-            <span class="summary-label">Total Crédito</span>
-            <span class="summary-value">
-              {{ formatCurrency(totalCredits, selectedCurrency) }}
-            </span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Total Pendiente</span>
-            <span class="summary-value font-weight-bold text-error">
-              {{ formatCurrency(totalPendingAmount, selectedCurrency) }}
-            </span>
-          </div>
-        </div>
-
-        <VDivider class="my-4" />
-
-        <!-- Historial de Pagos -->
-        <div class="mb-2">
-          <div class="d-flex justify-space-between align-center mb-3">
-            <span class="font-weight-bold text-subtitle-1 section-label">
-              Historial de Pagos
-            </span>
-            <VChip color="success" size="small" variant="tonal">
-              Total Pagado: {{ formatCurrency(totalPaidUSD, "USD") }}
-            </VChip>
-          </div>
-
-          <VRow class="mb-3">
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="filterClient"
-                label="Buscar Vendedor"
-                density="compact"
-                clearable
-                prepend-inner-icon="tabler-search"
-                hide-details
-              />
+          <!-- Resumen de Saldos -->
+          <VRow dense class="mb-6">
+            <VCol cols="12" sm="6">
+              <VCard variant="flat" class="border-l-primary border pa-3 bg-white rounded-lg elevation-2 h-100 d-flex flex-column justify-center overflow-hidden">
+                <div class="d-flex align-center justify-space-between w-100">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs text-disabled font-weight-black uppercase letter-spacing-1">Total Crédito</span>
+                    <span class="text-h6 font-weight-950 text-primary leading-none mt-1">
+                      {{ formatCurrency(totalCredits, selectedCurrency) }}
+                    </span>
+                  </div>
+                  <VIcon icon="tabler-currency-dollar" size="32" color="primary" class="opacity-10 position-absolute" style="inset-inline-end: -8px; inset-block-end: -8px;" />
+                </div>
+              </VCard>
             </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="filterDate"
-                label="Fecha"
-                type="date"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VSelect
-                v-model="filterCurrency"
-                :items="['USD', 'COP', 'BS']"
-                label="Moneda"
-                density="compact"
-                clearable
-                hide-details
-              />
+            <VCol cols="12" sm="6">
+              <VCard variant="flat" class="border-l-error border pa-3 bg-white rounded-lg elevation-2 h-100 d-flex flex-column justify-center overflow-hidden">
+                <div class="d-flex align-center justify-space-between w-100">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs text-disabled font-weight-black uppercase letter-spacing-1">Total Pendiente</span>
+                    <span class="text-h6 font-weight-950 text-error leading-none mt-1">
+                      {{ formatCurrency(totalPendingAmount, selectedCurrency) }}
+                    </span>
+                  </div>
+                  <VIcon icon="tabler-alert-circle" size="32" color="error" class="opacity-10 position-absolute" style="inset-inline-end: -8px; inset-block-end: -8px;" />
+                </div>
+              </VCard>
             </VCol>
           </VRow>
 
-          <div class="products-table-wrapper rounded overflow-hidden">
-            <table class="products-table">
+          <!-- Órdenes -->
+          <div class="d-flex align-center gap-2 mb-4">
+            <div class="header-indicator secondary"></div>
+            <span class="text-xs font-weight-black text-secondary uppercase letter-spacing-1">Historial de Ventas a Crédito</span>
+          </div>
+
+          <div v-for="(credit, idx) in paginatedCredits" :key="credit.id || credit.order?.id || idx" class="mb-4">
+            <VCard variant="flat" class="border overflow-hidden rounded-lg bg-white elevation-1">
+              <div class="bg-var-theme-background-secondary pa-3 d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-2">
+                  <VChip size="x-small" color="secondary" variant="flat" class="font-weight-black uppercase">
+                    ORDEN #{{ credit.order?.id ?? "—" }}
+                  </VChip>
+                  <span class="text-super-xs font-weight-bold text-disabled">
+                    {{ formatDateTime(credit.order?.created_at || credit.credit_date, "datetime") }}
+                  </span>
+                </div>
+                <VChip size="x-small" :color="getCurrencyChipColor(credit.order?.currency)" variant="tonal" class="font-weight-black">
+                  {{ credit.order?.currency || "USD" }}
+                </VChip>
+              </div>
+
+              <!-- Tabla de productos -->
+              <VTable density="compact" class="premium-table-compact">
+                <thead>
+                  <tr>
+                    <th class="text-super-xs font-weight-black text-disabled uppercase">Producto</th>
+                    <th class="text-super-xs font-weight-black text-disabled uppercase text-end">Unit.</th>
+                    <th class="text-super-xs font-weight-black text-disabled uppercase text-center">Cant.</th>
+                    <th class="text-super-xs font-weight-black text-disabled uppercase text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(detail, dIdx) in credit.order?.details || []" :key="detail.id || dIdx">
+                    <td>
+                      <div class="d-flex flex-column py-1">
+                        <div class="d-flex align-center gap-1">
+                          <span class="text-primary font-weight-black" style="font-size: 0.65rem;">#{{ detail.product?.id || detail.product_id }}</span>
+                          <span class="text-xs font-weight-black text-uppercase truncate" style="max-width: 180px;">{{ detail.product?.name || '—' }}</span>
+                        </div>
+                        <span class="text-super-xs text-disabled font-weight-medium">{{ detail.product?.laboratory?.name || detail.product?.laboratory || '—' }}</span>
+                      </div>
+                    </td>
+                    <td class="text-end text-xs font-weight-bold">
+                      {{ formatAmountOnly(getItemPriceByCurrency(detail, credit.order?.currency), credit.order?.currency) }}
+                    </td>
+                    <td class="text-center text-xs font-weight-black">{{ detail.quantity }}</td>
+                    <td class="text-end text-xs font-weight-black text-primary">
+                      {{ formatAmountOnly(getLineTotal(detail), credit.order?.currency) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </VCard>
+          </div>
+
+          <!-- Paginación Órdenes -->
+          <div v-if="totalPagesOrders > 1" class="d-flex justify-center align-center gap-3 mt-4 mb-8">
+            <VBtn icon variant="tonal" color="secondary" size="x-small" :disabled="pageOrders <= 1" @click="prevPageOrders" class="rounded-lg shadow-sm">
+              <VIcon icon="tabler-chevron-left" size="18" />
+            </VBtn>
+            <span class="text-super-xs font-weight-black text-disabled uppercase">Página {{ pageOrders }} de {{ totalPagesOrders }}</span>
+            <VBtn icon variant="tonal" color="secondary" size="x-small" :disabled="pageOrders >= totalPagesOrders" @click="nextPageOrders" class="rounded-lg shadow-sm">
+              <VIcon icon="tabler-chevron-right" size="18" />
+            </VBtn>
+          </div>
+
+          <VDivider class="my-6" />
+
+          <!-- Historial de Pagos -->
+          <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center gap-2">
+              <div class="header-indicator success"></div>
+              <span class="text-xs font-weight-black text-success uppercase letter-spacing-1">Historial de Pagos Recibidos</span>
+            </div>
+            <VChip color="success" size="small" variant="flat" class="font-weight-black shadow-sm">
+              TOTAL PAGADO: {{ formatCurrency(totalPaidUSD, "USD") }}
+            </VChip>
+          </div>
+
+          <!-- Filtros de Pagos -->
+          <VCard variant="flat" class="pa-3 bg-white border border-dashed rounded-lg mb-4">
+            <VRow dense>
+              <VCol cols="12" md="5">
+                <AppTextField v-model="filterClient" placeholder="Filtrar por vendedor..." density="compact" prepend-inner-icon="tabler-search" class="shadow-sm" />
+              </VCol>
+              <VCol cols="12" md="4">
+                <AppTextField v-model="filterDate" type="date" density="compact" class="shadow-sm" />
+              </VCol>
+              <VCol cols="12" md="3">
+                <AppSelect v-model="filterCurrency" :items="['USD', 'COP', 'BS']" placeholder="Divisa" density="compact" class="shadow-sm" />
+              </VCol>
+            </VRow>
+          </VCard>
+
+          <VCard variant="flat" class="border rounded-lg overflow-hidden bg-white elevation-1">
+            <VTable density="compact" class="premium-table">
               <thead>
                 <tr>
-                  <th v-for="h in paymentHeaders" :key="h.key">
+                  <th v-for="h in paymentHeaders" :key="h.key" class="text-super-xs font-weight-black text-disabled uppercase">
                     {{ h.title }}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="(row, rIdx) in paginatedPaymentRows"
-                  :key="rIdx"
-                  class="products-table-row"
-                >
+                <tr v-for="(row, rIdx) in paginatedPaymentRows" :key="rIdx" class="row-hover-effect">
+                  <td class="text-xs font-weight-medium">{{ row.date ? formatDateTime(row.date, "date") : "N/A" }}</td>
+                  <td class="text-xs font-weight-black">{{ formatPaymentAmount(row.amount, row.currency) }}</td>
                   <td>
-                    {{ row.date ? formatDateTime(row.date, "date") : "N/A" }}
-                  </td>
-                  <td class="font-weight-medium">
-                    {{ formatPaymentAmount(row.amount, row.currency) }}
-                  </td>
-                  <td>
-                    <VChip
-                      size="x-small"
-                      :color="
-                        row.currency === 'USD'
-                          ? 'success'
-                          : row.currency === 'COP'
-                            ? 'info'
-                            : 'primary'
-                      "
-                    >
+                    <VChip size="x-small" :color="row.currency === 'USD' ? 'success' : row.currency === 'COP' ? 'info' : 'primary'" variant="tonal" class="font-weight-black">
                       {{ row.currency }}
                     </VChip>
                   </td>
-                  <td>{{ translateMethod(row.method) }}</td>
-                  <td>{{ row.seller || "N/A" }}</td>
+                  <td class="text-xs font-weight-medium uppercase">{{ translateMethod(row.method) }}</td>
+                  <td class="text-xs font-weight-bold text-disabled">{{ row.seller || "N/A" }}</td>
                 </tr>
                 <tr v-if="filteredPaymentRows.length === 0">
-                  <td :colspan="paymentHeaders.length" class="text-center py-4">
-                    No hay pagos registrados
+                  <td :colspan="paymentHeaders.length" class="text-center py-6 text-disabled text-super-xs font-weight-bold uppercase italic">
+                    No se han registrado pagos para este cliente
                   </td>
                 </tr>
               </tbody>
-            </table>
-          </div>
+            </VTable>
+          </VCard>
 
-          <div v-if="totalPagesPayments > 1" class="d-flex justify-center align-center gap-2 mt-3">
-            <VBtn
-              icon
-              variant="tonal"
-              size="small"
-              :disabled="pagePayments <= 1"
-              @click="prevPagePayments"
-            >
-              <VIcon icon="tabler-chevron-left" />
+          <!-- Paginación Pagos -->
+          <div v-if="totalPagesPayments > 1" class="d-flex justify-center align-center gap-3 mt-4">
+            <VBtn icon variant="tonal" color="success" size="x-small" :disabled="pagePayments <= 1" @click="prevPagePayments" class="rounded-lg shadow-sm">
+              <VIcon icon="tabler-chevron-left" size="18" />
             </VBtn>
-            <span class="text-caption">Página {{ pagePayments }} de {{ totalPagesPayments }}</span>
-            <VBtn
-              icon
-              variant="tonal"
-              size="small"
-              :disabled="pagePayments >= totalPagesPayments"
-              @click="nextPagePayments"
-            >
-              <VIcon icon="tabler-chevron-right" />
+            <span class="text-super-xs font-weight-black text-disabled uppercase">Página {{ pagePayments }} de {{ totalPagesPayments }}</span>
+            <VBtn icon variant="tonal" color="success" size="x-small" :disabled="pagePayments >= totalPagesPayments" @click="nextPagePayments" class="rounded-lg shadow-sm">
+              <VIcon icon="tabler-chevron-right" size="18" />
             </VBtn>
           </div>
         </div>
       </VCardText>
 
       <VDivider />
-      <VCardActions class="pa-3">
-        <VBtn color="secondary" variant="outlined" block @click="closeModal">
-          Cerrar
+      <VCardActions class="pa-4 bg-light border-t">
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          size="large"
+          block
+          height="50"
+          class="font-weight-black rounded-lg text-button uppercase"
+          @click="closeModal"
+        >
+          Cerrar Expediente
         </VBtn>
       </VCardActions>
     </VCard>
@@ -572,294 +504,89 @@ watch([filterClient, filterDate, filterCurrency], () => {
 </template>
 
 <style scoped>
-.order-view-dialog :deep(.v-overlay__content) {
-  align-items: flex-start;
-  padding-block: 0.75rem;
-  padding-inline: 0;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.order-view-card {
-  background: rgb(var(--v-theme-surface));
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 8%);
+.bg-light {
+  background-color: #f8fafc !important;
 }
 
-.order-view-card :deep(.v-chip:not(.v-chip--pill).v-chip--size-x-small) {
-  --v-chip-height: 30px;
-
-  font-size: 13px;
-  min-block-size: 30px;
-  padding-block: 4px;
-  padding-inline: 10px;
+.detail-dialog-card {
+  border-radius: 16px !important;
 }
 
-.order-view-card :deep(.v-chip__underlay) {
-  border-radius: 6px;
-  margin: 2px;
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
 }
 
-.order-view-header {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-block-end: none;
+.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
+.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
+.header-indicator.success { background-color: rgb(var(--v-theme-success)); }
+
+.border-l-primary { border-inline-start: 4px solid rgb(var(--v-theme-primary)) !important; }
+.border-l-error { border-inline-start: 4px solid rgb(var(--v-theme-error)) !important; }
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
-.section-title {
-  color: rgb(var(--v-theme-primary));
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
 }
 
-.section-label {
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
 }
 
-.data-label {
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-block-end: 2px;
+.leading-tight { line-height: 1.25 !important; }
+.leading-none { line-height: 1 !important; }
+
+.font-weight-950 { font-weight: 950 !important; }
+
+.bg-var-theme-background-secondary {
+  background-color: rgba(var(--v-theme-secondary), 0.05);
 }
 
-.data-value {
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  font-size: 0.9375rem;
-  font-weight: 500;
+.premium-table-compact :deep(th) {
+  height: 32px !important;
+  padding-inline: 12px !important;
 }
 
-.data-block-unified {
-  background: rgba(var(--v-theme-primary), 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
+.premium-table-compact :deep(td) {
+  height: 48px !important;
+  padding-inline: 12px !important;
 }
 
-.data-half {
-  min-inline-size: 0;
-  padding-block: 0;
-  padding-inline: 12px;
+.premium-table :deep(th) {
+  background-color: #fafbfc !important;
+  height: 40px !important;
+  padding-inline: 12px !important;
 }
 
-.data-divider {
-  flex-shrink: 0;
-  background: rgba(var(--v-theme-primary), 0.18);
-  inline-size: 1px;
+.premium-table :deep(td) {
+  height: 48px !important;
+  padding-inline: 12px !important;
 }
 
-.order-block {
-  background: rgba(var(--v-theme-primary), 0.04);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
+.row-hover-effect:hover {
+  background-color: rgba(var(--v-theme-success), 0.02);
 }
 
-.order-block-header {
-  background: rgba(var(--v-theme-primary), 0.1);
+.border-dashed {
+  border-style: dashed !important;
 }
 
-.products-table-wrapper {
-  background: rgba(var(--v-theme-primary), 0.04);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
-  max-block-size: 280px;
-  overflow-y: auto;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.products-table {
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-  inline-size: 100%;
-}
-
-.products-table th {
-  background: rgba(var(--v-theme-primary), 0.1);
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1.2;
-  padding-block: 4px;
-  padding-inline: 8px;
-  text-align: start;
-  text-transform: uppercase;
-}
-
-.product-cell { 
-  min-inline-size: 0; 
-  vertical-align: middle !important;
-}
-
-.product-line-full {
-  display: none;
-}
-
-.products-table th.text-end {
-  text-align: end;
-}
-
-.products-table td {
-  border-block-end:
-    1px solid
-    rgba(var(--v-border-color), var(--v-border-opacity, 0.12));
-  line-height: 1.25;
-  padding-block: 4px;
-  padding-inline: 8px;
-  vertical-align: top;
-}
-
-.products-table-row:nth-child(even) {
-  background: rgba(var(--v-theme-primary), 0.04);
-}
-
-.products-table-row:last-child td {
-  border-block-end: none;
-}
-
-.quantity-col {
-  inline-size: 52px;
-}
-
-.quantity-cell {
-  inline-size: 52px;
-  text-align: center;
-}
-
-.product-cell {
-  min-inline-size: 0;
-}
-
-.product-line-full {
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  word-break: break-word;
-}
-
-.table-amount {
-  color: rgba(var(--v-theme-on-surface), 0.9);
-  font-size: 0.8125rem;
-}
-
-.order-view-summary {
-  background: rgba(var(--v-theme-primary), 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 5%);
-}
-
-.summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-block-size: 1.5rem;
-  padding-block: 4px;
-  padding-inline: 0;
-}
-
-.summary-label {
-  color: rgba(var(--v-theme-on-surface), 0.78);
-  font-size: 0.8125rem;
-}
-
-.summary-value {
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-.summary-divider {
-  margin-block: 6px !important;
-  margin-inline: 0 !important;
-}
-
-.total-row {
-  padding-block-start: 2px;
-}
-
-.total-label {
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.9375rem;
-  font-weight: 700;
-}
-
-.total-amount {
-  color: rgb(var(--v-theme-primary));
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.header-date {
-  color: rgba(var(--v-theme-on-surface), 0.75);
-  font-size: 0.8125rem;
-}
-
-/* Dark mode */
-.v-theme--dark .order-view-card {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 35%);
-}
-
-.v-theme--dark .order-view-header {
-  background: rgba(255, 255, 255, 6%);
-}
-
-.v-theme--dark .section-title,
-.v-theme--dark .section-label,
-.v-theme--dark .header-date {
-  color: rgba(255, 255, 255, 90%);
-}
-
-.v-theme--dark .data-label {
-  color: rgba(255, 255, 255, 60%);
-}
-
-.v-theme--dark .data-value {
-  color: rgba(255, 255, 255, 92%);
-}
-
-.v-theme--dark .data-block-unified {
-  background: rgba(255, 255, 255, 6%);
-}
-
-.v-theme--dark .data-divider {
-  background: rgba(255, 255, 255, 12%);
-}
-
-.v-theme--dark .order-block {
-  background: rgba(255, 255, 255, 5%);
-}
-
-.v-theme--dark .order-block-header {
-  background: rgba(255, 255, 255, 8%);
-}
-
-.v-theme--dark .products-table-wrapper {
-  background: rgba(255, 255, 255, 5%);
-}
-
-.v-theme--dark .products-table th {
-  background: rgba(255, 255, 255, 8%);
-  color: rgba(255, 255, 255, 90%);
-}
-
-.v-theme--dark .product-line-full {
-  color: rgba(255, 255, 255, 92%);
-}
-
-.v-theme--dark .table-amount {
-  color: rgba(255, 255, 255, 90%);
-}
-
-.v-theme--dark .products-table-row:nth-child(even) {
-  background: rgba(255, 255, 255, 3%);
-}
-
-.v-theme--dark .order-view-summary {
-  background: rgba(255, 255, 255, 7%);
-}
-
-.v-theme--dark .summary-label {
-  color: rgba(255, 255, 255, 70%);
-}
-
-.v-theme--dark .summary-value {
-  color: rgba(255, 255, 255, 92%);
-}
-
-.v-theme--dark .total-label,
-.v-theme--dark .total-amount {
-  color: rgba(255, 255, 255, 100%);
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

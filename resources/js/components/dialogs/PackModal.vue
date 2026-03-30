@@ -326,9 +326,6 @@ const resetForm = () => {
   productSearchQuery.value = "";
 };
 
-// No eliminar, se mantiene para compatibilidad con la API
-// products_count se actualiza automáticamente al agregar/quitar filas
-
 // Cargar datos del pack para edición
 const loadPackData = async (packId) => {
   try {
@@ -349,36 +346,32 @@ const loadPackData = async (packId) => {
 
       // Reconstruir pack_products desde pack_config
       if (pack.pack_config) {
-        Object.entries(pack.pack_config).forEach(
-          ([productId, config], index) => {
-            const product = availableProducts.value.find(
-              (p) => p.id == productId
-            );
-            if (product) {
-              formData.value.pack_products[index] = {
-                product: product,
-                quantity: config.quantity,
-                discount_percentage: config.discount_percentage,
-                calculated_price: config.sale_price * config.quantity,
-              };
-            } else {
-              // Si no está en availableProducts, cargar el producto
-              loadAvailableProducts().then(() => {
-                const foundProduct = availableProducts.value.find(
-                  (p) => p.id == productId
-                );
+        const configEntries = Object.entries(pack.pack_config);
+        
+        formData.value.pack_products = configEntries.map(([productId, config]) => {
+          const product = availableProducts.value.find(p => p.id == productId);
+          
+          return {
+            product: product || null,
+            quantity: config.quantity || 1,
+            discount_percentage: config.discount_percentage || 0,
+            calculated_price: (config.sale_price || 0) * (config.quantity || 1),
+          };
+        });
+
+        // Si algún producto no se encontró, intentar recargar la lista
+        if (formData.value.pack_products.some(p => !p.product)) {
+          loadAvailableProducts().then(() => {
+            configEntries.forEach(([productId, config], index) => {
+              if (!formData.value.pack_products[index].product) {
+                const foundProduct = availableProducts.value.find(p => p.id == productId);
                 if (foundProduct) {
-                  formData.value.pack_products[index] = {
-                    product: foundProduct,
-                    quantity: config.quantity,
-                    discount_percentage: config.discount_percentage,
-                    calculated_price: config.sale_price * config.quantity,
-                  };
+                  formData.value.pack_products[index].product = foundProduct;
                 }
-              });
-            }
-          }
-        );
+              }
+            });
+          });
+        }
 
         // Completar con productos vacíos si es necesario
         while (
@@ -423,479 +416,204 @@ watch(
     :fullscreen="mobile"
     persistent
     scrollable
-    :retain-focus="false"
     transition="dialog-bottom-transition"
-    @click:outside.prevent
     @keydown.esc.prevent="closeModal"
   >
     <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
-      <!-- Header Premium con Degradado -->
+      <!-- Header Premium Standard -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center justify-space-between text-white">
-          <div class="d-flex align-center gap-3">
-            <VAvatar size="42" color="rgba(255,255,255,0.2)" class="backdrop-blur">
-              <VIcon icon="tabler-package" size="24" color="white" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-h6 font-weight-black leading-tight">
-                {{ isEditing ? "EDITAR PACK" : "NUEVO PACK" }}
-              </span>
-              <span class="text-super-xs font-weight-medium opacity-90 uppercase letter-spacing-1">
-                Configuración de Oferta
-              </span>
-            </div>
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+            <VIcon icon="tabler-package" color="primary" size="24" />
+          </VAvatar>
+          <div>
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              {{ isEditing ? "Editar Pack de Oferta" : "Crear Nuevo Pack" }}
+            </h2>
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
+              Configuración de Promociones
+            </span>
           </div>
+
+          <VSpacer />
           <VBtn
-            icon="tabler-x"
+            icon
             variant="tonal"
             color="white"
             size="small"
-            class="rounded-lg"
             @click="closeModal"
-            :disabled="loading"
-          />
+            class="rounded-lg"
+          >
+            <VIcon size="20">tabler-x</VIcon>
+          </VBtn>
         </div>
       </VCardTitle>
 
       <VCardText class="pa-0 bg-light">
-        <!-- Información del Pack -->
-        <div class="pa-5 pb-2">
-          <VRow>
-            <VCol cols="12" sm="6" md="3">
-              <div class="d-flex flex-column gap-1">
-                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Nombre del Pack</span>
-                <AppTextField
-                  v-model="formData.name"
-                  variant="outlined"
-                  density="compact"
-                  :error-messages="formErrors.name"
-                  placeholder="Ej: Pack Especial Invierno..."
-                  :disabled="loading"
-                  class="premium-input shadow-sm"
-                />
-              </div>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <div class="d-flex flex-column gap-1">
-                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Estado</span>
-                <AppSelect
-                  v-model="formData.is_active"
-                  density="compact"
-                  variant="outlined"
-                  :items="[
-                    { title: 'Activo', value: true },
-                    { title: 'Inactivo', value: false },
-                  ]"
-                  item-title="title"
-                  item-value="value"
-                  :disabled="loading"
-                  class="premium-input shadow-sm"
-                />
-              </div>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <div class="d-flex flex-column gap-1">
-                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Máx. Ventas</span>
-                <AppTextField
-                  v-model.number="formData.max_quantity"
-                  variant="outlined"
-                  density="compact"
-                  type="number"
-                  min="1"
-                  placeholder="Ilimitado"
-                  :disabled="loading"
-                  class="premium-input shadow-sm"
-                />
-              </div>
-            </VCol>
-            <VCol cols="12" sm="6" md="3">
-              <div class="d-flex flex-column gap-1">
-                <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 ms-1">Fecha Máx</span>
-                <AppTextField
-                  v-model="formData.max_sale_date"
-                  variant="outlined"
-                  type="date"
-                  density="compact"
-                  hide-details
-                  :disabled="loading"
-                  class="premium-input shadow-sm date-compact"
-                />
-              </div>
-            </VCol>
-          </VRow>
-        </div>
-
-        <VDivider class="border-dashed my-2" />
-
-        <!-- Productos del Pack -->
-        <div class="pa-5 pt-2">
-          <div class="d-flex align-center justify-space-between mb-4">
-            <h3 class="text-subtitle-1 font-weight-950 text-high-emphasis flex-grow-1">PRODUCTOS INCLUIDOS</h3>
-            <div class="d-flex gap-2">
-              <VBtn
-                variant="tonal"
-                color="primary"
-                prepend-icon="tabler-plus"
-                size="small"
-                class="rounded-lg font-weight-black"
-                :disabled="loading || formData.pack_products.length >= 10"
-                @click="addProductRow"
-              >
-                Añadir Producto
-              </VBtn>
-              <VChip
-                variant="tonal"
-                color="primary"
-                size="small"
-                class="font-weight-black px-4"
-              >
-                {{ formData.pack_products.length }} ITEMS
-              </VChip>
-            </div>
+        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-height: 75vh;">
+          <!-- Información del Pack -->
+          <div class="d-flex align-center gap-2 mb-4">
+            <div class="header-indicator primary shadow-sm"></div>
+            <span class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1">Datos Generales del Pack</span>
           </div>
 
-          <!-- Tabla en Desktop -->
-          <VDataTable
-            v-if="!mobile"
-            :headers="[
-              { title: 'PRODUCTO', key: 'product', sortable: false, width: '35%' },
-              { title: 'CANT.', key: 'quantity', sortable: false, width: '12%', align: 'center' },
-              { title: 'DESC. %', key: 'discount', sortable: false, width: '12%', align: 'center' },
-              { title: 'UNITARIO', key: 'unit_price', sortable: false, width: '15%', align: 'end' },
-              { title: 'SUBTOTAL', key: 'subtotal', sortable: false, width: '18%', align: 'end' },
-              { title: '', key: 'actions', sortable: false, width: '8%', align: 'center' },
-            ]"
-            :items="formData.pack_products"
-            density="comfortable"
-            class="rounded-lg border-0 bg-transparent internal-table"
-            no-data-text="No hay productos agregados"
-            hide-default-footer
-          >
-            <template #item.product="{ item, index }">
-              <VAutocomplete
-                v-model="item.product"
-                :items="availableProducts"
-                item-title="name"
-                item-value="id"
-                variant="outlined"
-                density="compact"
-                hide-details
-                :loading="loadingProducts"
-                :error-messages="formErrors[`product_${index}`]"
-                return-object
-                clearable
-                :disabled="loading"
-                placeholder="Buscar..."
-                class="compact-autocomplete"
-                no-filter
-                @update:search="handleProductSearch"
-                @update:model-value="calculateTotalPrice()"
-              >
-                <template #item="{ props: itemProps, item: productItem }">
-                  <VListItem
-                    v-bind="{ ...itemProps, title: '' }"
+          <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border mb-6">
+            <VRow>
+              <VCol cols="12" md="6">
+                <AppTextField
+                  v-model="formData.name"
+                  label="Nombre del Pack"
+                  placeholder="Ej: Trío de Vitaminas..."
+                  :error-messages="formErrors.name"
+                  class="shadow-sm"
+                />
+              </VCol>
+              <VCol cols="12" md="3">
+                <AppTextField
+                  v-model.number="formData.max_quantity"
+                  label="Límite de Ventas"
+                  type="number"
+                  placeholder="Ilimitado"
+                  class="shadow-sm"
+                />
+              </VCol>
+              <VCol cols="12" md="3">
+                <AppTextField
+                  v-model="formData.max_sale_date"
+                  label="Fecha de Vencimiento"
+                  type="date"
+                  class="shadow-sm"
+                />
+              </VCol>
+            </VRow>
+            <VRow class="mt-2">
+              <VCol cols="12">
+                <div class="d-flex align-center gap-2">
+                  <VCheckbox
+                    v-model="formData.is_active"
+                    label="Oferta Activa"
+                    hide-details
                     density="compact"
-                  >
-                    <template
-                      v-if="productItem.raw.photo_url"
-                      #prepend
-                    >
-                      <VAvatar
-                        size="32"
-                        :image="productItem.raw.photo_url"
-                        variant="tonal"
-                        class="me-2"
-                      />
-                    </template>
-                    <VListItemTitle class="text-caption font-weight-bold">
-                      {{ productItem.raw.name }}
-                    </VListItemTitle>
-                    <VListItemSubtitle class="text-super-xs">
-                      ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | ${{ productItem.raw.sale_price }}
-                    </VListItemSubtitle>
-                  </VListItem>
-                </template>
-              </VAutocomplete>
-            </template>
+                  />
+                  <span class="text-xs text-disabled italic">(Si se desactiva, el pack no aparecerá en el TPV)</span>
+                </div>
+              </VCol>
+            </VRow>
+          </VCard>
 
-            <template #item.quantity="{ item, index }">
-              <AppTextField
-                v-model.number="item.quantity"
-                type="number"
-                variant="outlined"
-                density="compact"
-                hide-details
-                min="1"
-                :max="item.product?.stock || 9999"
-                :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
-                :disabled="loading || !item.product"
-                class="mx-auto compact-input-field text-center"
-                @update:model-value="calculateTotalPrice()"
-              />
-            </template>
+          <!-- Productos -->
+          <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center gap-2">
+              <div class="header-indicator secondary shadow-sm"></div>
+              <span class="text-subtitle-2 font-weight-black text-secondary uppercase letter-spacing-1">Productos Incluidos</span>
+            </div>
+            <VBtn
+              variant="tonal"
+              color="primary"
+              size="small"
+              class="rounded-lg font-weight-black"
+              @click="addProductRow"
+              :disabled="formData.pack_products.length >= 10"
+            >
+              <VIcon start size="18">tabler-plus</VIcon>
+              Añadir Producto
+            </VBtn>
+          </div>
 
-            <template #item.discount="{ item, index }">
-              <AppTextField
-                v-model.number="item.discount_percentage"
-                type="number"
-                variant="outlined"
-                density="compact"
-                hide-details
-                min="0"
-                max="100"
-                suffix="%"
-                :disabled="loading || !item.product"
-                class="mx-auto compact-input-field text-center"
-                @update:model-value="calculateTotalPrice()"
-              />
-            </template>
-
-            <template #item.unit_price="{ item }">
-              <span
-                v-if="item.product"
-                class="text-caption font-weight-bold"
-              >
-                ${{ (item.product.sale_price * (1 - (item.discount_percentage || 0) / 100)).toFixed(2) }}
-              </span>
-              <span
-                v-else
-                class="text-disabled"
-              >—</span>
-            </template>
-
-            <template #item.subtotal="{ item }">
-              <span
-                v-if="item.product"
-                class="text-caption font-weight-black text-success"
-              >
-                ${{ calculateProductPrice(item).toFixed(2) }}
-              </span>
-              <span
-                v-else
-                class="text-disabled"
-              >—</span>
-            </template>
-
-            <template #item.actions="{ index }">
+          <div v-for="(item, index) in formData.pack_products" :key="index" class="mb-4">
+            <VCard v-if="item" variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 relative overflow-visible">
+              <!-- Botón eliminar flotante -->
               <VBtn
+                v-if="formData.pack_products.length > 1"
                 icon="tabler-trash"
-                variant="tonal"
                 color="error"
-                size="x-small"
-                class="rounded-lg"
-                @click="formData.pack_products.splice(index, 1); calculateTotalPrice()"
-              />
-            </template>
-          </VDataTable>
-
-          <!-- Lista de Tarjetas en Móvil -->
-          <div
-            v-else
-            class="mobile-products-list"
-          >
-            <div
-              v-if="formData.pack_products.length === 0"
-              class="text-center pa-8 rounded-lg border-dashed border-2 text-disabled mb-4"
-            >
-              <VIcon
-                icon="tabler-package-off"
-                size="48"
-                class="mb-2 opacity-25"
-              />
-              <p>No hay productos agregados</p>
-            </div>
-
-            <div
-              v-else
-              class="d-flex flex-column gap-4"
-            >
-              <VCard
-                v-for="(item, index) in formData.pack_products"
-                :key="index"
                 variant="flat"
-                class="product-card-item rounded-lg border shadow-xs"
-              >
-                <VCardText class="pa-4">
-                  <!-- Cabecera de Tarjeta: # y Eliminar -->
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="d-flex align-center gap-2">
-                      <VAvatar
-                        size="24"
-                        color="primary"
-                        variant="tonal"
-                        class="text-super-xs font-weight-black"
-                      >
-                        {{ index + 1 }}
-                      </VAvatar>
-                      <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Producto</span>
-                    </div>
-                    <VBtn
-                      icon="tabler-trash"
-                      variant="tonal"
-                      color="error"
-                      size="x-small"
-                      density="comfortable"
-                      class="rounded-lg"
-                      @click="formData.pack_products.splice(index, 1); calculateTotalPrice()"
-                    />
+                size="x-small"
+                class="position-absolute rounded-circle elevation-2 shadow-sm"
+                style="inset-inline-end: -8px; inset-block-start: -8px; z-index: 2;"
+                @click="removeProductRow(index)"
+              />
+
+              <VRow dense align="end" class="align-center-mobile">
+                <VCol cols="12" md="6">
+                  <AppAutocomplete
+                    v-model="item.product"
+                    :items="availableProducts"
+                    item-title="name"
+                    item-value="id"
+                    label="Seleccionar Producto"
+                    placeholder="Buscar producto..."
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    :loading="loadingProducts"
+                    return-object
+                    clearable
+                    @update:search="handleProductSearch"
+                    @update:model-value="calculateTotalPrice()"
+                    class="shadow-sm"
+                  >
+                    <template #item="{ props: itemProps, item: productItem }">
+                      <VListItem v-bind="itemProps" :title="productItem.raw.name" :subtitle="`ID: #${productItem.raw.id} | Stock: ${productItem.raw.stock}`" />
+                    </template>
+                  </AppAutocomplete>
+                </VCol>
+                <VCol cols="12" md="2">
+                  <AppTextField
+                    v-model.number="item.quantity"
+                    label="Cant."
+                    type="number"
+                    min="1"
+                    density="comfortable"
+                    hide-details
+                    @update:model-value="calculateTotalPrice()"
+                    class="shadow-sm text-center"
+                  />
+                </VCol>
+                <VCol cols="12" md="2">
+                  <AppTextField
+                    v-model.number="item.discount_percentage"
+                    label="Desc. %"
+                    type="number"
+                    min="0"
+                    max="100"
+                    density="comfortable"
+                    hide-details
+                    @update:model-value="calculateTotalPrice()"
+                    class="shadow-sm text-center"
+                  />
+                </VCol>
+                <VCol cols="12" md="2" class="text-end pb-3">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs text-disabled uppercase font-weight-black mb-1">Subtotal Item</span>
+                    <span class="text-h6 font-weight-black text-success leading-none mb-1">
+                      {{ formatCurrency(calculateProductPrice(item), 'USD') }}
+                    </span>
                   </div>
-
-                  <!-- Selector de Producto -->
-                  <div class="mb-3">
-                    <VAutocomplete
-                      v-model="item.product"
-                      :items="availableProducts"
-                      item-title="name"
-                      item-value="id"
-                      variant="outlined"
-                      density="compact"
-                      hide-details
-                      :loading="loadingProducts"
-                      :error-messages="formErrors[`product_${index}`]"
-                      return-object
-                      clearable
-                      :disabled="loading"
-                      placeholder="Seleccionar producto..."
-                      class="compact-autocomplete"
-                      no-filter
-                      @update:search="handleProductSearch"
-                      @update:model-value="calculateTotalPrice()"
-                    >
-                      <template #item="{ props: itemProps, item: productItem }">
-                        <VListItem
-                          v-bind="{ ...itemProps, title: '' }"
-                          density="compact"
-                        >
-                          <template
-                            v-if="productItem.raw.photo_url"
-                            #prepend
-                          >
-                            <VAvatar
-                              size="32"
-                              :image="productItem.raw.photo_url"
-                              variant="tonal"
-                              class="me-2"
-                            />
-                          </template>
-                          <VListItemTitle class="text-caption font-weight-bold">
-                            {{ productItem.raw.name }}
-                          </VListItemTitle>
-                          <VListItemSubtitle class="text-super-xs">
-                            ID: {{ productItem.raw.id }} | Stock: {{ productItem.raw.stock }} | ${{ productItem.raw.sale_price }}
-                          </VListItemSubtitle>
-                        </VListItem>
-                      </template>
-                    </VAutocomplete>
-                  </div>
-
-                  <!-- Grid de Inputs para Móvil -->
-                  <VRow dense>
-                    <VCol cols="6">
-                      <div class="d-flex flex-column gap-1">
-                        <span class="text-super-xs font-weight-bold text-medium-emphasis ms-1 uppercase">Cantidad</span>
-                        <AppTextField
-                          v-model.number="item.quantity"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          hide-details
-                          min="1"
-                          :max="item.product?.stock || 9999"
-                          :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
-                          :disabled="loading || !item.product"
-                          class="premium-input-small"
-                          @update:model-value="calculateTotalPrice()"
-                        />
-                      </div>
-                    </VCol>
-                    <VCol cols="6">
-                      <div class="d-flex flex-column gap-1">
-                        <span class="text-super-xs font-weight-bold text-medium-emphasis ms-1 uppercase">Desc. %</span>
-                        <AppTextField
-                          v-model.number="item.discount_percentage"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          hide-details
-                          min="0"
-                          max="100"
-                          suffix="%"
-                          :disabled="loading || !item.product"
-                          class="premium-input-small"
-                          @update:model-value="calculateTotalPrice()"
-                        />
-                      </div>
-                    </VCol>
-                  </VRow>
-
-                  <VDivider class="my-3 border-dashed" />
-
-                  <!-- Resumen Financiero de la Tarjeta -->
-                  <div class="d-flex justify-space-between align-center">
-                    <div class="d-flex flex-column">
-                      <span class="text-super-xs font-weight-black text-low-emphasis uppercase">Unitario</span>
-                      <span
-                        v-if="item.product"
-                        class="text-caption font-weight-bold text-high-emphasis"
-                      >
-                        ${{ (item.product.sale_price * (1 - (item.discount_percentage || 0) / 100)).toFixed(2) }}
-                      </span>
-                      <span
-                        v-else
-                        class="text-disabled"
-                      >—</span>
-                    </div>
-                    <div class="d-flex flex-column align-end">
-                      <span class="text-super-xs font-weight-black text-primary uppercase">Subtotal</span>
-                      <span
-                        v-if="item.product"
-                        class="text-subtitle-2 font-weight-950 text-success"
-                      >
-                        ${{ calculateProductPrice(item).toFixed(2) }}
-                      </span>
-                      <span
-                        v-else
-                        class="text-disabled"
-                      >—</span>
-                    </div>
-                  </div>
-                </VCardText>
-              </VCard>
-            </div>
+                </VCol>
+              </VRow>
+            </VCard>
           </div>
         </div>
       </VCardText>
 
-      <VDivider class="border-dashed" />
-
-      <VCardActions class="pa-5 bg-white overflow-visible">
+      <VDivider />
+      <VCardActions class="pa-4 bg-white border-t">
         <div class="d-flex align-center flex-grow-1">
-          <div v-if="formData.pack_products.some((p) => p.product)" class="d-flex flex-column">
-            <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold leading-none mb-1">Total a Pagar</span>
+          <div class="d-flex flex-column">
+            <span class="text-super-xs text-disabled font-weight-black uppercase leading-none mb-1">Inversión Final Pack</span>
             <span class="text-h4 font-weight-950 text-primary leading-none">
-              ${{ formData.total_price.toFixed(2) }}
+              {{ formatCurrency(formData.total_price, 'USD') }}
             </span>
           </div>
           <VSpacer />
           <div class="d-flex gap-3">
-            <VBtn
-              color="secondary"
-              variant="tonal"
-              class="rounded-lg font-weight-bold px-6"
-              @click="closeModal"
-              :disabled="loading"
-            >
+            <VBtn color="secondary" variant="tonal" class="rounded-lg font-weight-black px-6" @click="closeModal">
               CANCELAR
             </VBtn>
-            <VBtn
-              color="primary"
-              variant="flat"
-              class="rounded-lg font-weight-black shadow-primary-lg px-8"
-              @click="savePack"
-              :loading="loading"
-            >
-              <VIcon start>tabler-check</VIcon>
-              {{ isEditing ? "ACTUALIZAR" : "GUARDAR PACK" }}
+            <VBtn color="primary" variant="flat" class="rounded-lg font-weight-950 shadow-primary px-8" @click="savePack" :loading="loading">
+              <VIcon start>tabler-device-floppy</VIcon>
+              {{ isEditing ? "ACTUALIZAR" : "CREAR PACK" }}
             </VBtn>
           </div>
         </div>
@@ -906,85 +624,43 @@ watch(
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2f3349 100%);
-}
-
-.backdrop-blur {
-  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
 .bg-light {
   background-color: #f8fafc !important;
 }
 
-.border-dashed {
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.detail-dialog-card {
+  border-radius: 16px !important;
 }
 
-.premium-input :deep(.v-field__outline__start),
-.premium-input :deep(.v-field__outline__end),
-.premium-input :deep(.v-field__outline__notch) {
-  border-color: rgba(var(--v-border-color), 0.5) !important;
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
 }
 
-.premium-input :deep(.v-field--focused .v-field__outline__start),
-.premium-input :deep(.v-field--focused .v-field__outline__end),
-.premium-input :deep(.v-field--focused .v-field__outline__notch) {
-  border-width: 2px !important;
-  border-color: rgb(var(--v-theme-primary)) !important;
-}
+.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
+.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
 
-.internal-table :deep(thead th) {
-  background-color: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.5px;
-  text-transform: uppercase !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
-}
-
-.internal-table :deep(td) {
-  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
-  padding-block: 8px !important;
-}
-
-.compact-autocomplete :deep(.v-field__input) {
-  font-size: 0.75rem !important;
-  padding-inline: 4px !important;
-}
-
-.compact-input-field :deep(input) {
-  padding: 4px !important;
-  font-size: 0.75rem !important;
-  text-align: center !important;
-}
-
-.date-compact :deep(input) {
-  font-size: 0.75rem !important;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
-  font-size: 0.68rem !important;
+  font-size: 0.65rem !important;
   line-height: normal;
 }
 
-.font-weight-950 { font-weight: 950 !important; }
-.leading-tight { line-height: 1.25 !important; }
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
 .leading-none { line-height: 1 !important; }
-.letter-spacing-1 { letter-spacing: 1.5px !important; }
+.font-weight-950 { font-weight: 950 !important; }
 
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
-}
-
-.shadow-primary-lg {
-  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 25%) !important;
-}
-
-@media (max-width: 600px) {
-  .v-btn {
-    padding-inline: 12px !important;
-  }
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

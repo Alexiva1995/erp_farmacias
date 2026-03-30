@@ -73,8 +73,6 @@ const headers = [
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
-
-
           <!-- Buscador Principal -->
           <VCol cols="12" sm="5" md="4" lg="4">
             <VTextField
@@ -101,7 +99,9 @@ const headers = [
               @click="emit('update:searchQuery', '')"
             >
               <VIcon icon="tabler-eraser" />
-              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+              <VTooltip activator="parent" location="top"
+                >Limpiar Filtros</VTooltip
+              >
             </VBtn>
           </div>
         </VRow>
@@ -125,12 +125,16 @@ const headers = [
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.id="{ item }">
-            <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+            <span class="text-sm font-weight-black text-primary">{{
+              item.id
+            }}</span>
           </template>
 
           <template #item.name="{ item }">
             <div class="d-flex flex-column py-2">
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
+              <span
+                class="text-sm font-weight-black text-high-emphasis text-uppercase"
+              >
                 {{ item.name }}
               </span>
               <span class="text-xs text-disabled">{{ item.type }}</span>
@@ -138,7 +142,9 @@ const headers = [
           </template>
 
           <template #item.last_connection="{ item }">
-            <span class="text-sm font-weight-medium">{{ item.last_connection || 'Sin conexión' }}</span>
+            <span class="text-sm font-weight-medium">{{
+              item.last_connection || "Sin conexión"
+            }}</span>
           </template>
 
           <template #item.type="{ item }">
@@ -154,7 +160,7 @@ const headers = [
 
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-end ga-2">
-              <VTooltip text="Ver Productos" location="top">
+              <VTooltip text="Ver Productos!" location="top">
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
                     v-bind="tooltipProps"
@@ -171,13 +177,23 @@ const headers = [
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
                     v-bind="tooltipProps"
-                    :icon="item.type === 'API' ? (checkingApiId === item.id ? 'tabler-loader-2' : 'tabler-refresh') : 'tabler-upload'"
+                    :icon="
+                      item.type === 'API'
+                        ? checkingApiId === item.id
+                          ? 'tabler-loader-2'
+                          : 'tabler-refresh'
+                        : 'tabler-upload'
+                    "
                     variant="text"
                     color="info"
                     size="small"
                     :disabled="checkingApiId === item.id"
                     :class="{ 'spin-icon': checkingApiId === item.id }"
-                    @click="item.type === 'API' ? emit('update-products', item) : emit('load-products', item)"
+                    @click="
+                      item.type === 'API'
+                        ? emit('update-products', item)
+                        : emit('load-products', item)
+                    "
                   />
                 </template>
               </VTooltip>
@@ -206,14 +222,24 @@ const headers = [
                   />
                 </template>
                 <VList density="compact" class="py-2 rounded-lg">
-                  <VListItem @click="copyPublicLink(item)" prepend-icon="tabler-copy">
+                  <VListItem
+                    @click="copyPublicLink(item)"
+                    prepend-icon="tabler-copy"
+                  >
                     <VListItemTitle>Copiar Link</VListItemTitle>
                   </VListItem>
-                  <VListItem @click="emit('open-public-link', item)" prepend-icon="tabler-link">
+                  <VListItem
+                    @click="emit('open-public-link', item)"
+                    prepend-icon="tabler-link"
+                  >
                     <VListItemTitle>Configurar Link</VListItemTitle>
                   </VListItem>
                   <VDivider class="my-2" />
-                  <VListItem @click="emit('delete-products', item)" prepend-icon="tabler-trash" color="error">
+                  <VListItem
+                    @click="emit('delete-products', item)"
+                    prepend-icon="tabler-trash"
+                    color="error"
+                  >
                     <VListItemTitle>Borrar Productos</VListItemTitle>
                   </VListItem>
                 </VList>
@@ -228,7 +254,10 @@ const headers = [
         <div v-if="loading" class="d-flex justify-center py-8">
           <VProgressCircular indeterminate color="primary" />
         </div>
-        <div v-else-if="props.supplierConnections.length === 0" class="text-center py-8 text-disabled text-sm">
+        <div
+          v-else-if="props.supplierConnections.length === 0"
+          class="text-center py-8 text-disabled text-sm"
+        >
           No se encontraron proveedores
         </div>
         <div v-else class="d-flex flex-column gap-4">
@@ -240,19 +269,32 @@ const headers = [
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-start mb-3">
                 <div class="d-flex flex-column">
-                  <span class="text-xs font-weight-bold text-disabled mb-1">#{{ item.id }}</span>
-                  <span class="text-body-1 font-weight-black text-high-emphasis text-uppercase text-wrap">
+                  <span class="text-xs font-weight-bold text-disabled mb-1"
+                    >#{{ item.id }}</span
+                  >
+                  <span
+                    class="text-body-1 font-weight-black text-high-emphasis text-uppercase text-wrap"
+                  >
                     {{ item.name }}
                   </span>
                 </div>
-                <VChip size="x-small" color="primary" variant="tonal">{{ item.type }}</VChip>
+                <VChip size="x-small" color="primary" variant="tonal">{{
+                  item.type
+                }}</VChip>
               </div>
 
               <div class="d-flex flex-column gap-2 mb-4">
                 <div class="d-flex align-center gap-2">
-                  <VIcon icon="tabler-calendar-time" size="14" class="text-disabled" />
+                  <VIcon
+                    icon="tabler-calendar-time"
+                    size="14"
+                    class="text-disabled"
+                  />
                   <span class="text-xs text-medium-emphasis">
-                    Conexión: <span class="text-high-emphasis font-weight-medium">{{ item.last_connection || 'N/A' }}</span>
+                    Conexión:
+                    <span class="text-high-emphasis font-weight-medium">{{
+                      item.last_connection || "N/A"
+                    }}</span>
                   </span>
                 </div>
               </div>
@@ -270,7 +312,7 @@ const headers = [
                 >
                   Ver
                 </VBtn>
-                
+
                 <div class="d-flex ga-1">
                   <VBtn
                     icon="tabler-refresh"
@@ -297,7 +339,13 @@ const headers = [
             :length="Math.ceil(totalSupplierConnections / itemsPerPage)"
             :total-visible="3"
             density="compact"
-            @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: itemsPerPage })"
+            @update:model-value="
+              (val) =>
+                emit('update:options', {
+                  page: val,
+                  itemsPerPage: itemsPerPage,
+                })
+            "
           />
         </div>
       </div>
@@ -308,7 +356,10 @@ const headers = [
 <style scoped>
 .premium-table :deep(th) {
   background-color: #fff !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-medium-emphasis-opacity)
+  ) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -320,17 +371,27 @@ const headers = [
   font-size: 0.75rem !important;
 }
 
-.gap-2 { gap: 8px !important; }
-.gap-4 { gap: 16px !important; }
-.ga-1 { gap: 4px !important; }
-.ga-2 { gap: 8px !important; }
+.gap-2 {
+  gap: 8px !important;
+}
+.gap-4 {
+  gap: 16px !important;
+}
+.ga-1 {
+  gap: 4px !important;
+}
+.ga-2 {
+  gap: 8px !important;
+}
 
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
 }
 
 .mobile-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .mobile-card:active {
@@ -342,7 +403,11 @@ const headers = [
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

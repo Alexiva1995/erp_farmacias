@@ -146,186 +146,306 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="820px"
     persistent
+    scrollable
     @update:model-value="emit('close-dialog')"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center">
-        <span class="text-h5 font-weight-bold">Cargar Productos</span>
-
-        <VSpacer />
-
-        <VBtn icon variant="text" @click="emit('close-dialog')">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+    <VCard class="detail-dialog-card overflow-hidden">
+      <!-- Header Premium Institucional -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+            <VIcon icon="tabler-file-spreadsheet" color="primary" size="22" />
+          </VAvatar>
+          <div class="d-flex flex-column leading-none text-white">
+            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
+              Cargar Productos desde Excel
+            </h2>
+            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+              Importación Masiva • Mapeo de Columnas
+            </span>
+          </div>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="emit('close-dialog')" />
+        </div>
       </VCardTitle>
 
+      <VCardText class="pa-4 pa-sm-6 bg-light">
+
+        <!-- Info del proveedor -->
+        <div class="d-flex align-center gap-2 mb-3">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Información del Proveedor</span>
+        </div>
+
+        <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+          <VRow>
+            <VCol cols="12" sm="6">
+              <div class="d-flex align-center gap-2 mb-1">
+                <VIcon icon="tabler-building-store" size="14" color="primary" />
+                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Proveedor</span>
+              </div>
+              <div class="text-subtitle-2 font-weight-black text-high-emphasis">{{ selectedSupplier.name }}</div>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <div class="d-flex align-center gap-2 mb-1">
+                <VIcon icon="tabler-calendar-time" size="14" color="primary" />
+                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Última Actualización</span>
+              </div>
+              <VChip
+                :color="formatDate(selectedSupplier.last_connection) === 'N/A' ? 'warning' : 'success'"
+                size="small"
+                class="font-weight-black rounded-lg"
+                variant="tonal"
+              >
+                {{ formatDate(selectedSupplier.last_connection) }}
+              </VChip>
+            </VCol>
+          </VRow>
+        </VCard>
+
+        <!-- Mapeo de columnas -->
+        <div class="d-flex align-center gap-2 mb-3">
+          <div class="header-indicator secondary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Mapeo de Columnas del Archivo</span>
+        </div>
+
+        <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+          <VAlert type="info" variant="tonal" density="compact" icon="tabler-info-circle" class="rounded-xl mb-4">
+            <span class="text-super-xs font-weight-black">Indica el número de columna en la que se encuentra cada campo dentro del archivo Excel.</span>
+          </VAlert>
+
+          <VRow>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fila de Inicio</span>
+              <VTextField
+                v-model="start_row"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-row-insert-top"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.start_row"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Nombre del Producto</span>
+              <VTextField
+                v-model="name"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-tag"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.name"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Código del Proveedor</span>
+              <VTextField
+                v-model="cod_supplier"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-barcode"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.cod_supplier"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Código de Barras</span>
+              <VTextField
+                v-model="barcode"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-scan"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.barcode_match"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Coste Unitario (Bs)</span>
+              <VTextField
+                v-model="bs_cost"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-currency-boliviano"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.unit_cost"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Coste Unitario (USD)</span>
+              <VTextField
+                v-model="usd_cost"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-currency-dollar"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.usd_cost"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Tasa de Cambio</span>
+              <VTextField
+                v-model="currency"
+                type="number"
+                :step="0.01"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-arrows-exchange"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.currency"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Principio Activo</span>
+              <VTextField
+                v-model="active_ingredient"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-flask"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.active_ingredient"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha de Expiración</span>
+              <VTextField
+                v-model="expiration"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-calendar-x"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.expiration"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Cantidad</span>
+              <VTextField
+                v-model="quantity"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-packages"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.quantity"
+              />
+            </VCol>
+          </VRow>
+        </VCard>
+
+        <!-- Archivo Excel -->
+        <div class="d-flex align-center gap-2 mb-3">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Archivo de Productos</span>
+        </div>
+
+        <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
+          <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Listado de Productos (Excel)</span>
+          <VFileInput
+            v-model="file"
+            accept="application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="tabler-file-spreadsheet"
+            prepend-icon=""
+            clearable
+            hide-details="auto"
+            class="rounded-lg font-weight-black"
+            :error-messages="errors.file"
+          />
+        </VCard>
+
+      </VCardText>
+
       <VDivider />
 
-      <VSheet variant="tonal" rounded="lg" class="pa-4">
-        <VRow>
-          <VCol cols="6">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Proveedor</span>
-              <VChip color="primary" label>{{ selectedSupplier.name }}</VChip>
-              <VSpacer />
-            </div>
+      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg uppercase"
+              @click="emit('close-dialog')"
+            >
+              Cancelar
+            </VBtn>
           </VCol>
-          <VCol cols="6">
-            <div class="d-flex align-center gap-4 mb-4">
-              <span class="font-weight-medium">Última actualización</span>
-              <VChip color="primary" label>{{
-                formatDate(selectedSupplier.last_connection)
-              }}</VChip>
-              <VSpacer />
-            </div>
-          </VCol>
-        </VRow>
-
-        <p>
-          <span class="font-weight-bold">Nota</span>: Debe indicar las columnas
-          en las cuales se encuentran los campos solicitados a continuación:
-        </p>
-
-        <VRow>
-          <VCol cols="6">
-            <VTextField
-              v-model="start_row"
-              label="Fila de inicio"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.start_row"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="name"
-              label="Nombre"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.name"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="cod_supplier"
-              label="Código"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.cod_supplier"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="barcode"
-              label="Código de Barras"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.barcode_match"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="bs_cost"
-              label="Coste Unitario (Bs)"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.unit_cost"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="usd_cost"
-              label="Coste Unitario (Usd)"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.usd_cost"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="currency"
-              label="Tasa de Cambio"
-              type="number"
-              variant="outlined"
-              hide-details="auto"
-              :step="0.01"
-              :error-messages="errors.currency"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="active_ingredient"
-              label="Principio Activo"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.active_ingredient"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="expiration"
-              label="Fecha de Expiración"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.expiration"
-            />
-          </VCol>
-          <VCol cols="6">
-            <VTextField
-              v-model="quantity"
-              label="Cantidad"
-              type="text"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="errors.quantity"
-            />
-          </VCol>
-          <VCol cols="12">
-            <VFileInput
-              v-model="file"
-              label="Listado de Productos"
-              accept="application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              variant="outlined"
-              prepend-icon="tabler-file"
-              clearable
-              :error-messages="errors.file"
-            />
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="50"
+              block
+              class="font-weight-black rounded-lg shadow-primary uppercase"
+              @click="submitForm"
+            >
+              <VIcon start icon="tabler-upload" size="18" />
+              Cargar Productos
+            </VBtn>
           </VCol>
         </VRow>
-      </VSheet>
-
-      <VDivider />
-
-      <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="emit('close-dialog')"
-          class="flex-grow-1 w-0 mr-4"
-        >
-          Cerrar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          class="flex-grow-1 w-0"
-        >
-          Cargar
-        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
+.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 { letter-spacing: 1px !important; }
+.leading-none { line-height: 1 !important; }
+.leading-tight { line-height: 1.25 !important; }
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+</style>

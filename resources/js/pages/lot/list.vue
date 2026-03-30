@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
+import ProductLotCreateDialog from "@/components/dialogs/ProductLotDialog.vue";
 import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
 import { useAuthStore } from "@/stores/auth";
 
@@ -29,6 +30,9 @@ const locations = ref([]);
 const isLoadingFilters = ref(false);
 
 const isDistributionModalVisible = ref(false);
+const isCreateDialogVisible = ref(false);
+const availableProducts = ref([]);
+const availableSuppliers = ref([]);
 const currentProductForDistribution = ref(null);
 const isLoadingDialogData = ref(false);
 
@@ -132,6 +136,37 @@ const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
 };
+const handleAddLot = async () => {
+  isLoadingDialogData.value = true;
+  try {
+    const [productsResponse, suppliersResponse] = await Promise.all([
+      axios.get("/products"),
+      axios.get("/available-suppliers"),
+    ]);
+    availableProducts.value = productsResponse.data.data;
+    availableSuppliers.value = suppliersResponse.data.data;
+    isCreateDialogVisible.value = true;
+  } catch (error) {
+    console.error("Error al cargar datos para nuevo lote:", error);
+    toast.error("No se pudieron cargar los datos para crear el lote.");
+  } finally {
+    isLoadingDialogData.value = false;
+  }
+};
+
+const handleCreateLot = async (lotData) => {
+  try {
+    await axios.post("/product-lots", lotData);
+    toast.success("Lote creado con éxito.");
+    isCreateDialogVisible.value = false;
+    fetchProducts();
+  } catch (error) {
+    console.error("Error al crear el lote:", error);
+    const errorMessage = error.response?.data?.message || "No se pudo crear el lote.";
+    toast.error(errorMessage);
+  }
+};
+
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
@@ -243,6 +278,7 @@ const handleCleanZeroQuantity = async () => {
       :add-lot-loading="isLoadingDialogData"
       :is-admin="isAdmin"
       @clear="handleClearFilters"
+      @add-lot="handleAddLot"
       @sort="handleSort"
       @clean-zero-quantity="handleCleanZeroQuantity"
     />
@@ -255,6 +291,16 @@ const handleCleanZeroQuantity = async () => {
       :page="page"
       @update:options="updateTableOptions"
       @adjust-lots="handleAdjustLots"
+    />
+
+    <ProductLotCreateDialog
+      v-model="isCreateDialogVisible"
+      :loading="isLoadingDialogData"
+      :products="availableProducts"
+      :suppliers="availableSuppliers"
+      :origins="origins"
+      :locations="locations"
+      @save="handleCreateLot"
     />
 
     <LotDistributionModal

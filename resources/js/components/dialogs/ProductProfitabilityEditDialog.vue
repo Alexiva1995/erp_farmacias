@@ -79,111 +79,253 @@ const checkExistenceAndSave = async () => {
     :fullscreen="$vuetify.display.smAndDown"
     @update:model-value="emit('close-modal')"
   >
-    <VCard class="rounded-xl overflow-hidden">
+    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div class="premium-dialog-header pa-5 d-flex align-center bg-primary">
-          <VAvatar size="40" color="rgba(255,255,255,0.2)" class="me-3">
-            <VIcon icon="tabler-lock" color="white" size="24" />
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-coin-bitcoin"
+              size="24"
+              color="primary"
+            />
           </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-black text-white leading-tight">Ajuste Individual</span>
-            <span class="text-xs text-white opacity-80 uppercase font-weight-bold">Producto Seleccionado</span>
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Ajuste de Rentabilidad
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Configuración de Margen Individual • Barrio Sucre
+              </span>
+            </div>
           </div>
           <VSpacer />
           <VBtn
-            icon
+            icon="tabler-x"
             variant="tonal"
             color="white"
             size="small"
             class="rounded-lg"
             @click="emit('close-modal')"
-          >
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+            :disabled="loading"
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-6">
-        <div class="mb-6 pa-4 rounded-lg bg-surface-variant-light border d-flex align-center gap-3">
-          <VIcon icon="tabler-archive" color="primary" />
-          <div class="d-flex flex-column">
-            <span class="text-xs text-disabled font-weight-black uppercase">ID Producto: {{ props.product.product_id }}</span>
-            <span class="font-weight-black text-primary">Margen Personalizado</span>
+      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4">
+        <!-- Perfil del Producto -->
+        <VCard
+          variant="flat"
+          class="pa-4 bg-white rounded-xl border shadow-sm"
+        >
+          <div class="d-flex align-center justify-space-between mb-3">
+            <VChip
+              size="small"
+              color="primary"
+              variant="flat"
+              class="font-weight-black px-3 rounded-lg"
+            >
+              ID: {{ props.product.product_id }}
+            </VChip>
+            <div class="d-flex align-center gap-2 text-disabled leading-none">
+              <VIcon
+                icon="tabler-barcode"
+                size="16"
+              />
+              <span class="text-super-xs font-weight-black uppercase letter-spacing-1">Producto TPV</span>
+            </div>
           </div>
+          <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-0">
+            {{ props.product.name || "Ajuste Directo de Margen" }}
+          </h3>
+        </VCard>
+
+        <!-- Configuración de Margen -->
+        <div class="d-flex align-center gap-2 mb-0 mt-2">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros Financieros</span>
         </div>
 
-        <VRow>
-          <VCol cols="12">
-            <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block pe-1">Rentabilidad Específica</span>
-            <AppTextField
-              v-model="percentage"
-              placeholder="Ej: 30"
-              type="number"
-              suffix="%"
-              autofocus
-              variant="outlined"
-              density="compact"
-              class="premium-input-compact"
-              hide-details
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-xl border shadow-sm"
+        >
+          <VRow dense>
+            <VCol cols="12">
+              <div class="text-center py-4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block letter-spacing-1">Porcentaje de Rentabilidad Objetivo</span>
+                <VTextField
+                  v-model="percentage"
+                  placeholder="0"
+                  type="number"
+                  suffix="%"
+                  variant="plain"
+                  class="ultra-huge-input-text h-auto font-weight-950"
+                  density="compact"
+                  hide-details
+                  autofocus
+                  @keyup.enter="checkExistenceAndSave"
+                />
+              </div>
+            </VCol>
+          </VRow>
+        </VCard>
+
+        <!-- Nota de Seguridad -->
+        <div class="mt-2 pa-4 rounded-xl bg-error bg-opacity-10 border-dashed-2 d-flex align-center gap-4">
+          <VAvatar
+            color="error"
+            variant="tonal"
+            size="40"
+            class="rounded-lg"
+          >
+            <VIcon
+              icon="tabler-shield-lock"
+              size="24"
             />
-            <p class="text-xs text-medium-emphasis mt-3 d-flex align-center">
-              <VIcon icon="tabler-shield-lock" size="14" class="me-1" color="error" />
-              Al guardar, este producto quedará **bloqueado** del ajuste global.
+          </VAvatar>
+          <div class="d-flex flex-column leading-none">
+            <span class="text-xs font-weight-black text-black uppercase letter-spacing-1 mb-1">Restricción de Bloqueo</span>
+            <p class="text-super-xs text-medium-emphasis mb-0 leading-tight">
+              Al guardar este porcentaje, el producto quedará **excluido** automáticamente de cualquier ajuste de rentabilidad global masivo.
             </p>
-          </VCol>
-        </VRow>
+          </div>
+        </div>
       </VCardText>
 
-      <VDivider class="opacity-10" />
+      <VDivider />
 
-      <VCardActions class="pa-4 pt-6">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          size="large"
-          class="rounded-lg font-weight-black flex-grow-1"
-          @click="emit('close-modal')"
+      <!-- Acciones de Modal -->
+      <VCardActions class="pa-4 bg-white border-t px-6">
+        <VRow
+          dense
+          class="w-100 ma-0"
         >
-          CANCELAR
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          size="large"
-          :loading="loading"
-          :disabled="loading || !percentage"
-          class="rounded-lg font-weight-black shadow-sm flex-grow-1"
-          @click="checkExistenceAndSave"
-        >
-          ACTUALIZAR
-        </VBtn>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="emit('close-modal')"
+              :disabled="loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="50"
+              block
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="loading"
+              :disabled="loading || !percentage"
+              @click="checkExistenceAndSave"
+            >
+              <VIcon
+                start
+                icon="tabler-device-floppy"
+                size="18"
+              />
+              {{ props.product.id ? 'Actualizar' : 'Registrar' }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.premium-dialog-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2c3e50 100%);
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
+}
+
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.border-dashed-2 {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.ultra-huge-input-text :deep(input) {
+  border: none;
+  background: transparent;
+  block-size: auto;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 3rem !important;
+  font-weight: 950 !important;
+  inline-size: 100%;
   line-height: 1;
+  outline: none;
+  text-align: center !important;
 }
 
-:deep(.premium-input-compact) {
-  .v-field__input {
-    font-size: 1.25rem !important;
-    font-weight: 800 !important;
-    min-block-size: 56px !important;
-    text-align: center;
-  }
+.ultra-huge-input-text :deep(.v-field__input) {
+  padding: 0 !important;
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.05);
+.italic {
+  font-style: italic;
 }
 </style>

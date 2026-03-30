@@ -158,194 +158,237 @@ const submitForm = () => {
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
     @update:model-value="closeDialog"
   >
-    <VCard v-if="formData" class="rounded-xl border shadow-sm overlap-overflow">
-      <!-- Header Premium -->
-      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b bg-surface">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg shadow-sm">
-            <VIcon icon="tabler-credit-card" />
+    <VCard v-if="formData" class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
+      <!-- Header Premium Institucional -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+            <VIcon icon="tabler-credit-card" color="primary" size="24" />
           </VAvatar>
-          <div>
-            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">
+          <div class="d-flex flex-column leading-none text-white">
+            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
               {{ isNewLoan ? "Añadir Préstamo" : "Editar Préstamo" }}
-            </h3>
-            <span class="text-xs text-disabled font-weight-medium uppercase">Gestión de obligaciones financieras</span>
+            </h2>
+            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+              Gestión de Obligaciones Financieras
+            </span>
           </div>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="closeDialog" />
         </div>
-        <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeDialog" />
       </VCardTitle>
 
-      <VCardText class="pa-6">
+      <VCardText class="pa-4 pa-sm-6 bg-light">
         <VForm @submit.prevent="submitForm">
-          <!-- Información Básica -->
-          <div class="d-flex align-center gap-2 mb-4">
-            <VIcon icon="tabler-info-circle" size="18" color="primary" />
-            <span class="text-subtitle-2 font-weight-black uppercase text-primary">Detalles del Préstamo</span>
+          <!-- Sección: Detalles del Préstamo -->
+          <div class="d-flex align-center gap-2 mb-3">
+            <div class="header-indicator primary shadow-sm" />
+            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles del Préstamo</span>
           </div>
 
-          <VRow>
-            <VCol cols="12">
-              <AppDateTimePicker
-                v-model="formData.loan_date"
-                label="Fecha de Inicio del Préstamo"
-                placeholder="Seleccionar fecha"
-                prepend-inner-icon="tabler-calendar"
-                variant="outlined"
-                density="compact"
-                hide-details="auto"
-                class="rounded-lg"
-                :error-messages="formErrors.loan_date"
-                :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-              />
-            </VCol>
+          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-6">
+            <VRow>
+              <VCol cols="12">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha de Inicio</span>
+                <AppDateTimePicker
+                  v-model="formData.loan_date"
+                  placeholder="Seleccionar fecha..."
+                  prepend-inner-icon="tabler-calendar"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details="auto"
+                  class="rounded-lg font-weight-black"
+                  :error-messages="formErrors.loan_date"
+                  :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                />
+              </VCol>
 
-            <VCol cols="12" md="6">
-              <VTextField
-                v-model.number="formData.monthly_payment"
-                label="Cuota Mensual"
-                type="number"
-                step="0.01"
-                min="0"
-                prefix="$"
-                prepend-inner-icon="tabler-currency-dollar"
-                placeholder="Ej: 500.00"
-                variant="outlined"
-                density="compact"
-                hide-details="auto"
-                class="rounded-lg"
-                :error-messages="formErrors.monthly_payment"
-              />
-            </VCol>
+              <VCol cols="12" md="6">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Cuota Mensual</span>
+                <VTextField
+                  v-model.number="formData.monthly_payment"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  prefix="$"
+                  prepend-inner-icon="tabler-currency-dollar"
+                  placeholder="Ej: 500.00"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details="auto"
+                  class="rounded-lg font-weight-black"
+                  :error-messages="formErrors.monthly_payment"
+                />
+              </VCol>
 
-            <VCol cols="12" md="6">
-              <VTextField
-                v-model.number="formData.total_installments"
-                label="Cantidad de Cuotas"
-                type="number"
-                min="1"
-                prepend-inner-icon="tabler-hash"
-                placeholder="Ej: 36, 48, 60..."
-                variant="outlined"
-                density="compact"
-                hide-details="auto"
-                class="rounded-lg"
-                :error-messages="formErrors.total_installments"
-              />
-            </VCol>
-          </VRow>
+              <VCol cols="12" md="6">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Cantidad de Cuotas</span>
+                <VTextField
+                  v-model.number="formData.total_installments"
+                  type="number"
+                  min="1"
+                  prepend-inner-icon="tabler-hash"
+                  placeholder="Ej: 36, 48, 60..."
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details="auto"
+                  class="rounded-lg font-weight-black"
+                  :error-messages="formErrors.total_installments"
+                />
+              </VCol>
+            </VRow>
+          </VCard>
 
-          <!-- Cálculos y Resumen -->
+          <!-- Sección: Resumen Financiero -->
           <template v-if="formData.monthly_payment && formData.total_installments">
-            <div class="d-flex align-center gap-2 mt-8 mb-4">
-              <VIcon icon="tabler-calculator" size="18" color="primary" />
-              <span class="text-subtitle-2 font-weight-black uppercase text-primary">Resumen Financiero</span>
+            <div class="d-flex align-center gap-2 mb-3">
+              <div class="header-indicator secondary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Resumen Financiero</span>
             </div>
 
-            <VCard variant="tonal" color="secondary" class="rounded-xl border-dashed overflow-hidden">
-              <VCardText class="pa-4 bg-surface-variant bg-opacity-10">
-                <VRow>
-                  <VCol cols="6" class="pr-2">
-                    <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Monto Total</div>
+            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
+              <!-- Montos principales -->
+              <VRow class="mb-4">
+                <VCol cols="6">
+                  <div class="pa-3 bg-light rounded-xl border-dashed-2 text-center">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-1">Monto Total</span>
                     <div class="text-h6 font-weight-black text-primary">{{ formatCurrency(calculateTotalAmount) }}</div>
-                  </VCol>
-
-                  <VCol cols="6" class="text-right border-l-dashed pl-4">
-                    <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Saldo Pendiente</div>
+                  </div>
+                </VCol>
+                <VCol cols="6">
+                  <div class="pa-3 bg-light rounded-xl border-dashed-2 text-center">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-1">Saldo Pendiente</span>
                     <div :class="`text-h6 font-weight-black text-${loanStatus.color}`">
                       {{ formatCurrency(calculateRemainingBalance) }}
                     </div>
-                  </VCol>
-                </VRow>
-
-                <VDivider class="my-3 border-dashed" />
-
-                <VRow class="text-center">
-                  <VCol cols="3" class="border-e-dashed">
-                    <div class="text-xs text-disabled uppercase font-weight-bold">Mensual</div>
-                    <div class="text-body-2 font-weight-bold">{{ formatCurrency(formData.monthly_payment) }}</div>
-                  </VCol>
-                  <VCol cols="3" class="border-e-dashed">
-                    <div class="text-xs text-disabled uppercase font-weight-bold">Pagadas</div>
-                    <div class="text-body-2 font-weight-bold text-success">{{ Math.min(loanInfo.monthsPassed, formData.total_installments) }}</div>
-                  </VCol>
-                  <VCol cols="3" class="border-e-dashed">
-                    <div class="text-xs text-disabled uppercase font-weight-bold">Restan</div>
-                    <div class="text-body-2 font-weight-bold text-warning">{{ loanInfo.remainingMonths }}</div>
-                  </VCol>
-                  <VCol cols="3">
-                    <div class="text-xs text-disabled uppercase font-weight-bold">Estado</div>
-                    <VChip :color="loanStatus.color" size="x-small" label class="font-weight-bold">
-                      {{ loanStatus.text }}
-                    </VChip>
-                  </VCol>
-                </VRow>
-
-                <div v-if="formData.loan_date" class="mt-4">
-                  <div class="d-flex justify-space-between align-center mb-1">
-                    <span class="text-xs text-disabled font-weight-bold uppercase">Progreso de Pago</span>
-                    <span class="text-xs font-weight-black text-primary">{{ loanInfo.progressPercentage.toFixed(1) }}%</span>
                   </div>
-                  <VProgressLinear
-                    :model-value="loanInfo.progressPercentage"
-                    :color="loanStatus.color"
-                    height="10"
-                    rounded
-                    class="rounded-pill"
-                  />
-                  <div class="d-flex justify-space-between text-xs font-weight-bold text-disabled mt-1">
-                    <span>INICIO</span>
-                    <span>FINAL ({{ formData.total_installments }} CUOTAS)</span>
-                  </div>
+                </VCol>
+              </VRow>
+
+              <VDivider class="mb-4" />
+
+              <!-- Métricas de cuotas -->
+              <VRow class="text-center mb-4">
+                <VCol cols="3">
+                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Mensual</div>
+                  <div class="text-subtitle-2 font-weight-black">{{ formatCurrency(formData.monthly_payment) }}</div>
+                </VCol>
+                <VCol cols="3">
+                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Pagadas</div>
+                  <div class="text-subtitle-2 font-weight-black text-success">{{ Math.min(loanInfo.monthsPassed, formData.total_installments) }}</div>
+                </VCol>
+                <VCol cols="3">
+                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Restan</div>
+                  <div class="text-subtitle-2 font-weight-black text-warning">{{ loanInfo.remainingMonths }}</div>
+                </VCol>
+                <VCol cols="3">
+                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Estado</div>
+                  <VChip :color="loanStatus.color" size="small" class="font-weight-black rounded-lg shadow-sm">
+                    {{ loanStatus.text }}
+                  </VChip>
+                </VCol>
+              </VRow>
+
+              <!-- Barra de progreso -->
+              <div v-if="formData.loan_date" class="pa-3 bg-light rounded-xl border-dashed-2">
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Progreso de Pago</span>
+                  <span class="text-xs font-weight-black text-primary">{{ loanInfo.progressPercentage.toFixed(1) }}%</span>
                 </div>
-              </VCardText>
+                <VProgressLinear
+                  :model-value="loanInfo.progressPercentage"
+                  :color="loanStatus.color"
+                  height="10"
+                  rounded
+                  class="rounded-pill mb-1"
+                />
+                <div class="d-flex justify-space-between text-super-xs font-weight-black text-disabled">
+                  <span>INICIO</span>
+                  <span>FINAL ({{ formData.total_installments }} CUOTAS)</span>
+                </div>
+              </div>
             </VCard>
           </template>
         </VForm>
       </VCardText>
 
-      <VCardActions class="pa-4 px-6 border-t bg-surface">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          @click="closeDialog"
-          class="rounded-lg flex-grow-1"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          class="rounded-lg flex-grow-1"
-          :disabled="!formData.loan_date || !formData.monthly_payment || !formData.total_installments"
-        >
-          {{ isNewLoan ? "Crear Préstamo" : "Guardar Cambios" }}
-        </VBtn>
+      <VDivider />
+
+      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg uppercase"
+              @click="closeDialog"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="50"
+              block
+              class="font-weight-black rounded-lg shadow-primary uppercase"
+              :disabled="!formData.loan_date || !formData.monthly_payment || !formData.total_installments"
+              @click="submitForm"
+            >
+              <VIcon start icon="tabler-device-floppy" size="18" />
+              {{ isNewLoan ? "Crear Préstamo" : "Guardar Cambios" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 1;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.border-l-dashed {
-  border-inline-start: 1px dashed rgba(var(--v-border-color), 0.15);
+.bg-light {
+  background-color: #f8faff !important;
 }
 
-.border-e-dashed {
-  border-inline-end: 1px dashed rgba(var(--v-border-color), 0.15);
+.detail-dialog-card {
+  border-radius: 12px !important;
 }
 
-.bg-surface-variant {
-  background-color: rgb(var(--v-theme-surface-variant));
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
 }
 
-.leading-none {
-  line-height: 1 !important;
+.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
+.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 { letter-spacing: 1px !important; }
+.leading-none { line-height: 1 !important; }
+.leading-tight { line-height: 1.25 !important; }
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.border-dashed-2 {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
 :deep(.v-field__outline) {

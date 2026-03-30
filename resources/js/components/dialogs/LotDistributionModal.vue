@@ -237,88 +237,110 @@ const handleScan = (code) => {
     :fullscreen="$vuetify.display.xs"
     transition="dialog-bottom-transition"
     class="premium-dialog"
-  >
-    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
-      <!-- Cabecera Compacta Premium -->
+  >    <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
+      <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
-          <div class="d-flex align-center">
-            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
-              <VIcon icon="tabler-package" color="primary" size="18" />
-            </VAvatar>
-            <div>
-              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0">Ajustar Stock por Lotes</h2>
-              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem;">
-                Distribución física
-              </span>
-            </div>
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon icon="tabler-truck-delivery" color="primary" size="24" />
+          </VAvatar>
+          <div class="d-flex flex-column leading-none text-white">
+            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase">
+              Ajustar Stock por Lotes
+            </h2>
+            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+              Logística Interna • Distribución de Existencias
+            </span>
           </div>
           <VSpacer />
-          <VBtn icon variant="tonal" color="white" size="x-small" @click="closeDialog">
-            <VIcon size="18">tabler-x</VIcon>
-          </VBtn>
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeDialog"
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-2 pa-sm-3 bg-light d-flex flex-column gap-2 overflow-hidden" style="block-size: calc(100vh - 140px); overflow-y: hidden !important;">
+      <VCardText class="pa-4 pa-sm-6 bg-light overflow-y-auto" style="max-height: 75vh;">
         <!-- Perfil del Producto Premium -->
-        <VCard variant="flat" class="border pa-3 bg-white rounded-lg elevation-1 transition-all mb-3 border-l-primary">
-          <div class="d-flex align-center justify-space-between gap-3">
-            <div class="d-flex align-center gap-3 min-width-0">
+        <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm mb-6">
+          <div class="d-flex align-center justify-space-between gap-4">
+            <div class="d-flex align-center gap-4 min-width-0">
               <div class="min-width-0">
-                <div class="d-flex align-center gap-2 mb-0">
-                  <VChip size="x-small" color="primary" variant="flat" class="font-weight-black uppercase px-2 shadow-sm">
+                <div class="d-flex align-center gap-2 mb-2">
+                  <VChip
+                    size="small"
+                    color="primary"
+                    variant="flat"
+                    class="font-weight-black uppercase px-3 shadow-sm rounded-lg"
+                  >
                     {{ props.mode === 'adjustment' ? 'MODO CÍCLICO' : 'MODO RETORNO' }}
                   </VChip>
+                  <VChip
+                    v-if="props.productId"
+                    size="small"
+                    color="secondary"
+                    variant="tonal"
+                    class="font-weight-black px-3 rounded-lg"
+                  >
+                    ID: {{ props.productId }}
+                  </VChip>
                 </div>
-                <div class="d-flex align-center gap-1 mt-1">
-                  <span class="text-primary font-weight-black text-xs">#{{ props.productId || '—' }}</span>
-                  <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-0 truncate">
-                    {{ props.productName }}
-                  </h3>
-                </div>
-                <div v-if="props.laboratory" class="text-super-xs font-weight-bold text-disabled uppercase truncate mt-0">
-                  <span class="text-primary font-weight-bold">{{ props.laboratory }}</span>
+                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-1 truncate">
+                  {{ props.productName }}
+                </h3>
+                <div v-if="props.laboratory" class="d-flex align-center gap-1 opacity-75">
+                  <VIcon icon="tabler-building-factory" size="14" color="primary" />
+                  <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">
+                    {{ props.laboratory }}
+                  </span>
                 </div>
               </div>
             </div>
             <VBtn
               color="primary"
-              icon
-              variant="elevated"
-              size="small"
-              class="rounded-circle shadow-primary"
+              icon="tabler-plus"
+              variant="flat"
+              size="large"
+              class="rounded-lg shadow-primary"
               @click="handleAddNewLot"
-              title="Agregar Lote"
-            >
-              <VIcon icon="tabler-plus" size="20" />
-            </VBtn>
+            />
           </div>
-        </VCard>        <!-- Resumen de Stock Premium Compacto -->
-        <VRow dense class="mb-2 flex-shrink-0">
-          <VCol cols="4">
-            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1 border-l-primary h-100">
-              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">OBJETIVO</span>
-              <div class="text-h6 font-weight-950 text-primary leading-none">
+        </VCard>
+
+        <!-- Resumen de Stock Premium -->
+        <VRow dense class="mb-6">
+          <VCol cols="12" sm="4">
+            <VCard variant="flat" class="pa-4 bg-white text-center rounded-xl border shadow-sm border-l-primary">
+              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Stock Objetivo</span>
+              <div class="text-h4 font-weight-black text-primary leading-none">
                 {{ formatNumber(objective) }}
               </div>
             </VCard>
           </VCol>
           
-          <VCol cols="4">
-            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1">
-              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">ASIGNADO</span>
-              <div class="text-h6 font-weight-950 text-info leading-none">
+          <VCol cols="12" sm="4">
+            <VCard variant="flat" class="pa-4 bg-white text-center rounded-xl border shadow-sm">
+              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Total Asignado</span>
+              <div class="text-h4 font-weight-black text-info leading-none">
                 {{ formatNumber(totalDistributed) }}
               </div>
             </VCard>
           </VCol>
 
-          <VCol cols="4">
-            <VCard variant="flat" border class="pa-2 bg-white text-center rounded-lg elevation-1">
-              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">DIFERENCIA</span>
+          <VCol cols="12" sm="4">
+            <VCard variant="flat" class="pa-4 bg-white text-center rounded-xl border shadow-sm">
+              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Diferencia</span>
               <div 
-                class="text-h6 font-weight-950 leading-none"
+                class="text-h4 font-weight-black leading-none"
                 :class="discrepancy === 0 ? 'text-success' : 'text-error'"
               >
                 {{ discrepancy > 0 ? '+' : '' }}{{ formatNumber(discrepancy) }}
@@ -327,216 +349,221 @@ const handleScan = (code) => {
           </VCol>
         </VRow>
 
-        <!-- Cabecera de Lista Premium -->
-        <div class="d-flex align-center justify-space-between mb-3 px-1">
-          <div class="d-flex align-center gap-2">
-            <div class="header-indicator success shadow-sm"></div>
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Distribución de Lotes</span>
-          </div>
-          <VChip size="x-small" color="success" variant="tonal" class="font-weight-black px-2">
-            {{ distributedLots.length }} REGISTROS
-          </VChip>
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator secondary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+            Desglose de Lotes y Ubicaciones
+          </span>
         </div>
 
-        <!-- Tabla Escritorio con Scroll -->
-        <div class="d-none d-md-block flex-grow-1 overflow-y-auto pr-1" style="min-block-size: 0;">
-          <VDataTable
-            :headers="[
-              { title: 'Información del Lote', key: 'info', sortable: false },
-              { title: 'Stock Sistema', key: 'original_stock', sortable: false, align: 'center', width: '150px' },
-              { title: 'Nueva Cantidad', key: 'quantity', sortable: false, align: 'center', width: '180px' },
-              { title: '', key: 'actions', sortable: false, align: 'center', width: '80px' },
-            ]"
-            :items="distributedLots"
-            :item-value="item => item.isNew ? item.temp_id : item.id"
-            density="compact"
-            class="premium-table border rounded-lg overflow-hidden bg-white elevation-1 sticky-header"
-          >
-            <template #item.info="{ item }">
-              <VRow dense class="py-1">
-                <VCol cols="4">
-                  <AppTextField
-                    v-model="item.lot_number"
-                    density="comfortable"
-                    placeholder="Lote"
-                    class="premium-textfield shadow-sm"
-                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
-                  />
-                </VCol>
-                <VCol cols="4">
-                  <AppTextField
-                    v-model="item.expiration_date"
-                    density="comfortable"
-                    type="date"
-                    placeholder="Vencimiento"
-                    class="premium-textfield shadow-sm"
-                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
-                  />
-                </VCol>
-                <VCol cols="4">
-                  <VAutocomplete
-                    v-model="item.location"
-                    label="Ubicación"
-                    density="comfortable"
-                    placeholder="Sel..."
-                    class="premium-textfield shadow-sm"
-                    :items="props.locations"
-                    item-title="name"
-                    item-value="name"
-                    :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
-                  />
-                </VCol>
-              </VRow>
-            </template>
+        <!-- Tabla Escritorio Premium -->
+        <div class="d-none d-md-block">
+          <VCard variant="flat" class="bg-white rounded-xl border shadow-sm overflow-hidden">
+            <VDataTable
+              :headers="[
+                { title: 'Información del Lote', key: 'info', sortable: false },
+                { title: 'Sist.', key: 'original_stock', sortable: false, align: 'center', width: '100px' },
+                { title: 'Cantidad', key: 'quantity', sortable: false, align: 'center', width: '150px' },
+                { title: '', key: 'actions', sortable: false, align: 'center', width: '70px' },
+              ]"
+              :items="distributedLots"
+              :item-value="item => item.isNew ? item.temp_id : item.id"
+              density="comfortable"
+              class="table-standard"
+              hide-default-footer
+            >
+              <template #item.info="{ item }">
+                <VRow dense class="py-2">
+                  <VCol cols="4">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Lote</span>
+                    <AppTextField
+                      v-model="item.lot_number"
+                      placeholder="Nº..."
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg font-weight-black"
+                      hide-details="auto"
+                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
+                    />
+                  </VCol>
+                  <VCol cols="4">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Vencimiento</span>
+                    <AppTextField
+                      v-model="item.expiration_date"
+                      type="date"
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg font-weight-black"
+                      hide-details="auto"
+                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
+                    />
+                  </VCol>
+                  <VCol cols="4">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Ubicación</span>
+                    <VAutocomplete
+                      v-model="item.location"
+                      :items="props.locations"
+                      item-title="name"
+                      item-value="name"
+                      placeholder="SEL..."
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg font-weight-black"
+                      hide-details="auto"
+                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
+                    />
+                  </VCol>
+                </VRow>
+              </template>
 
-            <template #item.original_stock="{ item }">
-              <VChip v-if="!item.isNew" color="primary" variant="tonal" size="small" class="font-weight-black">
-                {{ formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0) }}
-              </VChip>
-              <VChip v-else color="success" variant="flat" size="x-small" class="font-weight-black uppercase shadow-sm">
-                Nuevo
-              </VChip>
-            </template>
+              <template #item.original_stock="{ item }">
+                <VChip v-if="!item.isNew" color="primary" variant="tonal" size="small" class="font-weight-black rounded-lg">
+                  {{ formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0) }}
+                </VChip>
+                <VChip v-else color="success" variant="flat" size="x-small" class="font-weight-black uppercase shadow-sm rounded-lg">
+                  NUEVO
+                </VChip>
+              </template>
 
-            <template #item.quantity="{ item }">
-              <div class="quantity-input-wrapper border-dashed-2 rounded-lg pa-1 bg-light">
-                <AppTextField
-                  v-model.number="item.quantity"
-                  type="number"
-                  min="0"
-                  variant="plain"
-                  density="compact"
-                  class="text-center font-weight-black huge-lot-input-wrapper compact-qty-input"
-                  hide-details
+              <template #item.quantity="{ item }">
+                <div class="pa-1 bg-light rounded-lg border-dashed-2">
+                  <AppTextField
+                    v-model.number="item.quantity"
+                    type="number"
+                    min="0"
+                    variant="plain"
+                    density="compact"
+                    class="text-center font-weight-950 table-input-huge"
+                    hide-details
+                  />
+                </div>
+              </template>
+
+              <template #item.actions="{ item }">
+                <VBtn 
+                  v-if="item.isNew" 
+                  icon="tabler-trash"
+                  color="error" 
+                  variant="tonal" 
+                  size="small" 
+                  class="rounded-lg"
+                  @click="handleRemoveNewLot(item.temp_id)"
                 />
-              </div>
-            </template>
-
-            <template #item.actions="{ item }">
-              <IconBtn 
-                v-if="item.isNew" 
-                color="error" 
-                variant="tonal" 
-                size="small" 
-                @click="handleRemoveNewLot(item.temp_id)"
-              >
-                <VIcon icon="tabler-trash" />
-              </IconBtn>
-              <IconBtn 
-                v-else 
-                color="warning" 
-                variant="tonal" 
-                size="small" 
-                :disabled="item.quantity === 0"
-                @click="handleClearLotQuantity(item)"
-              >
-                <VIcon icon="tabler-trash-x" />
-              </IconBtn>
-            </template>
-          </VDataTable>
+                <VBtn 
+                  v-else 
+                  icon="tabler-trash-x"
+                  color="warning" 
+                  variant="tonal" 
+                  size="small" 
+                  class="rounded-lg"
+                  :disabled="item.quantity === 0"
+                  @click="handleClearLotQuantity(item)"
+                />
+              </template>
+            </VDataTable>
+          </VCard>
         </div>
 
-        <!-- Vista Móvil de Tarjetas con Scroll -->
-        <div class="d-block d-md-none flex-grow-1 overflow-y-auto pr-1" style="min-block-size: 0;">
-          <div class="d-flex flex-column gap-2" style="padding-block-end: 80px;">
+        <!-- Vista Móvil Premium -->
+        <div class="d-block d-md-none">
+          <div class="d-flex flex-column gap-3">
             <VCard
               v-for="item in distributedLots"
               :key="item.isNew ? item.temp_id : item.id"
               variant="flat"
-              border
-              class="rounded-lg premium-lot-card overflow-hidden bg-white elevation-1"
+              class="pa-4 bg-white rounded-xl border shadow-sm"
             >
-            <div class="pa-3">
-              <div class="d-flex justify-space-between align-center mb-2">
+              <div class="d-flex justify-space-between align-center mb-4">
                 <div class="d-flex align-center gap-2">
-                  <VAvatar :color="item.isNew ? 'success' : 'primary'" variant="flat" size="20">
-                    <VIcon :icon="item.isNew ? 'tabler-plus' : 'tabler-package'" size="12" color="white" />
+                  <VAvatar :color="item.isNew ? 'success' : 'primary'" variant="flat" size="24" class="shadow-sm">
+                    <VIcon :icon="item.isNew ? 'tabler-plus' : 'tabler-package'" size="14" color="white" />
                   </VAvatar>
-                  <span class="text-super-xs font-weight-black uppercase" :class="item.isNew ? 'text-success' : 'text-primary'">
-                    {{ item.isNew ? 'Nuevo' : `Stock: ${formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0)}` }}
+                  <span class="text-xs font-weight-black uppercase letter-spacing-1" :class="item.isNew ? 'text-success' : 'text-primary'">
+                    {{ item.isNew ? 'Nuevo Ingreso' : `Sistema: ${formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0)}` }}
                   </span>
                 </div>
-                <IconBtn 
+                <VBtn 
                   :color="item.isNew ? 'error' : 'warning'" 
-                  size="x-small" 
+                  size="small" 
                   variant="tonal"
+                  class="rounded-lg"
+                  icon="tabler-trash"
                   @click="item.isNew ? handleRemoveNewLot(item.temp_id) : handleClearLotQuantity(item)"
-                >
-                  <VIcon :icon="item.isNew ? 'tabler-trash' : 'tabler-trash-x'" size="16" />
-                </IconBtn>
+                />
               </div>
 
               <VRow dense>
                 <VCol cols="12">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Número de Lote</span>
                   <AppTextField
                     v-model="item.lot_number"
+                    placeholder="LOTE..."
+                    variant="outlined"
                     density="comfortable"
-                    placeholder="Nº Lote"
-                    class="premium-textfield shadow-sm"
+                    class="rounded-lg font-weight-black"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                   />
                 </VCol>
                 <VCol cols="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Vencimiento</span>
                   <AppTextField
                     v-model="item.expiration_date"
-                    density="comfortable"
                     type="date"
-                    placeholder="Vencimiento"
-                    class="premium-textfield shadow-sm"
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg font-weight-black"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
                   />
                 </VCol>
                 <VCol cols="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Ubicación</span>
                   <VAutocomplete
                     v-model="item.location"
-                    label="Ubicación"
-                    density="comfortable"
-                    placeholder="Ubicación"
-                    class="premium-textfield shadow-sm"
                     :items="props.locations"
                     item-title="name"
                     item-value="name"
+                    placeholder="SEL..."
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg font-weight-black"
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
                   />
                 </VCol>
                 <VCol cols="12">
-                  <div class="quantity-input-box mt-1 pa-1 px-3 rounded-lg border-dashed-2 bg-light shadow-inner">
-                    <div class="d-flex align-center justify-space-between w-100">
-                      <span class="text-super-xs font-weight-black text-disabled uppercase">Cantidad</span>
-                      <div class="flex-grow-1 ml-4 text-end">
-                        <AppTextField
-                          v-model.number="item.quantity"
-                          type="number"
-                          variant="plain"
-                          hide-details
-                          class="huge-lot-input font-weight-950"
-                        />
-                      </div>
-                      <span class="text-super-xs font-weight-black text-primary ml-1 uppercase">UNID</span>
+                  <div class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center justify-space-between mt-2">
+                    <span class="text-super-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Cantidad Física</span>
+                    <div class="d-flex align-center gap-2">
+                      <AppTextField
+                        v-model.number="item.quantity"
+                        type="number"
+                        variant="plain"
+                        hide-details
+                        class="mobile-lot-input font-weight-black"
+                      />
+                      <span class="text-xs font-weight-black text-primary">UNID.</span>
                     </div>
                   </div>
                 </VCol>
               </VRow>
-            </div>
-          </VCard>
-          <div v-if="distributedLots.length === 0" class="text-center py-10 opacity-50 font-weight-bold uppercase text-xs">
-            No hay lotes para mostrar
+            </VCard>
+          </div>
+          <div v-if="distributedLots.length === 0" class="text-center py-12 pa-6 bg-white rounded-xl border mt-4">
+            <VIcon icon="tabler-package-off" size="48" color="disabled" class="mb-2 opacity-25" />
+            <div class="text-xs font-weight-black text-disabled uppercase letter-spacing-1">No hay lotes registrados</div>
           </div>
         </div>
-      </div>
-    </VCardText>
+      </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow no-gutters class="w-100">
+      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+        <VRow dense class="w-100 ma-0">
           <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="tonal"
-              size="large"
-              block
               height="50"
+              block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="closeDialog"
             >
@@ -547,14 +574,13 @@ const handleScan = (code) => {
             <VBtn
               color="primary"
               variant="flat"
-              size="large"
-              block
               height="50"
+              block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :disabled="!canSave"
               @click="handleSave"
             >
-              <VIcon icon="tabler-cloud-upload" class="me-2" />
+              <VIcon icon="tabler-check" class="me-2" size="18" />
               Finalizar Distribución
             </VBtn>
           </VCol>
@@ -562,83 +588,41 @@ const handleScan = (code) => {
       </VCardActions>
     </VCard>
   </VDialog>
-
-  <BarcodeScannerDialog
-    v-model="isScannerVisible"
-    @scan="handleScan"
-  />
 </template>
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
 }
 
 .bg-light {
-  background-color: #f8fafc !important;
+  background-color: #f8faff !important;
 }
 
-.premium-table :deep(th) {
-  background-color: white !important;
-  color: inherit !important;
-  font-size: 0.73rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
+.detail-dialog-card {
+  border-radius: 12px !important;
 }
 
-.summary-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(3, 1fr);
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
 }
 
-@media (max-width: 900px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
 }
 
-.premium-lot-card {
-  transition: all 0.2s ease;
+.header-indicator.secondary {
+  background-color: rgb(var(--v-theme-secondary));
 }
 
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 20%) !important;
-}
-
-.huge-lot-input :deep(input) {
-  border: none;
-  background: transparent;
-  block-size: 36px !important;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-size: 1.25rem !important;
-  font-weight: 950 !important;
-  text-align: end !important;
-}
-
-.premium-textfield :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.1 !important;
-}
-
-.shadow-inner {
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 6%) !important;
-}
-
-.quantity-input-wrapper {
-  min-inline-size: 120px;
-  transition: all 0.2s ease;
-}
-
-.quantity-input-wrapper:focus-within {
-  border-color: rgb(var(--v-theme-primary)) !important;
-  background-color: white !important;
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.1) !important;
-}
-
-.compact-qty-input :deep(input) {
-  font-size: 1rem !important;
-  font-weight: 950 !important;
-  padding-block: 0 !important;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
@@ -646,9 +630,66 @@ const handleScan = (code) => {
   line-height: normal;
 }
 
-.letter-spacing-1 { letter-spacing: 1.5px !important; }
-.leading-none { line-height: 1 !important; }
-.leading-tight { line-height: 1.25 !important; }
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.border-dashed-2 {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.table-standard :deep(.v-data-table-header) {
+  background-color: #f1f5f9;
+}
+
+.table-standard :deep(.v-data-table-header th) {
+  color: #64748b !important;
+  font-size: 0.65rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.table-standard :deep(td) {
+  padding-block: 8px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.05) !important;
+}
+
+.table-input-huge :deep(input) {
+  font-size: 1.25rem !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.mobile-lot-input :deep(input) {
+  font-size: 1.5rem !important;
+  font-weight: 950 !important;
+  text-align: end !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.text-button {
+  font-size: 0.875rem !important;
+  letter-spacing: 1px !important;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
 
 .truncate {
   overflow: hidden;
@@ -656,23 +697,27 @@ const handleScan = (code) => {
   white-space: nowrap;
 }
 
-.shadow-lg {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 10%) !important;
+.truncate-1-line {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
-:deep(.v-btn.v-btn--size-large) {
+.text-button {
   font-size: 0.875rem !important;
   letter-spacing: 1px !important;
+}
+
+.uppercase {
   text-transform: uppercase;
 }
 
-:deep(.v-data-table__td) {
-  padding-block: 12px !important;
-}
-
-:deep(.huge-lot-input-wrapper input) {
-  font-weight: 900 !important;
-  text-align: center !important;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-icon-box {
