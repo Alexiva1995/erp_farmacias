@@ -2,8 +2,8 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
+import { calculateStock, formatDate } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
-import { formatDate, calculateStock } from "@/utils/formatters";
 
 const authStore = useAuthStore();
 
@@ -252,43 +252,64 @@ const submitForm = () => {
     content-class="d-flex"
     :fullscreen="$vuetify.display.xs"
   >
-    <VCard v-if="formData" class="d-flex flex-column">
-      <VCardTitle class="d-flex align-center pa-4 pb-3 bg-primary">
-        <VIcon
-          :icon="isNewProduct ? 'tabler-plus' : 'tabler-edit'"
-          size="24"
-          color="white"
-          class="me-2"
-        />
-        <span class="text-h5 font-weight-bold text-white">{{
-          isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto"
-        }}</span>
+    <VCard v-if="formData" class="detail-dialog-card overflow-hidden border-0 elevation-12">
+      <!-- Cabecera Compacta Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
+          <div class="d-flex align-center">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="32"
+              class="me-3 elevation-1"
+            >
+              <VIcon
+                :icon="isNewProduct ? 'tabler-circle-plus' : 'tabler-edit'"
+                color="primary"
+                size="18"
+              />
+            </VAvatar>
+            <div>
+              <h2
+                class="text-subtitle-2 font-weight-black text-white leading-tight mb-0"
+              >
+                {{ isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto" }}
+              </h2>
+              <span
+                class="text-super-xs text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem"
+              >
+                {{ isNewProduct ? "Registro" : "Modificación" }} de producto
+              </span>
+            </div>
+          </div>
 
-        <VChip
-          v-if="assignedGroupName"
-          class="ml-4"
-          color="primary"
-          size="small"
-          label
-        >
-          Grupo: {{ assignedGroupName }}
-        </VChip>
+          <VChip
+            v-if="assignedGroupName"
+            class="ml-4 font-weight-black"
+            color="white"
+            variant="tonal"
+            size="x-small"
+          >
+            GRUPO: {{ assignedGroupName }}
+          </VChip>
 
-        <VSpacer />
-        <VBtn
-          icon
-          variant="text"
-          color="white"
-          size="small"
-          @click="closeDialog"
-        >
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
+          <VSpacer />
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="x-small"
+            @click="closeDialog"
+          >
+            <VIcon size="18">tabler-x</VIcon>
+          </VBtn>
+        </div>
       </VCardTitle>
 
       <VDivider />
 
-      <VCardText class="pa-0">
+      <VCardText class="pa-0 bg-light">
         <VTabs v-model="activeTab" grow bg-color="background">
           <VTab :value="0">
             <VIcon icon="tabler-info-circle" class="me-2" />
@@ -304,328 +325,517 @@ const submitForm = () => {
           </VTab>
         </VTabs>
 
-        <VWindow v-model="activeTab" class="pa-4" style="max-block-size: 65vh; overflow-y: auto;">
+        <VWindow
+          v-model="activeTab"
+          class="pa-4"
+          style="max-block-size: 65vh; overflow-y: auto"
+        >
           <!-- Pestaña General -->
           <VWindowItem :value="0">
-            <VForm @submit.prevent="submitForm">
-              <VRow dense>
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="formData.name"
-                    label="Nombre"
-                    variant="outlined"
-                    density="compact"
-                    :error-messages="formErrors.name"
-                    placeholder="Ej: Ibuprofeno 400mg"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="formData.active_ingredient"
-                    label="Principio Activo"
-                    variant="outlined"
-                    density="compact"
-                    :error-messages="formErrors.active_ingredient"
-                    placeholder="Ej: Ibuprofeno"
-                  />
-                </VCol>
-                <VCol cols="12" md="4">
-                  <VSelect
-                    v-model="formData.laboratory_id"
-                    label="Laboratorio"
-                    :items="props.laboratories"
-                    item-title="name"
-                    item-value="id"
-                    variant="outlined"
-                    density="compact"
-                    clearable
-                    :error-messages="formErrors.laboratory_id"
+            <VCard
+              variant="flat"
+              class="border pa-4 pa-sm-5 mb-3 bg-white elevation-1 rounded-lg"
+            >
+              <div class="d-flex align-center gap-2 mb-4">
+                <div class="header-indicator primary"></div>
+                <span
+                  class="text-xs font-weight-black text-primary uppercase letter-spacing-1"
+                  >Información Básica</span
+                >
+              </div>
+
+              <VForm @submit.prevent="submitForm">
+                <VRow dense>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="formData.name"
+                      label="Nombre del Producto"
+                      variant="outlined"
+                      density="comfortable"
+                      :error-messages="formErrors.name"
+                      placeholder="Ej: Ibuprofeno 400mg"
+                      class="shadow-sm"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="formData.active_ingredient"
+                      label="Principio Activo"
+                      variant="outlined"
+                      density="comfortable"
+                      :error-messages="formErrors.active_ingredient"
+                      placeholder="Ej: Ibuprofeno"
+                      class="shadow-sm"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <VSelect
+                      v-model="formData.laboratory_id"
+                      label="Laboratorio"
+                      :items="props.laboratories"
+                      item-title="name"
+                      item-value="id"
+                      variant="outlined"
+                      density="comfortable"
+                      clearable
+                      :error-messages="formErrors.laboratory_id"
+                      class="shadow-sm"
+                    >
+                      <template #append-inner>
+                        <VBtn
+                          icon="tabler-plus"
+                          variant="tonal"
+                          color="primary"
+                          size="x-small"
+                          class="rounded"
+                          @click.stop="isLabDialogVisible = true"
+                        />
+                      </template>
+                    </VSelect>
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <VSelect
+                      v-model="formData.origin_id"
+                      label="Origen"
+                      :items="props.origins"
+                      item-title="name"
+                      item-value="id"
+                      variant="outlined"
+                      density="comfortable"
+                      clearable
+                      :error-messages="formErrors.origin_id"
+                      class="shadow-sm"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <VSelect
+                      v-model="formData.category_id"
+                      label="Categoría"
+                      :items="props.categories"
+                      item-title="name"
+                      item-value="id"
+                      variant="outlined"
+                      density="comfortable"
+                      clearable
+                      :error-messages="formErrors.category_id"
+                      class="shadow-sm"
+                    />
+                  </VCol>
+
+                  <VCol cols="12" md="12" class="mt-2">
+                    <div class="d-flex align-center gap-2 mb-2">
+                      <VIcon icon="tabler-settings" size="18" color="primary" />
+                      <span class="text-xs font-weight-black text-primary uppercase"
+                        >Identificación y Multimedia</span
+                      >
+                    </div>
+                  </VCol>
+
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="formData.barcode"
+                      label="Código de Barras"
+                      variant="outlined"
+                      density="comfortable"
+                      :error-messages="formErrors.barcode"
+                      prepend-inner-icon="tabler-barcode"
+                      class="shadow-sm"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <VFileInput
+                      v-model="imageFile"
+                      label="Imagen del Producto"
+                      accept="image/*"
+                      variant="outlined"
+                      prepend-inner-icon="tabler-camera"
+                      clearable
+                      :error-messages="formErrors.photo_url"
+                      density="comfortable"
+                      class="shadow-sm"
+                    />
+                  </VCol>
+                  <VCol
+                    v-if="imagePreviewUrl"
+                    cols="12"
+                    class="d-flex justify-center mt-2"
                   >
-                    <template #append-inner>
-                      <VBtn
-                        icon="tabler-plus"
-                        variant="text"
-                        color="primary"
-                        size="small"
-                        @click.stop="isLabDialogVisible = true"
-                      />
-                    </template>
-                  </VSelect>
-                </VCol>
-                <VCol cols="12" md="4">
-                  <VSelect
-                    v-model="formData.origin_id"
-                    label="Origen"
-                    :items="props.origins"
-                    item-title="name"
-                    item-value="id"
-                    variant="outlined"
-                    density="compact"
-                    clearable
-                    :error-messages="formErrors.origin_id"
-                  />
-                </VCol>
-                <VCol cols="12" md="4">
-                  <VSelect
-                    v-model="formData.category_id"
-                    label="Categoría"
-                    :items="props.categories"
-                    item-title="name"
-                    item-value="id"
-                    variant="outlined"
-                    density="compact"
-                    clearable
-                    :error-messages="formErrors.category_id"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="formData.barcode"
-                    label="Código de Barra"
-                    variant="outlined"
-                    density="compact"
-                    :error-messages="formErrors.barcode"
-                    prepend-inner-icon="tabler-barcode"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <VFileInput
-                    v-model="imageFile"
-                    label="Imagen del Producto"
-                    accept="image/*"
-                    variant="outlined"
-                    prepend-inner-icon="tabler-camera"
-                    clearable
-                    :error-messages="formErrors.photo_url"
-                    density="compact"
-                  />
-                </VCol>
-                <VCol v-if="imagePreviewUrl" cols="12" class="d-flex justify-center mt-2">
-                  <VImg
-                    :src="imagePreviewUrl"
-                    max-width="200"
-                    height="200"
-                    cover
-                    class="border rounded-lg"
-                  />
-                </VCol>
-              </VRow>
-            </VForm>
+                    <VImg
+                      :src="imagePreviewUrl"
+                      max-width="200"
+                      height="200"
+                      cover
+                      class="border-dashed-2 rounded-lg elevation-1 bg-white"
+                    />
+                  </VCol>
+                </VRow>
+              </VForm>
+            </VCard>
           </VWindowItem>
 
           <!-- Pestaña Inventario -->
           <VWindowItem :value="1">
-            <VRow dense>
-              <VCol cols="12" md="4">
-                <VSwitch
-                  v-model="formData.iva"
-                  label="Aplica IVA (G)"
-                  :true-value="1"
-                  :false-value="0"
-                  color="success"
-                  density="compact"
-                  hide-details
-                />
-              </VCol>
-              <VCol cols="12" md="4">
-                <VSwitch
-                  v-model="formData.psychotropic"
-                  label="Psicotrópico"
-                  :true-value="1"
-                  :false-value="0"
-                  color="warning"
-                  density="compact"
-                  hide-details
-                />
-              </VCol>
-              <VCol cols="12" md="4">
-                <VSwitch
-                  v-model="formData.is_colombian_origin"
-                  label="Origen Colombia"
-                  :true-value="1"
-                  :false-value="0"
-                  color="primary"
-                  density="compact"
-                  hide-details
-                />
-              </VCol>
+            <VCard
+              variant="flat"
+              class="border pa-4 pa-sm-5 mb-4 bg-white elevation-1 rounded-lg"
+            >
+              <div class="d-flex align-center gap-2 mb-4">
+                <div class="header-indicator primary"></div>
+                <span
+                  class="text-xs font-weight-black text-primary uppercase letter-spacing-1"
+                  >Configuración Logística</span
+                >
+              </div>
 
-              <VCol v-if="!isNewProduct" cols="12" md="6" class="mt-4">
-                <VTextField
-                  v-model="formData.unit_cost"
-                  label="Costo de Compra"
-                  type="number"
-                  prefix="$"
-                  variant="outlined"
-                  density="compact"
-                  :readonly="!authStore.isAdmin"
-                  :error-messages="formErrors.unit_cost"
-                />
-              </VCol>
-              <VCol v-if="!isNewProduct" cols="12" md="6" class="mt-4">
-                <VTextField
-                  v-model="formData.sale_price"
-                  label="Precio de Venta"
-                  type="number"
-                  prefix="$"
-                  variant="outlined"
-                  density="compact"
-                  :readonly="authStore.isVendedor || authStore.isSupervisor"
-                  :error-messages="formErrors.sale_price"
-                />
-              </VCol>
-
-              <VCol v-if="!isNewProduct && formData.lots?.length > 0" cols="12" class="mt-4">
-                <p class="text-subtitle-1 font-weight-bold mb-2">
-                  <VIcon icon="tabler-packages" size="20" class="me-1" />
-                  Lotes Registrados
-                </p>
-                
-                <!-- Desktop Table -->
-                <div class="d-none d-sm-block">
-                  <VDataTable
-                    :headers="lotHeaders"
-                    :items="formData.lots"
-                    density="compact"
-                    class="border rounded"
-                    hide-default-footer
+              <VRow dense>
+                <VCol cols="12" md="4">
+                  <VCard
+                    variant="flat"
+                    border
+                    class="pa-3 bg-light rounded-lg d-flex align-center"
                   >
-                    <template #item.quantity="{ item }">
-                      <VChip size="x-small" :color="item.quantity > 0 ? 'success' : 'error'">
-                        {{ item.quantity }}
-                      </VChip>
-                    </template>
-                    <template #item.expiration_date="{ item }">
-                      {{ formatDate(item.expiration_date) }}
-                    </template>
-                  </VDataTable>
-                </div>
+                    <VSwitch
+                      v-model="formData.iva"
+                      label="Aplica IVA (G)"
+                      :true-value="1"
+                      :false-value="0"
+                      color="success"
+                      density="compact"
+                      hide-details
+                      class="font-weight-bold"
+                    />
+                  </VCard>
+                </VCol>
+                <VCol cols="12" md="4">
+                  <VCard
+                    variant="flat"
+                    border
+                    class="pa-3 bg-light rounded-lg d-flex align-center"
+                  >
+                    <VSwitch
+                      v-model="formData.psychotropic"
+                      label="Psicotrópico"
+                      :true-value="1"
+                      :false-value="0"
+                      color="warning"
+                      density="compact"
+                      hide-details
+                      class="font-weight-bold"
+                    />
+                  </VCard>
+                </VCol>
+                <VCol cols="12" md="4">
+                  <VCard
+                    variant="flat"
+                    border
+                    class="pa-3 bg-light rounded-lg d-flex align-center"
+                  >
+                    <VSwitch
+                      v-model="formData.is_colombian_origin"
+                      label="Origen Colombia"
+                      :true-value="1"
+                      :false-value="0"
+                      color="primary"
+                      density="compact"
+                      hide-details
+                      class="font-weight-bold"
+                    />
+                  </VCard>
+                </VCol>
 
-                <!-- Mobile Cards -->
-                <div class="d-block d-sm-none">
-                  <div class="d-flex flex-column gap-2">
-                    <VCard
-                      v-for="item in formData.lots"
-                      :key="item.id"
-                      variant="flat"
-                      class="lot-mobile-card border mb-1 bg-var-theme-background"
-                    >
-                      <div class="pa-3">
-                        <div class="d-flex justify-space-between align-center mb-2">
-                          <span class="text-xs font-weight-bold text-primary">LOTE: {{ item.lot_number }}</span>
-                          <VChip size="x-small" :color="item.quantity > 0 ? 'success' : 'error'" class="font-weight-black">
-                            {{ item.quantity }} <small class="ml-1">UNDS</small>
-                          </VChip>
-                        </div>
-                        <div class="d-flex justify-space-between text-super-xs text-medium-emphasis">
-                          <span><VIcon icon="tabler-map-pin" size="12" class="me-1" />{{ item.location || 'S/U' }}</span>
-                          <span><VIcon icon="tabler-calendar" size="12" class="me-1" />{{ formatDate(item.expiration_date) }}</span>
-                        </div>
-                      </div>
-                    </VCard>
-                  </div>
+                <VCol v-if="!isNewProduct" cols="12" md="6" class="mt-4">
+                  <AppTextField
+                    v-model="formData.unit_cost"
+                    label="Costo de Compra"
+                    type="number"
+                    prefix="$"
+                    variant="outlined"
+                    density="comfortable"
+                    :readonly="!authStore.isAdmin"
+                    :error-messages="formErrors.unit_cost"
+                    class="shadow-sm"
+                  />
+                </VCol>
+                <VCol v-if="!isNewProduct" cols="12" md="6" class="mt-4">
+                  <AppTextField
+                    v-model="formData.sale_price"
+                    label="Precio de Venta"
+                    type="number"
+                    prefix="$"
+                    variant="outlined"
+                    density="comfortable"
+                    :readonly="authStore.isVendedor || authStore.isSupervisor"
+                    :error-messages="formErrors.sale_price"
+                    class="shadow-sm"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+
+            <VCard
+              v-if="!isNewProduct && formData.lots?.length > 0"
+              variant="flat"
+              class="border pa-4 bg-white elevation-1 rounded-lg"
+            >
+              <div class="d-flex align-center justify-space-between mb-4">
+                <div class="d-flex align-center gap-2">
+                  <div class="header-indicator secondary"></div>
+                  <span
+                    class="text-xs font-weight-black text-secondary uppercase letter-spacing-1"
+                    >Lotes y Ubicación</span
+                  >
                 </div>
-              </VCol>
-            </VRow>
+                <VChip size="x-small" color="secondary" variant="flat" class="font-weight-black">
+                  {{ formData.lots.length }} LOTES ACTIVOS
+                </VChip>
+              </div>
+
+              <!-- Desktop Table -->
+              <div class="d-none d-sm-block">
+                <VDataTable
+                  :headers="lotHeaders"
+                  :items="formData.lots"
+                  density="compact"
+                  class="border rounded shadow-sm overflow-hidden"
+                  hide-default-footer
+                >
+                  <template #item.quantity="{ item }">
+                    <VChip
+                      size="x-small"
+                      :color="item.quantity > 0 ? 'success' : 'error'"
+                      class="font-weight-black"
+                    >
+                      {{ item.quantity }}
+                    </VChip>
+                  </template>
+                  <template #item.expiration_date="{ item }">
+                    <span class="text-xs font-weight-bold">{{ formatDate(item.expiration_date) }}</span>
+                  </template>
+                </VDataTable>
+              </div>
+
+              <!-- Mobile Cards -->
+              <div class="d-block d-sm-none">
+                <div class="d-flex flex-column gap-2">
+                  <VCard
+                    v-for="item in formData.lots"
+                    :key="item.id"
+                    variant="flat"
+                    class="lot-mobile-card border mb-1 bg-light"
+                  >
+                    <div class="pa-3">
+                      <div
+                        class="d-flex justify-space-between align-center mb-2"
+                      >
+                        <span class="text-xs font-weight-black text-primary uppercase"
+                          >LOTE: {{ item.lot_number }}</span
+                        >
+                        <VChip
+                          size="x-small"
+                          :color="item.quantity > 0 ? 'success' : 'error'"
+                          class="font-weight-black"
+                        >
+                          {{ item.quantity }} <small class="ml-1">UNDS</small>
+                        </VChip>
+                      </div>
+                      <div
+                        class="d-flex justify-space-between text-super-xs text-medium-emphasis"
+                      >
+                        <span
+                          ><VIcon
+                            icon="tabler-map-pin"
+                            size="12"
+                            class="me-1"
+                          />{{ item.location || "S/U" }}</span
+                        >
+                        <span
+                          ><VIcon
+                            icon="tabler-calendar"
+                            size="12"
+                            class="me-1"
+                          />{{ formatDate(item.expiration_date) }}</span
+                        >
+                      </div>
+                    </div>
+                  </VCard>
+                </div>
+              </div>
+            </VCard>
           </VWindowItem>
 
           <!-- Pestaña Relaciones -->
           <VWindowItem :value="2">
-            <VRow dense>
-              <VCol cols="12">
-                <VCard variant="outlined" class="pa-4 bg-grey-lighten-4">
-                  <p class="text-subtitle-2 mb-2">Asignación de Grupo</p>
-                  <div class="d-flex gap-2 align-center">
-                    <VTextField
-                      v-model="groupInput"
-                      label="Buscar Grupo (ID o Nombre)"
-                      variant="outlined"
-                      density="compact"
-                      hide-details
-                      @keydown.enter.prevent="assignGroup"
-                    />
-                    <VBtn color="primary" @click="assignGroup" variant="flat">
-                      Asignar
-                    </VBtn>
-                  </div>
+            <VCard
+              variant="flat"
+              class="border pa-4 pa-sm-5 mb-4 bg-white elevation-1 rounded-lg"
+            >
+              <div class="d-flex align-center gap-2 mb-4">
+                <div class="header-indicator primary"></div>
+                <span
+                  class="text-xs font-weight-black text-primary uppercase letter-spacing-1"
+                  >Jerarquía y Agrupación</span
+                >
+              </div>
 
-                  <div v-if="assignedGroupName" class="mt-3 d-flex align-center">
-                    <VChip color="primary" label closable @click:close="removeGroup">
-                      Grupo: {{ assignedGroupName }}
-                    </VChip>
-                  </div>
-                </VCard>
-              </VCol>
-
-              <VCol v-if="productsInGroup.length > 0" cols="12" class="mt-4">
-                <p class="text-subtitle-1 font-weight-bold mb-2">Otros productos en este grupo</p>
-                
-                <!-- Desktop Table -->
-                <div class="d-none d-sm-block">
-                  <VDataTable
-                    :headers="groupProductsHeaders"
-                    :items="productsInGroup"
-                    density="compact"
-                    class="border rounded"
+              <VCard variant="flat" border class="pa-4 bg-light rounded-lg">
+                <div class="d-flex align-center gap-2 mb-3">
+                  <VIcon icon="tabler-link" size="18" color="primary" />
+                  <span class="text-xs font-weight-black text-primary uppercase"
+                    >Asignación de Grupo</span
                   >
-                    <template #item.lots="{ item }">
-                      {{ calculateStock(item) }}
-                    </template>
-                  </VDataTable>
+                </div>
+                <div class="d-flex gap-2 align-center">
+                  <AppTextField
+                    v-model="groupInput"
+                    label="Buscar Grupo (ID o Nombre)"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    class="bg-white shadow-sm"
+                    @keydown.enter.prevent="assignGroup"
+                  />
+                  <VBtn
+                    color="primary"
+                    @click="assignGroup"
+                    variant="flat"
+                    height="44"
+                    class="font-weight-black px-6 shadow-primary rounded-lg"
+                  >
+                    Asignar
+                  </VBtn>
                 </div>
 
-                <!-- Mobile Cards -->
-                <div class="d-block d-sm-none">
-                  <div class="d-flex flex-column gap-2">
-                    <VCard
-                      v-for="item in productsInGroup"
-                      :key="item.id"
-                      variant="flat"
-                      class="border mb-1"
-                    >
-                      <div class="pa-3">
-                        <div class="d-flex align-center justify-space-between mb-1">
-                          <h4 class="text-xs font-weight-black text-uppercase truncate-2-lines flex-grow-1 mr-2">
-                            <span class="text-primary mr-1">#{{ item.id }}</span>
-                            {{ item.name }}
-                          </h4>
-                          <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black">
-                            STK: {{ calculateStock(item) }}
-                          </VChip>
-                        </div>
-                        <div class="text-super-xs text-disabled">
-                          {{ item.laboratory?.name || 'S/L' }}
-                        </div>
-                      </div>
-                    </VCard>
-                  </div>
+                <div
+                  v-if="assignedGroupName"
+                  class="mt-3 d-flex align-center"
+                >
+                  <VChip
+                    color="primary"
+                    variant="flat"
+                    label
+                    closable
+                    class="font-weight-black px-4"
+                    @click:close="removeGroup"
+                  >
+                    <VIcon icon="tabler-hierarchy" size="16" class="me-2" />
+                    GRUPO: {{ assignedGroupName }}
+                  </VChip>
                 </div>
-              </VCol>
-            </VRow>
+              </VCard>
+            </VCard>
+
+            <VCard
+              v-if="productsInGroup.length > 0"
+              variant="flat"
+              class="border pa-4 bg-white elevation-1 rounded-lg"
+            >
+              <div class="d-flex align-center justify-space-between mb-4">
+                <div class="d-flex align-center gap-2">
+                  <div class="header-indicator secondary"></div>
+                  <span
+                    class="text-xs font-weight-black text-secondary uppercase letter-spacing-1"
+                    >Productos del mismo grupo</span
+                  >
+                </div>
+                <VChip size="x-small" color="secondary" variant="flat" class="font-weight-black">
+                  {{ productsInGroup.length }} RELACIONADOS
+                </VChip>
+              </div>
+
+              <!-- Desktop Table -->
+              <div class="d-none d-sm-block">
+                <VDataTable
+                  :headers="groupProductsHeaders"
+                  :items="productsInGroup"
+                  density="compact"
+                  class="border rounded shadow-sm overflow-hidden"
+                >
+                  <template #item.lots="{ item }">
+                    <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black">
+                      STK: {{ calculateStock(item) }}
+                    </VChip>
+                  </template>
+                </VDataTable>
+              </div>
+
+              <!-- Mobile Cards -->
+              <div class="d-block d-sm-none">
+                <div class="d-flex flex-column gap-2">
+                  <VCard
+                    v-for="item in productsInGroup"
+                    :key="item.id"
+                    variant="flat"
+                    class="border mb-1 bg-light rounded-lg shadow-sm"
+                  >
+                    <div class="pa-3">
+                      <div
+                        class="d-flex align-center justify-space-between mb-1"
+                      >
+                        <h4
+                          class="text-xs font-weight-black text-uppercase truncate-2-lines flex-grow-1 mr-2"
+                        >
+                          <span class="text-primary mr-1"
+                            >#{{ item.id }}</span
+                          >
+                          {{ item.name }}
+                        </h4>
+                        <VChip
+                          size="x-small"
+                          color="primary"
+                          variant="flat"
+                          class="font-weight-black"
+                        >
+                          {{ calculateStock(item) }}
+                        </VChip>
+                      </div>
+                      <div class="text-super-xs text-disabled font-weight-bold uppercase">
+                        {{ item.laboratory?.name || "S/L" }}
+                      </div>
+                    </div>
+                  </VCard>
+                </div>
+              </div>
+            </VCard>
           </VWindowItem>
         </VWindow>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4">
-        <VSpacer />
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          @click="closeDialog"
-          class="px-6"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submitForm"
-          class="px-8"
-        >
-          {{ isNewProduct ? 'Crear Producto' : 'Guardar Cambios' }}
-        </VBtn>
+      <VCardActions class="pa-4 bg-light border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeDialog"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              @click="submitForm"
+            >
+              <VIcon
+                :icon="isNewProduct ? 'tabler-circle-check' : 'tabler-device-floppy'"
+                size="18"
+                class="me-2"
+              />
+              {{ isNewProduct ? "Crear Producto" : "Guardar Cambios" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -670,6 +880,22 @@ const submitForm = () => {
   </VDialog>
 </template>
 <style scoped>
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #173b22 100%
+  );
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.detail-dialog-card {
+  border-radius: 16px !important;
+}
+
 .lot-mobile-card {
   border-radius: 8px !important;
 }
@@ -680,6 +906,37 @@ const submitForm = () => {
 
 .text-super-xs {
   font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1.5px !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.header-indicator.secondary {
+  background-color: rgb(var(--v-theme-secondary));
 }
 
 .truncate-2-lines {

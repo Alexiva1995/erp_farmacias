@@ -224,7 +224,7 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardText class="flex-grow-1" style="overflow-y: auto;">
+      <VCardText class="flex-grow-1" style="overflow-y: auto">
         <VForm @submit.prevent="submitForm">
           <p class="text-h6 font-weight-medium mb-4">Datos Generales</p>
           <VRow>
@@ -382,7 +382,7 @@ const submitForm = () => {
                     density="compact"
                     hide-details
                     @keydown.enter.prevent="assignGroup"
-                    style="block-size: 40px;"
+                    style="block-size: 40px"
                   />
                 </VCol>
                 <VCol cols="12" md="3" class="d-flex align-center">
@@ -391,7 +391,7 @@ const submitForm = () => {
                     @click="assignGroup"
                     block
                     variant="flat"
-                    style="block-size: 40px;"
+                    style="block-size: 40px"
                   >
                     Asignar
                   </VBtn>
@@ -456,7 +456,7 @@ const submitForm = () => {
           variant="outlined"
           @click="closeDialog"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-inline-size: 50%;"
+          style="flex: 1 1 50%; max-inline-size: 50%"
         >
           Cancelar
         </VBtn>
@@ -465,7 +465,7 @@ const submitForm = () => {
           variant="flat"
           @click="submitForm"
           class="flex-grow-1"
-          style="flex: 1 1 50%; max-inline-size: 50%;"
+          style="flex: 1 1 50%; max-inline-size: 50%"
         >
           Guardar
         </VBtn>

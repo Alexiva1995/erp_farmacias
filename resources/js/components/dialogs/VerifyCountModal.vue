@@ -8,7 +8,11 @@ const props = defineProps({
   countRecord: { type: Object, default: null },
 });
 
-const emit = defineEmits(["update:modelValue", "verify-no-discrepancy", "verify-with-discrepancy"]);
+const emit = defineEmits([
+  "update:modelValue",
+  "verify-no-discrepancy",
+  "verify-with-discrepancy",
+]);
 
 const isVisible = computed({
   get: () => props.modelValue,
@@ -30,14 +34,16 @@ watch(
       currentStock.value = null;
       await loadCurrentStock();
     }
-  }
+  },
 );
 
 const loadCurrentStock = async () => {
   if (!props.countRecord?.product_id) return;
   isLoading.value = true;
   try {
-    const response = await axios.get(`/products/${props.countRecord.product_id}/stock`);
+    const response = await axios.get(
+      `/products/${props.countRecord.product_id}/stock`,
+    );
     currentStock.value = response.data.stock ?? 0;
   } catch (e) {
     loadError.value = "No se pudo cargar el stock actual.";
@@ -48,7 +54,8 @@ const loadCurrentStock = async () => {
 };
 
 const difference = computed(() => {
-  if (newCountedQuantity.value === null || currentStock.value === null) return null;
+  if (newCountedQuantity.value === null || currentStock.value === null)
+    return null;
   return newCountedQuantity.value - currentStock.value;
 });
 
@@ -68,11 +75,18 @@ const differenceText = computed(() => {
   if (difference.value === null) return "";
   if (difference.value === 0) return "Stock Correcto";
   const absDiff = Math.abs(difference.value);
-  return difference.value > 0 ? `Sobran ${absDiff} unidades` : `Faltan ${absDiff} unidades`;
+  return difference.value > 0
+    ? `Sobran ${absDiff} unidades`
+    : `Faltan ${absDiff} unidades`;
 });
 
 const canVerify = computed(() => {
-  return newCountedQuantity.value !== null && newCountedQuantity.value >= 0 && !isProcessing.value && !isLoading.value;
+  return (
+    newCountedQuantity.value !== null &&
+    newCountedQuantity.value >= 0 &&
+    !isProcessing.value &&
+    !isLoading.value
+  );
 });
 
 const handleVerify = () => {
@@ -112,18 +126,36 @@ const handleClose = () => {
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-3 d-flex align-center shadow-sm">
           <div class="d-flex align-center">
-            <VAvatar color="white" variant="flat" size="32" class="me-3 elevation-1">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="32"
+              class="me-3 elevation-1"
+            >
               <VIcon icon="tabler-clipboard-check" color="primary" size="18" />
             </VAvatar>
             <div>
-              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0">Verificar Conteo</h2>
-              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem;">
+              <h2
+                class="text-subtitle-2 font-weight-black text-white leading-tight mb-0"
+              >
+                Verificar Conteo
+              </h2>
+              <span
+                class="text-super-xs text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem"
+              >
                 Validación física
               </span>
             </div>
           </div>
           <VSpacer />
-          <VBtn icon variant="tonal" color="white" size="x-small" @click="handleClose">
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="x-small"
+            @click="handleClose"
+          >
             <VIcon size="18">tabler-x</VIcon>
           </VBtn>
         </div>
@@ -131,63 +163,122 @@ const handleClose = () => {
 
       <VCardText class="pa-2 pa-sm-3 bg-light d-flex flex-column gap-2">
         <!-- Loader Cargando -->
-        <div v-if="!countRecord || isLoading" class="d-flex flex-column align-center justify-center py-6">
-          <VProgressCircular indeterminate color="primary" size="32" width="3" />
-          <p class="mt-2 text-super-xs font-weight-medium uppercase opacity-60">Sincronizando...</p>
+        <div
+          v-if="!countRecord || isLoading"
+          class="d-flex flex-column align-center justify-center py-6"
+        >
+          <VProgressCircular
+            indeterminate
+            color="primary"
+            size="32"
+            width="3"
+          />
+          <p class="mt-2 text-super-xs font-weight-medium uppercase opacity-60">
+            Sincronizando...
+          </p>
         </div>
 
         <template v-else>
           <!-- Perfil del Producto Premium -->
-          <VCard variant="flat" class="border pa-4 mb-3 bg-white elevation-1 rounded-lg">
+          <VCard
+            variant="flat"
+            class="border pa-4 mb-3 bg-white elevation-1 rounded-lg"
+          >
             <div class="d-flex align-center gap-3 mb-3">
-              <VChip size="small" color="primary" variant="flat" class="font-weight-black px-3">
+              <VChip
+                size="small"
+                color="primary"
+                variant="flat"
+                class="font-weight-black px-3"
+              >
                 ID: {{ countRecord.product?.id || countRecord.product_id }}
               </VChip>
               <div class="d-flex align-center gap-1 text-disabled">
                 <VIcon icon="tabler-user" size="14" />
-                <span class="text-xs font-weight-bold uppercase">{{ countRecord.user?.username || 'Sistema' }}</span>
+                <span class="text-xs font-weight-bold uppercase">{{
+                  countRecord.user?.username || "Sistema"
+                }}</span>
               </div>
             </div>
-            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-1">
+            <h3
+              class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-1"
+            >
               {{ countRecord.product?.name }}
             </h3>
             <p class="text-xs text-disabled font-weight-medium mb-0 uppercase">
-              {{ countRecord.product?.active_ingredient || 'Sin principio activo registrado' }}
+              {{
+                countRecord.product?.active_ingredient ||
+                "Sin principio activo registrado"
+              }}
             </p>
           </VCard>
 
           <!-- Comparativa de Stock Premium -->
-          <VCard variant="flat" class="border pa-4 mb-3 bg-white elevation-1 rounded-lg">
+          <VCard
+            variant="flat"
+            class="border pa-4 mb-3 bg-white elevation-1 rounded-lg"
+          >
             <div class="d-flex align-center gap-2 mb-4">
               <div class="header-indicator primary"></div>
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Resumen de Impacto</span>
+              <span
+                class="text-xs font-weight-black text-primary uppercase letter-spacing-1"
+                >Resumen de Impacto</span
+              >
             </div>
-            
+
             <div class="d-flex justify-space-around align-center pb-2">
               <div class="text-center">
-                <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">Stock Sistema</span>
-                <p class="text-h5 font-weight-black mb-0 text-high-emphasis">{{ formatNumber(currentStock) }}</p>
+                <span
+                  class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1"
+                  >Stock Sistema</span
+                >
+                <p class="text-h5 font-weight-black mb-0 text-high-emphasis">
+                  {{ formatNumber(currentStock) }}
+                </p>
               </div>
-              
+
               <div class="d-flex flex-column align-center px-2">
-                <VIcon icon="tabler-arrows-left-right" color="primary" size="24" class="opacity-40 mb-1" />
-                <span class="text-super-xs font-weight-black text-primary opacity-50">VS</span>
+                <VIcon
+                  icon="tabler-arrows-left-right"
+                  color="primary"
+                  size="24"
+                  class="opacity-40 mb-1"
+                />
+                <span
+                  class="text-super-xs font-weight-black text-primary opacity-50"
+                  >VS</span
+                >
               </div>
 
               <div class="text-center">
-                <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">Conteo Operador</span>
-                <p class="text-h5 font-weight-black mb-0 text-warning">{{ formatNumber(countRecord.system_quantity + countRecord.discrepancy) }}</p>
+                <span
+                  class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1"
+                  >Conteo Operador</span
+                >
+                <p class="text-h5 font-weight-black mb-0 text-warning">
+                  {{
+                    formatNumber(
+                      countRecord.system_quantity + countRecord.discrepancy,
+                    )
+                  }}
+                </p>
               </div>
             </div>
           </VCard>
 
           <!-- Sección de Re-conteo Premium -->
-          <VCard variant="flat" class="pa-5 rounded-lg border-dashed-2 bg-white text-center shadow-sm d-flex flex-column gap-3 mb-4">
+          <VCard
+            variant="flat"
+            class="pa-5 rounded-lg border-dashed-2 bg-white text-center shadow-sm d-flex flex-column gap-3 mb-4"
+          >
             <div class="d-flex align-center justify-center gap-2">
               <VIcon icon="tabler-edit" color="primary" size="20" />
-              <span class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1">Re-conteo Definitivo</span>
+              <span
+                class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1"
+                >Re-conteo Definitivo</span
+              >
             </div>
-            
+
             <div class="d-flex justify-center align-center py-2">
               <AppTextField
                 id="recounter-quantity-input"
@@ -203,17 +294,33 @@ const handleClose = () => {
                 @keyup.enter="handleVerify"
               />
             </div>
-            
+
             <VExpandTransition>
-              <div v-if="difference !== null" class="mt-2 pt-3 border-t border-opacity-10 d-flex flex-column align-center gap-1">
+              <div
+                v-if="difference !== null"
+                class="mt-2 pt-3 border-t border-opacity-10 d-flex flex-column align-center gap-1"
+              >
                 <div class="d-flex align-center gap-2">
-                  <VIcon :icon="differenceIcon" size="16" :color="differenceColor" />
-                  <span class="text-xs font-weight-black uppercase" :class="`text-${differenceColor}`">
+                  <VIcon
+                    :icon="differenceIcon"
+                    size="16"
+                    :color="differenceColor"
+                  />
+                  <span
+                    class="text-xs font-weight-black uppercase"
+                    :class="`text-${differenceColor}`"
+                  >
                     {{ differenceText }}
                   </span>
                 </div>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                  ({{ difference === 0 ? 'Sin discrepancias' : 'Se generará ajuste de stock' }})
+                <span
+                  class="text-super-xs font-weight-bold text-disabled uppercase"
+                >
+                  ({{
+                    difference === 0
+                      ? "Sin discrepancias"
+                      : "Se generará ajuste de stock"
+                  }})
                 </span>
               </div>
             </VExpandTransition>
@@ -247,8 +354,20 @@ const handleClose = () => {
             :loading="isProcessing"
             @click="handleVerify"
           >
-            <VIcon :icon="difference === 0 ? 'tabler-circle-check' : 'tabler-adjustments-horizontal'" size="18" class="me-2" />
-            {{ difference === 0 ? "CONFIRMAR VALIDACIÓN" : "CONFIRMAR E IR A AJUSTE" }}
+            <VIcon
+              :icon="
+                difference === 0
+                  ? 'tabler-circle-check'
+                  : 'tabler-adjustments-horizontal'
+              "
+              size="18"
+              class="me-2"
+            />
+            {{
+              difference === 0
+                ? "CONFIRMAR VALIDACIÓN"
+                : "CONFIRMAR E IR A AJUSTE"
+            }}
           </VBtn>
           <VBtn
             color="secondary"
@@ -270,7 +389,11 @@ const handleClose = () => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
 }
 
 .bg-light {
@@ -328,10 +451,18 @@ const handleClose = () => {
   line-height: normal;
 }
 
-.letter-spacing-1 { letter-spacing: 1.5px !important; }
-.letter-spacing-05 { letter-spacing: 0.5px !important; }
-.leading-none { line-height: 1 !important; }
-.leading-tight { line-height: 1.25 !important; }
+.letter-spacing-1 {
+  letter-spacing: 1.5px !important;
+}
+.letter-spacing-05 {
+  letter-spacing: 0.5px !important;
+}
+.leading-none {
+  line-height: 1 !important;
+}
+.leading-tight {
+  line-height: 1.25 !important;
+}
 
 .truncate {
   overflow: hidden;
