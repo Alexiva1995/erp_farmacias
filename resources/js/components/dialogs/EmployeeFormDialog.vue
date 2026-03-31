@@ -151,7 +151,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="700px"
+    max-width="800px"
     persistent
     scrollable
     :fullscreen="mobile"
@@ -159,20 +159,24 @@ watch(
     @click:outside.prevent
     @keydown.esc.prevent="closeDialog"
   >
-    <VCard :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card overflow-hidden border-0 elevation-12'">
+      <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
             <VIcon :icon="props.selectedEmployee ? 'tabler-user-edit' : 'tabler-user-plus'" color="primary" size="26" />
           </VAvatar>
           <div class="flex-grow-1">
-            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
-              {{ props.selectedEmployee != null ? "Editar" : "Nuevo" }} Empleado
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              {{ props.selectedEmployee != null ? "Editar Empleado" : "Nuevo Empleado" }}
             </h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
-              Configuración de datos y accesos al sistema
-            </span>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem;">
+                Administración de Personal y Roles
+              </span>
+            </div>
           </div>
+          <VSpacer />
           <VBtn
             icon
             variant="tonal"
@@ -186,99 +190,150 @@ watch(
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-6 pa-md-8 bg-light">
-        <VRow>
-          <VCol cols="12" sm="6">
-            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Nombres</span>
-            <AppTextField
-              v-model="name"
-              placeholder="Ingresar nombres"
-              :error-messages="errors.name"
-            />
-          </VCol>
-          <VCol cols="12" sm="6">
-            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Apellidos</span>
-            <AppTextField
-              v-model="lastName"
-              placeholder="Ingresar apellidos"
-              :error-messages="errors.last_name"
-            />
-          </VCol>
-          <VCol cols="12" sm="6">
-            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Identificación</span>
-            <AppTextField
-              v-model="identification"
-              type="number"
-              placeholder="Número de cédula"
-              :error-messages="errors.identification"
-            />
-          </VCol>
-          <VCol cols="12" sm="6">
-            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Correo Electrónico</span>
-            <AppTextField
-              v-model="email"
-              type="email"
-              placeholder="ejemplo@correo.com"
-              :error-messages="errors.email"
-            />
-          </VCol>
-          <VCol cols="12" sm="6" v-if="props.selectedEmployee == null || isAdmin">
-            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Contraseña</span>
-            <AppTextField
-              v-model="password"
-              placeholder="********"
-              :type="showPassword ? 'text' : 'password'"
-              :error-messages="errors.password"
-              :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-              @click:append-inner="showPassword = !showPassword"
-            />
-          </VCol>
-          <VCol cols="12" sm="6">
-            <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1 d-block">Rol de Sistema</span>
-            <VSelect
-              v-model="role"
-              placeholder="Seleccionar rol"
-              variant="outlined"
-              density="comfortable"
-              :items="roleItems"
-              :error-messages="errors.role"
-            />
-          </VCol>
-          <VCol v-if="props.selectedEmployee != null" cols="12">
-            <VCard variant="flat" class="pa-4 rounded-xl border border-dashed bg-white shadow-xs">
-              <div class="d-flex align-center mb-2">
-                <VIcon icon="tabler-coin" color="primary" class="me-2" size="20" />
-                <span class="text-xs font-weight-black text-high-emphasis uppercase">Paquete Salarial (Referencia)</span>
-              </div>
-              <AppTextField
-                v-model="totalPackageUsd"
-                type="number"
-                min="0"
-                step="0.01"
-                prefix="$"
-                placeholder="Monto total en USD para nómina"
-                :error-messages="errors.total_package_usd"
-              />
+      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-6">
+        <VForm @submit.prevent="submitForm" class="d-flex flex-column gap-6">
+          
+          <!-- Seccion: Información Personal -->
+          <section>
+            <div class="d-flex align-center gap-2 mb-4">
+              <div class="header-indicator primary shadow-sm"></div>
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos Personales</span>
+            </div>
+
+            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
+              <VRow>
+                <VCol cols="12" sm="6">
+                  <AppTextField
+                    v-model="name"
+                    label="Nombres"
+                    placeholder="Ej: Juan"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.name"
+                    class="shadow-sm"
+                    hide-details="auto"
+                  />
+                </VCol>
+                <VCol cols="12" sm="6">
+                  <AppTextField
+                    v-model="lastName"
+                    label="Apellidos"
+                    placeholder="Ej: Pérez"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.last_name"
+                    class="shadow-sm"
+                    hide-details="auto"
+                  />
+                </VCol>
+                <VCol cols="12" sm="6">
+                  <AppTextField
+                    v-model="identification"
+                    label="Identificación"
+                    type="number"
+                    placeholder="Número de cédula"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.identification"
+                    class="shadow-sm"
+                    hide-details="auto"
+                  />
+                </VCol>
+                <VCol cols="12" sm="6">
+                  <AppTextField
+                    v-model="email"
+                    label="Correo Electrónico"
+                    type="email"
+                    placeholder="ejemplo@correo.com"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.email"
+                    class="shadow-sm"
+                    hide-details="auto"
+                  />
+                </VCol>
+              </VRow>
             </VCard>
-          </VCol>
-        </VRow>
+          </section>
+
+          <!-- Seccion: Accesos y Contrato -->
+          <section>
+            <div class="d-flex align-center gap-2 mb-4">
+              <div class="header-indicator secondary shadow-sm"></div>
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Seguridad y Finanzas</span>
+            </div>
+
+            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
+              <VRow>
+                <VCol cols="12" sm="6" v-if="props.selectedEmployee == null || isAdmin">
+                  <AppTextField
+                    v-model="password"
+                    label="Contraseña"
+                    placeholder="********"
+                    :type="showPassword ? 'text' : 'password'"
+                    variant="outlined"
+                    density="comfortable"
+                    :error-messages="errors.password"
+                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    @click:append-inner="showPassword = !showPassword"
+                    class="shadow-sm"
+                    hide-details="auto"
+                  />
+                </VCol>
+                <VCol cols="12" :sm="props.selectedEmployee == null || isAdmin ? 6 : 12">
+                  <AppSelect
+                    v-model="role"
+                    label="Rol de Sistema"
+                    placeholder="Seleccionar rol"
+                    variant="outlined"
+                    density="comfortable"
+                    :items="roleItems"
+                    :error-messages="errors.role"
+                    class="shadow-sm"
+                    hide-details="auto"
+                  />
+                </VCol>
+                
+                <VCol v-if="props.selectedEmployee != null" cols="12">
+                  <div class="mt-2">
+                    <AppTextField
+                      v-model="totalPackageUsd"
+                      label="Paquete Salarial (USD)"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      prefix="$"
+                      placeholder="Monto total para nómina"
+                      variant="outlined"
+                      density="comfortable"
+                      :error-messages="errors.total_package_usd"
+                      class="shadow-sm"
+                      hide-details="auto"
+                    />
+                    <div class="text-super-xs text-disabled mt-1 px-1">
+                      * Monto de referencia para el cálculo de nómina mensual.
+                    </div>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCard>
+          </section>
+        </VForm>
       </VCardText>
 
-      <VDivider />
-
-      <VCardActions class="pa-6 px-md-8 bg-white">
-        <VRow class="w-100 ma-0">
+      <VCardActions class="pa-4 bg-light border-t">
+        <VRow no-gutters class="w-100">
           <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="tonal"
               size="large"
               block
-              height="48"
-              class="font-weight-black rounded-lg"
+              height="50"
+              class="font-weight-black rounded-lg text-button uppercase"
               @click="closeDialog"
             >
-              CANCELAR
+              Cancelar
             </VBtn>
           </VCol>
           <VCol cols="12" sm="6" class="pa-1">
@@ -287,11 +342,12 @@ watch(
               variant="flat"
               size="large"
               block
-              height="48"
-              class="font-weight-black rounded-lg shadow-primary-sm"
+              height="50"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               @click="submitForm"
             >
-              {{ props.selectedEmployee != null ? 'ACTUALIZAR' : 'GUARDAR' }}
+              <VIcon icon="tabler-device-floppy" class="me-2" />
+              {{ props.selectedEmployee != null ? 'Actualizar' : 'Registrar' }}
             </VBtn>
           </VCol>
         </VRow>
@@ -309,36 +365,38 @@ watch(
   background-color: #f8fafc !important;
 }
 
-.shadow-xs {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 10%) !important;
+.detail-dialog-card {
+  border-radius: 12px !important;
 }
 
-.shadow-sm {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important;
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
 }
 
-.shadow-primary-sm {
-  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 25%) !important;
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.header-indicator.secondary {
+  background-color: rgb(var(--v-theme-secondary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
+  line-height: normal;
 }
 
 .letter-spacing-1 {
   letter-spacing: 1px !important;
 }
 
-.border-dashed {
-  border-width: 2px !important;
-  border-style: dashed !important;
-}
-
-.uppercase {
-  text-transform: uppercase !important;
-}
-
-.leading-tight {
-  line-height: 1.25 !important;
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

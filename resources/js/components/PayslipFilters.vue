@@ -96,28 +96,44 @@ const handleManualPayment = async () => {
     <template #actions-extra>
       <VBtn
         color="success"
-        variant="tonal"
+        variant="elevated"
         size="38"
         icon
         class="rounded-circle shadow-sm"
         @click="emit('download-bulk')"
       >
-        <VIcon icon="tabler-download" size="20" />
-        <VTooltip activator="parent" location="top">Descargar Todo 2025</VTooltip>
+        <VIcon
+          icon="tabler-file-spreadsheet"
+          size="20"
+        />
+        <VTooltip
+          activator="parent"
+          location="top"
+        >
+          Descargar Todo 2025
+        </VTooltip>
       </VBtn>
 
       <VBtn
         color="primary"
-        variant="tonal"
+        variant="elevated"
         size="38"
         icon
-        class="rounded-circle shadow-sm"
+        class="rounded-circle shadow-primary"
         :loading="isGenerating"
         :disabled="isGenerating"
         @click="handleManualPayment"
       >
-        <VIcon icon="tabler-player-play" size="20" />
-        <VTooltip activator="parent" location="top">Generar Nómina Manual</VTooltip>
+        <VIcon
+          icon="tabler-player-play-filled"
+          size="20"
+        />
+        <VTooltip
+          activator="parent"
+          location="top"
+        >
+          Generar Nómina Manual
+        </VTooltip>
       </VBtn>
     </template>
   </AppFilterBase>
@@ -125,6 +141,14 @@ const handleManualPayment = async () => {
 
 <style scoped>
 .shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
 }
 </style>

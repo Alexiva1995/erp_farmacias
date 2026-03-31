@@ -152,6 +152,18 @@ const handleDownloadBulk = async () => {
     loading.value = false;
   }
 };
+
+const handleManualPayment = async () => {
+  try {
+    const { data } = await axios.post("/finances/payslips");
+    if (data.status === "success") {
+      toast.success(data.message || "Nómina generada exitosamente");
+      fetchPayslips();
+    }
+  } catch (error) {
+    toast.error("Error al generar la nómina manual");
+  }
+};
 </script>
 
 <template>

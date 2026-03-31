@@ -23,6 +23,7 @@ const headers = [
     key: 'created_at', 
     sortable: true, 
     value: item => {
+      if (!item.created_at) return 'S/F';
       const fechaStr = item.created_at.replace('Z', '');
       return day(fechaStr).format('DD/MM/YYYY');
     }
@@ -144,7 +145,7 @@ const handleMobilePageChange = (newPage) => {
               <div class="stat-box text-center">
                 <span class="label">Tipo</span>
                 <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'success'" variant="flat" class="font-weight-black shadow-sm">
-                  {{ item.type_company.toUpperCase() }}
+                  {{ (item.type_company || 'N/A').toUpperCase() }}
                 </VChip>
               </div>
               <div class="stat-box text-right">

@@ -15,7 +15,7 @@ const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const { mobile } = useDisplay();
 const dialogTitle = computed(() =>
-  isEditMode.value ? "Editar Productos Asignados" : "Asignar Productos",
+  isEditMode.value ? "Editar Asignación" : "Asignar Productos",
 );
 
 const formData = ref({
@@ -32,7 +32,6 @@ const isSearching = ref(false);
 
 // Cargar productos remotos filtrando por ID o Nombre
 const loadRemoteProducts = async (query = "") => {
-  // Si es número, buscar desde el primer dígito. Si es texto, esperar a 2 caracteres.
   const isNumeric = /^\d+$/.test(query);
   if (query.length < (isNumeric ? 1 : 2)) {
      remoteProducts.value = [];
@@ -72,9 +71,8 @@ watch(searchProduct, (val) => {
 watch(
   [() => props.modelValue, () => props.employee],
   ([newVisible], [oldVisible]) => {
-    // Solo actuar cuando el dialog pasa de cerrado a abierto
     if (!newVisible) return;
-    if (newVisible && !oldVisible !== undefined) {
+    if (newVisible && (oldVisible === undefined || oldVisible === false)) {
       if (isEditMode.value && props.employee?.employee_id) {
         formData.value = {
           employee_id: props.employee.employee_id,
@@ -152,8 +150,7 @@ const handleRemoveProduct = (productId) => {
 const handleEditProduct = (product) => {
   editingProduct.value = product.id;
   tempProductId.value = product.id;
-  // Preparar lista de edición con el producto actual
-  remoteProducts.value = []; // Limpiar antes de añadir
+  remoteProducts.value = [];
   remoteProducts.value.push({ 
     id: product.id, 
     name: product.name, 
@@ -194,12 +191,10 @@ const handleCancelEdit = () => {
 
 const handleSubmit = () => {
   if (!formData.value.employee_id) return;
-
   const dataToSend = {
     employee_id: formData.value.employee_id,
     product_ids: formData.value.products.map((prod) => prod.id),
   };
-
   emit("save", dataToSend);
 };
 
@@ -210,14 +205,7 @@ const availableProductsWithId = computed(() => {
 });
 
 const getProductColor = (index) => {
-  const colors = [
-    "success",
-    "info",
-    "warning",
-    "secondary",
-    "primary",
-    "error",
-  ];
+  const colors = ["success", "info", "warning", "secondary", "primary", "error"];
   return colors[index % colors.length];
 };
 </script>
@@ -233,299 +221,261 @@ const getProductColor = (index) => {
   >
     <VCard v-if="formData" class="rounded-xl border-0 shadow-xl overflow-hidden d-flex flex-column">
       <!-- Header Premium -->
-      <div class="premium-header pa-5 d-flex align-center">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="white" variant="tonal" size="40" class="rounded-lg">
-            <VIcon :icon="isEditMode ? 'tabler-edit' : 'tabler-package-import'" size="22" color="white" />
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+            <VIcon :icon="isEditMode ? 'tabler-user-cog' : 'tabler-package'" size="24" color="primary" />
           </VAvatar>
           <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-black text-white leading-none mb-1">{{ dialogTitle }}</span>
-            <span class="text-xs text-white opacity-70 font-weight-medium">
-              {{ isEditMode ? `Empleado: ${props.employee?.employee_name || ''}` : 'Selecciona empleado y productos' }}
-            </span>
-          </div>
-        </div>
-        <VSpacer />
-        <VBtn icon="tabler-x" variant="text" color="white" size="small" class="rounded-lg bg-white-opacity-10" @click="closeDialog" />
-      </div>
-
-      <VDivider class="opacity-10" />
-
-      <VCardText class="flex-grow-1 pa-6" style="max-block-size: 70vh; overflow-y: auto;">
-        <VForm @submit.prevent="handleSubmit">
-          <!-- Selector de Empleado -->
-          <div class="mb-6">
-            <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Empleado *</span>
-            <VSelect
-              v-model="formData.employee_id"
-              :items="displayEmployees"
-              :disabled="isEditMode"
-              placeholder="Selecciona un empleado"
-              density="compact"
-              color="primary"
-              variant="outlined"
-              :error-messages="props.errors.employee_id"
-              clearable
-              hide-details="auto"
-              class="premium-input"
-              @update:model-value="emit('clear-errors')"
-            >
-              <template #prepend-inner>
-                <VIcon icon="tabler-user" size="18" color="disabled" class="me-2" />
-              </template>
-              <template #selection="{ item }">
-                <div class="d-flex align-center gap-2">
-                  <VAvatar size="22" color="primary" variant="tonal" class="rounded">
-                    <span class="text-super-xs font-weight-black">
-                      {{ item.title.split(" ").map((n) => n[0]).join("").substring(0, 2) }}
-                    </span>
-                  </VAvatar>
-                  <span class="text-xs font-weight-bold text-capitalize">{{ item.title }}</span>
-                </div>
-              </template>
-            </VSelect>
-          </div>
-
-          <!-- Agregar Nuevo Producto -->
-          <div class="mb-2">
-            <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Agregar Producto</span>
-            <div class="d-flex gap-2">
-              <VAutocomplete
-                v-model="formData.new_product_id"
-                v-model:search="searchProduct"
-                :items="availableProductsWithId"
-                :loading="isSearching"
-                item-title="displayLabel"
-                item-value="id"
-                placeholder="Escribir ID o nombre del producto..."
-                :disabled="!formData.employee_id"
-                clearable
-                class="flex-grow-1 premium-input"
-                density="compact"
-                variant="outlined"
-                color="primary"
-                hide-details
-                :no-filter="true"
-              >
-                <template #prepend-inner>
-                  <VIcon icon="tabler-pill" size="18" color="disabled" class="me-2" />
-                </template>
-              </VAutocomplete>
-              <VBtn
-                color="success"
-                variant="flat"
-                class="rounded-lg"
-                :disabled="!formData.new_product_id || !formData.employee_id"
-                @click="handleAddProduct"
-                style="block-size: 38px; min-inline-size: 40px;"
-              >
-                <VIcon icon="tabler-plus" size="20" />
-              </VBtn>
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              {{ dialogTitle }}
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+                {{ isEditMode ? `Gestión de ID: #${props.employee.employee_id}` : 'Asignación de productos por empleado' }}
+              </span>
             </div>
           </div>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="closeDialog" />
+        </div>
+      </VCardTitle>
 
-          <!-- Lista de Productos Asignados -->
-          <div class="mt-6">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase">Productos Asignados</span>
-              <VChip
-                :color="formData.products.length > 0 ? 'success' : 'surface-variant'"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black rounded"
-                style="color: white !important;"
-              >
-                {{ formData.products.length }}
+      <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto" style="max-height: 70vh;">
+        <VForm @submit.prevent="handleSubmit" class="d-flex flex-column gap-6">
+          
+          <!-- Sección Empleado -->
+          <section>
+            <div class="d-flex align-center gap-2 mb-4">
+              <div class="header-indicator primary shadow-sm"></div>
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Selección de Empleado</span>
+            </div>
+
+            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
+              <VRow dense>
+                <VCol cols="12">
+                  <AppSelect
+                    v-model="formData.employee_id"
+                    :items="displayEmployees"
+                    :disabled="isEditMode"
+                    label="Empleado responsable"
+                    placeholder="Seleccionar empleado..."
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    class="shadow-sm"
+                    :error-messages="props.errors.employee_id"
+                    prepend-inner-icon="tabler-user"
+                  >
+                    <template #selection="{ item }">
+                      <div class="d-flex align-center gap-2">
+                        <VAvatar size="24" color="primary" variant="tonal" class="rounded">
+                          <span class="text-super-xs font-weight-black">
+                            {{ item.title.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() }}
+                          </span>
+                        </VAvatar>
+                        <span class="text-xs font-weight-bold">{{ item.title }}</span>
+                      </div>
+                    </template>
+                  </AppSelect>
+                </VCol>
+              </VRow>
+            </VCard>
+          </section>
+
+          <!-- Sección Gestión -->
+          <section>
+            <div class="d-flex align-center justify-space-between mb-4">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator primary shadow-sm"></div>
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Gestión de Catálogo</span>
+              </div>
+              <VChip v-if="formData.products.length > 0" color="primary" size="x-small" variant="flat" class="font-weight-black rounded">
+                {{ formData.products.length }} ASIGNADOS
               </VChip>
             </div>
 
-              <!-- Mensaje cuando no hay productos -->
-              <VAlert
-                v-if="formData.products.length === 0"
-                type="info"
-                variant="tonal"
-                rounded="lg"
-                class="mb-0"
-              >
-                <div class="d-flex align-center gap-2">
-                  <VIcon icon="tabler-info-circle" />
-                  <span>No hay productos asignados</span>
-                </div>
-              </VAlert>
+            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border mb-4">
+              <VRow dense>
+                <VCol cols="12">
+                  <div class="d-flex align-end gap-3">
+                    <AppAutocomplete
+                      v-model="formData.new_product_id"
+                      v-model:search="searchProduct"
+                      :items="availableProductsWithId"
+                      :loading="isSearching"
+                      item-title="displayLabel"
+                      item-value="id"
+                      label="Añadir producto"
+                      placeholder="Escribir ID o nombre..."
+                      :disabled="!formData.employee_id"
+                      variant="outlined"
+                      density="comfortable"
+                      hide-details
+                      :no-filter="true"
+                      class="flex-grow-1 shadow-sm"
+                      prepend-inner-icon="tabler-pill"
+                    />
+                    <VBtn
+                      color="primary"
+                      variant="flat"
+                      class="rounded-lg shadow-primary"
+                      height="48"
+                      min-width="50"
+                      :disabled="!formData.new_product_id || !formData.employee_id"
+                      @click="handleAddProduct"
+                    >
+                      <VIcon icon="tabler-plus" size="24" />
+                    </VBtn>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCard>
 
-              <!-- Tabla de Productos -->
-              <VCard v-else variant="outlined" class="rounded-lg border">
-                <VList class="pa-0">
-                  <template
-                    v-for="(product, index) in formData.products"
-                    :key="`prod-${product.id}-${index}`"
-                  >
-                    <VListItem class="px-4 py-2">
-                      <template #prepend>
-                        <VAvatar
-                          :color="getProductColor(index)"
-                          variant="tonal"
-                          size="32"
-                        >
-                          <VIcon icon="tabler-pill" size="18" />
-                        </VAvatar>
-                      </template>
+            <!-- Lista de Productos -->
+            <VCard variant="flat" class="border rounded-lg bg-white elevation-1 overflow-hidden">
+              <div v-if="formData.products.length === 0" class="pa-8 d-flex flex-column align-center justify-center text-center">
+                <VIcon icon="tabler-package-off" size="40" class="text-disabled opacity-20 mb-3" />
+                <div class="text-xs font-weight-black text-disabled uppercase">No hay productos asignados aún</div>
+              </div>
 
-                      <VListItemTitle>
-                        <!-- Modo normal: mostrar ID y nombre -->
-                        <div
-                          v-if="editingProduct !== product.id"
-                          class="d-flex align-center gap-2"
-                        >
-                          <VChip
-                            size="small"
-                            color="primary"
-                            variant="tonal"
-                            label
-                          >
-                            {{ product.id }}
-                          </VChip>
-                          <span class="text-body-2 font-weight-medium">
-                            {{ product.name }}
-                          </span>
-                        </div>
+              <VList v-else class="pa-0">
+                <template v-for="(product, index) in formData.products" :key="product.id">
+                  <VListItem class="px-4 py-3">
+                    <template #prepend>
+                      <VAvatar :color="getProductColor(index)" variant="tonal" size="36" class="rounded-lg">
+                        <VIcon icon="tabler-pill" size="20" />
+                      </VAvatar>
+                    </template>
 
-                        <!-- Modo edición: mostrar select con ID -->
-                        <VAutocomplete
-                          v-else
-                          v-model="tempProductId"
-                          v-model:search="searchProduct"
-                          :items="remoteProducts"
-                          :loading="isSearching"
-                          item-title="displayLabel"
-                          item-value="id"
-                          hide-details
-                          class="my-1"
-                          :no-filter="true"
-                        />
-                      </VListItemTitle>
+                    <VListItemTitle>
+                      <div v-if="editingProduct !== product.id" class="d-flex align-center gap-2">
+                        <VChip size="x-small" color="primary" variant="flat" label class="rounded font-weight-black">
+                          {{ product.id }}
+                        </VChip>
+                        <span class="text-sm font-weight-black uppercase text-high-emphasis">
+                          {{ product.name }}
+                        </span>
+                      </div>
+                      <AppAutocomplete
+                        v-else
+                        v-model="tempProductId"
+                        v-model:search="searchProduct"
+                        :items="remoteProducts"
+                        :loading="isSearching"
+                        item-title="displayLabel"
+                        item-value="id"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        class="shadow-sm"
+                        :no-filter="true"
+                      />
+                    </VListItemTitle>
 
-                      <template #append>
-                        <div class="d-flex gap-1">
-                          <!-- Botones en modo normal -->
-                          <template v-if="editingProduct !== product.id">
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="warning"
-                              @click="handleEditProduct(product)"
-                            >
-                              <VIcon icon="tabler-edit" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Cambiar
-                              </VTooltip>
-                            </VBtn>
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="error"
-                              @click="handleRemoveProduct(product.id)"
-                            >
-                              <VIcon icon="tabler-trash" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Eliminar
-                              </VTooltip>
-                            </VBtn>
-                          </template>
+                    <template #append>
+                      <div class="d-flex gap-1">
+                        <template v-if="editingProduct !== product.id">
+                          <VBtn icon variant="tonal" size="x-small" color="warning" class="rounded" @click="handleEditProduct(product)">
+                            <VIcon icon="tabler-edit" size="18" />
+                          </VBtn>
+                          <VBtn icon variant="tonal" size="x-small" color="error" class="rounded" @click="handleRemoveProduct(product.id)">
+                            <VIcon icon="tabler-trash" size="18" />
+                          </VBtn>
+                        </template>
+                        <template v-else>
+                          <VBtn icon variant="flat" size="x-small" color="success" class="rounded" @click="handleSaveEdit(product.id)">
+                            <VIcon icon="tabler-check" size="18" />
+                          </VBtn>
+                          <VBtn icon variant="flat" size="x-small" color="error" class="rounded" @click="handleCancelEdit">
+                            <VIcon icon="tabler-x" size="18" />
+                          </VBtn>
+                        </template>
+                      </div>
+                    </template>
+                  </VListItem>
+                  <VDivider v-if="index < formData.products.length - 1" class="border-opacity-10" />
+                </template>
+              </VList>
+            </VCard>
+          </section>
 
-                          <!-- Botones en modo edición -->
-                          <template v-else>
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="success"
-                              @click="handleSaveEdit(product.id)"
-                            >
-                              <VIcon icon="tabler-check" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Guardar
-                              </VTooltip>
-                            </VBtn>
-                            <VBtn
-                              icon
-                              variant="text"
-                              size="x-small"
-                              color="error"
-                              @click="handleCancelEdit"
-                            >
-                              <VIcon icon="tabler-x" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                Cancelar
-                              </VTooltip>
-                            </VBtn>
-                          </template>
-                        </div>
-                      </template>
-                    </VListItem>
-                    <VDivider v-if="index < formData.products.length - 1" class="opacity-10" />
-                  </template>
-                </VList>
-              </VCard>
-          </div>
         </VForm>
-
       </VCardText>
 
-      <VDivider class="opacity-10" />
-
-      <VCardActions class="pa-6 d-flex gap-3 mt-auto">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          class="rounded-lg font-weight-black flex-grow-1 h-44"
-          @click="closeDialog"
-        >
-          CANCELAR
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          :disabled="!formData.employee_id || formData.products.length === 0"
-          class="rounded-lg font-weight-black flex-grow-1 h-44 shadow-sm"
-          @click="handleSubmit"
-        >
-          <VIcon start :icon="isEditMode ? 'tabler-refresh' : 'tabler-device-floppy'" size="18" />
-          {{ isEditMode ? "ACTUALIZAR" : "GUARDAR" }}
-        </VBtn>
+      <VCardActions class="pa-4 bg-light border-t">
+        <VRow no-gutters class="w-100">
+          <VCol cols="12" sm="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeDialog"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :disabled="!formData.employee_id || formData.products.length === 0"
+              @click="handleSubmit"
+            >
+              <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />
+              Guardar Cambios
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.premium-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #2b3341 100%) !important;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-white-opacity-10 {
-  background-color: rgba(255, 255, 255, 10%) !important;
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-  line-height: 1;
+  line-height: normal;
 }
 
-.leading-none {
-  line-height: 1;
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
 }
 
-.h-44 {
-  block-size: 44px !important;
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
-:deep(.premium-input) {
-  .v-field__outline {
-    --v-field-border-opacity: 0.15;
-  }
+.leading-tight {
+  line-height: 1.25 !important;
 }
 </style>

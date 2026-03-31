@@ -206,156 +206,220 @@ watch(
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Header Premium con Gradiente -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
-            <VIcon icon="tabler-tag" color="primary" size="26" />
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-tag"
+              size="24"
+              color="primary"
+            />
           </VAvatar>
-          <div>
-            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">{{ dialogTitle }}</h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
-              Configuración de promociones individuales
-            </span>
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              {{ dialogTitle }}
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Promociones Individuales de Productos • Barrio Sucre
+              </span>
+            </div>
           </div>
           <VSpacer />
           <VBtn
-            icon
+            icon="tabler-x"
             variant="tonal"
             color="white"
             size="small"
             class="rounded-lg"
             @click="onCancel"
             :disabled="props.loading"
-          >
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-6 bg-light">
-        <VRow dense>
-          <!-- Selector de Producto -->
-          <VCol cols="12">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block">Producto en Oferta</span>
-            <VAutocomplete
-              v-if="!props.isEditing"
-              v-model="localFormData.product_id"
-              placeholder="BUSCAR POR NOMBRE, ID O CÓDIGO..."
-              variant="outlined"
-              :items="availableProducts"
-              item-title="name"
-              item-value="id"
-              clearable
-              no-data-text="No se encontraron productos"
-              :loading="loadingProducts"
-              :disabled="props.loading"
-              :custom-filter="() => true"
-              density="compact"
-              hide-details
-              class="premium-input-compact mb-4"
-              @update:search="handleProductSearch"
+      <VCardText class="pa-4 pa-sm-6 bg-light">
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Configuración de la Oferta</span>
+        </div>
+
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-xl border shadow-sm mb-0"
+        >
+          <VRow dense>
+            <!-- Selector de Producto -->
+            <VCol cols="12">
+              <div class="mb-4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Producto en Oferta</span>
+                <VAutocomplete
+                  v-if="!props.isEditing"
+                  v-model="localFormData.product_id"
+                  placeholder="BUSCAR POR NOMBRE, ID O CÓDIGO..."
+                  variant="outlined"
+                  :items="availableProducts"
+                  item-title="name"
+                  item-value="id"
+                  clearable
+                  no-data-text="No se encontraron productos"
+                  :loading="loadingProducts"
+                  :disabled="props.loading"
+                  :custom-filter="() => true"
+                  density="comfortable"
+                  hide-details
+                  class="rounded-lg"
+                  @update:search="handleProductSearch"
+                >
+                  <template #item="{ props: itemProps, item: productItem }">
+                    <VListItem v-bind="{ ...itemProps, title: '' }">
+                      <VListItemTitle class="font-weight-black text-sm uppercase">
+                        {{ productItem.raw.name }}
+                      </VListItemTitle>
+                      <VListItemSubtitle class="text-super-xs font-weight-bold uppercase">
+                        ID: {{ productItem.raw.id }} | {{ productItem.raw.laboratory?.name || 'S/L' }} | <span class="text-success font-weight-black">${{ productItem.raw.sale_price }}</span>
+                      </VListItemSubtitle>
+                    </VListItem>
+                  </template>
+                </VAutocomplete>
+                <VTextField
+                  v-else
+                  :model-value="selectedProductDisplay"
+                  readonly
+                  variant="flat"
+                  density="comfortable"
+                  bg-color="grey-lighten-4"
+                  class="rounded-lg font-weight-bold"
+                  hide-details
+                />
+              </div>
+            </VCol>
+
+            <!-- Descuento y Vigencia -->
+            <VCol
+              cols="12"
+              md="4"
             >
-              <template #item="{ props: itemProps, item: productItem }">
-                <VListItem v-bind="{ ...itemProps, title: '' }">
-                  <VListItemTitle class="font-weight-black text-sm uppercase">
-                    {{ productItem.raw.name }}
-                  </VListItemTitle>
-                  <VListItemSubtitle class="text-super-xs font-weight-bold uppercase">
-                    ID: {{ productItem.raw.id }} | {{ productItem.raw.laboratory?.name || 'S/L' }} | <span class="text-success">${{ productItem.raw.sale_price }}</span>
-                  </VListItemSubtitle>
-                </VListItem>
-              </template>
-            </VAutocomplete>
-            <VTextField
-              v-else
-              :model-value="selectedProductDisplay"
-              readonly
-              variant="outlined"
-              density="compact"
-              class="premium-input-compact mb-4"
-              bg-color="white"
-            />
-          </VCol>
+              <div class="mb-4 mb-md-0">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">% Descuento</span>
+                <VTextField
+                  v-model="localFormData.discount_percent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details
+                  prepend-inner-icon="tabler-percentage"
+                  class="rounded-lg font-weight-black"
+                  :error="!!props.formErrors.discount_percent"
+                  :disabled="props.loading"
+                />
+              </div>
+            </VCol>
 
-          <!-- Descuento y Vigencia -->
-          <VCol cols="12" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block">% Descuento</span>
-            <AppTextField
-              v-model="localFormData.discount_percent"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              variant="outlined"
-              density="compact"
-              hide-details
-              prepend-inner-icon="tabler-percentage"
-              class="premium-input-compact"
-              :error="!!props.formErrors.discount_percent"
-              :disabled="props.loading"
-            />
-          </VCol>
+            <VCol
+              cols="12"
+              sm="6"
+              md="4"
+            >
+              <div class="mb-4 mb-md-0">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Inicio</span>
+                <AppDateTimePicker
+                  v-model="localFormData.start_date"
+                  placeholder="SELECCIONAR FECHA"
+                  prepend-inner-icon="tabler-calendar-event"
+                  density="comfortable"
+                  hide-details
+                  class="rounded-lg"
+                  :error="!!props.formErrors.start_date"
+                  :disabled="props.loading"
+                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                />
+              </div>
+            </VCol>
 
-          <VCol cols="12" sm="6" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block">Fecha Inicio</span>
-            <AppDateTimePicker
-              v-model="localFormData.start_date"
-              placeholder="SELECCIONAR FECHA"
-              prepend-inner-icon="tabler-calendar-event"
-              density="compact"
-              hide-details
-              class="premium-input-compact"
-              :error="!!props.formErrors.start_date"
-              :disabled="props.loading"
-              :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-            />
-          </VCol>
-
-          <VCol cols="12" sm="6" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block">Fecha Final</span>
-            <AppDateTimePicker
-              v-model="localFormData.end_date"
-              placeholder="SELECCIONAR FECHA"
-              prepend-inner-icon="tabler-calendar-off"
-              density="compact"
-              hide-details
-              class="premium-input-compact"
-              :error="!!props.formErrors.end_date"
-              :disabled="props.loading"
-              :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-            />
-          </VCol>
-        </VRow>
+            <VCol
+              cols="12"
+              sm="6"
+              md="4"
+            >
+              <div>
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Final</span>
+                <AppDateTimePicker
+                  v-model="localFormData.end_date"
+                  placeholder="SELECCIONAR FECHA"
+                  prepend-inner-icon="tabler-calendar-off"
+                  density="comfortable"
+                  hide-details
+                  class="rounded-lg"
+                  :error="!!props.formErrors.end_date"
+                  :disabled="props.loading"
+                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                />
+              </div>
+            </VCol>
+          </VRow>
+        </VCard>
 
         <!-- Resumen de precios Premium -->
         <VExpandTransition>
-          <div v-if="priceInfo" class="mt-8 pa-4 rounded-xl bg-primary-lighten-5 border-dashed-2">
+          <div
+            v-if="priceInfo"
+            class="mt-6 pa-5 rounded-xl bg-primary bg-opacity-10 border-dashed-2 animate__animated animate__fadeIn"
+          >
             <div class="d-flex align-center justify-space-between mb-4">
-              <div class="d-flex align-center gap-3">
-                <VAvatar color="primary" size="32" variant="tonal">
-                  <VIcon icon="tabler-calculator" size="18" />
+              <div class="d-flex align-center gap-2">
+                <VAvatar
+                  color="primary"
+                  size="32"
+                  variant="tonal"
+                  class="rounded-lg"
+                >
+                  <VIcon
+                    icon="tabler-calculator"
+                    size="18"
+                  />
                 </VAvatar>
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Simulación de Oferta</span>
+                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Simulación de la Oferta</span>
               </div>
-              <VChip v-if="priceInfo.salePrice > priceInfo.finalPrice" color="success" size="small" class="font-weight-black rounded">
+              <VChip
+                v-if="priceInfo.salePrice > priceInfo.finalPrice"
+                color="success"
+                variant="flat"
+                size="small"
+                class="font-weight-black px-3 shadow-sm rounded-lg"
+              >
                 AHORRO: ${{ (priceInfo.salePrice - priceInfo.finalPrice).toFixed(2) }}
               </VChip>
             </div>
 
             <VRow no-gutters>
               <VCol cols="6">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Precio Actual</span>
+                <div class="d-flex flex-column leading-none">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Precio Actual (Lista)</span>
                   <span class="text-h6 font-weight-bold text-medium-emphasis text-decoration-line-through">
                     ${{ priceInfo.salePrice.toFixed(2) }}
                   </span>
                 </div>
               </VCol>
-              <VCol cols="6" class="text-end">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-black text-success uppercase mb-1">Precio con Oferta</span>
+              <VCol
+                cols="6"
+                class="text-end"
+              >
+                <div class="d-flex flex-column leading-none">
+                  <span class="text-super-xs font-weight-black text-success uppercase mb-1">Precio Final Oferta</span>
                   <span class="text-h4 font-weight-black text-success leading-none">
                     ${{ priceInfo.finalPrice.toFixed(2) }}
                   </span>
@@ -369,15 +433,21 @@ watch(
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-6 bg-light border-t">
-        <VRow dense class="w-100 ma-0">
-          <VCol cols="12" sm="6" class="pa-1">
+      <VCardActions class="pa-4 bg-white border-t px-6">
+        <VRow
+          dense
+          class="w-100 ma-0"
+        >
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
             <VBtn
               color="secondary"
               variant="tonal"
-              size="large"
+              height="50"
               block
-              height="48"
               class="font-weight-black rounded-lg text-button uppercase"
               @click="onCancel"
               :disabled="props.loading"
@@ -385,18 +455,25 @@ watch(
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
             <VBtn
               color="primary"
               variant="flat"
-              size="large"
+              height="50"
               block
-              height="48"
-              class="font-weight-black rounded-lg shadow-primary-lg text-button uppercase"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="props.loading"
               @click="onSave"
             >
-              <VIcon icon="tabler-device-floppy" class="me-2" />
+              <VIcon
+                start
+                icon="tabler-device-floppy"
+                size="18"
+              />
               {{ props.isEditing ? "Guardar Cambios" : "Crear Oferta" }}
             </VBtn>
           </VCol>
@@ -408,40 +485,33 @@ watch(
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
 }
 
 .bg-light {
-  background-color: #f8fafc !important;
+  background-color: #f8faff !important;
 }
 
-.premium-input-compact :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.15 !important;
-
-  color: rgba(var(--v-border-color), 1) !important;
+.detail-dialog-card {
+  border-radius: 12px !important;
 }
 
-.premium-input-compact :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1 !important;
-
-  color: rgb(var(--v-theme-primary)) !important;
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
 }
 
-.premium-input-compact :deep(.v-field) {
-  border-radius: 8px !important;
-  background-color: white !important;
-  min-block-size: 38px !important;
-  padding-inline-start: 12px !important;
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
 }
 
-.premium-input-compact :deep(.v-field__input) {
-  display: flex !important;
-  align-items: center !important;
-  font-size: 0.75rem !important;
-  font-weight: 700;
-  min-block-size: 38px !important;
-  padding-block: 0 !important;
-  text-transform: uppercase;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
@@ -449,27 +519,23 @@ watch(
   line-height: normal;
 }
 
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
-}
-
-.shadow-primary-lg {
-  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important;
-}
-
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
 .letter-spacing-1 {
-  letter-spacing: 1.5px !important;
+  letter-spacing: 1px !important;
 }
 
 .leading-none {
   line-height: 1 !important;
 }
 
-.leading-tight {
-  line-height: 1.25 !important;
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.border-dashed-2 {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.italic {
+  font-style: italic;
 }
 </style>

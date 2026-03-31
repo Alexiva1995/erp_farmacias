@@ -361,174 +361,255 @@ defineExpose({ printReport });
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
   >
-    <VCard class="rounded-xl border shadow-sm">
-      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b bg-surface">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg">
-            <VIcon icon="tabler-truck-delivery" />
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-truck-delivery"
+              size="24"
+              color="primary"
+            />
           </VAvatar>
-          <div>
-            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">DETALLE DE ENTREGAS</h3>
-            <span class="text-xs text-disabled font-weight-medium uppercase">Reporte N° {{ props.cashData?.id }} • {{ props.cashData?.created_at ? formatDateTime(props.cashData.created_at, "date") : '' }}</span>
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Detalle de Entregas
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Reporte N° {{ props.cashData?.id }} • {{ props.cashData?.created_at ? formatDateTime(props.cashData.created_at, "date") : '' }}
+              </span>
+            </div>
           </div>
+          <VSpacer />
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeModal"
+          />
         </div>
-        <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
       </VCardTitle>
 
-      <VCardText class="pa-6 pt-4" style="background-color: #f8f9fa;">
+      <VCardText class="pa-4 pa-sm-6 bg-light">
         <!-- RESUMEN GLOBAL DE ENTREGAS -->
-        <h4 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center gap-2">
-          <VIcon icon="tabler-report-money" size="20" color="primary" /> Total Entregas por Monedas
-        </h4>
-        <VRow class="mb-6">
-          <VCol cols="12" sm="6" md="3">
-            <VCard variant="outlined" class="bg-white rounded-lg border h-100">
-              <VCardItem class="pa-4">
-                <div class="d-flex justify-space-between align-start mb-1">
-                  <span class="text-caption font-weight-bold text-medium-emphasis">USD ENTREGADO</span>
-                  <VIcon icon="tabler-currency-dollar" color="success" size="20" />
-                </div>
-                <h4 class="text-h6 font-weight-bold text-success">{{ formatCurrency(totalUsdGlobal, 'USD') }}</h4>
-                <div class="text-caption text-medium-emphasis mt-1">Efectivo + Electrónico</div>
-              </VCardItem>
-            </VCard>
-          </VCol>
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Resumen de Valores Entregados</span>
+        </div>
 
-          <VCol cols="12" sm="6" md="3">
-            <VCard variant="outlined" class="bg-white rounded-lg border h-100">
-              <VCardItem class="pa-4">
-                <div class="d-flex justify-space-between align-start mb-1">
-                  <span class="text-caption font-weight-bold text-medium-emphasis">BS ENTREGADO</span>
-                  <VIcon icon="tabler-currency-bolivar" color="warning" size="20" />
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+        >
+          <VRow>
+            <VCol
+              cols="12"
+              sm="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">USD Entregado</span>
+                <div class="d-flex align-center gap-1">
+                  <VIcon
+                    icon="tabler-currency-dollar"
+                    color="success"
+                    size="18"
+                  />
+                  <h4 class="text-h6 font-weight-black text-success">
+                    {{ formatCurrency(totalUsdGlobal, 'USD') }}
+                  </h4>
                 </div>
-                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(totalBsGlobal, 'BS') }}</h4>
-                <div class="text-caption text-warning font-weight-medium mt-1">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</div>
-              </VCardItem>
-            </VCard>
-          </VCol>
+                <span class="text-super-xs text-medium-emphasis mt-1 italic">Efectivo + Electrónico</span>
+              </div>
+            </VCol>
 
-          <VCol cols="12" sm="6" md="3">
-            <VCard variant="outlined" class="bg-white rounded-lg border h-100">
-              <VCardItem class="pa-4">
-                <div class="d-flex justify-space-between align-start mb-1">
-                  <span class="text-caption font-weight-bold text-medium-emphasis">COP ENTREGADO</span>
-                  <VIcon icon="tabler-currency-peso" color="info" size="20" />
+            <VCol
+              cols="12"
+              sm="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">BS Entregado</span>
+                <div class="d-flex align-center gap-1">
+                  <VIcon
+                    icon="tabler-currency-bolivar"
+                    color="warning"
+                    size="18"
+                  />
+                  <h4 class="text-h6 font-weight-black text-high-emphasis">
+                    {{ formatCurrency(totalBsGlobal, 'BS') }}
+                  </h4>
                 </div>
-                <h4 class="text-h6 font-weight-bold">{{ formatCurrency(totalCopGlobal, 'COP') }}</h4>
-                <div class="text-caption text-info font-weight-medium mt-1">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</div>
-              </VCardItem>
-            </VCard>
-          </VCol>
+                <span class="text-super-xs text-warning font-weight-bold mt-1">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</span>
+              </div>
+            </VCol>
 
-          <VCol cols="12" sm="6" md="3">
-            <VCard variant="flat" class="bg-primary text-white rounded-lg border-0 shadow-sm h-100">
-              <VCardItem class="pa-4">
-                <div class="d-flex justify-space-between align-start mb-1">
-                  <span class="text-caption font-weight-bold text-white opacity-80">CARGA TOTAL (USD)</span>
-                  <VIcon icon="tabler-sum" color="white" size="20" />
+            <VCol
+              cols="12"
+              sm="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">COP Entregado</span>
+                <div class="d-flex align-center gap-1">
+                  <VIcon
+                    icon="tabler-currency-peso"
+                    color="info"
+                    size="18"
+                  />
+                  <h4 class="text-h6 font-weight-black text-high-emphasis">
+                    {{ formatCurrency(totalCopGlobal, 'COP') }}
+                  </h4>
                 </div>
-                <h4 class="text-h5 font-weight-bold text-white mt-2">
+                <span class="text-super-xs text-info font-weight-bold mt-1">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</span>
+              </div>
+            </VCol>
+
+            <VCol
+              cols="12"
+              sm="6"
+              md="3"
+            >
+              <VCard
+                variant="flat"
+                color="primary"
+                class="rounded-lg pa-3 text-center"
+              >
+                <span class="text-super-xs font-weight-black text-white opacity-80 uppercase d-block mb-1">Carga Total (USD)</span>
+                <h4 class="text-h5 font-weight-black text-white leading-none">
                   {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}
                 </h4>
-              </VCardItem>
-            </VCard>
-          </VCol>
-        </VRow>
+              </VCard>
+            </VCol>
+          </VRow>
+        </VCard>
 
-        <VDivider class="mb-5" />
-
-        <h4 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center gap-2">
-          <VIcon icon="tabler-users" size="20" color="primary" /> Entregas por Cajero
-        </h4>
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator secondary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Entregas por Cajero</span>
+        </div>
 
         <!-- LISTA DE CAJEROS CON ENTREGAS -->
         <VRow>
-          <VCol cols="12" md="6" v-for="seller in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))" :key="seller.seller_id">
-            <VCard variant="outlined" class="bg-white rounded-lg border h-100">
-              <VCardItem class="pa-4 pb-0 border-b">
-                <div class="d-flex justify-space-between align-start mb-3">
-                  <div class="d-flex gap-3 align-center">
-                    <VAvatar color="secondary" size="38" variant="tonal" class="font-weight-bold text-body-1">
-                      {{ seller.seller_name?.substring(0,2).toUpperCase() }}
-                    </VAvatar>
-                    <div style="line-height: 1.2;">
-                      <h5 class="text-subtitle-1 font-weight-bold mb-0 text-capitalize">{{ seller.seller_name }}</h5>
-                      <span class="text-caption text-medium-emphasis">Cajero #{{ seller.seller_id }}</span>
-                    </div>
+          <VCol
+            v-for="seller in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))"
+            :key="seller.seller_id"
+            cols="12"
+            md="6"
+          >
+            <VCard
+              variant="flat"
+              class="bg-white rounded-xl border shadow-sm h-100 overflow-hidden"
+            >
+              <div class="pa-4 border-b bg-light d-flex justify-space-between align-center">
+                <div class="d-flex gap-3 align-center">
+                  <VAvatar
+                    color="primary"
+                    size="40"
+                    variant="tonal"
+                    class="font-weight-black rounded-lg"
+                  >
+                    {{ seller.seller_name?.substring(0,2).toUpperCase() }}
+                  </VAvatar>
+                  <div class="leading-none">
+                    <h5 class="text-subtitle-2 font-weight-black mb-1 text-capitalize">
+                      {{ seller.seller_name }}
+                    </h5>
+                    <span class="text-super-xs text-disabled font-weight-bold uppercase">Cajero #{{ seller.seller_id }}</span>
                   </div>
-                  <VChip color="primary" size="small" variant="flat" class="font-weight-bold px-3">
-                    Total Entregado: {{ formatCurrency(seller.total_usd_equivalent, 'USD') }}
-                  </VChip>
                 </div>
-              </VCardItem>
-              
+                <VChip
+                  color="success"
+                  size="small"
+                  variant="flat"
+                  class="font-weight-black shadow-sm"
+                >
+                  {{ formatCurrency(seller.total_usd_equivalent, 'USD') }}
+                </VChip>
+              </div>
+
               <VCardText class="pa-0">
-                <VTable density="compact" class="text-caption bg-transparent w-100 table-sm">
+                <VTable
+                  density="compact"
+                  class="text-caption bg-transparent table-standard"
+                >
                   <tbody>
                     <tr v-if="seller.total_bs_card_debito > 0 || seller.total_bs_card_credito > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Tarjetas (BS):</td>
-                      <td class="text-right py-2 pr-4 text-warning">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Tarjetas (BS):</td>
+                      <td class="text-right py-2 pr-6 text-warning font-weight-bold">
                         {{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito, 'BS') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_bs_transfer > 0 || seller.total_bs_mobile > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Transf./Pago Móvil (BS):</td>
-                      <td class="text-right py-2 pr-4 text-warning">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Transf./Pago Móvil (BS):</td>
+                      <td class="text-right py-2 pr-6 text-warning font-weight-bold">
                         {{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile, 'BS') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_cop_transfer > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Transferencia (COP):</td>
-                      <td class="text-right py-2 pr-4 text-info">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Transferencia (COP):</td>
+                      <td class="text-right py-2 pr-6 text-info font-weight-bold">
                         {{ formatCurrency(seller.total_cop_transfer, 'COP') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_usd_transfer > 0 || seller.total_usd_paypal > 0 || seller.total_usd_binance > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Pagos Electrónicos (USD):</td>
-                      <td class="text-right py-2 pr-4 text-success">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Pagos Electrónicos (USD):</td>
+                      <td class="text-right py-2 pr-6 text-success font-weight-bold">
                         {{ formatCurrency(seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance, 'USD') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_usd_credit > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Créditos (USD):</td>
-                      <td class="text-right py-2 pr-4 font-weight-bold font-italic">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Créditos (USD):</td>
+                      <td class="text-right py-2 pr-6 font-weight-black italic">
                         {{ formatCurrency(seller.total_usd_credit, 'USD') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_bs_cash > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Efectivo (BS):</td>
-                      <td class="text-right font-weight-bold py-2 pr-4 text-warning">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2 font-weight-bold">Efectivo (BS):</td>
+                      <td class="text-right font-weight-black py-2 pr-6 text-warning">
                         {{ formatCurrency(seller.total_bs_cash, 'BS') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_cop_cash > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Efectivo (COP):</td>
-                      <td class="text-right font-weight-bold py-2 pr-4 text-info">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2 font-weight-bold">Efectivo (COP):</td>
+                      <td class="text-right font-weight-black py-2 pr-6 text-info">
                         {{ formatCurrency(seller.total_cop_cash, 'COP') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_usd_cash > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Efectivo (USD):</td>
-                      <td class="text-right font-weight-bold py-2 pr-4 text-success">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2 font-weight-bold">Efectivo (USD):</td>
+                      <td class="text-right font-weight-black py-2 pr-6 text-success">
                         {{ formatCurrency(seller.total_usd_cash, 'USD') }}
                       </td>
                     </tr>
                     <!-- ABONOS (CRÉDITOS PAGADOS) -->
                     <tr v-if="seller.total_bs_card_paymentCredit > 0 || seller.total_bs_transfer_paymentCredit > 0 || seller.total_bs_mobile_paymentCredit > 0 || seller.total_bs_cash_paymentCredit > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Abonos (BS):</td>
-                      <td class="text-right py-2 pr-4 text-warning font-italic">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2 italic font-weight-regular">Abonos (BS):</td>
+                      <td class="text-right py-2 pr-6 text-warning italic">
                         {{ formatCurrency(seller.total_bs_card_paymentCredit + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_bs_cash_paymentCredit, 'BS') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_cop_transfer_paymentCredit > 0 || seller.total_cop_cash_paymentCredit > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Abonos (COP):</td>
-                      <td class="text-right py-2 pr-4 text-info font-italic">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2 italic font-weight-regular">Abonos (COP):</td>
+                      <td class="text-right py-2 pr-6 text-info italic">
                         {{ formatCurrency(seller.total_cop_transfer_paymentCredit + seller.total_cop_cash_paymentCredit, 'COP') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_usd_paypal_paymentCredit > 0 || seller.total_usd_binance_paymentCredit > 0 || seller.total_usd_cash_paymentCredit > 0">
-                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Abonos (USD):</td>
-                      <td class="text-right py-2 pr-4 text-success font-italic">
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-2 italic font-weight-regular">Abonos (USD):</td>
+                      <td class="text-right py-2 pr-6 text-success italic">
                         {{ formatCurrency(seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit + seller.total_usd_cash_paymentCredit, 'USD') }}
                       </td>
                     </tr>
@@ -538,83 +619,171 @@ defineExpose({ printReport });
             </VCard>
           </VCol>
           
-          <VCol cols="12" v-if="sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0)).length === 0">
-            <VAlert type="info" variant="tonal" class="rounded-lg text-body-2" icon="tabler-info-circle">
-              No hay entregas procesadas en este reporte.
+          <VCol
+            v-if="sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0)).length === 0"
+            cols="12"
+          >
+            <VAlert
+              type="info"
+              variant="tonal"
+              class="rounded-xl text-button font-weight-black"
+              icon="tabler-info-circle"
+            >
+              NO SE ENCONTRARON ENTREGAS PROCESADAS EN ESTE REPORTE
             </VAlert>
           </VCol>
         </VRow>
 
         <!-- ESTRUCTURA OCULTA EXCLUSIVA PARA EL REPORTE PDF (ESTILO SOCIAL BENEFITS COMPACTO) -->
-        <div id="delivery-report" class="d-none">
+        <div
+          id="delivery-report"
+          class="d-none"
+        >
           <div class="header">
-            <img :src="BASE64_LOGO_DATA" alt="Logo" class="logo" />
-            <div class="company-name">FARMACIA BARRIO SUCRE 2024 C.A.</div>
-            <div class="company-rif">R.I.F: J-50478962-1</div>
-            <div class="document-title">ACTA DE ENTREGA DE VALORES</div>
+            <img
+              :src="BASE64_LOGO_DATA"
+              alt="Logo"
+              class="logo"
+            >
+            <div class="company-name">
+              FARMACIA BARRIO SUCRE 2024 C.A.
+            </div>
+            <div class="company-rif">
+              R.I.F: J-50478962-1
+            </div>
+            <div class="document-title">
+              ACTA DE ENTREGA DE VALORES
+            </div>
           </div>
 
-          <div class="info-section" style="padding: 5px; margin-block-end: 10px;">
+          <div
+            class="info-section"
+            style="padding: 5px; margin-block-end: 10px;"
+          >
             <table class="info-table">
               <tr>
-                <td style="inline-size: 40%;"><strong>CORRELATIVO:</strong> #{{ props.cashData.id }}</td>
-                <td style="inline-size: 30%;"><strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} BS</td>
-                <td style="inline-size: 30%; text-align: end;"><strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}</td>
+                <td style="inline-size: 40%;">
+                  <strong>CORRELATIVO:</strong> #{{ props.cashData.id }}
+                </td>
+                <td style="inline-size: 30%;">
+                  <strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} BS
+                </td>
+                <td style="inline-size: 30%; text-align: end;">
+                  <strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}
+                </td>
               </tr>
               <tr>
                 <td><strong>CAJA GUARDADA:</strong> {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</td>
                 <td>COP: {{ props.cashData.cop_exchange_rate }} COP</td>
-                <td style="text-align: end;"><strong>HORA:</strong> {{ getCurrentTime() }}</td>
+                <td style="text-align: end;">
+                  <strong>HORA:</strong> {{ getCurrentTime() }}
+                </td>
               </tr>
             </table>
           </div>
 
-          <div class="section-header" style=" font-size: 8pt;margin-block-start: 5px; padding-block: 4px; padding-inline: 8px;">DESGLOSE POR PERSONAL</div>
-           <table class="data-table">
+          <div
+            class="section-header"
+            style=" font-size: 8pt;margin-block-start: 5px; padding-block: 4px; padding-inline: 8px;"
+          >
+            DESGLOSE POR PERSONAL
+          </div>
+          <table class="data-table">
             <thead>
               <tr>
-                <th style=" padding: 4px;font-size: 8pt;">RESPONSABLE / MÉTODO</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">BS</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">COP</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">USD</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">TOTAL USD</th>
+                <th style=" padding: 4px;font-size: 8pt;">
+                  RESPONSABLE / MÉTODO
+                </th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">
+                  BS
+                </th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">
+                  COP
+                </th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">
+                  USD
+                </th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">
+                  TOTAL USD
+                </th>
               </tr>
             </thead>
             <tbody>
-              <template v-for="(seller, index) in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))" :key="'pdf-' + seller.seller_id">
+              <template
+                v-for="(seller, index) in sellersArray.filter(s => Object.values(s).some(v => typeof v === 'number' && v > 0))"
+                :key="'pdf-' + seller.seller_id"
+              >
                 <tr class="total-row">
-                  <td colspan="4" style=" padding: 4px;font-size: 9pt;">{{ index + 1 }}. {{ seller.seller_name.toUpperCase() }}</td>
-                  <td style="padding: 4px; font-size: 9pt; text-align: end;">{{ formatCurrency(seller.total_usd_equivalent, 'USD') }}</td>
+                  <td
+                    colspan="4"
+                    style=" padding: 4px;font-size: 9pt;"
+                  >
+                    {{ index + 1 }}. {{ seller.seller_name.toUpperCase() }}
+                  </td>
+                  <td style="padding: 4px; font-size: 9pt; text-align: end;">
+                    {{ formatCurrency(seller.total_usd_equivalent, 'USD') }}
+                  </td>
                 </tr>
                 
                 <!-- POS -->
                 <tr v-if="(seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_card_paymentCredit) > 0">
-                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">POS (TD y TC)</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'COP') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency((seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_card_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1), 'USD') }}</td>
+                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">
+                    POS (TD y TC)
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(0, 'COP') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(0, 'USD') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency((seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_card_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1), 'USD') }}
+                  </td>
                 </tr>
 
                 <!-- Transferencia -->
                 <tr v-if="(seller.total_bs_transfer + seller.total_bs_mobile + seller.total_cop_transfer + seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit + seller.total_cop_transfer_paymentCredit + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit) > 0">
-                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">TRANSFERENCIA (PAGO MÓVIL / BANCOS)</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit, 'BS') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_cop_transfer + seller.total_cop_transfer_paymentCredit, 'COP') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit, 'USD') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency((seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit) + (seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1) + (seller.total_cop_transfer + seller.total_cop_transfer_paymentCredit) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}</td>
+                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">
+                    TRANSFERENCIA (PAGO MÓVIL / BANCOS)
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit, 'BS') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_cop_transfer + seller.total_cop_transfer_paymentCredit, 'COP') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit, 'USD') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency((seller.total_usd_transfer + seller.total_usd_paypal + seller.total_usd_binance + seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit) + (seller.total_bs_transfer + seller.total_bs_mobile + seller.total_bs_transfer_paymentCredit + seller.total_bs_mobile_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1) + (seller.total_cop_transfer + seller.total_cop_transfer_paymentCredit) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}
+                  </td>
                 </tr>
 
                 <!-- Efectivo -->
                 <tr v-if="(seller.total_bs_cash + seller.total_cop_cash + seller.total_usd_cash + seller.total_bs_cash_paymentCredit + seller.total_cop_cash_paymentCredit + seller.total_usd_cash_paymentCredit) > 0">
-                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">EN EFECTIVO (FONDO FÍSICO)</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_bs_cash + seller.total_bs_cash_paymentCredit, 'BS') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_cop_cash + seller.total_cop_cash_paymentCredit, 'COP') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(seller.total_usd_cash + seller.total_usd_cash_paymentCredit, 'USD') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ formatCurrency((seller.total_usd_cash + seller.total_usd_cash_paymentCredit) + (seller.total_bs_cash + seller.total_bs_cash_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1) + (seller.total_cop_cash + seller.total_cop_cash_paymentCredit) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}</td>
+                  <td style="font-size: 8pt; padding-block: 2px; padding-inline: 15px 0;">
+                    EN EFECTIVO (FONDO FÍSICO)
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_bs_cash + seller.total_bs_cash_paymentCredit, 'BS') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_cop_cash + seller.total_cop_cash_paymentCredit, 'COP') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_usd_cash + seller.total_usd_cash_paymentCredit, 'USD') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency((seller.total_usd_cash + seller.total_usd_cash_paymentCredit) + (seller.total_bs_cash + seller.total_bs_cash_paymentCredit) / parseFloat(props.cashData.exchange_rate || 1) + (seller.total_cop_cash + seller.total_cop_cash_paymentCredit) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}
+                  </td>
                 </tr>
 
                 <tr>
-                  <td colspan="5" style=" padding: 4px;border-block-end: 1px solid #2c3e50; color: #7f8c8d; font-size: 7pt;">
+                  <td
+                    colspan="5"
+                    style=" padding: 4px;border-block-end: 1px solid #2c3e50; color: #7f8c8d; font-size: 7pt;"
+                  >
                     OBSERVACIONES: ____________________________________________________________________________________________________
                   </td>
                 </tr>
@@ -622,57 +791,210 @@ defineExpose({ printReport });
 
               <!-- TOTAL GENERAL DE TODOS LOS TRABAJADORES (RESUMEN FINAL) -->
               <tr style="background-color: #2c3e50; color: white; font-weight: bold;">
-                <td style="padding: 6px; font-size: 9pt;">TOTAL GENERAL CONSOLIDADO</td>
-                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalBsGlobal, 'BS') }}</td>
-                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalCopGlobal, 'COP') }}</td>
-                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalUsdGlobal, 'USD') }}</td>
-                <td style="padding: 6px; font-size: 9pt; text-align: end;">{{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</td>
+                <td style="padding: 6px; font-size: 9pt;">
+                  TOTAL GENERAL CONSOLIDADO
+                </td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">
+                  {{ formatCurrency(totalBsGlobal, 'BS') }}
+                </td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">
+                  {{ formatCurrency(totalCopGlobal, 'COP') }}
+                </td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">
+                  {{ formatCurrency(totalUsdGlobal, 'USD') }}
+                </td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">
+                  {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}
+                </td>
               </tr>
               
               <!-- Detalles del Total General -->
               <tr style="background-color: #f8f9fa;">
-                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">DETALLE TOTAL POS</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalPosBsGlobal, 'BS') }}</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'COP') }}</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td>
-                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">{{ formatCurrency(totalPosEquivalentUsd, 'USD') }}</td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">
+                  DETALLE TOTAL POS
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalPosBsGlobal, 'BS') }}
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(0, 'COP') }}
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(0, 'USD') }}
+                </td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">
+                  {{ formatCurrency(totalPosEquivalentUsd, 'USD') }}
+                </td>
               </tr>
               <tr style="background-color: #f8f9fa;">
-                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">DETALLE TOTAL TRANSFERENCIA</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalTransferBsGlobal, 'BS') }}</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalTransferCopGlobal, 'COP') }}</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalTransferUsdGlobal, 'USD') }}</td>
-                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">{{ formatCurrency(totalTransferEquivalentUsd, 'USD') }}</td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">
+                  DETALLE TOTAL TRANSFERENCIA
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalTransferBsGlobal, 'BS') }}
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalTransferCopGlobal, 'COP') }}
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalTransferUsdGlobal, 'USD') }}
+                </td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">
+                  {{ formatCurrency(totalTransferEquivalentUsd, 'USD') }}
+                </td>
               </tr>
               <tr style="background-color: #f8f9fa;">
-                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">DETALLE TOTAL EFECTIVO</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalCashBsGlobal, 'BS') }}</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalCashCopGlobal, 'COP') }}</td>
-                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(totalCashUsdGlobal, 'USD') }}</td>
-                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">{{ formatCurrency(totalCashEquivalentUsd, 'USD') }}</td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">
+                  DETALLE TOTAL EFECTIVO
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalCashBsGlobal, 'BS') }}
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalCashCopGlobal, 'COP') }}
+                </td>
+                <td style="font-size: 8pt; text-align: end;">
+                  {{ formatCurrency(totalCashUsdGlobal, 'USD') }}
+                </td>
+                <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">
+                  {{ formatCurrency(totalCashEquivalentUsd, 'USD') }}
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <div class="signature-section" style="margin-block-start: 50px; text-align: center;">
+          <div
+            class="signature-section"
+            style="margin-block-start: 50px; text-align: center;"
+          >
             <div style="display: block; border-block-start: 1.5pt solid #000; inline-size: 250px; margin-block: 0; margin-inline: auto; padding-block-start: 8px;">
-              <div style=" color: #000;font-size: 10pt; font-weight: bold;">FIRMA SUPERVISOR</div>
+              <div style=" color: #000;font-size: 10pt; font-weight: bold;">
+                FIRMA SUPERVISOR
+              </div>
               <small style=" color: #666;font-size: 8pt;">CONTROL DE TURNO / VERIFICACIÓN</small>
             </div>
           </div>
 
-          <div class="footer-note" style=" font-size: 7pt;margin-block-start: 15px;">
+          <div
+            class="footer-note"
+            style=" font-size: 7pt;margin-block-start: 15px;"
+          >
             ESTE DOCUMENTO ES UN INSTRUMENTO DE CONTROL INTERNO. HORA CIERRE AUDITABLE.
           </div>
         </div>
       </VCardText>
-      
-      <VDivider />
-      
-      <VCardActions class="pa-4 bg-white d-flex justify-center gap-3 px-6">
-        <VBtn variant="tonal" color="secondary" @click="closeModal" class="flex-grow-1 font-weight-medium" size="large">Cerrar</VBtn>
-        <VBtn variant="flat" color="primary" @click="downloadReport" prepend-icon="tabler-download" class="flex-grow-1 font-weight-medium" size="large">Descargar Reporte PDF</VBtn>
+
+      <!-- Acciones Premium -->
+      <VCardActions class="pa-4 bg-white border-t px-6">
+        <VRow
+          no-gutters
+          class="w-100"
+        >
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeModal"
+            >
+              Cerrar Reporte
+            </VBtn>
+          </VCol>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="50"
+              block
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              @click="downloadReport"
+            >
+              <VIcon
+                start
+                icon="tabler-download"
+                size="18"
+                class="me-2"
+              />
+              Descargar Acta PDF
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
+}
+
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.header-indicator.secondary {
+  background-color: rgb(var(--v-theme-secondary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.table-standard :deep(td) {
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+}
+
+.table-standard :deep(tr:last-child td) {
+  border-block-end: none !important;
+}
+
+.italic {
+  font-style: italic;
+}
+</style>

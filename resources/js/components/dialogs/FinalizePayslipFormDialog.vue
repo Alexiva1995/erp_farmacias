@@ -127,154 +127,250 @@ watch(
     max-width="500"
     persistent
     :fullscreen="mobile"
-    transition="dialog-bottom-transition"
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
     @update:model-value="closeDialog"
   >
-    <VCard :class="['finalize-payslip-dialog overflow-hidden bg-surface', mobile ? 'rounded-0' : 'rounded-xl border-0 shadow-lg']">
-      <!-- Header -->
-      <VCardTitle class="d-flex align-center justify-space-between pa-6">
-        <div class="d-flex align-center">
-          <VAvatar color="primary" variant="tonal" rounded size="48" class="me-4 shadow-sm">
-            <VIcon icon="tabler-currency-dollar-off" size="28" />
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-currency-dollar-off"
+              size="24"
+              color="primary"
+            />
           </VAvatar>
-          <div>
-            <div class="text-h5 font-weight-black text-high-emphasis">Finalizar Pago</div>
-            <div class="text-caption text-medium-emphasis">Registrar desembolso en COP</div>
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Finalizar Pago
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Cierre de Nómina en Moneda Local
+              </span>
+            </div>
           </div>
+          <VSpacer />
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeDialog"
+          />
         </div>
-        <VBtn icon="tabler-x" variant="tonal" color="secondary" size="small" @click="closeDialog" />
       </VCardTitle>
 
-      <VDivider />
+      <VCardText class="pa-4 pa-sm-6 bg-light">
+        <!-- Resumen Financiero Destacado -->
+        <VCard
+          variant="flat"
+          class="rounded-xl border shadow-sm mb-6 bg-white overflow-hidden"
+        >
+          <div class="pa-5 d-flex flex-column align-center text-center">
+            <VAvatar
+              color="success"
+              variant="tonal"
+              size="48"
+              class="mb-3"
+            >
+              <VIcon
+                icon="tabler-receipt-2"
+                size="28"
+              />
+            </VAvatar>
+            <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Monto Total a Desembolsar</span>
+            <h3 class="text-h3 font-weight-black text-success leading-none mb-1">
+              {{ formatCurrency(selectedPayslip?.total_full_cop) }}
+            </h3>
+            <span class="text-super-xs text-disabled uppercase font-weight-bold">Paquete Salarial + Bonificaciones</span>
+          </div>
+        </VCard>
 
-      <VCardText class="pa-6">
-        <!-- Info Cards - Only COP -->
-        <VRow class="mb-6">
-          <VCol cols="12">
-            <VCard flat variant="tonal" color="success" class="rounded-lg pa-4 text-center">
-              <div class="text-caption font-weight-bold text-uppercase mb-1 opacity-70">Monto Total a Pagar (COP)</div>
-              <div class="text-h3 font-weight-black mb-1">
-                {{ formatCurrency(selectedPayslip?.total_full_cop) }}
-              </div>
-              <div class="text-caption">Basado en Paquete Salarial + Bono</div>
-            </VCard>
-          </VCol>
-        </VRow>
+        <div class="d-flex align-center gap-2 mb-4">
+          <div class="header-indicator primary shadow-sm" />
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Configuración del Pago</span>
+        </div>
 
-        <VRow>
-          <VCol cols="12" sm="6">
-            <p class="text-caption font-weight-medium mb-1 ms-1">Moneda</p>
-            <VSelect
-              v-model="currency"
-              variant="outlined"
-              density="comfortable"
-              hide-details="auto"
-              placeholder="Seleccione moneda"
-              prepend-inner-icon="tabler-cash-banknote"
-              :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
-              :error-messages="errors.currency"
-              class="custom-field"
-            />
-          </VCol>
+        <VCard
+          variant="flat"
+          class="pa-5 bg-white rounded-lg elevation-1 border"
+        >
+          <VRow dense>
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Moneda</span>
+              <VSelect
+                v-model="currency"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                placeholder="Seleccione moneda"
+                prepend-inner-icon="tabler-cash-banknote"
+                :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
+                :error-messages="errors.currency"
+                class="premium-input mb-4"
+              />
+            </VCol>
 
-          <VCol cols="12" sm="6">
-            <p class="text-caption font-weight-medium mb-1 ms-1">Cuenta</p>
-            <VSelect
-              v-model="count"
-              variant="outlined"
-              density="comfortable"
-              hide-details="auto"
-              placeholder="Seleccione cuenta"
-              prepend-inner-icon="tabler-wallet"
-              :items="(countsFilterByCurrency[currency] ?? [...new Set(Object.values(countsFilterByCurrency).flat())]).map(a => ({ title: a, value: a }))"
-              :error-messages="errors.count"
-              class="custom-field"
-            />
-          </VCol>
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Cuenta Origen</span>
+              <VSelect
+                v-model="count"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                placeholder="Seleccione cuenta"
+                prepend-inner-icon="tabler-wallet"
+                :items="(countsFilterByCurrency[currency] ?? [...new Set(Object.values(countsFilterByCurrency).flat())]).map(a => ({ title: a, value: a }))"
+                :error-messages="errors.count"
+                class="premium-input mb-4"
+              />
+            </VCol>
 
-          <VCol cols="12">
-            <p class="text-caption font-weight-medium mb-1 ms-1">Confirmar Monto (COP)</p>
-            <VTextField
-              v-model="payedDisplay"
-              placeholder="0"
-              variant="outlined"
-              density="comfortable"
-              hide-details="auto"
-              prepend-inner-icon="tabler-coin"
-              prefix="+"
-              suffix="COP"
-              :error-messages="errors.payed"
-              class="custom-field amount-input"
-              @input="handlePayedInput"
-            />
-          </VCol>
-        </VRow>
+            <VCol cols="12">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Confirmar Monto en COP</span>
+              <VTextField
+                v-model="payedDisplay"
+                placeholder="0"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-coin"
+                prefix="$"
+                suffix="COP"
+                :error-messages="errors.payed"
+                class="premium-amount-input"
+                @input="handlePayedInput"
+              />
+            </VCol>
+          </VRow>
+        </VCard>
       </VCardText>
 
-      <VDivider />
-
-      <VCardActions class="pa-6 bg-light d-flex">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          @click="closeDialog"
-          class="flex-grow-1 font-weight-bold rounded-lg py-3"
-          height="48"
+      <!-- Botones de Acción -->
+      <VCardActions class="pa-4 bg-light border-t">
+        <VRow
+          no-gutters
+          class="w-100"
         >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="submit"
-          :loading="loading"
-          :disabled="loading"
-          class="flex-grow-1 font-weight-bold rounded-lg ms-3 shadow-sm py-3"
-          height="48"
-          prepend-icon="tabler-check"
-        >
-          Confirmar
-        </VBtn>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeDialog"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol
+            cols="12"
+            sm="6"
+            class="pa-1"
+          >
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="50"
+              block
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="loading"
+              :disabled="loading"
+              @click="submit"
+            >
+              <VIcon
+                start
+                icon="tabler-check"
+                size="18"
+                class="me-2"
+              />
+              Confirmar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.finalize-payslip-dialog {
-  border-radius: 20px !important;
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
 }
 
-.glass-morphism {
-  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
-  backdrop-filter: blur(10px);
+.bg-light {
+  background-color: #f8faff !important;
 }
 
-.custom-field :deep(.v-field) {
+.detail-dialog-card {
   border-radius: 12px !important;
-  background-color: rgba(var(--v-theme-surface), 0.5) !important;
 }
 
-.amount-input :deep(.v-field) {
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.premium-amount-input :deep(.v-field) {
   border: 1px solid rgba(var(--v-theme-primary), 0.2) !important;
   background-color: rgba(var(--v-theme-primary), 0.03) !important;
 }
 
-.amount-input :deep(input) {
+.premium-amount-input :deep(input) {
   color: rgb(var(--v-theme-primary)) !important;
   font-size: 1.25rem !important;
-  font-weight: 700 !important;
-}
-
-.bg-light {
-  background-color: rgba(var(--v-theme-surface), 0.9) !important;
-}
-
-.opacity-70 {
-  opacity: 0.7;
-}
-
-.shadow-sm {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 5%) !important;
+  font-weight: 800 !important;
 }
 </style>

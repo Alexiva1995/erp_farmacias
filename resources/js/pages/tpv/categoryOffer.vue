@@ -10,12 +10,12 @@ import { onMounted, reactive, ref, watch } from "vue";
 // Estados reactivos
 const availableCategories = ref([]);
 const discount = ref(0);
-const offerData = ref([]);
+const offerData = ref({ data: [], total: 0, per_page: 10, current_page: 1 });
 const loadingCategories = ref(false);
 const pageCategories = ref(1);
 const itemsPerPageCategories = ref(10);
-const sortByCategories = ref();
-const orderByCategories = ref();
+const sortByCategories = ref(null);
+const orderByCategories = ref(null);
 const formularioError = ref({});
 
 // Filtros
@@ -38,8 +38,12 @@ const currentOfferToEdit = ref(null);
 const isEditingMode = ref(false);
 
 const updateTableOptionsCategories = (options) => {
+  // Evitar peticiones si los valores no han cambiado realmente (prevención de bucles)
+  const isInitialLoad = offerData.value.data.length === 0;
+  
   pageCategories.value = options.page;
   itemsPerPageCategories.value = options.itemsPerPage;
+  
   if (options.sortBy && options.sortBy.length > 0) {
     sortByCategories.value = options.sortBy[0].key;
     orderByCategories.value = options.sortBy[0].order;
@@ -47,6 +51,7 @@ const updateTableOptionsCategories = (options) => {
     sortByCategories.value = null;
     orderByCategories.value = null;
   }
+  
   actualizarTabla();
 };
 
@@ -253,12 +258,8 @@ watch([
   actualizarTabla();
 });
 
-watch([sortByCategories, orderByCategories], () => {
-  actualizarTabla();
-});
-
 onMounted(async () => {
-  await actualizarTabla();
+  // La carga inicial la dispara automáticamente la tabla mediante @update:options
 });
 </script>
 
