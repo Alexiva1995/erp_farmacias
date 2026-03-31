@@ -711,12 +711,15 @@ const handleCompletePurchase = () => {
     return;
   }
 
+  // Allow partial payments - remove strict total coverage check
+  /*
   const tolerance = 0.01;
   const finalRemainingAmount = remainingAmount.value;
   if (Math.abs(finalRemainingAmount) > tolerance && finalRemainingAmount > 0) {
     toast.error("El monto pagado no cubre el total. Complete el pago.");
     return;
   }
+  */
 
   if (currentProgress.value === 0) {
     currentStageIndex.value++;
@@ -1172,7 +1175,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
                 </VBtn>
                 <VBtn
                   :style="
-                    remainingAmount <= 0 && !hasMissingReferences()
+                    totalPaidAmount > 0 && !hasMissingReferences()
                       ? 'background-color: #28C76F; color: white;'
                       : 'background-color: rgba(0, 0, 0, 0.12); color: rgba(0, 0, 0, 0.38);'
                   "
@@ -1181,7 +1184,7 @@ const logoSrc = computed(() => BASE64_LOGO_DATA);
                   block
                   :disabled="
                     currentProgress === 0 &&
-                    (remainingAmount > 0.01 || hasMissingReferences())
+                    (totalPaidAmount <= 0 || hasMissingReferences())
                   "
                 >
                   {{ continueButtonText }}
