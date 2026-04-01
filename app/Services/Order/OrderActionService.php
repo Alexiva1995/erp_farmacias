@@ -600,6 +600,7 @@ class OrderActionService
                 $ivaAmount = $isTaxable ? ($subtotal * 0.16) : 0;
                 $totalItem = $subtotal + $ivaAmount;
 
+
                 // Insertamos en la tabla de detalles
                 FiscalHistoryDetail::create([
                     'fiscal_history_id' => $fiscalHistory->id,
@@ -954,31 +955,20 @@ class OrderActionService
 
 
             if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
+                // Caso cambio moneda cruzada
                 $current_cash->usd_cash -= $request->changeAmountUSD;
                 $current_cash->cop_conversion += $request->changeAmount ?? null;
                 $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
             } else {
+                // Caso misma moneda
                 if (isset($request->changeAmount)) {
                     $current_cash->cop_cash -= $request->changeAmount;
                 }
             }
 
-            $total_bs = $current_cash->bs_cash + $current_cash->bs_mobile + $current_cash->bs_transfer + $current_cash->bs_card_debito + $current_cash->bs_card_credit;
-            $total_cop = ($current_cash->cop_cash + $current_cash->cop_transfer) - $current_cash->cop_conversion;
-            $total_usd = $current_cash->usd_cash + $current_cash->usd_binance + $current_cash->usd_paypal + $current_cash->usd_balance + $current_cash->usd_conversion;
-
-            $current_cash->total_bs = $total_bs;
-            $current_cash->total_cop = $total_cop;
-            $current_cash->total_usd = $total_usd;
-            $current_cash->usd_delivered = $current_cash->usd_cash + $current_cash->usd_conversion;
-            $current_cash->cop_delivered = $current_cash->cop_cash - ($current_cash->cop_conversion + $current_cash->cop_conversion_payment_credit);
-            $current_cash->bs_delivered = $current_cash->bs_cash;
-
-            $cop_in_usd = $current_cash->total_cop_in_usd;
-            $bs_in_usd = $current_cash->total_bs_in_usd;
-            $current_cash->total_sales = $current_cash->total_usd + $current_cash->usd_credit + $cop_in_usd + $bs_in_usd;
+            // Recalcular todos los totales usando la lógica unificada en el modelo
             $current_cash->closing_date = Carbon::now();
-            $current_cash->update();
+            $current_cash->recalculateTotals();
 
 
             /*$reservedOrder = Order::where('seller_id', $sellerId)

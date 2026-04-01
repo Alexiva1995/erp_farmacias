@@ -36,6 +36,15 @@ const totalUsd = computed(() => parseFloat(props.cashClosureData?.total_usd) || 
 const totalBs  = computed(() => parseFloat(props.cashClosureData?.total_bs)  || 0);
 const totalCredits = computed(() => parseFloat(props.cashClosureData?.usd_credit) || 0);
 
+// Total de abonos recibidos (pagos a crédito)
+const totalAbonos = computed(() => {
+  return [
+    'usd_cash_payment_credit', 'usd_binance_payment_credit', 'usd_paypal_payment_credit',
+    'bs_cash_payment_credit', 'bs_mobile_payment_credit', 'bs_transfer_payment_credit', 'bs_card_payment_credit',
+    'cop_cash_payment_credit', 'cop_transfer_payment_credit'
+  ].reduce((sum, key) => sum + (parseFloat(props.cashClosureData?.[key]) || 0), 0);
+});
+
 // Helper para mostrar solo campos > 0
 const show = (val) => parseFloat(val) > 0;
 
@@ -63,15 +72,15 @@ const copFields = computed(() => [
 ].filter(f => show(f.val)));
 
 const creditFields = computed(() => [
-  { label: 'Créditos',           val: props.cashClosureData?.usd_credit },
-  { label: 'Efectivo USD',       val: props.cashClosureData?.usd_cash_payment_credit },
-  { label: 'Binance',            val: props.cashClosureData?.usd_binance_payment_credit },
-  { label: 'Paypal',             val: props.cashClosureData?.usd_paypal_payment_credit },
-  { label: 'Efectivo BS',        val: props.cashClosureData?.bs_cash_payment_credit },
+  { label: 'Deuda Generada',     val: props.cashClosureData?.usd_credit },
+  { label: 'Efectivo USD (Abono)', val: props.cashClosureData?.usd_cash_payment_credit },
+  { label: 'Binance (Abono)',    val: props.cashClosureData?.usd_binance_payment_credit },
+  { label: 'Paypal (Abono)',     val: props.cashClosureData?.usd_paypal_payment_credit },
+  { label: 'Efectivo BS (Abono)', val: props.cashClosureData?.bs_cash_payment_credit },
   { label: 'Pago Móvil BS',     val: props.cashClosureData?.bs_mobile_payment_credit },
   { label: 'Transferencia BS',  val: props.cashClosureData?.bs_transfer_payment_credit },
   { label: 'Tarjetas BS',       val: props.cashClosureData?.bs_card_payment_credit },
-  { label: 'Efectivo COP',       val: props.cashClosureData?.cop_cash_payment_credit },
+  { label: 'Efectivo COP (Abono)', val: props.cashClosureData?.cop_cash_payment_credit },
   { label: 'Transferencia COP', val: props.cashClosureData?.cop_transfer_payment_credit },
 ].filter(f => show(f.val)));
 
@@ -224,8 +233,8 @@ const completeClosure = () => {
           </VCardText>
         </VCard>
 
-        <!-- Sección Créditos (solo si hay) -->
-        <VCard v-if="totalCredits > 0" variant="outlined" class="mb-4 rounded-lg">
+        <!-- Sección Créditos (solo si hay deuda generada o abonos) -->
+        <VCard v-if="totalCredits > 0 || totalAbonos > 0" variant="outlined" class="mb-4 rounded-lg">
           <VCardItem class="pa-4 pb-2">
             <template #prepend>
               <VAvatar color="secondary" variant="tonal" size="32" rounded>
