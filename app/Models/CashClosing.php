@@ -84,6 +84,33 @@ class CashClosing extends Model
         $resourceService = app(ResourceService::class);
         return $resourceService->getExchangeRate($currencyCode);
     }
+
+    /**
+     * Recalcula todos los totales del cierre de caja.
+     * Separa el total de ventas (rendimiento) del efectivo neto a entregar (físico).
+     */
+    public function recalculateTotals()
+    {
+        // 1. Totales de Venta (Solo Órdenes - Rendimiento de la jornada)
+        // Incluimos usd_balance y usd_credit porque representan ventas (aunque sean a crédito o a saldo)
+        $this->total_cop = ($this->cop_cash + $this->cop_transfer) - $this->cop_conversion;
+        $this->total_usd = ($this->usd_cash + $this->usd_transfer + $this->usd_paypal + $this->usd_binance + $this->usd_balance + $this->usd_conversion);
+        $this->total_bs  = ($this->bs_cash + $this->bs_transfer + $this->bs_mobile + $this->bs_card_debito + $this->bs_card_credit);
+
+        // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos)
+        // Aquí NO sumamos transferencias ni créditos, solo el efectivo físico y sus vueltos
+        $this->cop_delivered = ($this->cop_cash - $this->cop_conversion) + ($this->cop_cash_payment_credit - $this->cop_conversion_payment_credit);
+        $this->usd_delivered = ($this->usd_cash - $this->usd_conversion) + ($this->usd_cash_payment_credit - $this->usd_conversion_payment_credit);
+        $this->bs_delivered  = $this->bs_cash + $this->bs_cash_payment_credit;
+
+        // 3. Venta Bruta (USD equivalente) - Refleja el rendimiento consolidado incluyendo créditos otorgados
+        $copInUsd = $this->getServiceExchangeRate('COP') > 0 ? ($this->total_cop / $this->getServiceExchangeRate('COP')) : 0;
+        $bsInUsd  = $this->getServiceExchangeRate('BS')  > 0 ? ($this->total_bs  / $this->getServiceExchangeRate('BS'))  : 0;
+        $this->total_sales = round($this->total_usd + $this->usd_credit + $copInUsd + $bsInUsd, 2);
+
+        $this->save();
+        return $this;
+    }
     /**
      * Accesor para el TOTAL en Bolívares (BS). Coventido EN USD
      */
