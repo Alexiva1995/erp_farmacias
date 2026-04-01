@@ -25,7 +25,23 @@ const currencies = computed(() => {
   const totalBsUSD  = parseFloat(data.total_bs_in_usd) || 0;
   const totalCop    = parseFloat(data.total_cop) || 0;
   const totalCopUSD = parseFloat(data.total_cop_in_usd) || 0;
-  const totalCred   = parseFloat(data.usd_credit) || 0;
+
+  // Tasas de cambio implícitas para convertir abonos a USD
+  const bsToUsdRate = totalBsUSD > 0 ? totalBs / totalBsUSD : 0;
+  const copToUsdRate = totalCopUSD > 0 ? totalCop / totalCopUSD : 0;
+
+  // Total de abonos recibidos (pagos a crédito) en USD equivalente
+  const totalAbonosUSD = [
+    'usd_cash_payment_credit', 'usd_binance_payment_credit', 'usd_paypal_payment_credit',
+    'bs_cash_payment_credit', 'bs_mobile_payment_credit', 'bs_transfer_payment_credit', 'bs_card_payment_credit',
+    'cop_cash_payment_credit', 'cop_transfer_payment_credit'
+  ].reduce((sum, key) => {
+    const val = parseFloat(data[key]) || 0;
+    if (key.startsWith('usd')) return sum + val;
+    if (key.startsWith('bs')) return sum + (bsToUsdRate > 0 ? val / bsToUsdRate : 0);
+    if (key.startsWith('cop')) return sum + (copToUsdRate > 0 ? val / copToUsdRate : 0);
+    return sum;
+  }, 0);
 
   return [
     {
@@ -59,16 +75,16 @@ const currencies = computed(() => {
       barColor: '#00CFE8',
     },
     {
-      label: 'Créditos',
-      amount: totalCred,
-      amountUSD: totalCred,
+      label: 'Abonos Créd.',
+      amount: totalAbonosUSD,
+      amountUSD: totalAbonosUSD,
       approxUSD: null,
       currency: 'USD',
       color: 'secondary',
       icon: 'tabler-credit-card',
       barColor: '#82868B',
     },
-  ].filter(c => c.amountUSD > 0);
+  ].filter(c => c.amountUSD > 0 || (c.label === 'Abonos Créd.' && totalAbonosUSD > 0));
 });
 
 // Total en USD equivalente (para la barra)

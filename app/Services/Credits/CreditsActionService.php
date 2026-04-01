@@ -173,22 +173,18 @@ class CreditsActionService
 
 
             if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
-                $current_cash->cop_conversion_payment_credit += $request->changeAmount ?? null;
-            }else{
+                // Caso moneda cruzada: registramos el vuelto en la cuenta de conversión para que reste del total COP
+                $current_cash->usd_cash_payment_credit -= $request->changeAmountUSD;
+                $current_cash->cop_conversion_payment_credit += $request->changeAmount ?? 0.00;
+            } else {
+                // Caso misma moneda: restamos el vuelto del ya recibido (Neto)
                 if (isset($request->changeAmount)) {
                     $current_cash->cop_cash_payment_credit -= $request->changeAmount;
                 }
             }
 
-
-            $total_bs_payment = $current_cash->bs_cash_payment_credit + $current_cash->bs_mobile_payment_credit + $current_cash->bs_transfer_payment_credit + $current_cash->bs_card_payment_credit;
-            $total_cop = ($current_cash->cop_cash_payment_credit + $current_cash->cop_transfer_payment_credit) - $current_cash->cop_conversion_payment_credit;
-            $total_usd = $current_cash->usd_cash_payment_credit + $current_cash->usd_binance_payment_credit + $current_cash->usd_paypal_payment_credit;
-
-            $current_cash->usd_delivered = $current_cash->usd_delivered + $total_usd;
-            $current_cash->cop_delivered = $current_cash->cop_delivered + $total_cop;
-            $current_cash->bs_delivered = $current_cash->bs_delivered + $total_bs_payment;
-            $current_cash->update();
+            // Recalcular todos los totales usando la lógica unificada en el modelo
+            $current_cash->recalculateTotals();
 
             DB::commit();
             return true;
