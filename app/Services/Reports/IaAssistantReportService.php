@@ -61,7 +61,10 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo);
         }
 
-        // 5. Devolver paginador manual
+        // 5. Hidratar tendencia de ventas (Últimos 6 meses)
+        $this->hydrateSalesTrend($procesado);
+
+        // 6. Devolver paginador manual
         return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
             'path' => request()->url(),
             'query' => request()->query(),
@@ -116,16 +119,76 @@ class IaAssistantReportService
         
         if ($tipo === 'sales') {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
-            return $this->processRegularReport($resultado, $tipo);
+            $procesado = $this->processRegularReport($resultado, $tipo);
+        } else {
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+            if ($tipo === 'combinado') {
+                $procesado = $this->processCombinedReport($resultado, $filtros);
+            } else {
+                $procesado = $this->processRegularReport($resultado, $tipo);
+            }
         }
 
-        $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+        $this->hydrateSalesTrend($procesado);
+        return $procesado;
+    }
 
-        if ($tipo === 'combinado') {
-            return $this->processCombinedReport($resultado, $filtros);
+    /**
+     * Hidrata los productos con su tendencia de ventas real de los últimos 6 meses
+     */
+    private function hydrateSalesTrend($products): void
+    {
+        $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
+        if ($items->isEmpty()) return;
+
+        $productIds = $items->pluck('id')->toArray();
+        $sixMonthsAgo = now()->subMonths(6)->startOfMonth()->format('Y-m-d');
+
+        // Consulta eficiente para obtener ventas mensuales de los últimos 6 meses
+        $salesData = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->select(
+                'order_details.product_id',
+                \Illuminate\Support\Facades\DB::raw('YEAR(orders.created_at) as year'),
+                \Illuminate\Support\Facades\DB::raw('MONTH(orders.created_at) as month'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total')
+            )
+            ->whereIn('order_details.product_id', $productIds)
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>=', $sixMonthsAgo)
+            ->groupBy('order_details.product_id', 'year', 'month')
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get();
+
+        // Organizar los datos en un mapa para acceso O(1)
+        $trendMap = [];
+        foreach ($salesData as $data) {
+            $trendMap[$data->product_id][] = [
+                'label' => $this->getMonthName($data->month),
+                'value' => (float)$data->total
+            ];
         }
 
-        return $this->processRegularReport($resultado, $tipo);
+        // Asignar los datos a cada producto
+        $items->each(function ($product) use ($trendMap) {
+            $trend = $trendMap[$product->id] ?? [];
+            // Si hay menos de 6 meses, rellenar con ceros al principio para mantener consistencia visual
+            $values = array_column($trend, 'value');
+            $labels = array_column($trend, 'label');
+            
+            $product->sales_trend = $values;
+            $product->sales_trend_labels = $labels;
+        });
+    }
+
+    private function getMonthName(int $month): string
+    {
+        $months = [
+            1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'
+        ];
+        return $months[$month] ?? '';
     }
 
     /**

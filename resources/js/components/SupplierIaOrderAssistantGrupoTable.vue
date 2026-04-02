@@ -16,7 +16,7 @@ const emit = defineEmits(["update:options", "update:page"]);
 const { mdAndUp } = useDisplay();
 
 // Configuración de Sparkline
-const getChartOptions = (color = '#7367f0') => ({
+const getChartOptions = (item, color = '#7367f0') => ({
   chart: {
     type: 'area',
     height: 30,
@@ -33,15 +33,25 @@ const getChartOptions = (color = '#7367f0') => ({
       stops: [0, 90, 100]
     }
   },
+  xaxis: {
+    categories: item.sales_trend_labels || []
+  },
   colors: [color],
-  tooltip: { enabled: false }
+  tooltip: {
+    enabled: true,
+    fixed: { enabled: false },
+    x: { show: true },
+    y: {
+      title: { formatter: () => 'Ventas:' }
+    },
+    marker: { show: false }
+  }
 });
 
 const getSeries = (item) => {
-  const base = Number(item.total_sold_completed || 0);
-  const data = [
-    base * 0.9, base * 1.1, base * 0.8, base * 1.2, base * 0.7, base * 1.4, base
-  ].map(v => Math.max(0, Math.round(v)));
+  const data = (item.sales_trend && item.sales_trend.length > 0) 
+    ? item.sales_trend 
+    : [0, 0, 0, 0, 0, 0];
   
   return [{ name: 'Ventas', data }];
 };
@@ -143,7 +153,7 @@ const groupBy = [{ key: "group.name" }];
               <VueApexCharts
                 type="area"
                 height="30"
-                :options="getChartOptions(roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
             </div>
@@ -211,7 +221,7 @@ const groupBy = [{ key: "group.name" }];
                       <VueApexCharts
                         type="area"
                         height="25"
-                        :options="getChartOptions(roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                        :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                         :series="getSeries(item)"
                       />
                     </div>
@@ -320,8 +330,8 @@ const groupBy = [{ key: "group.name" }];
 
 .grid-mobile-info {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .info-item {
@@ -331,10 +341,10 @@ const groupBy = [{ key: "group.name" }];
 }
 
 .info-item .label {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
   font-size: 0.6rem;
-  text-transform: uppercase;
-  color: rgba(var(--var-theme-on-surface), var(--v-medium-emphasis-opacity));
   font-weight: 800;
+  text-transform: uppercase;
 }
 
 .info-item .value {
