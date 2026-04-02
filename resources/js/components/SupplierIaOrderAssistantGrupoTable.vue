@@ -143,6 +143,10 @@ const groupBy = [{ key: "group.name" }];
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
                 <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
               </div>
             </div>
