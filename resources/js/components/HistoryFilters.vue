@@ -38,6 +38,7 @@ const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
     :sort-options="sortOptions"
     :show-export="true"
     search-placeholder="Buscar por ID, Razón, Factura..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @export="(fmt) => emit('export', fmt)"

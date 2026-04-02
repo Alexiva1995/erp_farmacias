@@ -14,11 +14,26 @@ const emit = defineEmits(["update:options"]);
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "Proveedor / Gasto", key: "supplier_name", sortable: true, width: "25%" },
+  {
+    title: "Proveedor / Gasto",
+    key: "supplier_name",
+    sortable: true,
+    width: "25%",
+  },
   { title: "#Factura", key: "invoice_number", sortable: true },
-  { title: "RIF / Razón Social", key: "supplier_rif", sortable: true, width: "25%" },
+  {
+    title: "RIF / Razón Social",
+    key: "supplier_rif",
+    sortable: true,
+    width: "25%",
+  },
   { title: "Exento", key: "exempt_amount", sortable: true, align: "end" },
-  { title: "Base Imponible", key: "taxable_base", sortable: true, align: "end" },
+  {
+    title: "Base Imponible",
+    key: "taxable_base",
+    sortable: true,
+    align: "end",
+  },
   { title: "IVA", key: "iva_amount", sortable: true, align: "end" },
 ];
 
@@ -49,14 +64,24 @@ const getCategoryChipColor = (categoryName) => {
 <template>
   <div>
     <!-- Vista de Escritorio -->
-    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard
+      v-if="!mobile"
+      class="rounded-lg border shadow-sm overflow-hidden bg-surface"
+    >
       <VCardTitle class="pa-4 d-flex align-center">
         <VAvatar color="info" variant="tonal" size="32" class="me-3 rounded-lg">
           <VIcon icon="tabler-receipt-2" size="18" />
         </VAvatar>
-        <span class="text-sm font-weight-black uppercase">Gastos (Crédito Fiscal)</span>
+        <span class="text-sm font-weight-black uppercase"
+          >Gastos (Crédito Fiscal)</span
+        >
         <VSpacer />
-        <VChip color="info" size="x-small" variant="tonal" class="font-weight-black rounded">
+        <VChip
+          color="info"
+          size="x-small"
+          variant="tonal"
+          class="font-weight-black rounded"
+        >
           {{ totalRecords }} DOCUMENTOS
         </VChip>
       </VCardTitle>
@@ -75,7 +100,10 @@ const getCategoryChipColor = (categoryName) => {
       >
         <template #item.supplier_name="{ item }">
           <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis truncate" style="max-width: 200px;">
+            <span
+              class="text-sm font-weight-black text-high-emphasis truncate"
+              style="max-width: 200px"
+            >
               {{ item.supplier_name || "N/A" }}
             </span>
             <VChip
@@ -92,32 +120,54 @@ const getCategoryChipColor = (categoryName) => {
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex flex-column">
-            <span class="font-weight-black text-primary">{{ item.invoice_number || "S/N" }}</span>
-            <span class="text-super-xs text-disabled">{{ formatDate(item.expense_date) }}</span>
+            <span class="font-weight-black text-primary">{{
+              item.invoice_number || "S/N"
+            }}</span>
+            <span class="text-super-xs text-disabled">{{
+              formatDate(item.expense_date)
+            }}</span>
           </div>
         </template>
 
         <template #item.supplier_rif="{ item }">
-          <div class="d-flex flex-column truncate" style="max-width: 200px;">
-            <span class="text-xs font-weight-black text-primary">{{ item.supplier_rif || "N/A" }}</span>
-            <span class="text-super-xs text-disabled truncate text-capitalize">{{ item.supplier_business_name || item.supplier_name }}</span>
+          <div class="d-flex flex-column truncate" style="max-width: 200px">
+            <span class="text-xs font-weight-black text-primary">{{
+              item.supplier_rif || "N/A"
+            }}</span>
+            <span
+              class="text-super-xs text-disabled truncate text-capitalize"
+              >{{ item.supplier_business_name || item.supplier_name }}</span
+            >
           </div>
         </template>
 
         <template #item.exempt_amount="{ item }">
-          <span class="text-xs font-weight-medium" :class="Number(item.exempt_amount) > 0 ? 'text-info' : 'text-disabled'">
+          <span
+            class="text-xs font-weight-medium"
+            :class="
+              Number(item.exempt_amount) > 0 ? 'text-info' : 'text-disabled'
+            "
+          >
             {{ formatCurrency(item.exempt_amount) }}
           </span>
         </template>
 
         <template #item.taxable_base="{ item }">
-          <span class="text-xs font-weight-medium">{{ formatCurrency(item.taxable_base) }}</span>
+          <span class="text-xs font-weight-medium">{{
+            formatCurrency(item.taxable_base)
+          }}</span>
         </template>
 
         <template #item.iva_amount="{ item }">
           <div class="d-flex flex-column align-end">
-            <span class="text-xs font-weight-black text-success">{{ formatCurrency(item.iva_amount) }}</span>
-            <span v-if="item.is_deductible" class="text-super-xs text-success font-weight-bold uppercase">Deducible</span>
+            <span class="text-xs font-weight-black text-success">{{
+              formatCurrency(item.iva_amount)
+            }}</span>
+            <span
+              v-if="item.is_deductible"
+              class="text-super-xs text-success font-weight-bold uppercase"
+              >Deducible</span
+            >
           </div>
         </template>
 
@@ -129,7 +179,9 @@ const getCategoryChipColor = (categoryName) => {
               :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
               size="small"
               class="premium-pagination"
-              @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+              @update:model-value="
+                (newPage) => emit('update:options', { ...props, page: newPage })
+              "
             />
           </div>
         </template>
@@ -149,17 +201,29 @@ const getCategoryChipColor = (categoryName) => {
           class="rounded-lg border shadow-sm premium-card overflow-hidden"
         >
           <div class="premium-card-decoration bg-info-opacity"></div>
-          
+
           <VCardText class="pa-5">
             <!-- Cabecera Móvil -->
             <div class="d-flex align-center justify-space-between mb-4">
               <div class="d-flex align-center gap-3">
-                <VAvatar color="info" variant="tonal" size="38" class="rounded-lg shadow-sm">
+                <VAvatar
+                  color="info"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg shadow-sm"
+                >
                   <VIcon icon="tabler-receipt-2" size="18" />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Gasto / Factura</span>
-                  <span class="text-sm font-weight-black text-primary leading-tight truncate" style="max-width: 140px;">{{ item.invoice_number || 'S/N' }}</span>
+                  <span
+                    class="text-xs font-weight-black text-disabled uppercase leading-tight"
+                    >Gasto / Factura</span
+                  >
+                  <span
+                    class="text-sm font-weight-black text-primary leading-tight truncate"
+                    style="max-width: 140px"
+                    >{{ item.invoice_number || "S/N" }}</span
+                  >
                 </div>
               </div>
               <VChip
@@ -177,30 +241,70 @@ const getCategoryChipColor = (categoryName) => {
 
             <!-- Info Proveedor -->
             <div class="mb-4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Proveedor / Razón Social</span>
-              <span class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1">{{ item.supplier_name }}</span>
-              <span class="text-xs text-disabled leading-tight">{{ item.supplier_rif || 'RIF No disponible' }}</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1"
+                >Proveedor / Razón Social</span
+              >
+              <span
+                class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1"
+                >{{ item.supplier_name }}</span
+              >
+              <span class="text-xs text-disabled leading-tight">{{
+                item.supplier_rif || "RIF No disponible"
+              }}</span>
             </div>
 
             <!-- Stats IVA -->
             <div class="d-flex gap-3 mb-4">
-              <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
-                <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">Base Imponible</span>
-                <span class="text-sm font-weight-black">{{ formatCurrency(item.taxable_base) }}</span>
+              <div
+                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
+              >
+                <span
+                  class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
+                  >Base Imponible</span
+                >
+                <span class="text-sm font-weight-black">{{
+                  formatCurrency(item.taxable_base)
+                }}</span>
               </div>
-              <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-success-opacity">
+              <div
+                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-success-opacity"
+              >
                 <div class="d-flex align-center justify-space-between mb-1">
-                  <span class="text-super-xs text-success font-weight-bold uppercase">IVA Pagado</span>
-                  <VIcon v-if="item.is_deductible" icon="tabler-shield-check" size="14" color="success" />
+                  <span
+                    class="text-super-xs text-success font-weight-bold uppercase"
+                    >IVA Pagado</span
+                  >
+                  <VIcon
+                    v-if="item.is_deductible"
+                    icon="tabler-shield-check"
+                    size="14"
+                    color="success"
+                  />
                 </div>
-                <span class="text-sm font-weight-black text-success">{{ formatCurrency(item.iva_amount) }}</span>
+                <span class="text-sm font-weight-black text-success">{{
+                  formatCurrency(item.iva_amount)
+                }}</span>
               </div>
             </div>
 
             <!-- Total Gasto -->
-            <div class="d-flex align-center justify-space-between bg-info-opacity-2 pa-3 rounded-lg">
-              <span class="text-xs font-weight-black uppercase text-info">Total del Gasto</span>
-              <span class="text-h6 font-weight-black text-info-darken-2">Bs. {{ formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)) }}</span>
+            <div
+              class="d-flex align-center justify-space-between bg-info-opacity-2 pa-3 rounded-lg"
+            >
+              <span class="text-xs font-weight-black uppercase text-info"
+                >Total del Gasto</span
+              >
+              <span class="text-h6 font-weight-black text-info-darken-2"
+                >Bs.
+                {{
+                  formatCurrency(
+                    Number(item.taxable_base) +
+                      Number(item.iva_amount) +
+                      Number(item.exempt_amount),
+                  )
+                }}</span
+              >
             </div>
           </VCardText>
         </VCard>
@@ -213,7 +317,9 @@ const getCategoryChipColor = (categoryName) => {
             size="small"
             rounded="circle"
             class="premium-pagination"
-            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+            @update:model-value="
+              (newPage) => emit('update:options', { ...props, page: newPage })
+            "
           />
         </div>
       </template>
@@ -232,7 +338,10 @@ const getCategoryChipColor = (categoryName) => {
 
 .premium-table :deep(.v-data-table-header th) {
   background: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-high-emphasis-opacity)
+  ) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -279,7 +388,11 @@ const getCategoryChipColor = (categoryName) => {
 }
 
 .bg-info-opacity {
-  background: linear-gradient(135deg, rgba(var(--v-theme-info), 0.1) 0%, transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-info), 0.1) 0%,
+    transparent 100%
+  );
 }
 
 .bg-info-opacity-2 {

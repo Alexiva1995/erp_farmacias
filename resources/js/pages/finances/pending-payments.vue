@@ -40,7 +40,7 @@ const selectedTableInvoices = ref([]);
 const fetchExchangeRates = async () => {
   try {
     const { data } = await axios.get("/public/exchange-rates");
-    const rate = data.find(r => r.currency_code === "BS")?.rate || 1;
+    const rate = data.find((r) => r.currency_code === "BS")?.rate || 1;
     exchangeRate.value = parseFloat(rate);
   } catch (error) {
     console.error("Error tasa:", error);
@@ -73,7 +73,7 @@ const fetchPendingPayments = async () => {
     };
 
     const { data } = await axios.get("/finances/pending-payments", { params });
-    
+
     const allInvoices = [];
     data.data.pending_payments.forEach((group) => {
       group.invoices.forEach((invoice) => {
@@ -83,7 +83,7 @@ const fetchPendingPayments = async () => {
           payment_date: group.payment_date,
           group_id: `${group.supplier_id}_${group.payment_date}`,
           supplier_total_bs: group.total_in_supplier_currency,
-          supplier_total_usd: group.total_amount_usd
+          supplier_total_usd: group.total_amount_usd,
         });
       });
     });
@@ -92,10 +92,12 @@ const fetchPendingPayments = async () => {
     totalInvoices.value = data.data.total_suppliers || allInvoices.length;
 
     // Sincronizar las facturas seleccionadas con los datos más recientes (para reflejar cambios de indexación)
-    selectedTableInvoices.value = selectedTableInvoices.value.map((selected) => {
-      const updated = allInvoices.find((inv) => inv.id === selected.id);
-      return updated || selected;
-    });
+    selectedTableInvoices.value = selectedTableInvoices.value.map(
+      (selected) => {
+        const updated = allInvoices.find((inv) => inv.id === selected.id);
+        return updated || selected;
+      },
+    );
   } catch (error) {
     console.error("Error pagos:", error);
     toast.error("Error al cargar pagos pendientes");
@@ -129,20 +131,20 @@ const processPayment = (invoice) => {
     supplier_name: invoice.supplier_name,
     payment_date: invoice.payment_date,
     currency: invoice.currency,
-    invoice_count: 1
+    invoice_count: 1,
   };
   showProcessModal.value = true;
 };
 
 const processMultiplePayments = () => {
   if (selectedTableInvoices.value.length === 0) return;
-  
+
   selectedInvoices.value = [...selectedTableInvoices.value];
   selectedPaymentGroup.value = {
     supplier_name: "Múltiples Proveedores",
     payment_date: "Varias Fechas",
     currency: "USD",
-    invoice_count: selectedTableInvoices.value.length
+    invoice_count: selectedTableInvoices.value.length,
   };
   showProcessModal.value = true;
 };
@@ -162,7 +164,9 @@ const clearFilters = () => {
 };
 
 const toggleSelection = (invoice) => {
-  const index = selectedTableInvoices.value.findIndex(i => i.id === invoice.id);
+  const index = selectedTableInvoices.value.findIndex(
+    (i) => i.id === invoice.id,
+  );
   if (index > -1) selectedTableInvoices.value.splice(index, 1);
   else selectedTableInvoices.value.push(invoice);
 };
@@ -170,94 +174,112 @@ const toggleSelection = (invoice) => {
 onMounted(async () => {
   await fetchExchangeRates();
   await fetchSuppliers();
-  if (route.query.supplierId) selectedSupplier.value = Number(route.query.supplierId);
+  if (route.query.supplierId)
+    selectedSupplier.value = Number(route.query.supplierId);
   fetchPendingPayments();
 });
 
-watch([searchQuery, selectedSupplier, startDate, endDate, showOverdueOnly], () => {
-  page.value = 1;
-  fetchPendingPayments();
-});
+watch(
+  [searchQuery, selectedSupplier, startDate, endDate, showOverdueOnly],
+  () => {
+    page.value = 1;
+    fetchPendingPayments();
+  },
+);
 </script>
 
 <template>
-  <div :class="mobile ? 'pa-0 pb-16' : 'pa-4'">
-    <!-- Filtros Premium -->
-    <PendingPaymentFilters
-      v-model:search-query="searchQuery"
-      v-model:selected-supplier="selectedSupplier"
-      v-model:start-date="startDate"
-      v-model:end-date="endDate"
-      v-model:show-overdue-only="showOverdueOnly"
-      :suppliers="suppliers"
-      :loading="loading"
-      :is-loading-filters="isLoadingFilters"
-      @clear="clearFilters"
-      @refresh="fetchPendingPayments"
-    />
+  <div class="pending-payments-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Filtros Premium -->
+      <PendingPaymentFilters
+        v-model:search-query="searchQuery"
+        v-model:selected-supplier="selectedSupplier"
+        v-model:start-date="startDate"
+        v-model:end-date="endDate"
+        v-model:show-overdue-only="showOverdueOnly"
+        :suppliers="suppliers"
+        :loading="loading"
+        :is-loading-filters="isLoadingFilters"
+        @clear="clearFilters"
+        @refresh="fetchPendingPayments"
+        class="mb-0"
+      />
 
-    <!-- Cabecera de Tabla Premium (Escritorio) -->
-    <VCard v-if="!mobile" class="mb-4 rounded-lg border-0 shadow-sm overflow-hidden bg-surface">
-      <VCardTitle class="pa-4 px-6 d-flex align-center">
-        <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
-          <VIcon icon="tabler-list-check" size="18" />
-        </VAvatar>
-        <span class="text-sm font-weight-black uppercase">Listado de Facturas</span>
-        <VSpacer />
-        <div class="d-flex align-center gap-2">
-           <VBtn
-            v-if="selectedTableInvoices.length > 0"
+      <!-- Cabecera de Tabla Premium (Escritorio) -->
+      <VCard
+        v-if="!mobile"
+        class="ma-0 rounded-lg border-0 shadow-sm overflow-hidden bg-surface mb-2"
+      >
+        <VCardTitle class="pa-4 px-6 d-flex align-center">
+          <VAvatar
+            color="primary"
             variant="tonal"
-            color="secondary"
-            class="rounded-lg text-xs font-weight-black"
-            @click="selectedTableInvoices = []"
+            size="32"
+            class="me-3 rounded-lg"
           >
-            DESELECCIONAR ({{ selectedTableInvoices.length }})
-          </VBtn>
-          <VBtn
-            :disabled="selectedTableInvoices.length === 0"
-            color="success"
-            variant="flat"
-            class="rounded-lg text-xs font-weight-black px-6 shadow-sm"
-            @click="processMultiplePayments"
+            <VIcon icon="tabler-list-check" size="18" />
+          </VAvatar>
+          <span class="text-sm font-weight-black uppercase"
+            >Listado de Facturas</span
           >
-            <VIcon start icon="tabler-credit-card" size="18" />
-            PAGAR SELECCIONADOS
-          </VBtn>
-        </div>
-      </VCardTitle>
-    </VCard>
+          <VSpacer />
+          <div class="d-flex align-center gap-2">
+            <VBtn
+              v-if="selectedTableInvoices.length > 0"
+              variant="tonal"
+              color="secondary"
+              class="rounded-lg text-xs font-weight-black"
+              @click="selectedTableInvoices = []"
+            >
+              DESELECCIONAR ({{ selectedTableInvoices.length }})
+            </VBtn>
+            <VBtn
+              :disabled="selectedTableInvoices.length === 0"
+              color="success"
+              variant="flat"
+              class="rounded-lg text-xs font-weight-black px-6 shadow-sm"
+              @click="processMultiplePayments"
+            >
+              <VIcon start icon="tabler-credit-card" size="18" />
+              PAGAR SELECCIONADOS
+            </VBtn>
+          </div>
+        </VCardTitle>
+      </VCard>
 
-    <!-- Tabla y Cards Premium -->
-    <PendingPaymentTable
-      :pending-payments="pendingPayments"
-      :loading="loading"
-      :selected-table-invoices="selectedTableInvoices"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="handleTableUpdate"
-      @toggle-indexed="toggleIndexedStatus"
-      @process-payment="processPayment"
-      @process-multiple="processMultiplePayments"
-      @toggle-selection="toggleSelection"
-      @select-all="selectedTableInvoices = [...pendingPayments]"
-      @deselect-all="selectedTableInvoices = []"
-    />
+      <!-- Tabla y Cards Premium -->
+      <PendingPaymentTable
+        :pending-payments="pendingPayments"
+        :loading="loading"
+        :selected-table-invoices="selectedTableInvoices"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="handleTableUpdate"
+        @toggle-indexed="toggleIndexedStatus"
+        @process-payment="processPayment"
+        @process-multiple="processMultiplePayments"
+        @toggle-selection="toggleSelection"
+        @select-all="selectedTableInvoices = [...pendingPayments]"
+        @deselect-all="selectedTableInvoices = []"
+        class="ma-0"
+      />
 
-    <!-- Modales -->
-    <PendingPaymentModal
-      v-model="showPaymentModal"
-      :payment-group="selectedPaymentGroup"
-      :invoices="selectedInvoices"
-      @close="showPaymentModal = false"
-    />
+      <!-- Modales -->
+      <PendingPaymentModal
+        v-model="showPaymentModal"
+        :payment-group="selectedPaymentGroup"
+        :invoices="selectedInvoices"
+        @close="showPaymentModal = false"
+      />
 
-    <ProcessPaymentModal
-      v-model="showProcessModal"
-      :invoices="selectedInvoices"
-      :exchange-rate="exchangeRate"
-      @payment-processed="handlePaymentProcessed"
-    />
+      <ProcessPaymentModal
+        v-model="showProcessModal"
+        :invoices="selectedInvoices"
+        :exchange-rate="exchangeRate"
+        @payment-processed="handlePaymentProcessed"
+      />
+    </div>
   </div>
 </template>
 

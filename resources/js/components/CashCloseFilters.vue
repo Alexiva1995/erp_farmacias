@@ -27,6 +27,7 @@ const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar por producto, usuario..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >

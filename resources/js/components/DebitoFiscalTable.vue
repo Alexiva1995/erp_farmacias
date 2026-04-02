@@ -16,9 +16,19 @@ const { mobile } = useDisplay();
 const headers = [
   { title: "#Orden", key: "order_id", sortable: true },
   { title: "#Factura", key: "invoice_number", sortable: true },
-  { title: "Cliente / Razón Social", key: "business_name", sortable: true, width: "30%" },
+  {
+    title: "Cliente / Razón Social",
+    key: "business_name",
+    sortable: true,
+    width: "30%",
+  },
   { title: "Exento", key: "exempt_amount", sortable: true, align: "end" },
-  { title: "Base Imponible", key: "taxable_base", sortable: true, align: "end" },
+  {
+    title: "Base Imponible",
+    key: "taxable_base",
+    sortable: true,
+    align: "end",
+  },
   { title: "IVA", key: "iva_amount", sortable: true, align: "end" },
   { title: "Total", key: "total_amount", sortable: true, align: "end" },
 ];
@@ -42,21 +52,41 @@ const formatDate = (dateString) => {
 
 const getInitials = (name) => {
   if (!name) return "C";
-  return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
 };
 </script>
 
 <template>
   <div class="mb-6">
     <!-- Vista de Escritorio -->
-    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard
+      v-if="!mobile"
+      class="rounded-lg border shadow-sm overflow-hidden bg-surface mt-6"
+    >
       <VCardTitle class="pa-4 d-flex align-center">
-        <VAvatar color="warning" variant="tonal" size="32" class="me-3 rounded-lg">
+        <VAvatar
+          color="warning"
+          variant="tonal"
+          size="32"
+          class="me-3 rounded-lg"
+        >
           <VIcon icon="tabler-receipt" size="18" />
         </VAvatar>
-        <span class="text-sm font-weight-black uppercase">Ventas (Débito Fiscal)</span>
+        <span class="text-sm font-weight-black uppercase"
+          >Ventas (Débito Fiscal)</span
+        >
         <VSpacer />
-        <VChip color="warning" size="x-small" variant="tonal" class="font-weight-black rounded">
+        <VChip
+          color="warning"
+          size="x-small"
+          variant="tonal"
+          class="font-weight-black rounded"
+        >
           {{ totalRecords }} DOCUMENTOS
         </VChip>
       </VCardTitle>
@@ -74,47 +104,81 @@ const getInitials = (name) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.order_id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.order_id }}</span>
+          <span class="font-weight-black text-primary"
+            >#{{ item.order_id }}</span
+          >
         </template>
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex flex-column">
-            <span class="font-weight-black text-primary">{{ item.invoice_number }}</span>
-            <span class="text-super-xs text-disabled">{{ formatDate(item.invoice_date) }}</span>
+            <span class="font-weight-black text-primary">{{
+              item.invoice_number
+            }}</span>
+            <span class="text-super-xs text-disabled">{{
+              formatDate(item.invoice_date)
+            }}</span>
           </div>
         </template>
 
         <template #item.business_name="{ item }">
           <div class="d-flex align-center gap-3 py-2">
-            <VAvatar color="warning" variant="tonal" size="30" class="rounded-lg">
-              <span class="text-super-xs font-weight-black">{{ getInitials(item.business_name) }}</span>
+            <VAvatar
+              color="warning"
+              variant="tonal"
+              size="30"
+              class="rounded-lg"
+            >
+              <span class="text-super-xs font-weight-black">{{
+                getInitials(item.business_name)
+              }}</span>
             </VAvatar>
-            <div class="d-flex flex-column truncate" style="max-width: 250px;">
-              <span class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.business_name }}</span>
-              <span class="text-super-xs text-primary font-weight-black uppercase truncate">{{ item.identification }}</span>
+            <div class="d-flex flex-column truncate" style="max-width: 250px">
+              <span
+                class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate"
+                >{{ item.business_name }}</span
+              >
+              <span
+                class="text-super-xs text-primary font-weight-black uppercase truncate"
+                >{{ item.identification }}</span
+              >
             </div>
           </div>
         </template>
 
         <template #item.exempt_amount="{ item }">
-          <span class="text-xs font-weight-medium" :class="Number(item.exempt_amount) > 0 ? 'text-info' : 'text-disabled'">
+          <span
+            class="text-xs font-weight-medium"
+            :class="
+              Number(item.exempt_amount) > 0 ? 'text-info' : 'text-disabled'
+            "
+          >
             {{ formatCurrency(item.exempt_amount) }}
           </span>
         </template>
 
         <template #item.taxable_base="{ item }">
-          <span class="text-xs font-weight-medium">{{ formatCurrency(item.taxable_base) }}</span>
+          <span class="text-xs font-weight-medium">{{
+            formatCurrency(item.taxable_base)
+          }}</span>
         </template>
 
         <template #item.iva_amount="{ item }">
           <div class="d-flex flex-column align-end">
-            <span class="text-xs font-weight-black text-success">{{ formatCurrency(item.iva_amount) }}</span>
-            <span v-if="item.spe" class="text-super-xs text-warning font-weight-black">+SPE</span>
+            <span class="text-xs font-weight-black text-success">{{
+              formatCurrency(item.iva_amount)
+            }}</span>
+            <span
+              v-if="item.spe"
+              class="text-super-xs text-warning font-weight-black"
+              >+SPE</span
+            >
           </div>
         </template>
 
         <template #item.total_amount="{ item }">
-          <span class="text-sm font-weight-black text-warning-darken-2">{{ formatCurrency(item.total_amount) }}</span>
+          <span class="text-sm font-weight-black text-warning-darken-2">{{
+            formatCurrency(item.total_amount)
+          }}</span>
         </template>
 
         <template #bottom>
@@ -125,7 +189,9 @@ const getInitials = (name) => {
               :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
               size="small"
               class="premium-pagination"
-              @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+              @update:model-value="
+                (newPage) => emit('update:options', { ...props, page: newPage })
+              "
             />
           </div>
         </template>
@@ -145,22 +211,38 @@ const getInitials = (name) => {
           class="rounded-lg border shadow-sm premium-card overflow-hidden"
         >
           <div class="premium-card-decoration bg-warning-opacity"></div>
-          
+
           <VCardText class="pa-5">
             <!-- Cabecera Móvil -->
             <div class="d-flex align-center justify-space-between mb-4">
               <div class="d-flex align-center gap-3">
-                <VAvatar color="warning" variant="tonal" size="38" class="rounded-lg shadow-sm">
+                <VAvatar
+                  color="warning"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg shadow-sm"
+                >
                   <VIcon icon="tabler-receipt" size="18" />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Factura #</span>
-                  <span class="text-sm font-weight-black text-primary leading-tight">{{ item.invoice_number }}</span>
+                  <span
+                    class="text-xs font-weight-black text-disabled uppercase leading-tight"
+                    >Factura #</span
+                  >
+                  <span
+                    class="text-sm font-weight-black text-primary leading-tight"
+                    >{{ item.invoice_number }}</span
+                  >
                 </div>
               </div>
               <div class="d-flex flex-column align-end">
-                <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Orden</span>
-                <span class="text-xs font-weight-bold leading-tight">#{{ item.order_id }}</span>
+                <span
+                  class="text-xs font-weight-black text-disabled uppercase leading-tight"
+                  >Orden</span
+                >
+                <span class="text-xs font-weight-bold leading-tight"
+                  >#{{ item.order_id }}</span
+                >
               </div>
             </div>
 
@@ -168,27 +250,55 @@ const getInitials = (name) => {
 
             <!-- Info Cliente -->
             <div class="mb-4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Cliente / RIF</span>
-              <span class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1">{{ item.business_name }}</span>
-              <span class="text-xs text-disabled leading-tight">{{ item.identification }}</span>
+              <span
+                class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1"
+                >Cliente / RIF</span
+              >
+              <span
+                class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1"
+                >{{ item.business_name }}</span
+              >
+              <span class="text-xs text-disabled leading-tight">{{
+                item.identification
+              }}</span>
             </div>
 
             <!-- Stats IVA -->
             <div class="d-flex gap-3 mb-4">
-              <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-info-opacity">
-                <span class="text-super-xs text-info font-weight-bold uppercase d-block mb-1">Exento</span>
-                <span class="text-sm font-weight-black">{{ formatCurrency(item.exempt_amount) }}</span>
+              <div
+                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-info-opacity"
+              >
+                <span
+                  class="text-super-xs text-info font-weight-bold uppercase d-block mb-1"
+                  >Exento</span
+                >
+                <span class="text-sm font-weight-black">{{
+                  formatCurrency(item.exempt_amount)
+                }}</span>
               </div>
-              <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-success-opacity">
-                <span class="text-super-xs text-success font-weight-bold uppercase d-block mb-1">IVA Cobrado</span>
-                <span class="text-sm font-weight-black">{{ formatCurrency(item.iva_amount) }}</span>
+              <div
+                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-success-opacity"
+              >
+                <span
+                  class="text-super-xs text-success font-weight-bold uppercase d-block mb-1"
+                  >IVA Cobrado</span
+                >
+                <span class="text-sm font-weight-black">{{
+                  formatCurrency(item.iva_amount)
+                }}</span>
               </div>
             </div>
 
             <!-- Total -->
-            <div class="d-flex align-center justify-space-between bg-surface-variant-opacity-2 pa-3 rounded-lg">
-              <span class="text-xs font-weight-black uppercase">Monto Total</span>
-              <span class="text-h6 font-weight-black text-warning-darken-2">Bs. {{ formatCurrency(item.total_amount) }}</span>
+            <div
+              class="d-flex align-center justify-space-between bg-surface-variant-opacity-2 pa-3 rounded-lg"
+            >
+              <span class="text-xs font-weight-black uppercase"
+                >Monto Total</span
+              >
+              <span class="text-h6 font-weight-black text-warning-darken-2"
+                >Bs. {{ formatCurrency(item.total_amount) }}</span
+              >
             </div>
           </VCardText>
         </VCard>
@@ -201,7 +311,9 @@ const getInitials = (name) => {
             size="small"
             rounded="circle"
             class="premium-pagination"
-            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+            @update:model-value="
+              (newPage) => emit('update:options', { ...props, page: newPage })
+            "
           />
         </div>
       </template>
@@ -220,7 +332,10 @@ const getInitials = (name) => {
 
 .premium-table :deep(.v-data-table-header th) {
   background: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-high-emphasis-opacity)
+  ) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -267,7 +382,11 @@ const getInitials = (name) => {
 }
 
 .bg-warning-opacity {
-  background: linear-gradient(135deg, rgba(var(--v-theme-warning), 0.1) 0%, transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-warning), 0.1) 0%,
+    transparent 100%
+  );
 }
 
 .bg-info-opacity {

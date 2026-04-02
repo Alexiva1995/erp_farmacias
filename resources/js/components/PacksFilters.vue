@@ -27,6 +27,7 @@ const hasAdvancedFilters = computed(() => !!props.idSearchQuery);
     :show-add="props.showAddButton"
     add-button-text="Añadir Pack"
     search-placeholder="Buscar por nombre del pack..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-pack')"

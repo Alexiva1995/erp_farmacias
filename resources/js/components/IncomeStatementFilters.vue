@@ -54,6 +54,7 @@ function setQuickFilter(days) {
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar registro..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >

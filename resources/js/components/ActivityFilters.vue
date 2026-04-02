@@ -40,6 +40,7 @@ const hasAdvancedFilters = computed(() => !!props.selectedFrequency);
     :show-add="true"
     add-button-text="Nueva Actividad"
     search-placeholder="Buscar por actividad o descripción..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-activity')"

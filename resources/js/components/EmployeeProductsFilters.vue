@@ -72,6 +72,7 @@ const hasAdvancedFilters = computed(() => !!props.selectedProduct);
     :show-add="true"
     add-button-text="Asignar Producto"
     search-placeholder="Buscar empleado por nombre..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-assignment')"

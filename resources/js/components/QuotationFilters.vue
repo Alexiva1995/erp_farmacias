@@ -107,6 +107,7 @@ const handleClearAndSort = () => {
     :show-sort="true"
     :sort-options="sortOptions"
     search-placeholder="Producto, Cód. Barra, C. Activo..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="handleClearAndSort"
     @sort="handleSortClick"

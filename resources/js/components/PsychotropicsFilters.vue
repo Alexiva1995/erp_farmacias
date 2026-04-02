@@ -102,6 +102,7 @@ const hasAdvancedFilters = computed(() => {
     :sort-options="sortOptions"
     :show-export="true"
     search-placeholder="ID, Producto, C. Activo..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @export="(ext) => emit('export', ext)"

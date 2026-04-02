@@ -122,6 +122,7 @@ const showExport = computed(() => props.mode === 'products');
     :show-add="canAdd"
     :add-button-text="props.addButtonText"
     search-placeholder="ID, Producto, C. Activo..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @export="(ext) => emit('export', ext)"

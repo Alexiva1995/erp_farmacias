@@ -133,174 +133,353 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="mobile ? 'pa-0' : 'pa-4'">
-    <!-- Filtros Premium Colapsables -->
-    <IslrFilters
-      v-model:selected-year="selectedYear"
-      :available-years="availableYears"
-      :loading="loading"
-      @refresh="handleRefresh"
-      @clear="handleClear"
-    />
+  <div class="islr-general-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Dashboard Premium de ISLR -->
+      <VRow class="ma-0 mb-6 mx-n1 match-height">
+        <!-- Card Renta Bruta -->
+        <VCol cols="12" md="4" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <div
+              class="card-bg-decoration"
+              style="background: linear-gradient(45deg, rgba(var(--v-theme-success), 0.1), transparent)"
+            ></div>
 
-    <!-- Unidades Tributarias Floating Alert -->
-    <VAlert
-      variant="tonal"
-      color="info"
-      class="mb-6 rounded-lg border-dashed border-info py-2"
-    >
-      <div class="d-flex align-center justify-space-between w-100 px-2">
-        <div class="d-flex align-center gap-2">
-          <VAvatar color="info" variant="tonal" size="32" class="rounded-lg">
-            <VIcon icon="tabler-adjustments-alt" size="18" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-super-xs font-weight-black uppercase leading-tight">U.T. Vigente</span>
-            <span class="text-sm font-weight-black">Bs. {{ formatCurrency(unidadesTributarias) }}</span>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar color="success" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon icon="tabler-cash-banknote" size="26" />
+                </VAvatar>
+
+                <div class="text-right d-flex flex-column">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">
+                    Renta Bruta
+                  </span>
+                  <h4 class="text-h4 font-weight-black mt-1">
+                    <span class="text-sm font-weight-medium me-1">Bs.</span>{{ formatCurrency(rentaBruta) }}
+                  </h4>
+                </div>
+              </div>
+
+              <VDivider class="mb-3 opacity-20" />
+
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis uppercase">
+                  Ingresos Fiscales {{ selectedYear }}
+                </span>
+                <VIcon icon="tabler-trending-up" size="16" color="success" class="opacity-50" />
+              </div>
+            </VCardText>
+
+            <div class="accent-border bg-success"></div>
+          </VCard>
+        </VCol>
+
+        <!-- Card Base Imponible -->
+        <VCol cols="12" md="4" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <div
+              class="card-bg-decoration"
+              style="background: linear-gradient(45deg, rgba(var(--v-theme-primary), 0.1), transparent)"
+            ></div>
+
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar color="primary" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon icon="tabler-receipt-2" size="26" />
+                </VAvatar>
+
+                <div class="text-right d-flex flex-column">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">
+                    Base Imponible
+                  </span>
+                  <h4 class="text-h4 font-weight-black mt-1">
+                    <span class="text-sm font-weight-medium me-1">Bs.</span>{{ formatCurrency(montoConDeducciones) }}
+                  </h4>
+                </div>
+              </div>
+
+              <VDivider class="mb-3 opacity-20" />
+
+              <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-1">
+                  <span class="text-caption font-weight-medium text-medium-emphasis uppercase">
+                    Post Deducciones:
+                  </span>
+                  <span class="text-xs font-weight-black text-primary" v-if="deducciones > 0">
+                    -{{ formatCurrency(deducciones) }}
+                  </span>
+                </div>
+                <VIcon icon="tabler-receipt" size="16" color="primary" class="opacity-50" />
+              </div>
+            </VCardText>
+
+            <div class="accent-border bg-primary"></div>
+          </VCard>
+        </VCol>
+
+        <!-- Card Impuesto Estimado -->
+        <VCol cols="12" md="4" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <div
+              class="card-bg-decoration"
+              style="background: linear-gradient(45deg, rgba(var(--v-theme-warning), 0.1), transparent)"
+            ></div>
+
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar color="warning" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon icon="tabler-calculator-tax" size="26" />
+                </VAvatar>
+
+                <div class="text-right d-flex flex-column">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">
+                    Impuesto ISLR
+                  </span>
+                  <h4 class="text-h4 font-weight-black mt-1">
+                    {{ impuestoISLR.toFixed(2) }} <span class="text-sm font-weight-medium">U.T.</span>
+                  </h4>
+                </div>
+              </div>
+
+              <VDivider class="mb-3 opacity-20" />
+
+              <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-2">
+                  <VChip size="x-small" color="warning" variant="tonal" class="font-weight-black rounded">
+                    {{ tramoISLR.tasa }}% TASA
+                  </VChip>
+                  <span class="text-super-xs text-medium-emphasis font-weight-bold uppercase truncate" style="max-width: 100px;">
+                    {{ tramoISLR.tramo }}
+                  </span>
+                </div>
+                <span class="text-xs font-weight-black text-warning">
+                  Bs. {{ formatCurrency(impuestoISLREnBolivares) }}
+                </span>
+              </div>
+            </VCardText>
+
+            <div class="accent-border bg-warning"></div>
+          </VCard>
+        </VCol>
+      </VRow>
+
+      <!-- Unidades Tributarias Floating Alert -->
+      <VAlert
+        variant="tonal"
+        color="info"
+        class="ma-0 rounded-lg border-dashed border-info py-2"
+      >
+        <div class="d-flex align-center justify-space-between w-100 px-2">
+          <div class="d-flex align-center gap-2">
+            <VAvatar color="info" variant="tonal" size="32" class="rounded-lg">
+              <VIcon icon="tabler-adjustments-alt" size="18" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span
+                class="text-super-xs font-weight-black uppercase leading-tight"
+                >U.T. Vigente</span
+              >
+              <span class="text-sm font-weight-black"
+                >Bs. {{ formatCurrency(unidadesTributarias) }}</span
+              >
+            </div>
           </div>
+          <VBtn
+            color="info"
+            variant="flat"
+            size="small"
+            class="rounded-lg text-super-xs font-weight-black px-4 shadow-sm"
+            @click="showEditUTDialog = true"
+          >
+            AJUSTAR VALOR
+          </VBtn>
         </div>
-        <VBtn
-          color="info"
-          variant="flat"
-          size="small"
-          class="rounded-lg text-super-xs font-weight-black px-4 shadow-sm"
-          @click="showEditUTDialog = true"
-        >
-          AJUSTAR VALOR
-        </VBtn>
-      </div>
-    </VAlert>
+      </VAlert>
 
-    <!-- Dashboard Premium de ISLR -->
-    <VRow class="match-height mb-6">
-      <!-- Card Renta Bruta -->
-      <VCol cols="12" md="4">
-        <VCard class="rounded-lg border-0 premium-summary-card bg-success-gradient overflow-hidden h-100 shadow-md">
-          <VCardText class="pa-6 d-flex flex-column align-center text-center">
-            <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg">
-              <VIcon icon="tabler-cash-banknote" size="24" color="white" />
-            </VAvatar>
-            <span class="text-xs font-weight-bold uppercase text-white opacity-70 mb-1">Renta Bruta</span>
-            <div class="text-h4 font-weight-black text-white mb-2 leading-none">
-              <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(rentaBruta) }}
-            </div>
-            <div class="mt-auto d-flex align-center gap-2 pt-2">
-              <VChip size="x-small" color="white" variant="flat" class="font-weight-black rounded">
-                AÑO {{ selectedYear }}
-              </VChip>
-              <span class="text-super-xs text-white opacity-80 uppercase font-weight-medium">Ingresos Fiscales</span>
-            </div>
-          </VCardText>
-          <div class="card-wave"></div>
-        </VCard>
-      </VCol>
+      <!-- Filtros Premium Colapsables -->
+      <IslrFilters
+        v-model:selected-year="selectedYear"
+        :available-years="availableYears"
+        :loading="loading"
+        @refresh="handleRefresh"
+        @clear="handleClear"
+      />
 
-      <!-- Card Monto con Deducciones -->
-      <VCol cols="12" md="4">
-        <VCard class="rounded-lg border-0 premium-summary-card bg-primary-gradient overflow-hidden h-100 shadow-md">
-          <VCardText class="pa-6 d-flex flex-column align-center text-center">
-            <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg">
-              <VIcon icon="tabler-receipt-2" size="24" color="white" />
-            </VAvatar>
-            <span class="text-xs font-weight-bold uppercase text-white opacity-70 mb-1">Base Imponible</span>
-            <div class="text-h4 font-weight-black text-white mb-2 leading-none">
-              <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(montoConDeducciones) }}
-            </div>
-            <div class="mt-auto d-flex flex-column align-center gap-1 pt-2">
-              <span class="text-super-xs text-white opacity-90 font-weight-black uppercase">Post Deducciones</span>
-              <VChip v-if="deducciones > 0" size="super-xs" color="white" variant="tonal" class="rounded font-weight-black">
-                -{{ formatCurrency(deducciones) }}
-              </VChip>
-            </div>
-          </VCardText>
-          <div class="card-wave"></div>
-        </VCard>
-      </VCol>
+      <!-- Detalle Financiero Consolidado -->
+      <VCard class="ma-0 rounded-lg border-0 shadow-sm overflow-hidden bg-surface mt-6">
+        <VCardTitle class="pa-4 px-6 d-flex align-center">
+          <VAvatar
+            color="secondary"
+            variant="tonal"
+            size="32"
+            class="me-3 rounded-lg"
+          >
+            <VIcon icon="tabler-report-analytics" size="18" />
+          </VAvatar>
+          <span class="text-sm font-weight-black uppercase"
+            >Consolidado Fiscal Anual</span
+          >
+          <VSpacer />
+          <VChip color="secondary" size="small" class="font-weight-black"
+            >EJERCICIO {{ selectedYear }}</VChip
+          >
+        </VCardTitle>
 
-      <!-- Card Impuesto Estimado -->
-      <VCol cols="12" md="4">
-        <VCard class="rounded-lg border-0 premium-summary-card bg-warning-gradient overflow-hidden h-100 shadow-md pulse-hover">
-          <VCardText class="pa-6 d-flex flex-column align-center text-center">
-            <VAvatar color="white" variant="tonal" size="44" class="mb-3 rounded-lg shadow-sm">
-              <VIcon icon="tabler-calculator-tax" size="24" color="white" />
-            </VAvatar>
-            <span class="text-xs font-weight-bold uppercase text-white opacity-70 mb-1">Impuesto a Pagar</span>
-            <div class="text-h4 font-weight-black text-white mb-1 leading-none">
-              {{ impuestoISLR.toFixed(2) }} <span class="text-xs font-weight-bold">U.T.</span>
-            </div>
-            <div class="text-sm font-weight-black text-white mb-2 opacity-90">
-              Bs. {{ formatCurrency(impuestoISLREnBolivares) }}
-            </div>
-            <div class="mt-auto d-flex flex-column align-center gap-1">
-              <VChip size="x-small" color="white" variant="flat" class="font-weight-black rounded">
-                {{ tramoISLR.tasa }}% DE TASA
-              </VChip>
-              <span class="text-super-xs text-white opacity-80 uppercase font-weight-medium font-italic">Tramo: {{ tramoISLR.tramo }}</span>
-            </div>
-          </VCardText>
-          <div class="card-wave pulse"></div>
-        </VCard>
-      </VCol>
-    </VRow>
+        <VDivider class="opacity-10" />
 
-    <!-- Detalle Financiero Consolidado -->
-    <VCard class="rounded-lg border-0 shadow-sm overflow-hidden bg-surface">
-      <VCardTitle class="pa-4 px-6 d-flex align-center">
-        <VAvatar color="secondary" variant="tonal" size="32" class="me-3 rounded-lg">
-          <VIcon icon="tabler-report-money" size="18" />
-        </VAvatar>
-        <span class="text-sm font-weight-black uppercase">Consolidado Fiscal - Año {{ selectedYear }}</span>
-      </VCardTitle>
-      
-      <VDivider class="opacity-10" />
-      
-      <VCardText class="pa-6">
-        <VRow :dense="mobile">
-          <VCol cols="12" md="4">
-            <div class="d-flex align-center gap-4 pa-4 rounded-lg bg-surface-variant-opacity-2 border border-dashed border-disabled">
-              <VAvatar color="success" variant="tonal" size="48" class="rounded-lg">
-                <VIcon icon="tabler-trending-up" size="24" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled font-weight-black uppercase leading-tight">Ingreso Bruto (IBG)</span>
-                <span class="text-xl font-weight-black text-success mt-1">Bs. {{ formatCurrency(islrData.ibg) }}</span>
+        <VCardText class="pa-0">
+          <VRow no-gutters>
+            <VCol cols="12" md="6" class="border-e">
+              <div class="pa-6">
+                <div class="d-flex align-center gap-2 mb-4">
+                  <VIcon icon="tabler-building-bank" color="primary" />
+                  <span class="text-subtitle-2 font-weight-black uppercase"
+                    >Resumen Operativo</span
+                  >
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis"
+                      >Total Ventas Brutas:</span
+                    >
+                    <span class="text-sm font-weight-black"
+                      >Bs. {{ formatCurrency(totalVentas) }}</span
+                    >
+                  </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis"
+                      >Total Compras Brutas:</span
+                    >
+                    <span class="text-sm font-weight-black"
+                      >Bs. {{ formatCurrency(totalCompras) }}</span
+                    >
+                  </div>
+                  <VDivider />
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption font-weight-black"
+                      >Utilidad Operativa:</span
+                    >
+                    <span
+                      class="text-sm font-weight-black"
+                      :class="totalVentas - totalCompras >= 0 ? 'text-success' : 'text-error'"
+                    >
+                      Bs. {{ formatCurrency(totalVentas - totalCompras) }}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </VCol>
-          
-          <VCol cols="12" md="4">
-            <div class="d-flex align-center gap-4 pa-4 rounded-lg bg-surface-variant-opacity-2 border border-dashed border-disabled">
-              <VAvatar color="warning" variant="tonal" size="48" class="rounded-lg">
-                <VIcon icon="tabler-receipt" size="24" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled font-weight-black uppercase leading-tight">Costos Declarados</span>
-                <span class="text-xl font-weight-black text-warning mt-1">Bs. {{ formatCurrency(islrData.costs) }}</span>
-              </div>
-            </div>
-          </VCol>
+            </VCol>
 
-          <VCol cols="12" md="4">
-            <div class="d-flex align-center gap-4 pa-4 rounded-lg bg-surface-variant-opacity-2 border border-dashed border-disabled">
-              <VAvatar color="error" variant="tonal" size="48" class="rounded-lg">
-                <VIcon icon="tabler-scissors" size="24" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled font-weight-black uppercase leading-tight">Total Deducciones</span>
-                <span class="text-xl font-weight-black text-error mt-1">Bs. {{ formatCurrency(deducciones) }}</span>
-              </div>
-            </div>
-          </VCol>
-        </VRow>
-      </VCardText>
-    </VCard>
+            <VCol cols="12" md="6">
+              <div class="pa-6">
+                <div class="d-flex align-center gap-2 mb-4">
+                  <VIcon icon="tabler-scale" color="warning" />
+                  <span class="text-subtitle-2 font-weight-black uppercase"
+                    >Proyección de Impuesto</span
+                  >
+                </div>
 
-    <!-- Dialog para editar Unidades Tributarias -->
-    <EditUTDialog
-      v-model="showEditUTDialog"
-      :current-value="unidadesTributarias"
-      @save="handleSaveUT"
-    />
+                <div class="d-flex flex-column gap-3">
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis"
+                      >Tarifa Aplicable:</span
+                    >
+                    <VChip size="x-small" color="primary" rounded>{{
+                      tramoISLR.tasa
+                    }}%</VChip>
+                  </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis"
+                      >Sustraendo Aplicable:</span
+                    >
+                    <span class="text-sm font-weight-black"
+                      >{{ tramoISLR.sustraendo }} U.T.</span
+                    >
+                  </div>
+                  <VDivider />
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption font-weight-black"
+                      >Total a Pagar Estimado:</span
+                    >
+                    <div class="text-right">
+                      <div class="text-h6 font-weight-black text-warning">
+                        Bs. {{ formatCurrency(impuestoISLREnBolivares) }}
+                      </div>
+                      <div class="text-super-xs text-disabled">
+                        {{ impuestoISLR.toFixed(2) }} U.T.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+    </div>
+
+    <!-- Edit UT Dialog -->
+    <VDialog v-model="showEditUTDialog" max-width="400" persistent>
+      <VCard class="rounded-xl overflow-hidden border-0 shadow-lg">
+        <div class="bg-primary pa-6 text-center position-relative">
+          <VAvatar
+            color="white"
+            size="64"
+            class="mb-3 shadow-sm border border-opacity-10"
+          >
+            <VIcon icon="tabler-settings-automation" color="primary" size="32" />
+          </VAvatar>
+          <h3 class="text-h5 font-weight-black text-white">Ajustar U.T.</h3>
+          <p class="text-caption text-white opacity-80 mb-0">
+            Valores para el ejercicio {{ selectedYear }}
+          </p>
+        </div>
+
+        <VCardText class="pa-6">
+          <VTextField
+            v-model="utValueEdit"
+            label="Valor Unidad Tributaria"
+            prefix="Bs."
+            type="number"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="rounded-lg mb-4"
+          />
+
+          <VAlert
+            type="warning"
+            variant="tonal"
+            class="rounded-lg mb-0 text-caption font-weight-medium"
+          >
+            Este cambio afectará los cálculos de impuestos de todo el sistema.
+          </VAlert>
+        </VCardText>
+
+        <VDivider />
+
+        <VCardActions class="pa-4 pt-0 justify-end gap-2 mt-2">
+          <VBtn
+            variant="text"
+            color="secondary"
+            class="rounded-lg font-weight-black px-4"
+            @click="showEditUTDialog = false"
+          >
+            CANCELAR
+          </VBtn>
+          <VBtn
+            variant="flat"
+            color="primary"
+            class="rounded-lg font-weight-black px-6 shadow-sm"
+            @click="updateUT"
+          >
+            GUARDAR CAMBIOS
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -314,47 +493,43 @@ onMounted(() => {
   line-height: 1.1;
 }
 
-.bg-success-gradient {
-  background: linear-gradient(135deg, #2AD577 0%, #158E4D 100%) !important;
-}
-
-.bg-primary-gradient {
-  background: linear-gradient(135deg, #1E90FF 0%, #0056B3 100%) !important;
-}
-
-.bg-warning-gradient {
-  background: linear-gradient(135deg, #FFB400 0%, #CC9000 100%) !important;
-}
-
-.premium-summary-card {
+.stats-card {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 80%) !important;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 5%) !important;
+  transition: all 0.3s ease;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.premium-summary-card:hover {
+.stats-card:hover {
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
   transform: translateY(-5px);
-  box-shadow: 0 15px 30px -10px rgba(0,0,0,0.2) !important;
 }
 
-.card-wave {
+.card-bg-decoration {
   position: absolute;
-  bottom: -30px;
-  right: -30px;
-  width: 140px;
-  height: 140px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 100px;
+  filter: blur(40px);
+  inline-size: 100px;
+  inset-block-start: -20px;
+  inset-inline-end: -20px;
   pointer-events: none;
 }
 
-.card-wave.pulse {
-  animation: pulse-wave 4s infinite linear;
+.relative-content {
+  position: relative;
+  z-index: 1;
 }
 
-@keyframes pulse-wave {
-  0% { transform: scale(1) rotate(0deg); opacity: 0.1; }
-  50% { transform: scale(1.3) rotate(180deg); opacity: 0.2; }
-  100% { transform: scale(1) rotate(360deg); opacity: 0.1; }
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
 }
 
 .bg-surface-variant-opacity-2 {

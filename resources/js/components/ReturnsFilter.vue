@@ -40,6 +40,7 @@ const hasAdvancedFilters = computed(() =>
     :search="props.search"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar devolución, producto o N° Orden..."
+    class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
   >

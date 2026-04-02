@@ -94,7 +94,7 @@ const fetchClosingHistory = async () => {
     date_end: filters.value.date_end,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
   try {
     const response = await axios.get("/finances/cash-closure/closingHistory", {
@@ -138,7 +138,7 @@ const printCash = async (cash) => {
 
     const printWindow = window.open("", "", "height=600,width=800");
     printWindow.document.write(
-      "<html><head><title>Farmacia Barrio Sucre</title>"
+      "<html><head><title>Farmacia Barrio Sucre</title>",
     );
     const styleSheets = document.styleSheets;
     for (let i = 0; i < styleSheets.length; i++) {
@@ -152,14 +152,14 @@ const printCash = async (cash) => {
           printWindow.document.write(`<style>${cssText}</style>`);
         } else if (sheet.href) {
           printWindow.document.write(
-            `<link rel="stylesheet" href="${sheet.href}">`
+            `<link rel="stylesheet" href="${sheet.href}">`,
           );
         }
       } catch (e) {
         console.warn(
           "No se pudo acceder a la hoja de estilo:",
           sheet.href || sheet,
-          e
+          e,
         );
       }
     }
@@ -216,7 +216,7 @@ const downloadcash = async (cash) => {
       },
       {
         responseType: "blob",
-      }
+      },
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
@@ -242,7 +242,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     const cashToDownload = cashClosureData;
     cashData.value = cashToDownload;
     isDownloadingPdf.value = true;
-    isPrinting.value = true; 
+    isPrinting.value = true;
 
     isDownload.value = true;
     orderDataHistory.value = cashClosureData.orders;
@@ -270,7 +270,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     const htmlContent = `<style>${ticketStyles}</style>${printContents.innerHTML}`;
     const historyTicketHtml = `<style>${ticketStyles}</style>${historyContents.innerHTML}`;
 
-     const payload = {
+    const payload = {
       id: closureData.cierre_id,
       total_cop: closureData.total_cop,
       sobrante_en_peso: closureData.sobrante_en_peso,
@@ -329,7 +329,7 @@ const fetchOrder = async () => {
     date_end: filters.value.date_end,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
   try {
     const response = await axios.get("/finances/cash-closure/orders", {
@@ -361,9 +361,9 @@ const handleViewOrder = async (orderId) => {
         price_before_discount: parseFloat(detail.price_before_discount),
       }));
       paymentsForPrint.value = response.data.data.order.payment_methods;
-      
+
       changeAmountForPrint.value = parseFloat(
-        response.data.data.order.money_returns
+        response.data.data.order.money_returns,
       );
 
       amountForPrint.value = parseFloat(response.data.data.order.total_amount);
@@ -402,7 +402,7 @@ const cancelarOrder = async (orderId) => {
   } catch (error) {
     console.error(
       "Error al cancelar la orden:",
-      error.response ? error.response.data : error.message
+      error.response ? error.response.data : error.message,
     );
     const errorMessage =
       error.response?.data?.message ||
@@ -411,34 +411,21 @@ const cancelarOrder = async (orderId) => {
   }
 };
 
-
 let debounceTimerOrder;
 watch(
-  [
-    pageOrders,
-    itemsPerPageOrders,
-    sortByOrders,
-    orderByOrders,
-  ],
+  [pageOrders, itemsPerPageOrders, sortByOrders, orderByOrders],
   () => {
     clearTimeout(debounceTimerOrder);
     debounceTimerOrder = setTimeout(() => {
       fetchOrder();
     }, 300);
   },
-  { deep: true }
+  { deep: true },
 );
-
 
 let debounceTimer;
 watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    filters,
-  ],
+  [page, itemsPerPage, sortBy, orderBy, filters],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
@@ -446,11 +433,11 @@ watch(
       fetchOrder();
     }, 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 const isSpecialTaxpayer = computed(() => {
- if (!orderData.value) return false;
+  if (!orderData.value) return false;
   const amount = parseFloat(orderData.value.spe_surcharge_amount || 0);
   const rate = parseFloat(orderData.value.spe_surcharge_rate || 0);
   return amount > 0 || rate > 0;
@@ -458,69 +445,107 @@ const isSpecialTaxpayer = computed(() => {
 </script>
 
 <template>
-  <div class="cash-closure-user-page pa-4">
-    <VRow>
+  <div class="cash-closure-user-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
       <!-- Resumen de Caja Superior -->
-      <VCol cols="12">
+      <div v-if="cashClosure" class="mb-2">
         <CashSummary
-          v-if="cashClosure"
           :cash-closure-data="cashClosure"
           :loading="loading"
           @requestCloseCash="handleRequestCloseCash"
+          class="mb-4"
         />
-        <VAlert v-else-if="!loading" type="info" variant="tonal" class="rounded-lg">
-          No hay datos de cierre de caja disponibles.
-        </VAlert>
-      </VCol>
+      </div>
+      <VAlert
+        v-else-if="!loading"
+        type="info"
+        variant="tonal"
+        class="rounded-lg mb-2"
+      >
+        No hay datos de cierre de caja disponibles.
+      </VAlert>
 
       <!-- Filtros Colapsables -->
-      <VCol cols="12">
+      <div>
         <UserCashFilters
           :loading="loadingClosing || loadingOrders"
           @update:filters="handleFilterUpdate"
-          @refresh="() => { fetchCashClosure(); fetchClosingHistory(); fetchOrder(); }"
+          @refresh="
+            () => {
+              fetchCashClosure();
+              fetchClosingHistory();
+              fetchOrder();
+            }
+          "
         />
-      </VCol>
+      </div>
 
-      <!-- Histórico de Cierre -->
-      <VCol cols="12" md="4">
-        <VCard class="rounded-lg border shadow-sm h-100">
-          <VCardTitle class="px-6 py-4 border-b d-flex align-center gap-2">
-            <VIcon icon="tabler-history" color="primary" />
-            <span class="text-h6 font-weight-black uppercase">Historial</span>
-          </VCardTitle>
-          <ClosingHistoryTable
-            :closing="closing"
-            :loading="loadingClosing"
-            :total-closing="totalClosing"
-            :items-per-page="itemsPerPage"
-            :page="page"
-            @update:options="updateTableOptions"
-            @print-cash="printCash"
-          />
-        </VCard>
-      </VCol>
+      <!-- Tablas de Historial y Órdenes -->
+      <VRow class="ma-0 mx-n2">
+        <!-- Histórico de Cierre -->
+        <VCol cols="12" md="4" class="pa-2">
+          <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
+            <VCardText class="pa-0">
+              <div class="px-6 py-4 border-b d-flex align-center gap-2">
+                <VAvatar
+                  color="primary"
+                  variant="tonal"
+                  size="32"
+                  class="rounded-lg"
+                >
+                  <VIcon icon="tabler-history" size="18" />
+                </VAvatar>
+                <span class="text-subtitle-1 font-weight-black uppercase"
+                  >Historial</span
+                >
+              </div>
+              <ClosingHistoryTable
+                :closing="closing"
+                :loading="loadingClosing"
+                :total-closing="totalClosing"
+                :items-per-page="itemsPerPage"
+                :page="page"
+                @update:options="updateTableOptions"
+                @print-cash="printCash"
+              />
+            </VCardText>
+          </VCard>
+        </VCol>
 
-      <!-- Lista de Órdenes -->
-      <VCol cols="12" md="8">
-        <VCard class="rounded-lg border shadow-sm h-100">
-          <VCardTitle class="px-6 py-4 border-b d-flex align-center gap-2">
-            <VIcon icon="tabler-list-details" color="primary" />
-            <span class="text-h6 font-weight-black uppercase">Órdenes del Turno</span>
-          </VCardTitle>
-          <OrderCashCloseTable
-            :orders="orders"
-            :loading="loadingOrders"
-            :total-orders="totalOrders"
-            :items-per-page="itemsPerPageOrders"
-            :page="pageOrders"
-            @update:options="updateTableOptionsOrders"
-            @view-order="handleViewOrder"
-            @cancelar-order="cancelarOrder"
-          />
-        </VCard>
-      </VCol>
-    </VRow>
+        <!-- Lista de Órdenes -->
+        <VCol cols="12" md="8" class="pa-2">
+          <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
+            <VCardText class="pa-0">
+              <div class="px-6 py-4 border-b d-flex align-center gap-2">
+                <VAvatar
+                  color="primary"
+                  variant="tonal"
+                  size="32"
+                  class="rounded-lg"
+                >
+                  <VIcon icon="tabler-list-details" size="18" />
+                </VAvatar>
+                <span class="text-subtitle-1 font-weight-black uppercase"
+                  >Órdenes del Turno</span
+                >
+              </div>
+              <OrderCashCloseTable
+                :orders="orders"
+                :loading="loadingOrders"
+                :total-orders="totalOrders"
+                :items-per-page="itemsPerPageOrders"
+                :page="pageOrders"
+                @update:options="updateTableOptionsOrders"
+                @view-order="handleViewOrder"
+                @cancelar-order="cancelarOrder"
+              />
+            </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
+    </div>
+
+    <!-- Diálogos -->
 
     <!-- Diálogos -->
     <ClosedCashClosure
@@ -544,19 +569,25 @@ const isSpecialTaxpayer = computed(() => {
     />
   </div>
 
-    <div id="CashClosurePrint" :class="{ 'd-none': !isPrinting, 'print-container': true }">
-      <CashClosureTicke
-        v-if="isPrinting && cashData"
-        :cash-data="cashData"
-        :isPdf="isDownloadingPdf"
-      />
-    </div>
+  <div
+    id="CashClosurePrint"
+    :class="{ 'd-none': !isPrinting, 'print-container': true }"
+  >
+    <CashClosureTicke
+      v-if="isPrinting && cashData"
+      :cash-data="cashData"
+      :isPdf="isDownloadingPdf"
+    />
+  </div>
 
-    <div id="HistoryDownload" :class="{ 'd-none': !isDownload, 'print-container': true }">
-      <HistoryCashClosureTicke
-        v-if="isDownload && orderDataHistory"
-        :order-data="orderDataHistory"
-        :cash-data="cashData"
-      />
-    </div>
+  <div
+    id="HistoryDownload"
+    :class="{ 'd-none': !isDownload, 'print-container': true }"
+  >
+    <HistoryCashClosureTicke
+      v-if="isDownload && orderDataHistory"
+      :order-data="orderDataHistory"
+      :cash-data="cashData"
+    />
+  </div>
 </template>

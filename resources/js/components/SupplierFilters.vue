@@ -72,7 +72,7 @@ const hasAdvancedFilters = computed(
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
     @add="emit('add-supplier')"
-    class="py-2"
+    class="py-1"
   >
     <template #advanced-filters>
       <!-- Filtro de Deuda -->

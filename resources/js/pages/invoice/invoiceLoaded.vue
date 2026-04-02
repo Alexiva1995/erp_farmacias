@@ -56,7 +56,7 @@ const fetchInvoices = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] == null || params[key] === "") && delete params[key]
+    (key) => (params[key] == null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -88,7 +88,7 @@ watch(
       debounceTimer = setTimeout(() => fetchInvoices(), 300);
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery, selectedSupplier, startDate, endDate], () => {
@@ -122,7 +122,7 @@ const handleReviewInvoice = async (invoice) => {
 
   try {
     const response = await axios.get(
-      `/suppliers/${invoice.supplier_id}/payment-rules`
+      `/suppliers/${invoice.supplier_id}/payment-rules`,
     );
     availablePaymentRules.value = response.data.data ?? response.data ?? [];
   } catch (error) {
@@ -149,7 +149,7 @@ const handleApprovalApiCall = async ({ paymentRuleId }) => {
     handleReturnToList();
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo aprobar la factura."
+      error.response?.data?.message || "No se pudo aprobar la factura.",
     );
   } finally {
     isApproving.value = false;
@@ -164,7 +164,7 @@ const handleRejectApiCall = async () => {
     handleReturnToList();
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo rechazar la factura."
+      error.response?.data?.message || "No se pudo rechazar la factura.",
     );
   } finally {
     isApproving.value = false;
@@ -227,6 +227,7 @@ const handleReturnInvoice = async (invoiceId) => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         @clear="handleClearFilters"
+        class="mb-6"
       />
 
       <InvoiceTable

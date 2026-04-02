@@ -23,6 +23,7 @@ const emit = defineEmits([
     :show-advanced="false"
     add-button-text="Añadir Grupo"
     search-placeholder="Buscar por nombre, descripción..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-group')"

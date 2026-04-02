@@ -269,16 +269,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="resignations-page pa-4">
-    <!-- Barra de Búsqueda y Filtros -->
-    <ResignationFilters
-      v-model:search="search"
-      v-model:filters="filters"
-      @clear="handleClearFilters"
-    />
+  <div class="resignations-page mt-1">
+    <div class="d-flex flex-column gap-1">
+      <!-- Barra de Búsqueda y Filtros -->
+      <ResignationFilters
+        v-model:search="search"
+        v-model:filters="filters"
+        @clear="handleClearFilters"
+      />
 
-    <!-- Listado: Tabla o Cards -->
-    <VCard class="rounded-lg border shadow-sm overflow-hidden">
+      <!-- Listado: Tabla o Cards -->
+      <VCard class="rounded-lg border shadow-sm overflow-hidden">
       <!-- Vista de Escritorio: Tabla Premium -->
       <VDataTable
         v-if="!mobile"
@@ -543,6 +544,7 @@ onMounted(() => {
       :existingResignation="existingResignationData"
       @resignation-generated="handleResignationGenerated"
     />
+    </div>
   </div>
 </template>
 

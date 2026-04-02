@@ -19,6 +19,7 @@ const hasAdvancedFilters = computed(() => false);
     :show-add="true"
     add-button-text="Agregar Lote"
     search-placeholder="Buscar Producto, Proveedor, Lote..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-lot')"

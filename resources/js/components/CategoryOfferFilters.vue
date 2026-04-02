@@ -33,6 +33,7 @@ const hasAdvancedFilters = computed(() =>
     :add-button-text="'Nueva Oferta'"
     search-placeholder="Buscar categoría por nombre..."
     search-icon="tabler-search"
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-categories')"

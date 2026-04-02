@@ -34,6 +34,7 @@ const hasAdvancedFilters = computed(() => true);
     :force-advanced="true"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="..."
+    class="py-1"
     @clear="emit('clear')"
   >
     <!-- Sustituir buscador primario por selectores base -->

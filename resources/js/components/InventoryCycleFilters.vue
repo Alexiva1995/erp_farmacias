@@ -100,6 +100,7 @@ watch(() => currentUser.value?.id, (newId) => {
     :show-sort="true"
     :sort-options="sortOptions"
     search-placeholder="Buscar Producto, C. Activo, ID..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="handleSortClick"

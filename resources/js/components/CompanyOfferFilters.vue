@@ -26,6 +26,7 @@ const hasAdvancedFilters = computed(() => !!(props.idSearchQuery));
     :show-add="true"
     add-button-text="Nueva Oferta"
     search-placeholder="Buscar empresa por nombre..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-companies')"

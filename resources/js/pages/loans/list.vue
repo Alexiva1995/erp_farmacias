@@ -216,27 +216,10 @@ const handleSort = (sortOptions) => {
 </script>
 
 <template>
-  <div class="loans-view px-6 mt-6 pb-12">
-    <!-- === HEADER Y KPIS === -->
-    <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
-      <div class="header-bg pa-6">
-        <div class="d-flex align-center gap-4">
-          <VAvatar size="54" color="white" variant="flat" class="rounded-lg shadow-soft">
-            <VIcon icon="tabler-calendar-dollar" color="primary" size="28" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-              Gestión de Préstamos
-            </h1>
-            <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-              Seguimiento de Obligaciones y Amortizaciones
-            </span>
-          </div>
-        </div>
-      </div>
-    </VCard>
-
+  <div class="loans-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
     <LoanFilters
+      class="mb-6"
       v-model:searchQuery="searchQuery"
       v-model:selectedYear="selectedYear"
       v-model:statusFilter="statusFilter"
@@ -268,15 +251,11 @@ const handleSort = (sortOptions) => {
       @save="handleSaveLoan"
       @clear-errors="clearFormErrors"
     />
+    </div>
   </div>
 </template>
 
 <style scoped>
-.header-bg {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
-  border-block-end: 1px solid rgba(255, 255, 255, 10%);
-}
-
 .letter-spacing-tight { letter-spacing: -0.02em; }
 .letter-spacing-widest { letter-spacing: 0.1em !important; }
 .shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }

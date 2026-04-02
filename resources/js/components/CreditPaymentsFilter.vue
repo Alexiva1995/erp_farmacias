@@ -26,6 +26,7 @@ const hasAdvancedFilters = computed(() => !!(props.date || props.currency));
     :search="props.client"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar por cliente o identificación..."
+    class="py-1"
     @update:search="emit('update:client', $event)"
     @clear="emit('clear')"
   >

@@ -36,6 +36,7 @@ const hasAdvancedFilters = computed(() =>
     :show-add="true"
     add-button-text="Añadir Cliente"
     search-placeholder="Buscar cliente por nombre o ID..."
+    class="py-1"
     @update:search="emit('update:buscador', $event)"
     @clear="emit('clear')"
     @add="emit('add-existing-client')"

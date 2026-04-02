@@ -183,6 +183,7 @@ watch(
     :has-advanced-filters="hasActiveAdvancedFilters"
     :show-sort="true"
     :sort-options="sortOptions"
+    class="py-1"
     @clear="handleClear"
     @sort="handleSortClick"
   >

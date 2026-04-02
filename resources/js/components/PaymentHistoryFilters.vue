@@ -33,6 +33,7 @@ const currencies = [
   <AppFilterBase
     :search="props.searchQuery"
     search-placeholder="Buscar factura, proveedor o referencia..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >

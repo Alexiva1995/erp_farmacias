@@ -79,6 +79,7 @@ const handleClear = () => {
     :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.startDate || props.endDate || props.stock || props.days || props.tipoFiltracion !== 'average' || props.expProd || props.isColombian)"
     :show-export="true"
     search-placeholder="ID, Producto, C. Activo..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="handleClear"
     @export="ext => ext === 'xlsx' ? emit('export-excel', ext) : emit('export-pdf')"

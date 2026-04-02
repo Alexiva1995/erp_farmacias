@@ -47,6 +47,7 @@ const hasAdvancedFilters = computed(() =>
     :show-add="true"
     add-button-text="Nueva Oferta"
     search-placeholder="Buscar por descuento o meses..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-expiration-offer')"

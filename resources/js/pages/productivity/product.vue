@@ -209,8 +209,7 @@ const clearDialogErrors = () => {
 </script>
 
 <template>
-  <div class="productivity-product-page">
-    <div class="pa-4 pb-2">
+  <div class="productivity-product-page pb-12">
     <EmployeeProductsFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedProduct="selectedProduct"
@@ -247,7 +246,6 @@ const clearDialogErrors = () => {
       @save="handleSaveAssignment"
       @clear-errors="clearDialogErrors"
     />
-    </div>
   </div>
 </template>
 

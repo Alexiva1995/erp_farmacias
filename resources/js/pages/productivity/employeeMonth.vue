@@ -1,6 +1,6 @@
 <script setup>
-import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
 import EmployeeMonthFilters from "@/components/EmployeeMonthFilters.vue";
+import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
@@ -94,7 +94,7 @@ const fetchEmployees = async () => {
     });
     if (response.data && response.data.status) {
       employees.value = response.data.data;
-      isLocked.value = response.data.data.some(e => e.is_locked);
+      isLocked.value = response.data.data.some((e) => e.is_locked);
     }
   } catch (error) {
     console.error("Error fetching employee performance:", error);
@@ -102,7 +102,9 @@ const fetchEmployees = async () => {
 };
 
 const handleLockMonth = async () => {
-  const monthTitle = availableMonths.value.find(m => m.value === selectedMonth.value)?.title;
+  const monthTitle = availableMonths.value.find(
+    (m) => m.value === selectedMonth.value,
+  )?.title;
 
   const { isConfirmed } = await Swal.fire({
     title: "¿Cerrar este mes?",
@@ -117,16 +119,21 @@ const handleLockMonth = async () => {
     showLoaderOnConfirm: true,
     preConfirm: async () => {
       try {
-        const response = await axios.post("/api/rrhh/employee-performance/lock", {
-          month: selectedMonth.value,
-          year: selectedYear.value,
-        });
+        const response = await axios.post(
+          "/api/rrhh/employee-performance/lock",
+          {
+            month: selectedMonth.value,
+            year: selectedYear.value,
+          },
+        );
         if (!response.data.status) {
           throw new Error(response.data.message || "Error al procesar");
         }
         return response.data;
       } catch (error) {
-        Swal.showValidationMessage(`Error: ${error.response?.data?.message || error.message}`);
+        Swal.showValidationMessage(
+          `Error: ${error.response?.data?.message || error.message}`,
+        );
       }
     },
     allowOutsideClick: () => !Swal.isLoading(),
@@ -158,7 +165,8 @@ const calculatedEmployees = computed(() => {
     return (
       e.name.toLowerCase().includes(search) ||
       e.last_name.toLowerCase().includes(search) ||
-      (e.identification && String(e.identification).toLowerCase().includes(search))
+      (e.identification &&
+        String(e.identification).toLowerCase().includes(search))
     );
   });
 
@@ -191,99 +199,191 @@ const formatCurrency = (amount) =>
     style: "currency",
     currency: "USD",
   }).format(amount);
+const statistics = computed(() => [
+  {
+    title: "Ventas",
+    value: formatCurrency(
+      calculatedEmployees.value.reduce((acc, e) => acc + (e.sales || 0), 0),
+    ),
+    icon: "tabler-currency-dollar",
+    color: "primary",
+    description: "Total facturado mes",
+  },
+  {
+    title: "Crecimiento",
+    value: `${formatNumber(calculatedEmployees.value.reduce((acc, e) => acc + (e.growth || 0), 0) / (calculatedEmployees.value.length || 1))}%`,
+    icon: "tabler-trending-up",
+    color: "success",
+    description: "Promedio mensual",
+  },
+  {
+    title: "Vencimientos",
+    value: calculatedEmployees.value.reduce(
+      (acc, e) => acc + (e.expirations || 0),
+      0,
+    ),
+    icon: "tabler-calendar-off",
+    color: "error",
+    description: "Unidades detectadas",
+  },
+  {
+    title: "Inventario",
+    value: calculatedEmployees.value.reduce(
+      (acc, e) => acc + (e.inventory_counted || 0),
+      0,
+    ),
+    icon: "tabler-package",
+    color: "info",
+    description: "Conteos realizados",
+  },
+]);
 </script>
 
 <template>
-  <VContainer fluid class="productivity-employee-month-page pa-4">
-    <!-- Header Summary / Leaderboard -->
-    <VRow v-if="calculatedEmployees.length" class="mb-6" dense>
-      <VCol cols="12" md="4">
-        <VCard class="leader-card h-100 overflow-hidden border shadow-lg position-relative rounded-lg">
-          <div class="premium-header pa-5 d-flex align-center gap-4">
-            <VAvatar size="70" class="leader-avatar border-2 border-white shadow-lg">
-              <VImg v-if="calculatedEmployees[0].photo" :src="calculatedEmployees[0].photo" />
-              <div v-else class="text-h4 font-weight-black text-white">{{ calculatedEmployees[0].name.charAt(0) }}</div>
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1">Líder del Mes</span>
-              <span class="text-h5 font-weight-black text-white leading-tight mb-1">
-                {{ calculatedEmployees[0].name }} {{ calculatedEmployees[0].last_name }}
-              </span>
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-award" color="warning" size="20" />
-                <span class="text-h4 font-weight-black text-white">
-                  {{ formatNumber(calculatedEmployees[0].scores?.total || 0) }} 
-                  <small class="text-h6 font-weight-bold">pts</small>
+  <div class="productivity-employee-month-page pb-12">
+    <div class="d-flex flex-column gap-2 mt-2">
+      <EmployeeMonthFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedMonth="selectedMonth"
+        v-model:selectedYear="selectedYear"
+        :selected-sort="selectedSort"
+        :available-months="availableMonths"
+        :available-years="availableYears"
+        :sort-options="sortOptions"
+        :is-locked="isLocked"
+        @clear="handleClear"
+        @lock-month="handleLockMonth"
+        @sort="handleSortClick"
+        class="ma-0 mb-0"
+      />
+
+      <!-- Header Summary / Leaderboard -->
+      <VRow v-if="calculatedEmployees.length" class="ma-0 mt-4 mb-4 mx-n2">
+        <!-- Card Lider -->
+        <VCol cols="12" md="4" class="pa-2">
+          <VCard
+            class="stats-card leader-card h-100 overflow-hidden border shadow-sm position-relative ma-0"
+          >
+            <div
+              class="card-bg-decoration"
+              style="
+                background: linear-gradient(
+                  45deg,
+                  rgba(var(--v-theme-warning), 0.15),
+                  transparent
+                );
+              "
+            ></div>
+            <div
+              class="premium-header-new pa-5 d-flex align-center gap-4 relative-content"
+            >
+              <VAvatar
+                size="70"
+                class="leader-avatar border-2 border-white shadow-lg"
+              >
+                <VImg
+                  v-if="calculatedEmployees[0].photo"
+                  :src="calculatedEmployees[0].photo"
+                />
+                <div v-else class="text-h4 font-weight-black text-white">
+                  {{ calculatedEmployees[0].name.charAt(0) }}
+                </div>
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span
+                  class="text-super-xs font-weight-black text-warning-darken-2 opacity-80 uppercase mb-1"
+                  >Líder del Mes 🏆</span
+                >
+                <span
+                  class="text-h5 font-weight-black text-high-emphasis leading-tight mb-1"
+                >
+                  {{ calculatedEmployees[0].name }}
+                  {{ calculatedEmployees[0].last_name }}
                 </span>
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-award" color="warning" size="20" />
+                  <span class="text-h4 font-weight-black text-primary">
+                    {{
+                      formatNumber(calculatedEmployees[0].scores?.total || 0)
+                    }}
+                    <small class="text-h6 font-weight-bold">pts</small>
+                  </span>
+                </div>
               </div>
             </div>
-            <VIcon icon="tabler-trophy" size="64" class="position-absolute opacity-10" style="inset-block-end: -10px; inset-inline-end: -10px;" />
-          </div>
-        </VCard>
-      </VCol>
+            <div
+              class="accent-border"
+              style="background-color: rgb(var(--v-theme-warning)); opacity: 1"
+            ></div>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" md="8">
-        <VCard class="h-100 border shadow-sm rounded-lg overflow-hidden">
-          <VCardText class="d-flex align-center h-100 pa-6 bg-surface-variant-light">
-            <VRow class="w-100 text-center align-center">
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar color="primary" variant="tonal" size="40" class="mb-2">
-                    <VIcon icon="tabler-currency-dollar" size="20" />
-                  </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Ventas</span>
-                  <span class="text-h6 font-weight-black">{{ formatCurrency(calculatedEmployees.reduce((acc, e) => acc + (e.sales || 0), 0)) }}</span>
+        <!-- Cards de Estadísticas Individuales -->
+        <VCol
+          v-for="item in statistics"
+          :key="item.title"
+          cols="12"
+          sm="6"
+          md="2"
+          class="pa-2"
+        >
+          <VCard class="stats-card h-100 border-0 overflow-hidden ma-0">
+            <div
+              class="card-bg-decoration"
+              :style="{
+                background: `linear-gradient(45deg, rgba(var(--v-theme-${item.color}), 0.1), transparent)`,
+              }"
+            ></div>
+            <VCardText class="pa-5 relative-content d-flex flex-column h-100">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar
+                  :color="item.color"
+                  variant="tonal"
+                  size="44"
+                  rounded="lg"
+                >
+                  <VIcon :icon="item.icon" size="24" />
+                </VAvatar>
+                <div class="text-right">
+                  <span
+                    class="text-overline font-weight-bold text-disabled leading-none d-block mb-1"
+                    style="
+                      letter-spacing: 0.5px !important;
+                      font-size: 0.65rem !important;
+                    "
+                    >{{ item.title }}</span
+                  >
+                  <h4 class="text-h6 font-weight-black leading-none">
+                    {{ item.value }}
+                  </h4>
                 </div>
-              </VCol>
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar color="success" variant="tonal" size="40" class="mb-2">
-                    <VIcon icon="tabler-trending-up" size="20" />
-                  </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Crecimiento</span>
-                  <span class="text-h6 font-weight-black text-success">{{ formatNumber(calculatedEmployees.reduce((acc, e) => acc + (e.growth || 0), 0) / (calculatedEmployees.length || 1)) }}%</span>
-                </div>
-              </VCol>
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar color="error" variant="tonal" size="40" class="mb-2">
-                    <VIcon icon="tabler-calendar-off" size="20" />
-                  </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Vencimientos</span>
-                  <span class="text-h6 font-weight-black text-error">{{ calculatedEmployees.reduce((acc, e) => acc + (e.expirations || 0), 0) }}</span>
-                </div>
-              </VCol>
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar color="info" variant="tonal" size="40" class="mb-2">
-                    <VIcon icon="tabler-package" size="20" />
-                  </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Inventario</span>
-                  <span class="text-h6 font-weight-black text-info">{{ calculatedEmployees.reduce((acc, e) => acc + (e.inventory_counted || 0), 0) }}</span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+              </div>
+              <VSpacer />
+              <VDivider class="mb-3 opacity-10" />
+              <div class="d-flex align-center justify-space-between">
+                <span
+                  class="text-super-xs font-weight-medium text-medium-emphasis uppercase"
+                  >{{ item.description }}</span
+                >
+                <VIcon
+                  icon="tabler-trending-up"
+                  size="14"
+                  :color="item.color"
+                  class="opacity-50"
+                />
+              </div>
+            </VCardText>
+            <div
+              class="accent-border"
+              :style="{ backgroundColor: `rgb(var(--v-theme-${item.color}))` }"
+            ></div>
+          </VCard>
+        </VCol>
+      </VRow>
 
-    <EmployeeMonthFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedMonth="selectedMonth"
-      v-model:selectedYear="selectedYear"
-      :selected-sort="selectedSort"
-      :available-months="availableMonths"
-      :available-years="availableYears"
-      :sort-options="sortOptions"
-      :is-locked="isLocked"
-      @clear="handleClear"
-      @lock-month="handleLockMonth"
-      @sort="handleSortClick"
-    />
-
-    <EmployeeMonthTable :items="calculatedEmployees" />
-  </VContainer>
+      <EmployeeMonthTable :items="calculatedEmployees" />
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -292,8 +392,45 @@ const formatCurrency = (amount) =>
   min-block-size: 100vh;
 }
 
-.premium-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-warning)) 0%, #ff8c00 100%);
+.stats-card {
+  border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 0.9) !important;
+  box-shadow: 0 4px 12px rgba(var(--v-shadow-key-umbra-color), 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 24px rgba(var(--v-shadow-key-umbra-color), 0.1) !important;
+  transform: translateY(-4px);
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 120px;
+  filter: blur(45px);
+  inline-size: 120px;
+  inset-block-start: -30px;
+  inset-inline-end: -30px;
+  pointer-events: none;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 60%;
+  border-end-end-radius: 4px;
+  border-start-end-radius: 4px;
+  inline-size: 4px;
+  inset-block-start: 20%;
+  inset-inline-start: 0;
+  opacity: 0.8;
 }
 
 .leader-avatar {
@@ -304,42 +441,6 @@ const formatCurrency = (amount) =>
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;
-  line-height: 1;
-}
-
-.h-38 {
-  block-size: 38px !important;
-}
-
-.border-dashed {
-  border-style: dashed !important;
-}
-
-:deep(.premium-input-compact) {
-  .v-field__input {
-    font-size: 0.8125rem !important;
-    min-block-size: 38px !important;
-    padding-block: 0 !important;
-  }
-}
-
-:deep(.premium-select-compact) {
-  .v-field__input {
-    font-size: 0.8125rem !important;
-    min-block-size: 38px !important;
-    padding-block: 0 !important;
-  }
-}
-
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.03);
-}
-
-.leader-card {
-  transition: transform 0.3s ease;
-}
-
-.leader-card:hover {
-  transform: translateY(-4px);
+  line-height: normal;
 }
 </style>

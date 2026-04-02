@@ -110,137 +110,291 @@ const submitCOPC = async () => {
 </script>
 
 <template>
-  <VRow class="match-height">
+  <VRow class="match-height ma-0 mx-n1">
     <!-- Dólar BCV -->
-    <VCol cols="12" md="3">
-      <VCard class="h-100 text-center border-primary position-relative" elevation="2" :class="{'border-opacity-100': dateColorDollar === 'success'}">
-        <VCardItem class="pb-2 pt-6">
-          <VAvatar color="primary" variant="tonal" rounded size="64" class="mb-4 mx-auto">
-            <VIcon size="36" icon="tabler-currency-dollar" />
-          </VAvatar>
-          <VCardTitle class="text-h5 font-weight-bold">Dólar BCV</VCardTitle>
-          <VCardSubtitle>Tasa Oficial</VCardSubtitle>
-        </VCardItem>
-
-        <VCardText class="pb-6">
-          <div class="d-flex justify-center align-end mb-4">
-            <div class="text-h3 font-weight-bold text-primary">Bs. {{ props.dollar }}</div>
+    <VCol cols="12" md="3" class="pa-1">
+      <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
+        <div
+          class="card-bg-decoration"
+          style="background: linear-gradient(45deg, rgba(var(--v-theme-primary), 0.1), transparent)"
+        ></div>
+        
+        <VCardText class="pa-5 relative-content d-flex flex-column h-100">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <VAvatar color="primary" variant="tonal" rounded="lg" size="44" class="elevation-1">
+              <VIcon size="24" icon="tabler-currency-dollar" />
+            </VAvatar>
+            <div class="text-right">
+              <span class="text-overline font-weight-bold text-disabled leading-none mb-1 d-block" style="letter-spacing: 1px !important">
+                Dólar BCV
+              </span>
+              <span class="text-super-xs font-weight-black opacity-60 uppercase text-primary">Tasa Oficial</span>
+            </div>
           </div>
-          <VChip :color="dateColorDollar" size="small" class="mb-6 font-weight-medium">
-            <VIcon start icon="tabler-calendar-stats" size="16"></VIcon>
-            {{ dateUpdateDollar || 'Cargando...' }}
-          </VChip>
 
-          <VBtn color="primary" variant="elevated" block @click="updateBCV('BS')" prepend-icon="tabler-refresh">
-            Actualizar (BCV)
-          </VBtn>
+          <div class="mb-4">
+            <div class="text-h3 font-weight-black text-primary">Bs. {{ props.dollar }}</div>
+          </div>
+
+          <VDivider class="mb-4 opacity-20" />
+
+          <div class="d-flex flex-column gap-3 mt-auto">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <VChip :color="dateColorDollar" size="x-small" class="font-weight-black rounded uppercase">
+                <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
+                {{ dateUpdateDollar || 'Cargando...' }}
+              </VChip>
+            </div>
+
+            <VBtn 
+              color="primary" 
+              variant="flat" 
+              block 
+              @click="updateBCV('BS')" 
+              prepend-icon="tabler-refresh"
+              class="rounded-lg font-weight-black text-xs shadow-sm"
+              size="small"
+            >
+              ACTUALIZAR BCV
+            </VBtn>
+          </div>
         </VCardText>
+        <div class="accent-border bg-primary"></div>
       </VCard>
     </VCol>
 
     <!-- Peso Colombiano (COP) -->
-    <VCol cols="12" md="3">
-      <VCard class="h-100 text-center border-info position-relative" elevation="2" :class="{'border-opacity-100': dateColorPesos === 'success'}">
-        <VCardItem class="pb-2 pt-6">
-          <VAvatar color="info" variant="tonal" rounded size="64" class="mb-4 mx-auto">
-            <VIcon size="36" icon="tabler-currency-peso" />
-          </VAvatar>
-          <VCardTitle class="text-h5 font-weight-bold">Peso Colombiano</VCardTitle>
-          <VCardSubtitle>Tasa Manual</VCardSubtitle>
-        </VCardItem>
-
-        <VCardText class="pb-6">
-          <div class="mb-4">
-            <div class="text-h3 font-weight-bold text-info mb-1">{{ props.pesos }}</div>
-            <div class="text-caption text-medium-emphasis">Tasa Actual</div>
+    <VCol cols="12" md="3" class="pa-1">
+      <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
+        <div
+          class="card-bg-decoration"
+          style="background: linear-gradient(45deg, rgba(var(--v-theme-info), 0.1), transparent)"
+        ></div>
+        
+        <VCardText class="pa-5 relative-content d-flex flex-column h-100">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <VAvatar color="info" variant="tonal" rounded="lg" size="44" class="elevation-1">
+              <VIcon size="24" icon="tabler-currency-peso" />
+            </VAvatar>
+            <div class="text-right">
+              <span class="text-overline font-weight-bold text-disabled leading-none mb-1 d-block" style="letter-spacing: 1px !important">
+                Peso (COP)
+              </span>
+              <span class="text-super-xs font-weight-black opacity-60 uppercase text-info">Tasa Manual</span>
+            </div>
           </div>
-          
-          <VChip :color="dateColorPesos" size="small" class="mb-6 font-weight-medium">
-            <VIcon start icon="tabler-calendar-stats" size="16"></VIcon>
-            {{ dateUpdatePesos || 'Cargando...' }}
-          </VChip>
 
-          <div class="d-flex align-center gap-2">
-            <VTextField
-              v-model="pesosInput"
-              placeholder="0.00"
-              prefix="$"
-              density="compact"
-              variant="outlined"
-              hide-details
-              type="number"
-              class="flex-grow-1"
-            />
-            <VBtn color="info" icon="tabler-check" variant="elevated" @click="submitPesos" />
+          <div class="mb-4">
+            <div class="text-h3 font-weight-black text-info">{{ props.pesos }}</div>
+            <div class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Tasa Actual de Venta</div>
+          </div>
+
+          <VDivider class="mb-4 opacity-20" />
+
+          <div class="d-flex flex-column gap-3 mt-auto">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <VChip :color="dateColorPesos" size="x-small" class="font-weight-black rounded uppercase">
+                <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
+                {{ dateUpdatePesos || 'Cargando...' }}
+              </VChip>
+            </div>
+
+            <div class="d-flex align-center gap-2">
+              <VTextField
+                v-model="pesosInput"
+                placeholder="0.00"
+                prefix="$"
+                density="compact"
+                variant="outlined"
+                hide-details
+                type="number"
+                class="flex-grow-1 rounded-lg custom-input-rate"
+              />
+              <VBtn 
+                color="info" 
+                icon="tabler-check" 
+                variant="flat" 
+                @click="submitPesos" 
+                size="small"
+                class="rounded-lg shadow-sm"
+              />
+            </div>
           </div>
         </VCardText>
+        <div class="accent-border bg-info"></div>
       </VCard>
     </VCol>
 
     <!-- Euro (EUR) -->
-    <VCol cols="12" md="3">
-      <VCard class="h-100 text-center border-warning position-relative" elevation="2" :class="{'border-opacity-100': dateColorEuros === 'success'}">
-        <VCardItem class="pb-2 pt-6">
-          <VAvatar color="warning" variant="tonal" rounded size="64" class="mb-4 mx-auto">
-            <VIcon size="36" icon="tabler-currency-euro" />
-          </VAvatar>
-          <VCardTitle class="text-h5 font-weight-bold">Euro BCV</VCardTitle>
-          <VCardSubtitle>Tasa Oficial</VCardSubtitle>
-        </VCardItem>
-
-        <VCardText class="pb-6">
-          <div class="d-flex justify-center align-end mb-4">
-            <div class="text-h3 font-weight-bold text-warning">Bs. {{ props.euros }}</div>
+    <VCol cols="12" md="3" class="pa-1">
+      <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
+        <div
+          class="card-bg-decoration"
+          style="background: linear-gradient(45deg, rgba(var(--v-theme-warning), 0.1), transparent)"
+        ></div>
+        
+        <VCardText class="pa-5 relative-content d-flex flex-column h-100">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <VAvatar color="warning" variant="tonal" rounded="lg" size="44" class="elevation-1">
+              <VIcon size="24" icon="tabler-currency-euro" />
+            </VAvatar>
+            <div class="text-right">
+              <span class="text-overline font-weight-bold text-disabled leading-none mb-1 d-block" style="letter-spacing: 1px !important">
+                Euro BCV
+              </span>
+              <span class="text-super-xs font-weight-black opacity-60 uppercase text-warning">Tasa Oficial</span>
+            </div>
           </div>
-          <VChip :color="dateColorEuros" size="small" class="mb-6 font-weight-medium">
-            <VIcon start icon="tabler-calendar-stats" size="16"></VIcon>
-            {{ dateUpdateEuros || 'Cargando...' }}
-          </VChip>
 
-          <VBtn color="warning" variant="elevated" block @click="updateBCV('EUR')" prepend-icon="tabler-refresh">
-            Actualizar (BCV)
-          </VBtn>
+          <div class="mb-4">
+            <div class="text-h3 font-weight-black text-warning">Bs. {{ props.euros }}</div>
+          </div>
+
+          <VDivider class="mb-4 opacity-20" />
+
+          <div class="d-flex flex-column gap-3 mt-auto">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <VChip :color="dateColorEuros" size="x-small" class="font-weight-black rounded uppercase">
+                <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
+                {{ dateUpdateEuros || 'Cargando...' }}
+              </VChip>
+            </div>
+
+            <VBtn 
+              color="warning" 
+              variant="flat" 
+              block 
+              @click="updateBCV('EUR')" 
+              prepend-icon="tabler-refresh"
+              class="rounded-lg font-weight-black text-xs shadow-sm"
+              size="small"
+            >
+              ACTUALIZAR BCV
+            </VBtn>
+          </div>
         </VCardText>
+        <div class="accent-border bg-warning"></div>
       </VCard>
     </VCol>
 
     <!-- COP Cambio (COPC) -->
-    <VCol cols="12" md="3">
-      <VCard class="h-100 text-center border-success position-relative" elevation="2" :class="{'border-opacity-100': dateColorCopc === 'success'}">
-        <VCardItem class="pb-2 pt-6">
-          <VAvatar color="success" variant="tonal" rounded size="64" class="mb-4 mx-auto">
-            <VIcon size="36" icon="tabler-arrows-right-left" />
-          </VAvatar>
-          <VCardTitle class="text-h5 font-weight-bold">COP Cambio (COPC)</VCardTitle>
-          <VCardSubtitle>Tasa Manual de Cambio</VCardSubtitle>
-        </VCardItem>
-
-        <VCardText class="pb-6">
-          <div class="mb-4">
-            <div class="text-h3 font-weight-bold text-success mb-1">{{ props.copc }}</div>
-            <div class="text-caption text-medium-emphasis">Tasa Actual</div>
+    <VCol cols="12" md="3" class="pa-1">
+      <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
+        <div
+          class="card-bg-decoration"
+          style="background: linear-gradient(45deg, rgba(var(--v-theme-success), 0.1), transparent)"
+        ></div>
+        
+        <VCardText class="pa-5 relative-content d-flex flex-column h-100">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <VAvatar color="success" variant="tonal" rounded="lg" size="44" class="elevation-1">
+              <VIcon size="24" icon="tabler-arrows-right-left" />
+            </VAvatar>
+            <div class="text-right">
+              <span class="text-overline font-weight-bold text-disabled leading-none mb-1 d-block" style="letter-spacing: 1px !important">
+                COP (COPC)
+              </span>
+              <span class="text-super-xs font-weight-black opacity-60 uppercase text-success">Cambio Manual</span>
+            </div>
           </div>
-          
-          <VChip :color="dateColorCopc" size="small" class="mb-6 font-weight-medium">
-            <VIcon start icon="tabler-calendar-stats" size="16"></VIcon>
-            {{ dateUpdateCopc || 'Cargando...' }}
-          </VChip>
 
-          <div class="d-flex align-center gap-2">
-            <VTextField
-              v-model="copcInput"
-              placeholder="0.00"
-              prefix="$"
-              density="compact"
-              variant="outlined"
-              hide-details
-              type="number"
-              class="flex-grow-1"
-            />
-            <VBtn color="success" icon="tabler-check" variant="elevated" @click="submitCOPC" />
+          <div class="mb-4">
+            <div class="text-h3 font-weight-black text-success">{{ props.copc }}</div>
+            <div class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Tasa para Compras</div>
+          </div>
+
+          <VDivider class="mb-4 opacity-20" />
+
+          <div class="d-flex flex-column gap-3 mt-auto">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <VChip :color="dateColorCopc" size="x-small" class="font-weight-black rounded uppercase">
+                <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
+                {{ dateUpdateCopc || 'Cargando...' }}
+              </VChip>
+            </div>
+
+            <div class="d-flex align-center gap-2">
+              <VTextField
+                v-model="copcInput"
+                placeholder="0.00"
+                prefix="$"
+                density="compact"
+                variant="outlined"
+                hide-details
+                type="number"
+                class="flex-grow-1 rounded-lg custom-input-rate"
+              />
+              <VBtn 
+                color="success" 
+                icon="tabler-check" 
+                variant="flat" 
+                @click="submitCOPC" 
+                size="small"
+                class="rounded-lg shadow-sm"
+              />
+            </div>
           </div>
         </VCardText>
+        <div class="accent-border bg-success"></div>
       </VCard>
     </VCol>
   </VRow>
 </template>
+
+<style scoped>
+.stats-card {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 80%) !important;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.stats-card:hover {
+  transform: translateY(-4px);
+  background: rgba(var(--v-theme-surface), 95%) !important;
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 120px;
+  filter: blur(50px);
+  inline-size: 120px;
+  inset-block-start: -30px;
+  inset-inline-end: -30px;
+  pointer-events: none;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  opacity: 0.8;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1.2;
+}
+
+.custom-input-rate :deep(.v-field__input) {
+  font-weight: 800;
+  font-size: 0.875rem;
+  padding-block: 4px;
+}
+
+.custom-input-rate :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.15;
+}
+</style>

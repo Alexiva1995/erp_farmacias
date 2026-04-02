@@ -2,40 +2,76 @@
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
-  dailyCash:       { type: Array,  required: true },
-  loading:         { type: Boolean, default: false },
-  totalDailyCash:  { type: Number, required: true },
-  itemsPerPage:    { type: Number, required: true },
-  page:            { type: Number, required: true },
+  dailyCash: { type: Array, required: true },
+  loading: { type: Boolean, default: false },
+  totalDailyCash: { type: Number, required: true },
+  itemsPerPage: { type: Number, required: true },
+  page: { type: Number, required: true },
 });
 
-const emit = defineEmits(['update:options', 'view-cash', 'delivery', 'reference', 'closing-daily']);
+const emit = defineEmits([
+  "update:options",
+  "view-cash",
+  "delivery",
+  "reference",
+  "closing-daily",
+]);
 
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "Fecha",      key: "date",          sortable: true },
-  { title: "USD",        key: "total_usd",      sortable: true, align: "end" },
-  { title: "COP",        key: "total_cop",      sortable: true, align: "end" },
-  { title: "Bs.",        key: "total_bs",       sortable: true, align: "end" },
-  { title: "E. USD",     key: "usd_delivered",  sortable: true, align: "end" },
-  { title: "E. COP",     key: "cop_delivered",  sortable: true, align: "end" },
-  { title: "Bs PM",      key: "bs_mobile",      sortable: true, align: "end" },
-  { title: "Bs Tarjeta", key: "bs_card",        sortable: true, align: "end" },
-  { title: "Acciones",   key: "actions",        sortable: false, align: "center", width: "140px" },
+  { title: "Fecha", key: "date", sortable: true },
+  { title: "USD", key: "total_usd", sortable: true, align: "end" },
+  { title: "COP", key: "total_cop", sortable: true, align: "end" },
+  { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
+  { title: "E. USD", key: "usd_delivered", sortable: true, align: "end" },
+  { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
+  { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
+  { title: "Bs Tarjeta", key: "bs_card", sortable: true, align: "end" },
+  {
+    title: "Acciones",
+    key: "actions",
+    sortable: false,
+    align: "center",
+    width: "140px",
+  },
 ];
 
 const fmtDate = (v) => {
-  if (!v) return '—';
+  if (!v) return "—";
   const date = new Date(v);
   const days = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
-  const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  const months = [
+    "ENE",
+    "FEB",
+    "MAR",
+    "ABR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AGO",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DIC",
+  ];
   return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
 };
 
-const fmtUsd  = (v) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
-const fmtCop  = (v) => Math.round(v ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-const fmtBs   = (v) => new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
+const fmtUsd = (v) =>
+  new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(v ?? 0);
+const fmtCop = (v) =>
+  Math.round(v ?? 0)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const fmtBs = (v) =>
+  new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(v ?? 0);
 
 const getAvatarColor = (id) => {
   const colors = ["primary", "success", "info", "warning", "purple", "cyan"];
@@ -44,17 +80,24 @@ const getAvatarColor = (id) => {
 </script>
 
 <template>
-  <div class="mt-4">
+  <div>
     <!-- Vista Escritorio -->
-    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard
+      v-if="!mobile"
+      class="rounded-lg border shadow-sm overflow-hidden bg-surface"
+    >
       <VCardItem class="pa-4 pb-0">
         <template #prepend>
           <VAvatar color="info" variant="tonal" size="38" class="rounded-lg">
             <VIcon icon="tabler-calendar-check" size="20" />
           </VAvatar>
         </template>
-        <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Cierres Diarios</VCardTitle>
-        <VCardSubtitle class="text-xs font-weight-medium text-disabled">Consolidado de ventas por día con detalle de entregas</VCardSubtitle>
+        <VCardTitle class="text-subtitle-1 font-weight-black uppercase"
+          >Cierres Diarios</VCardTitle
+        >
+        <VCardSubtitle class="text-xs font-weight-medium text-disabled"
+          >Consolidado de ventas por día con detalle de entregas</VCardSubtitle
+        >
       </VCardItem>
 
       <VDataTableServer
@@ -70,51 +113,96 @@ const getAvatarColor = (id) => {
       >
         <template #item.date="{ item }">
           <div class="d-flex align-center gap-3 py-2">
-            <VAvatar size="32" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg font-weight-black text-xs">
+            <VAvatar
+              size="32"
+              :color="getAvatarColor(item.id)"
+              variant="tonal"
+              class="rounded-lg font-weight-black text-xs"
+            >
               <VIcon icon="tabler-calendar" size="16" />
             </VAvatar>
-            <span class="text-sm font-weight-black uppercase">{{ fmtDate(item.created_at) }}</span>
+            <span class="text-sm font-weight-black uppercase">{{
+              fmtDate(item.created_at)
+            }}</span>
           </div>
         </template>
 
         <template #item.total_usd="{ item }">
-          <span class="text-sm font-weight-bold text-primary">{{ fmtUsd(item.total_usd) }}</span>
+          <span class="text-sm font-weight-bold text-primary">{{
+            fmtUsd(item.total_usd)
+          }}</span>
         </template>
         <template #item.total_cop="{ item }">
-          <span class="text-sm font-weight-bold text-success">{{ fmtCop(item.total_cop) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{
+            fmtCop(item.total_cop)
+          }}</span>
         </template>
         <template #item.total_bs="{ item }">
-          <span class="text-sm font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+          <span class="text-sm font-weight-bold text-warning">{{
+            fmtBs(item.total_bs)
+          }}</span>
         </template>
 
         <template #item.usd_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{ fmtUsd(item.usd_delivered) }}</span>
+          <span class="text-sm font-weight-bold">{{
+            fmtUsd(item.usd_delivered)
+          }}</span>
         </template>
         <template #item.cop_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{ fmtCop(item.cop_delivered) }}</span>
+          <span class="text-sm font-weight-bold">{{
+            fmtCop(item.cop_delivered)
+          }}</span>
         </template>
         <template #item.bs_mobile="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{ fmtBs(item.bs_mobile) }}</span>
+          <span class="text-xs font-weight-medium text-info">{{
+            fmtBs(item.bs_mobile)
+          }}</span>
         </template>
         <template #item.bs_card="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{ fmtBs(item.bs_card) }}</span>
+          <span class="text-xs font-weight-medium text-info">{{
+            fmtBs(item.bs_card)
+          }}</span>
         </template>
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-1">
             <VTooltip text="Ver Detalle" location="top">
               <template #activator="{ props: tip }">
-                <VBtn v-bind="tip" icon="tabler-eye" size="32" variant="text" color="info" class="rounded-lg" @click="emit('view-cash', item)" />
+                <VBtn
+                  v-bind="tip"
+                  icon="tabler-eye"
+                  size="32"
+                  variant="text"
+                  color="info"
+                  class="rounded-lg"
+                  @click="emit('view-cash', item)"
+                />
               </template>
             </VTooltip>
             <VTooltip text="Entregas" location="top">
               <template #activator="{ props: tip }">
-                <VBtn v-bind="tip" icon="tabler-box" size="32" variant="text" color="success" class="rounded-lg" @click="emit('delivery', item)" />
+                <VBtn
+                  v-bind="tip"
+                  icon="tabler-box"
+                  size="32"
+                  variant="text"
+                  color="success"
+                  class="rounded-lg"
+                  @click="emit('delivery', item)"
+                />
               </template>
             </VTooltip>
             <VTooltip text="Referencias" location="top">
               <template #activator="{ props: tip }">
-                <VBtn v-bind="tip" icon="tabler-clipboard-list" size="32" variant="text" color="secondary" class="rounded-lg" @click="emit('reference', item)" />
+                <VBtn
+                  v-bind="tip"
+                  icon="tabler-clipboard-list"
+                  size="32"
+                  variant="text"
+                  color="secondary"
+                  class="rounded-lg"
+                  @click="emit('reference', item)"
+                />
               </template>
             </VTooltip>
           </div>
@@ -132,15 +220,30 @@ const getAvatarColor = (id) => {
         <VCardText class="pa-5">
           <div class="d-flex align-center justify-space-between mb-4">
             <div class="d-flex align-center gap-3">
-              <VAvatar size="42" :color="getAvatarColor(item.id)" variant="tonal" class="rounded-lg">
+              <VAvatar
+                size="42"
+                :color="getAvatarColor(item.id)"
+                variant="tonal"
+                class="rounded-lg"
+              >
                 <VIcon icon="tabler-calendar-event" size="20" />
               </VAvatar>
               <div class="d-flex flex-column">
-                <span class="text-sm font-weight-black leading-tight uppercase">{{ fmtDate(item.created_at) }}</span>
-                <span class="text-xs text-disabled font-weight-bold uppercase">Consolidado Diario {{ item.id }}</span>
+                <span
+                  class="text-sm font-weight-black leading-tight uppercase"
+                  >{{ fmtDate(item.created_at) }}</span
+                >
+                <span class="text-xs text-disabled font-weight-bold uppercase"
+                  >Consolidado Diario {{ item.id }}</span
+                >
               </div>
             </div>
-            <VChip color="info" variant="tonal" size="x-small" class="font-weight-black rounded px-2">
+            <VChip
+              color="info"
+              variant="tonal"
+              size="x-small"
+              class="font-weight-black rounded px-2"
+            >
               DIARIO
             </VChip>
           </div>
@@ -148,40 +251,83 @@ const getAvatarColor = (id) => {
           <VDivider class="mb-4 opacity-10" />
 
           <!-- Resumen de Ventas -->
-          <span class="text-super-xs font-weight-black text-primary uppercase d-block mb-3">Ventas Consolidadas</span>
+          <span
+            class="text-super-xs font-weight-black text-primary uppercase d-block mb-3"
+            >Ventas Consolidadas</span
+          >
           <div class="d-flex gap-3 mb-4">
-            <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
-              <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">USD</span>
-              <span class="text-sm font-weight-black text-primary">{{ fmtUsd(item.total_usd) }}</span>
+            <div
+              class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
+            >
+              <span
+                class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
+                >USD</span
+              >
+              <span class="text-sm font-weight-black text-primary">{{
+                fmtUsd(item.total_usd)
+              }}</span>
             </div>
-            <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
-              <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">COP</span>
-              <span class="text-sm font-weight-black text-success">{{ fmtCop(item.total_cop) }}</span>
+            <div
+              class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
+            >
+              <span
+                class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
+                >COP</span
+              >
+              <span class="text-sm font-weight-black text-success">{{
+                fmtCop(item.total_cop)
+              }}</span>
             </div>
-            <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
-              <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">Bs.</span>
-              <span class="text-sm font-weight-black text-warning">{{ fmtBs(item.total_bs) }}</span>
+            <div
+              class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
+            >
+              <span
+                class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
+                >Bs.</span
+              >
+              <span class="text-sm font-weight-black text-warning">{{
+                fmtBs(item.total_bs)
+              }}</span>
             </div>
           </div>
 
           <!-- Resumen de Entregas/Métodos -->
-          <span class="text-super-xs font-weight-black text-secondary uppercase d-block mb-3">Detalle de Recepción</span>
+          <span
+            class="text-super-xs font-weight-black text-secondary uppercase d-block mb-3"
+            >Detalle de Recepción</span
+          >
           <div class="bg-surface-variant-opacity-2 rounded-lg pa-4 mb-4">
             <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs text-disabled font-weight-medium">Entregado USD</span>
-              <span class="text-xs font-weight-black">{{ fmtUsd(item.usd_delivered) }}</span>
+              <span class="text-xs text-disabled font-weight-medium"
+                >Entregado USD</span
+              >
+              <span class="text-xs font-weight-black">{{
+                fmtUsd(item.usd_delivered)
+              }}</span>
             </div>
             <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs text-disabled font-weight-medium">Entregado COP</span>
-              <span class="text-xs font-weight-black">{{ fmtCop(item.cop_delivered) }}</span>
+              <span class="text-xs text-disabled font-weight-medium"
+                >Entregado COP</span
+              >
+              <span class="text-xs font-weight-black">{{
+                fmtCop(item.cop_delivered)
+              }}</span>
             </div>
             <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs text-disabled font-weight-medium">Pago Móvil Bs.</span>
-              <span class="text-xs font-weight-black text-info">{{ fmtBs(item.bs_mobile) }}</span>
+              <span class="text-xs text-disabled font-weight-medium"
+                >Pago Móvil Bs.</span
+              >
+              <span class="text-xs font-weight-black text-info">{{
+                fmtBs(item.bs_mobile)
+              }}</span>
             </div>
             <div class="d-flex justify-space-between align-center">
-              <span class="text-xs text-disabled font-weight-medium">Tarjeta Bs.</span>
-              <span class="text-xs font-weight-black text-info">{{ fmtBs(item.bs_card) }}</span>
+              <span class="text-xs text-disabled font-weight-medium"
+                >Tarjeta Bs.</span
+              >
+              <span class="text-xs font-weight-black text-info">{{
+                fmtBs(item.bs_card)
+              }}</span>
             </div>
           </div>
 
@@ -218,7 +364,12 @@ const getAvatarColor = (id) => {
         </VCardText>
       </VCard>
 
-      <VAlert v-if="props.dailyCash.length === 0" type="info" variant="tonal" class="rounded-lg">
+      <VAlert
+        v-if="props.dailyCash.length === 0"
+        type="info"
+        variant="tonal"
+        class="rounded-lg"
+      >
         No hay registros diarios encontrados.
       </VAlert>
     </div>
@@ -228,7 +379,10 @@ const getAvatarColor = (id) => {
 <style scoped>
 .premium-table :deep(.v-data-table-header th) {
   background: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-high-emphasis-opacity)
+  ) !important;
   block-size: 44px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;

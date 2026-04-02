@@ -1,7 +1,7 @@
 <script setup lang="js">
 // Filtros de Gastos
 import AppFilterBase from "@/components/AppFilterBase.vue";
-import { computed, ref } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps({
   buscardor_filtro: { type: String, required: true, default: "" },
@@ -48,11 +48,13 @@ const hasAdvancedFilters = computed(() => {
     :show-add="props.showAddButton"
     :show-export="true"
     search-placeholder="ID, Nombre o Concepto..."
-    class="mb-6"
+    class="py-1"
     @update:search="emit('update:buscardor_filtro', $event)"
     @clear="emit('clear')"
     @add="emit('add')"
-    @export="(ext) => ext === 'pdf' ? emit('export-pdf') : emit('export-excel', ext)"
+    @export="
+      (ext) => (ext === 'pdf' ? emit('export-pdf') : emit('export-excel', ext))
+    "
   >
     <template #advanced-filters>
       <!-- Clasificación -->

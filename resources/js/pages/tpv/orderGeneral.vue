@@ -844,6 +844,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
       :has-advanced-filters="isAdvancedFiltersVisible || !!(filterSearchQueryId || currencyFilter || sellerFilter || stateFilterAll || globalStartDate || globalEndDate)"
       :show-export="true"
       search-placeholder="Buscar por Identificación, Vendedor o Cliente..."
+      class="py-1"
       @update:search="filterSearchQuery = $event"
       @clear="handleClearFilters"
       @export="ext => ext === 'xlsx' ? $emit('export-excel') : $emit('export-pdf')"

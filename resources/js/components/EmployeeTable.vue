@@ -140,7 +140,7 @@ const confirmGenerateResignation = async (employee) => {
       :loading="loading"
       :loading-text="'Cargando empleados...'"
       :page="props.page"
-      class="rounded-xl overflow-hidden premium-table"
+      class="rounded-lg border shadow-sm overflow-hidden premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
