@@ -62,10 +62,10 @@ const headers = [
   { title: "Producto", key: "name", sortable: true, minWidth: '220px' },
   { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
   { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '100px' },
-  { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end', width: '90px' },
+  { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '90px' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '90px' },
-  { title: "Preferencia", key: "preferencia_product", sortable: true, align: 'end', width: '110px' },
-  { title: "Promedio", key: "promedio_calculado", sortable: true, align: 'end', width: '100px' },
+  { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '110px' },
+  { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '100px' },
   { title: "En Pedido", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '100px' },
   { title: "Análisis (u)", key: "solicitar", sortable: true, align: 'end', width: '110px' },
 ];
@@ -259,7 +259,7 @@ function rowClass(item) {
                     <span class="value">{{ item.lote_quantity || 0 }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Ventas</span>
+                    <span class="label">Vent.</span>
                     <span class="value">{{ item.total_sold_completed || 0 }}</span>
                   </div>
                   <div class="info-item">
@@ -279,7 +279,7 @@ function rowClass(item) {
                     <span class="value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Pref.</span>
+                    <span class="label">PREF</span>
                     <span class="value">{{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) : '—' }}</span>
                   </div>
                 </div>

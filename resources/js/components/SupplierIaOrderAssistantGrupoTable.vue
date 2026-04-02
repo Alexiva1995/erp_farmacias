@@ -61,10 +61,10 @@ const headers = [
   { title: "Producto", key: "name", sortable: true },
   { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
   { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Ventas", key: "total_sold_completed", sortable: true },
+  { title: "Vent.", key: "total_sold_completed", sortable: true },
   { title: "Stock", key: "lote_quantity", sortable: true },
   {
-    title: "Preferencia",
+    title: "PREF",
     key: "preferencia_product",
     sortable: true,
     value: (item) =>
@@ -73,7 +73,7 @@ const headers = [
         : 0,
   },
   {
-    title: "Promedio",
+    title: "Prom.",
     key: "promedio_calculado",
     sortable: true,
     value: (item) =>
@@ -239,7 +239,7 @@ const groupBy = [{ key: "group.name" }];
                     <span class="value">{{ item.lote_quantity || 0 }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Ventas</span>
+                    <span class="label">Vent.</span>
                     <span class="value">{{ item.total_sold_completed || 0 }}</span>
                   </div>
                   <div class="info-item">
@@ -259,7 +259,7 @@ const groupBy = [{ key: "group.name" }];
                     <span class="value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Pref.</span>
+                    <span class="label">PREF</span>
                     <span class="value">{{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) : '—' }}</span>
                   </div>
                 </div>
