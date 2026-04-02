@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed } from "vue";
 const props = defineProps({
   stats: {
     type: Object,
@@ -19,49 +19,48 @@ const props = defineProps({
 });
 
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
   }).format(value);
 };
 
 const statistics = computed(() => [
   {
-    title: 'Deuda Total',
+    title: "Deuda Total",
     value: formatCurrency(props.stats.total_debt),
-    icon: 'tabler-currency-dollar',
-    color: 'error',
-    description: 'Pendiente por pagar',
+    icon: "tabler-currency-dollar",
+    color: "error",
+    description: "Pendiente por pagar",
   },
   {
-    title: 'Proveedores',
+    title: "Proveedores",
     value: props.stats.active_suppliers_count,
-    icon: 'tabler-users',
-    color: 'primary',
-    description: 'Registrados activos',
+    icon: "tabler-users",
+    color: "primary",
+    description: "Registrados activos",
   },
   {
-    title: 'Éxito Conexión',
+    title: "Éxito Conexión",
     value: `${props.stats.connection_success_rate}%`,
-    icon: 'tabler-api',
-    color: 'success',
-    description: 'Últimas 24 horas',
+    icon: "tabler-api",
+    color: "success",
+    description: "Últimas 24 horas",
   },
 ]);
 </script>
 
 <template>
   <VRow>
-    <VCol
-      v-for="item in statistics"
-      :key="item.title"
-      cols="12"
-      sm="6"
-      md="4"
-    >
-      <VCard class="stats-card border-0 overflow-hidden">
+    <VCol v-for="item in statistics" :key="item.title" cols="12" sm="6" md="4">
+      <VCard class="stats-card border-0 overflow-hidden mb-6">
         <!-- Decoración de fondo -->
-        <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${item.color}), 0.1), transparent)` }"></div>
+        <div
+          class="card-bg-decoration"
+          :style="{
+            background: `linear-gradient(45deg, rgba(var(--v-theme-${item.color}), 0.1), transparent)`,
+          }"
+        ></div>
 
         <VCardText class="pa-5 relative-content">
           <div class="d-flex align-center justify-space-between mb-4">
@@ -76,10 +75,19 @@ const statistics = computed(() => [
             </VAvatar>
 
             <div class="text-right">
-              <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">{{ item.title }}</span>
+              <span
+                class="text-overline font-weight-bold text-disabled"
+                style="letter-spacing: 1px !important"
+                >{{ item.title }}</span
+              >
               <h4 class="text-h4 font-weight-black mt-1">
                 <template v-if="loading">
-                  <VProgressCircular indeterminate size="24" width="3" color="primary" />
+                  <VProgressCircular
+                    indeterminate
+                    size="24"
+                    width="3"
+                    color="primary"
+                  />
                 </template>
                 <template v-else>
                   {{ item.value }}
@@ -94,12 +102,20 @@ const statistics = computed(() => [
             <span class="text-caption font-weight-medium text-medium-emphasis">
               {{ item.description }}
             </span>
-            <VIcon icon="tabler-trending-up" size="16" :color="item.color" class="opacity-50" />
+            <VIcon
+              icon="tabler-trending-up"
+              size="16"
+              :color="item.color"
+              class="opacity-50"
+            />
           </div>
         </VCardText>
 
         <!-- Borde de acento lateral -->
-        <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${item.color}))` }"></div>
+        <div
+          class="accent-border"
+          :style="{ backgroundColor: `rgb(var(--v-theme-${item.color}))` }"
+        ></div>
       </VCard>
     </VCol>
   </VRow>
