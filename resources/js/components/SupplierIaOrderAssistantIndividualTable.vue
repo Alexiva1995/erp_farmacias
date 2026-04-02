@@ -20,7 +20,7 @@ const { mdAndUp } = useDisplay();
 const getChartOptions = (item, color = '#7367f0') => ({
   chart: {
     type: 'area',
-    height: 30,
+    height: 25,
     sparkline: { enabled: true },
     animations: { enabled: true }
   },
@@ -58,16 +58,16 @@ const getSeries = (item) => {
 };
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: '60px' },
-  { title: "Producto", key: "name", sortable: true, minWidth: '220px' },
-  { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
-  { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '100px' },
-  { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '90px' },
-  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '90px' },
-  { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '110px' },
-  { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '100px' },
-  { title: "En Pedido", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '100px' },
-  { title: "Análisis (u)", key: "solicitar", sortable: true, align: 'end', width: '110px' },
+  { title: "ID", key: "id", sortable: true, width: '50px' },
+  { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
+  { title: "Trend", key: "trend", sortable: false, width: '80px' },
+  { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' },
+  { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
+  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
+  { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
+  { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
+  { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
+  { title: "Anál.", key: "solicitar", sortable: true, align: 'end', width: '85px' },
 ];
 
 // Determina el color de fondo por fila
@@ -116,7 +116,7 @@ function rowClass(item) {
           </template>
 
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
+            <div class="d-flex flex-column" style="line-height: 1.1; max-inline-size: 320px;">
               <span
                 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 'text-primary': item.psychotropic == 1 }"
@@ -135,12 +135,11 @@ function rowClass(item) {
             </div>
           </template>
 
-          <!-- Tendencia -->
           <template #item.trend="{ item }">
-            <div style="block-size: 30px; inline-size: 100px;">
+            <div style="block-size: 25px; inline-size: 80px;">
               <VueApexCharts
                 type="area"
-                height="30"
+                height="25"
                 :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
@@ -326,7 +325,13 @@ function rowClass(item) {
 }
 
 :deep(.assistant-data-table) {
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
+}
+
+:deep(.v-data-table__td),
+:deep(.v-data-table__th) {
+  block-size: 32px !important;
+  padding-inline: 4px !important;
 }
 
 :deep(.row-needs td) {
@@ -339,13 +344,13 @@ function rowClass(item) {
 
 /* Estilos para cards móviles */
 .row-needs.v-card {
-  border-inline-start: 4px solid #28c76f !important;
   background-color: rgba(40, 199, 111, 2%) !important;
+  border-inline-start: 4px solid #28c76f !important;
 }
 
 .row-excess.v-card {
-  border-inline-start: 4px solid #ea5455 !important;
   background-color: rgba(234, 84, 85, 2%) !important;
+  border-inline-start: 4px solid #ea5455 !important;
 }
 
 .grid-mobile-info {

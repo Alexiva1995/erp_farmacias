@@ -19,7 +19,7 @@ const { mdAndUp } = useDisplay();
 const getChartOptions = (item, color = '#7367f0') => ({
   chart: {
     type: 'area',
-    height: 30,
+    height: 25,
     sparkline: { enabled: true },
     animations: { enabled: true }
   },
@@ -57,16 +57,17 @@ const getSeries = (item) => {
 };
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: '70px' },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Vent.", key: "total_sold_completed", sortable: true },
-  { title: "Stock", key: "lote_quantity", sortable: true },
+  { title: "ID", key: "id", sortable: true, width: '50px' },
+  { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
+  { title: "Trend", key: "trend", sortable: false, width: '80px' },
+  { title: "Costo", key: "unit_cost", sortable: true, width: '80px' },
+  { title: "Vent.", key: "total_sold_completed", sortable: true, width: '65px' },
+  { title: "Stock", key: "lote_quantity", sortable: true, width: '65px' },
   {
     title: "PREF",
     key: "preferencia_product",
     sortable: true,
+    width: '70px',
     value: (item) =>
       item.preferencia_product != "" && item.preferencia_product != null
         ? parseFloat(item.preferencia_product).toFixed(2)
@@ -76,20 +77,23 @@ const headers = [
     title: "Prom.",
     key: "promedio_calculado",
     sortable: true,
+    width: '70px',
     value: (item) =>
       item.promedio_calculado != "" && item.promedio_calculado != null
         ? parseFloat(item.promedio_calculado).toFixed(2)
         : 0,
   },
   {
-    title: "AO",
+    title: "Ped.",
     key: "totalQuantityInAutoOrder",
     sortable: false,
+    width: '70px',
   },
   {
-    title: "Análisis",
+    title: "Anál.",
     key: "solicitar",
     sortable: true,
+    width: '85px',
     value: (item) => {
       item.solicitar != "" && item.solicitar != null
         ? parseFloat(item.solicitar).toFixed(2)
@@ -129,7 +133,7 @@ const groupBy = [{ key: "group.name" }];
           </template>
 
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
+            <div class="d-flex flex-column" style="line-height: 1.1; max-inline-size: 320px;">
               <span
                 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 'text-primary': item.psychotropic == 1 }"
@@ -139,20 +143,16 @@ const groupBy = [{ key: "group.name" }];
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
                 <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient }}</span>
-                <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                  {{ item.laboratory?.name || 'S/L' }}
-                </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
               </div>
             </div>
           </template>
 
           <template #item.trend="{ item }">
-            <div style="block-size: 30px; inline-size: 100px;">
+            <div style="block-size: 25px; inline-size: 80px;">
               <VueApexCharts
                 type="area"
-                height="30"
+                height="25"
                 :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
@@ -305,20 +305,6 @@ const groupBy = [{ key: "group.name" }];
   border-inline-end: none;
 }
 
-:deep(.assistant-data-table) {
-  font-size: 0.875rem !important;
-}
-
-:deep(.v-data-table-group-header-row) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
-}
-
-/* Eliminar la indentación de los items agrupados */
-:deep(.v-data-table-group-header-row td:first-child),
-:deep(.v-data-table-row--grouped td:first-child) {
-  padding-inline-start: 16px !important;
-}
-
 :deep(.v-data-table-group-header-row .v-table__group-header-content) {
   column-gap: 8px !important;
 }
@@ -326,6 +312,16 @@ const groupBy = [{ key: "group.name" }];
 /* Ajuste fino para el botón de expansión */
 :deep(.v-data-table-group-header-row .v-btn--icon) {
   margin-inline-start: -4px !important;
+}
+
+:deep(.assistant-data-table) {
+  font-size: 0.8125rem !important;
+}
+
+:deep(.v-data-table__td),
+:deep(.v-data-table__th) {
+  block-size: 32px !important;
+  padding-inline: 4px !important;
 }
 
 .grid-mobile-info {
