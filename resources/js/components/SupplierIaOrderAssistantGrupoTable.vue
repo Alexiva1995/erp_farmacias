@@ -299,6 +299,25 @@ const groupBy = [{ key: "group.name" }];
   font-size: 0.875rem !important;
 }
 
+:deep(.v-data-table-group-header-row) {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+/* Eliminar la indentación de los items agrupados */
+:deep(.v-data-table-group-header-row td:first-child),
+:deep(.v-data-table-row--grouped td:first-child) {
+  padding-inline-start: 16px !important;
+}
+
+:deep(.v-data-table-group-header-row .v-table__group-header-content) {
+  column-gap: 8px !important;
+}
+
+/* Ajuste fino para el botón de expansión */
+:deep(.v-data-table-group-header-row .v-btn--icon) {
+  margin-inline-start: -4px !important;
+}
+
 .grid-mobile-info {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

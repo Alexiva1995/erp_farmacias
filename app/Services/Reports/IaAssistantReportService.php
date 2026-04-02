@@ -21,9 +21,10 @@ class IaAssistantReportService
         $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
         $page = $filtros['page'] ?? 1;
         $perPage = $filtros['itemsPerPage'] ?? 10;
+        $esVistaGrupal = ($filtros['tipo_vista'] ?? false) == true;
 
-        // 1. Obtener todos los IDs que coinciden con los filtros (Cacheado)
-        $allIds = $this->getFilteredProductIds($filtros);
+        // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros (Cacheado)
+        $allIds = $this->getFilteredIds($filtros, $esVistaGrupal);
         $total = count($allIds);
 
         // 2. Paginar los IDs en memoria
@@ -34,9 +35,17 @@ class IaAssistantReportService
             return new LengthAwarePaginator([], $total, $perPage, $page);
         }
 
-        // 3. Hidratar los modelos solo para los IDs de la página actual
+        // 3. Hidratar los modelos
         $filtrosHidratacion = $filtros;
-        $filtrosHidratacion['ids_in'] = $currentPageIds;
+        if ($esVistaGrupal) {
+            // Si es vista grupal, los IDs son de GRUPOS
+            $filtrosHidratacion['groups'] = $currentPageIds;
+            // Quitamos q para que traiga todos los productos del grupo una vez filtrados los grupos
+            // Nota: Si se requiere que los productos dentro del grupo también respeten q, se puede mantener q
+        } else {
+            // Si es vista individual, los IDs son de PRODUCTOS
+            $filtrosHidratacion['ids_in'] = $currentPageIds;
+        }
         
         // Ejecutamos la consulta base según el tipo
         if ($tipo === 'sales') {
@@ -60,11 +69,11 @@ class IaAssistantReportService
     }
 
     /**
-     * Obtiene y cachea los IDs de productos que coinciden con los filtros
+     * Obtiene y cachea los IDs (de productos o grupos) que coinciden con los filtros
      */
-    private function getFilteredProductIds(array $filtros): array
+    private function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
-        $cacheKey = 'ia_report_ids_' . md5(json_encode([
+        $cacheKey = 'ia_report_ids_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
             'lapso' => $filtros['lapso_de_tiempo'] ?? '',
             'lab' => $filtros['laboratoryId'] ?? [],
             'groups' => $filtros['groups'] ?? [],
@@ -75,19 +84,21 @@ class IaAssistantReportService
             'ws' => $filtros['without_supplier'] ?? false,
         ]));
 
-        return Cache::remember($cacheKey, 600, function () use ($filtros) {
-            // Usamos una consulta ligera que solo traiga IDs
-            // Para esto, usamos el builder de averages pero solo pidiendo ID
+        return Cache::remember($cacheKey, 600, function () use ($filtros, $porGrupo) {
             $filtrosLigero = $filtros;
             unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
             
-            // Obtenemos todos sin paginar para tener el set completo de IDs
             $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
             
             if ($tipo === 'sales') {
                 $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
             } else {
                 $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosLigero);
+            }
+
+            if ($porGrupo) {
+                // Obtenemos IDs de grupos únicos, filtrando nulos
+                return $collection->pluck('group_id')->filter()->unique()->values()->toArray();
             }
 
             return $collection->pluck('id')->toArray();
