@@ -21,9 +21,10 @@ class IaAssistantReportService
         $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
         $page = $filtros['page'] ?? 1;
         $perPage = $filtros['itemsPerPage'] ?? 10;
+        $esVistaGrupal = ($filtros['tipo_vista'] ?? false) == true;
 
-        // 1. Obtener todos los IDs que coinciden con los filtros (Cacheado)
-        $allIds = $this->getFilteredProductIds($filtros);
+        // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros (Cacheado)
+        $allIds = $this->getFilteredIds($filtros, $esVistaGrupal);
         $total = count($allIds);
 
         // 2. Paginar los IDs en memoria
@@ -34,9 +35,17 @@ class IaAssistantReportService
             return new LengthAwarePaginator([], $total, $perPage, $page);
         }
 
-        // 3. Hidratar los modelos solo para los IDs de la página actual
+        // 3. Hidratar los modelos
         $filtrosHidratacion = $filtros;
-        $filtrosHidratacion['ids_in'] = $currentPageIds;
+        if ($esVistaGrupal) {
+            // Si es vista grupal, los IDs son de GRUPOS
+            $filtrosHidratacion['groups'] = $currentPageIds;
+            // Quitamos q para que traiga todos los productos del grupo una vez filtrados los grupos
+            // Nota: Si se requiere que los productos dentro del grupo también respeten q, se puede mantener q
+        } else {
+            // Si es vista individual, los IDs son de PRODUCTOS
+            $filtrosHidratacion['ids_in'] = $currentPageIds;
+        }
         
         // Ejecutamos la consulta base según el tipo
         if ($tipo === 'sales') {
@@ -52,7 +61,10 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo);
         }
 
-        // 5. Devolver paginador manual
+        // 5. Hidratar tendencia de ventas (Últimos 6 meses)
+        $this->hydrateSalesTrend($procesado);
+
+        // 6. Devolver paginador manual
         return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
             'path' => request()->url(),
             'query' => request()->query(),
@@ -60,11 +72,11 @@ class IaAssistantReportService
     }
 
     /**
-     * Obtiene y cachea los IDs de productos que coinciden con los filtros
+     * Obtiene y cachea los IDs (de productos o grupos) que coinciden con los filtros
      */
-    private function getFilteredProductIds(array $filtros): array
+    private function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
-        $cacheKey = 'ia_report_ids_' . md5(json_encode([
+        $cacheKey = 'ia_report_ids_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
             'lapso' => $filtros['lapso_de_tiempo'] ?? '',
             'lab' => $filtros['laboratoryId'] ?? [],
             'groups' => $filtros['groups'] ?? [],
@@ -75,19 +87,21 @@ class IaAssistantReportService
             'ws' => $filtros['without_supplier'] ?? false,
         ]));
 
-        return Cache::remember($cacheKey, 600, function () use ($filtros) {
-            // Usamos una consulta ligera que solo traiga IDs
-            // Para esto, usamos el builder de averages pero solo pidiendo ID
+        return Cache::remember($cacheKey, 600, function () use ($filtros, $porGrupo) {
             $filtrosLigero = $filtros;
             unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
             
-            // Obtenemos todos sin paginar para tener el set completo de IDs
             $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
             
             if ($tipo === 'sales') {
                 $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
             } else {
                 $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosLigero);
+            }
+
+            if ($porGrupo) {
+                // Obtenemos IDs de grupos únicos, filtrando nulos
+                return $collection->pluck('group_id')->filter()->unique()->values()->toArray();
             }
 
             return $collection->pluck('id')->toArray();
@@ -105,16 +119,87 @@ class IaAssistantReportService
         
         if ($tipo === 'sales') {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
-            return $this->processRegularReport($resultado, $tipo);
+            $procesado = $this->processRegularReport($resultado, $tipo);
+        } else {
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+            if ($tipo === 'combinado') {
+                $procesado = $this->processCombinedReport($resultado, $filtros);
+            } else {
+                $procesado = $this->processRegularReport($resultado, $tipo);
+            }
         }
 
-        $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+        $this->hydrateSalesTrend($procesado);
+        return $procesado;
+    }
 
-        if ($tipo === 'combinado') {
-            return $this->processCombinedReport($resultado, $filtros);
+    /**
+     * Hidrata los productos con su tendencia de ventas real de los últimos 6 meses
+     */
+    private function hydrateSalesTrend($products): void
+    {
+        $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
+        if ($items->isEmpty()) return;
+
+        $productIds = $items->pluck('id')->toArray();
+        $sixMonthsAgo = now()->subMonths(5)->startOfMonth(); // 6 meses incluyendo el actual
+
+        // 1. Generar la estructura base de los últimos 6 meses con valores en 0
+        $baseTrend = [];
+        for ($i = 0; $i < 6; $i++) {
+            $date = $sixMonthsAgo->copy()->addMonths($i);
+            $key = $date->format('Y-n'); // Ej: 2024-4
+            $baseTrend[$key] = [
+                'label' => $this->getMonthName($date->month),
+                'value' => 0
+            ];
         }
 
-        return $this->processRegularReport($resultado, $tipo);
+        // 2. Consultar ventas reales para los productos de la página
+        $salesData = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->select(
+                'order_details.product_id',
+                \Illuminate\Support\Facades\DB::raw('YEAR(orders.created_at) as year'),
+                \Illuminate\Support\Facades\DB::raw('MONTH(orders.created_at) as month'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total')
+            )
+            ->whereIn('order_details.product_id', $productIds)
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>=', $sixMonthsAgo->format('Y-m-d'))
+            ->groupBy('order_details.product_id', 'year', 'month')
+            ->get();
+
+        // 3. Mapear los resultados de la DB
+        $itemSalesMap = [];
+        foreach ($salesData as $row) {
+            $key = $row->year . '-' . $row->month;
+            $itemSalesMap[$row->product_id][$key] = (float)$row->total;
+        }
+
+        // 4. Asignar la tendencia normalizada a cada producto
+        $items->each(function ($product) use ($baseTrend, $itemSalesMap) {
+            $productTrend = $baseTrend; // Copia del esqueleto de 6 meses
+            $sales = $itemSalesMap[$product->id] ?? [];
+
+            foreach ($sales as $key => $total) {
+                if (isset($productTrend[$key])) {
+                    $productTrend[$key]['value'] = $total;
+                }
+            }
+
+            $product->sales_trend = array_column($productTrend, 'value');
+            $product->sales_trend_labels = array_column($productTrend, 'label');
+        });
+    }
+
+    private function getMonthName(int $month): string
+    {
+        $months = [
+            1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun',
+            7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'
+        ];
+        return $months[$month] ?? '';
     }
 
     /**

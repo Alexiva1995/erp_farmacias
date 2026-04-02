@@ -16,10 +16,10 @@ const emit = defineEmits(["update:options", "update:page"]);
 const { mdAndUp } = useDisplay();
 
 // Configuración de Sparkline
-const getChartOptions = (color = '#7367f0') => ({
+const getChartOptions = (item, color = '#7367f0') => ({
   chart: {
     type: 'area',
-    height: 30,
+    height: 25,
     sparkline: { enabled: true },
     animations: { enabled: true }
   },
@@ -33,53 +33,67 @@ const getChartOptions = (color = '#7367f0') => ({
       stops: [0, 90, 100]
     }
   },
+  xaxis: {
+    categories: item.sales_trend_labels || []
+  },
   colors: [color],
-  tooltip: { enabled: false }
+  tooltip: {
+    enabled: true,
+    fixed: { enabled: false },
+    x: { show: true },
+    y: {
+      title: { formatter: () => 'Ventas:' }
+    },
+    marker: { show: false }
+  }
 });
 
 const getSeries = (item) => {
-  const base = Number(item.total_sold_completed || 0);
-  const data = [
-    base * 0.9, base * 1.1, base * 0.8, base * 1.2, base * 0.7, base * 1.4, base
-  ].map(v => Math.max(0, Math.round(v)));
+  const data = (item.sales_trend && item.sales_trend.length > 0) 
+    ? item.sales_trend 
+    : [0, 0, 0, 0, 0, 0];
   
   return [{ name: 'Ventas', data }];
 };
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: '70px' },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Ventas", key: "total_sold_completed", sortable: true },
-  { title: "Stock", key: "lote_quantity", sortable: true },
+  { title: "ID", key: "id", sortable: true, width: '50px' },
+  { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
+  { title: "Trend", key: "trend", sortable: false, width: '80px' },
+  { title: "Costo", key: "unit_cost", sortable: true, width: '80px' },
+  { title: "Vent.", key: "total_sold_completed", sortable: true, width: '65px' },
+  { title: "Stock", key: "lote_quantity", sortable: true, width: '65px' },
   {
-    title: "Preferencia",
+    title: "PREF",
     key: "preferencia_product",
     sortable: true,
+    width: '70px',
     value: (item) =>
       item.preferencia_product != "" && item.preferencia_product != null
         ? parseFloat(item.preferencia_product).toFixed(2)
         : 0,
   },
   {
-    title: "Promedio",
+    title: "Prom.",
     key: "promedio_calculado",
     sortable: true,
+    width: '70px',
     value: (item) =>
       item.promedio_calculado != "" && item.promedio_calculado != null
         ? parseFloat(item.promedio_calculado).toFixed(2)
         : 0,
   },
   {
-    title: "AO",
+    title: "Ped.",
     key: "totalQuantityInAutoOrder",
     sortable: false,
+    width: '70px',
   },
   {
-    title: "Análisis",
+    title: "Anál.",
     key: "solicitar",
     sortable: true,
+    width: '85px',
     value: (item) => {
       item.solicitar != "" && item.solicitar != null
         ? parseFloat(item.solicitar).toFixed(2)
@@ -93,7 +107,7 @@ const groupBy = [{ key: "group.name" }];
 
 <template>
   <div class="assistant-table-container">
-    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -139,11 +153,11 @@ const groupBy = [{ key: "group.name" }];
           </template>
 
           <template #item.trend="{ item }">
-            <div style="block-size: 30px; inline-size: 100px;">
+            <div style="block-size: 25px; inline-size: 80px;">
               <VueApexCharts
                 type="area"
-                height="30"
-                :options="getChartOptions(roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                height="25"
+                :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
             </div>
@@ -211,7 +225,7 @@ const groupBy = [{ key: "group.name" }];
                       <VueApexCharts
                         type="area"
                         height="25"
-                        :options="getChartOptions(roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                        :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                         :series="getSeries(item)"
                       />
                     </div>
@@ -229,7 +243,7 @@ const groupBy = [{ key: "group.name" }];
                     <span class="value">{{ item.lote_quantity || 0 }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Ventas</span>
+                    <span class="label">Vent.</span>
                     <span class="value">{{ item.total_sold_completed || 0 }}</span>
                   </div>
                   <div class="info-item">
@@ -249,7 +263,7 @@ const groupBy = [{ key: "group.name" }];
                     <span class="value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Pref.</span>
+                    <span class="label">PREF</span>
                     <span class="value">{{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) : '—' }}</span>
                   </div>
                 </div>
@@ -295,14 +309,28 @@ const groupBy = [{ key: "group.name" }];
   border-inline-end: none;
 }
 
+:deep(.v-data-table-group-header-row .v-table__group-header-content) {
+  column-gap: 8px !important;
+}
+
+/* Ajuste fino para el botón de expansión */
+:deep(.v-data-table-group-header-row .v-btn--icon) {
+  margin-inline-start: -4px !important;
+}
+
 :deep(.assistant-data-table) {
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
+}
+
+:deep(.v-data-table__td),
+:deep(.v-data-table__th) {
+  padding-inline: 4px !important;
 }
 
 .grid-mobile-info {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .info-item {
@@ -312,10 +340,10 @@ const groupBy = [{ key: "group.name" }];
 }
 
 .info-item .label {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
   font-size: 0.6rem;
-  text-transform: uppercase;
-  color: rgba(var(--var-theme-on-surface), var(--v-medium-emphasis-opacity));
   font-weight: 800;
+  text-transform: uppercase;
 }
 
 .info-item .value {

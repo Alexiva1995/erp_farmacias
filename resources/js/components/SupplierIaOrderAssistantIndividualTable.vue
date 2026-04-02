@@ -17,10 +17,10 @@ const emit = defineEmits(["update:options", "update:page"]);
 const { mdAndUp } = useDisplay();
 
 // Configuración de Sparkline
-const getChartOptions = (color = '#7367f0') => ({
+const getChartOptions = (item, color = '#7367f0') => ({
   chart: {
     type: 'area',
-    height: 30,
+    height: 25,
     sparkline: { enabled: true },
     animations: { enabled: true }
   },
@@ -34,32 +34,40 @@ const getChartOptions = (color = '#7367f0') => ({
       stops: [0, 90, 100]
     }
   },
+  xaxis: {
+    categories: item.sales_trend_labels || []
+  },
   colors: [color],
-  tooltip: { enabled: false }
+  tooltip: {
+    enabled: true,
+    fixed: { enabled: false },
+    x: { show: true },
+    y: {
+      title: { formatter: () => 'Ventas:' }
+    },
+    marker: { show: false }
+  }
 });
 
 const getSeries = (item) => {
-  // Generar tendencia semi-aleatoria basada en ventas si no hay historial real
-  const base = Number(item.total_sold_completed || 0);
-  const data = [
-    base * 0.8, base * 1.2, base * 0.9, base * 1.1, base * 0.7, base * 1.3, base
-  ].map(v => Math.max(0, Math.round(v)));
+  const data = (item.sales_trend && item.sales_trend.length > 0) 
+    ? item.sales_trend 
+    : [0, 0, 0, 0, 0, 0];
   
   return [{ name: 'Ventas', data }];
 };
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: '60px' },
-  { title: "Producto", key: "name", sortable: true, minWidth: '220px' },
-  { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false, width: '140px' },
-  { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '100px' },
-  { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end', width: '90px' },
-  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '90px' },
-  { title: "Preferencia", key: "preferencia_product", sortable: true, align: 'end', width: '110px' },
-  { title: "Promedio", key: "promedio_calculado", sortable: true, align: 'end', width: '100px' },
-  { title: "En Pedido", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '100px' },
-  { title: "Análisis (u)", key: "solicitar", sortable: true, align: 'end', width: '110px' },
+  { title: "ID", key: "id", sortable: true, width: '50px' },
+  { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
+  { title: "Trend", key: "trend", sortable: false, width: '80px' },
+  { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' },
+  { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
+  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
+  { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
+  { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
+  { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
+  { title: "Anál.", key: "solicitar", sortable: true, align: 'end', width: '85px' },
 ];
 
 // Determina el color de fondo por fila
@@ -73,7 +81,7 @@ function rowClass(item) {
 
 <template>
   <div class="assistant-table-container">
-    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -127,13 +135,12 @@ function rowClass(item) {
             </div>
           </template>
 
-          <!-- Tendencia -->
           <template #item.trend="{ item }">
-            <div style="block-size: 30px; inline-size: 100px;">
+            <div style="block-size: 25px; inline-size: 80px;">
               <VueApexCharts
                 type="area"
-                height="30"
-                :options="getChartOptions(roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                height="25"
+                :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
             </div>
@@ -233,7 +240,7 @@ function rowClass(item) {
                       <VueApexCharts
                         type="area"
                         height="25"
-                        :options="getChartOptions(roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                        :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                         :series="getSeries(item)"
                       />
                     </div>
@@ -251,7 +258,7 @@ function rowClass(item) {
                     <span class="value">{{ item.lote_quantity || 0 }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Ventas</span>
+                    <span class="label">Vent.</span>
                     <span class="value">{{ item.total_sold_completed || 0 }}</span>
                   </div>
                   <div class="info-item">
@@ -271,7 +278,7 @@ function rowClass(item) {
                     <span class="value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">Pref.</span>
+                    <span class="label">PREF</span>
                     <span class="value">{{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) : '—' }}</span>
                   </div>
                 </div>
@@ -318,7 +325,12 @@ function rowClass(item) {
 }
 
 :deep(.assistant-data-table) {
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
+}
+
+:deep(.v-data-table__td),
+:deep(.v-data-table__th) {
+  padding-inline: 4px !important;
 }
 
 :deep(.row-needs td) {
@@ -331,19 +343,19 @@ function rowClass(item) {
 
 /* Estilos para cards móviles */
 .row-needs.v-card {
-  border-inline-start: 4px solid #28c76f !important;
   background-color: rgba(40, 199, 111, 2%) !important;
+  border-inline-start: 4px solid #28c76f !important;
 }
 
 .row-excess.v-card {
-  border-inline-start: 4px solid #ea5455 !important;
   background-color: rgba(234, 84, 85, 2%) !important;
+  border-inline-start: 4px solid #ea5455 !important;
 }
 
 .grid-mobile-info {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .info-item {
@@ -353,10 +365,10 @@ function rowClass(item) {
 }
 
 .info-item .label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  font-size: 0.6rem;
   font-weight: 800;
+  text-transform: uppercase;
 }
 
 .info-item .value {
