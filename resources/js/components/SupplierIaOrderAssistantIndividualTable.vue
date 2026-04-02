@@ -61,7 +61,6 @@ const headers = [
   { title: "ID", key: "id", sortable: true, width: '60px' },
   { title: "Producto", key: "name", sortable: true, minWidth: '220px' },
   { title: "Tendencia", key: "trend", sortable: false, width: '100px' },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false, width: '140px' },
   { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '100px' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end', width: '90px' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '90px' },

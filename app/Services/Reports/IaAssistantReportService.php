@@ -142,9 +142,20 @@ class IaAssistantReportService
         if ($items->isEmpty()) return;
 
         $productIds = $items->pluck('id')->toArray();
-        $sixMonthsAgo = now()->subMonths(6)->startOfMonth()->format('Y-m-d');
+        $sixMonthsAgo = now()->subMonths(5)->startOfMonth(); // 6 meses incluyendo el actual
 
-        // Consulta eficiente para obtener ventas mensuales de los últimos 6 meses
+        // 1. Generar la estructura base de los últimos 6 meses con valores en 0
+        $baseTrend = [];
+        for ($i = 0; $i < 6; $i++) {
+            $date = $sixMonthsAgo->copy()->addMonths($i);
+            $key = $date->format('Y-n'); // Ej: 2024-4
+            $baseTrend[$key] = [
+                'label' => $this->getMonthName($date->month),
+                'value' => 0
+            ];
+        }
+
+        // 2. Consultar ventas reales para los productos de la página
         $salesData = \Illuminate\Support\Facades\DB::table('order_details')
             ->join('orders', 'orders.id', '=', 'order_details.order_id')
             ->select(
@@ -155,30 +166,30 @@ class IaAssistantReportService
             )
             ->whereIn('order_details.product_id', $productIds)
             ->where('orders.status', 'Completed')
-            ->where('orders.created_at', '>=', $sixMonthsAgo)
+            ->where('orders.created_at', '>=', $sixMonthsAgo->format('Y-m-d'))
             ->groupBy('order_details.product_id', 'year', 'month')
-            ->orderBy('year', 'asc')
-            ->orderBy('month', 'asc')
             ->get();
 
-        // Organizar los datos en un mapa para acceso O(1)
-        $trendMap = [];
-        foreach ($salesData as $data) {
-            $trendMap[$data->product_id][] = [
-                'label' => $this->getMonthName($data->month),
-                'value' => (float)$data->total
-            ];
+        // 3. Mapear los resultados de la DB
+        $itemSalesMap = [];
+        foreach ($salesData as $row) {
+            $key = $row->year . '-' . $row->month;
+            $itemSalesMap[$row->product_id][$key] = (float)$row->total;
         }
 
-        // Asignar los datos a cada producto
-        $items->each(function ($product) use ($trendMap) {
-            $trend = $trendMap[$product->id] ?? [];
-            // Si hay menos de 6 meses, rellenar con ceros al principio para mantener consistencia visual
-            $values = array_column($trend, 'value');
-            $labels = array_column($trend, 'label');
-            
-            $product->sales_trend = $values;
-            $product->sales_trend_labels = $labels;
+        // 4. Asignar la tendencia normalizada a cada producto
+        $items->each(function ($product) use ($baseTrend, $itemSalesMap) {
+            $productTrend = $baseTrend; // Copia del esqueleto de 6 meses
+            $sales = $itemSalesMap[$product->id] ?? [];
+
+            foreach ($sales as $key => $total) {
+                if (isset($productTrend[$key])) {
+                    $productTrend[$key]['value'] = $total;
+                }
+            }
+
+            $product->sales_trend = array_column($productTrend, 'value');
+            $product->sales_trend_labels = array_column($productTrend, 'label');
         });
     }
 
