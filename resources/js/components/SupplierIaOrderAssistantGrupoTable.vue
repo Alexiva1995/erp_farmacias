@@ -107,7 +107,7 @@ const groupBy = [{ key: "group.name" }];
 
 <template>
   <div class="assistant-table-container">
-    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard class="rounded-lg border shadow-sm bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
         <VDataTableServer
@@ -133,7 +133,7 @@ const groupBy = [{ key: "group.name" }];
           </template>
 
           <template #item.name="{ item }">
-            <div class="d-flex flex-column" style="line-height: 1.1; max-inline-size: 320px;">
+            <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
               <span
                 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 'text-primary': item.psychotropic == 1 }"
@@ -320,7 +320,6 @@ const groupBy = [{ key: "group.name" }];
 
 :deep(.v-data-table__td),
 :deep(.v-data-table__th) {
-  block-size: 32px !important;
   padding-inline: 4px !important;
 }
 
