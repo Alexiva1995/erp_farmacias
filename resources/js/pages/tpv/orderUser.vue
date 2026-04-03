@@ -1319,6 +1319,7 @@ const addOrden = async (id) => {
     currency: selectedDisplayCurrency.value,
   };
   try {
+    console.log("[FISCAL] Enviando petición final de completado...");
     const response = await axios.post("/tpv/orders", params);
     openOrderData.value = response.data.data.order;
     selectedClient.value = response.data.data.order.client;
@@ -2029,7 +2030,9 @@ watch(
           clearTimeout(updateTotalsTimer);
           updateTotalsTimer = setTimeout(async () => {
             try {
-              await updateOrderTotalsInBackend();
+              console.log("[FISCAL] Actualizando totales en backend...");
+    await updateOrderTotalsInBackend();
+    console.log("[FISCAL] Totales actualizados.");
             } catch (error) {
               console.error("Error al actualizar totales:", error);
             }
@@ -2182,6 +2185,11 @@ const resetFormSelectors = () => {
 };
 
 const printFiscalPNP = async (order) => {
+  console.log("[FISCAL] Iniciando proceso de impresión para orden:", order?.id);
+  if (!order) {
+    console.error("[FISCAL] Error: Datos de orden no disponibles.");
+    return;
+  }
   try {
     const payload = {
       order_id: order.id,
@@ -2196,7 +2204,9 @@ const printFiscalPNP = async (order) => {
       payment_method: "EFECTIVO"
     };
 
-    await axios.post('http://localhost:5000/print-invoice', payload);
+    console.log("[FISCAL] Enviando payload a localhost:5000:", payload);
+    const bridgeResp = await axios.post('http://localhost:5000/print-invoice', payload);
+    console.log("[FISCAL] Respuesta del bridge:", bridgeResp.data);
     toast.success("Factura enviada a impresora fiscal");
   } catch (error) {
     console.error("Error en impresión fiscal:", error);
@@ -2215,10 +2225,14 @@ const handleBuysCompletion = async (
 ) => {
   try {
     isFinishingOrder.value = true;
+    console.log("[FISCAL] handleBuysCompletion disparado para orden:", orderId);
+    console.log("[FISCAL] switchStates recibidos de BuysModal:", switchStates);
 
     if (typeof updateTotalsTimer !== "undefined")
       clearTimeout(updateTotalsTimer);
+    console.log("[FISCAL] Actualizando totales en backend...");
     await updateOrderTotalsInBackend();
+    console.log("[FISCAL] Totales actualizados.");
     const finalAmount = parseFloat(totalOrderAmountWithspecialTaxAmount.value);
     if (
       orderItems.value.length > 0 &&
@@ -2393,6 +2407,7 @@ const handleBuysCompletion = async (
       formData.append("prescription_image", prescriptionFile.value);
     }
     const idempotencyKey = `order-complete-${orderId}-${Date.now()}`;
+    console.log("[FISCAL] Enviando petición final de completado...");
     const response = await axios.post(
       `/tpv/orders/${orderId}/complete`,
       formData,
@@ -2406,6 +2421,21 @@ const handleBuysCompletion = async (
 
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
+
+      // DISPARAR IMPRESIÓN FISCAL INMEDIATAMENTE
+      const orderCompletada = response.data.data.orderCompletada;
+      console.log("[FISCAL] Verificando condición inmediata:", { 
+          inv: switchStates.invoice_switch, 
+          gen: switchStates.generate_invoice 
+      });
+
+      if (switchStates.invoice_switch || switchStates.generate_invoice) {
+        console.log("[FISCAL] Llamando a printFiscalPNP con:", orderCompletada?.id);
+        printFiscalPNP(orderCompletada);
+      } else {
+        console.log("[FISCAL] Factura omitida.");
+      }
+
       prescriptionFile.value = null;
       changeAmountForPrint.value = changeAmount;
       changeAmountOriginForPrint.value = changeAmountOrigin;
@@ -2420,7 +2450,6 @@ const handleBuysCompletion = async (
       doctorDiscountForPrint.value = totalDoctorDiscountAmount.value;
       companyDiscountForPrint.value = totalCompanyDiscountAmount.value;
       discountTypeForPrint.value = selectedDiscountType.value;
-      const orderCompletada = response.data.data.orderCompletada;
       orderData.value = orderCompletada;
       itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value));
       TotalToPrint.value = parseFloat(orderData.value.total_amount);
@@ -2434,10 +2463,7 @@ const handleBuysCompletion = async (
         );
       });
 
-      // DISPARAR IMPRESIÓN FISCAL SI ESTÁ ACTIVADO
-      if (switchStates.invoice_switch || switchStates.generate_invoice) {
-        printFiscalPNP(orderData.value);
-      }
+      
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
@@ -2511,6 +2537,7 @@ const fetchGroupProducts = async (groupId) => {
 
 const fetchFailuresProducts = async (productId) => {
   try {
+    console.log("[FISCAL] Enviando petición final de completado...");
     const response = await axios.post("/tpv/product-failure", {
       product_id: productId,
     });

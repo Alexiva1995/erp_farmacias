@@ -1,12 +1,29 @@
 import serial
 import time
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 
 app = FastAPI(title="Fiscal Printer Bridge - PNP Protocol")
+
+# CONFIGURACIÓN DE CORS (Para permitir llamadas desde el ERP)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # En producción se puede restringir a la URL del ERP
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[CONEXIÓN] {request.method} {request.url}")
+    response = await call_next(request)
+    print(f"[CONEXIÓN] Respuesta: {response.status_code}")
+    return response
 
 # CONFIGURACIÓN DE MODO
 # Modos disponibles: 
