@@ -8,8 +8,9 @@ import uvicorn
 app = FastAPI(title="Fiscal Printer Bridge - PNP Protocol")
 
 # Configuración del puerto Serial (Ajustar según sea necesario)
-SERIAL_PORT = "COM1"  # O '/dev/ttyUSB0' en Linux
+SERIAL_PORT = "COM1"  # Puerto de la impresora física o virtual
 BAUD_RATE = 9600
+MOCK_MODE = True      # Si es True, no intentará abrir el puerto serial, solo imprimirá la trama.
 
 class ProductItem(BaseModel):
     name: str
@@ -62,6 +63,12 @@ class PNPPrinter:
         
         print(f"Enviando trama: {full_frame}")
         
+        if MOCK_MODE:
+            print("--- MODO SIMULACIÓN ACTIVO (MOCK) ---")
+            print(f"Trama Hex: {full_frame.hex().upper()}")
+            time.sleep(0.5)
+            return b'\x06' # Simular un ACK (0x06)
+            
         try:
             with serial.Serial(self.port, self.baudrate, timeout=2) as ser:
                 ser.write(full_frame)
