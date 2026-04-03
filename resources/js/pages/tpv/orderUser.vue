@@ -2423,13 +2423,6 @@ const handleBuysCompletion = async (
           gen: switchStates.generate_invoice 
       });
 
-      if (switchStates.invoice_switch || switchStates.generate_invoice) {
-        
-        printFiscalPNP(orderCompletada);
-      } else {
-        
-      }
-
       prescriptionFile.value = null;
       changeAmountForPrint.value = changeAmount;
       changeAmountOriginForPrint.value = changeAmountOrigin;
@@ -3173,6 +3166,7 @@ onUnmounted(() => {
       :all-foreign-sales-spe="allForeignSalesSpe || false"
       :foreign-orders-count="foreignOrdersCount || 0"
       @printTicke-completed="printTickeCompletion"
+      @print-fiscal="printFiscalPNP"
       @finish-and-reload="finalizeAndCheckPending"
     />
 
