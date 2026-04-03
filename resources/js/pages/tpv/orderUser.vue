@@ -2194,7 +2194,7 @@ const printFiscalPNP = async (order) => {
       items: order.details.map(detail => ({
         name: detail.product?.name || "PRODUCTO",
         qty: parseFloat(detail.quantity),
-        price: parseFloat(detail.unit_price), // Monto en Bs para cumplimiento fiscal
+        price: parseFloat(detail.unit_cost || detail.unit_price || detail.price || 0), // Base imponible en Bs
         tax_rate: (detail.product?.iva == 1 || detail.product?.iva == "1") ? "A" : "E"
       })),
       payment_method: "EFECTIVO"

@@ -2,7 +2,7 @@ import serial
 import time
 import requests
 import urllib.parse
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -10,21 +10,14 @@ import uvicorn
 
 app = FastAPI(title="Fiscal Printer Bridge - PNP Protocol")
 
-# CONFIGURACIÓN DE CORS (Para permitir llamadas desde el ERP)
+# CONFIGURACIÓN DE CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # En producción se puede restringir a la URL del ERP
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"[CONEXIÓN] {request.method} {request.url}")
-    response = await call_next(request)
-    print(f"[CONEXIÓN] Respuesta: {response.status_code}")
-    return response
 
 # CONFIGURACIÓN DE MODO
 # Modos disponibles: 
@@ -44,7 +37,7 @@ class ProductItem(BaseModel):
     name: str
     qty: float
     price: float
-    tax_rate: str  # 'E' (Exento), 'A' (16%), etc.
+    tax_rate: str
 
 class OrderData(BaseModel):
     order_id: int
@@ -103,40 +96,24 @@ class WebSimPrinter:
     def print_invoice(self, data: OrderData):
         commands = []
         
-        # 1. Abrir Factura: @:RazonSocial:RIF
-        # Se limpia el RIF de caracteres no alfanuméricos para el simulador
         rif_clean = "".join(filter(str.isalnum, data.client_rif))
         commands.append(f"@:{data.client_name[:39]}:{rif_clean[:12]}")
         
-        # 2. Renglones: B:Descripcion:Cantidad:Precio:IVA:M
-        # Cantidad (5.3) -> 1.000 = 1000
-        # Precio (10.2)  -> 10.00 = 1000
-        # IVA (4.2)      -> 16.00 = 1600
         for item in data.items:
             qty_int = int(item.qty * 1000)
             price_int = int(item.price * 100)
-            
-            tax_val = 1600 # Default 16%
-            if item.tax_rate == "E": tax_val = 0
-            elif item.tax_rate == "B": tax_val = 800
-            
-            # Limpiar nombre de caracteres problemáticos
+            tax_val = 1600 if item.tax_rate == "A" else 0
             name_clean = item.name.replace("|", "").replace(":", "")
             commands.append(f"B:{name_clean[:20]}:{qty_int}:{price_int}:{tax_val}:M")
         
-        # 3. Cerrar: E:U:Monto
         total_int = int(sum(i.price * i.qty for i in data.items) * 1.16 * 100)
         commands.append(f"E:U:{total_int}")
         
-        # Construir query string manualmente para evitar doble encoding de | y :
-        # Pero codificamos los espacios y caracteres especiales de cada comando
         full_query = "|".join(commands)
-        # Codificamos solo los caracteres "peligrosos" pero mantenemos la estructura básica
         safe_query = urllib.parse.quote(full_query, safe="|:?=@")
-        
         full_url = f"{self.url}?{safe_query}"
         
-        print(f"Enviando al simulador web: {full_url}")
+        print(f"[WEBSIM] Enviando factura: {full_url}")
         
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -144,12 +121,10 @@ class WebSimPrinter:
         
         try:
             resp = requests.get(full_url, headers=headers, timeout=10)
-            print(f"Respuesta simulador: {resp.status_code}")
-            if resp.status_code != 200:
-                print(f"Detalle error: {resp.text}")
+            print(f"[WEBSIM] Respuesta del servidor: {resp.status_code}")
             return resp.text
         except Exception as e:
-            print(f"Error con simulador web: {e}")
+            print(f"[WEBSIM] Error: {e}")
             raise e
 
 # Instanciar impresoras
@@ -161,18 +136,20 @@ async def print_invoice(data: OrderData):
     try:
         if BRIDGE_MODE == "WEBSIM":
             result = web_printer.print_invoice(data)
-            return {"status": "success", "message": "Enviado al simulador web", "response": result}
+            return {"status": "success", "response": result}
         else:
             # Modo REAL o MOCK usando el protocolo binario
             serial_printer.send_command(b'\x40', [data.client_name[:40], data.client_rif[:20]])
             for item in data.items:
                 tax_map = {"E": "0", "A": "1", "G": "1"} 
-                printer_tax = tax_map.get(item.tax_rate, "1")
-                serial_printer.send_command(b'\x42', [item.name[:40], int(item.qty*1000), int(item.price*100), printer_tax])
+                t_idx = tax_map.get(item.tax_rate, "1")
+                # Precios en entero (centavos) para la impresora
+                serial_printer.send_command(b'\x42', [item.name[:40], int(item.qty*1000), int(item.price*100), t_idx])
             serial_printer.send_command(b'\x44', ["1", "0"])
-            return {"status": "success", "message": f"Comandos binarios ({BRIDGE_MODE}) enviados."}
+            return {"status": "success", "message": f"Comandos ({BRIDGE_MODE}) enviados."}
             
     except Exception as e:
+        print(f"[ERROR] {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
