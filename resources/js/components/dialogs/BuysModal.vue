@@ -687,11 +687,7 @@ const handleCompletePurchase = () => {
       const validPayments = payments.value.filter(
         (p) => p.amount > 0 && p.method !== null,
       );
-      console.log("[FISCAL] Emitiendo purchase-completed desde BuysModal:", {
-        orderId: props.orderData?.id,
-        invoiceSwitch: invoiceSwitch.value,
-        shouldApplySpe: shouldApplySpeRules.value
-      });
+      
       emit(
         "purchase-completed",
         props.orderData?.id,
@@ -1646,7 +1642,7 @@ const getAvailableMethodsForCurrency = (currency) => {
         </div>
         <div class="ms-6 d-flex align-center">
           <span class="text-caption font-weight-bold me-2 uppercase">Factura</span>
-          <VSwitch v-model="invoiceSwitch" density="compact" color="primary" hide-details @update:model-value="(val) => console.log('[FISCAL] Click en switch Factura:', val)" />
+          <VSwitch v-model="invoiceSwitch" density="compact" color="primary" hide-details />
         </div>
         <VSpacer />
         <VBtn

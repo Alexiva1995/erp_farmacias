@@ -1,6 +1,7 @@
 import serial
 import time
 import requests
+import urllib.parse
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -118,22 +119,34 @@ class WebSimPrinter:
             tax_val = 1600 # Default 16%
             if item.tax_rate == "E": tax_val = 0
             elif item.tax_rate == "B": tax_val = 800
-                
-            commands.append(f"B:{item.name[:20]}:{qty_int}:{price_int}:{tax_val}:M")
+            
+            # Limpiar nombre de caracteres problemáticos
+            name_clean = item.name.replace("|", "").replace(":", "")
+            commands.append(f"B:{name_clean[:20]}:{qty_int}:{price_int}:{tax_val}:M")
         
         # 3. Cerrar: E:U:Monto
-        # El simulador pide el total para cerrar con IGTF o normal
-        total_int = int(sum(i.price * i.qty for i in data.items) * 1.16 * 100) # Aproximación
+        total_int = int(sum(i.price * i.qty for i in data.items) * 1.16 * 100)
         commands.append(f"E:U:{total_int}")
         
+        # Construir query string manualmente para evitar doble encoding de | y :
+        # Pero codificamos los espacios y caracteres especiales de cada comando
         full_query = "|".join(commands)
-        full_url = f"{self.url}?{full_query}"
+        # Codificamos solo los caracteres "peligrosos" pero mantenemos la estructura básica
+        safe_query = urllib.parse.quote(full_query, safe="|:?=@")
+        
+        full_url = f"{self.url}?{safe_query}"
         
         print(f"Enviando al simulador web: {full_url}")
         
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        
         try:
-            resp = requests.get(full_url, timeout=5)
-            print(f"Respuesta simulador: {resp.text}")
+            resp = requests.get(full_url, headers=headers, timeout=10)
+            print(f"Respuesta simulador: {resp.status_code}")
+            if resp.status_code != 200:
+                print(f"Detalle error: {resp.text}")
             return resp.text
         except Exception as e:
             print(f"Error con simulador web: {e}")
