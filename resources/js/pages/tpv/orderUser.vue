@@ -2173,187 +2173,35 @@ const closeBuysModal = () => {
   showBuysModal.value = false;
 };
 
-/*const handleBuysCompletion = async (
-  orderId,
-  paymentsData,
-  credit,
-  changeAmount,
-  changeAmountUSD,
-  switchStates
-) => {
-  try {
-    const balanceUsed = paymentsData.some(
-      (payment) => payment.type === "balance"
-    );
-
-    let currentPercentage = 0;
-    let currentSourceId = null;
-    let currentTypeName = null;
-
-  if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
-      const offer = activeCompanyOffers.value.find(o => o.value === selectedCompanyId.value);
-      currentPercentage = parseFloat(offer?.current_discount || 0);
-      currentSourceId = selectedCompanyId.value;
-      currentTypeName = 'company';
-    } else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
-      currentPercentage = parseFloat(selectedDoctorOffer.value.percentage || 0);
-      currentSourceId = selectedDoctorOffer.value.id;
-      currentTypeName = 'doctor';
-    } else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
-      currentPercentage = parseFloat(currentPrescriptionDiscountPercentage.value)
-      currentSourceId = activePrescriptionOffers.value[0]?.id;
-      currentTypeName = 'recipe';
-    }
-
-    const payload = {
-      order_id: orderId,
-      payments: paymentsData,
-      total_amount: totalOrderAmountWithspecialTaxAmount.value,
-      currency: selectedDisplayCurrency.value,
-      client_id: selectedClient.value?.id,
-      seller_id: currentUser.value?.id,
-      balance_used: balanceUsed,
-      generate_invoice: switchStates.invoice_switch,
-      credit: credit,
-      changeAmount: changeAmount,
-      changeAmountUSD: changeAmountUSD,
-      spe: switchStates.spe,
-      items: orderItems.value.map((item) => ({
-        order_detail_id: item.order_detail_id,
-        quantity: item.selectedQuantity,
-        price: item.price,
-        discount_percentage: currentPercentage > 0 ? currentPercentage : null,
-        discount_type: currentPercentage > 0 ? currentTypeName : null,
-        discount_source_id: currentPercentage > 0 ? currentSourceId : null,
-      })),
-    };
-
-    const response = await axios.post(
-      `/tpv/orders/${orderId}/complete`,
-      payload
-    );
-    if (response.status === 200 || response.status === 201) {
-      toast.success("¡Compra finalizada y registrada con éxito!");
-      paymentsForPrint.value = [...paymentsData];
-      changeAmountForPrint.value = changeAmount;
-      changeAmountOriginForPrint.value = changeAmountOrigin;
-      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
-      creditForPrint.value = credit;
-      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
-      creditForPrint.value = credit;
-
-      // Manual calculation to ensure accuracy
-      let manualExpTotal = 0;
-      orderItems.value.forEach(item => {
-         const p = parseFloat(item.discount_percentage || 0);
-         if (item.discount_type === 'expiration' && p > 0) {
-            const price = item.basePrice || 0;
-            const qty = item.selectedQuantity || 0;
-            manualExpTotal += price * qty * (p / 100);
-         }
-      });
-      console.log("Manual Expiration Total:", manualExpTotal);
-      expirationDiscountForPrint.value = manualExpTotal;
-      speSurchargeAmount.value = specialTaxAmount.value;
-      clientIdentification.value = "";
-      await fetchProducts();
-      showBuysModal.value = false;
-      isPrinting.value = true;
-
-      await nextTick();
-      const printContents = document.getElementById("orderPrint");
-      if (printContents) {
-        const printWindow = window.open("", "", "height=600,width=800");
-        printWindow.document.write(
-          "<html><head><title>Farmacia Barrio Sucre</title>"
-        );
-        const styleSheets = document.styleSheets;
-        for (let i = 0; i < styleSheets.length; i++) {
-          const sheet = styleSheets[i];
-          try {
-            if (sheet.cssRules) {
-              let cssText = "";
-              for (let j = 0; j < sheet.cssRules.length; j++) {
-                cssText += sheet.cssRules[j].cssText;
-              }
-              printWindow.document.write("<style>" + cssText + "</style>");
-            } else if (sheet.href) {
-              printWindow.document.write(
-                '<link rel="stylesheet" href="' + sheet.href + '">'
-              );
-            }
-          } catch (e) {
-            console.warn(
-              "No se pudo acceder a la hoja de estilo:",
-              sheet.href || sheet,
-              e
-            );
-          }
-        }
-        printWindow.document.write("</head><body>");
-        printWindow.document.write(printContents.innerHTML);
-        printWindow.document.write("</body></html>");
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-      } else {
-        console.warn(
-          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-        );
-        window.print();
-      }
-
-      if (response.data.data.order) {
-        hasOpenOrder.value = true;
-        openOrderData.value = response.data.data.order;
-        selectedClient.value = openOrderData.value.client;
-        reservedOrderData.value = null;
-        orderItems.value = openOrderData.value.details.map((item) =>
-          formatOrderItemForFrontend(item)
-        );
-      } else {
-        hasOpenOrder.value = false;
-        openOrderData.value = null;
-        selectedClient.value = null;
-        orderItems.value = [];
-        reservedOrderData.value = null;
-        clientIdentification.value = "";
-      }
-    } else {
-      toast.error(
-        `Error inesperado al finalizar la compra: ${
-          response.data.message || "Intente de nuevo."
-        }`
-      );
-    }
-
-    setTimeout(() => {
-      isPrinting.value = false;
-    }, 500);
-  } catch (error) {
-    console.error(
-      "Error al finalizar la compra:",
-      error.response ? error.response.data : error.message
-    );
-    const errorMessage =
-      error.response?.data?.message ||
-      "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
-    toast.error(errorMessage);
-    isPrinting.value = false;
-    paymentsForPrint.value = [];
-    changeAmountForPrint.value = 0;
-    creditAmountForPrint.value = 0;
-    creditForPrint.value = false;
-  }
-};*/
-
 const resetFormSelectors = () => {
   selectedDiscountType.value = null;
   selectedCompanyId.value = null;
   selectedDoctorOffer.value = null;
   prescriptionFile.value = null;
   currentPrescriptionDiscountPercentage.value = 0;
+};
+
+const printFiscalPNP = async (order) => {
+  try {
+    const payload = {
+      order_id: order.id,
+      client_name: (order.client?.name || "CLIENTE") + " " + (order.client?.last_name || "GENERICO"),
+      client_rif: order.client?.identification || "00000000",
+      items: order.details.map(detail => ({
+        name: detail.product?.name || "PRODUCTO",
+        qty: parseFloat(detail.quantity),
+        price: parseFloat(detail.unit_price_usd),
+        tax_rate: (detail.product?.iva == 1 || detail.product?.iva == "1") ? "A" : "E"
+      })),
+      payment_method: "EFECTIVO"
+    };
+
+    await axios.post('http://localhost:5000/print-invoice', payload);
+    toast.success("Factura enviada a impresora fiscal");
+  } catch (error) {
+    console.error("Error en impresión fiscal:", error);
+    toast.error("Error: ¿Inició el servidor de impresora fiscal (Python)?");
+  }
 };
 
 const handleBuysCompletion = async (
@@ -2585,16 +2433,11 @@ const handleBuysCompletion = async (
           name !== "NULL"
         );
       });
-      //pendingOpenOrder.value = response.data.data.order;
-      /* if (response.data.data.order) {
-        hasOpenOrder.value = true;
-        openOrderData.value = response.data.data.order;
-        selectedClient.value = openOrderData.value.client;
-        reservedOrderData.value = null;
-        orderItems.value = openOrderData.value.details.map((item) =>
-          formatOrderItemForFrontend(item)
-        );
-      } */
+
+      // DISPARAR IMPRESIÓN FISCAL SI ESTÁ ACTIVADO
+      if (switchStates.invoice_switch || switchStates.generate_invoice) {
+        printFiscalPNP(orderData.value);
+      }
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
