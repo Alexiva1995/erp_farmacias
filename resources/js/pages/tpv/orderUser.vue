@@ -2185,26 +2185,15 @@ const resetFormSelectors = () => {
 };
 
 const printFiscalPNP = async (order) => {
-  if (!order) return;
+  if (!order || !order.id) return;
+  
   try {
-    const payload = {
-      order_id: order.id,
-      client_name: (order.client?.name || "CLIENTE") + " " + (order.client?.last_name || "GENERICO"),
-      client_rif: order.client?.identification || "00000000",
-      items: order.details.map(detail => ({
-        name: detail.product?.name || "PRODUCTO",
-        qty: parseFloat(detail.quantity),
-        price: parseFloat(detail.unit_cost || detail.unit_price || detail.price || 0), // Base imponible en Bs
-        tax_rate: (detail.product?.iva == 1 || detail.product?.iva == "1") ? "A" : "E"
-      })),
-      payment_method: "EFECTIVO"
-    };
-
-    await axios.post('http://localhost:5000/print-invoice', payload);
-    toast.success("Factura enviada a impresora fiscal");
+    toast.info("Enviando a cola de impresión fiscal...");
+    const response = await axios.post(`/api/fiscal/queue/${order.id}`);
+    toast.success(response.data.message || "Orden encolada correctamente.");
   } catch (error) {
-    console.error("Error en impresión fiscal:", error);
-    toast.error("Error: ¿Inició el servidor de impresora fiscal (Python)?");
+    console.error("Error al encolar impresión fiscal:", error);
+    toast.error(error.response?.data?.error || "Error al conectar con el servidor.");
   }
 };
 

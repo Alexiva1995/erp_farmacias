@@ -719,6 +719,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
         Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
+    // Fiscal Printer Queue
+    Route::prefix('fiscal')->group(function () {
+        Route::get('/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPending']);
+        Route::patch('/confirm/{id}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirm']);
+        Route::post('/queue/{order}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'queue']);
+    });
+
     Route::prefix('retentions')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
         Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
