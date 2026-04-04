@@ -719,11 +719,10 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
         Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
-    // Fiscal Printer Queue
+    // Fiscal Printer Queue (Solicitado desde TPV/Admin)
     Route::prefix('fiscal')->group(function () {
-        Route::get('/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPending']);
-        Route::patch('/confirm/{id}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirm']);
         Route::post('/queue/{order}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'queue']);
+        Route::post('/commands', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'storeCommand']);
     });
 
     Route::prefix('retentions')->group(function () {
@@ -740,4 +739,14 @@ Route::prefix('supervisor')->group(function () {
     Route::post('/cleaning-executions/{executionId}/approve', [EmployeeCleaningActivityController::class, 'approveExecution']);
     Route::post('/cleaning-executions/{executionId}/reject', [EmployeeCleaningActivityController::class, 'rejectExecution']);
     Route::post('/cleaning-executions/{executionId}/cancel', [EmployeeCleaningActivityController::class, 'cancelExecution']);
+});
+
+Route::prefix('fiscal')->group(function () {
+    Route::get('/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPending']);
+    Route::patch('/confirm/{id}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirm']);
+    
+    // Rutas para comandos generales
+    Route::get('/commands/history', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'history']);
+    Route::get('/commands/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPendingCommand']);
+    Route::patch('/commands/{id}/confirm', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirmCommand']);
 });

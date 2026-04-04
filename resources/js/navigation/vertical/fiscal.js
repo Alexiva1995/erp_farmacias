@@ -13,6 +13,12 @@ export default [
         title: 'Facturas',
         to: 'fiscal-history',
       },
+      {
+        title: 'Máquina Fiscal',
+        to: 'fiscal-control',
+        action: 'manage',
+        subject: 'admin',
+      },
         {
         title: 'IVA',
         to: 'iva-general',
