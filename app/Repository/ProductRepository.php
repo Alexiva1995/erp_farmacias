@@ -1444,6 +1444,7 @@ class ProductRepository
                 ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
                 ->orderBy('groups_products.name', 'ASC')
                 ->distinct()
+                ->get()
                 ->pluck('group_id')
                 ->toArray();
         }

@@ -31,13 +31,6 @@ class IaAssistantReportService
         $offset = ($page - 1) * $perPage;
         $currentPageIds = array_slice($allIds, $offset, $perPage);
 
-        \Illuminate\Support\Facades\Log::info("PAGINATION_DEBUG", [
-            'total' => count($allIds),
-            'page' => $page,
-            'perPage' => $perPage,
-            'slice' => count($currentPageIds)
-        ]);
-
         if (empty($currentPageIds)) {
             return new LengthAwarePaginator([], $total, $perPage, $page);
         }
@@ -83,7 +76,7 @@ class IaAssistantReportService
      */
     private function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
-        $cacheKey = 'ia_report_ids_v3_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
+        $cacheKey = 'ia_report_ids_v4_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
             'lapso' => $filtros['lapso_de_tiempo'] ?? '',
             'lab' => $filtros['laboratoryId'] ?? [],
             'groups' => $filtros['groups'] ?? [],
