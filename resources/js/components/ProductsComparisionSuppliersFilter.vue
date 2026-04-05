@@ -17,6 +17,7 @@ const hasAdvancedFilters = computed(() => false);
     :search="props.selectedSupplier"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Escriba el nombre del proveedor..."
+    class="py-1"
     @update:search="emit('update:selectedSupplier', $event)"
     @clear="emit('clear')"
   />

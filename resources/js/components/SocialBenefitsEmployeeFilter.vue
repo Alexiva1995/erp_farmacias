@@ -17,6 +17,7 @@ const hasAdvancedFilters = computed(() => false);
     :search="props.search"
     :show-advanced="false"
     search-placeholder="Buscar por nombre, cédula o correo..."
+    class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
   />

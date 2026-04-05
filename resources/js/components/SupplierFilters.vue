@@ -20,26 +20,43 @@ const emit = defineEmits([
 ]);
 
 const sortOptions = [
-  { title: "Deuda mayor",      icon: "tabler-arrow-up",   key: "debt",              order: "desc" },
-  { title: "Deuda menor",      icon: "tabler-arrow-down", key: "debt",              order: "asc"  },
-  { title: "Más Calificación", icon: "tabler-plus",       key: "latestScore.score", order: "desc" },
-  { title: "Menos Calificación", icon: "tabler-minus",    key: "latestScore.score", order: "asc"  },
+  { title: "Deuda mayor", icon: "tabler-arrow-up", key: "debt", order: "desc" },
+  {
+    title: "Deuda menor",
+    icon: "tabler-arrow-down",
+    key: "debt",
+    order: "asc",
+  },
+  {
+    title: "Más Calificación",
+    icon: "tabler-plus",
+    key: "latestScore.score",
+    order: "desc",
+  },
+  {
+    title: "Menos Calificación",
+    icon: "tabler-minus",
+    key: "latestScore.score",
+    order: "asc",
+  },
 ];
 
 const debtOptions = [
-  { title: "Todos",           value: null },
-  { title: "Con Deuda",       value: "with_debt" },
-  { title: "Sin Deuda",       value: "no_debt" },
+  { title: "Todos", value: null },
+  { title: "Con Deuda", value: "with_debt" },
+  { title: "Sin Deuda", value: "no_debt" },
 ];
 
 const scoreOptions = [
-  { title: "Todas",           value: null },
-  { title: "4.0+ Estrellas",  value: 80 },
-  { title: "3.0+ Estrellas",  value: 60 },
-  { title: "2.0+ Estrellas",  value: 40 },
+  { title: "Todas", value: null },
+  { title: "4.0+ Estrellas", value: 80 },
+  { title: "3.0+ Estrellas", value: 60 },
+  { title: "2.0+ Estrellas", value: 40 },
 ];
 
-const hasAdvancedFilters = computed(() => !!(props.debtFilter || props.minScore));
+const hasAdvancedFilters = computed(
+  () => !!(props.debtFilter || props.minScore),
+);
 </script>
 
 <template>
@@ -55,6 +72,7 @@ const hasAdvancedFilters = computed(() => !!(props.debtFilter || props.minScore)
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
     @add="emit('add-supplier')"
+    class="py-1"
   >
     <template #advanced-filters>
       <!-- Filtro de Deuda -->

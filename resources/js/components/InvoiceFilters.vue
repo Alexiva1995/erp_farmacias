@@ -4,12 +4,12 @@ import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
 
 const props = defineProps({
-  searchQuery:      String,
+  searchQuery: String,
   selectedSupplier: [Number, String, null],
-  startDate:        [String, null],
-  endDate:          [String, null],
-  suppliers:        { type: Array,   default: () => [] },
-  loading:          { type: Boolean, default: false },
+  startDate: [String, null],
+  endDate: [String, null],
+  suppliers: { type: Array, default: () => [] },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -20,8 +20,8 @@ const emit = defineEmits([
   "clear",
 ]);
 
-const hasAdvancedFilters = computed(() =>
-  !!(props.selectedSupplier || props.startDate || props.endDate)
+const hasAdvancedFilters = computed(
+  () => !!(props.selectedSupplier || props.startDate || props.endDate),
 );
 </script>
 
@@ -30,6 +30,7 @@ const hasAdvancedFilters = computed(() =>
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar N° Factura, Control..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >

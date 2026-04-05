@@ -21,6 +21,7 @@ const yearModel = computed({
   <AppFilterBase
     :show-search="false"
     :show-advanced="false"
+    class="py-1"
     @clear="emit('clear')"
   >
     <!-- Selector de Año siempre visible -->

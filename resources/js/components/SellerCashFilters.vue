@@ -1,16 +1,16 @@
 <script setup>
 // Filtros Cierre de Caja por Vendedor
 import AppFilterBase from "@/components/AppFilterBase.vue";
-import axios from '@/plugins/axios';
-import { onMounted, ref, computed } from "vue";
+import axios from "@/plugins/axios";
+import { computed, onMounted, ref } from "vue";
 
 const props = defineProps({
-  searchQuery:      [String, Number],
-  startDate:        { type: String,  default: null },
-  endDate:          { type: String,  default: null },
-  showDateFilters:  { type: Boolean, default: false },
+  searchQuery: [String, Number],
+  startDate: { type: String, default: null },
+  endDate: { type: String, default: null },
+  showDateFilters: { type: Boolean, default: false },
   showStateFilters: { type: Boolean, default: false },
-  loading:          { type: Boolean, default: false },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -18,7 +18,7 @@ const emit = defineEmits([
   "clear",
   "update:startDate",
   "update:endDate",
-  "refresh"
+  "refresh",
 ]);
 
 const sellers = ref([]);
@@ -27,14 +27,16 @@ const loadingSellers = ref(false);
 const fetchSellers = async () => {
   loadingSellers.value = true;
   try {
-    const response = await axios.get('/finances/cash-closure/sellers');
-    sellers.value = response.data.map(seller => ({
+    const response = await axios.get("/finances/cash-closure/sellers");
+    sellers.value = response.data.map((seller) => ({
       ...seller,
       username: seller.username
-          .replace(/[._]/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ')
+        .replace(/[._]/g, " ")
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+        )
+        .join(" "),
     }));
   } catch (error) {
     console.error("Error cargando vendedores", error);
@@ -59,6 +61,7 @@ const hasAdvancedFilters = computed(() => {
     :has-advanced-filters="hasAdvancedFilters"
     :show-advanced-toggle="props.showDateFilters"
     search-placeholder="..."
+    class="py-1"
     @clear="emit('clear')"
   >
     <template #search>
@@ -75,12 +78,17 @@ const hasAdvancedFilters = computed(() => {
           hide-details
           clearable
           class="flex-grow-1"
-          style="min-width: 200px;"
+          style="min-width: 200px"
           :loading="loadingSellers"
           @update:model-value="emit('update:searchQuery', $event)"
         >
           <template #prepend-inner>
-            <VIcon icon="tabler-user-search" size="18" color="disabled" class="me-2" />
+            <VIcon
+              icon="tabler-user-search"
+              size="18"
+              color="disabled"
+              class="me-2"
+            />
           </template>
         </VAutocomplete>
       </VCol>
@@ -118,7 +126,12 @@ const hasAdvancedFilters = computed(() => {
           @update:model-value="emit('update:startDate', $event)"
         >
           <template #prepend-inner>
-            <VIcon icon="tabler-calendar" size="18" color="disabled" class="me-2" />
+            <VIcon
+              icon="tabler-calendar"
+              size="18"
+              color="disabled"
+              class="me-2"
+            />
           </template>
         </AppDateTimePicker>
       </VCol>
@@ -137,7 +150,12 @@ const hasAdvancedFilters = computed(() => {
           @update:model-value="emit('update:endDate', $event)"
         >
           <template #prepend-inner>
-            <VIcon icon="tabler-calendar-check" size="18" color="disabled" class="me-2" />
+            <VIcon
+              icon="tabler-calendar-check"
+              size="18"
+              color="disabled"
+              class="me-2"
+            />
           </template>
         </AppDateTimePicker>
       </VCol>

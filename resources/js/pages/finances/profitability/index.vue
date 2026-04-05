@@ -201,167 +201,201 @@ const formatCurrency = (amount) =>
 </script>
 
 <template>
-  <VContainer fluid class="profitability-page pa-4">
-    <!-- Header Premium -->
-    <VRow class="mb-6" dense>
-      <VCol cols="12" md="4">
-        <VCard
-          class="header-main-card h-100 overflow-hidden border-0 shadow-lg position-relative"
-        >
-          <div class="premium-header pa-5 d-flex align-center gap-4">
-            <VAvatar
-              size="64"
-              color="white"
-              variant="elevated"
-              class="shadow-sm"
-            >
-              <VIcon icon="tabler-chart-pie" color="primary" size="32" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span
-                class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1"
-                >Configuración Global</span
-              >
-              <span
-                class="text-h5 font-weight-black text-white leading-tight mb-1"
-                >Rentabilidad</span
-              >
-              <div class="d-flex align-center gap-2">
-                <span class="text-h4 font-weight-black text-white"
-                  >{{ profitability }}%</span
-                >
-                <VChip
-                  color="white"
-                  size="x-small"
+  <div class="profitability-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Dashboard de KPIs -->
+      <VRow class="ma-0 mb-6 mx-n1 match-height">
+        <!-- Configuración Global -->
+        <VCol cols="12" md="4" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <div
+              class="card-bg-decoration"
+              style="
+                background: linear-gradient(
+                  45deg,
+                  rgba(var(--v-theme-primary), 0.1),
+                  transparent
+                );
+              "
+            ></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar
+                  color="primary"
+                  size="48"
                   variant="tonal"
-                  class="font-weight-black"
-                  >POR DEFECTO</VChip
+                  rounded="lg"
+                  class="elevation-1"
+                >
+                  <VIcon icon="tabler-chart-pie" size="26" />
+                </VAvatar>
+                <div
+                  class="text-right d-flex flex-column text-truncate"
+                  style="max-width: 180px"
+                >
+                  <span
+                    class="text-overline font-weight-bold text-disabled"
+                    style="letter-spacing: 1px !important"
+                  >
+                    Margen Global
+                  </span>
+                  <h4 class="text-h3 font-weight-black mt-1 text-primary">
+                    {{ profitability }}%
+                  </h4>
+                </div>
+              </div>
+              <VDivider class="mb-3 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span
+                  class="text-caption font-weight-medium text-medium-emphasis uppercase"
+                >
+                  POR DEFECTO
+                </span>
+                <span
+                  class="text-super-xs font-weight-black opacity-60 uppercase text-primary"
+                  >Configuración</span
                 >
               </div>
-            </div>
-            <VIcon
-              icon="tabler-trending-up"
-              size="80"
-              class="position-absolute opacity-10"
-              style="inset-block-end: -10px; inset-inline-end: -10px"
-            />
-          </div>
-        </VCard>
-      </VCol>
+            </VCardText>
+            <div class="accent-border bg-primary"></div>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" md="8">
-        <VCard class="h-100 border-0 shadow-sm rounded-lg overflow-hidden">
-          <VCardText
-            class="d-flex align-center h-100 pa-6 bg-surface-variant-light"
-          >
-            <VRow class="w-100 text-center align-center">
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar
-                    color="primary"
-                    variant="tonal"
-                    size="40"
-                    class="mb-2"
-                  >
-                    <VIcon icon="tabler-package" size="20" />
-                  </VAvatar>
-                  <span
-                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
-                    >Productos</span
-                  >
-                  <span class="text-h6 font-weight-black">{{
-                    totalProduct
-                  }}</span>
-                </div>
-              </VCol>
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar
-                    color="success"
-                    variant="tonal"
-                    size="40"
-                    class="mb-2"
-                  >
-                    <VIcon icon="tabler-currency-dollar" size="20" />
-                  </VAvatar>
-                  <span
-                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
-                    >Costo Promedio</span
-                  >
-                  <span class="text-h6 font-weight-black text-success">{{
-                    formatCurrency(avgPrice)
-                  }}</span>
-                </div>
-              </VCol>
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar
-                    color="warning"
-                    variant="tonal"
-                    size="40"
-                    class="mb-2"
-                  >
-                    <VIcon icon="tabler-lock" size="20" />
-                  </VAvatar>
-                  <span
-                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
-                    >Bloqueados</span
-                  >
-                  <span class="text-h6 font-weight-black text-warning">
-                    {{
-                      products.filter((p) => p.profitability?.is_locked == "1")
-                        .length
-                    }}
-                  </span>
-                </div>
-              </VCol>
-              <VCol cols="6" sm="3">
-                <div class="d-flex flex-column align-center">
-                  <VAvatar color="info" variant="tonal" size="40" class="mb-2">
-                    <VIcon icon="tabler-history" size="20" />
-                  </VAvatar>
-                  <span
-                    class="text-super-xs font-weight-black text-disabled uppercase mb-1"
-                    >Última Act.</span
-                  >
-                  <span class="text-h6 font-weight-black text-info">HOY</span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+        <!-- Productos -->
+        <VCol cols="12" sm="6" md="2" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex flex-column align-center text-center">
+                <VAvatar
+                  color="primary"
+                  variant="tonal"
+                  size="44"
+                  rounded="lg"
+                  class="mb-3"
+                >
+                  <VIcon icon="tabler-package" size="24" />
+                </VAvatar>
+                <span class="text-overline text-disabled leading-none mb-1"
+                  >Productos</span
+                >
+                <h4 class="text-h4 font-weight-black">{{ totalProduct }}</h4>
+              </div>
+            </VCardText>
+            <div class="accent-border bg-primary opacity-20"></div>
+          </VCard>
+        </VCol>
 
-    <!-- Filtros Colapsables -->
-    <profitabilityFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
-      v-model:stockStatusFilter="stockStatusFilter"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
-      v-model:lockedValue="lockedValue"
-      :laboratories="laboratories"
-      :origins="origins"
-      :loading="isLoadingFilters"
-      @add-profitability="addProfitability"
-      @sort="handleSort"
-      @clear="handleClearFilters"
-    />
+        <!-- Costo Promedio -->
+        <VCol cols="12" sm="6" md="2" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex flex-column align-center text-center">
+                <VAvatar
+                  color="success"
+                  variant="tonal"
+                  size="44"
+                  rounded="lg"
+                  class="mb-3"
+                >
+                  <VIcon icon="tabler-currency-dollar" size="24" />
+                </VAvatar>
+                <span class="text-overline text-disabled leading-none mb-1"
+                  >Costo Prom</span
+                >
+                <h4 class="text-h5 font-weight-black text-success">
+                  {{ formatCurrency(avgPrice) }}
+                </h4>
+              </div>
+            </VCardText>
+            <div class="accent-border bg-success opacity-20"></div>
+          </VCard>
+        </VCol>
 
-    <!-- Tabla Principal -->
-    <ProfitabilityTable
-      :products="products"
-      :totalProduct="totalProduct"
-      :profitability="profitability"
-      :page="page"
-      :itemsPerPage="itemsPerPage"
-      :loading="loading"
-      @refresh="reloadTable"
-      @update:options="updateTableOptions"
-      @editProduct="editProductProfitability"
-    />
+        <!-- Bloqueados -->
+        <VCol cols="12" sm="6" md="2" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex flex-column align-center text-center">
+                <VAvatar
+                  color="warning"
+                  variant="tonal"
+                  size="44"
+                  rounded="lg"
+                  class="mb-3"
+                >
+                  <VIcon icon="tabler-lock" size="24" />
+                </VAvatar>
+                <span class="text-overline text-disabled leading-none mb-1"
+                  >Bloqueados</span
+                >
+                <h4 class="text-h4 font-weight-black text-warning">
+                  {{
+                    products.filter((p) => p.profitability?.is_locked == "1")
+                      .length
+                  }}
+                </h4>
+              </div>
+            </VCardText>
+            <div class="accent-border bg-warning opacity-20"></div>
+          </VCard>
+        </VCol>
+
+        <!-- Última Actualización -->
+        <VCol cols="12" sm="6" md="2" class="pa-1">
+          <VCard class="stats-card border-0 overflow-hidden">
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex flex-column align-center text-center">
+                <VAvatar
+                  color="info"
+                  variant="tonal"
+                  size="44"
+                  rounded="lg"
+                  class="mb-3"
+                >
+                  <VIcon icon="tabler-history" size="24" />
+                </VAvatar>
+                <span class="text-overline text-disabled leading-none mb-1"
+                  >Última Act.</span
+                >
+                <h4 class="text-h4 font-weight-black text-info">HOY</h4>
+              </div>
+            </VCardText>
+            <div class="accent-border bg-info opacity-20"></div>
+          </VCard>
+        </VCol>
+      </VRow>
+
+      <!-- Filtros Colapsables -->
+      <profitabilityFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedLaboratory="selectedLaboratory"
+        v-model:selectedOrigin="selectedOrigin"
+        v-model:stockStatusFilter="stockStatusFilter"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        v-model:lockedValue="lockedValue"
+        :laboratories="laboratories"
+        :origins="origins"
+        :loading="isLoadingFilters"
+        @add-profitability="addProfitability"
+        @sort="handleSort"
+        @clear="handleClearFilters"
+      />
+
+      <!-- Tabla Principal -->
+      <ProfitabilityTable
+        :products="products"
+        :totalProduct="totalProduct"
+        :profitability="profitability"
+        :page="page"
+        :itemsPerPage="itemsPerPage"
+        :loading="loading"
+        @refresh="reloadTable"
+        @update:options="updateTableOptions"
+        @editProduct="editProductProfitability"
+        class="ma-0 mt-1"
+      />
+    </div>
 
     <!-- Diálogos -->
     <addProfitabilityDialog
@@ -377,21 +411,12 @@ const formatCurrency = (amount) =>
       @close-modal="editDialog = false"
       @refresh="reloadTable"
     />
-  </VContainer>
+  </div>
 </template>
 
 <style scoped>
 .profitability-page {
-  background-color: rgb(var(--v-theme-background));
   min-block-size: 100vh;
-}
-
-.premium-header {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    #2c3e50 100%
-  );
 }
 
 .text-super-xs {
@@ -400,21 +425,50 @@ const formatCurrency = (amount) =>
   line-height: 1;
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.03);
-}
-
-.header-main-card {
+.stats-card {
   border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 80%) !important;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 5%) !important;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-:deep(.v-card) {
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+.stats-card:hover {
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-5px);
 }
 
-.header-main-card:hover {
-  transform: translateY(-2px);
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 100px;
+  filter: blur(40px);
+  inline-size: 100px;
+  inset-block-start: -20px;
+  inset-inline-end: -20px;
+  pointer-events: none;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+}
+
+.bg-surface-variant-opacity-2 {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+:deep(.v-btn.bg-success) {
+  --v-theme-overlay: 255, 255, 255;
 }
 </style>

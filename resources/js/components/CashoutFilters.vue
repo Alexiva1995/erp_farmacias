@@ -1,50 +1,50 @@
 <script setup>
 // Filtros de Flujo de Caja
-import AppFilterBase from '@/components/AppFilterBase.vue';
-import CashWallets from '@/components/CashWallets.vue';
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import CashWallets from "@/components/CashWallets.vue";
 
 const props = defineProps({
-  stats:            { type: Object,  default: () => ({}) },
-  wallets:          { type: Object,  default: () => ({ sections: [], total_usd: 0 }) },
-  walletsLoading:   { type: Boolean, default: false },
-  dateRange:        { type: String,  default: '' },
-  dataDetailed:     { type: Boolean, default: false },
-  selectedCurrency: { type: String,  default: '' },
-  selectedOption:   { type: String,  default: '' },
+  stats: { type: Object, default: () => ({}) },
+  wallets: { type: Object, default: () => ({ sections: [], total_usd: 0 }) },
+  walletsLoading: { type: Boolean, default: false },
+  dateRange: { type: String, default: "" },
+  dataDetailed: { type: Boolean, default: false },
+  selectedCurrency: { type: String, default: "" },
+  selectedOption: { type: String, default: "" },
 });
 
 const emit = defineEmits([
-  'update:dateRange',
-  'update:dataDetailed',
-  'update:selectedCurrency',
-  'update:selectedTab',
-  'update:selectedOption',
-  'clear',
+  "update:dateRange",
+  "update:dataDetailed",
+  "update:selectedCurrency",
+  "update:selectedTab",
+  "update:selectedOption",
+  "clear",
 ]);
 
 const options = {
-  BS:  [
-    { title: 'Efectivo',      value: 'CASH_BS'     },
-    { title: 'Tarjeta',       value: 'CARD_BS'     },
-    { title: 'Pago móvil',    value: 'MOBILE_BS'   },
-    { title: 'Transferencia', value: 'TRANSFER_BS'  },
+  BS: [
+    { title: "Efectivo", value: "CASH_BS" },
+    { title: "Tarjeta", value: "CARD_BS" },
+    { title: "Pago móvil", value: "MOBILE_BS" },
+    { title: "Transferencia", value: "TRANSFER_BS" },
   ],
   COP: [
-    { title: 'Efectivo',      value: 'CASH_COP'    },
-    { title: 'Transferencia', value: 'TRANSFER_COP' },
+    { title: "Efectivo", value: "CASH_COP" },
+    { title: "Transferencia", value: "TRANSFER_COP" },
   ],
   USD: [
-    { title: 'Efectivo',      value: 'CASH_USD'    },
-    { title: 'Binance',       value: 'BINANCE_USD'  },
-    { title: 'PayPal',        value: 'PAYPAL_USD'   },
-    { title: 'Crédito',       value: 'CREDIT_USD'   },
+    { title: "Efectivo", value: "CASH_USD" },
+    { title: "Binance", value: "BINANCE_USD" },
+    { title: "PayPal", value: "PAYPAL_USD" },
+    { title: "Crédito", value: "CREDIT_USD" },
   ],
 };
 
 function handleWalletSelect({ currency, option }) {
-  emit('update:selectedCurrency', currency);
-  emit('update:selectedOption', option);
-  emit('update:dataDetailed', true);
+  emit("update:selectedCurrency", currency);
+  emit("update:selectedOption", option);
+  emit("update:dataDetailed", true);
 }
 </script>
 
@@ -59,7 +59,7 @@ function handleWalletSelect({ currency, option }) {
       :selected-currency="selectedCurrency"
       :selected-option="selectedOption"
       @select="handleWalletSelect"
-      class="mb-6"
+      class="mb-7"
     />
 
     <AppFilterBase
@@ -67,7 +67,7 @@ function handleWalletSelect({ currency, option }) {
       :has-advanced-filters="!!dateRange || dataDetailed"
       search-md-cols="5"
       search-lg-cols="5"
-      class="mb-6"
+      class="mb-0 py-1"
       @update:search="emit('update:searchQuery', $event)"
       @clear="emit('clear')"
     >
@@ -82,7 +82,12 @@ function handleWalletSelect({ currency, option }) {
           :config="{ mode: 'range', altInput: true, altFormat: 'Y-m-d' }"
         >
           <template #prepend-inner>
-            <VIcon icon="tabler-calendar" size="18" color="disabled" class="me-2" />
+            <VIcon
+              icon="tabler-calendar"
+              size="18"
+              color="disabled"
+              class="me-2"
+            />
           </template>
         </AppDateTimePicker>
       </template>
@@ -105,8 +110,13 @@ function handleWalletSelect({ currency, option }) {
               inset
             />
             <div class="d-flex flex-column">
-              <span class="text-sm font-weight-black uppercase leading-none mb-1">Vista Detallada</span>
-              <span class="text-super-xs text-disabled font-weight-medium">Desglosar por sub-métodos</span>
+              <span
+                class="text-sm font-weight-black uppercase leading-none mb-1"
+                >Vista Detallada</span
+              >
+              <span class="text-super-xs text-disabled font-weight-medium"
+                >Desglosar por sub-métodos</span
+              >
             </div>
           </div>
         </VCol>

@@ -41,7 +41,7 @@ const handleMobilePageChange = (newPage) => {
 </script>
 
 <template>
-  <VCard variant="flat" border>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden">
     <VCardTitle class="d-flex align-center py-3 px-4">
       <VIcon icon="tabler-file-invoice" class="me-2 text-primary" />
       <span class="text-h6 font-weight-black uppercase">Conteos de Factura</span>

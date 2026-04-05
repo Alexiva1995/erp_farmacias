@@ -57,7 +57,7 @@ const fetchInvoicesForLocation = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] == null || params[key] === "") && delete params[key]
+    (key) => (params[key] == null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -89,7 +89,7 @@ watch(
       debounceTimer = setTimeout(() => fetchInvoicesForLocation(), 300);
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 onMounted(() => {
@@ -179,6 +179,7 @@ const handleReturnInvoice = async (invoiceId) => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         @clear="handleClearFilters"
+        class="mb-6"
       />
 
       <InvoiceTable

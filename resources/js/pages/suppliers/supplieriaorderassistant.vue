@@ -1,11 +1,10 @@
 <script setup lang="js">
-import SupplierIaOrderAssistantFilter from '@/components/SupplierIaOrderAssistantFilter.vue';
-import SupplierIaOrderAssistantGrupoTable from '@/components/SupplierIaOrderAssistantGrupoTable.vue';
-import SupplierIaOrderAssistantIndividualTable from '@/components/SupplierIaOrderAssistantIndividualTable.vue';
+import SupplierIaOrderAssistantFilter from "@/components/SupplierIaOrderAssistantFilter.vue";
+import SupplierIaOrderAssistantGrupoTable from "@/components/SupplierIaOrderAssistantGrupoTable.vue";
+import SupplierIaOrderAssistantIndividualTable from "@/components/SupplierIaOrderAssistantIndividualTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -53,7 +52,10 @@ async function consultarLaboratorios() {
 
 async function consultarGruposProductos() {
   const respuestaApi = await axios.get("/groups/consult-all");
-  if (respuestaApi.status !== 200) { toast.error("Error al cargar grupos"); return; }
+  if (respuestaApi.status !== 200) {
+    toast.error("Error al cargar grupos");
+    return;
+  }
   groups.value = [...respuestaApi.data.data];
 }
 
@@ -72,7 +74,10 @@ async function consultarProductosConPaginacion() {
     sortBy: sortBy.value,
     orderBy: orderBy.value,
   };
-  const resp = await axios.post(`/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`, data);
+  const resp = await axios.post(
+    `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
+    data,
+  );
   if (resp.status !== 200) toast.error("Error al filtrar los datos");
   return { ...resp.data };
 }

@@ -63,6 +63,7 @@ const setYearPreset = () => {
   <AppFilterBase
     :show-search="false"
     :show-advanced="false"
+    class="py-1"
     @clear="emit('clear-filter')"
   >
     <!-- Filtros de fecha siempre visibles -->

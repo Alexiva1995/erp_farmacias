@@ -70,7 +70,7 @@ const handleMobilePageChange = (newPage) => {
 </script>
 
 <template>
-  <VCard>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden">
     <VCardTitle v-if="props.title" class="pa-4">
       <span class="text-h6 font-weight-bold">{{ props.title }}</span>
     </VCardTitle>

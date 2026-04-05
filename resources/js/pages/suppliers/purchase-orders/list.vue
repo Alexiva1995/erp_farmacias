@@ -172,39 +172,10 @@ const handleClearFilters = () => {
 
 <template>
   <div class="purchase-orders-view pb-12">
-    <!-- Header Premium (Ahora como tarjeta flotante) -->
-    <VCard class="mx-6 mt-6 mb-6 rounded-lg border shadow-sm overflow-hidden">
-      <div class="header-bg pa-6">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-          <div class="d-flex align-center gap-4">
-            <VAvatar
-              size="54"
-              color="white"
-              variant="flat"
-              class="rounded-lg shadow-soft"
-            >
-              <VIcon icon="tabler-truck-delivery" color="primary" size="28" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <h1
-                class="text-h4 font-weight-black text-white letter-spacing-tight"
-              >
-                Órdenes de Compra
-              </h1>
-              <span
-                class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest"
-              >
-                Gestión de Abastecimiento de Inventario
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </VCard>
-
-    <div class="px-6 d-flex flex-column gap-6">
+    <div class="d-flex flex-column gap-1 mt-1">
       <!-- Filtros (Ahora arriba como en proveedores) -->
       <PurchaseOrdersFilter
+        class="mb-4"
         v-model:selected-supplier="selectedSupplier"
         v-model:search-query="searchQuery"
         v-model:start-date="startDate"
@@ -214,7 +185,7 @@ const handleClearFilters = () => {
       />
 
       <!-- KPIs Estilo SupplierStatsCards -->
-      <VRow>
+      <VRow class="mt-1 mb-5 ma-0 mx-n1" dense>
         <VCol
           v-for="(kpi, index) in [
             {
@@ -250,6 +221,7 @@ const handleClearFilters = () => {
           cols="12"
           sm="6"
           md="3"
+          class="pa-1"
         >
           <VCard
             class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative"
@@ -383,14 +355,15 @@ const handleClearFilters = () => {
   transition: all 0.3s ease;
 }
 
-.header-bg {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
-  border-block-end: 1px solid rgba(255, 255, 255, 10%);
+.letter-spacing-tight {
+  letter-spacing: -0.02em;
 }
-
-.letter-spacing-tight { letter-spacing: -0.02em; }
-.letter-spacing-widest { letter-spacing: 0.1em !important; }
-.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+.letter-spacing-widest {
+  letter-spacing: 0.1em !important;
+}
+.shadow-soft {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
+}
 
 .card-bg-decoration {
   position: absolute;

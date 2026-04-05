@@ -38,7 +38,7 @@ const getAvatarColor = (index) => {
 </script>
 
 <template>
-  <VCard class="border-0 shadow-sm overflow-hidden">
+  <VCard class="border shadow-sm overflow-hidden">
     <!-- Vista de Escritorio -->
     <VDataTableServer
       v-if="!mobile"

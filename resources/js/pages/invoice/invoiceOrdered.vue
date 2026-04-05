@@ -55,7 +55,7 @@ const fetchOrderedInvoices = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] == null || params[key] === "") && delete params[key]
+    (key) => (params[key] == null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -89,13 +89,13 @@ watch(
       debounceTimer = setTimeout(() => fetchOrderedInvoices(), 300);
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 onMounted(() => {
   fetchSuppliers();
   fetchOrderedInvoices();
-  
+
   // Si hay un invoiceId en la query, abrir esa factura directamente
   if (route.query.invoiceId) {
     const invoiceId = parseInt(route.query.invoiceId);
@@ -143,6 +143,7 @@ const handleReturnToList = () => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         @clear="handleClearFilters"
+        class="mb-6"
       />
 
       <InvoiceTable

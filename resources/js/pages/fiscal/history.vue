@@ -19,8 +19,12 @@ const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
-const startDate = ref(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
-const endDate = ref(new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]);
+const startDate = ref(
+  new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0],
+);
+const endDate = ref(
+  new Date(new Date().getFullYear(), 11, 31).toISOString().split("T")[0],
+);
 const origins = ref([]);
 const historyNameToEdit = ref("");
 const historyIdToEdit = ref(null);
@@ -43,7 +47,7 @@ const fetchHistorys = async () => {
     endDate: endDate.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -76,7 +80,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchHistorys(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
@@ -90,7 +94,7 @@ watch(
   ],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 onMounted(async () => {
@@ -116,8 +120,12 @@ const handleShowDetailHistory = (history) => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
-  startDate.value = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-  endDate.value = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0];
+  startDate.value = new Date(new Date().getFullYear(), 0, 1)
+    .toISOString()
+    .split("T")[0];
+  endDate.value = new Date(new Date().getFullYear(), 11, 31)
+    .toISOString()
+    .split("T")[0];
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -184,38 +192,40 @@ const handleSort = (sortOptions) => {
 </script>
 
 <template>
-  <div :class="mobile ? 'pa-0' : 'pa-4'">
-    <HistoryFilters
-      v-model:searchQuery="searchQuery"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
-      :origins="origins"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @export="handleExport"
-      @add-product="handleAddProduct"
-      @sort="handleSort"
-    />
+  <div class="fiscal-history-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <HistoryFilters
+        v-model:searchQuery="searchQuery"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        :origins="origins"
+        :loading="isLoadingFilters"
+        @clear="handleClearFilters"
+        @export="handleExport"
+        @add-product="handleAddProduct"
+        @sort="handleSort"
+      />
 
-    <HistoryTable
-      :histories="histories"
-      :loading="loading"
-      :total-histories="totalHistories"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @show-detailHistory="handleShowDetailHistory"
-    />
+      <HistoryTable
+        :histories="histories"
+        :loading="loading"
+        :total-histories="totalHistories"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @show-detailHistory="handleShowDetailHistory"
+      />
 
-    <DetailHistoryShowDialog
-      v-model="isEditDialogVisible"
-      :history-name="historyNameToEdit"
-      :history-id="historyIdToEdit"
-      :details="currentHistoryDetails"
-      :user="currentHistoryUser"
-      :errors="productFormErrors"
-      :histories="currentProduct"
-      @clear-errors="clearFormErrors"
-    />
+      <DetailHistoryShowDialog
+        v-model="isEditDialogVisible"
+        :history-name="historyNameToEdit"
+        :history-id="historyIdToEdit"
+        :details="currentHistoryDetails"
+        :user="currentHistoryUser"
+        :errors="productFormErrors"
+        :histories="currentProduct"
+        @clear-errors="clearFormErrors"
+      />
+    </div>
   </div>
 </template>

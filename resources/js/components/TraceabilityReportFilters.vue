@@ -39,6 +39,7 @@ const hasAdvancedFilters = computed(() =>
     :has-advanced-filters="hasAdvancedFilters"
     :show-export="true"
     search-placeholder="Buscar por ID, Producto, Laboratorio..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @export="(ext) => emit('export', ext)"

@@ -65,7 +65,7 @@ const fetchFurniture = async () => {
     endDate: endDate.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -97,14 +97,14 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchFurniture(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch(
   [searchQuery, selectedYear, depreciationFilter, startDate, endDate],
   () => {
     page.value = 1;
-  }
+  },
 );
 
 onMounted(() => {
@@ -178,7 +178,7 @@ const handleSaveFurniture = async (furnitureFormData) => {
     }
 
     toast.success(
-      `Mobiliario ${isNewFurniture ? "creado" : "actualizado"} con éxito`
+      `Mobiliario ${isNewFurniture ? "creado" : "actualizado"} con éxito`,
     );
     isEditDialogVisible.value = false;
     await fetchFurniture();
@@ -224,36 +224,9 @@ const handleSort = (sortOptions) => {
 
 <template>
   <div class="furniture-view pb-12">
-    <!-- === HEADER Y KPIS === -->
-    <div class="px-6 mt-6">
-      <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
-        <div class="header-bg pa-6">
-          <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-            <div class="d-flex align-center gap-4">
-              <VAvatar
-                size="54"
-                color="white"
-                variant="flat"
-                class="rounded-lg shadow-soft"
-              >
-                <VIcon icon="tabler-armchair" color="primary" size="28" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-                  Inventario de Mobiliario
-                </h1>
-                <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-                  Control y Segmentación de Activos Fijos
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </VCard>
-    </div>
-
-    <div class="px-6">
+    <div class="d-flex flex-column gap-1 mt-1">
       <FurnitureFilters
+        class="mb-6"
         v-model:searchQuery="searchQuery"
         v-model:selectedYear="selectedYear"
         v-model:depreciationFilter="depreciationFilter"
@@ -295,13 +268,14 @@ const handleSort = (sortOptions) => {
   min-block-size: 100vh;
 }
 
-.header-bg {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
-  border-block-end: 1px solid rgba(255, 255, 255, 10%);
+.letter-spacing-tight {
+  letter-spacing: -0.02em;
+}
+.letter-spacing-widest {
+  letter-spacing: 0.1em !important;
 }
 
-.letter-spacing-tight { letter-spacing: -0.02em; }
-.letter-spacing-widest { letter-spacing: 0.1em !important; }
-
-.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+.shadow-soft {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
+}
 </style>

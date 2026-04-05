@@ -144,57 +144,51 @@ const handleExport = async (format) => {
 </script>
 
 <template>
-  <div>
-    <InventoryCycleFilters
-      v-model:searchQuery="filters.searchQuery"
-      v-model:selectedLaboratory="filters.selectedLaboratory"
-      v-model:discrepancyFilter="filters.discrepancyFilter"
-      v-model:selectedUser="filters.selectedUser"
-      :laboratories="laboratories"
-      :users="users"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @export="handleExport"
-      @sort="handleSort"
-    />
+  <div class="inventory-cyclics-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <InventoryCycleFilters
+        v-model:searchQuery="filters.searchQuery"
+        v-model:selectedLaboratory="filters.selectedLaboratory"
+        v-model:discrepancyFilter="filters.discrepancyFilter"
+        v-model:selectedUser="filters.selectedUser"
+        :laboratories="laboratories"
+        :users="users"
+        :loading="isLoadingFilters"
+        @clear="handleClearFilters"
+        @export="handleExport"
+        @sort="handleSort"
+      />
 
-    <VRow class="mt-4">
-      <VCol cols="12">
-        <ProductCyclicTable
-          :products="productCounts"
-          :loading="productLoading"
-          :total-product="totalProductCount"
-          :items-per-page="productOptions.itemsPerPage"
-          :page="productOptions.page"
-          @update:options="updateProductOptions"
-          @verify-product="handleVerifyProduct"
-        />
-      </VCol>
+      <ProductCyclicTable
+        :products="productCounts"
+        :loading="productLoading"
+        :total-product="totalProductCount"
+        :items-per-page="productOptions.itemsPerPage"
+        :page="productOptions.page"
+        @update:options="updateProductOptions"
+        @verify-product="handleVerifyProduct"
+      />
 
-      <VCol cols="12">
-        <InvoiceCyclicTable
-          :products="invoiceCounts"
-          :loading="invoiceLoading"
-          :total-product="totalInvoiceCount"
-          :items-per-page="invoiceOptions.itemsPerPage"
-          :page="invoiceOptions.page"
-          @update:options="updateInvoiceOptions"
-          @verify-product="handleVerifyInvoice"
-        />
-      </VCol>
+      <InvoiceCyclicTable
+        :products="invoiceCounts"
+        :loading="invoiceLoading"
+        :total-product="totalInvoiceCount"
+        :items-per-page="invoiceOptions.itemsPerPage"
+        :page="invoiceOptions.page"
+        @update:options="updateInvoiceOptions"
+        @verify-product="handleVerifyInvoice"
+      />
 
-      <VCol cols="12">
-        <SaleCyclicTable
-          :products="saleCounts"
-          :loading="saleLoading"
-          :total-product="totalSaleCount"
-          :items-per-page="saleOptions.itemsPerPage"
-          :page="saleOptions.page"
-          @update:options="updateSaleOptions"
-          @verify-product="handleVerifySale"
-        />
-      </VCol>
-    </VRow>
+      <SaleCyclicTable
+        :products="saleCounts"
+        :loading="saleLoading"
+        :total-product="totalSaleCount"
+        :items-per-page="saleOptions.itemsPerPage"
+        :page="saleOptions.page"
+        @update:options="updateSaleOptions"
+        @verify-product="handleVerifySale"
+      />
+    </div>
 
     <!-- Modales de Verificación -->
     <VerifyCountModal

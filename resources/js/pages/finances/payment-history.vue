@@ -1,64 +1,33 @@
 <template>
-  <VContainer fluid class="payment-history-page pa-4">
-    <!-- Header Premium -->
-    <VCard class="header-main-card mb-6 overflow-hidden border-0 shadow-sm rounded-lg">
-      <div class="premium-header pa-6 d-flex align-center gap-4">
-        <VAvatar
-          size="56"
-          color="white"
-          variant="flat"
-          class="shadow-sm rounded-lg elevation-1"
-        >
-          <VIcon
-            icon="tabler-history"
-            color="primary"
-            size="28"
-          />
-        </VAvatar>
-        <div class="d-flex flex-column leading-none">
-          <span class="text-super-xs font-weight-black text-white opacity-80 uppercase mb-1">
-            Finanzas / Historial
-          </span>
-          <h1 class="text-h4 font-weight-black text-white leading-tight">
-            Historial de Pagos
-          </h1>
-        </div>
-        <VSpacer />
-        <VIcon
-          icon="tabler-receipt-2"
-          size="100"
-          class="position-absolute opacity-10"
-          style="inset-block-end: -20px; inset-inline-end: -20px"
-        />
-      </div>
-    </VCard>
+  <div class="payment-history-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Filtros Premium -->
+      <PaymentHistoryFilters
+        v-model:search-query="searchQuery"
+        v-model:selected-supplier="selectedSupplier"
+        v-model:selected-currency="selectedCurrency"
+        v-model:start-date="startDate"
+        v-model:end-date="endDate"
+        :suppliers="suppliers"
+        :loading="loading"
+        @clear="clearFilters"
+        @refresh="fetchPaymentHistory"
+        class="mb-0"
+      />
 
-    <!-- Filtros Premium -->
-    <PaymentHistoryFilters
-      v-model:search-query="searchQuery"
-      v-model:selected-supplier="selectedSupplier"
-      v-model:selected-currency="selectedCurrency"
-      v-model:start-date="startDate"
-      v-model:end-date="endDate"
-      :suppliers="suppliers"
-      :loading="loading"
-      @clear="clearFilters"
-      @refresh="fetchPaymentHistory"
-    />
-
-    <!-- Tabla / Cards -->
-    <div v-if="!$vuetify.display.smAndDown">
-      <VCard class="rounded-lg border shadow-sm overflow-hidden">
-        <VDataTableServer
-          v-model:items-per-page="itemsPerPage"
-          :headers="headers"
-          :items="payments"
-          :items-length="totalPayments"
-          :loading="loading"
-          :page="page"
-          class="premium-table text-no-wrap"
-          @update:options="updateOptions"
-        >
+      <!-- Tabla / Cards -->
+      <div v-if="!$vuetify.display.smAndDown">
+        <VCard class="ma-0 rounded-lg border-0 shadow-sm overflow-hidden">
+          <VDataTableServer
+            v-model:items-per-page="itemsPerPage"
+            :headers="headers"
+            :items="payments"
+            :items-length="totalPayments"
+            :loading="loading"
+            :page="page"
+            class="premium-table text-no-wrap"
+            @update:options="updateOptions"
+          >
           <template #item.payment_date="{ item }">
             <div class="d-flex align-center gap-2">
               <VAvatar
@@ -618,7 +587,8 @@
         </VCardActions>
       </VCard>
     </VDialog>
-  </VContainer>
+    </div>
+  </div>
 </template>
 
 <script setup>

@@ -108,6 +108,7 @@ const hasAdvancedFilters = computed(() => {
     :show-sort="true"
     :sort-options="sortOptions"
     search-placeholder="Lote, Producto, Proveedor..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="handleSortClick"

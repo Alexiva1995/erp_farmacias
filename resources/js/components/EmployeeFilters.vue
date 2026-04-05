@@ -30,6 +30,7 @@ const hasAdvancedFilters = computed(() => props.showActiveEmployees !== true);
     :show-add="true"
     add-button-text="Nuevo Empleado"
     search-placeholder="Buscar por nombre, identificación o correo..."
+    class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
     @add="emit('add-employee')"

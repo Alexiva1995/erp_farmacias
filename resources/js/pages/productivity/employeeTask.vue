@@ -215,42 +215,44 @@ const clearDialogErrors = () => {
 </script>
 
 <template>
-  <div :class="mobile ? 'pa-0' : 'pa-4'">
-    <EmployeeCleaningFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedStatus="selectedStatus"
-      :loading="loading"
-      @clear="handleClearFilters"
-      @add-assignment="handleAddAssignment"
-      @sort="handleSort"
-    />
+  <div class="productivity-employee-task-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <EmployeeCleaningFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedStatus="selectedStatus"
+        :loading="loading"
+        @clear="handleClearFilters"
+        @add-assignment="handleAddAssignment"
+        @sort="handleSort"
+      />
 
-    <EmployeeCleaningTable
-      :employee-cleanings="employeeCleanings"
-      :loading="loading"
-      :total-records="totalRecords"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @view-activities="handleViewActivities"
-      @edit-assignment="handleEditAssignment"
-      @delete-assignment="handleDeleteAssignment"
-    />
+      <EmployeeCleaningTable
+        :employee-cleanings="employeeCleanings"
+        :loading="loading"
+        :total-records="totalRecords"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @view-activities="handleViewActivities"
+        @edit-assignment="handleEditAssignment"
+        @delete-assignment="handleDeleteAssignment"
+      />
 
-    <EmployeeCleaningViewDialog
-      v-model="isViewDialogVisible"
-      :employee="currentEmployeeView"
-    />
+      <EmployeeCleaningViewDialog
+        v-model="isViewDialogVisible"
+        :employee="currentEmployeeView"
+      />
 
-    <EmployeeCleaningDialog
-      v-model="isDialogVisible"
-      :employee="currentEmployee"
-      :employees="employees"
-      :cleaning-activities="cleaningActivities"
-      :errors="dialogErrors"
-      @save="handleSaveAssignment"
-      @clear-errors="clearDialogErrors"
-    />
+      <EmployeeCleaningDialog
+        v-model="isDialogVisible"
+        :employee="currentEmployee"
+        :employees="employees"
+        :cleaning-activities="cleaningActivities"
+        :errors="dialogErrors"
+        @save="handleSaveAssignment"
+        @clear-errors="clearDialogErrors"
+      />
+    </div>
   </div>
 </template>
 

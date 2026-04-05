@@ -116,6 +116,7 @@ const applyQuickFilter = (filter) => {
     :search="searchQueryModel"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar por Producto, Lote..."
+    class="py-1"
     @update:search="searchQueryModel = $event"
     @clear="emit('clear')"
   >

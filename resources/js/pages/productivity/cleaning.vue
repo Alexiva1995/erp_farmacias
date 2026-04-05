@@ -189,28 +189,29 @@ const handleSort = (sortOptions) => {
 </script>
 
 <template>
-  <div class="productivity-cleaning-page pa-4">
-    <ActivityFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedFrequency="selectedFrequency"
-      v-model:isStrictSearch="isStrictSearch"
-      :frequencies="frequencies"
-      :loading="loading"
-      @clear="handleClearFilters"
-      @add-activity="handleAddActivity"
-      @sort="handleSort"
-    />
+  <div class="productivity-cleaning-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <ActivityFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedFrequency="selectedFrequency"
+        v-model:isStrictSearch="isStrictSearch"
+        :frequencies="frequencies"
+        :loading="loading"
+        @clear="handleClearFilters"
+        @add-activity="handleAddActivity"
+        @sort="handleSort"
+      />
 
-    <ActivityTable
-      :activities="activities"
-      :loading="loading"
-      :total-activities="totalActivities"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @edit-activity="handleEditActivity"
-      @delete-activity="handleDeleteActivity"
-    />
+      <ActivityTable
+        :activities="activities"
+        :loading="loading"
+        :total-activities="totalActivities"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @edit-activity="handleEditActivity"
+        @delete-activity="handleDeleteActivity"
+      />
 
     <ActivityEditDialog
       v-model="isEditDialogVisible"
@@ -220,6 +221,7 @@ const handleSort = (sortOptions) => {
       @save="handleSaveActivity"
       @clear-errors="clearFormErrors"
     />
+    </div>
   </div>
 </template>
 

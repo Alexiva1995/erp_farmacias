@@ -10,7 +10,7 @@ import { toast } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
-import { useRouter } from 'vue-router';
+import { useRouter } from "vue-router";
 
 const suppliers = ref([]);
 const totalSupplier = ref(0);
@@ -91,7 +91,7 @@ const fetchSuppliers = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -106,11 +106,10 @@ const fetchSuppliers = async () => {
   }
 };
 
-
 const fetchDiscountRules = async () => {
   try {
     const { data } = await axios.get(
-      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`
+      `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`,
     );
     discountRules.value = data.discount_rules;
   } catch (error) {
@@ -124,7 +123,7 @@ const fetchPendingInvoices = async () => {
   loading.value = true;
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/pending-invoices`
+      `/suppliers/${currentSupplier.value.id}/pending-invoices`,
     );
     pendingInvoices.value = data.pending_invoices;
   } catch (error) {
@@ -137,7 +136,7 @@ const fetchPendingInvoices = async () => {
 const fetchPaymentRules = async () => {
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/payment-rules`
+      `/suppliers/${currentSupplier.value.id}/payment-rules`,
     );
     paymentRules.value = data.payment_rules;
   } catch (error) {
@@ -150,7 +149,7 @@ const fetchPaymentRules = async () => {
 const fetchSupplierDiscount = async () => {
   try {
     const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/discounts`
+      `/suppliers/${currentSupplier.value.id}/discounts`,
     );
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
@@ -207,7 +206,7 @@ const handleSaveSupplier = async (supplierFormData) => {
     await axios.post(url, payload);
 
     toast.success(
-      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`
+      `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`,
     );
     isEditDialogVisible.value = false;
     await fetchSuppliers();
@@ -258,7 +257,7 @@ const handleCheckSupplierApi = async (supplier) => {
 
   try {
     toast.info(
-      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`
+      `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`,
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
     supplierConnectionStore.startConnection();
@@ -285,7 +284,7 @@ const handleCommercialPanel = async (supplier) => {
     await Promise.all([
       fetchPaymentRules(),
       fetchSupplierDiscount(),
-      fetchDiscountRules()
+      fetchDiscountRules(),
     ]);
   } catch (error) {
     console.error("Error al cargar datos comerciales:", error);
@@ -307,7 +306,6 @@ const handleSavePaymentRule = async (paymentRuleFormData) => {
     toast.error("Error al guardar reglas de pago.");
   }
 };
-
 
 const handleSaveDiscountRules = async (formData) => {
   const url = `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`;
@@ -336,9 +334,9 @@ const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
 };
 
 const handleSupplierPendingInvoices = async (supplier) => {
-  await router.push({ 
-    name: 'finances-pending-payments', 
-    query: { supplierId: supplier.id } 
+  await router.push({
+    name: "finances-pending-payments",
+    query: { supplierId: supplier.id },
   });
 };
 
@@ -353,7 +351,7 @@ watch(
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery, debtFilter, minScore], () => {
@@ -369,27 +367,8 @@ const updateTableOptions = (options) => {
 </script>
 
 <template>
-  <div class="suppliers-view px-6 mt-6 pb-12">
-    <!-- === HEADER Y KPIS === -->
-    <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
-      <div class="header-bg pa-6">
-        <div class="d-flex align-center gap-4">
-          <VAvatar size="54" color="white" variant="flat" class="rounded-lg shadow-soft">
-            <VIcon icon="tabler-truck-delivery" color="primary" size="28" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-              Gestión de Proveedores
-            </h1>
-            <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-              Directorio y Control Comercial de Abastecimiento
-            </span>
-          </div>
-        </div>
-      </div>
-    </VCard>
-
-    <div class="d-flex flex-column gap-6">
+  <div class="suppliers-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
       <SupplierFilters
         v-model:searchQuery="searchQuery"
         v-model:debtFilter="debtFilter"
@@ -399,63 +378,68 @@ const updateTableOptions = (options) => {
         @add-supplier="handleAddSupplier"
       />
 
-    <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
+      <SupplierStatsCards
+        :stats="stats"
+        :loading="isLoadingStats"
+        class="mt-0"
+      />
 
-    <SupplierTable
-      :suppliers="suppliers"
-      :loading="loading"
-      :total-supplier="totalSupplier"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      :checking-api-id="checkingApiSupplierId"
-      @update:options="updateTableOptions"
-      @edit-supplier="handleEditSupplier"
-      @delete-supplier="handleDeleteSupplier"
-      @commercial-panel="handleCommercialPanel"
-      @supplier-pending-invoices="handleSupplierPendingInvoices"
-      @check-supplier-api="handleCheckSupplierApi"
-      @config-connection="handleConfigConnection"
-    />
+      <SupplierTable
+        :suppliers="suppliers"
+        :loading="loading"
+        :total-supplier="totalSupplier"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :checking-api-id="checkingApiSupplierId"
+        @update:options="updateTableOptions"
+        @edit-supplier="handleEditSupplier"
+        @delete-supplier="handleDeleteSupplier"
+        @commercial-panel="handleCommercialPanel"
+        @supplier-pending-invoices="handleSupplierPendingInvoices"
+        @check-supplier-api="handleCheckSupplierApi"
+        @config-connection="handleConfigConnection"
+      />
 
-    <SupplierEditDialog
-      v-model="isEditDialogVisible"
-      :supplier="currentSupplier"
-      :errors="supplierFormErrors"
-      @save="handleSaveSupplier"
-      @clear-errors="clearFormErrors"
-    />
+      <SupplierEditDialog
+        v-model="isEditDialogVisible"
+        :supplier="currentSupplier"
+        :errors="supplierFormErrors"
+        @save="handleSaveSupplier"
+        @clear-errors="clearFormErrors"
+      />
 
-    <SupplierCommercialPanel
-      v-model="isCommercialPanelVisible"
-      :supplier="currentSupplier"
-      :laboratories="laboratories"
-      :supplier-discount="supplierDiscount"
-      :discount-rules="discountRules"
-      :loading="loading"
-      :errors="supplierFormErrors"
-      @save-payment-rules="handleSavePaymentRule"
-      @save-discounts="handleSaveSupplierDiscount"
-      @save-discount-rules="handleSaveDiscountRules"
-      @clear-errors="clearFormErrors"
-    />
+      <SupplierCommercialPanel
+        v-model="isCommercialPanelVisible"
+        :supplier="currentSupplier"
+        :laboratories="laboratories"
+        :supplier-discount="supplierDiscount"
+        :discount-rules="discountRules"
+        :loading="loading"
+        :errors="supplierFormErrors"
+        @save-payment-rules="handleSavePaymentRule"
+        @save-discounts="handleSaveSupplierDiscount"
+        @save-discount-rules="handleSaveDiscountRules"
+        @clear-errors="clearFormErrors"
+      />
 
-    <!-- Diálogo de Configuración de Conexión FTP/API -->
-    <SupplierConnectionDialog
-      v-model="isConnectionDialogVisible"
-      :supplier="connectionSupplier"
-      @saved="fetchSuppliers"
-    />
+      <!-- Diálogo de Configuración de Conexión FTP/API -->
+      <SupplierConnectionDialog
+        v-model="isConnectionDialogVisible"
+        :supplier="connectionSupplier"
+        @saved="fetchSuppliers"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
-.header-bg {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
-  border-block-end: 1px solid rgba(255, 255, 255, 10%);
+.letter-spacing-tight {
+  letter-spacing: -0.02em;
 }
-
-.letter-spacing-tight { letter-spacing: -0.02em; }
-.letter-spacing-widest { letter-spacing: 0.1em !important; }
-.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
+.letter-spacing-widest {
+  letter-spacing: 0.1em !important;
+}
+.shadow-soft {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
+}
 </style>

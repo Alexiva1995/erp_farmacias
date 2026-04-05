@@ -282,38 +282,40 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="pa-2">
-    <PacksFilters
-      v-model:idSearchQuery="filterSearchQueryIdPacks"
-      v-model:searchQuery="filterSearchQueryPacks"
-      :loading="loadingPack"
-      @clear="handleClearFiltersPacks"
-      @add-pack="handleAddPackModal"
-    />
+  <div class="inventory-packs-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <PacksFilters
+        v-model:idSearchQuery="filterSearchQueryIdPacks"
+        v-model:searchQuery="filterSearchQueryPacks"
+        :loading="loadingPack"
+        @clear="handleClearFiltersPacks"
+        @add-pack="handleAddPackModal"
+      />
 
-    <PackTable
-      :packs="packs"
-      :loading="loadingPack"
-      :total-packs="totalPacks"
-      :items-per-page="itemsPerPagePack"
-      :page="pagePack"
-      @update:options="updateTableOptionsPack"
-      @edit-pack="handleEditPack"
-      @delete-pack="handleDeletePack"
-      @view-pack="handleViewPack"
-      @toggle-status="handleToggleStatus"
-    />
+      <PackTable
+        :packs="packs"
+        :loading="loadingPack"
+        :total-packs="totalPacks"
+        :items-per-page="itemsPerPagePack"
+        :page="pagePack"
+        @update:options="updateTableOptionsPack"
+        @edit-pack="handleEditPack"
+        @delete-pack="handleDeletePack"
+        @view-pack="handleViewPack"
+        @toggle-status="handleToggleStatus"
+      />
 
-    <PackModal
-      v-model:is-dialog-visible="addPackModal"
-      :pack-data="packData"
-      @modal-closed="closePackModal"
-      @pack-saved="handlePackSaved"
-    />
+      <PackModal
+        v-model:is-dialog-visible="addPackModal"
+        :pack-data="packData"
+        @modal-closed="closePackModal"
+        @pack-saved="handlePackSaved"
+      />
 
-    <PackDetailsModal
-      v-model:is-dialog-visible="viewPackModal"
-      :pack="selectedPack"
-    />
+      <PackDetailsModal
+        v-model:is-dialog-visible="viewPackModal"
+        :pack="selectedPack"
+      />
+    </div>
   </div>
 </template>

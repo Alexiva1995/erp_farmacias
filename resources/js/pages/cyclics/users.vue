@@ -189,67 +189,63 @@ const handleSort = (sortData) => {
 </script>
 
 <template>
-  <div>
-    <ProductFilters
-      v-model:searchQuery="filters.q"
-      v-model:selectedLaboratory="filters.laboratoryId"
-      v-model:selectedOrigin="filters.originId"
-      v-model:stockStatusFilter="filters.hasStock"
-      v-model:startDate="filters.startDate"
-      v-model:endDate="filters.endDate"
-      v-model:isStrictSearch="filters.isStrictSearch"
-      :laboratories="laboratories"
-      :origins="origins"
-      :loading="isLoadingFilters"
-      mode="inventory"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-    />
+  <div class="inventory-users-view pb-12">
+    <div class="d-flex flex-column mt-1">
+      <ProductFilters
+        v-model:searchQuery="filters.q"
+        v-model:selectedLaboratory="filters.laboratoryId"
+        v-model:selectedOrigin="filters.originId"
+        v-model:stockStatusFilter="filters.hasStock"
+        v-model:startDate="filters.startDate"
+        v-model:endDate="filters.endDate"
+        v-model:isStrictSearch="filters.isStrictSearch"
+        :laboratories="laboratories"
+        :origins="origins"
+        :loading="isLoadingFilters"
+        mode="inventory"
+        @clear="handleClearFilters"
+        @sort="handleSort"
+        class="mb-1"
+      />
 
-    <VRow class="mt-4">
-      <VCol cols="12">
-        <ProductTable
-          :products="products"
-          :loading="productLoading"
-          :total-product="totalProduct"
-          :items-per-page="productOptions.itemsPerPage"
-          :page="productOptions.page"
-          mode="inventory"
-          title="Productos por Contar"
-          @update:options="updateProductTableOptions"
-          @count-product="(product) => handleCountProduct(product, 'product')"
-        />
-      </VCol>
+      <ProductTable
+        :products="products"
+        :loading="productLoading"
+        :total-product="totalProduct"
+        :items-per-page="productOptions.itemsPerPage"
+        :page="productOptions.page"
+        mode="inventory"
+        title="Productos por Contar"
+        @update:options="updateProductTableOptions"
+        @count-product="(product) => handleCountProduct(product, 'product')"
+      />
 
-      <VCol cols="12">
-        <InvoiceToCountTable
-          :products="invoiceProductsToCount"
-          :loading="invoiceProductsLoading"
-          :total-product="totalInvoiceProductsToCount"
-          :items-per-page="invoiceProductsOptions.itemsPerPage"
-          :page="invoiceProductsOptions.page"
-          mode="inventory"
-          title="Productos de Factura por Contar"
-          @update:options="updateInvoiceProductsTableOptions"
-          @count-product="(product) => handleCountProduct(product, 'invoice')"
-        />
-      </VCol>
+      <InvoiceToCountTable
+        :products="invoiceProductsToCount"
+        :loading="invoiceProductsLoading"
+        :total-product="totalInvoiceProductsToCount"
+        :items-per-page="invoiceProductsOptions.itemsPerPage"
+        :page="invoiceProductsOptions.page"
+        mode="inventory"
+        title="Productos de Factura por Contar"
+        class="mt-4"
+        @update:options="updateInvoiceProductsTableOptions"
+        @count-product="(product) => handleCountProduct(product, 'invoice')"
+      />
 
-      <VCol cols="12">
-        <SalesToCountTable
-          :products="salesProductsToCount"
-          :loading="salesProductsLoading"
-          :total-product="totalSalesProductsToCount"
-          :items-per-page="salesProductsOptions.itemsPerPage"
-          :page="salesProductsOptions.page"
-          mode="inventory"
-          title="Productos de Punto de Venta por Contar"
-          @update:options="updateSalesProductsTableOptions"
-          @count-product="(product) => handleCountProduct(product, 'sales')"
-        />
-      </VCol>
-
-    </VRow>
+      <SalesToCountTable
+        :products="salesProductsToCount"
+        :loading="salesProductsLoading"
+        :total-product="totalSalesProductsToCount"
+        :items-per-page="salesProductsOptions.itemsPerPage"
+        :page="salesProductsOptions.page"
+        mode="inventory"
+        title="Productos de Punto de Venta por Contar"
+        class="mt-4"
+        @update:options="updateSalesProductsTableOptions"
+        @count-product="(product) => handleCountProduct(product, 'sales')"
+      />
+    </div>
 
     <InventoryCountDialog
       v-model="isCountDialogVisible"
