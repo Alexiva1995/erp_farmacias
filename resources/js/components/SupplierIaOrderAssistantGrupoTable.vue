@@ -15,18 +15,18 @@ const props = defineProps({
 
 const emit = defineEmits(['page-change', 'product-scarce-toggled']);
 
-// Grupos expandidos
-const expandedGroups = ref(new Set());
+// Grupo expandido (uno a la vez)
+const expandedGroupId = ref(null);
 
 const toggleGroup = (groupId) => {
-  if (expandedGroups.value.has(groupId)) {
-    expandedGroups.value.delete(groupId);
+  if (expandedGroupId.value === groupId) {
+    expandedGroupId.value = null;
   } else {
-    expandedGroups.value.add(groupId);
+    expandedGroupId.value = groupId;
   }
 };
 
-const isExpanded = (groupId) => expandedGroups.value.has(groupId);
+const isExpanded = (groupId) => expandedGroupId.value === groupId;
 
 // Marcar escaso
 const togglingScarce = ref(null);
@@ -34,7 +34,7 @@ const handleToggleScarce = async (product) => {
   if (togglingScarce.value === product.id) return;
   togglingScarce.value = product.id;
   try {
-    await axios.patch(`/api/products/${product.id}/toggle-scarce`);
+    await axios.post(`/api/products/${product.id}/toggle-scarce`);
     emit('product-scarce-toggled', product.id);
   } catch (error) {
     console.error("Error toggling scarce:", error);

@@ -610,4 +610,16 @@ class SuppliersIaOrderAssistantController extends Controller
         return ApiResponse::error('No se pudo procesar el pedido directo');
     }
 
+    public function toggleScarce(int $id): JsonResponse
+    {
+        $product = ModelsProduct::findOrFail($id);
+        
+        $actionService = app(\App\Services\Products\ProductActionService::class);
+        $updatedProduct = $actionService->toggleScarceProduct($product);
+
+        return response()->json([
+            'message' => 'Estado de escasez actualizado con éxito.',
+            'is_scarce' => $updatedProduct->is_scarce
+        ]);
+    }
 }

@@ -113,7 +113,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::get('/products/export', [ProductController::class, 'export']);
-    Route::patch('/products/{product}/toggle-scarce', [ProductController::class, 'toggleScarce']);
+    Route::post('/products/{product}/toggle-scarce', [ProductController::class, 'toggleScarce']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
     Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);
@@ -524,7 +524,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
         Route::post("/stats", [SuppliersIaOrderAssistantController::class, "stats"]);
         Route::get("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "getProductosMarcados"]);
-        Route::patch("/products-without-supplier/{id}/toggle-scarce", [SuppliersIaOrderAssistantController::class, "toggleScarce"]);
+        Route::post("/products-without-supplier/{id}/toggle-scarce", [SuppliersIaOrderAssistantController::class, "toggleScarce"]);
         Route::post("/direct-order", [SuppliersIaOrderAssistantController::class, "directOrder"]);
         Route::prefix("generate-order")->group(function () {
             Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
