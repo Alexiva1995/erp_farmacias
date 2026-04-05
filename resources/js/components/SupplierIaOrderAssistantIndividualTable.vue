@@ -36,7 +36,7 @@ const handleToggleScarce = async (product) => {
   
   togglingScarce.value = product.id;
   try {
-    await axios.patch(`/api/products/${product.id}/toggle-scarce`);
+    await axios.post(`/api/products/${product.id}/toggle-scarce`);
     emit('product-scarce-toggled', product.id);
   } catch (error) {
     console.error("Error toggling scarce status:", error);
