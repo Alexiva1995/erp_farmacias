@@ -56,7 +56,8 @@ const getChartOptions = (item, color = '#7367f0') => ({
     type: 'area',
     height: 22,
     sparkline: { enabled: true },
-    animations: { enabled: true }
+    animations: { enabled: true },
+    parentHeightOffset: 0,
   },
   stroke: { curve: 'smooth', width: 2 },
   fill: {
@@ -207,7 +208,7 @@ const grupoKpi = (productos) => {
                   </div>
                 </td>
                 <td class="text-center">
-                  <div style="block-size:22px; inline-size:70px; margin:auto;" v-intersect="() => markChartAsReady(item.id)">
+                  <div style="block-size:22px; inline-size:70px; margin:auto; overflow:visible;" v-intersect="() => markChartAsReady(item.id)">
                     <VueApexCharts
                       v-if="readyCharts.has(item.id)"
                       type="area" height="22"
