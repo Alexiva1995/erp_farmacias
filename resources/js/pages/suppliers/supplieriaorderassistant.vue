@@ -18,7 +18,7 @@ const loading = ref(false);
 const loadingStats = ref(false);
 
 const page = ref(1);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(25);
 const sortBy = ref();
 const orderBy = ref();
 
