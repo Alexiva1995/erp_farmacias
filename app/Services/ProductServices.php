@@ -198,4 +198,8 @@ class ProductServices implements Product
     {
         return $this->consultProductById($id);
     }
+    public function getUniqueIdsForIaReport(array $filtros, bool $porGrupo = false): array
+    {
+        return $this->productRepository->getUniqueIdsForIaReport($filtros, $porGrupo);
+    }
 }
