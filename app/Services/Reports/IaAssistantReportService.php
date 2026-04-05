@@ -19,9 +19,11 @@ class IaAssistantReportService
     {
         $filtros = $this->prepareDateFilters($filtros);
         $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
-        $page = $filtros['page'] ?? 1;
-        $perPage = $filtros['itemsPerPage'] ?? 10;
-        $esVistaGrupal = ($filtros['tipo_vista'] ?? false) == true;
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
+        if ($perPage <= 0) $perPage = 25;
+
+        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros (Cacheado)
         $allIds = $this->getFilteredIds($filtros, $esVistaGrupal);

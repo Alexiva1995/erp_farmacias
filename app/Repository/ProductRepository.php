@@ -97,7 +97,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["days"] == 7) {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
@@ -390,7 +390,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["lapso_de_tiempo"] == "7 days") {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
@@ -710,7 +710,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["lapso_de_tiempo"] == "7 days") {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
@@ -938,7 +938,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["lapso_de_tiempo"] == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
@@ -959,7 +959,7 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 6';
         }
 
-        if ($filtros["lapso_de_tiempo"] == "12 month") {
+        if ($filtros["lapso_de_tiempo"] == "12 month" || $filtros["lapso_de_tiempo"] == "1 year") {
             $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 12';
         }

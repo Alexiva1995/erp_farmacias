@@ -95,10 +95,10 @@ class SuppliersIaOrderAssistantController extends Controller
     private function prepararFiltros(Request $request): array
     {
         $filtros = [
-            "itemsPerPage" => $request->itemsPerPage ?? 10,
-            "page" => $request->page ?? 1,
+            "itemsPerPage" => (int) ($request->itemsPerPage ?? 10),
+            "page" => (int) ($request->page ?? 1),
             "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista" => $request->tipo_vista,
+            "tipo_vista" => filter_var($request->tipo_vista, FILTER_VALIDATE_BOOLEAN),
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 
