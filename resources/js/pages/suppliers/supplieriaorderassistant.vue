@@ -177,6 +177,7 @@ onMounted(async () => {
           :items-per-page="itemsPerPage"
           :page="page"
           @update:options="updateTableOptionsTable"
+          @refresh="actualizarTabla"
         />
         <SupplierIaOrderAssistantIndividualTable
           v-else
@@ -186,6 +187,7 @@ onMounted(async () => {
           :items-per-page="itemsPerPage"
           :page="page"
           @update:options="updateTableOptionsTable"
+          @refresh="actualizarTabla"
         />
       </div>
     </div>

@@ -113,6 +113,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::get('/products/export', [ProductController::class, 'export']);
+    Route::patch('/products/{product}/toggle-scarce', [ProductController::class, 'toggleScarce']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
     Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);

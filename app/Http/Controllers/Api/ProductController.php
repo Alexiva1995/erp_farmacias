@@ -124,6 +124,15 @@ class ProductController extends Controller
         return response()->noContent();
     }
 
+    public function toggleScarce(Product $product): JsonResponse
+    {
+        $updatedProduct = $this->productActionService->toggleScarceProduct($product);
+        return response()->json([
+            'message' => 'Estado de escasez actualizado con éxito.',
+            'is_scarce' => $updatedProduct->is_scarce
+        ]);
+    }
+
     public function unassignProductFromGroup(Product $product)
     {
         $wasUnassigned = $this->productActionService->unassignFromGroup($product);

@@ -183,6 +183,18 @@ class ProductActionService
         $product->update(['is_deleted' => true]);
     }
 
+    /**
+     * Alterna el estado de producto escaso (is_scarce).
+     *
+     * @param Product $product
+     * @return Product
+     */
+    public function toggleScarceProduct(Product $product): Product
+    {
+        $product->update(['is_scarce' => !$product->is_scarce]);
+        return $product;
+    }
+
     
     /**
      * Fusiona dos productos, actualizando todas las referencias del producto que se elimina
