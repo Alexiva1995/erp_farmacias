@@ -31,17 +31,17 @@ class ProductRepository
     {
 
         $columnas = [
-            'id',
-            'name',
+            'products.id',
+            'products.name',
             DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
-            'group_id',
-            'laboratory_id',
-            "sales_average",
-            "sale_price",
-            "unit_cost",
-            "psychotropic",
-            "is_colombian_origin",
-            "active_ingredient",
+            'products.group_id',
+            'products.laboratory_id',
+            "products.sales_average",
+            "products.sale_price",
+            "products.unit_cost",
+            "products.psychotropic",
+            "products.is_colombian_origin",
+            "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -313,18 +313,18 @@ class ProductRepository
         // solicitar = stock - promedio
 
         $columnas = [
-            'id',
-            'name',
+            'products.id',
+            'products.name',
             DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
-            'group_id',
-            'laboratory_id',
-            'barcode',
-            "sales_average",
-            "sale_price",
-            "unit_cost",
-            "psychotropic",
-            "is_colombian_origin",
-            "active_ingredient",
+            'products.group_id',
+            'products.laboratory_id',
+            'products.barcode',
+            "products.sales_average",
+            "products.sale_price",
+            "products.unit_cost",
+            "products.psychotropic",
+            "products.is_colombian_origin",
+            "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -480,8 +480,7 @@ class ProductRepository
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
                 $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
-                    ->orderBy("groups_products.name", "ASC")
-                    ->select("products.*"); 
+                    ->orderBy("groups_products.name", "ASC");
             }
         }
 
@@ -588,19 +587,19 @@ class ProductRepository
 
 
         $columnas = [
-            'id',
-            'name',
+            'products.id',
+            'products.name',
             DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
-            'group_id',
-            'laboratory_id',
-            'barcode',
-            "sales_average",
-            "sale_price",
-            "unit_cost",
-            "psychotropic",
-            "is_colombian_origin",
-            "is_ordered",
-            "active_ingredient",
+            'products.group_id',
+            'products.laboratory_id',
+            'products.barcode',
+            "products.sales_average",
+            "products.sale_price",
+            "products.unit_cost",
+            "products.psychotropic",
+            "products.is_colombian_origin",
+            "products.is_ordered",
+            "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -758,8 +757,7 @@ class ProductRepository
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
                 $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
-                    ->orderBy("groups_products.name", "ASC")
-                    ->select("products.*");
+                    ->orderBy("groups_products.name", "ASC");
             }
         }
 
@@ -867,19 +865,19 @@ class ProductRepository
     public function builerFiltrarIndividualProductForAssistantReportTypeAverage($filtros): Builder
     {
         $columnas = [
-            'id',
-            'name',
+            'products.id',
+            'products.name',
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') as stock'),
-            'group_id',
-            'laboratory_id',
-            'barcode',
-            "is_ordered",
-            "sales_average",
-            "sale_price",
-            "unit_cost",
-            "psychotropic",
-            "is_colombian_origin",
-            "active_ingredient",
+            'products.group_id',
+            'products.laboratory_id',
+            'products.barcode',
+            "products.is_ordered",
+            "products.sales_average",
+            "products.sale_price",
+            "products.unit_cost",
+            "products.psychotropic",
+            "products.is_colombian_origin",
+            "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -1007,7 +1005,7 @@ class ProductRepository
             "group",
             "productSuppliers" => function ($query) {
                 $query->select(
-                    'id',
+                    'products.id',
                     'product_id',
                     'supplier_id',
                     'laboratory',
@@ -1047,8 +1045,7 @@ class ProductRepository
 
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
-                ->orderBy("groups_products.name", "ASC")
-                ->select("products.*");
+                ->orderBy("groups_products.name", "ASC");
         } elseif (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $consulta->whereIn("group_id", $filtros["groups"]);
         }
@@ -1131,19 +1128,19 @@ class ProductRepository
 
 
         $columnas = [
-            'id',
-            'name',
+            'products.id',
+            'products.name',
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') as stock'),
-            'group_id',
-            'laboratory_id',
-            'barcode',
-            "is_ordered",
-            "sales_average",
-            "sale_price",
-            "unit_cost",
-            "psychotropic",
-            "is_colombian_origin",
-            "active_ingredient",
+            'products.group_id',
+            'products.laboratory_id',
+            'products.barcode',
+            "products.is_ordered",
+            "products.sales_average",
+            "products.sale_price",
+            "products.unit_cost",
+            "products.psychotropic",
+            "products.is_colombian_origin",
+            "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -1262,7 +1259,7 @@ class ProductRepository
             "group",
             "productSuppliers" => function ($query) {
                 $query->select(
-                    'id',
+                    'products.id',
                     'product_id',
                     'supplier_id',
                     'laboratory',
@@ -1311,7 +1308,10 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("groups", $filtros)) {
+        if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
+            $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
+                ->orderBy("groups_products.name", "ASC");
+        } elseif (array_key_exists("groups", $filtros)) {
             if (count($filtros["groups"]) > 0) {
                 $consulta->whereIn("group_id", $filtros["groups"]);
             }
