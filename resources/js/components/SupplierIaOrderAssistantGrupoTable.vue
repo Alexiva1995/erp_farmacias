@@ -276,9 +276,11 @@ const grupoKpi = (productos) => {
   padding-block: 4px !important;
   font-size: 0.78rem !important;
 }
+.row-needs td:first-child {
+  border-left: 3px solid #28c76f;
+}
 .row-needs td {
   background-color: rgba(40, 199, 111, 0.03) !important;
-  border-left: 2px solid #28c76f;
 }
 .row-excess td {
   background-color: rgba(234, 84, 85, 0.03) !important;

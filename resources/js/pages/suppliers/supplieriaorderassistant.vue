@@ -122,11 +122,30 @@ const onGrupalPageChange = (newPage) => {
 
 const handleProductScarceToggled = (productId) => {
   if (tipo_de_vista.value) {
-    // En vista grupal, eliminar el producto del grupo correspondiente
-    gruposData.grupos = gruposData.grupos.map(g => ({
-      ...g,
-      productos: g.productos.filter(p => p.id !== productId),
-    })).filter(g => g.productos.length > 0);
+    // 1. Encontrar el grupo que contiene el producto
+    gruposData.grupos = gruposData.grupos.map(g => {
+      if (!g.productos.some(p => p.id === productId)) return g;
+
+      // 2. Remover el producto
+      const nuevosProductos = g.productos.filter(p => p.id !== productId);
+
+      // 3. Recalcular suma de promedios para la "preferencia"
+      const nuevaSumaPromedio = nuevosProductos.reduce((acc, p) => acc + (parseFloat(p.sales_average) || 0), 0);
+
+      // 4. Actualizar preferencia_product para los productos restantes
+      const productosRecalculados = nuevosProductos.map(p => {
+        const avg = parseFloat(p.sales_average) || 0;
+        return {
+          ...p,
+          preferencia_product: nuevaSumaPromedio > 0 ? (avg / nuevaSumaPromedio) * 100 : 0
+        };
+      });
+
+      return {
+        ...g,
+        productos: productosRecalculados,
+      };
+    }).filter(g => g.productos.length > 0);
   } else {
     statuModule.items = statuModule.items.filter(item => item.id !== productId);
     statuModule.total -= 1;
