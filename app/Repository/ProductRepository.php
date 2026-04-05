@@ -1311,9 +1311,11 @@ class ProductRepository
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
                 ->orderBy("groups_products.name", "ASC");
-        } elseif (array_key_exists("groups", $filtros)) {
+        } 
+        
+        if (array_key_exists("groups", $filtros)) {
             if (count($filtros["groups"]) > 0) {
-                $consulta->whereIn("group_id", $filtros["groups"]);
+                $consulta->whereIn("products.group_id", $filtros["groups"]);
             }
         }
 
