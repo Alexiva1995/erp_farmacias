@@ -135,7 +135,9 @@ def process_general_commands(printer, sim):
     try:
         resp = requests.get(f"{API_BASE_URL}/fiscal/commands/pending", timeout=10, verify=False)
         if resp.status_code == 200:
-            cmd_data = resp.json()
+            full_data = resp.json()
+            cmd_data = full_data.get('data') if full_data and 'data' in full_data else full_data
+            
             if cmd_data and 'id' in cmd_data:
                 cmd_id = cmd_data['id']
                 cmd_type = cmd_data['command']
@@ -154,6 +156,11 @@ def process_general_commands(printer, sim):
                         inv_to_annul = payload.get('invoice_number', '')
                         if BRIDGE_MODE == "WEBSIM": res_output = sim.annul_invoice(inv_to_annul)
                         else: res_output = printer.send_command(b'\x47', [inv_to_annul])[1]
+                    elif cmd_type == "REPRINT_REPORT_Z":
+                        z_num = payload.get('z_number', '1')
+                        print(f"[REPRINT Z] Solicitando Reporte Z #{z_num}")
+                        if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report(f"U:{z_num}:{z_num}")
+                        else: res_output = printer.send_command(b'\x55', [z_num, z_num])[1]
                     elif cmd_type == "REPRINT_INVOICE":
                         # PNP no tiene comando directo de reimprimir por nro, 
                         # pero WebSim suele permitir repetir si mandamos la misma trama

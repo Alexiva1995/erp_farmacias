@@ -2189,7 +2189,7 @@ const printFiscalPNP = async (order) => {
   
   try {
     toast.info("Enviando a cola de impresión fiscal...");
-    const response = await axios.post(`/api/fiscal/queue/${order.id}`);
+    const response = await axios.post(`/fiscal/queue/${order.id}`);
     toast.success(response.data.message || "Orden encolada correctamente.");
   } catch (error) {
     console.error("Error al encolar impresión fiscal:", error);

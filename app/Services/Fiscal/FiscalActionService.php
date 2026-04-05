@@ -4,6 +4,7 @@ namespace App\Services\Fiscal;
 
 use App\Contracts\Fiscal\FiscalCommandRepositoryInterface;
 use App\Models\FiscalCommand;
+use App\Models\FiscalHistory;
 use Illuminate\Support\Collection;
 
 class FiscalActionService
@@ -43,10 +44,35 @@ class FiscalActionService
     }
 
     /**
-     * Get recent command history.
+     * Get recent command history merged with invoice printing history.
      */
     public function getHistory(int $limit = 20): Collection
     {
-        return $this->repository->getHistory($limit);
+        $commands = $this->repository->getHistory($limit);
+        
+        $invoices = FiscalHistory::where('is_queued', true)
+            ->with('order')
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+
+        // Transformar facturas al formato de comando para la UI
+        $mappedInvoices = $invoices->map(function($inv) {
+            return (object) [
+                'id' => 'inv-' . $inv->id,
+                'command' => 'PRINT_INVOICE',
+                'payload' => ['order_id' => $inv->order_id, 'invoice_number' => $inv->invoice_number],
+                'status' => $inv->invoice_number ? 'success' : 'pending',
+                'response' => $inv->invoice_number ? "Factura #{$inv->invoice_number}" : "En espera...",
+                'created_at' => $inv->created_at,
+                'updated_at' => $inv->updated_at,
+            ];
+        });
+
+        // Combinar, ordenar y limitar
+        return $commands->concat($mappedInvoices)
+            ->sortByDesc('created_at')
+            ->take($limit)
+            ->values();
     }
 }

@@ -1,19 +1,21 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
 const loading = ref(false);
 const commands = ref([]);
 const invoiceNumber = ref("");
+const zReportNumber = ref("");
 const lastZReport = ref(null);
+let poller = null;
 
 const fetchCommands = async () => {
   try {
-    const response = await axios.get("/fiscal/commands/history"); // Necesitaremos este endpoint
-    commands.value = response.data;
+    const response = await axios.get("/fiscal/commands/history");
+    commands.value = response.data.data || response.data;
   } catch (error) {
     console.error("Error al obtener historial de comandos:", error);
   }
@@ -22,7 +24,7 @@ const fetchCommands = async () => {
 const sendCommand = async (command, payload = {}) => {
   loading.value = true;
   try {
-    const response = await axios.post("/api/fiscal/commands", {
+    const response = await axios.post("/fiscal/commands", {
       command,
       payload
     });
@@ -42,6 +44,13 @@ const handleReportZ = () => {
     });
 };
 
+const handleReprintZ = () => {
+    if (!zReportNumber.value) return toast.error("Ingrese un número de Reporte Z.");
+    toast.confirm(`¿Desea reimprimir el Reporte Z #${zReportNumber.value}?`, () => {
+        sendCommand('REPRINT_REPORT_Z', { z_number: zReportNumber.value });
+    });
+};
+
 const handleReportX = () => sendCommand('REPORT_X');
 
 const handleAnnul = () => {
@@ -57,7 +66,12 @@ const handleReprint = () => {
 };
 
 onMounted(() => {
-  // fetchCommands(); // Implementar luego si se desea historial
+  fetchCommands();
+  poller = setInterval(fetchCommands, 5000);
+});
+
+onUnmounted(() => {
+  if (poller) clearInterval(poller);
 });
 </script>
 
@@ -90,6 +104,25 @@ onMounted(() => {
             @click="handleReportZ"
           >
             Reporte Z (Cierre)
+          </VBtn>
+          <VDivider class="my-4" />
+          <VTextField
+            v-model="zReportNumber"
+            label="Número de Reporte Z"
+            placeholder="Ej: 0005"
+            variant="outlined"
+            density="compact"
+            class="mb-2"
+          />
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            prepend-icon="mdi-printer-refresh"
+            block
+            :loading="loading"
+            @click="handleReprintZ"
+          >
+            Reimprimir Reporte Z
           </VBtn>
         </VCardText>
         <VDivider />
@@ -198,6 +231,7 @@ const getCommandColor = (cmd) => {
   if (cmd.includes('REPORT_Z')) return 'error';
   if (cmd.includes('REPORT_X')) return 'primary';
   if (cmd.includes('ANNUL')) return 'warning';
+  if (cmd.includes('PRINT_INVOICE')) return 'success';
   return 'info';
 };
 

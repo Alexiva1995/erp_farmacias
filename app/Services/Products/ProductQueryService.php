@@ -47,10 +47,6 @@ class ProductQueryService
             $query->whereNull('group_id');
         }
 
-        if (isset($filters['is_active']) && empty($filters['productId'])) {
-            $query->where('is_deleted', !$filters['is_active']);
-        }
-
         // Si hay productId, priorizar búsqueda directa por ID (omitir filtro q para evitar conflictos)
         if (!empty($filters['productId'])) {
             $query->where('products.id', (int) $filters['productId']);
@@ -260,7 +256,6 @@ class ProductQueryService
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
-            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -292,7 +287,6 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'is_pending' => true,
-            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -317,7 +311,6 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_laboratory' => true,
-            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -342,7 +335,6 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_origin' => true,
-            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);
@@ -367,7 +359,6 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_group' => true,
-            'is_active' => true
         ];
 
         $this->applyFilters($query, $filters);

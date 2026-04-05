@@ -87,7 +87,7 @@ class FiscalPrinterController extends Controller
     public function storeCommand(StoreFiscalCommandRequest $request)
     {
         try {
-            $cmd = $this->service.enqueueCommand($request->command, $request->payload);
+            $cmd = $this->service->enqueueCommand($request->command, $request->payload);
             return new FiscalCommandResource($cmd);
         } catch (\Exception $e) {
             Log::error('Error en FiscalPrinterController@storeCommand: ' . $e->getMessage());

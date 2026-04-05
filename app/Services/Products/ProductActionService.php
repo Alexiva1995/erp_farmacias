@@ -174,16 +174,13 @@ class ProductActionService
     }
 
     /**
-     * Elimina un producto.
+     * Elimina lógicamente un producto.
      *
      * @param Product $product
      */
     public function deleteProduct(Product $product): void
     {
-        if ($product->photo_url) {
-            Storage::disk('public')->delete($product->photo_url);
-        }
-        $product->delete();
+        $product->update(['is_deleted' => true]);
     }
 
     
@@ -373,11 +370,8 @@ class ProductActionService
                 }
             }
 
-            // Eliminar el producto que se elimina
-            if ($productToDelete->photo_url) {
-                Storage::disk('public')->delete($productToDelete->photo_url);
-            }
-            $productToDelete->delete();
+            // Eliminar lógicamente el producto que se fusiona
+            $productToDelete->update(['is_deleted' => true]);
 
             DB::commit();
 
