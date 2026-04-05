@@ -37,14 +37,20 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $filtros = $this->prepararFiltros($request);
 
-        if ($respuesta["tipo_filtracion"] == "combinado") {
+        // Si es vista grupal, usamos SIEMPRE el servicio especializado que pagina por GRUPOS
+        // Si no es vista grupal, el modo combinado usa el servicio, los otros usan el modelo directamente
+        if (($filtros["tipo_vista"] ?? false) == true) {
             $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "average") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "sales") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
         } else {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            if ($respuesta["tipo_filtracion"] == "combinado") {
+                $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+            } elseif ($respuesta["tipo_filtracion"] == "average") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            } elseif ($respuesta["tipo_filtracion"] == "sales") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+            } else {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            }
         }
 
         return ApiResponse::success($respuesta, "ok", 200);
