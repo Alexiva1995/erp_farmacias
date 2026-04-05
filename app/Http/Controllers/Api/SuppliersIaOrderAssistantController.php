@@ -37,14 +37,22 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $filtros = $this->prepararFiltros($request);
 
-        if ($respuesta["tipo_filtracion"] == "combinado") {
-            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "average") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "sales") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($esVistaGrupal) {
+            // Vista grupal: devolver grupos paginados con productos anidados
+            $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
         } else {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            // Vista individual: paginación normal
+            if ($respuesta["tipo_filtracion"] == "combinado") {
+                $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+            } elseif ($respuesta["tipo_filtracion"] == "average") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            } elseif ($respuesta["tipo_filtracion"] == "sales") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+            } else {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            }
         }
 
         return ApiResponse::success($respuesta, "ok", 200);
@@ -89,10 +97,10 @@ class SuppliersIaOrderAssistantController extends Controller
     private function prepararFiltros(Request $request): array
     {
         $filtros = [
-            "itemsPerPage" => $request->itemsPerPage ?? 10,
-            "page" => $request->page ?? 1,
+            "itemsPerPage" => (int) ($request->itemsPerPage ?? 10),
+            "page" => (int) ($request->page ?? 1),
             "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista" => $request->tipo_vista,
+            "tipo_vista" => filter_var($request->tipo_vista, FILTER_VALIDATE_BOOLEAN),
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 

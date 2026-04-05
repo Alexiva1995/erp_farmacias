@@ -97,7 +97,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["days"] == 7) {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
@@ -390,7 +390,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["lapso_de_tiempo"] == "7 days") {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
@@ -710,7 +710,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["lapso_de_tiempo"] == "7 days") {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
@@ -938,7 +938,7 @@ class ProductRepository
         ];
 
         // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "";
+        $promedio_calculado = "sales_average";
         if ($filtros["lapso_de_tiempo"] == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
@@ -959,7 +959,7 @@ class ProductRepository
             $promedio_calculado = 'sales_average * 6';
         }
 
-        if ($filtros["lapso_de_tiempo"] == "12 month") {
+        if ($filtros["lapso_de_tiempo"] == "12 month" || $filtros["lapso_de_tiempo"] == "1 year") {
             $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 12';
         }
@@ -1005,7 +1005,7 @@ class ProductRepository
             "group",
             "productSuppliers" => function ($query) {
                 $query->select(
-                    'products.id',
+                    'id',
                     'product_id',
                     'supplier_id',
                     'laboratory',
@@ -1259,7 +1259,7 @@ class ProductRepository
             "group",
             "productSuppliers" => function ($query) {
                 $query->select(
-                    'products.id',
+                    'id',
                     'product_id',
                     'supplier_id',
                     'laboratory',
@@ -1311,9 +1311,11 @@ class ProductRepository
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
                 ->orderBy("groups_products.name", "ASC");
-        } elseif (array_key_exists("groups", $filtros)) {
+        } 
+        
+        if (array_key_exists("groups", $filtros)) {
             if (count($filtros["groups"]) > 0) {
-                $consulta->whereIn("group_id", $filtros["groups"]);
+                $consulta->whereIn("products.group_id", $filtros["groups"]);
             }
         }
 
@@ -1407,5 +1409,48 @@ class ProductRepository
         $consulta = $this->builerFiltrarIndividualProductForAssistantReportTypeSales($filtros);
 
         return $consulta->get()->toArray();
+    }
+
+    public function getUniqueIdsForIaReport($filtros, $porGrupo = false): array
+    {
+        $query = Product::query()
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('ignore_until')
+                    ->orWhere('ignore_until', '<=', now());
+            });
+
+        if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
+            $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
+        }
+        if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+            $query->whereIn("group_id", $filtros["groups"]);
+        }
+        if (array_key_exists("is_colombia", $filtros)) {
+            $query->where("is_colombian_origin", "=", $filtros["is_colombia"] ? 1 : 0);
+        }
+        
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+             $query->where(function($q) use ($filtros) {
+                 $q->where("name", "like", "%" . $filtros["q"] . "%")
+                   ->orWhere("id", "like", "%" . $filtros["q"] . "%");
+             });
+        }
+
+        if ($porGrupo) {
+            return $query->select('products.group_id', 'groups_products.name')
+                ->whereNotNull('group_id')
+                ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
+                ->orderBy('groups_products.name', 'ASC')
+                ->distinct()
+                ->get()
+                ->pluck('group_id')
+                ->toArray();
+        }
+
+        return $query->orderBy('name', 'ASC')
+            ->pluck('id')
+            ->toArray();
     }
 }

@@ -10,20 +10,21 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 
 const statuModule = reactive({ total: 0, items: [] });
+// Para vista grupal: grupos con sus productos anidados
+const gruposData = reactive({ grupos: [], total_grupos: 0, per_page: 25, current_page: 1, last_page: 1 });
+
 const groups = ref([]);
 const laboratories = ref([]);
 const loading = ref(false);
-const loadingStats = ref(false);
 
 const page = ref(1);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(25);
 const sortBy = ref();
 const orderBy = ref();
 
 const selectedLaboratory = ref([]);
 const selectedGroup = ref([]);
 
-// Defaults mejorados: lapso 1 mes, cálculo combinado
 const tipo_de_vista = ref(false);
 const tipo_de_filtracion = ref("combinado");
 const lapso_de_tiempo = ref("1 month");
@@ -31,9 +32,6 @@ const stock = ref("all");
 const con_descuento = ref(true);
 const isColombian = ref(false);
 const searchQuery = ref("");
-
-// KPIs globales (todos los productos, no paginados)
-const kpiGlobal = reactive({ necesitan: 0, exceso: 0, ok: 0 });
 
 const handleClearFilters = () => {
   con_descuento.value = true;
@@ -87,9 +85,27 @@ async function consultarProductosConPaginacion() {
 async function actualizarTabla() {
   loading.value = true;
   try {
-    const paginacion = await consultarProductosConPaginacion();
-    statuModule.items = paginacion.data.paginate.data;
-    statuModule.total = paginacion.data.paginate.total;
+    const respuesta = await consultarProductosConPaginacion();
+    const paginacion = respuesta.data.paginate;
+
+    if (tipo_de_vista.value) {
+      // Vista grupal: el servidor devuelve { grupos, total_grupos, per_page, current_page, last_page }
+      gruposData.grupos = paginacion.grupos ?? [];
+      gruposData.total_grupos = paginacion.total_grupos ?? 0;
+      gruposData.per_page = paginacion.per_page ?? 25;
+      gruposData.current_page = paginacion.current_page ?? 1;
+      gruposData.last_page = paginacion.last_page ?? 1;
+      // Limpiar vista individual
+      statuModule.items = [];
+      statuModule.total = 0;
+    } else {
+      // Vista individual: paginator estándar de Laravel
+      statuModule.items = paginacion.data ?? [];
+      statuModule.total = paginacion.total ?? 0;
+      // Limpiar vista grupal
+      gruposData.grupos = [];
+      gruposData.total_grupos = 0;
+    }
   } catch (e) {
     toast.error("Error al cargar los productos.");
   } finally {
@@ -102,6 +118,43 @@ const updateTableOptionsTable = (options) => {
   itemsPerPage.value = options.itemsPerPage;
   sortBy.value = options.sortBy[0]?.key;
   orderBy.value = options.sortBy[0]?.order;
+};
+
+const onGrupalPageChange = (newPage) => {
+  page.value = newPage;
+  actualizarTabla();
+};
+
+const handleProductScarceToggled = (productId) => {
+  if (tipo_de_vista.value) {
+    // 1. Encontrar el grupo que contiene el producto
+    gruposData.grupos = gruposData.grupos.map(g => {
+      if (!g.productos.some(p => p.id === productId)) return g;
+
+      // 2. Remover el producto
+      const nuevosProductos = g.productos.filter(p => p.id !== productId);
+
+      // 3. Recalcular suma de promedios para la "preferencia"
+      const nuevaSumaPromedio = nuevosProductos.reduce((acc, p) => acc + (parseFloat(p.sales_average) || 0), 0);
+
+      // 4. Actualizar preferencia_product para los productos restantes
+      const productosRecalculados = nuevosProductos.map(p => {
+        const avg = parseFloat(p.sales_average) || 0;
+        return {
+          ...p,
+          preferencia_product: nuevaSumaPromedio > 0 ? (avg / nuevaSumaPromedio) * 100 : 0
+        };
+      });
+
+      return {
+        ...g,
+        productos: productosRecalculados,
+      };
+    }).filter(g => g.productos.length > 0);
+  } else {
+    statuModule.items = statuModule.items.filter(item => item.id !== productId);
+    statuModule.total -= 1;
+  }
 };
 
 let filterTimeout = null;
@@ -125,7 +178,6 @@ watch(
   },
 );
 
-// Al paginar, solo recargar tabla
 let paginationTimeout = null;
 watch([page, itemsPerPage, orderBy, sortBy], () => {
   clearTimeout(paginationTimeout);
@@ -185,16 +237,19 @@ onMounted(async () => {
 
       <!-- Tabla -->
       <div class="assistant-content">
+        <!-- Vista Grupal: acordeón con grupos paginados por el servidor -->
         <SupplierIaOrderAssistantGrupoTable
           v-if="tipo_de_vista == true"
-          :products="statuModule.items"
-          :total-product="statuModule.total"
+          :grupos="gruposData.grupos"
+          :total-grupos="gruposData.total_grupos"
+          :per-page="gruposData.per_page"
+          :current-page="gruposData.current_page"
+          :last-page="gruposData.last_page"
           :loading="loading"
-          :items-per-page="itemsPerPage"
-          :page="page"
-          @update:options="updateTableOptionsTable"
-          @refresh="actualizarTabla"
+          @page-change="onGrupalPageChange"
+          @product-scarce-toggled="handleProductScarceToggled"
         />
+        <!-- Vista Individual: tabla estándar paginada -->
         <SupplierIaOrderAssistantIndividualTable
           v-else
           :products="statuModule.items"
@@ -204,6 +259,7 @@ onMounted(async () => {
           :page="page"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
+          @product-scarce-toggled="handleProductScarceToggled"
         />
       </div>
     </div>
