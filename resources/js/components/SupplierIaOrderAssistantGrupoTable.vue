@@ -52,14 +52,34 @@ const markChartAsReady = (id) => {
 };
 
 const getChartOptions = (item, color = '#7367f0') => ({
-  chart: { type: 'area', height: 22, sparkline: { enabled: true } },
+  chart: {
+    type: 'area',
+    height: 22,
+    sparkline: { enabled: true },
+    animations: { enabled: true },
+    parentHeightOffset: 0,
+  },
   stroke: { curve: 'smooth', width: 2 },
-  fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0 } },
+  fill: {
+    type: 'gradient',
+    gradient: { opacityFrom: 0.4, opacityTo: 0 }
+  },
+  xaxis: {
+    categories: item.sales_trend_labels || []
+  },
   colors: [color],
-  tooltip: { enabled: false },
+  tooltip: {
+    enabled: true,
+    fixed: { enabled: false },
+    x: { show: true },
+    y: {
+      title: { formatter: () => 'Ventas: ' }
+    },
+    marker: { show: false }
+  }
 });
 
-const getSeries = (item) => [{ name: 'Ventas', data: item.sales_trend?.length > 0 ? item.sales_trend : [0, 0, 0, 0, 0, 0] }];
+const getSeries = (item) => [{ name: 'Ventas', data: item.sales_trend?.length > 0 ? item.sales_trend : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }];
 
 // KPIs de grupo
 const grupoKpi = (productos) => {
@@ -188,7 +208,7 @@ const grupoKpi = (productos) => {
                   </div>
                 </td>
                 <td class="text-center">
-                  <div style="block-size:22px; inline-size:70px; margin:auto;" v-intersect="() => markChartAsReady(item.id)">
+                  <div style="block-size:22px; inline-size:70px; margin:auto; overflow:visible;" v-intersect="() => markChartAsReady(item.id)">
                     <VueApexCharts
                       v-if="readyCharts.has(item.id)"
                       type="area" height="22"
