@@ -14,7 +14,8 @@ class ProductRepository
 
     private $subConsultaParaCalcularStockPorLotes = '(SELECT COALESCE (SUM(quantity), 0) 
                 FROM product_lots 
-                WHERE product_id = products.id)';
+                WHERE product_id = products.id 
+                AND (expiration_date >= CURDATE() OR expiration_date IS NULL))';
 
     public function consultProductById(int $id): ?Product
     {
@@ -32,7 +33,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id AND (product_lots.expiration_date >= CURDATE() OR product_lots.expiration_date IS NULL)) as stock'),
             'group_id',
             'laboratory_id',
             "sales_average",
@@ -45,9 +46,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -316,7 +315,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id AND (product_lots.expiration_date >= CURDATE() OR product_lots.expiration_date IS NULL)) as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -330,9 +329,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -590,7 +587,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id AND (product_lots.expiration_date >= CURDATE() OR product_lots.expiration_date IS NULL)) as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -605,9 +602,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -869,7 +864,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -884,9 +879,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -1130,7 +1123,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -1145,9 +1138,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
