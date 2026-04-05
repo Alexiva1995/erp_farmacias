@@ -178,10 +178,13 @@ const grupoKpi = (productos) => {
                       <VIcon v-if="togglingScarce === item.id" size="x-small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
                       {{ item.name }}
                     </span>
-                    <span class="text-super-xs text-disabled text-truncate">
-                      {{ item.active_ingredient }}
+                    <div class="d-flex align-center gap-1 text-super-xs text-truncate">
+                      <span class="text-disabled text-truncate" style="max-inline-size: 140px;">{{ item.active_ingredient }}</span>
+                      <span v-if="item.laboratory" class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 100px;">
+                        - {{ item.laboratory.name }}
+                      </span>
                       <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
-                    </span>
+                    </div>
                   </div>
                 </td>
                 <td class="text-center">
@@ -276,14 +279,17 @@ const grupoKpi = (productos) => {
   padding-block: 4px !important;
   font-size: 0.78rem !important;
 }
-.row-needs td:first-child {
-  border-left: 3px solid #28c76f;
-}
+
 .row-needs td {
-  background-color: rgba(40, 199, 111, 0.03) !important;
+  background-color: rgba(40, 199, 111, 3%) !important;
 }
+
 .row-excess td {
-  background-color: rgba(234, 84, 85, 0.03) !important;
+  background-color: rgba(234, 84, 85, 3%) !important;
+}
+
+.row-needs td:first-child {
+  border-inline-start: 3px solid #28c76f;
 }
 .producto-row:hover td {
   background-color: rgba(var(--v-theme-primary), 0.04) !important;
