@@ -18,6 +18,16 @@ class Product extends Model
     use HasFactory;
 
     /**
+     * El "booted" método del modelo.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('not_deleted', function ($builder) {
+            $builder->where('is_deleted', false);
+        });
+    }
+
+    /**
      * La tabla asociada con el modelo.
      *
      * @var string

@@ -14,7 +14,8 @@ class ProductRepository
 
     private $subConsultaParaCalcularStockPorLotes = '(SELECT COALESCE (SUM(quantity), 0) 
                 FROM product_lots 
-                WHERE product_id = products.id)';
+                WHERE product_id = products.id 
+                AND (expiration_date >= CURDATE() OR expiration_date IS NULL))';
 
     public function consultProductById(int $id): ?Product
     {
@@ -32,7 +33,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
             'group_id',
             'laboratory_id',
             "sales_average",
@@ -45,9 +46,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -316,7 +315,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -330,9 +329,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -348,13 +345,14 @@ class ProductRepository
                 JOIN products p ON p.id = od.product_id
                 WHERE p.group_id = products.group_id
                 AND o.status = "Completed"
+                AND p.is_scarce = 0
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) AS total_group_sales'),
             // Agregar esta línea para sumar los sales_average por group_id
-            DB::raw('SUM(sales_average) OVER (PARTITION BY group_id) AS group_sales_average_sum'),
+            DB::raw('SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) AS group_sales_average_sum'),
             DB::raw('(CASE 
-                WHEN SUM(sales_average) OVER (PARTITION BY group_id) > 0 
-                THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
+                WHEN SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) > 0 
+                THEN sales_average / SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) 
                 ELSE 0 
                 END) * 100 AS preferencia_product'),
             DB::raw('(
@@ -468,7 +466,7 @@ class ProductRepository
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         }
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
+        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false)->where('is_scarce', false);
 
         if (array_key_exists("ids", $filtros)) {
             $consulta->whereIn("id", $filtros["ids"]);
@@ -590,7 +588,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -605,9 +603,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -623,7 +619,7 @@ class ProductRepository
                 JOIN products p ON p.id = od.product_id
                 WHERE p.group_id = products.group_id
                 AND o.status = "Completed"
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND p.is_scarce = 0 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) AS total_group_sales'),
             //  para calcular la preferencia del producto veta del producto / ventas totales del grupo que pertenece el producto * 100
             DB::raw(' NULLIF((
@@ -747,7 +743,7 @@ class ProductRepository
         // demanda_ponderada = (promedio + ventas) / 2  (antes de restar stock/AO)
         $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $ventasIndividualDelProducto . ') / 2) AS demanda_ponderada');
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false);
+        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false)->where('is_scarce', false);
 
         if (array_key_exists("ids", $filtros)) {
             $consulta->whereIn("id", $filtros["ids"]);
@@ -869,7 +865,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -884,9 +880,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -902,13 +896,14 @@ class ProductRepository
                 JOIN products p ON p.id = od.product_id
                 WHERE p.group_id = products.group_id
                 AND o.status = "Completed"
+                AND p.is_scarce = 0
                 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) AS total_group_sales'),
             // Agregar esta línea para sumar los sales_average por group_id
-            DB::raw('SUM(sales_average) OVER (PARTITION BY group_id) AS group_sales_average_sum'),
+            DB::raw('SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) AS group_sales_average_sum'),
             DB::raw('(CASE 
-                WHEN SUM(sales_average) OVER (PARTITION BY group_id) > 0 
-                THEN sales_average / SUM(sales_average) OVER (PARTITION BY group_id) 
+                WHEN SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) > 0 
+                THEN sales_average / SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) 
                 ELSE 0 
                 END) * 100 AS preferencia_product'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
@@ -1001,7 +996,7 @@ class ProductRepository
                 $query->whereNull('ignore_until')
                     ->orWhere('ignore_until', '<=', now());
             })
-            ->where('is_deleted', false)
+            ->where('is_deleted', false)->where('is_scarce', false)
             ->with([
             "laboratory",
             "lots",
@@ -1130,7 +1125,7 @@ class ProductRepository
         $columnas = [
             'id',
             'name',
-            'stock',
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') as stock'),
             'group_id',
             'laboratory_id',
             'barcode',
@@ -1145,9 +1140,7 @@ class ProductRepository
              FROM product_lots 
              WHERE product_lots.product_id = products.id
              AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id) AS lote_quantity'),
+            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
@@ -1163,7 +1156,7 @@ class ProductRepository
                 JOIN products p ON p.id = od.product_id
                 WHERE p.group_id = products.group_id
                 AND o.status = "Completed"
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND p.is_scarce = 0 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) AS total_group_sales'),
             //  para calcular la preferencia del producto veta del producto / ventas totales del grupo que pertenece el producto * 100
             DB::raw(' NULLIF((
@@ -1181,7 +1174,7 @@ class ProductRepository
                 JOIN products p ON p.id = od.product_id
                 WHERE p.group_id = products.group_id
                 AND o.status = "Completed"
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
+                AND p.is_scarce = 0 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
             DB::raw('(
@@ -1254,7 +1247,7 @@ class ProductRepository
                 $query->whereNull('ignore_until')
                     ->orWhere('ignore_until', '<=', now());
             })
-            ->where('is_deleted', false)
+            ->where('is_deleted', false)->where('is_scarce', false)
             ->with([
             "laboratory",
             "lots",

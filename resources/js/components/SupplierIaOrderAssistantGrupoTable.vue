@@ -2,6 +2,8 @@
 import VueApexCharts from 'vue3-apexcharts';
 import { useDisplay } from 'vuetify';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
+import { ref } from 'vue';
+import axios from 'axios';
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -11,9 +13,43 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "update:page"]);
+const emit = defineEmits(["update:options", "update:page", "refresh"]);
 
 const { mdAndUp } = useDisplay();
+
+// Estado para carga diferida de gráficos (evitar lag al abrir grupos)
+const readyCharts = ref(new Set());
+
+const markChartAsReady = (id) => {
+  if (!readyCharts.value.has(id)) {
+    // Usar requestAnimationFrame para distribuir la carga de renderizado
+    requestAnimationFrame(() => {
+      readyCharts.value.add(id);
+    });
+  }
+};
+
+// Acción para marcar como escaso
+const togglingScarce = ref(null);
+
+const handleToggleScarce = async (product) => {
+  if (togglingScarce.value === product.id) return;
+  
+  if (!confirm(`¿Deseas marcar "${product.name}" como producto escaso? Se excluirá de los cálculos de pedidos.`)) {
+    return;
+  }
+
+  togglingScarce.value = product.id;
+  try {
+    await axios.patch(`/api/products/${product.id}/toggle-scarce`);
+    // Notificar al padre para refrescar
+    emit('refresh');
+  } catch (error) {
+    console.error("Error toggling scarce status:", error);
+  } finally {
+    togglingScarce.value = null;
+  }
+};
 
 // Configuración de Sparkline
 const getChartOptions = (item, color = '#7367f0') => ({
@@ -135,10 +171,15 @@ const groupBy = [{ key: "group.name" }];
           <template #item.name="{ item }">
             <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
-                :class="{ 'text-primary': item.psychotropic == 1 }"
-                :title="item.name"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate cursor-pointer hover-opacity"
+                :class="{ 
+                  'text-primary': item.psychotropic == 1,
+                  'opacity-50': togglingScarce === item.id 
+                }"
+                :title="item.name + ' - Clic para marcar como escaso'"
+                @click="handleToggleScarce(item)"
               >
+                <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
                 {{ item.name.toUpperCase() }}
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
@@ -153,13 +194,15 @@ const groupBy = [{ key: "group.name" }];
           </template>
 
           <template #item.trend="{ item }">
-            <div style="block-size: 25px; inline-size: 80px;">
+            <div style="block-size: 25px; inline-size: 80px;" v-intersect="() => markChartAsReady(item.id)">
               <VueApexCharts
+                v-if="readyCharts.has(item.id)"
                 type="area"
                 height="25"
                 :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
+              <div v-else class="chart-placeholder"></div>
             </div>
           </template>
           
@@ -221,13 +264,15 @@ const groupBy = [{ key: "group.name" }];
                     </div>
                   </div>
                   <div class="text-right">
-                    <div style="block-size: 25px; inline-size: 70px; margin-block-end: 2px;">
+                    <div style="block-size: 25px; inline-size: 70px; margin-block-end: 2px;" v-intersect="() => markChartAsReady(item.id)">
                       <VueApexCharts
+                        v-if="readyCharts.has(item.id)"
                         type="area"
                         height="25"
                         :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                         :series="getSeries(item)"
                       />
+                      <div v-else class="chart-placeholder"></div>
                     </div>
                     <div class="text-sm font-weight-black" :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'">
                       {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
@@ -366,6 +411,37 @@ const groupBy = [{ key: "group.name" }];
 
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.hover-opacity:hover {
+  opacity: 0.7;
+  text-decoration: underline;
+}
+
+.chart-placeholder {
+  block-size: 25px;
+  inline-size: 100%;
+  background: linear-gradient(90deg, rgba(var(--v-border-color), 0.05) 25%, rgba(var(--v-border-color), 0.1) 50%, rgba(var(--v-border-color), 0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes rotate-spinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rotate-spinner {
+  animation: rotate-spinner 1s linear infinite;
+}
+
+.opacity-50 {
+  opacity: 0.5;
 }
 
 .gap-2 { gap: 8px !important; }

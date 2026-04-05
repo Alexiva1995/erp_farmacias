@@ -1319,6 +1319,7 @@ const addOrden = async (id) => {
     currency: selectedDisplayCurrency.value,
   };
   try {
+    
     const response = await axios.post("/tpv/orders", params);
     openOrderData.value = response.data.data.order;
     selectedClient.value = response.data.data.order.client;
@@ -2029,7 +2030,9 @@ watch(
           clearTimeout(updateTotalsTimer);
           updateTotalsTimer = setTimeout(async () => {
             try {
-              await updateOrderTotalsInBackend();
+              
+    await updateOrderTotalsInBackend();
+    
             } catch (error) {
               console.error("Error al actualizar totales:", error);
             }
@@ -2173,187 +2176,25 @@ const closeBuysModal = () => {
   showBuysModal.value = false;
 };
 
-/*const handleBuysCompletion = async (
-  orderId,
-  paymentsData,
-  credit,
-  changeAmount,
-  changeAmountUSD,
-  switchStates
-) => {
-  try {
-    const balanceUsed = paymentsData.some(
-      (payment) => payment.type === "balance"
-    );
-
-    let currentPercentage = 0;
-    let currentSourceId = null;
-    let currentTypeName = null;
-
-  if (selectedDiscountType.value === 'Empresa' && selectedCompanyId.value) {
-      const offer = activeCompanyOffers.value.find(o => o.value === selectedCompanyId.value);
-      currentPercentage = parseFloat(offer?.current_discount || 0);
-      currentSourceId = selectedCompanyId.value;
-      currentTypeName = 'company';
-    } else if (selectedDiscountType.value === 'Medico' && selectedDoctorOffer.value) {
-      currentPercentage = parseFloat(selectedDoctorOffer.value.percentage || 0);
-      currentSourceId = selectedDoctorOffer.value.id;
-      currentTypeName = 'doctor';
-    } else if (selectedDiscountType.value === 'Recipe' && prescriptionFile.value) {
-      currentPercentage = parseFloat(currentPrescriptionDiscountPercentage.value)
-      currentSourceId = activePrescriptionOffers.value[0]?.id;
-      currentTypeName = 'recipe';
-    }
-
-    const payload = {
-      order_id: orderId,
-      payments: paymentsData,
-      total_amount: totalOrderAmountWithspecialTaxAmount.value,
-      currency: selectedDisplayCurrency.value,
-      client_id: selectedClient.value?.id,
-      seller_id: currentUser.value?.id,
-      balance_used: balanceUsed,
-      generate_invoice: switchStates.invoice_switch,
-      credit: credit,
-      changeAmount: changeAmount,
-      changeAmountUSD: changeAmountUSD,
-      spe: switchStates.spe,
-      items: orderItems.value.map((item) => ({
-        order_detail_id: item.order_detail_id,
-        quantity: item.selectedQuantity,
-        price: item.price,
-        discount_percentage: currentPercentage > 0 ? currentPercentage : null,
-        discount_type: currentPercentage > 0 ? currentTypeName : null,
-        discount_source_id: currentPercentage > 0 ? currentSourceId : null,
-      })),
-    };
-
-    const response = await axios.post(
-      `/tpv/orders/${orderId}/complete`,
-      payload
-    );
-    if (response.status === 200 || response.status === 201) {
-      toast.success("¡Compra finalizada y registrada con éxito!");
-      paymentsForPrint.value = [...paymentsData];
-      changeAmountForPrint.value = changeAmount;
-      changeAmountOriginForPrint.value = changeAmountOrigin;
-      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
-      creditForPrint.value = credit;
-      creditAmountForPrint.value = totalOrderAmountWithspecialTaxAmount.value;
-      creditForPrint.value = credit;
-
-      // Manual calculation to ensure accuracy
-      let manualExpTotal = 0;
-      orderItems.value.forEach(item => {
-         const p = parseFloat(item.discount_percentage || 0);
-         if (item.discount_type === 'expiration' && p > 0) {
-            const price = item.basePrice || 0;
-            const qty = item.selectedQuantity || 0;
-            manualExpTotal += price * qty * (p / 100);
-         }
-      });
-      console.log("Manual Expiration Total:", manualExpTotal);
-      expirationDiscountForPrint.value = manualExpTotal;
-      speSurchargeAmount.value = specialTaxAmount.value;
-      clientIdentification.value = "";
-      await fetchProducts();
-      showBuysModal.value = false;
-      isPrinting.value = true;
-
-      await nextTick();
-      const printContents = document.getElementById("orderPrint");
-      if (printContents) {
-        const printWindow = window.open("", "", "height=600,width=800");
-        printWindow.document.write(
-          "<html><head><title>Farmacia Barrio Sucre</title>"
-        );
-        const styleSheets = document.styleSheets;
-        for (let i = 0; i < styleSheets.length; i++) {
-          const sheet = styleSheets[i];
-          try {
-            if (sheet.cssRules) {
-              let cssText = "";
-              for (let j = 0; j < sheet.cssRules.length; j++) {
-                cssText += sheet.cssRules[j].cssText;
-              }
-              printWindow.document.write("<style>" + cssText + "</style>");
-            } else if (sheet.href) {
-              printWindow.document.write(
-                '<link rel="stylesheet" href="' + sheet.href + '">'
-              );
-            }
-          } catch (e) {
-            console.warn(
-              "No se pudo acceder a la hoja de estilo:",
-              sheet.href || sheet,
-              e
-            );
-          }
-        }
-        printWindow.document.write("</head><body>");
-        printWindow.document.write(printContents.innerHTML);
-        printWindow.document.write("</body></html>");
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-      } else {
-        console.warn(
-          "Elemento #orderPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-        );
-        window.print();
-      }
-
-      if (response.data.data.order) {
-        hasOpenOrder.value = true;
-        openOrderData.value = response.data.data.order;
-        selectedClient.value = openOrderData.value.client;
-        reservedOrderData.value = null;
-        orderItems.value = openOrderData.value.details.map((item) =>
-          formatOrderItemForFrontend(item)
-        );
-      } else {
-        hasOpenOrder.value = false;
-        openOrderData.value = null;
-        selectedClient.value = null;
-        orderItems.value = [];
-        reservedOrderData.value = null;
-        clientIdentification.value = "";
-      }
-    } else {
-      toast.error(
-        `Error inesperado al finalizar la compra: ${
-          response.data.message || "Intente de nuevo."
-        }`
-      );
-    }
-
-    setTimeout(() => {
-      isPrinting.value = false;
-    }, 500);
-  } catch (error) {
-    console.error(
-      "Error al finalizar la compra:",
-      error.response ? error.response.data : error.message
-    );
-    const errorMessage =
-      error.response?.data?.message ||
-      "Hubo un problema al procesar su compra. Por favor, intente de nuevo.";
-    toast.error(errorMessage);
-    isPrinting.value = false;
-    paymentsForPrint.value = [];
-    changeAmountForPrint.value = 0;
-    creditAmountForPrint.value = 0;
-    creditForPrint.value = false;
-  }
-};*/
-
 const resetFormSelectors = () => {
   selectedDiscountType.value = null;
   selectedCompanyId.value = null;
   selectedDoctorOffer.value = null;
   prescriptionFile.value = null;
   currentPrescriptionDiscountPercentage.value = 0;
+};
+
+const printFiscalPNP = async (order) => {
+  if (!order || !order.id) return;
+  
+  try {
+    toast.info("Enviando a cola de impresión fiscal...");
+    const response = await axios.post(`/fiscal/queue/${order.id}`);
+    toast.success(response.data.message || "Orden encolada correctamente.");
+  } catch (error) {
+    console.error("Error al encolar impresión fiscal:", error);
+    toast.error(error.response?.data?.error || "Error al conectar con el servidor.");
+  }
 };
 
 const handleBuysCompletion = async (
@@ -2367,10 +2208,14 @@ const handleBuysCompletion = async (
 ) => {
   try {
     isFinishingOrder.value = true;
+    
+    
 
     if (typeof updateTotalsTimer !== "undefined")
       clearTimeout(updateTotalsTimer);
+    
     await updateOrderTotalsInBackend();
+    
     const finalAmount = parseFloat(totalOrderAmountWithspecialTaxAmount.value);
     if (
       orderItems.value.length > 0 &&
@@ -2545,6 +2390,7 @@ const handleBuysCompletion = async (
       formData.append("prescription_image", prescriptionFile.value);
     }
     const idempotencyKey = `order-complete-${orderId}-${Date.now()}`;
+    
     const response = await axios.post(
       `/tpv/orders/${orderId}/complete`,
       formData,
@@ -2558,6 +2404,14 @@ const handleBuysCompletion = async (
 
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Compra finalizada y registrada con éxito!");
+
+      // DISPARAR IMPRESIÓN FISCAL INMEDIATAMENTE
+      const orderCompletada = response.data.data.orderCompletada;
+      console.log("[FISCAL] Verificando condición inmediata:", { 
+          inv: switchStates.invoice_switch, 
+          gen: switchStates.generate_invoice 
+      });
+
       prescriptionFile.value = null;
       changeAmountForPrint.value = changeAmount;
       changeAmountOriginForPrint.value = changeAmountOrigin;
@@ -2572,7 +2426,6 @@ const handleBuysCompletion = async (
       doctorDiscountForPrint.value = totalDoctorDiscountAmount.value;
       companyDiscountForPrint.value = totalCompanyDiscountAmount.value;
       discountTypeForPrint.value = selectedDiscountType.value;
-      const orderCompletada = response.data.data.orderCompletada;
       orderData.value = orderCompletada;
       itemsToPrint.value = JSON.parse(JSON.stringify(orderItems.value));
       TotalToPrint.value = parseFloat(orderData.value.total_amount);
@@ -2585,16 +2438,8 @@ const handleBuysCompletion = async (
           name !== "NULL"
         );
       });
-      //pendingOpenOrder.value = response.data.data.order;
-      /* if (response.data.data.order) {
-        hasOpenOrder.value = true;
-        openOrderData.value = response.data.data.order;
-        selectedClient.value = openOrderData.value.client;
-        reservedOrderData.value = null;
-        orderItems.value = openOrderData.value.details.map((item) =>
-          formatOrderItemForFrontend(item)
-        );
-      } */
+
+      
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
@@ -2668,6 +2513,7 @@ const fetchGroupProducts = async (groupId) => {
 
 const fetchFailuresProducts = async (productId) => {
   try {
+    
     const response = await axios.post("/tpv/product-failure", {
       product_id: productId,
     });
@@ -3309,6 +3155,7 @@ onUnmounted(() => {
       :all-foreign-sales-spe="allForeignSalesSpe || false"
       :foreign-orders-count="foreignOrdersCount || 0"
       @printTicke-completed="printTickeCompletion"
+      @print-fiscal="printFiscalPNP"
       @finish-and-reload="finalizeAndCheckPending"
     />
 

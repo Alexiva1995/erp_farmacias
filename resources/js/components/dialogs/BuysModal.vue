@@ -104,6 +104,7 @@ const emit = defineEmits([
   "purchase-completed",
   "modal-closed",
   "printTicke-completed",
+  "print-fiscal",
   "finish-and-reload",
 ]);
 
@@ -687,6 +688,7 @@ const handleCompletePurchase = () => {
       const validPayments = payments.value.filter(
         (p) => p.amount > 0 && p.method !== null,
       );
+      
       emit(
         "purchase-completed",
         props.orderData?.id,
@@ -734,7 +736,7 @@ const resetProgress = () => {
       _amountError: false,
     },
   ];
-  invoiceSwitch.value = props.selectedCurrency !== "BS" || shouldApplySpeRules.value;
+  invoiceSwitch.value = false;
   // ELIMINAR: speSwitch.value = false;
 };
 
@@ -1744,6 +1746,7 @@ const getAvailableMethodsForCurrency = (currency) => {
           :change-amount="changeAmount"
           :change-amount-in-cop="changeAmountInCop"
           @print="handlePrintTicket"
+          @print-fiscal="(order) => emit('print-fiscal', order || orderData)"
           @cancel="handleCancelAfterTicket"
         />
       </VCardText>

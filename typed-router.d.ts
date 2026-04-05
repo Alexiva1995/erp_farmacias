@@ -49,6 +49,7 @@ declare module 'vue-router/auto-routes' {
     'finances-payslips-id': RouteRecordInfo<'finances-payslips-id', '/finances/payslips/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'finances-pending-payments': RouteRecordInfo<'finances-pending-payments', '/finances/pending-payments', Record<never, never>, Record<never, never>>,
     'finances-profitability': RouteRecordInfo<'finances-profitability', '/finances/profitability', Record<never, never>, Record<never, never>>,
+    'fiscal-control': RouteRecordInfo<'fiscal-control', '/fiscal/control', Record<never, never>, Record<never, never>>,
     'fiscal-history': RouteRecordInfo<'fiscal-history', '/fiscal/history', Record<never, never>, Record<never, never>>,
     'fiscal-retenciones': RouteRecordInfo<'fiscal-retenciones', '/fiscal/retenciones', Record<never, never>, Record<never, never>>,
     'furnitures-list': RouteRecordInfo<'furnitures-list', '/furnitures/list', Record<never, never>, Record<never, never>>,
