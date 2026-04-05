@@ -37,11 +37,13 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $filtros = $this->prepararFiltros($request);
 
-        // Si es vista grupal, usamos SIEMPRE el servicio especializado que pagina por GRUPOS
-        // Si no es vista grupal, el modo combinado usa el servicio, los otros usan el modelo directamente
-        if (($filtros["tipo_vista"] ?? false) == true) {
-            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($esVistaGrupal) {
+            // Vista grupal: devolver grupos paginados con productos anidados
+            $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
         } else {
+            // Vista individual: paginación normal
             if ($respuesta["tipo_filtracion"] == "combinado") {
                 $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
             } elseif ($respuesta["tipo_filtracion"] == "average") {

@@ -74,6 +74,82 @@ class IaAssistantReportService
     }
 
     /**
+     * Devuelve grupos paginados con sus productos anidados (para vista de acordeón)
+     */
+    public function getGroupedReportWithPaginate(array $filtros): array
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
+        if ($perPage <= 0) $perPage = 25;
+
+        // 1. Obtener todos los group_ids ordenados alfabéticamente
+        $allGroupIds = $this->getFilteredIds($filtros, true);
+        $totalGroups = count($allGroupIds);
+
+        // 2. Paginar los group_ids en memoria (ESTO sí limita a 25 grupos)
+        $offset = ($page - 1) * $perPage;
+        $currentGroupIds = array_slice($allGroupIds, $offset, $perPage);
+
+        if (empty($currentGroupIds)) {
+            return [
+                'grupos' => [],
+                'total_grupos' => $totalGroups,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => (int) ceil($totalGroups / $perPage),
+            ];
+        }
+
+        // 3. Para cada grupo de esta página, traer sus productos
+        $filtrosBase = $filtros;
+        unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
+
+        $grupos = [];
+        foreach ($currentGroupIds as $groupId) {
+            $filtrosGrupo = $filtrosBase;
+            $filtrosGrupo['groups'] = [$groupId];
+            unset($filtrosGrupo['tipo_vista']);
+
+            // Obtener productos del grupo
+            if ($tipo === 'sales') {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosGrupo);
+            } else {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosGrupo);
+            }
+
+            if ($tipo === 'combinado') {
+                $procesado = $this->processCombinedReport($resultado, $filtrosGrupo);
+            } else {
+                $procesado = $this->processRegularReport($resultado, $tipo);
+            }
+
+            $this->hydrateSalesTrend($procesado);
+
+            // Obtener nombre del grupo del primer producto
+            $nombreGrupo = '';
+            if (count($procesado) > 0 && isset($procesado[0]->group)) {
+                $nombreGrupo = $procesado[0]->group->name ?? '';
+            }
+
+            $grupos[] = [
+                'group_id' => $groupId,
+                'group_name' => $nombreGrupo,
+                'productos' => array_values((array) $procesado),
+            ];
+        }
+
+        return [
+            'grupos' => $grupos,
+            'total_grupos' => $totalGroups,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => (int) ceil($totalGroups / $perPage),
+        ];
+    }
+
+    /**
      * Obtiene y cachea los IDs (de productos o grupos) que coinciden con los filtros
      */
     private function getFilteredIds(array $filtros, bool $porGrupo = false): array
