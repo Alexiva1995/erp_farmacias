@@ -1005,7 +1005,7 @@ class ProductRepository
             "group",
             "productSuppliers" => function ($query) {
                 $query->select(
-                    'products.id',
+                    'id',
                     'product_id',
                     'supplier_id',
                     'laboratory',
@@ -1259,7 +1259,7 @@ class ProductRepository
             "group",
             "productSuppliers" => function ($query) {
                 $query->select(
-                    'products.id',
+                    'id',
                     'product_id',
                     'supplier_id',
                     'laboratory',
