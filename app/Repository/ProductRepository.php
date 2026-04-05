@@ -1437,7 +1437,8 @@ class ProductRepository
         }
 
         if ($porGrupo) {
-            return $query->whereNotNull('group_id')
+            return $query->select('products.group_id', 'groups_products.name')
+                ->whereNotNull('group_id')
                 ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
                 ->orderBy('groups_products.name', 'ASC')
                 ->distinct()
