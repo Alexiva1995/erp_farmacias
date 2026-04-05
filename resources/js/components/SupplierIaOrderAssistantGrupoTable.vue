@@ -79,7 +79,7 @@ const getChartOptions = (item, color = '#7367f0') => ({
   }
 });
 
-const getSeries = (item) => [{ name: 'Ventas', data: item.sales_trend?.length > 0 ? item.sales_trend : [0, 0, 0, 0, 0, 0] }];
+const getSeries = (item) => [{ name: 'Ventas', data: item.sales_trend?.length > 0 ? item.sales_trend : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }];
 
 // KPIs de grupo
 const grupoKpi = (productos) => {

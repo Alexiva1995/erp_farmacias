@@ -210,11 +210,11 @@ class IaAssistantReportService
         if ($items->isEmpty()) return;
 
         $productIds = $items->pluck('id')->toArray();
-        $sixMonthsAgo = now()->subMonths(5)->startOfMonth(); // 6 meses incluyendo el actual
+        $sixMonthsAgo = now()->subMonths(11)->startOfMonth(); // 12 meses incluyendo el actual
 
         // 1. Generar la estructura base de los últimos 6 meses con valores en 0
         $baseTrend = [];
-        for ($i = 0; $i < 6; $i++) {
+        for ($i = 0; $i < 12; $i++) {
             $date = $sixMonthsAgo->copy()->addMonths($i);
             $key = $date->format('Y-n'); // Ej: 2024-4
             $baseTrend[$key] = [

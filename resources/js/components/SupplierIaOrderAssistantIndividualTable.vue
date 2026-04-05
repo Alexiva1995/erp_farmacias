@@ -83,7 +83,7 @@ const getChartOptions = (item, color = '#7367f0') => ({
 const getSeries = (item) => {
   const data = (item.sales_trend && item.sales_trend.length > 0) 
     ? item.sales_trend 
-    : [0, 0, 0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   
   return [{ name: 'Ventas', data }];
 };
