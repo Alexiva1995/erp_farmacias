@@ -34,6 +34,7 @@ const hasAdvancedFilters = computed(() =>
     :show-export="true"
     add-button-text="Nueva Empresa"
     search-placeholder="Buscar por nombre, RIF o dirección..."
+    class="py-1"
     @update:search="emit('update:buscador', $event)"
     @clear="emit('clear')"
     @add="emit('add-company')"

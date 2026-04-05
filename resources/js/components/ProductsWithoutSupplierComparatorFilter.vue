@@ -62,6 +62,7 @@ const hasAdvancedFilters = computed(() => true);
     :has-advanced-filters="hasAdvancedFilters"
     :force-advanced="true"
     search-placeholder="Filtrar comparador..."
+    class="py-1"
     @clear="emit('clear')"
   >
     <!-- Slot oculto de búsqueda dado que todo son dropdowns -->

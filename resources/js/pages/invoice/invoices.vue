@@ -75,7 +75,7 @@ const fetchInvoices = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] == null || params[key] === "") && delete params[key]
+    (key) => (params[key] == null || params[key] === "") && delete params[key],
   );
 
   try {
@@ -107,7 +107,7 @@ watch(
       debounceTimer = setTimeout(() => fetchInvoices(), 300);
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 watch([searchQuery, selectedSupplier, startDate, endDate], () => {
@@ -254,7 +254,7 @@ const handleDeleteInvoice = async (id) => {
       fetchInvoices();
     } catch (error) {
       toast.error(
-        error.response?.data?.message || "No se pudo eliminar la factura."
+        error.response?.data?.message || "No se pudo eliminar la factura.",
       );
     }
   }
@@ -273,6 +273,7 @@ const handleDeleteInvoice = async (id) => {
         :loading="isLoadingFilters"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
+        class="mb-6"
       />
 
       <InvoiceTable

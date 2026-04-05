@@ -50,6 +50,7 @@ const hasAdvancedFilters = computed(() =>
     :show-export="true"
     add-button-text="Nuevo Cliente"
     search-placeholder="Buscar por nombre, ID o teléfono..."
+    class="py-1"
     @update:search="emit('update:buscador', $event)"
     @clear="emit('clear')"
     @add="emit('add-client')"

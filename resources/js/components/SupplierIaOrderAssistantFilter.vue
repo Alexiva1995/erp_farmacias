@@ -72,6 +72,7 @@ const hasAdvancedFilters = computed(() => (
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar producto..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >

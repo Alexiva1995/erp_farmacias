@@ -208,138 +208,140 @@ const clearDialogErrors = () => {
 </script>
 
 <template>
-  <div>
-    <!-- Tarjetas de Estadísticas -->
-    <VRow class="mb-6">
-      <VCol cols="12" sm="6" md="4" lg="2">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-disabled mb-1">Pendientes</div>
-              <div class="text-h5 font-weight-bold">
-                {{ stats.pending_review }}
+  <div class="productivity-supervisor-cleaning-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Filtros -->
+      <SupervisorCleaningFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedStatus="selectedStatus"
+        v-model:selectedEmployee="selectedEmployee"
+        v-model:dateFrom="dateFrom"
+        v-model:dateTo="dateTo"
+        :loading="loading"
+        @clear="handleClearFilters"
+        @sort="handleSort"
+      />
+
+      <!-- Tarjetas de Estadísticas -->
+      <VRow dense class="mb-0">
+        <VCol cols="12" sm="6" md="4" lg="2">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+            <VCardText class="pa-4 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Pendientes</div>
+                <div class="text-h5 font-weight-black">
+                  {{ stats.pending_review }}
+                </div>
               </div>
-            </div>
-            <VAvatar color="warning" variant="tonal" size="40">
-              <VIcon icon="tabler-clock" size="24" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+              <VAvatar color="warning" variant="tonal" size="40" rounded="lg">
+                <VIcon icon="tabler-clock" size="24" />
+              </VAvatar>
+            </VCardText>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" sm="6" md="4" lg="2">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-disabled mb-1">Aprobadas</div>
-              <div class="text-h5 font-weight-bold">
-                {{ stats.approved_total }}
+        <VCol cols="12" sm="6" md="4" lg="2">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+            <VCardText class="pa-4 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Aprobadas</div>
+                <div class="text-h5 font-weight-black">
+                  {{ stats.approved_total }}
+                </div>
               </div>
-            </div>
-            <VAvatar color="success" variant="tonal" size="40">
-              <VIcon icon="tabler-check" size="24" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+              <VAvatar color="success" variant="tonal" size="40" rounded="lg">
+                <VIcon icon="tabler-check" size="24" />
+              </VAvatar>
+            </VCardText>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" sm="6" md="4" lg="2">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-disabled mb-1">Rechazadas</div>
-              <div class="text-h5 font-weight-bold">
-                {{ stats.rejected_total }}
+        <VCol cols="12" sm="6" md="4" lg="2">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+            <VCardText class="pa-4 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Rechazadas</div>
+                <div class="text-h5 font-weight-black">
+                  {{ stats.rejected_total }}
+                </div>
               </div>
-            </div>
-            <VAvatar color="error" variant="tonal" size="40">
-              <VIcon icon="tabler-x" size="24" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+              <VAvatar color="error" variant="tonal" size="40" rounded="lg">
+                <VIcon icon="tabler-x" size="24" />
+              </VAvatar>
+            </VCardText>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" sm="6" md="4" lg="2">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-disabled mb-1">Vencidas</div>
-              <div class="text-h5 font-weight-bold">
-                {{ stats.overdue_total }}
+        <VCol cols="12" sm="6" md="4" lg="2">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+            <VCardText class="pa-4 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Vencidas</div>
+                <div class="text-h5 font-weight-black text-error">
+                  {{ stats.overdue_total }}
+                </div>
               </div>
-            </div>
-            <VAvatar color="error" variant="tonal" size="40">
-              <VIcon icon="tabler-alert-triangle" size="24" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+              <VAvatar color="error" variant="tonal" size="40" rounded="lg">
+                <VIcon icon="tabler-alert-triangle" size="24" />
+              </VAvatar>
+            </VCardText>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" sm="6" md="4" lg="2">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-disabled mb-1">Canceladas</div>
-              <div class="text-h5 font-weight-bold">
-                {{ stats.cancelled_total }}
+        <VCol cols="12" sm="6" md="4" lg="2">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+            <VCardText class="pa-4 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Canceladas</div>
+                <div class="text-h5 font-weight-black text-secondary">
+                  {{ stats.cancelled_total }}
+                </div>
               </div>
-            </div>
-            <VAvatar color="secondary" variant="tonal" size="40">
-              <VIcon icon="tabler-ban" size="24" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+              <VAvatar color="secondary" variant="tonal" size="40" rounded="lg">
+                <VIcon icon="tabler-ban" size="24" />
+              </VAvatar>
+            </VCardText>
+          </VCard>
+        </VCol>
 
-      <VCol cols="12" sm="6" md="4" lg="2">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-caption text-disabled mb-1">Hoy</div>
-              <div class="text-h5 font-weight-bold">
-                {{ stats.processed_today }}
+        <VCol cols="12" sm="6" md="4" lg="2">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+            <VCardText class="pa-4 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Hoy</div>
+                <div class="text-h5 font-weight-black text-info">
+                  {{ stats.processed_today }}
+                </div>
               </div>
-            </div>
-            <VAvatar color="info" variant="tonal" size="40">
-              <VIcon icon="tabler-calendar-check" size="24" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+              <VAvatar color="info" variant="tonal" size="40" rounded="lg">
+                <VIcon icon="tabler-calendar-check" size="24" />
+              </VAvatar>
+            </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
 
-    <!-- Filtros -->
-    <SupervisorCleaningFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedStatus="selectedStatus"
-      v-model:selectedEmployee="selectedEmployee"
-      v-model:dateFrom="dateFrom"
-      v-model:dateTo="dateTo"
-      :loading="loading"
-      @clear="handleClearFilters"
-      @sort="handleSort"
-    />
+      <!-- Tabla -->
+      <SupervisorCleaningTable
+        :executions="executions"
+        :loading="loading"
+        :total-records="totalRecords"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @review="handleReview"
+      />
 
-    <!-- Tabla -->
-    <SupervisorCleaningTable
-      :executions="executions"
-      :loading="loading"
-      :total-records="totalRecords"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @review="handleReview"
-    />
-
-    <!-- Modal de Revisión -->
-    <SupervisorReviewDialog
-      v-model="isReviewDialogVisible"
-      :execution="currentExecution"
-      :errors="dialogErrors"
-      @approve="handleApprove"
-      @reject="handleReject"
-      @cancel="handleCancel"
-      @clear-errors="clearDialogErrors"
-    />
+      <!-- Modal de Revisión -->
+      <SupervisorReviewDialog
+        v-model="isReviewDialogVisible"
+        :execution="currentExecution"
+        :errors="dialogErrors"
+        @approve="handleApprove"
+        @reject="handleReject"
+        @cancel="handleCancel"
+        @clear-errors="clearDialogErrors"
+      />
+    </div>
   </div>
 </template>

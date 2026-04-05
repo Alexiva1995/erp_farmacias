@@ -172,44 +172,46 @@ const clearFormErrors = () => {
 </script>
 
 <template>
-  <div :class="$vuetify.display.mobile ? 'pa-0' : 'pa-4'">
-    <GroupFilters
-      v-model:searchQuery="searchQuery"
-      v-model:isStrictSearch="isStrictSearch"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @add-group="handleAddGroup"
-    />
+  <div class="inventory-groups-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <GroupFilters
+        v-model:searchQuery="searchQuery"
+        v-model:isStrictSearch="isStrictSearch"
+        :loading="isLoadingFilters"
+        @clear="handleClearFilters"
+        @add-group="handleAddGroup"
+      />
 
-    <AddProductsToGroupDialog
-      v-model="isAddProductsDialogVisible"
-      :selected-group="currentGroup"
-    />
+      <AddProductsToGroupDialog
+        v-model="isAddProductsDialogVisible"
+        :selected-group="currentGroup"
+      />
 
-    <ShowGroupProductsDialog
-      v-model="isGroupDialogVisible"
-      :selected-group="currentGroup"
-    />
+      <ShowGroupProductsDialog
+        v-model="isGroupDialogVisible"
+        :selected-group="currentGroup"
+      />
 
-    <GroupTable
-      :groups="groups"
-      :loading="loading"
-      :total-groups="totalGroups"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @add-products="handleAddProducts"
-      @edit-group="handleEditGroup"
-      @show-group="handleShowGroup"
-      @delete-group="handleDeleteGroup"
-    />
+      <GroupTable
+        :groups="groups"
+        :loading="loading"
+        :total-groups="totalGroups"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @add-products="handleAddProducts"
+        @edit-group="handleEditGroup"
+        @show-group="handleShowGroup"
+        @delete-group="handleDeleteGroup"
+      />
 
-    <GroupEditDialog
-      v-model="isEditDialogVisible"
-      :group="currentGroup"
-      :errors="groupFormErrors"
-      @save="handleSaveGroup"
-      @clear-errors="clearFormErrors"
-    />
+      <GroupEditDialog
+        v-model="isEditDialogVisible"
+        :group="currentGroup"
+        :errors="groupFormErrors"
+        @save="handleSaveGroup"
+        @clear-errors="clearFormErrors"
+      />
+    </div>
   </div>
 </template>

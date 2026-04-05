@@ -35,6 +35,7 @@ const hasActiveAdvancedFilters = computed(() => {
 <template>
   <AppFilterBase
     :has-advanced-filters="hasActiveAdvancedFilters"
+    class="py-1"
     @clear="emit('clear')"
   >
     <!-- Laboratorio en lugar de búsqueda -->

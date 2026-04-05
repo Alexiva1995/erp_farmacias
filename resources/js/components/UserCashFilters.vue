@@ -49,6 +49,7 @@ const hasAdvancedFilters = computed(() => true); // Siempre tiene rango de fecha
     :search="filters.search"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar por ID o Cliente..."
+    class="py-1 mb-1"
     @update:search="filters.search = $event"
     @clear="clearFilters"
   >

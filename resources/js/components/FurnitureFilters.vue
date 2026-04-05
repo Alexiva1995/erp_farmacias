@@ -113,6 +113,7 @@ watch(() => currentUser.value?.id, () => {
     :show-add="props.showAddButton"
     :add-button-text="props.addButtonText"
     search-placeholder="Buscar por nombre del mobiliario..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-furniture')"

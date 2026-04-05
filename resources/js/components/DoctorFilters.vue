@@ -32,6 +32,7 @@ const hasAdvancedFilters = computed(() =>
     :show-export="true"
     add-button-text="Agregar Doctor"
     search-placeholder="Buscar por nombre, identificación o dirección..."
+    class="py-1"
     @update:search="emit('update:buscador', $event)"
     @clear="emit('clear')"
     @add="emit('add-doctor')"

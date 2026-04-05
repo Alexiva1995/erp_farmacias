@@ -691,7 +691,7 @@ const handleOpenPublicLink = (supplier) => {
 
 <template>
   <div class="product-comparator-view pb-12">
-    <div class="px-6 mt-6 d-flex flex-column gap-6">
+    <div class="d-flex flex-column gap-1 mt-1">
     <ShowSupplierProductsDialog
       v-model="isShowSupplierProductsDialogActive"
       :selectedSupplier="supplierOption"

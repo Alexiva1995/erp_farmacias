@@ -73,6 +73,7 @@ const handleBack = () => {
     :sort-options="sortOptions"
     :has-advanced-filters="hasAdvancedFilters"
     :loading="props.loading"
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="handleClear"
     @sort="handleSort"

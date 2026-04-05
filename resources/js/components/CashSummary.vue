@@ -5,49 +5,22 @@ import { computed } from "vue";
 const props = defineProps({
   cashClosureData: {
     type: Object,
-    default: () => ({
-      total_usd: "0.00",
-      total_bs:  "0.00",
-      total_cop: "0.00",
-      usd_credit: "0.00",
-      total_bs_in_usd: "0.00",
-      total_cop_in_usd: "0.00",
-    }),
+    default: () => ({}),
   },
 });
 
 const emit = defineEmits(["requestCloseCash"]);
 
 const currencies = computed(() => {
-  const data = props.cashClosureData;
-  const totalUsd    = parseFloat(data.total_usd) || 0;
-  const totalBs     = parseFloat(data.total_bs) || 0;
-  const totalBsUSD  = parseFloat(data.total_bs_in_usd) || 0;
-  const totalCop    = parseFloat(data.total_cop) || 0;
-  const totalCopUSD = parseFloat(data.total_cop_in_usd) || 0;
-
-  // Tasas de cambio implícitas para convertir abonos a USD
-  const bsToUsdRate = totalBsUSD > 0 ? totalBs / totalBsUSD : 0;
-  const copToUsdRate = totalCopUSD > 0 ? totalCop / totalCopUSD : 0;
-
-  // Total de abonos recibidos (pagos a crédito) en USD equivalente
-  const totalAbonosUSD = [
-    'usd_cash_payment_credit', 'usd_binance_payment_credit', 'usd_paypal_payment_credit',
-    'bs_cash_payment_credit', 'bs_mobile_payment_credit', 'bs_transfer_payment_credit', 'bs_card_payment_credit',
-    'cop_cash_payment_credit', 'cop_transfer_payment_credit'
-  ].reduce((sum, key) => {
-    const val = parseFloat(data[key]) || 0;
-    if (key.startsWith('usd')) return sum + val;
-    if (key.startsWith('bs')) return sum + (bsToUsdRate > 0 ? val / bsToUsdRate : 0);
-    if (key.startsWith('cop')) return sum + (copToUsdRate > 0 ? val / copToUsdRate : 0);
-    return sum;
-  }, 0);
-
+  // Aseguramos que data sea un objeto y manejamos si llega un array por error
+  const rawData = props.cashClosureData;
+  const data = (Array.isArray(rawData) ? rawData[0] : rawData) || {};
+  
   return [
     {
       label: 'Total USD',
-      amount: totalUsd,
-      amountUSD: totalUsd,
+      amount: data.total_usd || "0.00",
+      amountUSD: parseFloat(data.total_usd) || 0,
       approxUSD: null,
       currency: 'USD',
       color: 'success',
@@ -56,9 +29,9 @@ const currencies = computed(() => {
     },
     {
       label: 'Total Bs',
-      amount: totalBs,
-      amountUSD: totalBsUSD,
-      approxUSD: totalBsUSD,
+      amount: data.total_bs || "0.00",
+      amountUSD: parseFloat(data.total_bs_in_usd) || 0,
+      approxUSD: parseFloat(data.total_bs_in_usd) || 0,
       currency: 'BS',
       color: 'warning',
       icon: 'tabler-cash',
@@ -66,25 +39,15 @@ const currencies = computed(() => {
     },
     {
       label: 'Total COP',
-      amount: totalCop,
-      amountUSD: totalCopUSD,
-      approxUSD: totalCopUSD,
+      amount: data.total_cop || "0.00",
+      amountUSD: parseFloat(data.total_cop_in_usd) || 0,
+      approxUSD: parseFloat(data.total_cop_in_usd) || 0,
       currency: 'COP',
       color: 'info',
       icon: 'tabler-coin',
       barColor: '#00CFE8',
     },
-    {
-      label: 'Abonos Créd.',
-      amount: totalAbonosUSD,
-      amountUSD: totalAbonosUSD,
-      approxUSD: null,
-      currency: 'USD',
-      color: 'secondary',
-      icon: 'tabler-credit-card',
-      barColor: '#82868B',
-    },
-  ].filter(c => c.amountUSD > 0 || (c.label === 'Abonos Créd.' && totalAbonosUSD > 0));
+  ];
 });
 
 // Total en USD equivalente (para la barra)
@@ -102,25 +65,25 @@ const hasData = computed(() => grandTotal.value > 0);
 </script>
 
 <template>
-  <VCard class="rounded-lg border shadow-sm" elevation="0">
+  <VCard class="border shadow-sm rounded-lg overflow-hidden" elevation="0">
     <VCardItem class="pa-5 pb-0">
       <template #prepend>
-        <VAvatar color="primary" variant="tonal" class="rounded-lg">
-          <VIcon icon="tabler-report-money" />
+        <VAvatar color="primary" variant="tonal" size="44" class="rounded-lg shadow-sm">
+          <VIcon icon="tabler-report-money" size="24" />
         </VAvatar>
       </template>
-      <VCardTitle class="text-subtitle-1 font-weight-bold">Resumen de Caja</VCardTitle>
-      <VCardSubtitle class="text-caption">Acumulado de la jornada actual</VCardSubtitle>
+      <VCardTitle class="text-h6 font-weight-black uppercase">Resumen de Caja</VCardTitle>
+      <VCardSubtitle class="text-xs font-weight-medium text-disabled">Acumulado de la jornada actual</VCardSubtitle>
       <template #append>
-        <VBtn icon variant="text" size="small" color="default">
-          <VIcon size="22" icon="tabler-dots-vertical" />
+        <VBtn icon variant="tonal" size="small" color="primary" class="rounded-lg shadow-sm">
+          <VIcon size="20" icon="tabler-dots-vertical" />
           <VMenu activator="parent">
-            <VList density="compact">
+            <VList density="compact" class="rounded-lg">
               <VListItem value="closed_cash" @click="emit('requestCloseCash')">
                 <template #prepend>
-                  <VIcon icon="tabler-lock" size="16" class="mr-2" />
+                  <VIcon icon="tabler-lock" size="18" class="mr-2" />
                 </template>
-                <VListItemTitle class="text-body-2">Cerrar Caja</VListItemTitle>
+                <VListItemTitle class="text-xs font-weight-bold uppercase">Cerrar Caja</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
@@ -129,77 +92,82 @@ const hasData = computed(() => grandTotal.value > 0);
     </VCardItem>
 
     <VCardText class="pa-5">
-      <!-- Barra multimoneda -->
-      <div class="currency-bar mb-5 rounded-lg overflow-hidden" style=" display: flex;block-size: 48px;">
-        <template v-if="hasData">
-          <div
-            v-for="item in barItems"
-            :key="item.label"
-            :style="{ width: item.pct + '%', backgroundColor: item.barColor }"
-            class="d-flex align-center justify-center"
-          >
-            <span v-if="item.pct > 8" class="text-xs font-weight-bold text-white" style="font-size: 11px; white-space: nowrap;">
-              {{ item.pct.toFixed(0) }}% {{ item.label.replace('Total ', '') }}
-            </span>
-          </div>
-        </template>
-        <template v-else>
-          <div class="w-100 d-flex align-center justify-center bg-grey-lighten-2 rounded-lg">
-            <span class="text-caption text-medium-emphasis">Sin ventas registradas</span>
-          </div>
-        </template>
+      <!-- Barra multimoneda Premium -->
+      <div class="currency-bar-container mb-6">
+        <div class="currency-bar rounded-lg shadow-inner overflow-hidden d-flex">
+          <template v-if="hasData">
+            <div
+              v-for="item in barItems"
+              :key="item.label"
+              :style="{ width: item.pct + '%', backgroundColor: item.barColor }"
+              class="d-flex align-center justify-center transition-all h-100"
+            >
+              <VTooltip location="top" :text="`${item.label}: ${item.pct.toFixed(1)}%`">
+                <template #activator="{ props: tooltip }">
+                  <span v-bind="tooltip" v-if="item.pct > 5" class="text-super-xs font-weight-black text-white px-2">
+                    {{ item.pct.toFixed(0) }}%
+                  </span>
+                </template>
+              </VTooltip>
+            </div>
+          </template>
+          <template v-else>
+            <div class="w-100 d-flex align-center justify-center bg-surface-variant-opacity-2 py-2">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Sin movimientos</span>
+            </div>
+          </template>
+        </div>
       </div>
 
-      <!-- Tarjetas por moneda -->
-      <VRow dense>
+      <!-- Tarjetas por moneda Premium -->
+      <VRow class="ma-0 mx-n1">
         <VCol
           v-for="item in currencies"
           :key="item.label"
-          cols="12" sm="6"
+          cols="12" sm="6" md="4"
+          class="pa-1"
         >
-          <VCard variant="outlined" class="rounded-lg" :class="`border-${item.color}`">
-            <VCardText class="pa-3">
-              <div class="d-flex align-center justify-space-between mb-1">
+          <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative">
+            <div class="card-bg-decoration" :class="`bg-${item.color}-opacity-1`"></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center justify-space-between mb-3">
                 <div class="d-flex align-center gap-2">
-                  <VIcon :icon="item.icon" :color="item.color" size="18" />
-                  <span class="text-caption font-weight-bold text-medium-emphasis">{{ item.label }}</span>
+                  <VAvatar :color="item.color" variant="tonal" size="32" class="rounded-lg">
+                    <VIcon :icon="item.icon" size="16" />
+                  </VAvatar>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.label }}</span>
                 </div>
-                <VChip :color="item.color" size="x-small" variant="tonal" label>
+                <VChip :color="item.color" size="x-small" variant="flat" class="font-weight-black rounded-lg px-2">
                   {{ item.currency }}
                 </VChip>
               </div>
-              <div class="text-h6 font-weight-bold" :class="`text-${item.color}`">
+              <div class="text-h6 font-weight-black leading-tight" :class="`text-${item.color}`">
                 {{ formatCurrency(item.amount, item.currency) }}
               </div>
-              <div v-if="item.approxUSD !== null" class="text-caption text-medium-emphasis mt-1">
+              <div v-if="item.approxUSD !== null" class="text-super-xs font-weight-bold text-disabled mt-auto pt-1">
                 ≈ {{ formatCurrency(item.approxUSD, 'USD') }}
               </div>
             </VCardText>
+            <div class="accent-border" :class="`bg-${item.color}`"></div>
           </VCard>
         </VCol>
       </VRow>
 
-      <!-- Total General -->
-      <VCard v-if="hasData" variant="flat" color="primary" class="mt-4 rounded-lg">
-        <VCardText class="pa-3 d-flex align-center justify-space-between">
-          <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-sum" color="white" size="18" />
-            <span class="text-caption font-weight-bold text-white opacity-80">VENTA BRUTA (≈ USD)</span>
+      <!-- Total General Master -->
+      <VCard v-if="hasData" class="mt-6 border-0 overflow-hidden shadow-sm position-relative bg-primary-gradient stats-card no-hover">
+        <VCardText class="pa-4 d-flex align-center justify-space-between relative-content">
+          <div class="d-flex align-center gap-3">
+            <VAvatar color="white" variant="tonal" size="38" class="rounded-lg shadow-sm">
+              <VIcon icon="tabler-sum" color="white" size="20" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-white opacity-80 uppercase">Venta Bruta Consolidada</span>
+              <span class="text-caption text-white font-weight-medium uppercase">Total aproximado en dólares</span>
+            </div>
           </div>
-          <span class="text-h6 font-weight-bold text-white">
+          <span class="text-h4 font-weight-black text-white leading-tight">
             {{ formatCurrency(grandTotal, 'USD') }}
           </span>
-        </VCardText>
-      </VCard>
-
-      <!-- Estado vacío -->
-      <VCard v-else variant="tonal" color="secondary" class="mt-2 rounded-lg">
-        <VCardText class="pa-4 d-flex align-center gap-3">
-          <VIcon icon="tabler-shopping-cart-off" size="28" color="secondary" />
-          <div>
-            <div class="text-body-2 font-weight-bold">Sin ventas en esta jornada</div>
-            <div class="text-caption text-medium-emphasis">Registra órdenes para ver el resumen</div>
-          </div>
         </VCardText>
       </VCard>
     </VCardText>
@@ -207,11 +175,79 @@ const hasData = computed(() => grandTotal.value > 0);
 </template>
 
 <style scoped>
-.currency-bar > div {
-  transition: inline-size 0.4s ease;
+.stats-card {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 90%) !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.border-success { border-color: #28c76f !important; }
-.border-warning { border-color: #ff9f43 !important; }
-.border-info { border-color: #00cfe8 !important; }
-.border-secondary { border-color: #82868b !important; }
+
+.stats-card:not(.no-hover):hover {
+  transform: translateY(-4px);
+  background: rgba(var(--v-theme-surface), 98%) !important;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 60px;
+  filter: blur(35px);
+  inline-size: 60px;
+  inset-block-start: -10px;
+  inset-inline-end: -10px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  opacity: 0.7;
+}
+
+.currency-bar {
+  block-size: 12px;
+  background: rgba(var(--v-border-color), 0.05);
+}
+
+.transition-all {
+  transition: all 0.4s ease;
+}
+
+.bg-primary-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #9575cd 100%) !important;
+}
+
+.bg-success-opacity-1 { background: rgba(var(--v-theme-success), 0.1); }
+.bg-warning-opacity-1 { background: rgba(var(--v-theme-warning), 0.1); }
+.bg-info-opacity-1 { background: rgba(var(--v-theme-info), 0.1); }
+.bg-secondary-opacity-1 { background: rgba(var(--v-theme-secondary), 0.1); }
+
+.bg-surface-variant-opacity-2 {
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+.text-super-xs {
+  font-size: 0.625rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: normal;
+}
+
+.leading-tight {
+  line-height: 1.2 !important;
+}
+
+.shadow-inner {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06) !important;
+}
 </style>

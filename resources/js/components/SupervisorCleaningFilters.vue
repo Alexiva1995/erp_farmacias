@@ -81,6 +81,7 @@ import { computed } from "vue";
     :show-sort="true"
     :sort-options="sortOptions"
     search-placeholder="Buscar empleado o actividad..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"

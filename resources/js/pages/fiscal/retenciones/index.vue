@@ -154,74 +154,77 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="mobile ? 'pa-0' : 'pa-4'">
-    <!-- Filtros Premium Colapsables -->
-    <RetentionFilters
-      v-model:search="search"
-      v-model:supplier-id="supplierId"
-      v-model:start-date="startDate"
-      v-model:end-date="endDate"
-      :suppliers="suppliers"
-      :loading="loading"
-      :selected-count="selected.length"
-      :current-tab="currentTab"
-      @clear="clearFilters"
-      @bulk-generate="handleBulkGenerate"
-    />
+  <div class="retenciones-index-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Filtros Premium Colapsables -->
+      <RetentionFilters
+        v-model:search="search"
+        v-model:supplier-id="supplierId"
+        v-model:start-date="startDate"
+        v-model:end-date="endDate"
+        :suppliers="suppliers"
+        :loading="loading"
+        :selected-count="selected.length"
+        :current-tab="currentTab"
+        @clear="clearFilters"
+        @bulk-generate="handleBulkGenerate"
+        class="mb-0"
+      />
 
-    <!-- Gestión de Retenciones con Pestañas -->
-    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
-      <VCardTitle class="pa-4 px-6 d-flex align-center">
-        <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
-          <VIcon icon="tabler-file-analytics" size="18" />
-        </VAvatar>
-        <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
-        <VSpacer />
-        <VBtn
-          v-if="selected.length > 0 && currentTab === 'pending'"
-          color="success"
-          variant="flat"
-          class="rounded-lg text-xs font-weight-black px-4 shadow-sm"
-          @click="handleBulkGenerate"
-        >
-          <VIcon start icon="tabler-check" size="18" />
-          GENERAR {{ selected.length }} RETENCIONES
-        </VBtn>
-      </VCardTitle>
+      <!-- Gestión de Retenciones con Pestañas -->
+      <VCard class="ma-0 rounded-lg border shadow-sm overflow-hidden bg-surface">
+        <VCardTitle class="pa-4 px-6 d-flex align-center">
+          <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
+            <VIcon icon="tabler-file-analytics" size="18" />
+          </VAvatar>
+          <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
+          <VSpacer />
+          <VBtn
+            v-if="selected.length > 0 && currentTab === 'pending'"
+            color="success"
+            variant="flat"
+            class="rounded-lg text-xs font-weight-black px-4 shadow-sm"
+            @click="handleBulkGenerate"
+          >
+            <VIcon start icon="tabler-check" size="18" />
+            GENERAR {{ selected.length }} RETENCIONES
+          </VBtn>
+        </VCardTitle>
 
-      <VTabs v-model="currentTab" color="primary" grow class="premium-tabs bg-surface-variant-opacity-2">
-        <VTab value="pending" class="text-xs font-weight-black py-4">
-          <VIcon start icon="tabler-clock-pause" size="18" />
-          FACTURAS PENDIENTES
-          <VChip v-if="currentTab === 'pending'" size="x-small" color="primary" class="ms-2 font-weight-black">
-            {{ totalRecords }}
-          </VChip>
-        </VTab>
-        <VTab value="generated" class="text-xs font-weight-black py-4">
-          <VIcon start icon="tabler-checkbox" size="18" />
-          COMPROBANTES GENERADOS
-          <VChip v-if="currentTab === 'generated'" size="x-small" color="success" class="ms-2 font-weight-black">
-            {{ totalRecords }}
-          </VChip>
-        </VTab>
-      </VTabs>
+        <VTabs v-model="currentTab" color="primary" grow class="premium-tabs bg-surface-variant-opacity-2">
+          <VTab value="pending" class="text-xs font-weight-black py-4">
+            <VIcon start icon="tabler-clock-pause" size="18" />
+            FACTURAS PENDIENTES
+            <VChip v-if="currentTab === 'pending'" size="x-small" color="primary" class="ms-2 font-weight-black">
+              {{ totalRecords }}
+            </VChip>
+          </VTab>
+          <VTab value="generated" class="text-xs font-weight-black py-4">
+            <VIcon start icon="tabler-checkbox" size="18" />
+            COMPROBANTES GENERADOS
+            <VChip v-if="currentTab === 'generated'" size="x-small" color="success" class="ms-2 font-weight-black">
+              {{ totalRecords }}
+            </VChip>
+          </VTab>
+        </VTabs>
 
-      <VDivider class="opacity-10" />
+        <VDivider class="opacity-10" />
 
-      <VCardText class="pa-0">
-        <RetentionTable
-          v-model:selected="selected"
-          :invoices="invoices"
-          :loading="loading"
-          :total-records="totalRecords"
-          :page="page"
-          :items-per-page="itemsPerPage"
-          :current-tab="currentTab"
-          @update:options="handleTableUpdate"
-          @download-pdf="downloadPdf"
-        />
-      </VCardText>
-    </VCard>
+        <VCardText class="pa-0">
+          <RetentionTable
+            v-model:selected="selected"
+            :invoices="invoices"
+            :loading="loading"
+            :total-records="totalRecords"
+            :page="page"
+            :items-per-page="itemsPerPage"
+            :current-tab="currentTab"
+            @update:options="handleTableUpdate"
+            @download-pdf="downloadPdf"
+          />
+        </VCardText>
+      </VCard>
+    </div>
   </div>
 </template>
 

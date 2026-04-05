@@ -38,6 +38,7 @@ const handleSearchOrder = () => {
     :search="identificationInput"
     :show-advanced="false"
     search-placeholder="Buscar por cliente o n° orden..."
+    class="py-1"
     @update:search="updateIdentification"
     @clear="emit('clear-search')"
   >

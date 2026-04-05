@@ -85,7 +85,7 @@ const groupedByDay = computed(() => {
     </div>
 
     <div v-else-if="groupedByDay.length > 0">
-      <div v-for="group in groupedByDay" :key="group.date" class="mb-10">
+      <div v-for="group in groupedByDay" :key="group.date" class="mb-7">
         <!-- Encabezado del día Premium -->
         <VCard class="rounded-lg border shadow-sm mb-4 overflow-hidden">
           <div
@@ -403,7 +403,10 @@ const groupedByDay = computed(() => {
 
 .premium-table :deep(th) {
   background: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-high-emphasis-opacity)
+  ) !important;
   block-size: 48px !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;

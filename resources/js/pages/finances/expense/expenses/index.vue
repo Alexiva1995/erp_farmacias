@@ -1,10 +1,10 @@
 <script setup lang="js">
-import ExpenseFormDialoge from '@/components/dialogs/ExpenseFormDialoge.vue';
-import ExpenseTable from '@/components/ExpenseTable.vue';
-import FiltrosGastos from '@/components/FiltrosGastos.vue';
-import LoaderComponent from '@/components/LoaderComponent.vue';
-import { useExpenses } from '@/composables/useExpenses';
-import { onMounted } from 'vue';
+import ExpenseFormDialoge from "@/components/dialogs/ExpenseFormDialoge.vue";
+import ExpenseTable from "@/components/ExpenseTable.vue";
+import FiltrosGastos from "@/components/FiltrosGastos.vue";
+import LoaderComponent from "@/components/LoaderComponent.vue";
+import { useExpenses } from "@/composables/useExpenses";
+import { onMounted } from "vue";
 
 const {
   isDeductible,
@@ -31,7 +31,7 @@ const {
   exportarExcel,
   enviar,
   cambiarEstadoGasto,
-  initialize
+  initialize,
 } = useExpenses();
 
 onMounted(() => {
@@ -39,16 +39,58 @@ onMounted(() => {
 });
 
 const tabItems = [
-  { label: 'Todos',      value: null,        color: 'primary',  icon: 'tabler-list',          totalKey: 'total' },
-  { label: 'Pendientes', value: 'Pending',   color: 'warning',  icon: 'tabler-clock',         totalKey: 'totalPending' },
-  { label: 'Aprobados',  value: 'Approved',  color: 'success',  icon: 'tabler-circle-check',   totalKey: 'totalApproved' },
-  { label: 'Cancelados', value: 'Cancelled', color: 'error',    icon: 'tabler-circle-x',       totalKey: 'totalCancelled' },
+  {
+    label: "Todos",
+    value: null,
+    color: "primary",
+    icon: "tabler-list",
+    totalKey: "total",
+  },
+  {
+    label: "Pendientes",
+    value: "Pending",
+    color: "warning",
+    icon: "tabler-clock",
+    totalKey: "totalPending",
+  },
+  {
+    label: "Aprobados",
+    value: "Approved",
+    color: "success",
+    icon: "tabler-circle-check",
+    totalKey: "totalApproved",
+  },
+  {
+    label: "Cancelados",
+    value: "Cancelled",
+    color: "error",
+    icon: "tabler-circle-x",
+    totalKey: "totalCancelled",
+  },
 ];
 
 const kpis = [
-  { title: 'Aprobados',  key: 'totalApproved',  color: 'success', icon: 'tabler-circle-check', gradient: 'bg-gradient-success' },
-  { title: 'Pendientes', key: 'totalPending',   color: 'warning', icon: 'tabler-clock',        gradient: 'bg-gradient-warning' },
-  { title: 'Cancelados', key: 'totalCancelled', color: 'error',   icon: 'tabler-circle-x',      gradient: 'bg-gradient-error' },
+  {
+    title: "Aprobados",
+    key: "totalApproved",
+    color: "success",
+    icon: "tabler-circle-check",
+    gradient: "bg-gradient-success",
+  },
+  {
+    title: "Pendientes",
+    key: "totalPending",
+    color: "warning",
+    icon: "tabler-clock",
+    gradient: "bg-gradient-warning",
+  },
+  {
+    title: "Cancelados",
+    key: "totalCancelled",
+    color: "error",
+    icon: "tabler-circle-x",
+    gradient: "bg-gradient-error",
+  },
 ];
 </script>
 
@@ -56,87 +98,78 @@ const kpis = [
   <div class="expenses-view pb-12">
     <LoaderComponent :loadingApp="statuModule.loadingApp" />
 
-    <!-- === HEADER Y KPIS === -->
-    <div class="px-6 mt-6">
-      <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
-        <div class="header-bg pa-6">
-          <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-            <div class="d-flex align-center gap-4">
-              <VAvatar
-                size="54"
-                color="white"
-                variant="flat"
-                class="rounded-lg shadow-soft"
-              >
-                <VIcon icon="tabler-receipt" color="primary" size="28" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-                  Gestión de Gastos
-                </h1>
-                <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-                  Control Detallado de Egresos Operativos
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- === FILTROS === -->
+      <div>
+        <FiltrosGastos
+          v-model:currency="currency"
+          v-model:buscardor_filtro="buscardor_filtro"
+          v-model:category_id_filtro="category_id_filtro"
+          v-model:fechaDesde_filtro="fechaDesde_filtro"
+          v-model:fechaHasta_filtro="fechaHasta_filtro"
+          v-model:isDeductible="isDeductible"
+          :categorias="statuModule.categorias"
+          :loading="isLoadingFilters"
+          :show-add-button="true"
+          class="mb-5"
+          @export-excel="exportarExcel"
+          @export-pdf="generaPdf"
+          @clear="limpliarFiltros"
+          @add="mostarModal"
+        />
+      </div>
+
+      <!-- === KPIS RÁPIDOS === -->
+      <VRow class="ma-0 mx-n1 mb-5" dense>
+        <VCol v-for="kpi in kpis" :key="kpi.key" cols="12" sm="4" class="pa-1">
+          <VCard
+            class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"
+          >
+            <div
+              class="card-bg-decoration"
+              :class="`bg-${kpi.color}-opacity-1`"
+            ></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center gap-3 mb-3">
+                <VAvatar
+                  :color="kpi.color"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg"
+                >
+                  <VIcon :icon="kpi.icon" size="20" />
+                </VAvatar>
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-widest"
+                >
+                  {{ kpi.title }}
                 </span>
               </div>
-            </div>
-          </div>
-
-          <!-- KPIs Rápidos -->
-          <VRow class="mt-8">
-            <VCol
-              v-for="kpi in kpis"
-              :key="kpi.key"
-              cols="12"
-              sm="4"
-            >
-              <VCard
-                variant="flat"
-                class="rounded-lg border shadow-sm overflow-hidden kpi-card bg-white"
-              >
-                <div class="d-flex align-center pa-4">
-                  <VAvatar
-                    size="48"
-                    :color="kpi.color"
-                    variant="tonal"
-                    class="rounded-lg me-4"
-                  >
-                    <VIcon :icon="kpi.icon" size="24" />
-                  </VAvatar>
-                  <div class="d-flex flex-column">
-                    <span class="text-xs font-weight-black text-disabled uppercase letter-spacing-widest">{{ kpi.title }}</span>
-                    <span class="text-h5 font-weight-black leading-tight">
-                      {{ stats[kpi.key] || 0 }}
-                      <span class="text-xs text-disabled">Items</span>
-                    </span>
-                  </div>
-                </div>
-              </VCard>
-            </VCol>
-          </VRow>
-        </div>
-      </VCard>
-    </div>
-
-    <!-- === FILTROS === -->
-    <div class="px-6">
-      <FiltrosGastos
-        v-model:currency="currency"
-        v-model:buscardor_filtro="buscardor_filtro"
-        v-model:category_id_filtro="category_id_filtro"
-        v-model:fechaDesde_filtro="fechaDesde_filtro"
-        v-model:fechaHasta_filtro="fechaHasta_filtro"
-        v-model:isDeductible="isDeductible"
-        :categorias="statuModule.categorias"
-        :loading="isLoadingFilters"
-        :show-add-button="true"
-        @export-excel="exportarExcel"
-        @export-pdf="generaPdf"
-        @clear="limpliarFiltros"
-        @add="mostarModal"
-      />
+              <div class="mt-auto">
+                <span
+                  :class="[
+                    'text-h4 font-weight-black leading-none',
+                    `text-${kpi.color}`,
+                  ]"
+                >
+                  {{ stats[kpi.key] || 0 }}
+                </span>
+                <span
+                  class="text-xs text-disabled ml-1 font-weight-black uppercase"
+                  >Items</span
+                >
+              </div>
+            </VCardText>
+            <div class="accent-border" :class="`bg-${kpi.color}`"></div>
+          </VCard>
+        </VCol>
+      </VRow>
 
       <!-- === TABLA CON TABS === -->
-      <VCard variant="flat" class="rounded-lg border shadow-sm bg-surface overflow-hidden">
+      <VCard
+        variant="flat"
+        class="rounded-lg border shadow-sm bg-surface overflow-hidden"
+      >
         <!-- Tabs de estado -->
         <VTabs
           v-model="activeTab"
@@ -160,7 +193,13 @@ const kpis = [
               :color="tab.color"
               class="ms-2 font-weight-black"
             >
-              {{ tab.value === null ? (stats.totalApproved + stats.totalPending + stats.totalCancelled) : stats[tab.totalKey] }}
+              {{
+                tab.value === null
+                  ? stats.totalApproved +
+                    stats.totalPending +
+                    stats.totalCancelled
+                  : stats[tab.totalKey]
+              }}
             </VChip>
           </VTab>
         </VTabs>
@@ -200,26 +239,66 @@ const kpis = [
   min-block-size: 100vh;
 }
 
-.header-bg {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #4a90e2 100%);
-  border-block-end: 1px solid rgba(255, 255, 255, 10%);
+.stats-card {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 90%) !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.letter-spacing-tight { letter-spacing: -0.02em; }
-.letter-spacing-widest { letter-spacing: 0.1em !important; }
-
-.shadow-soft { box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important; }
-
-.kpi-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.kpi-card:hover {
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 10%) !important;
+.stats-card:not(.no-hover):hover {
   transform: translateY(-4px);
+  background: rgba(var(--v-theme-surface), 98%) !important;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.15) !important;
 }
 
-.leading-tight { line-height: 1.2; }
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 60px;
+  filter: blur(35px);
+  inline-size: 60px;
+  inset-block-start: -10px;
+  inset-inline-end: -10px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  opacity: 0.7;
+}
+
+.bg-success-opacity-1 {
+  background: rgba(var(--v-theme-success), 0.1);
+}
+.bg-warning-opacity-1 {
+  background: rgba(var(--v-theme-warning), 0.1);
+}
+.bg-error-opacity-1 {
+  background: rgba(var(--v-theme-error), 0.1);
+}
+
+.letter-spacing-widest {
+  letter-spacing: 0.1em !important;
+}
+.text-super-xs {
+  font-size: 0.65rem !important;
+}
+
+.shadow-soft {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
+}
 
 :deep(.v-tabs) {
   border-block-end: 1px solid rgba(var(--v-border-color), 0.1);

@@ -97,7 +97,7 @@ const fetchDailyCashData = async () => {
     orderBy: orderByDailyCash.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
   try {
     const response = await axios.get("/finances/cash-closure/dailyCash", {
@@ -122,7 +122,7 @@ const fetchMonthlyCashData = async () => {
     orderBy: orderByMonthlyCash.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
   try {
     const response = await axios.get("/finances/cash-closure/monthlyCash", {
@@ -154,7 +154,7 @@ const fetchSellerCashData = async () => {
     orderBy: orderBySellerCash.value,
   };
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
+    (key) => (params[key] === null || params[key] === "") && delete params[key],
   );
   try {
     const response = await axios.get("/finances/cash-closure/sellerCash", {
@@ -165,7 +165,7 @@ const fetchSellerCashData = async () => {
   } catch (error) {
     console.error(
       "Hubo un error al obtener los cierres de los vendedor:",
-      error
+      error,
     );
     toast.error("Error al obtener los cierres de los vendedor.");
   } finally {
@@ -189,7 +189,7 @@ watch(
       fetchDailyCashData();
     }, 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 let debounceTimerMonthly;
@@ -206,7 +206,7 @@ watch(
       fetchMonthlyCashData();
     }, 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 let debounceTimerSellerCashData;
@@ -226,7 +226,7 @@ watch(
       fetchSellerCashData();
     }, 300);
   },
-  { deep: true }
+  { deep: true },
 );
 
 const updateTableOptionsDailyCash = (options) => {
@@ -283,7 +283,7 @@ const viewMonthlyCash = async (cash) => {
     };
     const response = await axios.get(
       "/finances/cash-closure/monthlyCashclosing",
-      { params }
+      { params },
     );
     monthlyCashData.value = response.data.data;
     viewModal.value = true;
@@ -373,7 +373,7 @@ const downloadcash = async (cash) => {
       },
       {
         responseType: "blob",
-      }
+      },
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
@@ -410,7 +410,7 @@ const printCash = async (cash) => {
 
     const printWindow = window.open("", "", "height=600,width=800");
     printWindow.document.write(
-      "<html><head><title>Farmacia Barrio Sucre</title>"
+      "<html><head><title>Farmacia Barrio Sucre</title>",
     );
     const styleSheets = document.styleSheets;
     for (let i = 0; i < styleSheets.length; i++) {
@@ -424,14 +424,14 @@ const printCash = async (cash) => {
           printWindow.document.write(`<style>${cssText}</style>`);
         } else if (sheet.href) {
           printWindow.document.write(
-            `<link rel="stylesheet" href="${sheet.href}">`
+            `<link rel="stylesheet" href="${sheet.href}">`,
           );
         }
       } catch (e) {
         console.warn(
           "No se pudo acceder a la hoja de estilo:",
           sheet.href || sheet,
-          e
+          e,
         );
       }
     }
@@ -495,23 +495,23 @@ const referenceDaily = async (daily) => {
       // Procesar todas las órdenes que tengan pagos, independientemente de su estado para asegurar visibilidad
       return (closing.orders || []).flatMap((order) => {
         let paymentMethods = order.payment_methods;
-        
+
         // Manejar caso donde paymentMethods sea un string JSON
-        if (typeof paymentMethods === 'string') {
+        if (typeof paymentMethods === "string") {
           try {
             paymentMethods = JSON.parse(paymentMethods);
           } catch (e) {
             paymentMethods = [];
           }
         }
-        
+
         // Asegurar que sea un array
         if (!Array.isArray(paymentMethods)) {
           paymentMethods = paymentMethods ? [paymentMethods] : [];
         }
 
         if (paymentMethods.length === 0) return [];
-        
+
         // Filtrar solo métodos que tengan una referencia válida
         const methodsWithReference = paymentMethods.filter(
           (method) =>
@@ -519,22 +519,22 @@ const referenceDaily = async (daily) => {
             method.reference !== undefined &&
             method.reference !== null &&
             String(method.reference).trim() !== "" &&
-            String(method.reference).toLowerCase() !== "null"
+            String(method.reference).toLowerCase() !== "null",
         );
 
         return methodsWithReference.map((method) => ({
           ...method,
           order_id: order.id,
           order_currency: order.currency,
-          seller_name: closing.seller?.username || 'N/A',
-          is_confirmed: method.is_confirmed || false
+          seller_name: closing.seller?.username || "N/A",
+          is_confirmed: method.is_confirmed || false,
         }));
       });
     });
 
     const references = allPaymentReferences;
     viewModalReference.value = true;
-    
+
     // Usar nextTick para asegurar que el componente esté montado antes de pasarle datos complejos
     await nextTick();
     referenceData.value = references;
@@ -557,7 +557,7 @@ const deliveryDaily = async (daily) => {
   } catch (error) {
     console.error(
       "Error al obtener las tipos de entrega del cierre diario:",
-      error
+      error,
     );
     toast.error("Error al obtener las tipos de entrega  del cierre diario.");
   }
@@ -571,7 +571,7 @@ const closingCashAllSellers = async (cash) => {
 
     const responseData = await axios.get(
       "/finances/cash-closure/monthlyCashclosingAllSellers",
-      { params: paramsData }
+      { params: paramsData },
     );
     monthlyCashDataSellers.value = responseData.data.data;
 
@@ -594,7 +594,7 @@ const closingCashAllSellers = async (cash) => {
       params,
       {
         responseType: "blob",
-      }
+      },
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
@@ -609,7 +609,7 @@ const closingCashAllSellers = async (cash) => {
   } catch (error) {
     console.error(
       "Error al obtener los detalles del cierre por vendedor:",
-      error
+      error,
     );
     toast.error("Error al obtener los detalles del cierre por vendedor.");
   } finally {
@@ -624,11 +624,11 @@ const dailyCashModalRef = ref(null);
 const closingDaily = async (daily) => {
   try {
     dailyCashData.value = daily;
-    
+
     // Abrimos los modales internamente y disparamos la impresión
     // Nota: Necesitaremos exponer las funciones de impresión en los componentes hijos
     toast.info("Generando reportes de Cierre y Acta...");
-    
+
     viewModalDaily.value = true;
     viewModalDelivery.value = true;
 
@@ -641,7 +641,6 @@ const closingDaily = async (daily) => {
         await deliveryModalRef.value.printReport();
       }
     }, 500);
-
   } catch (error) {
     console.error("Error al procesar la impresión dual:", error);
     toast.error("Error al generar los reportes.");
@@ -649,67 +648,71 @@ const closingDaily = async (daily) => {
 };
 </script>
 <template>
-  <div :class="mobile ? 'pa-0 pb-16' : 'pa-4'">
-    <CashAverage
-      :average-amount="summaryData.current_month_average"
-      :last-month-average="summaryData.last_month_average"
-      :percentage-change="summaryData.percentage_change"
-      :is-positive="summaryData.is_positive"
-    />
-    
-    <div class="mb-6"></div>
+  <div class="cash-closure-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <CashAverage
+        :average-amount="summaryData.current_month_average"
+        :last-month-average="summaryData.last_month_average"
+        :percentage-change="summaryData.percentage_change"
+        :is-positive="summaryData.is_positive"
+        class="mb-6"
+      />
 
-    <SellerCashFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:startDate="startDateFilter"
-      v-model:endDate="endDateFilter"
-      :loading="loadingSellerCash || loadingDailyCash || loadingMonthlyCash"
-      :showDateFilters="true"
-      :showStateFilters="true"
-      @clear="handleClearFilters"
-      @refresh="onMounted(() => { fetchSummaryData(); fetchDailyCashData(); fetchMonthlyCashData(); fetchSellerCashData(); })"
-    />
+      <SellerCashFilters
+        v-model:searchQuery="filterSearchQuery"
+        v-model:startDate="startDateFilter"
+        v-model:endDate="endDateFilter"
+        :loading="loadingSellerCash || loadingDailyCash || loadingMonthlyCash"
+        :showDateFilters="true"
+        :showStateFilters="true"
+        @clear="handleClearFilters"
+        @refresh="
+          onMounted(() => {
+            fetchSummaryData();
+            fetchDailyCashData();
+            fetchMonthlyCashData();
+            fetchSellerCashData();
+          })
+        "
+      />
 
-    <div class="mb-4"></div>
+      <SellerBoxTable
+        :sellerCash="sellerCash"
+        :loading="loadingSellerCash"
+        :total-sellerCash="totalSellerCash"
+        :items-per-page="itemsPerPageSellerCash"
+        :page="pageSellerCash"
+        @update:options="updateTableOptionsSellerCash"
+        @print-cash="printCash"
+        @download-cash="downloadcash"
+        class="mb-6"
+      />
 
-    <SellerBoxTable
-      :sellerCash="sellerCash"
-      :loading="loadingSellerCash"
-      :total-sellerCash="totalSellerCash"
-      :items-per-page="itemsPerPageSellerCash"
-      :page="pageSellerCash"
-      @update:options="updateTableOptionsSellerCash"
-      @print-cash="printCash"
-      @download-cash="downloadcash"
-    />
+      <DailyCashClosingTable
+        :dailyCash="dailyCash"
+        :loading="loadingDailyCash"
+        :total-dailyCash="totalDailyCash"
+        :items-per-page="itemsPerPageDailyCash"
+        :page="pageDailyCash"
+        :loading-id="loadingRefId"
+        @update:options="updateTableOptionsDailyCash"
+        @view-cash="viewDailyCash"
+        @delivery="deliveryDaily"
+        @reference="referenceDaily"
+        @closing-daily="closingDaily"
+        class="mb-2"
+      />
 
-    <div class="mb-6"></div>
-
-    <DailyCashClosingTable
-      :dailyCash="dailyCash"
-      :loading="loadingDailyCash"
-      :total-dailyCash="totalDailyCash"
-      :items-per-page="itemsPerPageDailyCash"
-      :page="pageDailyCash"
-      :loading-id="loadingRefId"
-      @update:options="updateTableOptionsDailyCash"
-      @view-cash="viewDailyCash"
-      @delivery="deliveryDaily"
-      @reference="referenceDaily"
-      @closing-daily="closingDaily"
-    />
-
-    <div class="mb-6"></div>
-
-    <MonthlyCashClosingTable
-      :monthlyCash="monthlyCash"
-      :loading="loadingMonthlyCash"
-      :total-monthlyCash="totalMonthlyCash"
-      :items-per-page="itemsPerPageMonthlyCash"
-      :page="pageMonthlyCash"
-      @update:options="updateTableOptionsMonthlyCash"
-      @view-cash="viewMonthlyCash"
-    />
+      <MonthlyCashClosingTable
+        :monthlyCash="monthlyCash"
+        :loading="loadingMonthlyCash"
+        :total-monthlyCash="totalMonthlyCash"
+        :items-per-page="itemsPerPageMonthlyCash"
+        :page="pageMonthlyCash"
+        @update:options="updateTableOptionsMonthlyCash"
+        @view-cash="viewMonthlyCash"
+      />
+    </div>
 
     <!-- Modales -->
     <MonthlyCashModal

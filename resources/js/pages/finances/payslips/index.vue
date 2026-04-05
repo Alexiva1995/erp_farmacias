@@ -40,9 +40,12 @@ const fetchPayslips = async () => {
   }
 };
 
-watch([page, itemsPerPage, searchQuery, startDate, endDate, selectedStatus], () => {
-  fetchPayslips();
-});
+watch(
+  [page, itemsPerPage, searchQuery, startDate, endDate, selectedStatus],
+  () => {
+    fetchPayslips();
+  },
+);
 
 const handleClearFilters = () => {
   searchQuery.value = "";
@@ -70,7 +73,7 @@ const handleDownloadExcel = async (id) => {
       `/finances/payslips/${id}/download/excel`,
       {
         responseType: "blob",
-      }
+      },
     );
 
     const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -102,52 +105,56 @@ const handleDownloadPdf = async (id, type) => {
   try {
     const response = await axios.get(`/finances/payslips/${id}/download/pdf`, {
       params: { type },
-      responseType: 'blob',
+      responseType: "blob",
     });
 
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    const link = document.createElement('a');
+    const url = window.URL.createObjectURL(
+      new Blob([response.data], { type: "application/pdf" }),
+    );
+    const link = document.createElement("a");
     link.href = url;
 
-    const contentDisposition = response.headers['content-disposition'];
+    const contentDisposition = response.headers["content-disposition"];
     let fileName = `nomina_${id}.pdf`;
     if (contentDisposition) {
       const match = contentDisposition.match(/filename="?([^"]+)"?/);
       if (match) fileName = match[1];
     }
 
-    link.setAttribute('download', fileName);
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
 
-    toast.success('PDF descargado exitosamente');
+    toast.success("PDF descargado exitosamente");
   } catch (error) {
-    toast.error('Hubo un error al descargar el PDF');
+    toast.error("Hubo un error al descargar el PDF");
   }
 };
 
 const handleDownloadBulk = async () => {
   try {
     loading.value = true;
-    const response = await axios.get('/finances/payslips/download-bulk-pdf', {
-      params: { year: 2025, type: 'legal' },
-      responseType: 'blob',
+    const response = await axios.get("/finances/payslips/download-bulk-pdf", {
+      params: { year: 2025, type: "legal" },
+      responseType: "blob",
     });
 
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-    const link = document.createElement('a');
+    const url = window.URL.createObjectURL(
+      new Blob([response.data], { type: "application/pdf" }),
+    );
+    const link = document.createElement("a");
     link.href = url;
-    link.setAttribute('download', 'nominas_consolidadas_2025.pdf');
+    link.setAttribute("download", "nominas_consolidadas_2025.pdf");
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
 
-    toast.success('PDF consolidado descargado exitosamente');
+    toast.success("PDF consolidado descargado exitosamente");
   } catch (error) {
-    toast.error('Hubo un error al descargar el PDF consolidado');
+    toast.error("Hubo un error al descargar el PDF consolidado");
   } finally {
     loading.value = false;
   }
@@ -167,39 +174,48 @@ const handleManualPayment = async () => {
 </script>
 
 <template>
-  <div :class="mobile ? 'pa-0 pb-16' : 'pa-4'">
-    <FinalizePayslipFormDialog
-      v-model="showFinalizeDialog"
-      :selected-payslip="selectedPayslip"
-      @refresh-table="fetchPayslips"
-      @close="handleClosePayslip"
-    />
+  <div class="payslips-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <FinalizePayslipFormDialog
+        v-model="showFinalizeDialog"
+        :selected-payslip="selectedPayslip"
+        @refresh-table="fetchPayslips"
+        @close="handleClosePayslip"
+      />
 
-    <!-- Filtros Premium Colapsables -->
-    <PayslipFilters
-      v-model:search-query="searchQuery"
-      v-model:start-date="startDate"
-      v-model:end-date="endDate"
-      v-model:selected-status="selectedStatus"
-      :loading="loading"
-      @clear="handleClearFilters"
-      @generated="handleManualPayment"
-      @download-bulk="handleDownloadBulk"
-      @refresh="fetchPayslips"
-    />
+      <!-- Filtros Premium Colapsables -->
+      <PayslipFilters
+        v-model:search-query="searchQuery"
+        v-model:start-date="startDate"
+        v-model:end-date="endDate"
+        v-model:selected-status="selectedStatus"
+        :loading="loading"
+        @clear="handleClearFilters"
+        @generated="handleManualPayment"
+        @download-bulk="handleDownloadBulk"
+        @refresh="fetchPayslips"
+      />
 
-    <!-- Tabla y Cards Premium -->
-    <PayslipTable
-      :page="page"
-      :items-per-page="itemsPerPage"
-      :total="totalPayslips"
-      :items="payslips"
-      :loading="loading"
-      @update:options="(options) => { page = options.page; itemsPerPage = options.itemsPerPage; fetchPayslips(); }"
-      @finalize-payslip="handleFinalizePayslip"
-      @download-excel="handleDownloadExcel"
-      @download-pdf="handleDownloadPdf"
-    />
+      <!-- Tabla y Cards Premium -->
+      <PayslipTable
+        :page="page"
+        :items-per-page="itemsPerPage"
+        :total="totalPayslips"
+        :items="payslips"
+        :loading="loading"
+        @update:options="
+          (options) => {
+            page = options.page;
+            itemsPerPage = options.itemsPerPage;
+            fetchPayslips();
+          }
+        "
+        @finalize-payslip="handleFinalizePayslip"
+        @download-excel="handleDownloadExcel"
+        @download-pdf="handleDownloadPdf"
+        class="ma-0"
+      />
+    </div>
   </div>
 </template>
 

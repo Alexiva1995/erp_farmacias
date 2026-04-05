@@ -55,15 +55,17 @@ const chartOptions = computed(() => {
       },
     },
     bar: {
-        chart: { type: 'bar', toolbar: { show: false } },
-        plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
-        dataLabels: { enabled: false },
-        xaxis: {
-            categories: ['Activos Netos', 'Pasivos', 'Patrimonio'],
-            labels: { style: { colors: labelColor } }
-        },
-        colors: [currentTheme.success, currentTheme.error, currentTheme.primary]
-    }
+      chart: { type: "bar", toolbar: { show: false } },
+      plotOptions: {
+        bar: { horizontal: true, borderRadius: 4, barHeight: "60%" },
+      },
+      dataLabels: { enabled: false },
+      xaxis: {
+        categories: ["Activos Netos", "Pasivos", "Patrimonio"],
+        labels: { style: { colors: labelColor } },
+      },
+      colors: [currentTheme.success, currentTheme.error, currentTheme.primary],
+    },
   };
 });
 
@@ -73,10 +75,16 @@ const donutSeries = computed(() => [
   balance.assets.details.furniture_bruto,
 ]);
 
-const barSeries = computed(() => [{
-    name: 'Monto',
-    data: [balance.assets.total_neto, balance.liabilities.total, balance.equity]
-}]);
+const barSeries = computed(() => [
+  {
+    name: "Monto",
+    data: [
+      balance.assets.total_neto,
+      balance.liabilities.total,
+      balance.equity,
+    ],
+  },
+]);
 
 onMounted(() => {
   fetchBalance();
@@ -84,194 +92,310 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="balance-premium">
-    <!-- El header y botón de actualizar se eliminaron por solicitud del usuario -->
-
-    <!-- CARDS DE RATIOS -->
-    <VRow class="mb-6 mt-2">
-        <VCol cols="12" md="4">
-            <VCard class="h-100 rounded-lg border shadow-sm">
-                <VCardText class="d-flex align-center">
-                    <VAvatar color="primary" variant="tonal" class="rounded-lg me-4 text-h5" size="52">
-                        <VIcon icon="tabler-scale" />
-                    </VAvatar>
-                    <div>
-                        <p class="mb-0 text-caption opacity-70">Ratio de Liquidez</p>
-                        <h5 class="text-h5 font-weight-bold">{{ balance.ratios.liquidity }}</h5>
-                        <VChip size="x-small" :color="balance.ratios.liquidity >= 1.5 ? 'success' : 'warning'" class="mt-1">
-                            {{ balance.ratios.liquidity >= 1.5 ? 'Óptimo' : 'Vigilar' }}
-                        </VChip>
-                    </div>
-                </VCardText>
-            </VCard>
-        </VCol>
-        <VCol cols="12" md="4">
-            <VCard class="h-100 rounded-lg border shadow-sm">
-                <VCardText class="d-flex align-center">
-                    <VAvatar color="info" variant="tonal" class="rounded-lg me-4 text-h5" size="52">
-                        <VIcon icon="tabler-shield-check" />
-                    </VAvatar>
-                    <div>
-                        <p class="mb-0 text-caption opacity-70">Solvencia</p>
-                        <h5 class="text-h5 font-weight-bold">{{ balance.ratios.solvency }}</h5>
-                        <VChip size="x-small" color="info" class="mt-1">Nivel seguro</VChip>
-                    </div>
-                </VCardText>
-            </VCard>
-        </VCol>
-        <VCol cols="12" md="4">
-            <VCard :color="balance.equity >= 0 ? 'primary' : 'error'" class="h-100 rounded-lg shadow-soft border-0">
-                <VCardText class="text-center py-6 text-white">
-                    <p class="mb-1 text-uppercase text-caption font-weight-bold">Patrimonio Neto</p>
-                    <h3 class="text-h3 font-weight-black">{{ formatCurrency(balance.equity) }}</h3>
-                </VCardText>
-            </VCard>
-        </VCol>
-    </VRow>
-
-    <VRow>
-      <!-- COLUMNA DE ACTIVOS -->
-      <VCol cols="12" lg="7">
-        <VCard class="rounded-lg border shadow-sm">
-            <VCardItem>
-                <VCardTitle class="d-flex align-center">
-                    <VIcon icon="tabler-trending-up" color="success" class="me-2" />
-                    Estructura de Activos
-                </VCardTitle>
-            </VCardItem>
-            <VDivider />
-            <VRow no-gutters>
-                <VCol cols="12" sm="5" class="pa-4 d-flex align-center justify-center">
-                    <VueApexCharts
-                        type="donut"
-                        height="250"
-                        :options="chartOptions.donut"
-                        :series="donutSeries"
-                    />
-                </VCol>
-                <VCol cols="12" sm="7">
-                    <VList density="comfortable" class="pa-4">
-                        <VListItem>
-                            <template #prepend>
-                                <VAvatar size="32" color="success" variant="tonal" class="me-3">
-                                    <VIcon icon="tabler-cash" size="18" />
-                                </VAvatar>
-                            </template>
-                            <VListItemTitle class="font-weight-medium">Efectivo en Caja</VListItemTitle>
-                            <template #append>
-                                <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.cash) }}</span>
-                            </template>
-                        </VListItem>
-                        <VListItem>
-                            <template #prepend>
-                                <VAvatar size="32" color="info" variant="tonal" class="me-3">
-                                    <VIcon icon="tabler-package" size="18" />
-                                </VAvatar>
-                            </template>
-                            <VListItemTitle class="font-weight-medium">Inventario</VListItemTitle>
-                            <template #append>
-                                <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.inventory) }}</span>
-                            </template>
-                        </VListItem>
-                        <VListItem>
-                            <template #prepend>
-                                <VAvatar size="32" color="warning" variant="tonal" class="me-3">
-                                    <VIcon icon="tabler-sofa" size="18" />
-                                </VAvatar>
-                            </template>
-                            <VListItemTitle class="font-weight-medium">Mobiliario Bruto</VListItemTitle>
-                            <template #append>
-                                <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.furniture_bruto) }}</span>
-                            </template>
-                        </VListItem>
-                        
-                        <VDivider class="my-2" />
-                        
-                        <VListItem class="text-error">
-                            <template #prepend>
-                                <VIcon icon="tabler-trending-down" class="me-3" />
-                            </template>
-                            <VListItemTitle>Depreciación Acumulada</VListItemTitle>
-                            <template #append>
-                                <span class="font-weight-bold">- {{ formatCurrency(balance.assets.depreciation) }}</span>
-                            </template>
-                        </VListItem>
-                    </VList>
-                    <div class="px-6 pb-6 pt-2">
-                        <VAlert color="success" variant="tonal" class="rounded-lg" density="compact">
-                            <div class="d-flex justify-space-between align-center">
-                                <span class="text-caption font-weight-bold text-uppercase">Total Activos Netos</span>
-                                <span class="text-h6 font-weight-black">{{ formatCurrency(balance.assets.total_neto) }}</span>
-                            </div>
-                        </VAlert>
-                    </div>
-                </VCol>
-            </VRow>
-        </VCard>
-      </VCol>
-
-      <!-- COLUMNA DE PASIVOS -->
-      <VCol cols="12" lg="5">
-        <VCard class="mb-6 rounded-lg border shadow-sm">
-            <VCardItem>
-                <VCardTitle class="d-flex align-center">
-                    <VIcon icon="tabler-trending-down" color="error" class="me-2" />
-                    Pasivos y Obligaciones
-                </VCardTitle>
-            </VCardItem>
-            <VDivider />
-            <VCardText>
-                <VList density="comfortable">
-                    <VListItem>
-                        <template #prepend>
-                            <VIcon icon="tabler-users" color="error" class="me-3" />
-                        </template>
-                        <VListItemTitle>Cuentas por Pagar (Proveedores)</VListItemTitle>
-                        <template #append>
-                            <span class="font-weight-bold">{{ formatCurrency(balance.liabilities.details.supplier_debts) }}</span>
-                        </template>
-                    </VListItem>
-                    <VListItem>
-                        <template #prepend>
-                            <VIcon icon="tabler-building-bank" color="secondary" class="me-3" />
-                        </template>
-                        <VListItemTitle>Préstamos Bancarios</VListItemTitle>
-                        <template #append>
-                            <span class="font-weight-bold">{{ formatCurrency(balance.liabilities.details.loans) }}</span>
-                        </template>
-                    </VListItem>
-                </VList>
-                <VDivider class="my-4" />
-                <div class="d-flex justify-space-between px-4 align-center mb-2">
-                    <span class="text-h6">Total Pasivos</span>
-                    <span class="text-h6 text-error font-weight-black">{{ formatCurrency(balance.liabilities.total) }}</span>
+  <div class="balance-premium pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- CARDS DE RATIOS -->
+      <VRow class="ma-0 mx-n1 mb-5" dense>
+        <VCol cols="12" md="4" class="pa-1">
+          <VHover v-slot="{ isHovering, props }">
+            <VCard
+              v-bind="props"
+              :elevation="isHovering ? 5 : 1"
+              class="h-100 rounded-lg border bg-surface transition-swing"
+            >
+              <VCardText class="pa-4 d-flex flex-column h-100">
+                <div class="d-flex align-center gap-3 mb-3">
+                  <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
+                    <VIcon icon="tabler-scale" size="20" />
+                  </VAvatar>
+                  <span class="text-overline font-weight-black text-disabled" style="line-height: 1; letter-spacing: 0.1em;">
+                    Ratio de Liquidez
+                  </span>
                 </div>
+                <div class="mt-auto d-flex align-center justify-space-between">
+                  <span class="text-h4 font-weight-black text-primary leading-none">
+                    {{ balance.ratios.liquidity }}
+                  </span>
+                  <VChip size="small" variant="flat" :color="balance.ratios.liquidity >= 1.5 ? 'success' : 'warning'" class="font-weight-black px-3 rounded-lg">
+                    {{ balance.ratios.liquidity >= 1.5 ? 'ÓPTIMO' : 'VIGILAR' }}
+                  </VChip>
+                </div>
+              </VCardText>
+            </VCard>
+          </VHover>
+        </VCol>
+        
+        <VCol cols="12" md="4" class="pa-1">
+          <VHover v-slot="{ isHovering, props }">
+            <VCard
+              v-bind="props"
+              :elevation="isHovering ? 5 : 1"
+              class="h-100 rounded-lg border bg-surface transition-swing"
+            >
+              <VCardText class="pa-4 d-flex flex-column h-100">
+                <div class="d-flex align-center gap-3 mb-3">
+                  <VAvatar color="info" variant="tonal" size="38" class="rounded-lg">
+                    <VIcon icon="tabler-shield-check" size="20" />
+                  </VAvatar>
+                  <span class="text-overline font-weight-black text-disabled" style="line-height: 1; letter-spacing: 0.1em;">
+                    Solvencia
+                  </span>
+                </div>
+                <div class="mt-auto d-flex align-center justify-space-between">
+                  <span class="text-h4 font-weight-black text-info leading-none">
+                    {{ balance.ratios.solvency }}
+                  </span>
+                  <VChip size="small" variant="flat" color="info" class="font-weight-black px-3 rounded-lg">NIVEL SEGURO</VChip>
+                </div>
+              </VCardText>
+            </VCard>
+          </VHover>
+        </VCol>
+        
+        <VCol cols="12" md="4" class="pa-1">
+          <VHover v-slot="{ isHovering, props }">
+            <VCard
+              v-bind="props"
+              :elevation="isHovering ? 5 : 1"
+              class="h-100 rounded-lg border bg-surface transition-swing"
+            >
+              <VCardText class="pa-4 d-flex flex-column h-100">
+                <div class="d-flex align-center gap-3 mb-3">
+                  <VAvatar :color="balance.equity >= 0 ? 'primary' : 'error'" variant="tonal" size="38" class="rounded-lg">
+                    <VIcon icon="tabler-building-bank" size="20" />
+                  </VAvatar>
+                  <span class="text-overline font-weight-black text-disabled" style="line-height: 1; letter-spacing: 0.1em;">
+                    Patrimonio Neto
+                  </span>
+                </div>
+                <div class="mt-auto">
+                  <span class="text-h4 font-weight-black leading-none" :class="balance.equity >= 0 ? 'text-primary' : 'text-error'">
+                    {{ formatCurrency(balance.equity) }}
+                  </span>
+                </div>
+              </VCardText>
+            </VCard>
+          </VHover>
+        </VCol>
+      </VRow>
+
+      <VRow class="ma-0 mx-n1" dense>
+        <!-- COLUMNA DE ACTIVOS -->
+        <VCol cols="12" lg="6" md="6" class="pa-1 d-flex">
+          <VCard
+            class="rounded-lg border shadow-sm w-100 h-100 d-flex flex-column"
+          >
+            <VCardItem>
+              <VCardTitle class="d-flex align-center">
+                <VIcon icon="tabler-trending-up" color="success" class="me-2" />
+                Estructura de Activos
+              </VCardTitle>
+            </VCardItem>
+            <VDivider />
+            <VRow no-gutters class="flex-grow-1">
+              <VCol
+                cols="12"
+                sm="5"
+                class="pa-4 d-flex align-center justify-center"
+              >
+                <VueApexCharts
+                  type="donut"
+                  height="250"
+                  :options="chartOptions.donut"
+                  :series="donutSeries"
+                />
+              </VCol>
+              <VCol cols="12" sm="7" class="d-flex flex-column">
+                <VList density="comfortable" class="pa-4 flex-grow-1">
+                  <VListItem>
+                    <template #prepend>
+                      <VAvatar
+                        size="32"
+                        color="success"
+                        variant="tonal"
+                        class="me-3"
+                      >
+                        <VIcon icon="tabler-cash" size="18" />
+                      </VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-medium"
+                      >Efectivo en Caja</VListItemTitle
+                    >
+                    <template #append>
+                      <span class="font-weight-bold">{{
+                        formatCurrency(balance.assets.details.cash)
+                      }}</span>
+                    </template>
+                  </VListItem>
+                  <VListItem>
+                    <template #prepend>
+                      <VAvatar
+                        size="32"
+                        color="info"
+                        variant="tonal"
+                        class="me-3"
+                      >
+                        <VIcon icon="tabler-package" size="18" />
+                      </VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-medium"
+                      >Inventario</VListItemTitle
+                    >
+                    <template #append>
+                      <span class="font-weight-bold">{{
+                        formatCurrency(balance.assets.details.inventory)
+                      }}</span>
+                    </template>
+                  </VListItem>
+                  <VListItem>
+                    <template #prepend>
+                      <VAvatar
+                        size="32"
+                        color="warning"
+                        variant="tonal"
+                        class="me-3"
+                      >
+                        <VIcon icon="tabler-sofa" size="18" />
+                      </VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-medium"
+                      >Mobiliario Bruto</VListItemTitle
+                    >
+                    <template #append>
+                      <span class="font-weight-bold">{{
+                        formatCurrency(balance.assets.details.furniture_bruto)
+                      }}</span>
+                    </template>
+                  </VListItem>
+
+                  <VDivider class="my-2" />
+
+                  <VListItem class="text-error">
+                    <template #prepend>
+                      <VIcon icon="tabler-trending-down" class="me-3" />
+                    </template>
+                    <VListItemTitle>Depreciación Acumulada</VListItemTitle>
+                    <template #append>
+                      <span class="font-weight-bold"
+                        >-
+                        {{ formatCurrency(balance.assets.depreciation) }}</span
+                      >
+                    </template>
+                  </VListItem>
+                </VList>
+                <div class="px-6 pb-6 pt-2 mt-auto">
+                  <VAlert
+                    color="success"
+                    variant="tonal"
+                    class="rounded-lg"
+                    density="compact"
+                  >
+                    <div class="d-flex justify-space-between align-center">
+                      <span class="text-caption font-weight-bold text-uppercase"
+                        >Total Activos Netos</span
+                      >
+                      <span class="text-h6 font-weight-black">{{
+                        formatCurrency(balance.assets.total_neto)
+                      }}</span>
+                    </div>
+                  </VAlert>
+                </div>
+              </VCol>
+            </VRow>
+          </VCard>
+        </VCol>
+
+        <!-- COLUMNA DE PASIVOS -->
+        <VCol cols="12" lg="6" md="6" class="pa-1 d-flex">
+          <VCard
+            class="rounded-lg border shadow-sm w-100 h-100 d-flex flex-column"
+          >
+            <VCardItem>
+              <VCardTitle class="d-flex align-center">
+                <VIcon icon="tabler-trending-down" color="error" class="me-2" />
+                Pasivos y Obligaciones
+              </VCardTitle>
+            </VCardItem>
+            <VDivider />
+            <VCardText class="d-flex flex-column flex-grow-1">
+              <VList density="comfortable" class="flex-grow-1">
+                <VListItem>
+                  <template #prepend>
+                    <VIcon icon="tabler-users" color="error" class="me-3" />
+                  </template>
+                  <VListItemTitle
+                    >Cuentas por Pagar (Proveedores)</VListItemTitle
+                  >
+                  <template #append>
+                    <span class="font-weight-bold">{{
+                      formatCurrency(balance.liabilities.details.supplier_debts)
+                    }}</span>
+                  </template>
+                </VListItem>
+                <VListItem>
+                  <template #prepend>
+                    <VIcon
+                      icon="tabler-building-bank"
+                      color="secondary"
+                      class="me-3"
+                    />
+                  </template>
+                  <VListItemTitle>Préstamos Bancarios</VListItemTitle>
+                  <template #append>
+                    <span class="font-weight-bold">{{
+                      formatCurrency(balance.liabilities.details.loans)
+                    }}</span>
+                  </template>
+                </VListItem>
+              </VList>
+              <div class="mt-auto">
+                <VDivider class="my-4" />
+                <div
+                  class="d-flex justify-space-between px-4 align-center mb-2"
+                >
+                  <span class="text-h6">Total Pasivos</span>
+                  <span class="text-h6 text-error font-weight-black">{{
+                    formatCurrency(balance.liabilities.total)
+                  }}</span>
+                </div>
+              </div>
             </VCardText>
-        </VCard>
+          </VCard>
+        </VCol>
 
         <!-- GRÁFICO RESUMEN -->
-        <VCard class="rounded-lg border shadow-sm">
+        <VCol cols="12" class="pa-1 mt-6">
+          <VCard class="rounded-lg border shadow-sm">
             <VCardText>
-                <VueApexCharts
-                    type="bar"
-                    height="180"
-                    :options="chartOptions.bar"
-                    :series="barSeries"
-                />
+              <VueApexCharts
+                type="bar"
+                height="180"
+                :options="chartOptions.bar"
+                :series="barSeries"
+              />
             </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+          </VCard>
+        </VCol>
+      </VRow>
+    </div>
   </div>
 </template>
 
 <style lang="scss">
 .balance-premium {
+  background-color: #f8fafc;
   .v-card {
     border-radius: 8px !important;
   }
 }
 .shadow-soft {
   box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
+}
+
+.letter-spacing-widest {
+  letter-spacing: 0.1em !important;
+}
+.text-super-xs {
+  font-size: 0.65rem !important;
 }
 </style>

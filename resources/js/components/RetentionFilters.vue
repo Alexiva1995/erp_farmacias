@@ -33,6 +33,7 @@ const hasAdvancedFilters = computed(() =>
     :search="props.search"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Factura o Proveedor..."
+    class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
   >

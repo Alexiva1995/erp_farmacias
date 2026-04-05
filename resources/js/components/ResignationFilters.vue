@@ -37,6 +37,7 @@ const resignationTypes = [
     :search="props.search"
     :has-advanced-filters="hasActiveAdvancedFilters"
     search-placeholder="Buscar empleado..."
+    class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
   >

@@ -368,8 +368,6 @@ const updateTableOptions = (options) => {
 
 <template>
   <div class="suppliers-view pb-12">
-    <!-- === HEADER Y KPIS === -->
-
     <div class="d-flex flex-column gap-1 mt-1">
       <SupplierFilters
         v-model:searchQuery="searchQuery"
@@ -380,7 +378,11 @@ const updateTableOptions = (options) => {
         @add-supplier="handleAddSupplier"
       />
 
-      <SupplierStatsCards :stats="stats" :loading="isLoadingStats" />
+      <SupplierStatsCards
+        :stats="stats"
+        :loading="isLoadingStats"
+        class="mt-0"
+      />
 
       <SupplierTable
         :suppliers="suppliers"

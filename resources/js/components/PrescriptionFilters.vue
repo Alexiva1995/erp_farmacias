@@ -31,6 +31,7 @@ const hasAdvancedFilters = computed(() =>
     :show-add="props.showAddButton"
     add-button-text="Nueva Oferta"
     search-placeholder="Buscar récipe por descripción o estado..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @add="emit('add-prescription')"

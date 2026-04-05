@@ -20,6 +20,7 @@ const options = [
     :search="''"
     :show-advanced="false"
     search-placeholder="Buscar..."
+    class="py-1"
     @clear="emit('clear')"
   >
     <!-- El selector de estado toma el slot del buscador para mantener visibilidad inmediata -->

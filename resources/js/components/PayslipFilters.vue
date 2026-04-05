@@ -46,6 +46,7 @@ const handleManualPayment = async () => {
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     search-placeholder="Buscar por ID..."
+    class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >

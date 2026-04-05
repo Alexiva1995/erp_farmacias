@@ -193,49 +193,51 @@ watch(
 );
 </script>
 <template>
-  <div>
-    <EmployeeFilters
-      v-model:search="search"
-      v-model:show-active-employees="showActiveEmployees"
-      @clear="handleClearFilters"
-      @add-employee="handleShowDialog"
-    />
+  <div class="rrhh-employees-page pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <EmployeeFilters
+        v-model:search="search"
+        v-model:show-active-employees="showActiveEmployees"
+        @clear="handleClearFilters"
+        @add-employee="handleShowDialog"
+      />
 
-    <FireEmployeeDialog
-      v-model="showFireEmployeeDialog"
-      :selected-employee="selectedEmployee"
-      :currency="currency"
-      @refresh-table="handleRefreshTable"
-    />
+      <FireEmployeeDialog
+        v-model="showFireEmployeeDialog"
+        :selected-employee="selectedEmployee"
+        :currency="currency"
+        @refresh-table="handleRefreshTable"
+      />
 
-    <EmployeeFormDialog
-      v-model="showDialog"
-      :roles="roles"
-      :selectedEmployee="selectedEmployee"
-      @refresh-table="handleRefreshTable"
-      @close="handleCloseEmployeeDialog"
-    />
+      <EmployeeFormDialog
+        v-model="showDialog"
+        :roles="roles"
+        :selectedEmployee="selectedEmployee"
+        @refresh-table="handleRefreshTable"
+        @close="handleCloseEmployeeDialog"
+      />
 
-    <ResignationFormDialog
-      v-model="showResignationDialog"
-      :selectedEmployee="selectedEmployeeForResignation"
-      :isEdit="isEditingResignation"
-      :existingResignation="existingResignationData"
-      @resignation-generated="handleResignationGenerated"
-    />
+      <ResignationFormDialog
+        v-model="showResignationDialog"
+        :selectedEmployee="selectedEmployeeForResignation"
+        :isEdit="isEditingResignation"
+        :existingResignation="existingResignationData"
+        @resignation-generated="handleResignationGenerated"
+      />
 
-    <EmployeeTable
-      :page="page"
-      :items-per-page="itemsPerPage"
-      :total="totalEmployees"
-      :employees="employees"
-      :loading="loading"
-      @fire-employee="handleShowFireEmployeeDialog"
-      @edit-employee="handleEditEmployee"
-      @delete-employee="handleDeleteEmployee"
-      @generate-resignation="handleGenerateResignation"
-      @download-resignation="handleDownloadResignation"
-      @reset-2fa="handleReset2FA"
-    />
+      <EmployeeTable
+        :page="page"
+        :items-per-page="itemsPerPage"
+        :total="totalEmployees"
+        :employees="employees"
+        :loading="loading"
+        @fire-employee="handleShowFireEmployeeDialog"
+        @edit-employee="handleEditEmployee"
+        @delete-employee="handleDeleteEmployee"
+        @generate-resignation="handleGenerateResignation"
+        @download-resignation="handleDownloadResignation"
+        @reset-2fa="handleReset2FA"
+      />
+    </div>
   </div>
 </template>

@@ -122,469 +122,491 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
 </script>
 
 <template>
-  <div class="income-statement-view pa-4 pa-md-6">
-    <!-- Header Premium -->
-    <VCard class="rounded-lg border shadow-sm mb-6 overflow-hidden">
-      <div class="header-bg py-8 px-6 text-white position-relative">
-        <div class="d-flex align-center gap-4 mb-2">
-          <VAvatar
-            color="white"
-            variant="tonal"
-            size="48"
-            class="rounded-lg shadow-soft"
-          >
-            <VIcon icon="tabler-report-analytics" color="white" size="28" />
-          </VAvatar>
-          <div>
-            <h1
-              class="text-h4 font-weight-black letter-spacing-tight text-white"
-            >
-              Estado de Resultados
-            </h1>
-            <p
-              class="text-white text-body-2 opacity-80 font-weight-bold uppercase letter-spacing-widest mt-1"
-            >
-              Análisis de rentabilidad y flujo financiero histórico
-            </p>
-          </div>
-        </div>
+  <div class="income-statement-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Filtros Colapsables -->
+      <div>
+        <IncomeStatementFilters
+          v-model:searchQuery="searchQuery"
+          v-model:startDate="startDate"
+          v-model:endDate="endDate"
+          v-model:selectedType="selectedType"
+          @clear="clearFilters"
+          class="mb-5"
+        />
       </div>
-    </VCard>
 
-    <!-- Filtros Colapsables -->
-    <IncomeStatementFilters
-      v-model:searchQuery="searchQuery"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
-      v-model:selectedType="selectedType"
-      @clear="clearFilters"
-    />
-
-    <!-- Tarjetas de Resumen Premium -->
-    <VRow class="mb-8" dense>
-      <!-- INGRESOS -->
-      <VCol cols="12" sm="6" md="3">
-        <VCard
-          class="rounded-lg border shadow-sm h-100 overflow-hidden kpi-card"
-        >
-          <div class="pa-5">
-            <div class="d-flex align-center gap-4">
-              <VAvatar
-                color="success"
-                variant="tonal"
-                class="rounded-lg"
-                size="54"
-              >
-                <VIcon icon="tabler-trending-up" size="30" />
-              </VAvatar>
-              <div v-if="!loadingSummary" class="flex-grow-1">
+      <!-- Tarjetas de Resumen Premium -->
+      <VRow class="ma-0 mx-n1 mb-5" dense>
+        <!-- INGRESOS -->
+        <VCol cols="12" sm="6" md="3" class="pa-1">
+          <VCard
+            class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"
+          >
+            <div class="card-bg-decoration bg-success-opacity-1"></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center gap-3 mb-3">
+                <VAvatar
+                  color="success"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg"
+                >
+                  <VIcon icon="tabler-trending-up" size="20" />
+                </VAvatar>
                 <span
-                  class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-widest"
+                  class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-widest"
                 >
                   Ingresos Brutos
                 </span>
-                <span class="text-h5 font-weight-black text-success">
+              </div>
+              <div v-if="!loadingSummary" class="mt-auto">
+                <span
+                  class="text-h5 font-weight-black text-success leading-none"
+                >
                   {{ formatCurrency(summary.income?.amount) }}
                 </span>
               </div>
-              <VSkeletonLoader v-else type="text, text" class="flex-grow-1" />
-            </div>
-          </div>
-          <div
-            class="bg-success opacity-10 h-1 w-100 position-absolute bottom-0"
-          ></div>
-        </VCard>
-      </VCol>
+              <VSkeletonLoader v-else type="text" class="mt-auto" />
+            </VCardText>
+            <div class="accent-border bg-success"></div>
+          </VCard>
+        </VCol>
 
-      <!-- COSTOS -->
-      <VCol cols="12" sm="6" md="3">
-        <VCard
-          class="rounded-lg border shadow-sm h-100 overflow-hidden kpi-card"
-        >
-          <div class="pa-5">
-            <div class="d-flex align-center gap-4">
-              <VAvatar
-                color="warning"
-                variant="tonal"
-                class="rounded-lg"
-                size="54"
-              >
-                <VIcon icon="tabler-package" size="30" />
-              </VAvatar>
-              <div v-if="!loadingSummary" class="flex-grow-1">
+        <!-- COSTOS -->
+        <VCol cols="12" sm="6" md="3" class="pa-1">
+          <VCard
+            class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"
+          >
+            <div class="card-bg-decoration bg-warning-opacity-1"></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center gap-3 mb-3">
+                <VAvatar
+                  color="warning"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg"
+                >
+                  <VIcon icon="tabler-package" size="20" />
+                </VAvatar>
                 <span
-                  class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-widest"
+                  class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-widest"
                 >
                   Costos de Venta
                 </span>
-                <span class="text-h5 font-weight-black text-warning">
+              </div>
+              <div v-if="!loadingSummary" class="mt-auto">
+                <span
+                  class="text-h5 font-weight-black text-warning leading-none"
+                >
                   -{{ formatCurrency(summary.costs?.amount) }}
                 </span>
               </div>
-              <VSkeletonLoader v-else type="text, text" class="flex-grow-1" />
-            </div>
-          </div>
-          <div
-            class="bg-warning opacity-10 h-1 w-100 position-absolute bottom-0"
-          ></div>
-        </VCard>
-      </VCol>
+              <VSkeletonLoader v-else type="text" class="mt-auto" />
+            </VCardText>
+            <div class="accent-border bg-warning"></div>
+          </VCard>
+        </VCol>
 
-      <!-- GASTOS -->
-      <VCol cols="12" sm="6" md="3">
-        <VCard
-          class="rounded-lg border shadow-sm h-100 overflow-hidden kpi-card"
-        >
-          <div class="pa-5">
-            <div class="d-flex align-center gap-4">
-              <VAvatar
-                color="error"
-                variant="tonal"
-                class="rounded-lg"
-                size="54"
-              >
-                <VIcon icon="tabler-activity" size="30" />
-              </VAvatar>
-              <div v-if="!loadingSummary" class="flex-grow-1">
+        <!-- GASTOS -->
+        <VCol cols="12" sm="6" md="3" class="pa-1">
+          <VCard
+            class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"
+          >
+            <div class="card-bg-decoration bg-error-opacity-1"></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center gap-3 mb-3">
+                <VAvatar
+                  color="error"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg"
+                >
+                  <VIcon icon="tabler-activity" size="20" />
+                </VAvatar>
                 <span
-                  class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-widest"
+                  class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-widest"
                 >
                   Gastos Operativos
                 </span>
-                <span class="text-h5 font-weight-black text-error">
+              </div>
+              <div v-if="!loadingSummary" class="mt-auto">
+                <span class="text-h5 font-weight-black text-error leading-none">
                   -{{ formatCurrency(summary.expenses?.amount) }}
                 </span>
               </div>
-              <VSkeletonLoader v-else type="text, text" class="flex-grow-1" />
-            </div>
-          </div>
-          <div
-            class="bg-error opacity-10 h-1 w-100 position-absolute bottom-0"
-          ></div>
-        </VCard>
-      </VCol>
+              <VSkeletonLoader v-else type="text" class="mt-auto" />
+            </VCardText>
+            <div class="accent-border bg-error"></div>
+          </VCard>
+        </VCol>
 
-      <!-- UTILIDAD NETA -->
-      <VCol cols="12" sm="6" md="3">
-        <VCard
-          variant="elevated"
-          :class="
-            summary.net_profit?.amount >= 0
-              ? 'bg-gradient-success'
-              : 'bg-gradient-error'
-          "
-          class="rounded-lg h-100 shadow-soft overflow-hidden"
-        >
-          <VCardText class="pa-5">
-            <div class="d-flex align-center gap-4">
-              <VAvatar
-                color="white"
-                variant="tonal"
-                class="rounded-lg"
-                size="54"
-              >
-                <VIcon
-                  :icon="
-                    summary.net_profit?.amount >= 0
-                      ? 'tabler-pig-money'
-                      : 'tabler-chart-down'
-                  "
-                  size="30"
-                  color="white"
-                />
-              </VAvatar>
-              <div v-if="!loadingSummary" class="flex-grow-1">
+        <!-- UTILIDAD NETA -->
+        <VCol cols="12" sm="6" md="3" class="pa-1">
+          <VCard
+            class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"
+          >
+            <div class="card-bg-decoration bg-info-opacity-1"></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center gap-3 mb-3">
+                <VAvatar
+                  color="info"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg"
+                >
+                  <VIcon
+                    :icon="
+                      summary.net_profit?.amount >= 0
+                        ? 'tabler-pig-money'
+                        : 'tabler-chart-down'
+                    "
+                    color="info"
+                    size="20"
+                  />
+                </VAvatar>
                 <span
-                  class="text-super-xs text-white opacity-80 font-weight-black d-block text-uppercase mb-1 letter-spacing-widest"
+                  class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-widest"
                 >
                   Utilidad Neta
                 </span>
-                <span class="text-h4 font-weight-black text-white leading-none">
+              </div>
+              <div v-if="!loadingSummary" class="mt-auto">
+                <span class="text-h4 font-weight-black text-info leading-none">
                   {{ formatCurrency(summary.net_profit?.amount) }}
                 </span>
               </div>
-              <VSkeletonLoader
-                v-else
-                type="text, text"
-                color="transparent"
-                class="flex-grow-1"
-              />
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+              <VSkeletonLoader v-else type="text" class="mt-auto" />
+            </VCardText>
+            <div class="accent-border bg-info"></div>
+          </VCard>
+        </VCol>
+      </VRow>
 
-    <!-- Tabla de Detalles Premium -->
-    <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
-      <div
-        class="px-6 py-4 bg-white border-b d-flex justify-space-between align-center flex-wrap gap-4"
-      >
-        <div class="d-flex align-center gap-3">
-          <VAvatar
-            color="primary"
-            variant="elevated"
-            size="36"
-            class="rounded-lg shadow-sm"
-          >
-            <VIcon icon="tabler-list-details" color="white" size="20" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-black leading-none"
-              >Detalles de Operaciones</span
-            >
-            <span
-              class="text-super-xs text-disabled font-weight-bold uppercase mt-1"
-              >Desglose línea a línea de ingresos y egresos</span
-            >
-          </div>
-        </div>
-        <VChip
-          color="primary"
-          variant="flat"
-          size="small"
-          class="font-weight-black px-4 rounded-lg"
+      <!-- Tabla de Detalles Premium -->
+      <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+        <div
+          class="px-6 py-4 bg-white border-b d-flex justify-space-between align-center flex-wrap gap-4"
         >
-          {{ totalItems }} REGISTROS ENCONTRADOS
-        </VChip>
-      </div>
-
-      <VCardText class="pa-0">
-        <!-- Vista Desktop: Tabla Tradicional -->
-        <template v-if="!$vuetify.display.smAndDown">
-          <VProgressLinear
-            v-if="loadingDetails"
-            indeterminate
-            color="primary"
-            height="3"
-            class="position-absolute w-100"
-            style="z-index: 1"
-          />
-
-          <VDataTableServer
-            v-model:items-per-page="itemsPerPage"
-            v-model:page="page"
-            :headers="headers"
-            :items="transactions"
-            :items-length="totalItems"
-            :loading="loadingDetails"
-            class="premium-table"
-            @update:options="updateOptions"
-          >
-            <template #item.date="{ item }">
-              <span class="text-sm font-weight-black text-medium-emphasis">
-                {{ formatDate(item.date) }}
-              </span>
-            </template>
-
-            <template #item.type="{ item }">
-              <VChip
-                :color="item.type === 'sale' ? 'success' : 'error'"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black px-3 rounded-lg"
-              >
-                {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
-              </VChip>
-            </template>
-
-            <template #item.description="{ item }">
-              <span class="text-sm font-weight-bold">
-                {{ item.description }}
-              </span>
-            </template>
-
-            <template #item.client="{ item }">
-              <div class="d-flex align-center gap-3">
-                <VAvatar
-                  size="26"
-                  variant="tonal"
-                  :color="item.type === 'sale' ? 'primary' : 'secondary'"
-                  class="rounded-lg shadow-soft"
-                >
-                  <span class="text-xs font-weight-black">
-                    {{ getAvatarInitial(item.client || item.category) }}
-                  </span>
-                </VAvatar>
-                <span class="text-sm font-weight-medium text-high-emphasis">{{
-                  item.client || item.category || "N/A"
-                }}</span>
-              </div>
-            </template>
-
-            <template #item.amount="{ item }">
-              <span
-                class="text-sm font-weight-black"
-                :class="item.type === 'sale' ? 'text-success' : 'text-error'"
-              >
-                {{ item.type === "sale" ? "+" : "-"
-                }}{{ formatCurrency(item.amount) }}
-              </span>
-            </template>
-
-            <template #item.costs="{ item }">
-              <span class="text-sm font-weight-black text-warning">
-                {{ item.costs > 0 ? "-" + formatCurrency(item.costs) : "—" }}
-              </span>
-            </template>
-
-            <template #item.profit="{ item }">
-              <VChip
-                :color="item.profit >= 0 ? 'success' : 'error'"
-                variant="tonal"
-                size="small"
-                class="font-weight-black px-4 rounded-lg"
-              >
-                {{ item.profit >= 0 ? "+" : ""
-                }}{{ formatCurrency(item.profit) }}
-              </VChip>
-            </template>
-          </VDataTableServer>
-        </template>
-
-        <!-- Vista Móvil: Grid de Tarjetas Reales (No Tabla) -->
-        <div v-else class="pa-4">
-          <div v-if="loadingDetails" class="text-center py-12">
-            <VProgressCircular indeterminate color="primary" size="48" />
-            <p
-              class="text-caption mt-2 font-weight-bold text-disabled uppercase"
+          <div class="d-flex align-center gap-3">
+            <VAvatar
+              color="primary"
+              variant="elevated"
+              size="36"
+              class="rounded-lg shadow-sm"
             >
-              Cargando...
-            </p>
-          </div>
-
-          <template v-else-if="transactions.length > 0">
-            <div class="d-flex flex-column gap-4">
-              <VCard
-                v-for="item in transactions"
-                :key="item.id"
-                variant="flat"
-                class="border rounded-lg px-4 py-4 bg-white shadow-xs"
-                :class="
-                  item.type === 'sale'
-                    ? 'border-success-subtle'
-                    : 'border-error-subtle'
-                "
+              <VIcon icon="tabler-list-details" color="white" size="20" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-h6 font-weight-black leading-none"
+                >Detalles de Operaciones</span
               >
-                <div class="d-flex justify-space-between align-start mb-4">
-                  <div class="d-flex align-center gap-3">
-                    <VAvatar
-                      :color="item.type === 'sale' ? 'success' : 'error'"
-                      variant="tonal"
-                      size="44"
-                      class="rounded-lg"
-                    >
-                      <VIcon
-                        :icon="
-                          item.type === 'sale'
-                            ? 'tabler-arrow-up-right'
-                            : 'tabler-arrow-down-left'
-                        "
+              <span
+                class="text-super-xs text-disabled font-weight-bold uppercase mt-1"
+                >Desglose línea a línea de ingresos y egresos</span
+              >
+            </div>
+          </div>
+          <VChip
+            color="primary"
+            variant="flat"
+            size="small"
+            class="font-weight-black px-4 rounded-lg"
+          >
+            {{ totalItems }} REGISTROS ENCONTRADOS
+          </VChip>
+        </div>
+
+        <VCardText class="pa-0">
+          <!-- Vista Desktop: Tabla Tradicional -->
+          <template v-if="!$vuetify.display.smAndDown">
+            <VProgressLinear
+              v-if="loadingDetails"
+              indeterminate
+              color="primary"
+              height="3"
+              class="position-absolute w-100"
+              style="z-index: 1"
+            />
+
+            <VDataTableServer
+              v-model:items-per-page="itemsPerPage"
+              v-model:page="page"
+              :headers="headers"
+              :items="transactions"
+              :items-length="totalItems"
+              :loading="loadingDetails"
+              class="premium-table"
+              @update:options="updateOptions"
+            >
+              <template #item.date="{ item }">
+                <span class="text-sm font-weight-black text-medium-emphasis">
+                  {{ formatDate(item.date) }}
+                </span>
+              </template>
+
+              <template #item.type="{ item }">
+                <VChip
+                  :color="item.type === 'sale' ? 'success' : 'error'"
+                  size="x-small"
+                  variant="flat"
+                  class="font-weight-black px-3 rounded-lg"
+                >
+                  {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
+                </VChip>
+              </template>
+
+              <template #item.description="{ item }">
+                <span class="text-sm font-weight-bold">
+                  {{ item.description }}
+                </span>
+              </template>
+
+              <template #item.client="{ item }">
+                <div class="d-flex align-center gap-3">
+                  <VAvatar
+                    size="26"
+                    variant="tonal"
+                    :color="item.type === 'sale' ? 'primary' : 'secondary'"
+                    class="rounded-lg shadow-soft"
+                  >
+                    <span class="text-xs font-weight-black">
+                      {{ getAvatarInitial(item.client || item.category) }}
+                    </span>
+                  </VAvatar>
+                  <span class="text-sm font-weight-medium text-high-emphasis">{{
+                    item.client || item.category || "N/A"
+                  }}</span>
+                </div>
+              </template>
+
+              <template #item.amount="{ item }">
+                <span
+                  class="text-sm font-weight-black"
+                  :class="item.type === 'sale' ? 'text-success' : 'text-error'"
+                >
+                  {{ item.type === "sale" ? "+" : "-"
+                  }}{{ formatCurrency(item.amount) }}
+                </span>
+              </template>
+
+              <template #item.costs="{ item }">
+                <span class="text-sm font-weight-black text-warning">
+                  {{ item.costs > 0 ? "-" + formatCurrency(item.costs) : "—" }}
+                </span>
+              </template>
+
+              <template #item.profit="{ item }">
+                <VChip
+                  :color="item.profit >= 0 ? 'success' : 'error'"
+                  variant="tonal"
+                  size="small"
+                  class="font-weight-black px-4 rounded-lg"
+                >
+                  {{ item.profit >= 0 ? "+" : ""
+                  }}{{ formatCurrency(item.profit) }}
+                </VChip>
+              </template>
+            </VDataTableServer>
+          </template>
+
+          <!-- Vista Móvil: Grid de Tarjetas Reales (No Tabla) -->
+          <div v-else class="pa-4">
+            <div v-if="loadingDetails" class="text-center py-12">
+              <VProgressCircular indeterminate color="primary" size="48" />
+              <p
+                class="text-caption mt-2 font-weight-bold text-disabled uppercase"
+              >
+                Cargando...
+              </p>
+            </div>
+
+            <template v-else-if="transactions.length > 0">
+              <div class="d-flex flex-column gap-4">
+                <VCard
+                  v-for="item in transactions"
+                  :key="item.id"
+                  variant="flat"
+                  class="border rounded-lg px-4 py-4 bg-white shadow-xs"
+                  :class="
+                    item.type === 'sale'
+                      ? 'border-success-subtle'
+                      : 'border-error-subtle'
+                  "
+                >
+                  <div class="d-flex justify-space-between align-start mb-4">
+                    <div class="d-flex align-center gap-3">
+                      <VAvatar
+                        :color="item.type === 'sale' ? 'success' : 'error'"
+                        variant="tonal"
+                        size="44"
+                        class="rounded-lg"
+                      >
+                        <VIcon
+                          :icon="
+                            item.type === 'sale'
+                              ? 'tabler-arrow-up-right'
+                              : 'tabler-arrow-down-left'
+                          "
+                          size="24"
+                        />
+                      </VAvatar>
+                      <div class="d-flex flex-column">
+                        <span
+                          class="text-super-xs font-weight-black text-disabled uppercase"
+                          >{{ formatDate(item.date) }}</span
+                        >
+                        <span
+                          class="text-xs font-weight-black"
+                          :class="
+                            item.type === 'sale' ? 'text-success' : 'text-error'
+                          "
+                        >
+                          {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div
+                        :class="[
+                          'text-xl font-weight-black',
+                          item.type === 'sale' ? 'text-success' : 'text-error',
+                        ]"
+                      >
+                        {{ item.type === "sale" ? "+" : "-"
+                        }}{{ formatCurrency(item.amount) }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="text-sm font-weight-bold mb-4 bg-surface-variant-light pa-3 rounded-lg border-dashed"
+                  >
+                    {{ item.description }}
+                  </div>
+
+                  <div
+                    class="d-flex justify-space-between align-center pt-3 border-t border-dashed"
+                  >
+                    <div class="d-flex align-center gap-2">
+                      <VAvatar
                         size="24"
-                      />
-                    </VAvatar>
-                    <div class="d-flex flex-column">
+                        variant="tonal"
+                        :color="item.type === 'sale' ? 'primary' : 'secondary'"
+                        class="rounded-lg"
+                      >
+                        <span class="text-xs font-weight-black">{{
+                          getAvatarInitial(item.client || item.category)
+                        }}</span>
+                      </VAvatar>
                       <span
                         class="text-super-xs font-weight-black text-disabled uppercase"
-                        >{{ formatDate(item.date) }}</span
+                        >{{ item.client || item.category || "N/A" }}</span
+                      >
+                    </div>
+
+                    <div class="d-flex flex-column align-end">
+                      <span
+                        class="text-super-xs font-weight-black text-primary uppercase"
+                        >Utilidad de Op.</span
                       >
                       <span
-                        class="text-xs font-weight-black"
-                        :class="
-                          item.type === 'sale' ? 'text-success' : 'text-error'
-                        "
+                        :class="[
+                          'text-sm font-weight-black',
+                          item.profit >= 0 ? 'text-success' : 'text-error',
+                        ]"
                       >
-                        {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
+                        {{ item.profit >= 0 ? "+" : ""
+                        }}{{ formatCurrency(item.profit) }}
                       </span>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <div
-                      :class="[
-                        'text-xl font-weight-black',
-                        item.type === 'sale' ? 'text-success' : 'text-error',
-                      ]"
-                    >
-                      {{ item.type === "sale" ? "+" : "-"
-                      }}{{ formatCurrency(item.amount) }}
-                    </div>
-                  </div>
-                </div>
+                </VCard>
+              </div>
 
-                <div
-                  class="text-sm font-weight-bold mb-4 bg-surface-variant-light pa-3 rounded-lg border-dashed"
-                >
-                  {{ item.description }}
-                </div>
-
-                <div
-                  class="d-flex justify-space-between align-center pt-3 border-t border-dashed"
-                >
-                  <div class="d-flex align-center gap-2">
-                    <VAvatar
-                      size="24"
-                      variant="tonal"
-                      :color="item.type === 'sale' ? 'primary' : 'secondary'"
-                      class="rounded-lg"
-                    >
-                      <span class="text-xs font-weight-black">{{
-                        getAvatarInitial(item.client || item.category)
-                      }}</span>
-                    </VAvatar>
-                    <span
-                      class="text-super-xs font-weight-black text-disabled uppercase"
-                      >{{ item.client || item.category || "N/A" }}</span
-                    >
-                  </div>
-
-                  <div class="d-flex flex-column align-end">
-                    <span
-                      class="text-super-xs font-weight-black text-primary uppercase"
-                      >Utilidad de Op.</span
-                    >
-                    <span
-                      :class="[
-                        'text-sm font-weight-black',
-                        item.profit >= 0 ? 'text-success' : 'text-error',
-                      ]"
-                    >
-                      {{ item.profit >= 0 ? "+" : ""
-                      }}{{ formatCurrency(item.profit) }}
-                    </span>
-                  </div>
-                </div>
+              <!-- Paginación Móvil -->
+              <VCard
+                class="rounded-lg border shadow-sm pa-3 d-flex justify-center mt-6"
+              >
+                <VPagination
+                  v-model="page"
+                  :length="Math.ceil(totalItems / itemsPerPage)"
+                  density="compact"
+                  total-visible="3"
+                  active-color="primary"
+                  @update:model-value="loadDetails"
+                />
               </VCard>
-            </div>
+            </template>
 
-            <!-- Paginación Móvil -->
-            <VCard
-              class="rounded-lg border shadow-sm pa-3 d-flex justify-center mt-6"
+            <div
+              v-else
+              class="text-center py-12 text-disabled border-2 border-dashed rounded-lg"
             >
-              <VPagination
-                v-model="page"
-                :length="Math.ceil(totalItems / itemsPerPage)"
-                density="compact"
-                total-visible="3"
-                active-color="primary"
-                @update:model-value="loadDetails"
-              />
-            </VCard>
-          </template>
-
-          <div
-            v-else
-            class="text-center py-12 text-disabled border-2 border-dashed rounded-lg"
-          >
-            <VIcon icon="tabler-database-x" size="40" class="mb-2" />
-            <p class="text-body-2 font-weight-bold">No hay registros</p>
+              <VIcon icon="tabler-database-x" size="40" class="mb-2" />
+              <p class="text-body-2 font-weight-bold">No hay registros</p>
+            </div>
           </div>
-        </div>
-      </VCardText>
-    </VCard>
+        </VCardText>
+      </VCard>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.stats-card {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 90%) !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-card:not(.no-hover):hover {
+  transform: translateY(-4px);
+  background: rgba(var(--v-theme-surface), 98%) !important;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 60px;
+  filter: blur(35px);
+  inline-size: 60px;
+  inset-block-start: -10px;
+  inset-inline-end: -10px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  opacity: 0.7;
+}
+
+.bg-success-opacity-1 {
+  background: rgba(var(--v-theme-success), 0.1);
+}
+.bg-warning-opacity-1 {
+  background: rgba(var(--v-theme-warning), 0.1);
+}
+.bg-error-opacity-1 {
+  background: rgba(var(--v-theme-error), 0.1);
+}
+.bg-info-opacity-1 {
+  background: rgba(var(--v-theme-info), 0.1);
+}
+
 .income-statement-view {
   background-color: #f8fafc;
   min-block-size: 100vh;
