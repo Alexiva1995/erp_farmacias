@@ -52,11 +52,30 @@ const markChartAsReady = (id) => {
 };
 
 const getChartOptions = (item, color = '#7367f0') => ({
-  chart: { type: 'area', height: 22, sparkline: { enabled: true } },
+  chart: {
+    type: 'area',
+    height: 22,
+    sparkline: { enabled: true },
+    animations: { enabled: true }
+  },
   stroke: { curve: 'smooth', width: 2 },
-  fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0 } },
+  fill: {
+    type: 'gradient',
+    gradient: { opacityFrom: 0.4, opacityTo: 0 }
+  },
+  xaxis: {
+    categories: item.sales_trend_labels || []
+  },
   colors: [color],
-  tooltip: { enabled: false },
+  tooltip: {
+    enabled: true,
+    fixed: { enabled: false },
+    x: { show: true },
+    y: {
+      title: { formatter: () => 'Ventas: ' }
+    },
+    marker: { show: false }
+  }
 });
 
 const getSeries = (item) => [{ name: 'Ventas', data: item.sales_trend?.length > 0 ? item.sales_trend : [0, 0, 0, 0, 0, 0] }];
