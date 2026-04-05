@@ -153,13 +153,25 @@ const handleProductScarceToggled = (productId) => {
 };
 
 let filterTimeout = null;
-watch([selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock, isColombian, searchQuery], () => {
-  clearTimeout(filterTimeout);
-  filterTimeout = setTimeout(async () => {
-    page.value = 1;
-    await actualizarTabla();
-  }, 400);
-});
+watch(
+  [
+    selectedLaboratory,
+    selectedGroup,
+    tipo_de_vista,
+    tipo_de_filtracion,
+    lapso_de_tiempo,
+    stock,
+    isColombian,
+    searchQuery,
+  ],
+  () => {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(async () => {
+      page.value = 1;
+      await actualizarTabla();
+    }, 400); // 400ms de retraso para evitar peticiones masivas
+  },
+);
 
 let paginationTimeout = null;
 watch([page, itemsPerPage, orderBy, sortBy], () => {
@@ -170,7 +182,8 @@ watch([page, itemsPerPage, orderBy, sortBy], () => {
 });
 
 function generarPedido() {
-  toast.info('Navegando a generar pedido...');
+  toast.info("Navegando a generar pedido...");
+  console.log("[DEBUG] Iniciando generarPedido desde el asistente");
   router.push({
     path: "/suppliers/generar-pedido",
     query: {
@@ -181,7 +194,7 @@ function generarPedido() {
       isColombian: isColombian.value,
       laboratoryId: JSON.stringify(selectedLaboratory.value),
       groups: JSON.stringify(selectedGroup.value),
-    }
+    },
   });
 }
 
@@ -192,11 +205,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="assistant-ia-view px-6 mt-6 pb-12">
-    <div class="d-flex flex-column gap-6">
-
+  <div class="assistant-ia-view pb-12">
+    <div class="d-flex flex-column gap-1 mt-1">
       <!-- Filtros -->
       <SupplierIaOrderAssistantFilter
+        class="mb-6"
         v-model:selectConDescuento="con_descuento"
         v-model:selectedLaboratory="selectedLaboratory"
         v-model:selectedGroup="selectedGroup"
