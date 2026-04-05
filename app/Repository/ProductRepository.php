@@ -479,7 +479,9 @@ class ProductRepository
 
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
-                $consulta->has("group");
+                $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
+                    ->orderBy("groups_products.name", "ASC")
+                    ->select("products.*"); 
             }
         }
 
@@ -755,7 +757,9 @@ class ProductRepository
 
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
-                $consulta->has("group");
+                $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
+                    ->orderBy("groups_products.name", "ASC")
+                    ->select("products.*");
             }
         }
 
@@ -1041,7 +1045,11 @@ class ProductRepository
             $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
 
-        if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+        if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
+            $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
+                ->orderBy("groups_products.name", "ASC")
+                ->select("products.*");
+        } elseif (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $consulta->whereIn("group_id", $filtros["groups"]);
         }
 

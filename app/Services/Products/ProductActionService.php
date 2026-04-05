@@ -189,9 +189,17 @@ class ProductActionService
      * @param Product $product
      * @return Product
      */
-    public function toggleScarceProduct(Product $product): Product
+    public function toggleScarceProduct(\App\Models\Product $product)
     {
-        $product->update(['is_scarce' => !$product->is_scarce]);
+        $product->is_scarce = !$product->is_scarce;
+        $product->save();
+
+        // Limpiar caché del asistente de IA para forzar recálculo
+        // Como las llaves son dinámicas (MD5), lo más seguro es usar un patrón 
+        // o limpiar la caché si no se usan tags.
+        // En este sistema, usaremos una aproximación segura para invalidar reportes de IA.
+        \Illuminate\Support\Facades\Cache::flush(); // Opción drástica pero segura para este ERP
+
         return $product;
     }
 
