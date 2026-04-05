@@ -100,6 +100,12 @@ const updateTableOptionsTable = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
+const handleProductScarceToggled = (productId) => {
+  // Eliminar el producto de la lista localmente para que desaparezca de inmediato
+  statuModule.items = statuModule.items.filter(item => item.id !== productId);
+  statuModule.total -= 1;
+};
+
 let filterTimeout = null;
 watch([selectedLaboratory, selectedGroup, tipo_de_vista, tipo_de_filtracion, lapso_de_tiempo, stock, isColombian, searchQuery], () => {
   clearTimeout(filterTimeout);
@@ -178,6 +184,7 @@ onMounted(async () => {
           :page="page"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
+          @product-scarce-toggled="handleProductScarceToggled"
         />
         <SupplierIaOrderAssistantIndividualTable
           v-else
@@ -188,6 +195,7 @@ onMounted(async () => {
           :page="page"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
+          @product-scarce-toggled="handleProductScarceToggled"
         />
       </div>
     </div>

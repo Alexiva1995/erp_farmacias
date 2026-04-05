@@ -1408,4 +1408,45 @@ class ProductRepository
 
         return $consulta->get()->toArray();
     }
+
+    public function getUniqueIdsForIaReport($filtros, $porGrupo = false): array
+    {
+        $query = Product::query()
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('ignore_until')
+                    ->orWhere('ignore_until', '<=', now());
+            });
+
+        if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
+            $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
+        }
+        if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+            $query->whereIn("group_id", $filtros["groups"]);
+        }
+        if (array_key_exists("is_colombia", $filtros)) {
+            $query->where("is_colombian_origin", "=", $filtros["is_colombia"] ? 1 : 0);
+        }
+        
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+             $query->where(function($q) use ($filtros) {
+                 $q->where("name", "like", "%" . $filtros["q"] . "%")
+                   ->orWhere("id", "like", "%" . $filtros["q"] . "%");
+             });
+        }
+
+        if ($porGrupo) {
+            return $query->whereNotNull('group_id')
+                ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
+                ->orderBy('groups_products.name', 'ASC')
+                ->distinct()
+                ->pluck('group_id')
+                ->toArray();
+        }
+
+        return $query->orderBy('name', 'ASC')
+            ->pluck('id')
+            ->toArray();
+    }
 }

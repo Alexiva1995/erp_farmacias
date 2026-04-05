@@ -93,18 +93,7 @@ class IaAssistantReportService
             
             $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
             
-            if ($tipo === 'sales') {
-                $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
-            } else {
-                $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosLigero);
-            }
-
-            if ($porGrupo) {
-                // Obtenemos IDs de grupos únicos, filtrando nulos
-                return $collection->pluck('group_id')->filter()->unique()->values()->toArray();
-            }
-
-            return $collection->pluck('id')->toArray();
+            return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
         });
     }
 

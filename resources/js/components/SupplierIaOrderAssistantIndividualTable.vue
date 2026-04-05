@@ -12,7 +12,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "update:page", "refresh"]);
+const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled"]);
 
 import { ref } from 'vue';
 import axios from 'axios';
@@ -34,14 +34,10 @@ const togglingScarce = ref(null);
 const handleToggleScarce = async (product) => {
   if (togglingScarce.value === product.id) return;
   
-  if (!confirm(`¿Deseas marcar "${product.name}" como producto escaso? Se excluirá de los cálculos de pedidos.`)) {
-    return;
-  }
-
   togglingScarce.value = product.id;
   try {
     await axios.patch(`/api/products/${product.id}/toggle-scarce`);
-    emit('refresh');
+    emit('product-scarce-toggled', product.id);
   } catch (error) {
     console.error("Error toggling scarce status:", error);
   } finally {

@@ -35,15 +35,11 @@ const togglingScarce = ref(null);
 const handleToggleScarce = async (product) => {
   if (togglingScarce.value === product.id) return;
   
-  if (!confirm(`¿Deseas marcar "${product.name}" como producto escaso? Se excluirá de los cálculos de pedidos.`)) {
-    return;
-  }
-
   togglingScarce.value = product.id;
   try {
     await axios.patch(`/api/products/${product.id}/toggle-scarce`);
-    // Notificar al padre para refrescar
-    emit('refresh');
+    // Emitir evento para que el padre lo saque de la lista localmente
+    emit('product-scarce-toggled', product.id);
   } catch (error) {
     console.error("Error toggling scarce status:", error);
   } finally {
