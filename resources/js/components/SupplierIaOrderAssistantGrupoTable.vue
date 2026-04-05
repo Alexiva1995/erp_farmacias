@@ -139,15 +139,16 @@ const grupoKpi = (productos) => {
           <VTable density="compact" class="grupo-table">
             <thead>
               <tr>
-                <th class="text-xs font-weight-black text-uppercase" style="width:50px">ID</th>
+                <th class="text-xs font-weight-black text-uppercase" style="inline-size:50px">ID</th>
                 <th class="text-xs font-weight-black text-uppercase">Producto</th>
-                <th class="text-xs font-weight-black text-uppercase text-center" style="width:75px">Trend</th>
-                <th class="text-xs font-weight-black text-uppercase text-right" style="width:75px">Costo</th>
-                <th class="text-xs font-weight-black text-uppercase text-center" style="width:60px">Vent.</th>
-                <th class="text-xs font-weight-black text-uppercase text-center" style="width:60px">Stock</th>
-                <th class="text-xs font-weight-black text-uppercase text-center" style="width:65px">Prom.</th>
-                <th class="text-xs font-weight-black text-uppercase text-center" style="width:60px">Ped.</th>
-                <th class="text-xs font-weight-black text-uppercase text-center" style="width:80px">Anál.</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:75px">Trend</th>
+                <th class="text-xs font-weight-black text-uppercase text-right" style="inline-size:75px">Costo</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:60px">Vent.</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:60px">Stock</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:65px">Prom.</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:60px">PREF</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:60px">Ped.</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:80px">Anál.</th>
               </tr>
             </thead>
             <tbody>
@@ -198,6 +199,11 @@ const grupoKpi = (productos) => {
                 <td class="text-center text-xs">{{ item.total_sold_completed ?? 0 }}</td>
                 <td class="text-center text-xs">{{ item.lote_quantity ?? 0 }}</td>
                 <td class="text-center text-xs">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</td>
+                <td class="text-center text-xs">
+                  <span class="font-weight-bold" :style="item.preferencia_product > 0 ? 'color:#7367f0' : ''">
+                    {{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) + '%' : '—' }}
+                  </span>
+                </td>
                 <td class="text-center">
                   <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small">
                     {{ item.totalQuantityInAutoOrder || 0 }}

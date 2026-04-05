@@ -102,7 +102,11 @@ class IaAssistantReportService
             ];
         }
 
-        // 3. Para cada grupo de esta página, traer sus productos
+        // 3. Pre-cargar los nombres de grupos de esta página en una sola query
+        $grupoNombres = \App\Models\GroupsProduct::whereIn('id', $currentGroupIds)
+            ->pluck('name', 'id');
+
+        // 4. Para cada grupo de esta página, traer sus productos
         $filtrosBase = $filtros;
         unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
 
@@ -127,25 +131,22 @@ class IaAssistantReportService
 
             $this->hydrateSalesTrend($procesado);
 
-            // Obtener nombre del grupo del primer producto
-            $nombreGrupo = '';
-            if (count($procesado) > 0 && isset($procesado[0]->group)) {
-                $nombreGrupo = $procesado[0]->group->name ?? '';
-            }
+            // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
+            $productosArray = json_decode(json_encode($procesado), true);
 
             $grupos[] = [
-                'group_id' => $groupId,
-                'group_name' => $nombreGrupo,
-                'productos' => array_values((array) $procesado),
+                'group_id'   => $groupId,
+                'group_name' => $grupoNombres[$groupId] ?? '',
+                'productos'  => array_values($productosArray),
             ];
         }
 
         return [
-            'grupos' => $grupos,
+            'grupos'       => $grupos,
             'total_grupos' => $totalGroups,
-            'per_page' => $perPage,
+            'per_page'     => $perPage,
             'current_page' => $page,
-            'last_page' => (int) ceil($totalGroups / $perPage),
+            'last_page'    => (int) ceil($totalGroups / $perPage),
         ];
     }
 
