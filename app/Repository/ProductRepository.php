@@ -1020,7 +1020,7 @@ class ProductRepository
         ]);
 
 
-        if (array_key_exists("is_colombia", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("is_colombia", $filtros)) {
             if ($filtros["is_colombia"] == true) {
                 $consulta->where("is_colombian_origin", "=", 1);
             } else if ($filtros["is_colombia"] == false) {
@@ -1028,28 +1028,28 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("is_ordered", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("is_ordered", $filtros)) {
             $consulta->where("is_ordered", "=", $filtros["is_ordered"]);
         }
 
-        if (array_key_exists("product", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("product", $filtros)) {
             if (count($filtros["product"]) > 0) {
                 $consulta->whereIn("id", $filtros["product"]);
             }
         }
 
-        if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
+        if (empty($filtros["ids_in"]) && array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
             $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
 
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
                 ->orderBy("groups_products.name", "ASC");
-        } elseif (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+        } elseif (empty($filtros["ids_in"]) && array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $consulta->whereIn("group_id", $filtros["groups"]);
         }
 
-        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+        if (empty($filtros["ids_in"]) && array_key_exists("q", $filtros) && $filtros["q"] != "") {
             $isStrictSearch = $filtros["isStrictSearch"] ?? false;
             $searchTerm = $filtros["q"];
 
@@ -1081,7 +1081,7 @@ class ProductRepository
             $consulta->whereIn("id", $filtros["ids_in"]);
         }
 
-        if (array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
+        if (empty($filtros["ids_in"]) && array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
             $consulta->doesntHave("productSuppliers");
         }
 
@@ -1095,7 +1095,7 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
             $consulta->whereHas("lots", function ($query) use ($filtros) {
                 $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
             });
@@ -1274,7 +1274,7 @@ class ProductRepository
             $consulta->where("id", $filtros["id"]);
         }
 
-        if (array_key_exists("is_colombia", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("is_colombia", $filtros)) {
             if ($filtros["is_colombia"] == true) {
                 $consulta->where("is_colombian_origin", "=", 1);
             } else if ($filtros["is_colombia"] == false) {
@@ -1282,11 +1282,11 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("is_ordered", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("is_ordered", $filtros)) {
             $consulta->where("is_ordered", "=", $filtros["is_ordered"]);
         }
 
-        if (array_key_exists("product", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("product", $filtros)) {
             if (count($filtros["product"]) > 0) {
                 $consulta->whereIn("id", $filtros["product"]);
             }
@@ -1298,7 +1298,7 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("laboratoryId", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("laboratoryId", $filtros)) {
             if (count($filtros["laboratoryId"]) > 0) {
                 $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
             }
@@ -1307,15 +1307,13 @@ class ProductRepository
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
                 ->orderBy("groups_products.name", "ASC");
-        } 
-        
-        if (array_key_exists("groups", $filtros)) {
+        } elseif (empty($filtros["ids_in"]) && array_key_exists("groups", $filtros)) {
             if (count($filtros["groups"]) > 0) {
                 $consulta->whereIn("products.group_id", $filtros["groups"]);
             }
         }
 
-        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+        if (empty($filtros["ids_in"]) && array_key_exists("q", $filtros) && $filtros["q"] != "") {
             $isStrictSearch = $filtros["isStrictSearch"] ?? false;
             $searchTerm = $filtros["q"];
 
@@ -1343,7 +1341,7 @@ class ProductRepository
             });
         }
 
-        if (array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
+        if (empty($filtros["ids_in"]) && array_key_exists("without_supplier", $filtros) && $filtros["without_supplier"]) {
             $consulta->doesntHave("productSuppliers");
         }
 
@@ -1357,7 +1355,7 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
+        if (empty($filtros["ids_in"]) && array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
             $consulta->whereHas("lots", function ($query) use ($filtros) {
                 $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
             });
@@ -1466,7 +1464,7 @@ class ProductRepository
         $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
 
         // Filtros base
-        if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
+        if (empty($filtros["ids_in"]) && array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
             $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
