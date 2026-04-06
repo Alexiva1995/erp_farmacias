@@ -834,9 +834,9 @@ class SupplierConnectionService
             return null;
         }
 
-        // Verificar si ya existe
-        if (Product::where('barcode', $barcode)->exists()) {
-            return Product::where('barcode', $barcode)->first();
+        // Verificar si ya existe (incluyendo los eliminados para evitar fallos de integridad)
+        if (Product::withoutGlobalScope('not_deleted')->where('barcode', $barcode)->exists()) {
+            return Product::withoutGlobalScope('not_deleted')->where('barcode', $barcode)->first();
         }
 
         try {
