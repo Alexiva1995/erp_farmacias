@@ -40,6 +40,7 @@ const stock = ref(route.query.stock || 'fallas');
 const isColombian = ref(route.query.isColombian === 'true');
 const groups= ref(gruposList);
 const laboratoryId= ref(laboratoriosList);
+const q = ref(route.query.q || "");
 
 async function generarPedido(page = 1) {
   let data = {
@@ -50,6 +51,7 @@ async function generarPedido(page = 1) {
     "isColombian": isColombian.value,
     "groups": groups.value,
     "laboratoryId": laboratoryId.value,
+    "q": q.value,
     "page": page
   }
 
@@ -66,6 +68,7 @@ async function fetchSoloOportunidad(page = 1) {
     "isColombian": isColombian.value,
     "groups": groups.value,
     "laboratoryId": laboratoryId.value,
+    "q": q.value,
     "page": page
   }
   const respuestaApi = await axios.post(`/suppliers-ia-order-assistant/generate-order/unique-opportunity-page`, data);
