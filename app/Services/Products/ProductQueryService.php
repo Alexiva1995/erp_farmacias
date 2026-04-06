@@ -169,6 +169,11 @@ class ProductQueryService
             });
         }
 
+        // Filtrar solo productos redundantes (is_scarce = true)
+        if (!empty($filters['isScarce'])) {
+            $query->where('is_scarce', true);
+        }
+
         return $query;
     }
 
@@ -256,6 +261,7 @@ class ProductQueryService
             'lockedValue' => $request->lockedValue,
             'is_psychotropic' => $request->is_psychotropic,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+            'isScarce'       => filter_var($request->get('isScarce'), FILTER_VALIDATE_BOOLEAN),
         ];
 
         $this->applyFilters($query, $filters);

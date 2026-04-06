@@ -26,6 +26,7 @@ const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 const isStrictSearch = ref(false);
+const isScarce = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -77,6 +78,7 @@ const fetchProducts = async () => {
     startDate: startDate.value,
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
+    ...(isScarce.value && { isScarce: true }),
   };
   Object.keys(params).forEach(
     key => (params[key] === null || params[key] === "") && delete params[key],
@@ -108,6 +110,7 @@ watch(
     startDate,
     endDate,
     isStrictSearch,
+    isScarce,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -226,6 +229,7 @@ const handleClearFilters = () => {
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
+  isScarce.value = false;
 };
 
 const handleAddProduct = () => {
@@ -306,6 +310,7 @@ const handleSort = sortOptions => {
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:isStrictSearch="isStrictSearch"
+      v-model:isScarce="isScarce"
       :laboratories="laboratories"
       :origins="origins"
       :loading="isLoadingFilters"
