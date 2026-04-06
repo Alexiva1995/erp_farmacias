@@ -159,7 +159,7 @@ class IaAssistantReportService
             'lapso' => $filtros['lapso_de_tiempo'] ?? '',
             'lab' => $filtros['laboratoryId'] ?? [],
             'groups' => $filtros['groups'] ?? [],
-            'is_col' => $filtros['is_colombia'] ?? null,
+            'is_col' => $filtros['isColombian'] ?? null,
             'q' => $filtros['q'] ?? '',
             'stock' => $filtros['stock'] ?? 'fallas',
             'tipo' => $filtros['tipo_de_filtracion'] ?? 'average',

@@ -1413,6 +1413,54 @@ class ProductRepository
 
     public function getUniqueIdsForIaReport($filtros, $porGrupo = false): array
     {
+        // 1. Definir subconsultas y variables base
+        $subqueryStock = $this->subConsultaParaCalcularStockPorLotes;
+        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL)';
+
+        $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                WHERE order_details.product_id = products.id
+                AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
+                AND orders.status = "Completed")';
+
+        // Promedio calculado según lapso
+        $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
+        $promedio_calculado = match($lapso) {
+            "7 days"  => 'sales_average / 4',
+            "15 days" => 'sales_average / 2',
+            "1 month" => 'sales_average',
+            "3 month" => 'sales_average * 3',
+            "6 month" => 'sales_average * 6',
+            "1 year"  => 'sales_average * 12',
+            default    => 'sales_average',
+        };
+
+        // Solicitar según tipo de filtración
+        $tipo = $filtros["tipo_de_filtracion"] ?? "average";
+        if ($tipo === "combinado") {
+            $demanda = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
+            $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
+        } elseif ($tipo === "sales") {
+            $solicitarRaw = '(' . $subqueryTotalSold . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
+        } else {
+            $solicitarRaw = '(' . $promedio_calculado . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
+        }
+
+        $solicitarCol = "CASE 
+                WHEN ($solicitarRaw) > 0 THEN CEIL($solicitarRaw) 
+                ELSE FLOOR($solicitarRaw) 
+            END";
+
+        // 2. Construir Query
         $query = Product::query()
             ->where('is_deleted', false)
             ->where('is_scarce', false)
@@ -1421,35 +1469,48 @@ class ProductRepository
                     ->orWhere('ignore_until', '<=', now());
             });
 
+        // Seleccionar solicitar para usar en having
+        $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
+
+        // Filtros base
         if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
             $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $query->whereIn("group_id", $filtros["groups"]);
         }
-        if (array_key_exists("is_colombia", $filtros)) {
-            $query->where("is_colombian_origin", "=", $filtros["is_colombia"] ? 1 : 0);
+        if (array_key_exists("isColombian", $filtros)) {
+            $query->where("is_colombian_origin", "=", $filtros["isColombian"] ? 1 : 0);
         }
-        
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
              $query->where(function($q) use ($filtros) {
-                 $q->where("name", "like", "%" . $filtros["q"] . "%")
-                   ->orWhere("id", "like", "%" . $filtros["q"] . "%");
+                 $q->where("products.name", "like", "%" . $filtros["q"] . "%")
+                   ->orWhere("products.id", "like", "%" . $filtros["q"] . "%");
              });
         }
 
+        // 3. Aplicar Filtro de Stock (HAVING)
+        if (array_key_exists("stock", $filtros) && $filtros["stock"] !== 'all') {
+            if ($filtros["stock"] == "exceso") {
+                $query->having("solicitar", "<", 0);
+            } elseif ($filtros["stock"] == "fallas") {
+                $query->havingRaw("solicitar > 0 OR (solicitar = 0 AND ($subqueryStock) <= 0)");
+            }
+        }
+
         if ($porGrupo) {
-            return $query->select('products.group_id', 'groups_products.name')
-                ->whereNotNull('group_id')
+            return $query
                 ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
-                ->orderBy('groups_products.name', 'ASC')
+                ->select('products.group_id')
                 ->distinct()
+                ->orderBy('groups_products.name', 'ASC')
                 ->get()
                 ->pluck('group_id')
                 ->toArray();
         }
 
-        return $query->orderBy('name', 'ASC')
+        return $query->orderBy('products.name', 'ASC')
+            ->get()
             ->pluck('id')
             ->toArray();
     }
