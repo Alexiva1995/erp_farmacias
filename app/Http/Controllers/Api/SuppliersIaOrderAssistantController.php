@@ -181,6 +181,7 @@ class SuppliersIaOrderAssistantController extends Controller
             "laboratoryId" => $request->laboratoryId,
             "groups" => $request->groups,
             "stock" => $request->get('stock', 'fallas'),
+            "q" => $request->q,
         ];
 
         if ($request->filled("laboratoryId"))
@@ -309,11 +310,14 @@ class SuppliersIaOrderAssistantController extends Controller
 
             $filtros = [
                 "tipo_filtracion" => $request->tipo_filtracion,
-                "lapso_de_tiempo" => "1 year",
+                "lapso_de_tiempo" => $request->lapso_de_tiempo ?? "1 year",
                 "dateToday" => $dateToday->format("Y-m-d H:i:s"),
                 "previousDate" => $this->generarPreviousDate("1", "year"),
-                "orderBy" => "asc",
-                "sortBy" => "name",
+                "orderBy" => $request->orderBy ?? "asc",
+                "sortBy" => $request->sortBy ?? "name",
+                "q" => $request->q,
+                "stock" => $request->stock,
+                "isColombian" => filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN),
             ];
 
             if ($request->filled("laboratoryId"))

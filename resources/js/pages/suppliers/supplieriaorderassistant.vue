@@ -199,6 +199,7 @@ function generarPedido() {
       isColombian: isColombian.value,
       laboratoryId: JSON.stringify(selectedLaboratory.value),
       groups: JSON.stringify(selectedGroup.value),
+      q: searchQuery.value,
     },
   });
 }

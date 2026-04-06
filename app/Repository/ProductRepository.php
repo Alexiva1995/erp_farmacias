@@ -993,12 +993,8 @@ class ProductRepository
         END AS solicitar');
 
 
-        $consulta = Product::select($columnas)
-            ->where(function ($query) {
-                $query->whereNull('ignore_until')
-                    ->orWhere('ignore_until', '<=', now());
-            })
-            ->where('is_deleted', false)->where('is_scarce', false)
+        $consulta = Product::select($columnas);
+        $consulta->where('is_deleted', false)->where('is_scarce', false)
             ->with([
             "laboratory",
             "lots",
@@ -1247,12 +1243,8 @@ class ProductRepository
 
         $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
 
-        $consulta = Product::select($columnas)
-            ->where(function ($query) {
-                $query->whereNull('ignore_until')
-                    ->orWhere('ignore_until', '<=', now());
-            })
-            ->where('is_deleted', false)->where('is_scarce', false)
+        $consulta = Product::select($columnas);
+        $consulta->where('is_deleted', false)->where('is_scarce', false)
             ->with([
             "laboratory",
             "lots",
@@ -1463,11 +1455,7 @@ class ProductRepository
         // 2. Construir Query
         $query = Product::query()
             ->where('is_deleted', false)
-            ->where('is_scarce', false)
-            ->where(function ($q) {
-                $q->whereNull('ignore_until')
-                    ->orWhere('ignore_until', '<=', now());
-            });
+            ->where('is_scarce', false);
 
         // Seleccionar solicitar para usar en having
         $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
