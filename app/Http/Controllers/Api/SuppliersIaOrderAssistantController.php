@@ -192,24 +192,18 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("isColombian"))
             $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
-        if ($request->filled("lapso_de_tiempo")) {
-            $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
-            $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d H:i:s");
-            $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
+        // Usar el servicio del asistente como fuente única de verdad para la lista de productos
+        $productosFallas = collect($this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas));
+
+        if ($productosFallas->isEmpty() && $request->get('stock') !== 'all') {
+            // Si no hay productos pero solicitó algo específico, devolvemos éxito vacío pero con total 0
+            $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
+            if ($totalFallas === 0) {
+                 return ApiResponse::success($respuesta, "ok", 200);
+            }
         }
 
-        if ($filtrosFallas["tipo_filtracion"] == "average" || $filtrosFallas["tipo_filtracion"] == "combinado") {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
-        } else {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
-        }
-
-        if ($productosFallas == null) {
-            return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
-        }
-
-        // Obtener totalFallas del mismo servicio que usa el asistente para que los números coincidan
+        // Obtener totalFallas del mismo servicio para garantizar coincidencia absoluta
         $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
 
         // Invertir el signo de solicitar para TODOS los productos.

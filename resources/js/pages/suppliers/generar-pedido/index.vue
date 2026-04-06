@@ -19,6 +19,9 @@ const pageOportunidad = ref(1);
 
 const indexNavegacion=ref(1)
 const showNoEncontradosModal = ref(false);
+const searchNoEncontrados = ref('');
+const pageNoEncontrados = ref(1);
+const itemsPerPageNoEncontrados = 15;
 
 const module = reactive({
   dataProductos: {},
@@ -256,7 +259,32 @@ const LISTA_NO_ENCONTRADOS = computed(() => {
   return module.productosSinReponer.filter(p => !idsConCobertura.has(p.id));
 })
 
+// Lista filtrada por el buscador del modal
+const FILTRADA_NO_ENCONTRADOS = computed(() => {
+  if (!searchNoEncontrados.value) return LISTA_NO_ENCONTRADOS.value;
+  const q = searchNoEncontrados.value.toLowerCase();
+  return LISTA_NO_ENCONTRADOS.value.filter(p => 
+    p.name?.toLowerCase().includes(q) || 
+    p.id?.toString().includes(q) ||
+    p.laboratory?.name?.toLowerCase().includes(q)
+  );
+})
+
+// Lista paginada para la tabla del modal
+const PAGINADA_NO_ENCONTRADOS = computed(() => {
+  const start = (pageNoEncontrados.value - 1) * itemsPerPageNoEncontrados;
+  const end = start + itemsPerPageNoEncontrados;
+  return FILTRADA_NO_ENCONTRADOS.value.slice(start, end);
+})
+
+// Total de páginas para el modal
+const TOTAL_PAGINAS_NO_ENCONTRADOS = computed(() => {
+  return Math.ceil(FILTRADA_NO_ENCONTRADOS.value.length / itemsPerPageNoEncontrados);
+})
+
 function abrirModalNoEncontrados() {
+  pageNoEncontrados.value = 1;
+  searchNoEncontrados.value = '';
   showNoEncontradosModal.value = true;
 }
 
@@ -657,11 +685,25 @@ function eliminarItemOrden(payload){
         <VBtn icon="tabler-x" variant="text" color="white" size="small" @click="showNoEncontradosModal = false" />
       </div>
 
+      <!-- Buscador -->
+      <div class="px-6 py-3 border-b bg-var-theme-background">
+        <VTextField
+          v-model="searchNoEncontrados"
+          placeholder="Buscar por nombre, ID o laboratorio..."
+          density="compact"
+          variant="outlined"
+          prepend-inner-icon="tabler-search"
+          hide-details
+          clearable
+          @update:model-value="pageNoEncontrados = 1"
+        />
+      </div>
+
       <!-- Tabla -->
-      <VCardText class="pa-0">
-        <div v-if="LISTA_NO_ENCONTRADOS.length === 0" class="d-flex flex-column align-center py-10 text-disabled">
+      <VCardText class="pa-0" style="min-height: 400px;">
+        <div v-if="FILTRADA_NO_ENCONTRADOS.length === 0" class="d-flex flex-column align-center py-10 text-disabled">
           <VIcon icon="tabler-package-off" size="48" class="mb-3" />
-          <span class="text-body-1 font-weight-medium">No hay productos sin proveedor</span>
+          <span class="text-body-1 font-weight-medium">No hay productos que coincidan</span>
         </div>
         <VTable v-else density="compact" class="text-sm">
           <thead>
@@ -673,12 +715,12 @@ function eliminarItemOrden(payload){
             </tr>
           </thead>
           <tbody>
-            <tr v-for="prod in LISTA_NO_ENCONTRADOS" :key="prod.id">
+            <tr v-for="prod in PAGINADA_NO_ENCONTRADOS" :key="prod.id">
               <td class="text-primary font-weight-black text-sm">
                 <a :href="'/inventory/traceability?q=' + prod.id" target="_blank" class="text-decoration-none text-primary">{{ prod.id }}</a>
               </td>
               <td>
-                <div class="text-high-emphasis font-weight-bold text-uppercase text-sm">{{ prod.name }}</div>
+                <div class="text-high-emphasis font-weight-bold text-uppercase text-sm" style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ prod.name }}</div>
                 <div class="text-caption text-disabled">{{ prod.laboratory?.name || 'S/L' }}</div>
               </td>
               <td class="text-right">
@@ -693,7 +735,17 @@ function eliminarItemOrden(payload){
       </VCardText>
 
       <VDivider />
-      <VCardActions class="px-6 py-3 d-flex justify-end">
+      <VCardActions class="px-6 py-2 d-flex align-center justify-space-between bg-var-theme-background">
+        <div class="text-caption text-disabled">
+          Mostrando {{ PAGINADA_NO_ENCONTRADOS.length }} de {{ FILTRADA_NO_ENCONTRADOS.length }} resultados
+        </div>
+        <VPagination
+          v-model="pageNoEncontrados"
+          :length="TOTAL_PAGINAS_NO_ENCONTRADOS"
+          :total-visible="5"
+          density="comfortable"
+          size="small"
+        />
         <VBtn variant="tonal" color="secondary" size="small" @click="showNoEncontradosModal = false">Cerrar</VBtn>
       </VCardActions>
     </VCard>
