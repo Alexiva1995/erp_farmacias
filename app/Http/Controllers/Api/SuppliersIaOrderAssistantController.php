@@ -206,12 +206,6 @@ class SuppliersIaOrderAssistantController extends Controller
         // Obtener totalFallas del mismo servicio para garantizar coincidencia absoluta
         $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
 
-        // Invertir el signo de solicitar para TODOS los productos.
-        // El repositorio devuelve (demanda - stock - AO) positivo para necesidades.
-        // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
-        foreach ($productosFallas as $producto) {
-            $producto->solicitar = $producto->solicitar * -1;
-        }
 
         $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
         $tempReponer = $this->productSupplier->checkTolerance($tempReponer, $request->con_descuento);
