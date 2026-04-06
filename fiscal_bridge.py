@@ -1,63 +1,94 @@
-import serial
+import ctypes
 import time
 import requests
 import urllib.parse
 import urllib3
+import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CONFIGURACIÓN ---
-BRIDGE_MODE = "WEBSIM" 
-SERIAL_PORT = "COM1"  
-BAUD_RATE = 9600
+BRIDGE_MODE = "REAL" # "REAL" o "WEBSIM" 
+SERIAL_PORT_NUM = "96" # Solo el número del puerto COM
 API_BASE_URL = "https://erp_farmacias.test/api" 
 POLLING_INTERVAL = 5 
 
+DLL_PATH = r"c:\laragon\www\erp_farmacias\pnp\pnpdll\pnpdll64.dll"
 WEBSIM_URL = "https://desarrollospnp.com/sim/pf.php"
 
-# --- PROTOCOLO PNP ---
-class PNPPrinter:
-    STX = b'\x02'
-    ETX = b'\x03'
-    SEP = b'\x1c'
-    
-    def __init__(self, port, baudrate):
-        self.port = port
-        self.baudrate = baudrate
-        self.seq = 0x20
-
-    def _next_seq(self):
-        self.seq += 1
-        if self.seq > 0x7F: self.seq = 0x20
-        return bytes([self.seq])
-
-    def _calculate_bcc(self, frame_body):
-        xor_sum = 0
-        for b in frame_body: xor_sum ^= b
-        return format(xor_sum, '04X').encode('ascii')
-
-    def send_command(self, cmd_byte, fields=[]):
-        sec = self._next_seq()
-        body = sec + cmd_byte
-        for field in fields:
-            body += self.SEP + str(field).encode('latin-1', errors='replace')
-        body += self.ETX
-        bcc = self._calculate_bcc(body)
-        full_frame = self.STX + body + bcc
-        
-        print(f"[{BRIDGE_MODE}] Comando: {cmd_byte} Fields: {fields}")
-        
-        if BRIDGE_MODE == "MOCK":
-            return b'\x06', "MOCK_OK"
+# --- CARGA DE DLL ---
+pnp = None
+if BRIDGE_MODE == "REAL":
+    try:
+        if os.path.exists(DLL_PATH):
+            pnp = ctypes.WinDLL(DLL_PATH)
+            # Definir tipos de argumentos y retornos
+            pnp.PFabrepuerto.argtypes = [ctypes.c_char_p]
+            pnp.PFabrepuerto.restype = ctypes.c_void_p
             
-        try:
-            with serial.Serial(self.port, self.baudrate, timeout=2) as ser:
-                ser.write(full_frame)
-                res = ser.read(100)
-                return res, res.decode('latin-1', errors='ignore')
-        except Exception as e:
-            print(f"[SERIAL ERROR] {e}")
-            raise e
+            pnp.PFabrefiscal.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+            pnp.PFabrefiscal.restype = ctypes.c_void_p
+            
+            pnp.PFrenglon.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+            pnp.PFrenglon.restype = ctypes.c_void_p
+            
+            pnp.PFtotal.restype = ctypes.c_void_p
+            
+            pnp.PFComando.argtypes = [ctypes.c_char_p]
+            pnp.PFComando.restype = ctypes.c_void_p
+            
+            pnp.PFultimo.restype = ctypes.c_void_p
+            
+            print(f"[DLL] Librería cargada satisfactoriamente desde {DLL_PATH}")
+        else:
+            print(f"[DLL ERROR] No se encontró la DLL en {DLL_PATH}")
+            BRIDGE_MODE = "WEBSIM"
+    except Exception as e:
+        print(f"[DLL ERROR] Fallo al cargar DLL: {e}")
+        BRIDGE_MODE = "WEBSIM"
 
+def get_pnp_res(ptr):
+    if ptr:
+        return ctypes.string_at(ptr).decode('ansi', errors='ignore')
+    return ""
+
+def decode_pnp_status(status_str):
+    """Decodifica la cadena tipo 0080,8620,ERROR 0"""
+    parts = status_str.split(',')
+    if len(parts) < 2: return status_str
+    
+    st_p, st_f = parts[0], parts[1]
+    msgs = []
+    try:
+        val_p = int(st_p, 16)
+        if val_p & (1 << 14): msgs.append("SIN PAPEL")
+        if val_p & (1 << 3): msgs.append("FUERA DE LÍNEA")
+        if val_p & (1 << 2): msgs.append("FALLA IMPRESORA")
+        
+        val_f = int(st_f, 16)
+        if val_f & (1 << 11): msgs.append("REQUIERE REPORTE Z")
+        if val_f & (1 << 7): msgs.append("MEMORIA FISCAL LLENA")
+        if val_f & (1 << 5): msgs.append("COMANDO INVÁLIDO (Estado)")
+        if val_f & (1 << 4): msgs.append("CAMPO DATOS INVÁLIDO")
+        if val_f & (1 << 3): msgs.append("COMANDO NO RECONOCIDO")
+        if val_f & (1 << 12): msgs.append("FACTURA ABIERTA")
+    except: pass
+    
+    return f"{status_str} -> [{' | '.join(msgs)}]" if msgs else status_str
+
+def call_pnp(func, *args):
+    # Convertir strings a bytes ansi
+    b_args = [str(arg).encode('ansi') for arg in args]
+    ptr = func(*b_args)
+    res = get_pnp_res(ptr)
+    if res == "ER":
+        err_ptr = pnp.PFultimo()
+        err_msg = get_pnp_res(err_ptr)
+        decoded = decode_pnp_status(err_msg)
+        print(f"[DLL ERROR] {decoded}")
+        return "ERROR|" + decoded
+    return res
+
+# --- PROTOCOLO WEBSIM ---
 class WebSimPrinter:
     def __init__(self, url):
         self.url = url
@@ -83,13 +114,7 @@ class WebSimPrinter:
         return self._send_to_sim(commands)
 
     def print_report(self, type_char):
-        # I: Z, H: X
         commands = [f"{type_char}"]
-        return self._send_to_sim(commands)
-
-    def annul_invoice(self, invoice_num):
-        # G
-        commands = [f"G:{invoice_num}"]
         return self._send_to_sim(commands)
 
     def _send_to_sim(self, commands):
@@ -104,7 +129,7 @@ class WebSimPrinter:
             return f"ERROR: {e}"
 
 # --- WORKER LÓGICA ---
-def process_pending_invoices(printer, sim):
+def process_pending_invoices(sim):
     try:
         resp = requests.get(f"{API_BASE_URL}/fiscal/pending", timeout=10, verify=False)
         if resp.status_code == 200:
@@ -117,21 +142,41 @@ def process_pending_invoices(printer, sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # Lógica real PNP para factura... (simplificada)
-                    printer.send_command(b'\x40', [data['business_name'][:40], data['identification'][:20]])
-                    # ... (resto de ítems)
-                    _, res_text = printer.send_command(b'\x44', ["1", "0"])
+                    # USAR DLL
+                    print(f"[DLL] Abriendo puerto {SERIAL_PORT_NUM}...")
+                    call_pnp(pnp.PFabrepuerto, SERIAL_PORT_NUM)
+                    
+                    name = data.get('business_name', 'CLIENTE GENERICO')[:40]
+                    rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
+                    
+                    print(f"[DLL] @ {name} | {rif}")
+                    call_pnp(pnp.PFabrefiscal, name, rif)
+                    
+                    for detail in data.get('details', []):
+                        d_name = detail['product_name'][:30]
+                        qty = int(float(detail['quantity']) * 1000)
+                        is_taxable = detail.get('vat_status') == 1 or detail.get('vat_status') is True
+                        price_u = float(detail['total_amount']) / (1.16 if is_taxable else 1.0) / float(detail['quantity'])
+                        price = int(round(price_u * 100))
+                        tax = "1600" if is_taxable else "0"
+                        
+                        print(f"[DLL] B {d_name} | Q:{qty} | P:{price} | T:{tax}")
+                        call_pnp(pnp.PFrenglon, d_name, str(qty), str(price), tax)
+                    
+                    print("[DLL] Cerrando factura (PFtotal)...")
+                    ptr = pnp.PFtotal()
+                    res_text = get_pnp_res(ptr)
                 
-                inv_num = res_text.split('|')[-1] if '|' in res_text else "SIM" + str(invoice_id)
+                inv_num = res_text.split('|')[-1] if (res_text and '|' in res_text) else "FAC" + str(invoice_id)
                 requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={
                     "invoice_number": inv_num[:20],
                     "fiscal_id": None
                 }, timeout=10, verify=False)
-                print(f"[OK] Factura {invoice_id} confirmada.")
+                print(f"[OK] Factura {invoice_id} confirmada: {inv_num}")
     except Exception as e:
         print(f"[INV ERR] {e}")
 
-def process_general_commands(printer, sim):
+def process_general_commands(sim):
     try:
         resp = requests.get(f"{API_BASE_URL}/fiscal/commands/pending", timeout=10, verify=False)
         if resp.status_code == 200:
@@ -146,26 +191,23 @@ def process_general_commands(printer, sim):
                 
                 res_output = "OK"
                 try:
+                    if BRIDGE_MODE == "REAL":
+                        call_pnp(pnp.PFabrepuerto, SERIAL_PORT_NUM)
+
                     if cmd_type == "REPORT_Z":
                         if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report("I")
-                        else: res_output = printer.send_command(b'\x49')[1]
+                        else: res_output = call_pnp(pnp.PFComando, "9|Z")
                     elif cmd_type == "REPORT_X":
                         if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report("H")
-                        else: res_output = printer.send_command(b'\x48')[1]
+                        else: res_output = call_pnp(pnp.PFComando, "9|X")
                     elif cmd_type == "ANNUL_INVOICE":
                         inv_to_annul = payload.get('invoice_number', '')
-                        if BRIDGE_MODE == "WEBSIM": res_output = sim.annul_invoice(inv_to_annul)
-                        else: res_output = printer.send_command(b'\x47', [inv_to_annul])[1]
+                        if BRIDGE_MODE == "WEBSIM": res_output = f"G:{inv_to_annul}"
+                        else: res_output = call_pnp(pnp.PFComando, f"G|{inv_to_annul}")
                     elif cmd_type == "REPRINT_REPORT_Z":
                         z_num = payload.get('z_number', '1')
-                        print(f"[REPRINT Z] Solicitando Reporte Z #{z_num}")
-                        if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report(f"U:{z_num}:{z_num}")
-                        else: res_output = printer.send_command(b'\x55', [z_num, z_num])[1]
-                    elif cmd_type == "REPRINT_INVOICE":
-                        # PNP no tiene comando directo de reimprimir por nro, 
-                        # pero WebSim suele permitir repetir si mandamos la misma trama
-                        # Por ahora marcamos como éxito
-                        res_output = "Re-impresión enviada"
+                        if BRIDGE_MODE == "WEBSIM": res_output = f"U:{z_num}:{z_num}"
+                        else: res_output = call_pnp(pnp.PFComando, f"U|{z_num}|{z_num}")
                     
                     status = "success"
                 except Exception as ex:
@@ -181,11 +223,10 @@ def process_general_commands(printer, sim):
         print(f"[CMD ERR] {e}")
 
 if __name__ == "__main__":
-    pnp = PNPPrinter(SERIAL_PORT, BAUD_RATE)
     websim = WebSimPrinter(WEBSIM_URL)
-    print(f"--- Worker Fiscal v2.0 Activo ({BRIDGE_MODE}) ---")
+    print(f"--- Worker Fiscal DLL v3.0 Activo ({BRIDGE_MODE}) ---")
     
     while True:
-        process_pending_invoices(pnp, websim)
-        process_general_commands(pnp, websim)
+        process_pending_invoices(websim)
+        process_general_commands(websim)
         time.sleep(POLLING_INTERVAL)
