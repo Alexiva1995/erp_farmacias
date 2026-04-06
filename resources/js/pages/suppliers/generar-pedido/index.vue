@@ -238,10 +238,12 @@ const TOTAL_ORDER= computed(() => {
 
 // KPI: productos de la lista de fallas que SÍ tienen un proveedor asignado para reponer
 const KPIS_ENCONTRADOS = computed(() => {
-  return module.productoFallas?.length || 0;
+  if (!module.productoFallas) return 0;
+  const uniqueIds = new Set(module.productoFallas.map(item => item.product?.id).filter(id => id));
+  return uniqueIds.size;
 })
 
-// KPI: fallas sin proveedor = total fallas real (antes de remover cubiertos por AO) - los que sí encontraron proveedor
+// KPI: fallas sin proveedor = total fallas real - los que sí encontraron proveedor
 const KPIS_NO_ENCONTRADOS = computed(() => {
   const totalFallasReal = module.totalFallas || 0;
   return Math.max(0, totalFallasReal - KPIS_ENCONTRADOS.value);
@@ -407,10 +409,8 @@ async function realizarCompra(){
 
 async function consultarProductosSinProveedor(){
 
-  const idsQueSeEstanComprando = module.detalleOrder.map(item => item.product.id);
-  let productos = module.productosSinReponer.filter(p =>
-      p.solicitar < 0 && !idsQueSeEstanComprando.includes(p.id)
-  );
+  const idsQueSeEstanComprando = new Set(module.productoFallas.map(item => item.product?.id).filter(id => id));
+  let productos = module.productosSinReponer.filter(p => !idsQueSeEstanComprando.has(p.id));
 
   let ids = productos.map(p => p.id)
 
