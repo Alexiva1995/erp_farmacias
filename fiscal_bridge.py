@@ -8,8 +8,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CONFIGURACIÓN ---
 BRIDGE_MODE = "REAL" # "REAL" o "WEBSIM" 
-SERIAL_PORT_NUM = "96" # Solo el número del puerto COM
-API_BASE_URL = "https://erp_farmacias.test/api" 
+SERIAL_PORT_NUM = "3" # Solo el número del puerto COM
+API_BASE_URL = "http://erp_farmacias.test/api" 
 POLLING_INTERVAL = 5 
 
 DLL_PATH = r"c:\laragon\www\erp_farmacias\pnp\pnpdll\pnpdll64.dll"
@@ -226,6 +226,14 @@ if __name__ == "__main__":
     websim = WebSimPrinter(WEBSIM_URL)
     print(f"--- Worker Fiscal DLL v3.0 Activo ({BRIDGE_MODE}) ---")
     
+    if BRIDGE_MODE == "REAL":
+        print(f"[DLL] Probando apertura inicial de puerto {SERIAL_PORT_NUM}...")
+        res = call_pnp(pnp.PFabrepuerto, SERIAL_PORT_NUM)
+        if "ERROR" in res:
+            print(f"[DLL ERROR] No se pudo abrir el puerto {SERIAL_PORT_NUM}. Verifica que com0com esté activo.")
+        else:
+            print(f"[DLL OK] Puerto {SERIAL_PORT_NUM} abierto correctamente.")
+
     while True:
         process_pending_invoices(websim)
         process_general_commands(websim)
