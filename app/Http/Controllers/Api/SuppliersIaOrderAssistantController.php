@@ -180,7 +180,7 @@ class SuppliersIaOrderAssistantController extends Controller
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
             "laboratoryId" => $request->laboratoryId,
             "groups" => $request->groups,
-            "stock" => "fallas",
+            "stock" => $request->get('stock', 'fallas'),
         ];
 
         if ($request->filled("laboratoryId"))

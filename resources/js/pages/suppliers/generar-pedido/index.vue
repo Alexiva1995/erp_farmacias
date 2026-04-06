@@ -36,6 +36,8 @@ let laboratoriosList=(route.query.laboratoryId)?JSON.parse(route.query.laborator
 const con_descuento= ref(route.query.con_descuento);// descuento o precio full
 const tipo_de_filtracion= ref(route.query.tipo_filtracion);
 const lapso_de_tiempo= ref(route.query.lapso_de_tiempo);
+const stock = ref(route.query.stock || 'fallas');
+const isColombian = ref(route.query.isColombian === 'true');
 const groups= ref(gruposList);
 const laboratoryId= ref(laboratoriosList);
 
@@ -44,6 +46,8 @@ async function generarPedido(page = 1) {
     "con_descuento": con_descuento.value,
     "tipo_filtracion": tipo_de_filtracion.value,
     "lapso_de_tiempo": lapso_de_tiempo.value,
+    "stock": stock.value,
+    "isColombian": isColombian.value,
     "groups": groups.value,
     "laboratoryId": laboratoryId.value,
     "page": page
@@ -58,6 +62,8 @@ async function fetchSoloOportunidad(page = 1) {
     "con_descuento": con_descuento.value,
     "tipo_filtracion": tipo_de_filtracion.value,
     "lapso_de_tiempo": lapso_de_tiempo.value,
+    "stock": stock.value,
+    "isColombian": isColombian.value,
     "groups": groups.value,
     "laboratoryId": laboratoryId.value,
     "page": page
