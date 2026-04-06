@@ -477,6 +477,10 @@ class ProductRepository
         //     $consulta->doesntHave("productSuppliers");
         // }
 
+        if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
+            $consulta->whereIn("products.id", $filtros["ids_in"]);
+        }
+
         if (array_key_exists("tipo_vista", $filtros)) {
             if ($filtros["tipo_vista"] == true) {
                 $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
@@ -746,6 +750,10 @@ class ProductRepository
 
         $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false)->where('is_scarce', false);
 
+        if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
+            $consulta->whereIn("products.id", $filtros["ids_in"]);
+        }
+
         if (array_key_exists("ids", $filtros)) {
             $consulta->whereIn("id", $filtros["ids"]);
         }
@@ -844,12 +852,7 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
-    public function filtrarProductforIaOrderAssistantTypeSalesToArray($filtros): array
-    {
-        $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
 
-        return $consulta->get()->toArray();
-    }
 
 
 
@@ -1467,8 +1470,8 @@ class ProductRepository
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $query->whereIn("group_id", $filtros["groups"]);
         }
-        if (array_key_exists("isColombian", $filtros)) {
-            $query->where("is_colombian_origin", "=", $filtros["isColombian"] ? 1 : 0);
+        if (array_key_exists("isColombian", $filtros) && $filtros["isColombian"] == true) {
+            $query->where("is_colombian_origin", "=", 1);
         }
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
              $query->where(function($q) use ($filtros) {

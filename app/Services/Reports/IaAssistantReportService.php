@@ -177,19 +177,36 @@ class IaAssistantReportService
     }
 
     /**
+     * Devuelve el conteo total de productos que coinciden con los filtros del asistente.
+     * Usa la misma fuente que el asistente (getUniqueIdsForIaReport) para garantizar coincidencia.
+     */
+    public function countFilteredProducts(array $filtros): int
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        return count($this->getFilteredIds($filtros, false));
+    }
+
+    /**
      * Orquesta el reporte filtrado SIN paginación (Exportación)
      */
     public function getFilteredReportWithoutPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        
         $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
         
+        // Obtener los IDs filtrados (Fallas, etc.) para asegurar que el conteo coincida
+        $allIds = $this->getFilteredIds($filtros, false);
+        
+        if (empty($allIds)) return collect([]);
+
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $allIds;
+        
         if ($tipo === 'sales') {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
             $procesado = $this->processRegularReport($resultado, $tipo);
         } else {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
             if ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
             } else {

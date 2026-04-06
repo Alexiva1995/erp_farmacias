@@ -4,7 +4,7 @@ const props = defineProps({
   encontrados: { type: Number, default: 0 },
   noEncontrados: { type: Number, default: 0 },
 });
-const emit = defineEmits(['actualizarIndexNavegacion']);
+const emit = defineEmits(['actualizarIndexNavegacion', 'ver-no-encontrados']);
 
 const pasos = [
   { index: 1, label: 'Costo Elevado',  icon: 'tabler-trending-up',     desc: 'Revisa productos con precio mayor al esperado' },
@@ -28,11 +28,20 @@ const pasos = [
             </VChip>
           </template>
         </VTooltip>
-        <VTooltip text="Productos sin oferta disponible">
+        <VTooltip text="Clic para ver la lista de productos sin oferta disponible">
           <template #activator="{ props: tp }">
-            <VChip v-bind="tp" color="warning" size="small" variant="flat" density="comfortable" class="font-weight-bold">
+            <VChip
+              v-bind="tp"
+              color="warning"
+              size="small"
+              variant="flat"
+              density="comfortable"
+              class="font-weight-bold cursor-pointer"
+              @click="emit('ver-no-encontrados')"
+            >
               <VIcon start size="14" icon="tabler-alert-triangle" />
               {{ props.noEncontrados }} No Encontrados
+              <VIcon end size="12" icon="tabler-external-link" />
             </VChip>
           </template>
         </VTooltip>

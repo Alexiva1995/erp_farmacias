@@ -176,12 +176,13 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $productosFallas = null;
         $filtrosFallas = [
-            "tipo_filtracion" => $request->tipo_filtracion,
+            "tipo_de_filtracion" => $request->tipo_filtracion,
+            "tipo_vista"         => false,
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
-            "laboratoryId" => $request->laboratoryId,
-            "groups" => $request->groups,
-            "stock" => $request->get('stock', 'fallas'),
-            "q" => $request->q,
+            "laboratoryId"    => $request->laboratoryId,
+            "groups"          => $request->groups,
+            "stock"           => $request->get('stock', 'fallas'),
+            "q"               => $request->q,
         ];
 
         if ($request->filled("laboratoryId"))
@@ -191,32 +192,22 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("isColombian"))
             $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
-        if ($request->filled("lapso_de_tiempo")) {
-            $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
-            $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d H:i:s");
-            $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
+        // Usar el servicio del asistente como fuente única de verdad para la lista de productos
+        // Convertimos a Eloquent Collection explicitamente para no romper la firma de ProductSupplierServices
+        $productosFallasRaw = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas);
+        $productosFallas = new \Illuminate\Database\Eloquent\Collection($productosFallasRaw);
+
+        if ($productosFallas->isEmpty() && $request->get('stock') !== 'all') {
+            // Si no hay productos pero solicitó algo específico, devolvemos éxito vacío pero con total 0
+            $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
+            if ($totalFallas === 0) {
+                 return ApiResponse::success($respuesta, "ok", 200);
+            }
         }
 
-        if ($filtrosFallas["tipo_filtracion"] == "average" || $filtrosFallas["tipo_filtracion"] == "combinado") {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
-        } else {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
-        }
+        // Obtener totalFallas del mismo servicio para garantizar coincidencia absoluta
+        $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
 
-        if ($productosFallas == null) {
-            return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
-        }
-
-        // Guardar total de fallas (SQL es ahora la fuente única de verdad)
-        $totalFallas = $productosFallas->count();
-
-        // Invertir el signo de solicitar para TODOS los productos.
-        // El repositorio devuelve (demanda - stock - AO) positivo para necesidades.
-        // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
-        foreach ($productosFallas as $producto) {
-            $producto->solicitar = $producto->solicitar * -1;
-        }
 
         $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
         $tempReponer = $this->productSupplier->checkTolerance($tempReponer, $request->con_descuento);
