@@ -81,10 +81,10 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 if (!$supplierConnection || $structure !== $this->columnMap) {
                     $data = [
                         'supplier_id' => $this->supplier->id,
-                        'type' => 'file',
-                        'host' => "{$this->supplier->name} (Excel)",
-                        'pasv' => 0,
-                        'has_header' => 0,
+                        'type' => $supplierConnection->type ?? 'file',
+                        'host' => $supplierConnection->host ?? "{$this->supplier->name} (Excel)",
+                        'pasv' => $supplierConnection->pasv ?? 0,
+                        'has_header' => $supplierConnection->has_header ?? 0,
                         'last_connection' => now()->format('Y-m-d'),
                         'structure' => $this->columnMap
                     ];
