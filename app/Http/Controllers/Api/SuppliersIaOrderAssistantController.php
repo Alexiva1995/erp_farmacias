@@ -193,7 +193,9 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
         // Usar el servicio del asistente como fuente única de verdad para la lista de productos
-        $productosFallas = collect($this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas));
+        // Convertimos a Eloquent Collection explicitamente para no romper la firma de ProductSupplierServices
+        $productosFallasRaw = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas);
+        $productosFallas = new \Illuminate\Database\Eloquent\Collection($productosFallasRaw);
 
         if ($productosFallas->isEmpty() && $request->get('stock') !== 'all') {
             // Si no hay productos pero solicitó algo específico, devolvemos éxito vacío pero con total 0

@@ -852,12 +852,7 @@ class ProductRepository
         return $consulta->paginate($perPage);
     }
 
-    public function filtrarProductforIaOrderAssistantTypeSalesToArray($filtros): array
-    {
-        $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeSales($filtros);
 
-        return $consulta->get()->toArray();
-    }
 
 
 
