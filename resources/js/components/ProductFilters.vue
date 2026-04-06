@@ -18,6 +18,7 @@ const props = defineProps({
   showAddButton:      { type: Boolean, default: true },
   addButtonText:      { type: String,  default: "Añadir Producto" },
   isStrictSearch:     Boolean,
+  isScarce:           Boolean,
   flat:               { type: Boolean, default: false },
 });
 
@@ -29,6 +30,7 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "update:isStrictSearch",
+  "update:isScarce",
   "clear",
   "export",
   "add-product",
@@ -139,6 +141,17 @@ const showExport = computed(() => props.mode === 'products');
           density="compact"
           hide-details
           @update:model-value="emit('update:isStrictSearch', $event)"
+        />
+      </VCol>
+      <!-- Redundantes (is_scarce = true) -->
+      <VCol cols="auto" class="d-none d-sm-flex">
+        <VCheckbox
+          :model-value="props.isScarce"
+          label="Redundantes"
+          color="warning"
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:isScarce', $event)"
         />
       </VCol>
     </template>
