@@ -192,19 +192,29 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("isColombian"))
             $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
-        // Usar el mismo servicio que usa el asistente para garantizar conteo idéntico
-        $productosFallas = collect($this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas));
+        if ($request->filled("lapso_de_tiempo")) {
+            $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
+            $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
+            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d H:i:s");
+            $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
+        }
 
-        if ($productosFallas === null) {
+        if ($filtrosFallas["tipo_filtracion"] == "average" || $filtrosFallas["tipo_filtracion"] == "combinado") {
+            $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
+        } else {
+            $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
+        }
+
+        if ($productosFallas == null) {
             return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
         }
 
-        // Guardar total de fallas (misma fuente que el asistente)
-        $totalFallas = $productosFallas->count();
+        // Obtener totalFallas del mismo servicio que usa el asistente para que los números coincidan
+        $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
 
-        // El servicio ya devuelve solicitar en el sentido correcto:
-        // positivo = falta (necesita reposición), negativo = exceso
-        // getSupplierToReplenishTheProducts espera valores negativos para "Needs", invertimos
+        // Invertir el signo de solicitar para TODOS los productos.
+        // El repositorio devuelve (demanda - stock - AO) positivo para necesidades.
+        // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
         foreach ($productosFallas as $producto) {
             $producto->solicitar = $producto->solicitar * -1;
         }

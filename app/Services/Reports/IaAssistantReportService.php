@@ -177,6 +177,16 @@ class IaAssistantReportService
     }
 
     /**
+     * Devuelve el conteo total de productos que coinciden con los filtros del asistente.
+     * Usa la misma fuente que el asistente (getUniqueIdsForIaReport) para garantizar coincidencia.
+     */
+    public function countFilteredProducts(array $filtros): int
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        return count($this->getFilteredIds($filtros, false));
+    }
+
+    /**
      * Orquesta el reporte filtrado SIN paginación (Exportación)
      */
     public function getFilteredReportWithoutPaginate(array $filtros)
