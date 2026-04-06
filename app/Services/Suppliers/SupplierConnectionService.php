@@ -30,10 +30,13 @@ class SupplierConnectionService
             case "http":
             case "api":
                 return $this->fetchFromHttp($connection);
+            case "file":
+                throw new Exception("Esta conexión es de tipo 'Archivo Excel' (subida manual). Se requiere configurar una conexión FTP o API para la sincronización automática.");
             default:
-                throw new Exception("Tipo de conexión no soportado");
+                throw new Exception("Tipo de conexión no soportado: {$connection->type}");
         }
     }
+
 
     public function fetchFromFtp(SupplierConnection $connection)
     {
@@ -339,7 +342,21 @@ class SupplierConnectionService
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
         $has_header = $connection->has_header;
-        ;
+
+        // Normalizar la estructura para soportar tanto el formato antiguo (estructurado) 
+        // como el nuevo (plano de importaciones manuales)
+        $normalizedStructure = collect($structure)->map(function ($meta, $key) {
+            if (is_array($meta) && isset($meta['target'])) {
+                return $meta;
+            }
+            // Formato plano: $key es el target, $meta es el campo (nombre o letra de columna)
+            return [
+                'target' => $key,
+                'file_field' => $meta,
+                'type' => in_array($key, ['unit_cost', 'unit_cost_usd']) ? 'decimal' : (in_array($key, ['quantity']) ? 'integer' : 'string')
+            ];
+        })->filter(fn($f) => ($f["target"] ?? null));
+
         $lines = array_filter(explode("\n", trim($content)), "trim");
 
         $barcodes = [];
@@ -381,8 +398,29 @@ class SupplierConnectionService
             $headerMap = array_flip(array_map('trim', $headers));
         }
 
-        $barcodeKeySearch = collect($structure)->first(fn($f) => ($f["target"] ?? null) === "barcode_match");
-        $barcodeKeyIndex = collect($structure)->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
+        // Helper para obtener el índice de la columna basado en el mapeo y los encabezados
+        $getIdx = function ($meta, $originalKey) use ($headerMap) {
+            // Prioridad 1: Coincidencia por nombre de encabezado si está disponible
+            if (!empty($headerMap) && isset($meta['file_field']) && isset($headerMap[trim($meta['file_field'])])) {
+                return $headerMap[trim($meta['file_field'])];
+            }
+            // Prioridad 2: Si file_field es una letra (estilo Excel), convertir a índice
+            if (isset($meta['file_field']) && is_string($meta['file_field'])) {
+                $idx = $this->colIndex($meta['file_field']);
+                if ($idx !== null)
+                    return $idx;
+            }
+            // Prioridad 3: Usar la clave original como índice numérico si es posible
+            return is_numeric($originalKey) ? (int) $originalKey : null;
+        };
+
+        $barcodeMeta = $normalizedStructure->first(fn($f) => ($f["target"] ?? null) === "barcode_match");
+        $barcodeOriginalKey = $normalizedStructure->search(fn($f) => ($f["target"] ?? null) === "barcode_match");
+
+        $barcodeIdx = null;
+        if ($barcodeMeta) {
+            $barcodeIdx = $getIdx($barcodeMeta, $barcodeOriginalKey);
+        }
 
         foreach ($lines as $line) {
             if (!empty($structure_for_parsing)) {
@@ -390,24 +428,20 @@ class SupplierConnectionService
             }
             $cols = explode(';', $line);
 
-            $idx = $barcodeKeyIndex;
-            if (!empty($headerMap) && isset($barcodeKeySearch['file_field']) && isset($headerMap[$barcodeKeySearch['file_field']])) {
-                $idx = $headerMap[$barcodeKeySearch['file_field']];
-            }
-
-            if ($idx !== false) {
-                $barcodes[] = trim($cols[$idx] ?? "");
+            if ($barcodeIdx !== null && isset($cols[$barcodeIdx])) {
+                $barcodes[] = trim($cols[$barcodeIdx] ?? "");
             }
         }
 
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line) use ($structure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap) {
+        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx) {
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
             $cols = explode(";", $line);
+            
             $entry = [
                 "supplier_id" => $supplierId,
                 "created_at" => $now,
@@ -419,21 +453,17 @@ class SupplierConnectionService
                 "unit_cost_usd_with_discount" => null,
             ];
 
-            $hasUnitCostUsd = in_array("unit_cost_usd", array_column($structure, "target"), true);
+            $hasUnitCostUsd = $normalizedStructure->contains('target', 'unit_cost_usd');
 
-            $table_structure = collect($structure)->filter(fn($f) => $f["target"] ?? null);
             $missingBarcode = false;
 
-
-
             $quantity = 0;
-            foreach ($table_structure as $index => $meta) {
-                // Use header mapping if available and file_field matches
-                $idx = $index;
-                if (!empty($headerMap) && isset($meta['file_field']) && isset($headerMap[$meta['file_field']])) {
-                    $idx = $headerMap[$meta['file_field']];
-                }
-                $raw = $cols[$idx] ?? "";
+            foreach ($normalizedStructure as $originalKey => $meta) {
+                $idx = $getIdx($meta, $originalKey);
+                if ($idx === null || !isset($cols[$idx]))
+                    continue;
+
+                $raw = $cols[$idx];
                 $value = trim($raw);
 
                 switch ($meta["type"]) {
@@ -545,6 +575,7 @@ class SupplierConnectionService
 
             return $entry;
         });
+
 
         return $result->toArray();
     }
@@ -1158,4 +1189,26 @@ class SupplierConnectionService
         // Si la línea no coincide con ninguno de los formatos esperados, lanza una excepción
         throw new Exception("Failed to parse line: $originalLine");
     }
+
+    private function colIndex(?string $letters): ?int
+    {
+        if (!$letters || $letters === "N/A" || $letters === "null") {
+            return null;
+        }
+        if (is_numeric($letters)) {
+            return (int) $letters;
+        }
+        $letters = strtoupper(trim($letters));
+        $len = strlen($letters);
+        if ($len === 0 || $len > 3) return null; // Sanity check for letters (A, AA, AAA)
+        
+        $index = 0;
+        for ($i = 0; $i < $len; $i++) {
+            $ord = ord($letters[$i]);
+            if ($ord < 65 || $ord > 90) return null;
+            $index = $index * 26 + ($ord - 64);
+        }
+        return $index - 1;
+    }
 }
+
