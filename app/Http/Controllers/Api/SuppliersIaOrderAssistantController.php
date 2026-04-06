@@ -176,8 +176,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $productosFallas = null;
         $filtrosFallas = [
-            "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista"      => false,
+            "tipo_de_filtracion" => $request->tipo_filtracion,
+            "tipo_vista"         => false,
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
             "laboratoryId"    => $request->laboratoryId,
             "groups"          => $request->groups,
