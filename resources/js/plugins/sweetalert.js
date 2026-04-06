@@ -40,4 +40,20 @@ export const toast = {
       title: title,
     })
   },
+  confirm(title, callback) {
+    Swal.fire({
+      title: title,
+      text: "¿Está seguro de realizar esta acción?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, confirmar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        callback();
+      }
+    });
+  },
 }

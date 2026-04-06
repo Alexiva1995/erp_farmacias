@@ -26,6 +26,7 @@ class FiscalHistory extends Model
         'spe_surcharge_rate',
         'spe_surcharge_amount',
         'exchange_rate',
+        'is_queued',
     ];
 
     public function user(): BelongsTo
@@ -33,10 +34,10 @@ class FiscalHistory extends Model
         return $this->belongsTo(User::class);
     }
 
-    // public function order(): BelongsTo
-    // {
-    //     return $this->belongsTo(Order::class);
-    // }
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
 
     public function details(): HasMany
     {

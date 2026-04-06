@@ -37,14 +37,22 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $filtros = $this->prepararFiltros($request);
 
-        if ($respuesta["tipo_filtracion"] == "combinado") {
-            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "average") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-        } elseif ($respuesta["tipo_filtracion"] == "sales") {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($esVistaGrupal) {
+            // Vista grupal: devolver grupos paginados con productos anidados
+            $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
         } else {
-            $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            // Vista individual: paginación normal
+            if ($respuesta["tipo_filtracion"] == "combinado") {
+                $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+            } elseif ($respuesta["tipo_filtracion"] == "average") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            } elseif ($respuesta["tipo_filtracion"] == "sales") {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
+            } else {
+                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
+            }
         }
 
         return ApiResponse::success($respuesta, "ok", 200);
@@ -89,10 +97,10 @@ class SuppliersIaOrderAssistantController extends Controller
     private function prepararFiltros(Request $request): array
     {
         $filtros = [
-            "itemsPerPage" => $request->itemsPerPage ?? 10,
-            "page" => $request->page ?? 1,
+            "itemsPerPage" => (int) ($request->itemsPerPage ?? 10),
+            "page" => (int) ($request->page ?? 1),
             "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista" => $request->tipo_vista,
+            "tipo_vista" => filter_var($request->tipo_vista, FILTER_VALIDATE_BOOLEAN),
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
         ];
 
@@ -168,11 +176,13 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $productosFallas = null;
         $filtrosFallas = [
-            "tipo_filtracion" => $request->tipo_filtracion,
+            "tipo_de_filtracion" => $request->tipo_filtracion,
+            "tipo_vista"         => false,
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
-            "laboratoryId" => $request->laboratoryId,
-            "groups" => $request->groups,
-            "stock" => "fallas",
+            "laboratoryId"    => $request->laboratoryId,
+            "groups"          => $request->groups,
+            "stock"           => $request->get('stock', 'fallas'),
+            "q"               => $request->q,
         ];
 
         if ($request->filled("laboratoryId"))
@@ -182,32 +192,22 @@ class SuppliersIaOrderAssistantController extends Controller
         if ($request->filled("isColombian"))
             $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
 
-        if ($request->filled("lapso_de_tiempo")) {
-            $filtrosFallas["tipo_de_tiempo"] = explode(" ", $request->lapso_de_tiempo)[1];
-            $filtrosFallas["tiempo"] = explode(" ", $request->lapso_de_tiempo)[0];
-            $filtrosFallas["dateToday"] = $dateToday->format("Y-m-d H:i:s");
-            $filtrosFallas["previousDate"] = $this->generarPreviousDate($filtrosFallas["tiempo"], $filtrosFallas["tipo_de_tiempo"]);
+        // Usar el servicio del asistente como fuente única de verdad para la lista de productos
+        // Convertimos a Eloquent Collection explicitamente para no romper la firma de ProductSupplierServices
+        $productosFallasRaw = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas);
+        $productosFallas = new \Illuminate\Database\Eloquent\Collection($productosFallasRaw);
+
+        if ($productosFallas->isEmpty() && $request->get('stock') !== 'all') {
+            // Si no hay productos pero solicitó algo específico, devolvemos éxito vacío pero con total 0
+            $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
+            if ($totalFallas === 0) {
+                 return ApiResponse::success($respuesta, "ok", 200);
+            }
         }
 
-        if ($filtrosFallas["tipo_filtracion"] == "average" || $filtrosFallas["tipo_filtracion"] == "combinado") {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtrosFallas);
-        } else {
-            $productosFallas = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtrosFallas);
-        }
+        // Obtener totalFallas del mismo servicio para garantizar coincidencia absoluta
+        $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
 
-        if ($productosFallas == null) {
-            return ApiResponse::error("Por favor pase un tipo de filtro average o sales", 400);
-        }
-
-        // Guardar total de fallas (SQL es ahora la fuente única de verdad)
-        $totalFallas = $productosFallas->count();
-
-        // Invertir el signo de solicitar para TODOS los productos.
-        // El repositorio devuelve (demanda - stock - AO) positivo para necesidades.
-        // La función getSupplierToReplenishTheProducts espera valores negativos para Needs.
-        foreach ($productosFallas as $producto) {
-            $producto->solicitar = $producto->solicitar * -1;
-        }
 
         $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
         $tempReponer = $this->productSupplier->checkTolerance($tempReponer, $request->con_descuento);
@@ -301,11 +301,14 @@ class SuppliersIaOrderAssistantController extends Controller
 
             $filtros = [
                 "tipo_filtracion" => $request->tipo_filtracion,
-                "lapso_de_tiempo" => "1 year",
+                "lapso_de_tiempo" => $request->lapso_de_tiempo ?? "1 year",
                 "dateToday" => $dateToday->format("Y-m-d H:i:s"),
                 "previousDate" => $this->generarPreviousDate("1", "year"),
-                "orderBy" => "asc",
-                "sortBy" => "name",
+                "orderBy" => $request->orderBy ?? "asc",
+                "sortBy" => $request->sortBy ?? "name",
+                "q" => $request->q,
+                "stock" => $request->stock,
+                "isColombian" => filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN),
             ];
 
             if ($request->filled("laboratoryId"))
@@ -602,4 +605,16 @@ class SuppliersIaOrderAssistantController extends Controller
         return ApiResponse::error('No se pudo procesar el pedido directo');
     }
 
+    public function toggleScarce(int $id): JsonResponse
+    {
+        $product = ModelsProduct::findOrFail($id);
+        
+        $actionService = app(\App\Services\Products\ProductActionService::class);
+        $updatedProduct = $actionService->toggleScarceProduct($product);
+
+        return response()->json([
+            'message' => 'Estado de escasez actualizado con éxito.',
+            'is_scarce' => $updatedProduct->is_scarce
+        ]);
+    }
 }

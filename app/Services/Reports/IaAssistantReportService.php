@@ -19,9 +19,11 @@ class IaAssistantReportService
     {
         $filtros = $this->prepareDateFilters($filtros);
         $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
-        $page = $filtros['page'] ?? 1;
-        $perPage = $filtros['itemsPerPage'] ?? 10;
-        $esVistaGrupal = ($filtros['tipo_vista'] ?? false) == true;
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
+        if ($perPage <= 0) $perPage = 25;
+
+        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros (Cacheado)
         $allIds = $this->getFilteredIds($filtros, $esVistaGrupal);
@@ -72,15 +74,92 @@ class IaAssistantReportService
     }
 
     /**
+     * Devuelve grupos paginados con sus productos anidados (para vista de acordeón)
+     */
+    public function getGroupedReportWithPaginate(array $filtros): array
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
+        if ($perPage <= 0) $perPage = 25;
+
+        // 1. Obtener todos los group_ids ordenados alfabéticamente
+        $allGroupIds = $this->getFilteredIds($filtros, true);
+        $totalGroups = count($allGroupIds);
+
+        // 2. Paginar los group_ids en memoria (ESTO sí limita a 25 grupos)
+        $offset = ($page - 1) * $perPage;
+        $currentGroupIds = array_slice($allGroupIds, $offset, $perPage);
+
+        if (empty($currentGroupIds)) {
+            return [
+                'grupos' => [],
+                'total_grupos' => $totalGroups,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => (int) ceil($totalGroups / $perPage),
+            ];
+        }
+
+        // 3. Pre-cargar los nombres de grupos de esta página en una sola query
+        $grupoNombres = \App\Models\GroupsProduct::whereIn('id', $currentGroupIds)
+            ->pluck('name', 'id');
+
+        // 4. Para cada grupo de esta página, traer sus productos
+        $filtrosBase = $filtros;
+        unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
+
+        $grupos = [];
+        foreach ($currentGroupIds as $groupId) {
+            $filtrosGrupo = $filtrosBase;
+            $filtrosGrupo['groups'] = [$groupId];
+            unset($filtrosGrupo['tipo_vista']);
+
+            // Obtener productos del grupo
+            if ($tipo === 'sales') {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosGrupo);
+            } else {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosGrupo);
+            }
+
+            if ($tipo === 'combinado') {
+                $procesado = $this->processCombinedReport($resultado, $filtrosGrupo);
+            } else {
+                $procesado = $this->processRegularReport($resultado, $tipo);
+            }
+
+            $this->hydrateSalesTrend($procesado);
+
+            // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
+            $productosArray = json_decode(json_encode($procesado), true);
+
+            $grupos[] = [
+                'group_id'   => $groupId,
+                'group_name' => $grupoNombres[$groupId] ?? '',
+                'productos'  => array_values($productosArray),
+            ];
+        }
+
+        return [
+            'grupos'       => $grupos,
+            'total_grupos' => $totalGroups,
+            'per_page'     => $perPage,
+            'current_page' => $page,
+            'last_page'    => (int) ceil($totalGroups / $perPage),
+        ];
+    }
+
+    /**
      * Obtiene y cachea los IDs (de productos o grupos) que coinciden con los filtros
      */
     private function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
-        $cacheKey = 'ia_report_ids_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
+        $cacheKey = 'ia_report_ids_v4_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
             'lapso' => $filtros['lapso_de_tiempo'] ?? '',
             'lab' => $filtros['laboratoryId'] ?? [],
             'groups' => $filtros['groups'] ?? [],
-            'is_col' => $filtros['is_colombia'] ?? null,
+            'is_col' => $filtros['isColombian'] ?? null,
             'q' => $filtros['q'] ?? '',
             'stock' => $filtros['stock'] ?? 'fallas',
             'tipo' => $filtros['tipo_de_filtracion'] ?? 'average',
@@ -93,19 +172,18 @@ class IaAssistantReportService
             
             $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
             
-            if ($tipo === 'sales') {
-                $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosLigero);
-            } else {
-                $collection = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosLigero);
-            }
-
-            if ($porGrupo) {
-                // Obtenemos IDs de grupos únicos, filtrando nulos
-                return $collection->pluck('group_id')->filter()->unique()->values()->toArray();
-            }
-
-            return $collection->pluck('id')->toArray();
+            return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
         });
+    }
+
+    /**
+     * Devuelve el conteo total de productos que coinciden con los filtros del asistente.
+     * Usa la misma fuente que el asistente (getUniqueIdsForIaReport) para garantizar coincidencia.
+     */
+    public function countFilteredProducts(array $filtros): int
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        return count($this->getFilteredIds($filtros, false));
     }
 
     /**
@@ -114,14 +192,21 @@ class IaAssistantReportService
     public function getFilteredReportWithoutPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        
         $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
         
+        // Obtener los IDs filtrados (Fallas, etc.) para asegurar que el conteo coincida
+        $allIds = $this->getFilteredIds($filtros, false);
+        
+        if (empty($allIds)) return collect([]);
+
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $allIds;
+        
         if ($tipo === 'sales') {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
             $procesado = $this->processRegularReport($resultado, $tipo);
         } else {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
             if ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
             } else {
@@ -142,11 +227,11 @@ class IaAssistantReportService
         if ($items->isEmpty()) return;
 
         $productIds = $items->pluck('id')->toArray();
-        $sixMonthsAgo = now()->subMonths(5)->startOfMonth(); // 6 meses incluyendo el actual
+        $sixMonthsAgo = now()->subMonths(11)->startOfMonth(); // 12 meses incluyendo el actual
 
         // 1. Generar la estructura base de los últimos 6 meses con valores en 0
         $baseTrend = [];
-        for ($i = 0; $i < 6; $i++) {
+        for ($i = 0; $i < 12; $i++) {
             $date = $sixMonthsAgo->copy()->addMonths($i);
             $key = $date->format('Y-n'); // Ej: 2024-4
             $baseTrend[$key] = [

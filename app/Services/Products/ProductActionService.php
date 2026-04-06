@@ -174,16 +174,33 @@ class ProductActionService
     }
 
     /**
-     * Elimina un producto.
+     * Elimina lógicamente un producto.
      *
      * @param Product $product
      */
     public function deleteProduct(Product $product): void
     {
-        if ($product->photo_url) {
-            Storage::disk('public')->delete($product->photo_url);
-        }
-        $product->delete();
+        $product->update(['is_deleted' => true]);
+    }
+
+    /**
+     * Alterna el estado de producto escaso (is_scarce).
+     *
+     * @param Product $product
+     * @return Product
+     */
+    public function toggleScarceProduct(\App\Models\Product $product)
+    {
+        $product->is_scarce = !$product->is_scarce;
+        $product->save();
+
+        // Limpiar caché del asistente de IA para forzar recálculo
+        // Como las llaves son dinámicas (MD5), lo más seguro es usar un patrón 
+        // o limpiar la caché si no se usan tags.
+        // En este sistema, usaremos una aproximación segura para invalidar reportes de IA.
+        \Illuminate\Support\Facades\Cache::flush(); // Opción drástica pero segura para este ERP
+
+        return $product;
     }
 
     
@@ -373,11 +390,8 @@ class ProductActionService
                 }
             }
 
-            // Eliminar el producto que se elimina
-            if ($productToDelete->photo_url) {
-                Storage::disk('public')->delete($productToDelete->photo_url);
-            }
-            $productToDelete->delete();
+            // Eliminar lógicamente el producto que se fusiona
+            $productToDelete->update(['is_deleted' => true]);
 
             DB::commit();
 

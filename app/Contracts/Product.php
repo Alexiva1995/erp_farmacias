@@ -31,4 +31,5 @@ interface Product
 
     public function actualizarElSolicitadoConElAO(Collection $productos): Collection;
     public function filtrarIndividualProductForAssistantReportTypeSalesToArray(array $filtros): array;
+    public function getUniqueIdsForIaReport(array $filtros, bool $porGrupo = false): array;
 }

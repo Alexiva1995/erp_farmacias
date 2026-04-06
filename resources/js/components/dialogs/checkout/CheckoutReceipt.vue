@@ -23,7 +23,7 @@ const props = defineProps({
   changeAmountInCop: Number,
 });
 
-const emit = defineEmits(["print", "cancel"]);
+const emit = defineEmits(["print", "cancel", "print-fiscal"]);
 
 const logoSrc = BASE64_LOGO_DATA;
 </script>
@@ -134,6 +134,10 @@ const logoSrc = BASE64_LOGO_DATA;
       <VBtn color="primary" variant="flat" block size="large" class="rounded-lg font-weight-black" @click="emit('print')">
         <VIcon icon="tabler-printer" class="me-2" />
         IMPRIMIR TICKET
+      </VBtn>
+      <VBtn color="success" variant="flat" block size="large" class="rounded-lg font-weight-black" @click="emit('print-fiscal')">
+        <VIcon icon="tabler-file-invoice" class="me-2" />
+        IMPRIMIR FISCAL
       </VBtn>
       <VBtn color="secondary" variant="tonal" block class="rounded-lg font-weight-bold" @click="emit('cancel')">
         FINALIZAR Y CERRAR

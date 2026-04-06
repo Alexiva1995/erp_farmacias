@@ -113,6 +113,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::get('/products/export', [ProductController::class, 'export']);
+    Route::post('/products/{product}/toggle-scarce', [ProductController::class, 'toggleScarce']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
     Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);
@@ -523,7 +524,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("/filtrar-paginate", [SuppliersIaOrderAssistantController::class, "filtrarPaginate"]);
         Route::post("/stats", [SuppliersIaOrderAssistantController::class, "stats"]);
         Route::get("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "getProductosMarcados"]);
-        Route::patch("/products-without-supplier/{id}/toggle-scarce", [SuppliersIaOrderAssistantController::class, "toggleScarce"]);
+        Route::post("/products-without-supplier/{id}/toggle-scarce", [SuppliersIaOrderAssistantController::class, "toggleScarce"]);
         Route::post("/direct-order", [SuppliersIaOrderAssistantController::class, "directOrder"]);
         Route::prefix("generate-order")->group(function () {
             Route::post("/creat", [SuppliersIaOrderAssistantController::class, "generarOrden"]);
@@ -719,6 +720,12 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'myActivities']);
         Route::post('/{executionId}/status', [EmployeeCleaningActivityController::class, 'updateMyActivityStatus']);
     });
+    // Fiscal Printer Queue (Solicitado desde TPV/Admin)
+    Route::prefix('fiscal')->group(function () {
+        Route::post('/queue/{order}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'queue']);
+        Route::post('/commands', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'storeCommand']);
+    });
+
     Route::prefix('retentions')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
         Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
@@ -733,4 +740,14 @@ Route::prefix('supervisor')->group(function () {
     Route::post('/cleaning-executions/{executionId}/approve', [EmployeeCleaningActivityController::class, 'approveExecution']);
     Route::post('/cleaning-executions/{executionId}/reject', [EmployeeCleaningActivityController::class, 'rejectExecution']);
     Route::post('/cleaning-executions/{executionId}/cancel', [EmployeeCleaningActivityController::class, 'cancelExecution']);
+});
+
+Route::prefix('fiscal')->group(function () {
+    Route::get('/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPending']);
+    Route::patch('/confirm/{id}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirm']);
+    
+    // Rutas para comandos generales
+    Route::get('/commands/history', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'history']);
+    Route::get('/commands/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPendingCommand']);
+    Route::patch('/commands/{id}/confirm', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirmCommand']);
 });
