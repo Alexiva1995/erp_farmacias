@@ -1085,7 +1085,8 @@ class ProductRepository
             $consulta->doesntHave("productSuppliers");
         }
 
-        if (array_key_exists("stock", $filtros)) {
+        // Si ya establecimos ids_in, omitimos este cálculo para no chocar con las fórmulas del Asistente
+        if (array_key_exists("stock", $filtros) && empty($filtros["ids_in"])) {
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("solicitar", "<", 0);
             }
@@ -1346,7 +1347,8 @@ class ProductRepository
             $consulta->doesntHave("productSuppliers");
         }
 
-        if (array_key_exists("stock", $filtros)) {
+        // Si ya establecimos ids_in, omitimos este cálculo para no chocar con las fórmulas del Asistente
+        if (array_key_exists("stock", $filtros) && empty($filtros["ids_in"])) {
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("solicitar", "<", 0);
             }
