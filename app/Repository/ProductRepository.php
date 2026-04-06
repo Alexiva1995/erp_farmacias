@@ -1467,8 +1467,8 @@ class ProductRepository
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $query->whereIn("group_id", $filtros["groups"]);
         }
-        if (array_key_exists("isColombian", $filtros)) {
-            $query->where("is_colombian_origin", "=", $filtros["isColombian"] ? 1 : 0);
+        if (array_key_exists("isColombian", $filtros) && $filtros["isColombian"] == true) {
+            $query->where("is_colombian_origin", "=", 1);
         }
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
              $query->where(function($q) use ($filtros) {
