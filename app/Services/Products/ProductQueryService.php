@@ -14,7 +14,9 @@ class ProductQueryService
      */
     private function getBaseQuery(): Builder
     {
-        return Product::query()->select('products.*')->with([
+        return Product::query()
+            ->select('products.*', DB::raw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) AS stock_calculado"))
+            ->with([
             'category',
             'laboratory',
             'origin',

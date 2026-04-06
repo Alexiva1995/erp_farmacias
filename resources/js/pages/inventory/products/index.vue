@@ -22,6 +22,7 @@ const orderBy = ref("asc");
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
+const selectedGroup = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
@@ -68,6 +69,7 @@ const fetchProducts = async () => {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
+    groupId: selectedGroup.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -106,6 +108,7 @@ watch(
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
+    selectedGroup,
     stockStatusFilter,
     startDate,
     endDate,
@@ -120,7 +123,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -225,6 +228,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
+  selectedGroup.value = null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
@@ -247,6 +251,7 @@ const handleExport = async format => {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
+    groupId: selectedGroup.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -306,6 +311,7 @@ const handleSort = sortOptions => {
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
+      v-model:selectedGroup="selectedGroup"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
@@ -313,6 +319,7 @@ const handleSort = sortOptions => {
       v-model:isScarce="isScarce"
       :laboratories="laboratories"
       :origins="origins"
+      :groups="groups"
       :loading="isLoadingFilters"
       :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"

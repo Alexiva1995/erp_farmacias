@@ -1492,11 +1492,12 @@ class ProductRepository
         if ($porGrupo) {
             return $query
                 ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
-                ->select('products.group_id')
-                ->distinct()
+                ->addSelect('groups_products.name')
                 ->orderBy('groups_products.name', 'ASC')
                 ->get()
                 ->pluck('group_id')
+                ->unique()
+                ->values()
                 ->toArray();
         }
 

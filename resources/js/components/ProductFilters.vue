@@ -8,11 +8,13 @@ const props = defineProps({
   searchQuery:        String,
   selectedLaboratory: [Number, String, null],
   selectedOrigin:     [Number, String, null],
+  selectedGroup:     [Number, String, null],
   stockStatusFilter:  [Boolean, null],
   startDate:          [String, null],
   endDate:            [String, null],
   laboratories:       { type: Array,   default: () => [] },
   origins:            { type: Array,   default: () => [] },
+  groups:           { type: Array,   default: () => [] },
   loading:            { type: Boolean, default: false },
   mode:               { type: String,  default: "products" },
   showAddButton:      { type: Boolean, default: true },
@@ -26,6 +28,7 @@ const emit = defineEmits([
   "update:searchQuery",
   "update:selectedLaboratory",
   "update:selectedOrigin",
+  "update:selectedGroup",
   "update:stockStatusFilter",
   "update:startDate",
   "update:endDate",
@@ -191,6 +194,23 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
+      <!-- Grupo -->
+      <VCol cols="12" sm="6" md="2">
+        <VAutocomplete
+          :model-value="props.selectedGroup"
+          :items="props.groups"
+          :loading="props.loading"
+          placeholder="Grupo"
+          item-title="name"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-category-2"
+          @update:model-value="emit('update:selectedGroup', $event)"
+        />
+      </VCol>
+
       <!-- Estado Stock -->
       <VCol cols="12" sm="6" md="2">
         <VSelect
@@ -206,7 +226,7 @@ const showExport = computed(() => props.mode === 'products');
       </VCol>
 
       <!-- Fecha Inicial -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="2">
         <AppDateTimePicker
           :model-value="props.startDate"
           placeholder="Fecha Inicial"
@@ -220,7 +240,7 @@ const showExport = computed(() => props.mode === 'products');
       </VCol>
 
       <!-- Fecha Final -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="2">
         <AppDateTimePicker
           :model-value="props.endDate"
           placeholder="Fecha Final"

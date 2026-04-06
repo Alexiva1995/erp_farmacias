@@ -181,6 +181,7 @@ class ProductActionService
     public function deleteProduct(Product $product): void
     {
         $product->update(['is_deleted' => true]);
+        $product->delete(); // SoftDeletes nativo de Laravel
     }
 
     /**
