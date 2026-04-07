@@ -1,7 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 import { ref } from "vue";
 
 const props = defineProps({
@@ -120,7 +120,7 @@ const headers = [
         </template>
 
         <template #item.movement_date="{ item }">
-          <span class="text-no-wrap text-body-2">{{ formatDate(item.movement_date) }}</span>
+          <span class="text-no-wrap text-body-2">{{ formatDateSimple(item.movement_date) }}</span>
         </template>
 
         <template #item.user.email="{ item }">
@@ -237,7 +237,7 @@ const headers = [
               </div>
               <div class="d-flex justify-space-between align-center">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Fecha Mov.</span>
-                <span class="text-xs font-weight-black text-high-emphasis">{{ formatDate(item.movement_date) }}</span>
+                <span class="text-xs font-weight-black text-high-emphasis">{{ formatDateSimple(item.movement_date) }}</span>
               </div>
             </div>
           </div>

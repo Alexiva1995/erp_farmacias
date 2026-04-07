@@ -2,7 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import { calculateStock, formatDate } from "@/utils/formatters";
+import { calculateStock, formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 

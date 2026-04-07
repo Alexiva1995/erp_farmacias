@@ -1,5 +1,5 @@
 <script setup>
-import { formatDate, formatPrice as formatCurrency } from "@/utils/formatters";
+import { formatDateSimple, formatPrice as formatCurrency } from "@/utils/formatters";
 import { computed } from "vue";
 
 const props = defineProps({

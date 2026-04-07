@@ -1,6 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -137,7 +137,7 @@ const getNextExpiration = (lots) => {
 
         <template #item.next_expiration="{ item }">
           <div class="d-flex flex-column">
-            <span class="font-weight-medium">{{ formatDate(getNextExpiration(item.lots)) || 'N/A' }}</span>
+            <span class="font-weight-medium">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
           </div>
         </template>
 
@@ -211,7 +211,7 @@ const getNextExpiration = (lots) => {
               </div>
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Próx. Venc.</span>
-                <span class="text-base font-weight-black text-warning">{{ formatDate(getNextExpiration(item.lots)) || 'N/A' }}</span>
+                <span class="text-base font-weight-black text-warning">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
               </div>
             </div>
 

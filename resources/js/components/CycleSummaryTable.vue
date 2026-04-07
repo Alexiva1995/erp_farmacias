@@ -1,6 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import { formatDate, formatPrice } from "@/utils/formatters";
+import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import { ref } from "vue";
 
 const props = defineProps({
@@ -116,14 +116,14 @@ const handleMobilePageChange = (newPage) => {
         <template #item.start_date="{ item: cycle }">
           <div class="d-flex align-center justify-center gap-1">
             <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
-            <span class="text-sm font-weight-medium">{{ formatDate(cycle.start_date) }}</span>
+            <span class="text-sm font-weight-medium">{{ formatDateSimple(cycle.start_date) }}</span>
           </div>
         </template>
         
         <template #item.end_date="{ item: cycle }">
           <div class="d-flex align-center justify-center gap-1">
             <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
-            <span class="text-sm font-weight-medium">{{ formatDate(cycle.end_date) }}</span>
+            <span class="text-sm font-weight-medium">{{ formatDateSimple(cycle.end_date) }}</span>
           </div>
         </template>
 
@@ -235,12 +235,12 @@ const handleMobilePageChange = (newPage) => {
                 <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-x-2">
                   <span class="d-flex align-center">
                     <VIcon icon="tabler-calendar-plus" size="10" class="me-1" />
-                    {{ formatDate(cycle.start_date) }}
+                    {{ formatDateSimple(cycle.start_date) }}
                   </span>
                   <span class="text-disabled">|</span>
                   <span class="d-flex align-center">
                     <VIcon icon="tabler-calendar-check" size="10" class="me-1" />
-                    {{ formatDate(cycle.end_date) }}
+                    {{ formatDateSimple(cycle.end_date) }}
                   </span>
                 </div>
               </div>

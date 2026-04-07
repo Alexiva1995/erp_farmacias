@@ -1,7 +1,7 @@
 <script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { toast } from "@/plugins/sweetalert";
-import { formatNumber } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({

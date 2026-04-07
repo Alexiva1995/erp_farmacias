@@ -1,6 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import { calculateValidStock, formatDate, nextExpirationDate } from "@/utils/formatters";
+import { calculateValidStock, formatDateSimple, nextExpirationDate } from "@/utils/formatters";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -101,7 +101,7 @@ const handleMobilePageChange = (newPage) => {
             class="font-weight-black"
             prepend-icon="tabler-calendar-time"
           >
-            {{ formatDate(nextExpirationDate(item)) }}
+            {{ formatDateSimple(nextExpirationDate(item)) }}
           </VChip>
           <span v-else class="text-caption text-disabled font-weight-bold">{{ nextExpirationDate(item) }}</span>
         </template>
@@ -175,7 +175,7 @@ const handleMobilePageChange = (newPage) => {
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Próx. Vencimiento</span>
                 <span class="text-caption font-weight-black text-high-emphasis mt-1">
                   <VIcon icon="tabler-calendar" size="14" class="me-1 text-warning" />
-                  {{ nextExpirationDate(item) !== 'N/A' && nextExpirationDate(item) !== 'Todos expiraron' ? formatDate(nextExpirationDate(item)) : nextExpirationDate(item) }}
+                  {{ nextExpirationDate(item) !== 'N/A' && nextExpirationDate(item) !== 'Todos expiraron' ? formatDateSimple(nextExpirationDate(item)) : nextExpirationDate(item) }}
                 </span>
               </div>
             </div>

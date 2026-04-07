@@ -2,7 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, watch } from "vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -178,7 +178,7 @@ const productHeaders = [
           <template #item.next_expiration="{ item }">
             <span class="text-caption font-weight-black text-high-emphasis">
               <VIcon icon="tabler-calendar" size="14" class="me-1 text-warning" />
-              {{ formatDate(nextExpirationDate(item)) }}
+              {{ formatDateSimple(nextExpirationDate(item)) }}
             </span>
           </template>
         </VDataTable>

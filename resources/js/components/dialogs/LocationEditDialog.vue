@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
-import AppTextField from "@/components/AppTextField.vue";
+import AppTextField from "@core/components/app-form-elements/AppTextField.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

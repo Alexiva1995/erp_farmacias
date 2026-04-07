@@ -4,7 +4,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, watch } from "vue";
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -238,7 +238,7 @@ const nextExpirationDate = (product) => {
     (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date),
   );
   const closestDate = new Date(validLots[0].expiration_date);
-  return formatDate(closestDate);
+  return formatDateSimple(closestDate);
 };
 </script>
 

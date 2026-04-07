@@ -55,7 +55,8 @@ declare global {
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const formatAmountOnly: typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']
   const formatCurrency: typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']
-  const formatDate: typeof import('./resources/js/utils/formatters.js')['formatDate']
+  const formatDate: typeof import('./resources/js/@core/utils/formatters.js')['formatDate']
+  const formatDateSimple: typeof import('./resources/js/utils/formatters.js')['formatDateSimple']
   const formatDateTime: typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
   const formatMonth: typeof import('./resources/js/utils/formatters.js')['formatMonth']
@@ -445,7 +446,7 @@ declare module 'vue' {
     readonly formatAmountOnly: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatAmountOnly']>
     readonly formatCurrency: UnwrapRef<typeof import('./resources/js/utils/currencyFormatter.js')['formatCurrency']>
     readonly formatDate: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDate']>
-    readonly formatDate: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatDate']>
+    readonly formatDateSimple: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatDateSimple']>
     readonly formatDateTime: UnwrapRef<typeof import('./resources/js/utils/formatDateTime.js')['formatDateTime']>
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
     readonly formatMonth: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatMonth']>
@@ -471,6 +472,7 @@ declare module 'vue' {
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
     readonly isToday: UnwrapRef<typeof import('./resources/js/@core/utils/helpers.js')['isToday']>
+    readonly kFormatter: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['kFormatter']>
     readonly lengthValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['lengthValidator']>
     readonly logicAnd: UnwrapRef<typeof import('@vueuse/math')['logicAnd']>
     readonly logicNot: UnwrapRef<typeof import('@vueuse/math')['logicNot']>

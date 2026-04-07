@@ -1,7 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 import { ref } from "vue";
 
 const props = defineProps({

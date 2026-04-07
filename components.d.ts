@@ -190,6 +190,8 @@ declare module 'vue' {
     LoanEditDialog: typeof import('./resources/js/components/dialogs/LoanEditDialog.vue')['default']
     LoanFilters: typeof import('./resources/js/components/LoanFilters.vue')['default']
     LoanTable: typeof import('./resources/js/components/LoanTable.vue')['default']
+    LocationEditDialog: typeof import('./resources/js/components/dialogs/LocationEditDialog.vue')['default']
+    LocationTable: typeof import('./resources/js/components/LocationTable.vue')['default']
     LotDistributionModal: typeof import('./resources/js/components/dialogs/LotDistributionModal.vue')['default']
     LotsWithoutLocationTable: typeof import('./resources/js/components/LotsWithoutLocationTable.vue')['default']
     LotteryDialoge: typeof import('./resources/js/components/dialogs/LotteryDialoge.vue')['default']

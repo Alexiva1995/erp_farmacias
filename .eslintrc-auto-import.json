@@ -389,6 +389,7 @@
     "formatNumber": true,
     "applyFooter": true,
     "applyPremiumHeader": true,
-    "useCheckout": true
+    "useCheckout": true,
+    "formatDateSimple": true
   }
 }

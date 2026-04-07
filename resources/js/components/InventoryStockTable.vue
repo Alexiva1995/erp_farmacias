@@ -1,6 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import { formatPrice } from "@/utils/formatters";
+import { formatPrice, formatDateSimple } from "@/utils/formatters";
 import { computed } from "vue";
 
 const props = defineProps({

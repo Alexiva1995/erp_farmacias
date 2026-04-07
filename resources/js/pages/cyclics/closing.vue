@@ -2,7 +2,7 @@
 import CashCloseTable from "@/components/CashCloseTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { formatDate, formatPrice } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch, computed } from "vue";
 

@@ -1,6 +1,6 @@
 <script setup>
 import { useAuthStore } from "@/stores/auth";
-import { formatDate, formatPrice } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { computed, ref } from "vue";
