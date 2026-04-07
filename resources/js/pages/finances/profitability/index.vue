@@ -392,6 +392,8 @@ const formatCurrency = (amount) =>
         :profitability="profitability"
         :page="page"
         :itemsPerPage="itemsPerPage"
+        :sort-by="sortBy"
+        :order-by="orderBy"
         :loading="loading"
         @refresh="reloadTable"
         @update:options="updateTableOptions"

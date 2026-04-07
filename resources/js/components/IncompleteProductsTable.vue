@@ -12,12 +12,17 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
-  sortBy: { type: [String, Array], default: () => [] },
+  sortBy: { type: String, default: undefined },
   orderBy: { type: String, default: 'asc' },
   productWithError: { type: [Number, null], default: null },
   errorMessage: { type: String, default: "" },
   laboratories: { type: Array, default: () => [] },
   origins: { type: Array, default: () => [] },
+});
+
+const sortByModel = computed(() => {
+  if (!props.sortBy) return [];
+  return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
 });
 
 const emit = defineEmits([
@@ -248,6 +253,7 @@ const nextExpirationDate = (product) => {
         :items-per-page="itemsPerPage"
         :page="page"
         :loading="loading"
+        :sort-by="sortByModel"
         @update:options="(opts) => emit('update:options', opts)"
       >
         <template #item.id="{ item }">

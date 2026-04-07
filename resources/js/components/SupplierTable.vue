@@ -10,6 +10,11 @@ const props = defineProps({
   checkingApiId: { type: Number, default: null },
 });
 
+const sortByModel = computed(() => {
+  if (!props.sortBy) return [];
+  return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
+});
+
 import { useDisplay } from "vuetify";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
@@ -45,7 +50,7 @@ const headers = [
         :items="props.suppliers"
         :items-length="props.totalSupplier"
         :loading="props.loading"
-        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
+        :sort-by="sortByModel"
         class="text-no-wrap premium-data-table"
         @update:options="(options) => emit('update:options', options)"
       >

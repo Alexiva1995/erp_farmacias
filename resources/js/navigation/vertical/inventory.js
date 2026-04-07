@@ -51,6 +51,10 @@ export default [
         action: 'manage',
         subject: 'admin',
       },
+      {
+        title: 'Ubicaciones',
+        to: 'inventory-locations',
+      },
     ],
   }, 
 ]

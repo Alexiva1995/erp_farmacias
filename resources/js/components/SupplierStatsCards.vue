@@ -77,7 +77,7 @@ const statistics = computed(() => [
             <div class="text-right">
               <span
                 class="text-overline font-weight-bold text-disabled"
-                style="letter-spacing: 1px !important"
+                style="letter-spacing: 1px !important;"
                 >{{ item.title }}</span
               >
               <h4 class="text-h4 font-weight-black mt-1">
