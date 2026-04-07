@@ -707,7 +707,10 @@ const submitForm = () => {
                       />
                       <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Asignación de Grupo Maestro</span>
                     </div>
-                    <div class="d-flex gap-2 align-center">
+                    <div 
+                      v-if="!assignedGroupName"
+                      class="d-flex gap-2 align-center"
+                    >
                       <AppTextField
                         v-model="groupInput"
                         placeholder="BUSCAR GRUPO (ID O NOMBRE)..."
@@ -730,7 +733,7 @@ const submitForm = () => {
 
                     <div
                       v-if="assignedGroupName"
-                      class="mt-4"
+                      :class="!assignedGroupName ? 'mt-4' : ''"
                     >
                       <VChip
                         color="primary"
