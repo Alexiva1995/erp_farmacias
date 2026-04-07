@@ -2,7 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -301,7 +301,7 @@ const nextExpirationDate = (product) => {
                       :color="new Date(nextExpirationDate(item)) < new Date() ? 'error' : 'secondary'"
                       class="font-weight-bold"
                     >
-                      {{ formatDate(nextExpirationDate(item)) }}
+                      {{ formatDateSimple(nextExpirationDate(item)) }}
                     </VChip>
                   </template>
 

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { formatPrice } from "@/utils/formatters";
+import { formatPrice, formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   products: { type: Array, required: true },

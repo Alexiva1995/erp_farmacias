@@ -10,7 +10,7 @@ import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
 import ExpirationsFilters from "@/components/ExpirationsFilters.vue";
 import ExpirationsTable from "@/components/ExpirationsTable.vue";
 import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
-import { formatMonth, formatPrice as formatCurrency } from "@/utils/formatters";
+import { formatMonth, formatPrice as formatCurrency, formatDateSimple } from "@/utils/formatters";
 
 const lots = ref([]);
 const totalLots = ref(0);

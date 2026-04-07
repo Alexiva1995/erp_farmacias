@@ -3,7 +3,7 @@
  * @param {string|Date} dateString 
  * @returns {string}
  */
-export const formatDate = (dateString) => {
+export const formatDateSimple = (dateString) => {
   if (!dateString) return "N/A";
   try {
     const date = new Date(dateString);

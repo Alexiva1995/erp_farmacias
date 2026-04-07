@@ -2,7 +2,11 @@
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
+// ...
+{{ formatDateSimple(item.created_at) }}
+// ...
+{{ formatDateSimple(item.created_at) }}
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 

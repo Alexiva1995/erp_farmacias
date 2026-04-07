@@ -1,7 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useAbility } from "@casl/vue";
-import { formatDate, formatPrice } from "@/utils/formatters";
+import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import { ref } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";

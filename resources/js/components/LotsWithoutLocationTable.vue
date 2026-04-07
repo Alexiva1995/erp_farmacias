@@ -3,7 +3,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, onMounted } from "vue";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   lots: { type: Array, required: true },

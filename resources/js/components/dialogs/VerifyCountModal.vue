@@ -1,6 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
-import { formatNumber } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({
