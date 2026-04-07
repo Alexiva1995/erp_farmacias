@@ -137,8 +137,15 @@ onMounted(async () => {
 const updateTableOptions = options => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  } else if (page.value === options.page && itemsPerPage.value === options.itemsPerPage) {
+    // Si no es un cambio de página/items, y sortBy está vacío, entonces sí limpiamos
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  }
 };
 
 const handleEditProduct = product => {
@@ -334,6 +341,8 @@ const handleSort = sortOptions => {
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"

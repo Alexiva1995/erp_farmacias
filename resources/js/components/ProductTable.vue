@@ -12,6 +12,8 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: "asc" },
   mode: { type: String, default: "products" },
   title: { type: String, default: "" },
 });
@@ -127,7 +129,7 @@ const handleMobilePageChange = (newPage) => {
   emit('update:options', {
     page: newPage,
     itemsPerPage: props.itemsPerPage,
-    sortBy: [],
+    sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : [],
   });
 };
 </script>
@@ -150,6 +152,7 @@ const handleMobilePageChange = (newPage) => {
         :items="props.products"
         :items-length="props.totalProduct"
         :loading="props.loading"
+        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
