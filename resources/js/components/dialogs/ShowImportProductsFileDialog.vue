@@ -78,6 +78,11 @@ const submitForm = async () => {
       fileToUpload = file.value[0];
     }
     
+    if (fileToUpload && fileToUpload.size === 0) {
+      toast.error("El archivo seleccionado está vacío (0 bytes). Por favor, verifica el archivo o asegúrate de que no esté abierto en otro programa.");
+      return;
+    }
+
     if (fileToUpload) {
       // Re-agregamos el archivo al FormData por si acaso el anterior falló
       form.delete("file");
