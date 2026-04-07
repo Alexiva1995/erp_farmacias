@@ -84,9 +84,14 @@ const submitForm = async () => {
       form.append("file", fileToUpload);
     }
 
+    console.log("[Import] Objeto File final a subir:", fileToUpload);
+
     await axios.post(uploadUrl, form, {
-      headers: {
-        "Content-Type": "multipart/form-data",
+      transformRequest: (data, headers) => {
+        // Al ser un FormData, eliminamos el Content-Type para que el navegador
+        // ponga 'multipart/form-data' con el boundary correcto.
+        delete headers["Content-Type"];
+        return data;
       },
     });
 
