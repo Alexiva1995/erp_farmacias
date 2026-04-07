@@ -409,6 +409,8 @@ class IaAssistantReportService
         }
 
         return $items;
+    }
+
     /**
      * Obtiene el reporte de productos a reponer (con proveedores) de forma paginada y filtrada por tipo.
      */
