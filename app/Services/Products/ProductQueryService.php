@@ -209,7 +209,7 @@ class ProductQueryService
 
             case 'next_expiration':
                 $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())');
-                return $query->orderBy($subQuery, $orderBy);
+                return $query->orderByRaw("($subQuery) IS NULL, ($subQuery) $orderBy");
 
             case 'most_sold':
                 $subQuery = DB::raw('COALESCE((SELECT SUM(order_details.quantity) FROM order_details WHERE order_details.product_id = products.id), 0)');
@@ -267,7 +267,7 @@ class ProductQueryService
         ];
 
         $this->applyFilters($query, $filters);
-        $this->subColummn($query);
+        $this->subColumn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
@@ -298,7 +298,7 @@ class ProductQueryService
         ];
 
         $this->applyFilters($query, $filters);
-        $this->subColummn($query);
+        $this->subColumn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
@@ -322,7 +322,7 @@ class ProductQueryService
         ];
 
         $this->applyFilters($query, $filters);
-        $this->subColummn($query);
+        $this->subColumn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
@@ -346,7 +346,7 @@ class ProductQueryService
         ];
 
         $this->applyFilters($query, $filters);
-        $this->subColummn($query);
+        $this->subColumn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
@@ -370,13 +370,13 @@ class ProductQueryService
         ];
 
         $this->applyFilters($query, $filters);
-        $this->subColummn($query);
+        $this->subColumn($query);
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
     }
 
-    public function subColummn(Builder $query): Builder
+    public function subColumn(Builder $query): Builder
     {
         return $query->addSelect([
             'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) as stock_calculado'),
