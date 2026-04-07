@@ -361,10 +361,6 @@ const getUserDisplayName = (user) => {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
 .bg-primary-lighten-5 {
   background-color: rgba(var(--v-theme-primary), 0.05) !important;
 }

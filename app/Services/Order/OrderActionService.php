@@ -534,7 +534,7 @@ class OrderActionService
                 $product = $detail->product;
                 //$priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
-                $unitPriceInOrderCurrency = $detail->unit_cost;
+                $unitPriceInOrderCurrency = $quantity > 0 ? ($detail->price / $quantity) : 0;
                 $unitPriceInUsd = $detail->unit_price_usd;
 
                 $priceBs = (strtoupper($order->currency) !== 'BS')
@@ -587,7 +587,7 @@ class OrderActionService
                 $product = $detail->product;
                 //$priceBs = $product->price_bs;
 
-                $unitPriceInOrderCurrency = $detail->unit_cost;
+                $unitPriceInOrderCurrency = $detail->quantity > 0 ? ($detail->price / $detail->quantity) : 0;
                 $unitPriceInUsd = $detail->unit_price_usd;
 
                 $priceBs = (strtoupper($order->currency) !== 'BS')

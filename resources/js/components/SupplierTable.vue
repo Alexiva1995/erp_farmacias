@@ -5,10 +5,13 @@ const props = defineProps({
   totalSupplier: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: 'asc' },
   checkingApiId: { type: Number, default: null },
 });
 
 import { useDisplay } from "vuetify";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const { mobile } = useDisplay();
 
@@ -32,22 +35,6 @@ const headers = [
 ];
 </script>
 
-<style scoped>
-.spin-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-</style>
-
 <template>
   <div class="supplier-table-container">
     <VCard v-if="!mobile" class="rounded-lg border shadow-sm">
@@ -58,6 +45,7 @@ const headers = [
         :items="props.suppliers"
         :items-length="props.totalSupplier"
         :loading="props.loading"
+        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap premium-data-table"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -244,10 +232,10 @@ const headers = [
               </div>
               <div class="d-flex flex-column align-end">
                  <span class="text-caption text-disabled mb-1">Calificación</span>
-                 <div class="d-flex align-center">
+                  <div class="d-flex align-center">
                     <VIcon icon="tabler-star-filled" color="warning" size="14" class="me-1" />
                     <span class="text-body-2 font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
-                 </div>
+                  </div>
               </div>
             </div>
 
@@ -314,13 +302,15 @@ const headers = [
           <p class="text-body-2 text-disabled">No se encontraron proveedores</p>
         </div>
 
-        <div class="mt-4 px-2">
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalSupplier / props.itemsPerPage)"
-            @update:model-value="emit('update:options', { page: $event, itemsPerPage: props.itemsPerPage, sortBy: [], groupBy: [] })"
-            density="compact"
-            active-color="primary"
+        <div class="mt-4">
+          <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalSupplier"
+            :loading="props.loading"
+            :sort-by="props.sortBy"
+            :order-by="props.orderBy"
+            @change="(options) => emit('update:options', options)"
           />
         </div>
       </template>
@@ -360,9 +350,9 @@ const headers = [
 }
 
 .premium-data-table :deep(th) {
-  background-color: white !important;
   block-size: 52px !important;
   border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  background-color: white !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
@@ -371,8 +361,8 @@ const headers = [
 }
 
 .premium-data-table :deep(td) {
-  padding-block: 12px !important;
   border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+  padding-block: 12px !important;
 }
 
 .supplier-mobile-card {
@@ -384,19 +374,19 @@ const headers = [
   transform: scale(0.98);
 }
 
-.text-xxs {
-  font-size: 0.65rem;
-}
-
 .line-clamp-1 {
   display: -webkit-box;
+  overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   line-clamp: 1;
-  overflow: hidden;
 }
 
 .bg-light-surface {
   background-color: rgba(var(--v-theme-on-surface), 4%) !important;
+}
+
+.text-xxs {
+  font-size: 0.65rem;
 }
 </style>

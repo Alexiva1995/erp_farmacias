@@ -2,6 +2,7 @@
 import { useAuthStore } from "@/stores/auth";
 import { formatDate, formatPrice } from "@/utils/formatters";
 import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { computed, ref } from "vue";
 
 const authStore = useAuthStore();
@@ -12,6 +13,8 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: "asc" },
   mode: { type: String, default: "products" },
   title: { type: String, default: "" },
 });
@@ -127,7 +130,7 @@ const handleMobilePageChange = (newPage) => {
   emit('update:options', {
     page: newPage,
     itemsPerPage: props.itemsPerPage,
-    sortBy: [],
+    sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : [],
   });
 };
 </script>
@@ -150,6 +153,7 @@ const handleMobilePageChange = (newPage) => {
         :items="props.products"
         :items-length="props.totalProduct"
         :loading="props.loading"
+        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -397,14 +401,15 @@ const handleMobilePageChange = (newPage) => {
         </VCard>
       </div>
 
-      <div class="d-flex justify-center mt-4">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
-          :total-visible="3"
-          density="compact"
-          size="small"
-          @update:model-value="handleMobilePageChange"
+      <div class="mt-4">
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalProduct"
+          :loading="props.loading"
+          :sort-by="props.sortBy"
+          :order-by="props.orderBy"
+          @change="(options) => emit('update:options', options)"
         />
       </div>
     </div>
@@ -440,6 +445,7 @@ const handleMobilePageChange = (newPage) => {
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
 }
+
 
 .text-super-xs {
   font-size: 0.65rem !important;

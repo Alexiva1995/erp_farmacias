@@ -153,7 +153,7 @@ class IaAssistantReportService
     /**
      * Obtiene y cachea los IDs (de productos o grupos) que coinciden con los filtros
      */
-    private function getFilteredIds(array $filtros, bool $porGrupo = false): array
+    public function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
         $cacheKey = 'ia_report_ids_v4_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
             'lapso' => $filtros['lapso_de_tiempo'] ?? '',

@@ -361,8 +361,11 @@ watch([searchQuery, debtFilter, minScore], () => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  }
 };
 </script>
 
@@ -390,6 +393,7 @@ const updateTableOptions = (options) => {
         :total-supplier="totalSupplier"
         :items-per-page="itemsPerPage"
         :page="page"
+        :sort-by="sortBy ? [{ key: sortBy, order: orderBy || 'asc' }] : []"
         :checking-api-id="checkingApiSupplierId"
         @update:options="updateTableOptions"
         @edit-supplier="handleEditSupplier"

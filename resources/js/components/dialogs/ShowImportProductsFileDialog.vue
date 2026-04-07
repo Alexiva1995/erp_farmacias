@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { watch } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -9,7 +9,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  "update:modalValue",
+  "update:modelValue",
   "close-dialog",
   "refresh-products",
 ]);
@@ -66,12 +66,47 @@ const submitForm = async () => {
   }
 
   try {
-    toast.info(
-      `Procesando los datos de ${props.selectedSupplier.name}, le notificaremos al finalizar`
-    );
-    await axios.post(`/suppliers/${props.selectedSupplier.id}/import`, form, {
-      headers: { "Content-Type": "multipart/form-data" },
+    console.log("[Import] Iniciando subida para Proveedor ID:", props.selectedSupplier.id);
+    console.log("[Import] Archivo seleccionado:", file.value);
+    
+    const uploadUrl = `/suppliers/${props.selectedSupplier.id}/import`;
+    console.log("[Import] URL de destino:", uploadUrl);
+
+    // Aseguramos que file sea un objeto File, no un array
+    let fileToUpload = file.value;
+    if (Array.isArray(file.value) && file.value.length > 0) {
+      fileToUpload = file.value[0];
+    }
+    
+    if (fileToUpload && fileToUpload.size === 0) {
+      console.warn("[Import] El navegador reporta 0 bytes. Intentando prueba de lectura forzada...");
+      const reader = new FileReader();
+      reader.onload = () => console.log("[Import] Prueba de lectura: ¡EXITOSA! El archivo es accesible a pesar del tamaño reportado.");
+      reader.onerror = () => console.error("[Import] Prueba de lectura: FALLIDA. El archivo está bloqueado o inaccesible.");
+      reader.readAsArrayBuffer(fileToUpload.slice(0, 10));
+      
+      toast.error("El navegador detecta el archivo como vacío (0 bytes). Verifica que no esté abierto en Excel o intenta renombrarlo a algo simple como 'datos.xlsx'.");
+      return;
+    }
+
+    if (fileToUpload) {
+      // Re-agregamos el archivo al FormData por si acaso el anterior falló
+      form.delete("file");
+      form.append("file", fileToUpload);
+    }
+
+    console.log("[Import] Objeto File final a subir:", fileToUpload);
+
+    await axios.post(uploadUrl, form, {
+      transformRequest: (data, headers) => {
+        // Al ser un FormData, eliminamos el Content-Type para que el navegador
+        // ponga 'multipart/form-data' con el boundary correcto.
+        delete headers["Content-Type"];
+        return data;
+      },
     });
+
+    toast.success(`Datos cargados para ${props.selectedSupplier.name}`);
 
     start_row.value = 1;
     cod_supplier.value = "";
@@ -89,12 +124,16 @@ const submitForm = async () => {
 
     emit("refresh-products");
   } catch (error) {
-    console.error(error);
+    console.error("[Import] Error en la petición:", error);
+    if (error.response) {
+      console.error("[Import] Respuesta del servidor:", error.response.status, error.response.data);
+    }
+    
     toast.error(
       `No se pudo cargar los datos del excel para el proveedor ${props.selectedSupplier.name}`
     );
 
-    if (error.response.status === 422) {
+    if (error.response && error.response.status === 422) {
       errors.value = error.response.data.errors;
     }
   }
@@ -413,10 +452,6 @@ watch(
 <style scoped>
 .header-gradient {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
-}
-
-.bg-light {
-  background-color: #f8faff !important;
 }
 
 .detail-dialog-card {

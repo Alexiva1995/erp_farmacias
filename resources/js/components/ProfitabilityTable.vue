@@ -1,5 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { faLock, faUnlock } from "@fortawesome/free-solid-svg-icons";
 
@@ -12,6 +13,8 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: 'asc' },
 });
 
 const emit = defineEmits(["refresh", "update:options", "editProduct"]);
@@ -185,6 +188,7 @@ const getProfitabilityPercentage = (item) => {
         :items="props.products"
         :items-length="props.totalProduct"
         :loading="props.loading"
+        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="premium-table text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -498,20 +502,14 @@ const getProfitabilityPercentage = (item) => {
       <VCard
         class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface"
       >
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
-          total-visible="3"
-          density="comfortable"
-          active-color="primary"
-          @update:model-value="
-            (val) =>
-              emit('update:options', {
-                page: val,
-                itemsPerPage: props.itemsPerPage,
-                sortBy: [],
-              })
-          "
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalProduct"
+          :loading="props.loading"
+          :sort-by="props.sortBy"
+          :order-by="props.orderBy"
+          @change="(options) => emit('update:options', options)"
         />
       </VCard>
     </div>
@@ -531,6 +529,7 @@ const getProfitabilityPercentage = (item) => {
 
 :deep(.premium-table) {
   .v-data-table-header th {
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
     background: white !important;
     color: rgba(
       var(--v-theme-on-surface),
@@ -538,9 +537,8 @@ const getProfitabilityPercentage = (item) => {
     ) !important;
     font-size: 0.75rem !important;
     font-weight: 700 !important;
-    text-transform: uppercase !important;
     letter-spacing: 0.05rem !important;
-    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+    text-transform: uppercase !important;
   }
 
   .v-data-table__td {

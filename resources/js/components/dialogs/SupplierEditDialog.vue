@@ -236,7 +236,7 @@ watch(
           </VTab>
         </VTabs>
 
-        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-height: 70vh;">
+        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-block-size: 70vh;">
           <VForm @submit.prevent="submitForm">
             <VWindow v-model="activeTab" class="overflow-visible">
               <!-- Tab 1: General -->
@@ -537,10 +537,6 @@ watch(
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
 .detail-dialog-card {
   border-radius: 16px !important;
 }
@@ -554,9 +550,9 @@ watch(
 }
 
 .header-indicator {
-  inline-size: 4px;
+  border-radius: 8px !important;
   block-size: 16px;
-  border-radius: 10px;
+  inline-size: 4px;
 }
 
 .header-indicator.primary {

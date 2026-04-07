@@ -225,132 +225,408 @@ const handleMerge = async () => {
 <template>
   <div>
     <!-- Modal para ingresar ID -->
-    <VDialog v-model="isModalVisible" max-width="500px">
-      <VCard>
-        <VCardTitle class="d-flex align-center justify-space-between pa-4">
-          <span class="text-h6">Fusinar - Ingresar ID</span>
-          <VBtn icon variant="text" size="small" @click="closeModal">
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+    <VDialog
+      v-model="isModalVisible"
+      max-width="550px"
+      :fullscreen="$vuetify.display.xs"
+    >
+      <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+        <!-- Cabecera Premium Step 1 -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="40"
+              class="me-3 elevation-1"
+            >
+              <VIcon
+                icon="tabler-search"
+                size="24"
+                color="primary"
+              />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none text-white">
+              <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase">
+                Fusionar Producto
+              </h2>
+              <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+                Localizar Registro para Fusión
+              </span>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="closeModal"
+            />
+          </div>
         </VCardTitle>
-        <VDivider />
-        <VCardText class="pa-4">
-          <VTextField
-            v-model="inputId"
-            label="ID del producto a buscar"
-            variant="outlined"
-            type="number"
-            autofocus
-            :loading="loadingProduct"
-            @keyup.enter="handleSubmit"
-          />
+
+        <VCardText class="pa-6 bg-light">
+          <div class="d-flex flex-column gap-3 mb-4">
+            <div class="d-flex align-center gap-2">
+              <div class="header-indicator primary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Ingresar Identificador</span>
+            </div>
+            <VCard variant="flat" class="pa-5 bg-surface rounded-xl border shadow-sm">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">ID del producto a buscar</span>
+              <VTextField
+                v-model="inputId"
+                placeholder="EJ: 123456"
+                variant="outlined"
+                type="number"
+                autofocus
+                density="comfortable"
+                class="rounded-lg font-weight-black"
+                :loading="loadingProduct"
+                @keyup.enter="handleSubmit"
+              />
+            </VCard>
+          </div>
         </VCardText>
-        <VCardActions class="pa-4 d-flex gap-2">
-          <VBtn color="secondary" variant="outlined" @click="closeModal" class="flex-grow-1">
-            Cancelar
-          </VBtn>
-          <VBtn color="primary" variant="flat" @click="handleSubmit" :loading="loadingProduct" class="flex-grow-1">
-            Buscar
-          </VBtn>
+
+        <VCardActions class="pa-4 bg-surface border-t px-6">
+          <VRow dense class="w-100 ma-0">
+            <VCol cols="6">
+              <VBtn
+                variant="tonal"
+                color="secondary"
+                height="44"
+                block
+                class="font-weight-black rounded-lg text-button uppercase"
+                @click="closeModal"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
+            <VCol cols="6">
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="44"
+                block
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                :loading="loadingProduct"
+                @click="handleSubmit"
+              >
+                Buscar
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>
 
     <!-- Modal para comparar y fusionar -->
-    <VDialog v-model="isProductModalVisible" max-width="1200px" persistent scrollable>
-      <VCard v-if="props.selectedProduct && productToMerge">
-        <VCardTitle class="bg-primary text-white d-flex align-center pa-4">
-          <VIcon icon="tabler-package" class="me-2" />
-          <span class="text-h6">Fusionar Productos</span>
-          <VSpacer />
-          <VBtn icon variant="text" color="white" @click="closeProductModal">
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+    <VDialog
+      v-model="isProductModalVisible"
+      max-width="1200px"
+      persistent
+      scrollable
+      :fullscreen="$vuetify.display.xs"
+    >
+      <VCard v-if="props.selectedProduct && productToMerge" class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+        <!-- Cabecera Premium Step 2 -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="40"
+              class="me-3 elevation-1"
+            >
+              <VIcon
+                icon="tabler-package"
+                size="24"
+                color="primary"
+              />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none text-white">
+              <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase">
+                Confirmar Fusión de Productos
+              </h2>
+              <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+                Consolidación de Registros Maestros
+              </span>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="closeProductModal"
+            />
+          </div>
         </VCardTitle>
-        <VDivider />
-        <VCardText class="pa-4">
-          <VRow>
-            <VCol cols="12" md="6">
-              <VCard
-                variant="outlined"
-                :class="{ 'border-primary border-2': selectedProductToKeep === 'product1' }"
-                @click="selectedProductToKeep = 'product1'; switchProductToKeep()"
-                class="cursor-pointer"
-              >
-                <VCardTitle class="d-flex align-center">
-                  <VRadio
-                    :model-value="selectedProductToKeep === 'product1'"
-                    value="product1"
-                    label="Producto Actual"
-                    @click.stop="selectedProductToKeep = 'product1'; switchProductToKeep()"
-                  />
-                  <VSpacer />
-                  <VChip :color="selectedProductToKeep === 'product1' ? 'success' : 'error'" size="small">
-                    {{ selectedProductToKeep === "product1" ? "SE MANTIENE" : "SE ELIMINA" }}
-                  </VChip>
-                </VCardTitle>
-                <VCardText>
-                  <p><strong>ID:</strong> {{ selectedProduct.id }}</p>
-                  <p><strong>Nombre:</strong> {{ selectedProduct.name }}</p>
-                  <p><strong>P. Activo:</strong> {{ selectedProduct.active_ingredient }}</p>
-                </VCardText>
-              </VCard>
-            </VCol>
-            <VCol cols="12" md="6">
-              <VCard
-                variant="outlined"
-                :class="{ 'border-primary border-2': selectedProductToKeep === 'product2' }"
-                @click="selectedProductToKeep = 'product2'; switchProductToKeep()"
-                class="cursor-pointer"
-              >
-                <VCardTitle class="d-flex align-center">
-                  <VRadio
-                    :model-value="selectedProductToKeep === 'product2'"
-                    value="product2"
-                    label="Producto a Buscar"
-                    @click.stop="selectedProductToKeep = 'product2'; switchProductToKeep()"
-                  />
-                  <VSpacer />
-                  <VChip :color="selectedProductToKeep === 'product2' ? 'success' : 'error'" size="small">
-                    {{ selectedProductToKeep === "product2" ? "SE MANTIENE" : "SE ELIMINA" }}
-                  </VChip>
-                </VCardTitle>
-                <VCardText>
-                  <p><strong>ID:</strong> {{ productToMerge.id }}</p>
-                  <p><strong>Nombre:</strong> {{ productToMerge.name }}</p>
-                  <p><strong>P. Activo:</strong> {{ productToMerge.active_ingredient }}</p>
-                </VCardText>
-              </VCard>
-            </VCol>
-          </VRow>
 
-          <VDivider class="my-4" />
-          <p class="text-h6">Datos Finales (Editable)</p>
-          <VRow dense>
-            <VCol cols="12" md="6">
-              <VTextField v-model="mergeFormData.name" label="Nombre" variant="outlined" density="compact" />
+        <VCardText class="pa-0 bg-light">
+          <VContainer fluid class="pa-6">
+            <div class="d-flex flex-column gap-6">
+              <!-- Selección de Registro Base -->
+              <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-center gap-2">
+                  <div class="header-indicator primary shadow-sm" />
+                  <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Seleccionar Registro Base (Cual se Mantiene)</span>
+                </div>
+                
+                <VRow>
+                  <VCol cols="12" md="6">
+                    <VCard
+                      variant="flat"
+                      :class="[
+                        'rounded-xl border shadow-sm cursor-pointer transition-all',
+                        selectedProductToKeep === 'product1' ? 'border-primary border-opacity-100 bg-primary-light elevation-2' : 'bg-surface opacity-60'
+                      ]"
+                      @click="selectedProductToKeep = 'product1'; switchProductToKeep()"
+                    >
+                      <div class="pa-4">
+                        <div class="d-flex align-center justify-space-between mb-3">
+                          <VRadio
+                            :model-value="selectedProductToKeep === 'product1'"
+                            value="product1"
+                            color="primary"
+                            label="PRODUCTO ACTUAL"
+                            class="font-weight-black uppercase scale-90"
+                            @click.stop="selectedProductToKeep = 'product1'; switchProductToKeep()"
+                          />
+                          <VChip
+                            :color="selectedProductToKeep === 'product1' ? 'success' : 'error'"
+                            size="x-small"
+                            label
+                            class="font-weight-black uppercase"
+                          >
+                            {{ selectedProductToKeep === "product1" ? "SE MANTIENE" : "SE ELIMINA" }}
+                          </VChip>
+                        </div>
+                        <div class="d-flex flex-column gap-1 bg-light pa-3 rounded-lg border-dashed">
+                          <div class="d-flex justify-space-between text-xs">
+                            <span class="text-disabled font-weight-black uppercase">ID:</span>
+                            <span class="font-weight-black text-primary">{{ selectedProduct.id }}</span>
+                          </div>
+                          <div class="d-flex flex-column text-xs">
+                            <span class="text-disabled font-weight-black uppercase">Nombre:</span>
+                            <span class="font-weight-black text-high-emphasis uppercase truncate">{{ selectedProduct.name }}</span>
+                          </div>
+                          <div class="d-flex flex-column text-xs">
+                            <span class="text-disabled font-weight-black uppercase">P. Activo:</span>
+                            <span class="font-weight-black text-medium-emphasis uppercase truncate">{{ selectedProduct.active_ingredient }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </VCard>
+                  </VCol>
+
+                  <VCol cols="12" md="6">
+                    <VCard
+                      variant="flat"
+                      :class="[
+                        'rounded-xl border shadow-sm cursor-pointer transition-all',
+                        selectedProductToKeep === 'product2' ? 'border-primary border-opacity-100 bg-primary-light elevation-2' : 'bg-surface opacity-60'
+                      ]"
+                      @click="selectedProductToKeep = 'product2'; switchProductToKeep()"
+                    >
+                      <div class="pa-4">
+                        <div class="d-flex align-center justify-space-between mb-3">
+                          <VRadio
+                            :model-value="selectedProductToKeep === 'product2'"
+                            value="product2"
+                            color="primary"
+                            label="PRODUCTO ENCONTRADO"
+                            class="font-weight-black uppercase scale-90"
+                            @click.stop="selectedProductToKeep = 'product2'; switchProductToKeep()"
+                          />
+                          <VChip
+                            :color="selectedProductToKeep === 'product2' ? 'success' : 'error'"
+                            size="x-small"
+                            label
+                            class="font-weight-black uppercase"
+                          >
+                            {{ selectedProductToKeep === "product2" ? "SE MANTIENE" : "SE ELIMINA" }}
+                          </VChip>
+                        </div>
+                        <div class="d-flex flex-column gap-1 bg-light pa-3 rounded-lg border-dashed">
+                          <div class="d-flex justify-space-between text-xs">
+                            <span class="text-disabled font-weight-black uppercase">ID:</span>
+                            <span class="font-weight-black text-primary">{{ productToMerge.id }}</span>
+                          </div>
+                          <div class="d-flex flex-column text-xs">
+                            <span class="text-disabled font-weight-black uppercase">Nombre:</span>
+                            <span class="font-weight-black text-high-emphasis uppercase truncate">{{ productToMerge.name }}</span>
+                          </div>
+                          <div class="d-flex flex-column text-xs">
+                            <span class="text-disabled font-weight-black uppercase">P. Activo:</span>
+                            <span class="font-weight-black text-medium-emphasis uppercase truncate">{{ productToMerge.active_ingredient }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </VCard>
+                  </VCol>
+                </VRow>
+              </div>
+
+              <!-- Datos Finales Consolidados -->
+              <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-center gap-2">
+                  <div class="header-indicator secondary shadow-sm" />
+                  <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Revisión de Datos Finales</span>
+                </div>
+                
+                <VCard variant="flat" class="pa-5 bg-surface rounded-xl border shadow-sm">
+                  <VRow dense>
+                    <VCol cols="12" md="6">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre Maestro</span>
+                      <VTextField v-model="mergeFormData.name" variant="outlined" density="comfortable" class="rounded-lg font-weight-black" hide-details="auto" />
+                    </VCol>
+                    <VCol cols="12" md="6">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Principio Activo</span>
+                      <VTextField v-model="mergeFormData.active_ingredient" variant="outlined" density="comfortable" class="rounded-lg font-weight-black" hide-details="auto" />
+                    </VCol>
+                    <VCol cols="12" md="4">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Laboratorio</span>
+                      <VSelect v-model="mergeFormData.laboratory_id" :items="laboratories" item-title="name" item-value="id" variant="outlined" density="comfortable" class="rounded-lg font-weight-black" hide-details="auto" />
+                    </VCol>
+                    <VCol cols="12" md="4">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Código de Barras</span>
+                      <VTextField v-model="mergeFormData.barcode" variant="outlined" density="comfortable" class="rounded-lg font-weight-black" hide-details="auto" />
+                    </VCol>
+                    <VCol cols="12" md="4">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Configuración</span>
+                      <VCard variant="flat" class="pa-2 bg-light rounded-lg border-dashed d-flex align-center h-100 min-height-44">
+                        <VCheckbox v-model="mergeFormData.iva" :true-value="1" :false-value="0" label="APLICA IVA" class="font-weight-black scale-90" hide-details />
+                      </VCard>
+                    </VCol>
+                  </VRow>
+                </VCard>
+              </div>
+              
+              <VAlert
+                type="info"
+                variant="tonal"
+                density="compact"
+                icon="tabler-info-circle"
+                class="rounded-xl font-weight-bold"
+              >
+                Al fusionar, el producto que **SE ELIMINA** transferirá todos sus lotes, historiales y movimientos al producto que **SE MANTIENE**. Esta acción no se puede deshacer.
+              </VAlert>
+            </div>
+          </VContainer>
+        </VCardText>
+
+        <VCardActions class="pa-4 bg-surface border-t px-6">
+          <VRow dense class="w-100 ma-0">
+            <VCol cols="6">
+              <VBtn
+                variant="tonal"
+                color="secondary"
+                height="44"
+                block
+                class="font-weight-black rounded-lg text-button uppercase"
+                @click="closeProductModal"
+              >
+                Cancelar
+              </VBtn>
             </VCol>
-            <VCol cols="12" md="6">
-              <VTextField v-model="mergeFormData.active_ingredient" label="P. Activo" variant="outlined" density="compact" />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VSelect v-model="mergeFormData.laboratory_id" :items="laboratories" item-title="name" item-value="id" label="Laboratorio" variant="outlined" density="compact" />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VTextField v-model="mergeFormData.barcode" label="Código de Barras" variant="outlined" density="compact" />
-            </VCol>
-            <VCol cols="12" md="4" class="d-flex align-center">
-              <VCheckbox v-model="mergeFormData.iva" :true-value="1" :false-value="0" label="IVA" hide-details />
+            <VCol cols="6">
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="44"
+                block
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                :loading="isMerging"
+                @click="handleMerge"
+              >
+                Confirmar Fusión
+              </VBtn>
             </VCol>
           </VRow>
-        </VCardText>
-        <VDivider />
-        <VCardActions class="pa-4">
-          <VBtn color="secondary" variant="outlined" @click="closeProductModal">Cancelar</VBtn>
-          <VSpacer />
-          <VBtn color="primary" variant="flat" :loading="isMerging" @click="handleMerge">Confirmar Fusión</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
   </div>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #1e5128 100%
+  );
+}
+
+.bg-primary-light {
+  background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.border-dashed {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.header-indicator {
+  border-radius: 8px !important;
+  block-size: 16px;
+  inline-size: 4px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.header-indicator.secondary {
+  background-color: rgb(var(--v-theme-secondary));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.scale-90 {
+  transform: scale(0.9);
+  transform-origin: left center;
+}
+
+.text-button {
+  font-size: 0.875rem !important;
+  letter-spacing: 1px !important;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.transition-all {
+  transition: all 0.25s ease-in-out;
+}
+
+.min-height-44 {
+  min-height: 44px;
+}
+</style>

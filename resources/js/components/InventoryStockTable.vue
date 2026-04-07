@@ -1,4 +1,5 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice } from "@/utils/formatters";
 import { computed } from "vue";
 
@@ -31,14 +32,6 @@ const headers = [
   { title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' },
   { title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' },
 ];
-
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: [],
-  });
-};
 
 const getDiffColor = (val) => {
   const num = parseFloat(val);
@@ -97,7 +90,6 @@ const getDiffColor = (val) => {
             </div>
           </div>
         </template>
-
 
         <template #item.unit_cost="{ item }">
           <span class="font-weight-black text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
@@ -239,14 +231,15 @@ const getDiffColor = (val) => {
 
       <!-- Paginación Móvil -->
       <div class="d-flex justify-center mt-4 pb-2">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
-          :total-visible="3"
-          density="compact"
-          size="small"
-          @update:model-value="handleMobilePageChange"
-        />
+         <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalProduct"
+            :loading="props.loading"
+            :sort-by="typeof props.sortBy === 'string' ? props.sortBy : (props.sortBy[0]?.key || undefined)"
+            :order-by="props.orderBy"
+            @change="(options) => emit('update:options', options)"
+          />
       </div>
     </div>
   </VCard>

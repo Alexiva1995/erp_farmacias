@@ -1,4 +1,5 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { ref } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -376,13 +377,12 @@ const nextExpirationDate = (product) => {
 
         <!-- Paginación Móvil -->
         <div class="d-flex justify-center mt-4">
-          <VPagination
-            :model-value="page"
-            :length="Math.ceil(totalProduct / itemsPerPage)"
-            :total-visible="3"
-            density="compact"
-            size="small"
-            @update:model-value="emit('update:options', { page: $event, itemsPerPage })"
+           <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalProduct"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
         </div>
       </div>

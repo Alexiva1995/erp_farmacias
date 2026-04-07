@@ -22,6 +22,7 @@ const orderBy = ref("asc");
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
+const selectedGroup = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
@@ -68,6 +69,7 @@ const fetchProducts = async () => {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
+    groupId: selectedGroup.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -106,6 +108,7 @@ watch(
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
+    selectedGroup,
     stockStatusFilter,
     startDate,
     endDate,
@@ -120,7 +123,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, stockStatusFilter, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -134,8 +137,16 @@ onMounted(async () => {
 const updateTableOptions = options => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+
+  // Solo actualizar sortBy si hay una intención clara de ordenar desde la tabla
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  } else if (!options.sortBy || options.sortBy.length === 0) {
+    // Si la tabla no envía sortBy pero ya teníamos uno (ej: vía filtros), lo preservamos
+    // a menos que estemos en un flujo donde realmente queramos limpiar.
+    // En Vuetify, al paginar, si no se clickeó cabecera, sortBy puede venir vacío.
+  }
 };
 
 const handleEditProduct = product => {
@@ -225,6 +236,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
+  selectedGroup.value = null;
   stockStatusFilter.value = null;
   startDate.value = null;
   endDate.value = null;
@@ -247,6 +259,7 @@ const handleExport = async format => {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
+    groupId: selectedGroup.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -306,6 +319,7 @@ const handleSort = sortOptions => {
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
+      v-model:selectedGroup="selectedGroup"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
@@ -313,6 +327,7 @@ const handleSort = sortOptions => {
       v-model:isScarce="isScarce"
       :laboratories="laboratories"
       :origins="origins"
+      :groups="groups"
       :loading="isLoadingFilters"
       :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"
@@ -327,6 +342,8 @@ const handleSort = sortOptions => {
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"

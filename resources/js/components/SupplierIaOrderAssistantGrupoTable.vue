@@ -1,4 +1,5 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import VueApexCharts from 'vue3-apexcharts';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { ref, computed } from 'vue';
@@ -252,15 +253,13 @@ const grupoKpi = (productos) => {
       <span class="text-sm text-disabled">
         Mostrando grupos {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, totalGrupos) }} de {{ totalGrupos }}
       </span>
-      <VPagination
-        :model-value="currentPage"
-        :length="lastPage"
-        :total-visible="7"
-        density="compact"
-        size="small"
-        color="primary"
-        @update:model-value="emit('page-change', $event)"
-      />
+       <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalProduct"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+          />
     </div>
   </VCard>
 </template>

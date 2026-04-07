@@ -1,4 +1,5 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatDate } from "@/utils/formatters";
 import { computed } from "vue";
 
@@ -267,14 +268,13 @@ const handleMobilePageChange = (newPage) => {
 
       <!-- Paginación Móvil -->
       <div class="d-flex justify-center mt-4">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalLots / props.itemsPerPage)"
-          :total-visible="3"
-          density="compact"
-          size="small"
-          @update:model-value="handleMobilePageChange"
-        />
+         <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalLots"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+          />
       </div>
     </div>
   </VCard>

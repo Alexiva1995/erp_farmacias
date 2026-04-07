@@ -1,1 +1,45 @@
 // Write your overrides
+
+/*
+  Global override to adjust the "oval" appearance of internal cards in modals.
+  As requested by the user, we change rounded-xl to 8px inside dialogs
+  to achieve a cleaner, more modern look.
+*/
+.v-dialog {
+  // Target cards and any element with rounded-xl utility class inside a dialog
+  .v-card.rounded-xl,
+  .v-card.detail-dialog-card,
+  .rounded-xl {
+    border-radius: 8px !important;
+  }
+
+  // Ensure nested elements like avatars or indicators that use rounded-xl also adjust
+  .v-avatar.rounded-xl,
+  .header-indicator {
+    border-radius: 8px !important;
+  }
+
+  /*
+    DARK MODE ADAPTATION:
+    Force background-color to use the theme's surface color even if bg-white is explicitly used.
+    This fixes the issue where modals appear white in dark mode.
+  */
+  .bg-white,
+  .v-card.bg-white,
+  .v-card-actions.bg-white {
+    background-color: rgb(var(--v-theme-surface)) !important;
+  }
+
+  // Define a theme-aware bg-light for layered designs
+  .bg-light {
+    background-color: rgba(var(--v-border-color), 0.05) !important;
+  }
+
+  // Ensure borders are subtle and adapt to the active theme
+  .border,
+  .border-t,
+  .border-b,
+  .border-dashed {
+    border-color: rgba(var(--v-border-color), 0.1) !important;
+  }
+}

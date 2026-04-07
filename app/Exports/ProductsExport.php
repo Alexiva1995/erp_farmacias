@@ -6,9 +6,12 @@ use App\Models\Product;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStyles;
 use Illuminate\Database\Eloquent\Builder;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
-class ProductsExport implements FromQuery, WithHeadings, WithMapping
+class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
 {
     protected $query;
 
@@ -32,14 +35,9 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping
     public function headings(): array
     {
         return [
-            'ID',
-            'Producto',
-            'Principio Activo',
-            'Laboratorio',
-            'Origen',
-            'Precio Venta',
-            'Stock Válido',
-            'Próximo Vencimiento',
+            'Producto (ID - Nombre - Lab)',
+            'Stock',
+            'PVP',
         ];
     }
 
@@ -49,34 +47,26 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping
      */
     public function map($product): array
     {
+        $lab = $product->laboratory->name ?? 'N/A';
+        
         return [
-            $product->id,
-            $product->name,
-            $product->active_ingredient,
-            $product->laboratory->name ?? 'N/A',
-            $product->origin->name ?? 'N/A',
+            $product->id . ' - ' . $product->name . ' (' . $lab . ')',
+            $product->stock_calculado ?? 0,
             $product->sale_price,
-            $this->calculateValidStock($product),
-            $this->nextExpirationDate($product),
         ];
     }
 
-    private function calculateValidStock($product): int
+    /**
+     * Configuración de estilos y orientación
+     */
+    public function styles(Worksheet $sheet)
     {
-        $products = $product->lots
-            ->where('expiration_date', '>=', now()->startOfDay())
-            ->sum('quantity');
-        return $products > 0 ? $products : 0;
-    }
+        // Establecer orientación horizontal para PDF
+        $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
 
-
-    private function nextExpirationDate($product): string
-    {
-        $nextLot = $product->lots
-            ->where('expiration_date', '>=', now()->startOfDay())
-            ->sortBy('expiration_date')
-            ->first();
-
-        return $nextLot ? $nextLot->expiration_date->format('Y-m-d') : 'N/A';
+        return [
+            // Negrita para el encabezado
+            1 => ['font' => ['bold' => true]],
+        ];
     }
 }

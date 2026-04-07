@@ -485,10 +485,6 @@ const productLineLabel = (product) => {
   border-radius: 4px;
 }
 
-.bg-light {
-  background-color: #f8faff !important;
-}
-
 .h-50 {
   block-size: 50px !important;
 }
@@ -572,11 +568,7 @@ const productLineLabel = (product) => {
   background: #1e1e1e !important;
 }
 
-.v-theme--dark .bg-light {
-  background-color: #252525 !important;
-}
-
-.v-theme--dark .bg-white {
+.v-theme--dark .v-theme--dark .bg-white {
   background-color: #2a2a2a !important;
 }
 

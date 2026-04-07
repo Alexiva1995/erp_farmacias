@@ -4,24 +4,25 @@ import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
-import { onMounted, reactive, watch, nextTick } from 'vue';
+import { onMounted, reactive, watch, ref } from 'vue';
 import { useRouter } from "vue-router";
-const route= useRouter()
 
-const modal= reactive({
-  statu:false,
-  titulo:"Nuevo",
-})
+const route = useRouter();
 
-const modulo= reactive({
-  items:[],
-  totalItems:0,
-})
+const modal = reactive({
+  statu: false,
+  titulo: "Nuevo",
+});
+
+const modulo = reactive({
+  items: [],
+  totalItems: 0,
+});
 
 // Contador de solicitudes para evitar race conditions
-let requestId = 0
-let debounceTimer = null
-let skipPaginationWatch = false
+let requestId = 0;
+let debounceTimer = null;
+let skipPaginationWatch = false;
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -35,19 +36,19 @@ const isStrictSearch = ref(false);
 const tipoFiltracion = ref("average");
 const isColombian = ref(false);
 
-const loading = ref(false)
+const loading = ref(false);
 
-const page = ref(1)
-const itemsPerPage = ref(10)
-const sortBy = ref()
-const orderBy = ref()
+const page = ref(1);
+const itemsPerPage = ref(10);
+const sortBy = ref();
+const orderBy = ref();
 
 const laboratories = ref([]);
 
 const fetchSelectOptions = async () => {
   loading.value = true;
   try {
-    const labResponse= await axios.get("/laboratories")
+    const labResponse = await axios.get("/laboratories");
     laboratories.value = labResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
@@ -58,7 +59,6 @@ const fetchSelectOptions = async () => {
 };
 
 const fetchProducts = async () => {
-
   const data = {
     q: searchQuery.value,
     hasStock: stockStatusFilter.value,
@@ -78,21 +78,20 @@ const fetchProducts = async () => {
   };
   loading.value = true;
   try {
-    let respuesApi=await axios.post("/inventory/stock/filter",data)
-    if(respuesApi.status==200){
-      console.log("productos consultados correctamente")
+    const respuesApi = await axios.post("/inventory/stock/filter", data);
+    if (respuesApi.status == 200) {
+      console.log("productos consultados correctamente");
+    } else {
+      toast.error("error al consultar");
+      console.log("error en el servidor => ", respuesApi);
     }
-    else{
-      toast.error("error al consultar")
-      console.log("error en el servidor => ",respuesApi)
-    }
-    loading.value=false
-    return {...respuesApi.data.data}
+    loading.value = false;
+    return { ...respuesApi.data.data };
   } catch (error) {
-    toast.error("error al consultar")
-    console.log("error en el servidor => ", error)
-    loading.value=false
-    return { data: [], total: 0 }
+    toast.error("error al consultar");
+    console.log("error en el servidor => ", error);
+    loading.value = false;
+    return { data: [], total: 0 };
   }
 };
 
@@ -108,8 +107,6 @@ const handleClearFilters = () => {
   isStrictSearch.value = false;
   tipoFiltracion.value = "average";
   isColombian.value = false;
-  // sortBy.value = undefined;
-  // orderBy.value = undefined;
 };
 
 const handleSort = (sortOptions) => {
@@ -124,116 +121,131 @@ const handleSort = (sortOptions) => {
 
 // Watch con debounce para filtros que cambian frecuentemente (ej: escribir en búsqueda)
 watch(
-    [
-      expProd,
-      stock,
-      days,
-      searchQuery,
-      selectedLaboratory,
-      stockStatusFilter,
-      startDate,
-      endDate,
-      isStrictSearch,
-      tipoFiltracion,
-      isColombian
+  [
+    expProd,
+    stock,
+    days,
+    searchQuery,
+    selectedLaboratory,
+    stockStatusFilter,
+    startDate,
+    endDate,
+    isStrictSearch,
+    tipoFiltracion,
+    isColombian,
   ],
-  () =>{
+  () => {
     // Cuando cambia un filtro, volver a la página 1
-    // Marcamos el flag para que el watch de paginación no dispare una llamada duplicada
     if (page.value !== 1) {
-      skipPaginationWatch = true
-      page.value = 1
+      skipPaginationWatch = true;
+      page.value = 1;
     }
-    actualizarTablaDebounced()
-  }
-)
+    actualizarTablaDebounced();
+  },
+);
 
 // Watch sin debounce para paginación y ordenamiento (respuesta inmediata)
 watch(
-    [
-      page,
-      itemsPerPage,
-      sortBy,
-      orderBy,
-  ],
-  () =>{
+  [page, itemsPerPage, sortBy, orderBy],
+  () => {
     // Si el cambio de página viene del watch de filtros, no hacer doble llamada
     if (skipPaginationWatch) {
-      skipPaginationWatch = false
-      return
+      skipPaginationWatch = false;
+      return;
     }
-    actualizarTabla()
-  }
-)
+    actualizarTabla();
+  },
+);
 
 // Versión con debounce para cambios de filtros
-function actualizarTablaDebounced(){
-  clearTimeout(debounceTimer)
+function actualizarTablaDebounced() {
+  clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
-    actualizarTabla()
-  }, 300)
+    actualizarTabla();
+  }, 300);
 }
 
 // Versión principal con protección contra race conditions
-async function actualizarTabla(){
-  const currentRequestId = ++requestId
-  let dataTabla=await fetchProducts();
+async function actualizarTabla() {
+  const currentRequestId = ++requestId;
+  const dataTabla = await fetchProducts();
 
   // Si hubo otra solicitud más reciente mientras esta estaba en curso,
   // descartamos esta respuesta obsoleta para evitar sobrescribir datos correctos
   if (currentRequestId !== requestId) {
-    console.log("Respuesta descartada (solicitud obsoleta)")
-    return
+    console.log("Respuesta descartada (solicitud obsoleta)");
+    return;
   }
 
-  console.log("=> ",dataTabla)
-  modulo.items=dataTabla.data
-  modulo.totalItems=dataTabla.total
+  console.log("=> ", dataTabla);
+  modulo.items = dataTabla.data;
+  modulo.totalItems = dataTabla.total;
 }
 
-const updateTableOptions = options => {
-  // Evitar disparar watchers si los valores no cambiaron realmente
-  const newPage = options.page
-  const newItemsPerPage = options.itemsPerPage
-  const newSortBy = options.sortBy[0]?.key
-  const newOrderBy = options.sortBy[0]?.order
+const updateTableOptions = (options) => {
+  const newPage = options.page;
+  const newItemsPerPage = options.itemsPerPage;
 
-  // Verificar si realmente cambió algo antes de actualizar
-  const changed = page.value !== newPage
-    || itemsPerPage.value !== newItemsPerPage
-    || sortBy.value !== newSortBy
-    || orderBy.value !== newOrderBy
+  // Capturar ordenamiento solo si viene uno nuevo
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  }
 
-  if (!changed) return
-
-  page.value = newPage
-  itemsPerPage.value = newItemsPerPage
-  sortBy.value = newSortBy
-  orderBy.value = newOrderBy
-}
+  page.value = newPage;
+  itemsPerPage.value = newItemsPerPage;
+};
 
 onMounted(async () => {
   await fetchSelectOptions();
-  let dataTabla=await fetchProducts();
-  console.log("=> ",dataTabla)
-  modulo.items=dataTabla.data
-  modulo.totalItems=dataTabla.total
-  // fetchSales();
-})
+  const dataTabla = await fetchProducts();
+  console.log("=> ", dataTabla);
+  modulo.items = dataTabla.data;
+  modulo.totalItems = dataTabla.total;
+});
 
-async function filtrarSinPaginar(dataFiltro){
-  let respuestaApi = await axios.post(`/inventory/stock/filter-without-paginate`,dataFiltro)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
+async function filtrarSinPaginar(dataFiltro) {
+  const respuestaApi = await axios.post(
+    `/inventory/stock/filter-without-paginate`,
+    dataFiltro,
+  );
+  if (respuestaApi.status != 200) {
+    toast.success("Error al filtrar los datos");
   }
-  // console.log("respues api => ",respuestaApi)
 
-  return [...respuestaApi.data.data]
+  return [...respuestaApi.data.data];
 }
 
-async function exportarPdf(){
-    let filtros={
-      // filtros
+async function exportarPdf() {
+  const filtros = {
+    q: searchQuery.value,
+    hasStock: stockStatusFilter.value,
+    laboratoryId: selectedLaboratory.value,
+    sortBy: sortBy.value,
+    orderBy: orderBy.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+    days: days.value,
+    stock: stock.value,
+    expProd: expProd.value,
+    isStrictSearch: isStrictSearch.value,
+    tipo_filtracion: tipoFiltracion.value,
+    isColombian: isColombian.value,
+  };
+  const respuestaApi = await filtrarSinPaginar(filtros);
+  console.log("respuesta => ", respuestaApi);
+
+  if (respuestaApi.length == 0) {
+    toast.info("No hay clientes para poder genera un reporte");
+    return null;
+  }
+
+  pdfStockProductsGenerator(respuestaApi);
+}
+
+async function exportarExcel(formato) {
+  try {
+    const params = {
       q: searchQuery.value,
       hasStock: stockStatusFilter.value,
       laboratoryId: selectedLaboratory.value,
@@ -247,59 +259,24 @@ async function exportarPdf(){
       isStrictSearch: isStrictSearch.value,
       tipo_filtracion: tipoFiltracion.value,
       isColombian: isColombian.value,
-  }
-  let respuestaApi= await filtrarSinPaginar(filtros)
-  console.log("respuesta => ",respuestaApi)
+      formato,
+    };
 
-  if(respuestaApi.length==0){
-    toast.info("No hay clientes para poder genera un reporte")
-    return null;
-  }
-
-  pdfStockProductsGenerator(respuestaApi)
-
-}
-
-async function exportarExcel(formato){
-
-  try{
-      let params={
-        q: searchQuery.value,
-        hasStock: stockStatusFilter.value,
-        laboratoryId: selectedLaboratory.value,
-        sortBy: sortBy.value,
-        orderBy: orderBy.value,
-        startDate: startDate.value,
-        endDate: endDate.value,
-        days: days.value,
-        stock: stock.value,
-        expProd: expProd.value,
-        isStrictSearch: isStrictSearch.value,
-        tipo_filtracion: tipoFiltracion.value,
-        isColombian: isColombian.value,
-        formato
-    }
-
-    // let respuestaApi = await axios.get(`/inventory/stock/exportar/excel`,{
-    //   params,
-    //   responseType: "blob",
-    // })
-
-    let respuestaApi = await axios.post(
-      '/inventory/stock/exportar/excel',
-      params,  // Tus parámetros como objeto
+    const respuestaApi = await axios.post(
+      "/inventory/stock/exportar/excel",
+      params,
       {
-        responseType: 'blob',
+        responseType: "blob",
         headers: {
-          'Content-Type': 'application/json',  // Asegura el envío correcto de los parámetros
-        }
-      }
+          "Content-Type": "application/json",
+        },
+      },
     );
 
-    console.log("res => ",respuestaApi)
+    console.log("res => ", respuestaApi);
 
-    if(respuestaApi.status!=200){
-      toast.success("Error al filtrar los datos")
+    if (respuestaApi.status != 200) {
+      toast.success("Error al filtrar los datos");
     }
     const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
     const link = document.createElement("a");
@@ -322,9 +299,9 @@ async function exportarExcel(formato){
   } catch (error) {
     console.error("Error al exportar los datos:", error);
   }
-
 }
 </script>
+
 <template>
   <div>
     <InventoryStockFilters

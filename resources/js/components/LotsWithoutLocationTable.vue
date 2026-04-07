@@ -1,4 +1,5 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, onMounted } from "vue";
@@ -112,7 +113,7 @@ const handleLocationSearch = (search) => {
 </script>
 
 <template>
-  <VCard padding="0">
+  <VCard class="pa-0">
     <!-- Desktop Table -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -355,13 +356,12 @@ const handleLocationSearch = (search) => {
  
         <!-- Paginación Móvil -->
         <div class="d-flex justify-center mt-4 pb-2">
-          <VPagination
-            :model-value="page"
-            :length="Math.ceil(totalLots / itemsPerPage)"
-            :total-visible="3"
-            density="compact"
-            size="small"
-            @update:model-value="emit('update:options', { page: $event, itemsPerPage })"
+           <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalLots"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
         </div>
       </div>

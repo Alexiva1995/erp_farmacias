@@ -146,8 +146,32 @@ class ProductController extends Controller
 
     public function export(Request $request)
     {
+        // Aumentar límites significativamente para reportes grandes
+        ini_set('memory_limit', '1024M');
+        set_time_limit(600);
+
         $query = $this->productQueryService->getFilteredQuery($request);
         $format = $request->input('format', 'xlsx');
+
+        // Optimizar consulta al máximo: solo las columnas necesarias
+        $query->select(['products.id', 'products.name', 'products.laboratory_id', 'products.sale_price'])
+              ->withSum('lots as stock_calculado', 'quantity')
+              ->with('laboratory:id,name')
+              ->without(['lots', 'origin', 'category', 'group', 'profitability']);
+
+        if ($format === 'pdf') {
+            // Obtener datos
+            $products = $query->get();
+            
+            // Usar DomPDF con opciones de optimización
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.products-pdf', compact('products'))
+                ->setPaper('a4', 'landscape')
+                ->setOption('isPhpEnabled', false) // Deshabilitar PHP interno para ahorrar RAM
+                ->setOption('isRemoteEnabled', false); // Deshabilitar imágenes remotas
+                
+            return $pdf->download('productos-' . now()->format('Y-m-d') . '.pdf');
+        }
+
         $fileName = 'productos-' . now()->format('Y-m-d') . '.' . $format;
         return Excel::download(new ProductsExport($query), $fileName);
     }
@@ -195,6 +219,7 @@ class ProductController extends Controller
         try {
             // Consulta base con relaciones esenciales
             $products = Product::with(['laboratory', 'category', 'lots'])
+                ->withSum('lots as stock_calculado', 'quantity')
                 ->orderBy('name', 'asc')   // Orden alfabético por defecto
                 ->get();
 
@@ -242,7 +267,7 @@ class ProductController extends Controller
             'formatted_details' => $product->formatted_details,
 
             // Stock y precios
-            'stock' => $product->stock,
+            'stock' => $product->stock_calculado ?? 0,
             'available_stock' => $availableStock,
             'sale_price' => (float) $product->sale_price,
             'unit_cost' => (float) $product->unit_cost,

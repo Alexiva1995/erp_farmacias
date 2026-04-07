@@ -387,6 +387,13 @@ class SupplierController extends Controller
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
     {
+        \Log::error("🔴 [CRITICAL DEBUG] importData() llamado", [
+            'supplier_id' => $supplier->id,
+            'request_all' => $request->except(['file']),
+            'has_file'    => $request->hasFile('file')
+        ]);
+        error_log("🔴 [CRITICAL DEBUG] importData() llamado para Supplier ID: {$supplier->id}");
+
         // Log INMEDIATAMENTE al recibir la solicitud
         $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
         $logMessage = "[" . date('Y-m-d H:i:s') . "] ========== 🚀 INICIO IMPORTACIÓN ==========\n";

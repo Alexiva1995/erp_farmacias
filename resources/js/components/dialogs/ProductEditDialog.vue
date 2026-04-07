@@ -4,8 +4,10 @@ import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { calculateStock, formatDate } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const authStore = useAuthStore();
+const { xs } = useDisplay();
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -210,7 +212,6 @@ const submitForm = () => {
       payload.append(key, value);
     }
   });
-
   if (imageFile.value) {
     payload.append("photo_url", imageFile.value);
   }
@@ -252,14 +253,14 @@ const submitForm = () => {
     content-class="d-flex"
     :fullscreen="$vuetify.display.xs"
   >
-    <VCard v-if="formData" :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard v-if="formData" :class="[xs ? 'rounded-0 d-flex flex-column justify-start' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface']">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+        <div :class="[xs ? 'pa-2' : 'pa-4', 'header-gradient d-flex align-center shadow-sm']">
           <VAvatar
             color="white"
             variant="flat"
-            size="40"
+            :size="xs ? 32 : 40"
             class="me-3 elevation-1"
           >
             <VIcon
@@ -283,7 +284,7 @@ const submitForm = () => {
           </div>
 
           <VChip
-            v-if="assignedGroupName"
+            v-if="assignedGroupName && !xs"
             class="ml-4 font-weight-black rounded-lg"
             color="white"
             variant="tonal"
@@ -304,15 +305,15 @@ const submitForm = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light d-flex flex-column">
+      <VCardText :class="['pa-0 bg-light', xs ? '' : 'd-flex flex-column justify-start']">
         <!-- Pestañas Premium -->
         <VTabs
+          v-slot:default
           v-model="activeTab"
           grow
-          bg-color="white"
           color="primary"
-          class="border-b"
-          height="54"
+          class="border-b mb-0"
+          :height="xs ? 44 : 54"
         >
           <VTab :value="0" class="text-button font-weight-black">
             <VIcon icon="tabler-info-circle" class="me-2" size="18" />
@@ -330,12 +331,12 @@ const submitForm = () => {
 
         <VWindow
           v-model="activeTab"
-          class="pa-4 pa-sm-6"
-          style="max-block-size: 60vh; overflow-y: auto"
+          :class="[xs ? 'pa-0' : 'pa-4 pa-sm-6', 'product-edit-window']"
+          :style="xs ? 'min-block-size: auto !important;' : 'max-block-size: 60vh; overflow-y: auto;'"
         >
           <!-- Pestaña General -->
-          <VWindowItem :value="0">
-            <div class="d-flex flex-column gap-6">
+          <VWindowItem :value="0" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <!-- Información Básica -->
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center gap-2">
@@ -345,7 +346,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VForm @submit.prevent="submitForm">
                     <VRow dense>
@@ -444,7 +445,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
                     <VCol cols="12" md="6">
@@ -482,7 +483,7 @@ const submitForm = () => {
                       cols="12"
                       class="d-flex justify-center mt-4"
                     >
-                      <div class="pa-1 bg-white border rounded-xl shadow-sm elevation-1">
+                      <div class="pa-1 bg-surface border rounded-xl shadow-sm elevation-1">
                         <VImg
                           :src="imagePreviewUrl"
                           max-width="240"
@@ -499,8 +500,8 @@ const submitForm = () => {
           </VWindowItem>
 
           <!-- Pestaña Inventario -->
-          <VWindowItem :value="1">
-            <div class="d-flex flex-column gap-6">
+          <VWindowItem :value="1" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <!-- Configuración Logística -->
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center gap-2">
@@ -510,7 +511,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
                     <VCol cols="12" md="4">
@@ -619,7 +620,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="bg-white rounded-xl border shadow-sm overflow-hidden"
+                  class="bg-surface rounded-xl border shadow-sm overflow-hidden"
                 >
                   <!-- Desktop Table -->
                   <div class="d-none d-sm-block">
@@ -685,8 +686,8 @@ const submitForm = () => {
           </VWindowItem>
 
           <!-- Pestaña Relaciones -->
-          <VWindowItem :value="2">
-            <div class="d-flex flex-column gap-6">
+          <VWindowItem :value="2" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <!-- Jerarquía y Agrupación -->
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center gap-2">
@@ -696,7 +697,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <div class="pa-4 bg-light rounded-xl border-dashed-2">
                     <div class="d-flex align-center gap-2 mb-4 leading-none">
@@ -707,14 +708,17 @@ const submitForm = () => {
                       />
                       <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Asignación de Grupo Maestro</span>
                     </div>
-                    <div class="d-flex gap-2 align-center">
+                    <div 
+                      v-if="!assignedGroupName"
+                      class="d-flex gap-2 align-center"
+                    >
                       <AppTextField
                         v-model="groupInput"
                         placeholder="BUSCAR GRUPO (ID O NOMBRE)..."
                         variant="outlined"
                         density="comfortable"
                         hide-details
-                        class="bg-white rounded-lg font-weight-black flex-grow-1"
+                        class="bg-surface rounded-lg font-weight-black flex-grow-1"
                         @keydown.enter.prevent="assignGroup"
                       />
                       <VBtn
@@ -730,7 +734,7 @@ const submitForm = () => {
 
                     <div
                       v-if="assignedGroupName"
-                      class="mt-4"
+                      :class="!assignedGroupName ? 'mt-4' : ''"
                     >
                       <VChip
                         color="primary"
@@ -775,7 +779,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="bg-white rounded-xl border shadow-sm overflow-hidden"
+                  class="bg-surface rounded-xl border shadow-sm overflow-hidden"
                 >
                   <!-- Desktop Table -->
                   <div class="d-none d-sm-block">
@@ -840,7 +844,7 @@ const submitForm = () => {
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+      <VCardActions :class="[xs ? 'pa-2' : 'pa-4 pa-sm-6', 'bg-surface border-t']">
         <VRow
           dense
           class="w-100 ma-0"
@@ -852,7 +856,7 @@ const submitForm = () => {
             <VBtn
               color="secondary"
               variant="tonal"
-              height="50"
+              :height="xs ? 44 : 50"
               block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="closeDialog"
@@ -867,7 +871,7 @@ const submitForm = () => {
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              :height="xs ? 44 : 50"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               @click="submitForm"
@@ -877,7 +881,7 @@ const submitForm = () => {
                 size="18"
                 class="me-2"
               />
-              {{ isNewProduct ? "Crear Producto" : "Guardar Cambios" }}
+              {{ isNewProduct ? "Crear" : "Guardar" }}
             </VBtn>
           </VCol>
         </VRow>
@@ -943,7 +947,7 @@ const submitForm = () => {
         </VCard>
       </VCardText>
 
-      <VCardActions class="pa-4 bg-white border-t px-6">
+      <VCardActions class="pa-4 bg-surface border-t px-6">
         <VRow
           dense
           class="w-100 ma-0"
@@ -982,25 +986,24 @@ const submitForm = () => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
-  );
+  background:
+    linear-gradient(
+      135deg,
+      rgb(var(--v-theme-primary)) 0%,
+      #1e5128 100%
+    );
 }
 
-.bg-light {
-  background-color: #f8faff !important;
-}
+
 
 .detail-dialog-card {
   border-radius: 12px !important;
 }
 
 .header-indicator {
-  inline-size: 4px;
+  border-radius: 8px !important;
   block-size: 16px;
-  border-radius: 10px;
+  inline-size: 4px;
 }
 
 .header-indicator.primary {
@@ -1037,21 +1040,21 @@ const submitForm = () => {
 }
 
 .table-standard :deep(.v-data-table-header) {
-  background-color: #f1f5f9;
+  background-color: rgba(var(--v-border-color), 0.05);
 }
 
 .table-standard :deep(.v-data-table-header th) {
+  border-block-end: 2px solid rgba(var(--v-border-color), 0.1) !important;
   color: #64748b !important;
   font-size: 0.65rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  border-bottom: 2px solid #e2e8f0 !important;
 }
 
 .table-standard :deep(td) {
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
   padding-block: 12px !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.05) !important;
 }
 
 .truncate-2-lines {
@@ -1074,5 +1077,24 @@ const submitForm = () => {
 
 .uppercase {
   text-transform: uppercase;
+}
+
+.product-edit-window :deep(.v-window__container) {
+  block-size: auto !important;
+  min-block-size: auto !important;
+}
+
+.product-edit-window :deep(.v-window-item) {
+  block-size: auto !important;
+  min-block-size: auto !important;
+  margin-block-start: 0 !important;
+  padding-block-start: 0 !important;
+}
+
+@media (max-width: 600px) {
+  .product-edit-window :deep(.v-window__container) {
+    max-block-size: none !important;
+    overflow-y: visible !important;
+  }
 }
 </style>
