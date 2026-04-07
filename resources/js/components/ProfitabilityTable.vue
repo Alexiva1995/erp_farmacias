@@ -17,6 +17,11 @@ const props = defineProps({
   orderBy: { type: String, default: 'asc' },
 });
 
+const sortByModel = computed(() => {
+  if (!props.sortBy) return [];
+  return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
+});
+
 const emit = defineEmits(["refresh", "update:options", "editProduct"]);
 
 const headers = [
@@ -188,7 +193,7 @@ const getProfitabilityPercentage = (item) => {
         :items="props.products"
         :items-length="props.totalProduct"
         :loading="props.loading"
-        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
+        :sort-by="sortByModel"
         class="premium-table text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >

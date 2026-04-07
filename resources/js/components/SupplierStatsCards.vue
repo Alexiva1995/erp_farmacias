@@ -28,21 +28,21 @@ const formatCurrency = (value) => {
 const statistics = computed(() => [
   {
     title: "Deuda Total",
-    value: formatCurrency(props.stats.total_debt),
+    value: formatCurrency(props.stats?.total_debt ?? 0),
     icon: "tabler-currency-dollar",
     color: "error",
     description: "Pendiente por pagar",
   },
   {
     title: "Proveedores",
-    value: props.stats.active_suppliers_count,
+    value: props.stats?.active_suppliers_count ?? 0,
     icon: "tabler-users",
     color: "primary",
     description: "Registrados activos",
   },
   {
     title: "Éxito Conexión",
-    value: `${props.stats.connection_success_rate}%`,
+    value: `${props.stats?.connection_success_rate ?? 0}%`,
     icon: "tabler-api",
     color: "success",
     description: "Últimas 24 horas",
@@ -77,7 +77,7 @@ const statistics = computed(() => [
             <div class="text-right">
               <span
                 class="text-overline font-weight-bold text-disabled"
-                style="letter-spacing: 1px !important"
+                style="letter-spacing: 1px !important;"
                 >{{ item.title }}</span
               >
               <h4 class="text-h4 font-weight-black mt-1">

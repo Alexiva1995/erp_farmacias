@@ -17,4 +17,37 @@ class LocationRepository implements LocationContract
     {
         return Location::orderBy('name')->get();
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function find(int $id): ?Location
+    {
+        return Location::find($id);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function create(array $data): Location
+    {
+        return Location::create($data);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function update(Location $location, array $data): Location
+    {
+        $location->update($data);
+        return $location;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function delete(Location $location): ?bool
+    {
+        return $location->delete();
+    }
 }
