@@ -9,9 +9,9 @@ const props = defineProps({
 });
 
 import { useDisplay } from "vuetify";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const { mobile } = useDisplay();
-import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const emit = defineEmits([
   "update:options",
@@ -32,22 +32,6 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false },
 ];
 </script>
-
-<style scoped>
-.spin-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-</style>
 
 <template>
   <div class="supplier-table-container">
@@ -228,7 +212,7 @@ const headers = [
                 <VIcon
                   size="10"
                   :color="checkingApiId === item.id ? 'warning' : 'success'"
-                  icon="tabler-circle-filled"
+                  icon="tabTarget-circle-filled"
                   :class="checkingApiId === item.id ? 'spin-icon' : ''"
                 />
               </div>
@@ -246,7 +230,7 @@ const headers = [
               <div class="d-flex flex-column align-end">
                  <span class="text-caption text-disabled mb-1">Calificación</span>
                  <div class="d-flex align-center">
-                    <VIcon icon="tabler-star-filled" color="warning" size="14" class="me-1" />
+                    <VIcon icon="tabTarget-star-filled" color="warning" size="14" class="me-1" />
                     <span class="text-body-2 font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
                  </div>
               </div>
@@ -258,7 +242,7 @@ const headers = [
                   <template #activator="{ props }">
                     <VBtn
                       v-bind="props"
-                      icon="tabler-brand-whatsapp"
+                      icon="tabTarget-brand-whatsapp"
                       variant="tonal"
                       color="success"
                       size="32"
@@ -272,7 +256,7 @@ const headers = [
                   <template #activator="{ props }">
                     <VBtn
                       v-bind="props"
-                      icon="tabler-phone"
+                      icon="tabTarget-phone"
                       variant="tonal"
                       color="info"
                       size="32"
@@ -285,21 +269,21 @@ const headers = [
 
               <div class="d-flex gap-1">
                 <VBtn
-                  icon="tabler-edit"
+                  icon="tabTarget-edit"
                   variant="text"
                   color="primary"
                   size="32"
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
-                  icon="tabler-settings-dollar"
+                  icon="tabTarget-settings-dollar"
                   variant="text"
                   color="warning"
                   size="32"
                   @click="emit('commercial-panel', item)"
                 />
                 <VBtn
-                  icon="tabler-credit-card-pay"
+                  icon="tabTarget-credit-card-pay"
                   variant="text"
                   color="secondary"
                   size="32"
@@ -361,21 +345,14 @@ const headers = [
 }
 
 .premium-data-table :deep(th) {
-  background-color: white !important;
   block-size: 52px !important;
   border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  background-color: white !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-}
-
-.pagination-select :deep(.v-field__input) {
-  block-size: 24px !important;
-  font-size: 0.85rem !important;
-  min-block-size: auto !important;
-  padding-inline-start: 4px !important;
 }
 
 .premium-data-table :deep(td) {
@@ -392,19 +369,19 @@ const headers = [
   transform: scale(0.98);
 }
 
-.text-xxs {
-  font-size: 0.65rem;
-}
-
 .line-clamp-1 {
   display: -webkit-box;
+  overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   line-clamp: 1;
-  overflow: hidden;
 }
 
 .bg-light-surface {
   background-color: rgba(var(--v-theme-on-surface), 4%) !important;
+}
+
+.text-xxs {
+  font-size: 0.65rem;
 }
 </style>
