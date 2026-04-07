@@ -141,14 +141,13 @@ const handleMobilePageChange = (newPage) => {
 
       <!-- Mobile Pagination -->
       <div class="d-flex justify-center mt-4 pb-2">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalClients / props.itemsPerPage)"
-          :total-visible="3"
-          density="compact"
-          size="small"
-          @update:model-value="handleMobilePageChange"
-        />
+         <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalClients"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+          />
       </div>
     </div>
   </div>

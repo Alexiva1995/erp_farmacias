@@ -11,6 +11,7 @@ const props = defineProps({
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const emit = defineEmits([
   "update:options",
@@ -314,13 +315,13 @@ const headers = [
           <p class="text-body-2 text-disabled">No se encontraron proveedores</p>
         </div>
 
-        <div class="mt-4 px-2">
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalSupplier / props.itemsPerPage)"
-            @update:model-value="emit('update:options', { page: $event, itemsPerPage: props.itemsPerPage, sortBy: [], groupBy: [] })"
-            density="compact"
-            active-color="primary"
+        <div class="mt-4">
+          <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalSupplier"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
         </div>
       </template>
@@ -370,9 +371,16 @@ const headers = [
   text-transform: uppercase;
 }
 
+.pagination-select :deep(.v-field__input) {
+  block-size: 24px !important;
+  font-size: 0.85rem !important;
+  min-block-size: auto !important;
+  padding-inline-start: 4px !important;
+}
+
 .premium-data-table :deep(td) {
-  padding-block: 12px !important;
   border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+  padding-block: 12px !important;
 }
 
 .supplier-mobile-card {

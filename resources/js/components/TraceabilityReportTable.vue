@@ -1,4 +1,5 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
 import { formatDate } from "@/utils/formatters";
 import { ref } from "vue";
@@ -265,14 +266,13 @@ const headers = [
 
       <!-- Paginación Móvil -->
       <div class="d-flex justify-center mt-4">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalSales / props.itemsPerPage)"
-          :total-visible="3"
-          density="compact"
-          size="small"
-          @update:model-value="handleMobilePageChange"
-        />
+         <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalSales"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+          />
       </div>
     </div>
   </VCard>

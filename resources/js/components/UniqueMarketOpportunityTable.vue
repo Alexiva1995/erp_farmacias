@@ -123,15 +123,13 @@ const currentPage = computed({
       <span class="text-sm text-medium-emphasis me-4">
         Total: {{ props.paginationData.total || 0 }} productos
       </span>
-      <VPagination
-        v-model="currentPage"
-        :length="totalPages"
-        total-visible="5"
-        size="small"
-        rounded="circle"
-        active-color="primary"
-        :disabled="loading"
-      />
+       <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalProduct"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+          />
     </div>
   </VCard>
 </template>

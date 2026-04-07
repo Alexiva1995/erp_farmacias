@@ -285,7 +285,7 @@ const submitForm = () => {
           </div>
 
           <VChip
-            v-if="assignedGroupName"
+            v-if="assignedGroupName && !xs"
             class="ml-4 font-weight-black rounded-lg"
             color="white"
             variant="tonal"
@@ -306,13 +306,13 @@ const submitForm = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light d-flex flex-column">
+      <VCardText class="pa-0 bg-light d-flex flex-column justify-start">
         <!-- Pestañas Premium -->
         <VTabs
           v-model="activeTab"
           grow
           color="primary"
-          class="border-b"
+          class="border-b mb-0"
           :height="xs ? 44 : 54"
         >
           <VTab :value="0" class="text-button font-weight-black">
@@ -331,12 +331,12 @@ const submitForm = () => {
 
         <VWindow
           v-model="activeTab"
-          :class="xs ? 'pa-3' : 'pa-4 pa-sm-6'"
-          style="max-block-size: 60vh; overflow-y: auto;"
+          :class="[xs ? 'pa-0' : 'pa-4 pa-sm-6', 'product-edit-window']"
+          style="max-block-size: 60vh; min-block-size: auto !important; overflow-y: auto;"
         >
           <!-- Pestaña General -->
-          <VWindowItem :value="0">
-            <div class="d-flex flex-column gap-6">
+          <VWindowItem :value="0" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <!-- Información Básica -->
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center gap-2">
@@ -500,8 +500,8 @@ const submitForm = () => {
           </VWindowItem>
 
           <!-- Pestaña Inventario -->
-          <VWindowItem :value="1">
-            <div class="d-flex flex-column gap-6">
+          <VWindowItem :value="1" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <!-- Configuración Logística -->
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center gap-2">
@@ -686,8 +686,8 @@ const submitForm = () => {
           </VWindowItem>
 
           <!-- Pestaña Relaciones -->
-          <VWindowItem :value="2">
-            <div class="d-flex flex-column gap-6">
+          <VWindowItem :value="2" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <!-- Jerarquía y Agrupación -->
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center gap-2">
@@ -1077,5 +1077,15 @@ const submitForm = () => {
 
 .uppercase {
   text-transform: uppercase;
+}
+
+.product-edit-window :deep(.v-window__container) {
+  block-size: auto !important;
+  min-block-size: auto !important;
+}
+
+.product-edit-window :deep(.v-window-item) {
+  block-size: auto !important;
+  padding-block-start: 0 !important;
 }
 </style>
