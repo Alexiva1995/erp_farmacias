@@ -212,7 +212,6 @@ const submitForm = () => {
       payload.append(key, value);
     }
   });
-
   if (imageFile.value) {
     payload.append("photo_url", imageFile.value);
   }
@@ -254,7 +253,7 @@ const submitForm = () => {
     content-class="d-flex"
     :fullscreen="$vuetify.display.xs"
   >
-    <VCard v-if="formData" :class="xs ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard v-if="formData" :class="[xs ? 'rounded-0 d-flex flex-column justify-start' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface']">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
         <div :class="[xs ? 'pa-2' : 'pa-4', 'header-gradient d-flex align-center shadow-sm']">
@@ -306,9 +305,10 @@ const submitForm = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light d-flex flex-column justify-start">
+      <VCardText :class="['pa-0 bg-light', xs ? '' : 'd-flex flex-column justify-start']">
         <!-- Pestañas Premium -->
         <VTabs
+          v-slot:default
           v-model="activeTab"
           grow
           color="primary"
@@ -332,7 +332,7 @@ const submitForm = () => {
         <VWindow
           v-model="activeTab"
           :class="[xs ? 'pa-0' : 'pa-4 pa-sm-6', 'product-edit-window']"
-          style="max-block-size: 60vh; min-block-size: auto !important; overflow-y: auto;"
+          :style="xs ? 'min-block-size: auto !important;' : 'max-block-size: 60vh; overflow-y: auto;'"
         >
           <!-- Pestaña General -->
           <VWindowItem :value="0" class="pa-2 pt-0">
@@ -1086,6 +1086,15 @@ const submitForm = () => {
 
 .product-edit-window :deep(.v-window-item) {
   block-size: auto !important;
+  min-block-size: auto !important;
+  margin-block-start: 0 !important;
   padding-block-start: 0 !important;
+}
+
+@media (max-width: 600px) {
+  .product-edit-window :deep(.v-window__container) {
+    max-block-size: none !important;
+    overflow-y: visible !important;
+  }
 }
 </style>
