@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { watch } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -9,7 +9,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  "update:modalValue",
+  "update:modelValue",
   "close-dialog",
   "refresh-products",
 ]);
@@ -72,7 +72,23 @@ const submitForm = async () => {
     const uploadUrl = `/suppliers/${props.selectedSupplier.id}/import`;
     console.log("[Import] URL de destino:", uploadUrl);
 
-    await axios.post(uploadUrl, form);
+    // Aseguramos que file sea un objeto File, no un array
+    let fileToUpload = file.value;
+    if (Array.isArray(file.value) && file.value.length > 0) {
+      fileToUpload = file.value[0];
+    }
+    
+    if (fileToUpload) {
+      // Re-agregamos el archivo al FormData por si acaso el anterior falló
+      form.delete("file");
+      form.append("file", fileToUpload);
+    }
+
+    await axios.post(uploadUrl, form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
 
     toast.success(`Datos cargados para ${props.selectedSupplier.name}`);
 
