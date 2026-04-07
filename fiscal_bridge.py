@@ -9,7 +9,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # --- CONFIGURACIÓN ---
 BRIDGE_MODE = "REAL" # "REAL" o "WEBSIM" 
 SERIAL_PORT_NUM = "3" # Solo el número del puerto COM
-API_BASE_URL = "http://erp_farmacias.test/api" 
+API_BASE_URL = "https://erp_farmacias.test/api" 
 POLLING_INTERVAL = 5 
 
 DLL_PATH = r"c:\laragon\www\erp_farmacias\pnp\pnpdll\pnpdll64.dll"
@@ -35,6 +35,12 @@ if BRIDGE_MODE == "REAL":
             
             pnp.PFComando.argtypes = [ctypes.c_char_p]
             pnp.PFComando.restype = ctypes.c_void_p
+            
+            pnp.PFrepx.restype = ctypes.c_void_p
+            pnp.PFrepz.restype = ctypes.c_void_p
+            
+            pnp.PFrepMemNF.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+            pnp.PFrepMemNF.restype = ctypes.c_void_p
             
             pnp.PFultimo.restype = ctypes.c_void_p
             
@@ -71,6 +77,8 @@ def decode_pnp_status(status_str):
         if val_f & (1 << 4): msgs.append("CAMPO DATOS INVÁLIDO")
         if val_f & (1 << 3): msgs.append("COMANDO NO RECONOCIDO")
         if val_f & (1 << 12): msgs.append("FACTURA ABIERTA")
+        if val_f & (1 << 10): msgs.append("MEMORIA FISCAL PROTEGIDA")
+        if val_f & (1 << 9): msgs.append("DATOS INVÁLIDOS / ORDEN")
     except: pass
     
     return f"{status_str} -> [{' | '.join(msgs)}]" if msgs else status_str
@@ -80,11 +88,14 @@ def call_pnp(func, *args):
     b_args = [str(arg).encode('ansi') for arg in args]
     ptr = func(*b_args)
     res = get_pnp_res(ptr)
+    
+    # print(f"[DLL TRACE] {getattr(func, '__name__', 'func')} -> {res}")
+    
     if res == "ER":
         err_ptr = pnp.PFultimo()
         err_msg = get_pnp_res(err_ptr)
         decoded = decode_pnp_status(err_msg)
-        print(f"[DLL ERROR] {decoded}")
+        print(f"[DLL ERROR] Falla en llamada. PFultimo devolvió: '{err_msg}' -> {decoded}")
         return "ERROR|" + decoded
     return res
 
@@ -131,7 +142,9 @@ class WebSimPrinter:
 # --- WORKER LÓGICA ---
 def process_pending_invoices(sim):
     try:
+        print(f"[DEBUG] Ping facturas -> {API_BASE_URL}/fiscal/pending")
         resp = requests.get(f"{API_BASE_URL}/fiscal/pending", timeout=10, verify=False)
+        print(f"[DEBUG] Resp facturas: {resp.status_code} - {resp.text[:50]}")
         if resp.status_code == 200:
             data = resp.json()
             if data and 'id' in data:
@@ -143,9 +156,6 @@ def process_pending_invoices(sim):
                     res_text = sim.print_invoice(data)
                 else:
                     # USAR DLL
-                    print(f"[DLL] Abriendo puerto {SERIAL_PORT_NUM}...")
-                    call_pnp(pnp.PFabrepuerto, SERIAL_PORT_NUM)
-                    
                     name = data.get('business_name', 'CLIENTE GENERICO')[:40]
                     rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
                     
@@ -154,10 +164,10 @@ def process_pending_invoices(sim):
                     
                     for detail in data.get('details', []):
                         d_name = detail['product_name'][:30]
-                        qty = int(float(detail['quantity']) * 1000)
+                        qty = "{:.3f}".format(float(detail['quantity']))
                         is_taxable = detail.get('vat_status') == 1 or detail.get('vat_status') is True
                         price_u = float(detail['total_amount']) / (1.16 if is_taxable else 1.0) / float(detail['quantity'])
-                        price = int(round(price_u * 100))
+                        price = "{:.2f}".format(price_u)
                         tax = "1600" if is_taxable else "0"
                         
                         print(f"[DLL] B {d_name} | Q:{qty} | P:{price} | T:{tax}")
@@ -178,7 +188,9 @@ def process_pending_invoices(sim):
 
 def process_general_commands(sim):
     try:
+        print(f"[DEBUG] Ping comandos -> {API_BASE_URL}/fiscal/commands/pending")
         resp = requests.get(f"{API_BASE_URL}/fiscal/commands/pending", timeout=10, verify=False)
+        print(f"[DEBUG] Resp comandos: {resp.status_code} - {resp.text[:50]}")
         if resp.status_code == 200:
             full_data = resp.json()
             cmd_data = full_data.get('data') if full_data and 'data' in full_data else full_data
@@ -191,26 +203,25 @@ def process_general_commands(sim):
                 
                 res_output = "OK"
                 try:
-                    if BRIDGE_MODE == "REAL":
-                        call_pnp(pnp.PFabrepuerto, SERIAL_PORT_NUM)
-
                     if cmd_type == "REPORT_Z":
                         if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report("I")
-                        else: res_output = call_pnp(pnp.PFComando, "9|Z")
+                        else: res_output = call_pnp(pnp.PFrepz)
                     elif cmd_type == "REPORT_X":
                         if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report("H")
-                        else: res_output = call_pnp(pnp.PFComando, "9|X")
+                        else: res_output = call_pnp(pnp.PFrepx)
                     elif cmd_type == "ANNUL_INVOICE":
                         inv_to_annul = payload.get('invoice_number', '')
                         if BRIDGE_MODE == "WEBSIM": res_output = f"G:{inv_to_annul}"
                         else: res_output = call_pnp(pnp.PFComando, f"G|{inv_to_annul}")
                     elif cmd_type == "REPRINT_REPORT_Z":
-                        z_num = payload.get('z_number', '1')
+                        z_num = str(payload.get('z_number', '1'))
                         if BRIDGE_MODE == "WEBSIM": res_output = f"U:{z_num}:{z_num}"
-                        else: res_output = call_pnp(pnp.PFComando, f"U|{z_num}|{z_num}")
+                        else: res_output = call_pnp(pnp.PFrepMemNF, z_num, z_num)
                     
                     status = "success"
                 except Exception as ex:
+                    import traceback
+                    traceback.print_exc()
                     res_output = str(ex)
                     status = "error"
 
