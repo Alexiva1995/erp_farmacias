@@ -146,7 +146,16 @@ class ProductController extends Controller
 
     public function export(Request $request)
     {
+        // Aumentar límites para reportes grandes
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
         $query = $this->productQueryService->getFilteredQuery($request);
+
+        // Optimizar consulta para exportación: quitar relaciones pesadas innecesarias
+        // Mantenemos 'laboratory' porque se usa en el mapeo de la columna fusionada
+        $query->without(['lots', 'origin', 'category', 'group', 'profitability']);
+
         $format = $request->input('format', 'xlsx');
         $fileName = 'productos-' . now()->format('Y-m-d') . '.' . $format;
         return Excel::download(new ProductsExport($query), $fileName);
