@@ -65,6 +65,18 @@ use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Public\SupplierPublicUploadController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\FiscalPrinterController;
+
+// Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON)
+Route::prefix('fiscal')->group(function () {
+    Route::get('/pending', [FiscalPrinterController::class, 'getPending']);
+    Route::patch('/confirm/{id}', [FiscalPrinterController::class, 'confirm']);
+    
+    // Rutas para comandos generales (Python Bridge)
+    Route::get('/commands/history', [FiscalPrinterController::class, 'history']);
+    Route::get('/commands/pending', [FiscalPrinterController::class, 'getPendingCommand']);
+    Route::patch('/commands/{id}/confirm', [FiscalPrinterController::class, 'confirmCommand']);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -742,12 +754,4 @@ Route::prefix('supervisor')->group(function () {
     Route::post('/cleaning-executions/{executionId}/cancel', [EmployeeCleaningActivityController::class, 'cancelExecution']);
 });
 
-Route::prefix('fiscal')->group(function () {
-    Route::get('/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPending']);
-    Route::patch('/confirm/{id}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirm']);
-    
-    // Rutas para comandos generales
-    Route::get('/commands/history', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'history']);
-    Route::get('/commands/pending', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'getPendingCommand']);
-    Route::patch('/commands/{id}/confirm', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'confirmCommand']);
-});
+

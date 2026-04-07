@@ -14,9 +14,10 @@ class StoreFiscalCommandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'command' => 'required|string|in:REPORT_Z,REPORT_X,ANNUL_INVOICE,REPRINT_INVOICE,DEBIT_NOTE',
+            'command' => 'required|string|in:REPORT_Z,REPORT_X,ANNUL_INVOICE,REPRINT_INVOICE,DEBIT_NOTE,REPRINT_REPORT_Z',
             'payload' => 'nullable|array',
             'payload.invoice_number' => 'required_if:command,ANNUL_INVOICE,REPRINT_INVOICE,DEBIT_NOTE|string',
+            'payload.z_number' => 'required_if:command,REPRINT_REPORT_Z|numeric',
         ];
     }
 }
