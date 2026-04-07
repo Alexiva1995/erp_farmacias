@@ -309,7 +309,7 @@ const submitForm = () => {
         <VTabs
           v-model="activeTab"
           grow
-          bg-color="white"
+          bg-color="surface"
           color="primary"
           class="border-b"
           height="54"
@@ -331,7 +331,7 @@ const submitForm = () => {
         <VWindow
           v-model="activeTab"
           class="pa-4 pa-sm-6"
-          style="max-block-size: 60vh; overflow-y: auto"
+          style="max-block-size: 60vh; overflow-y: auto;"
         >
           <!-- Pestaña General -->
           <VWindowItem :value="0">
@@ -345,7 +345,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  class="pa-5 bg-surface rounded-xl border shadow-sm"
                 >
                   <VForm @submit.prevent="submitForm">
                     <VRow dense>
@@ -444,7 +444,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  class="pa-5 bg-surface rounded-xl border shadow-sm"
                 >
                   <VRow dense>
                     <VCol cols="12" md="6">
@@ -482,7 +482,7 @@ const submitForm = () => {
                       cols="12"
                       class="d-flex justify-center mt-4"
                     >
-                      <div class="pa-1 bg-white border rounded-xl shadow-sm elevation-1">
+                      <div class="pa-1 bg-surface border rounded-xl shadow-sm elevation-1">
                         <VImg
                           :src="imagePreviewUrl"
                           max-width="240"
@@ -510,7 +510,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  class="pa-5 bg-surface rounded-xl border shadow-sm"
                 >
                   <VRow dense>
                     <VCol cols="12" md="4">
@@ -619,7 +619,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="bg-white rounded-xl border shadow-sm overflow-hidden"
+                  class="bg-surface rounded-xl border shadow-sm overflow-hidden"
                 >
                   <!-- Desktop Table -->
                   <div class="d-none d-sm-block">
@@ -696,7 +696,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-white rounded-xl border shadow-sm"
+                  class="pa-5 bg-surface rounded-xl border shadow-sm"
                 >
                   <div class="pa-4 bg-light rounded-xl border-dashed-2">
                     <div class="d-flex align-center gap-2 mb-4 leading-none">
@@ -717,7 +717,7 @@ const submitForm = () => {
                         variant="outlined"
                         density="comfortable"
                         hide-details
-                        class="bg-white rounded-lg font-weight-black flex-grow-1"
+                        class="bg-surface rounded-lg font-weight-black flex-grow-1"
                         @keydown.enter.prevent="assignGroup"
                       />
                       <VBtn
@@ -778,7 +778,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="bg-white rounded-xl border shadow-sm overflow-hidden"
+                  class="bg-surface rounded-xl border shadow-sm overflow-hidden"
                 >
                   <!-- Desktop Table -->
                   <div class="d-none d-sm-block">
@@ -843,7 +843,7 @@ const submitForm = () => {
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+      <VCardActions class="pa-4 pa-sm-6 bg-surface border-t">
         <VRow
           dense
           class="w-100 ma-0"
@@ -946,7 +946,7 @@ const submitForm = () => {
         </VCard>
       </VCardText>
 
-      <VCardActions class="pa-4 bg-white border-t px-6">
+      <VCardActions class="pa-4 bg-surface border-t px-6">
         <VRow
           dense
           class="w-100 ma-0"
@@ -985,15 +985,16 @@ const submitForm = () => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
-  );
+  background:
+    linear-gradient(
+      135deg,
+      rgb(var(--v-theme-primary)) 0%,
+      #1e5128 100%
+    );
 }
 
 .bg-light {
-  background-color: #f8faff !important;
+  background-color: rgba(var(--v-border-color), 0.05) !important;
 }
 
 .detail-dialog-card {
@@ -1001,9 +1002,9 @@ const submitForm = () => {
 }
 
 .header-indicator {
-  inline-size: 4px;
+  border-radius: 8px !important;
   block-size: 16px;
-  border-radius: 10px;
+  inline-size: 4px;
 }
 
 .header-indicator.primary {
@@ -1040,21 +1041,21 @@ const submitForm = () => {
 }
 
 .table-standard :deep(.v-data-table-header) {
-  background-color: #f1f5f9;
+  background-color: rgba(var(--v-border-color), 0.05);
 }
 
 .table-standard :deep(.v-data-table-header th) {
+  border-block-end: 2px solid rgba(var(--v-border-color), 0.1) !important;
   color: #64748b !important;
   font-size: 0.65rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  border-bottom: 2px solid #e2e8f0 !important;
 }
 
 .table-standard :deep(td) {
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
   padding-block: 12px !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.05) !important;
 }
 
 .truncate-2-lines {
