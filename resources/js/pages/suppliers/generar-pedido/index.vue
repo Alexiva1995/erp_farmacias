@@ -29,6 +29,11 @@ const module = reactive({
   productosOportunidadUnica: { data: [], current_page: 1, last_page: 1, total: 0 },
   detalleOrder: [],
   productosSinReponer: [],
+  manualQuantities: {},
+  excludedLaboratories: [],
+  excludeColombian: false,
+  overcostMinOne: false,
+  availableLaboratories: [],
   totalFallas: 0,
   loadingApp: true,
 })
@@ -102,13 +107,56 @@ async function handleChangePageOportunidad(newPage) {
   }
 }
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function hydrateItem(item) {
+  item.uuid = generateUUID();
+  if (module.manualQuantities[item.productSupplier.id] !== undefined) {
+    item.reponer = module.manualQuantities[item.productSupplier.id];
+  } else if (module.overcostMinOne && item.increase === true && (!item.reponer || item.reponer < 1)) {
+      item.reponer = 1;
+      module.manualQuantities[item.productSupplier.id] = 1;
+  }
+  return item;
+}
+
+function extractLaboratories(data) {
+  const labs = new Map();
+  const listsToCheck = [
+    data.productos_a_reponer || [],
+    data.productos_oportunidad_unica?.data || [],
+    module.productoFallas || [],
+    module.productosOportunidadUnica?.data || []
+  ];
+
+  listsToCheck.forEach(list => {
+    list.forEach(item => {
+      if (item.product?.laboratory) {
+        labs.set(item.product.laboratory.id, item.product.laboratory);
+      }
+    });
+  });
+
+  if (labs.size > 0) {
+    // Mantener los existentes y agregar nuevos
+    const currentLabs = new Map(module.availableLaboratories.map(l => [l.id, l]));
+    labs.forEach((val, key) => currentLabs.set(key, val));
+    module.availableLaboratories = Array.from(currentLabs.values()).sort((a,b) => a.name.localeCompare(b.name));
+  }
+}
+
 function procesarRespuesta(data) {
+  extractLaboratories(data.data);
+
   // Asignar productos a reponer (Fallas visibles en tabla)
   if(data.data.productos_a_reponer) {
-      data.data.productos_a_reponer = data.data.productos_a_reponer.map(a => {
-        a.uuid = generateUUID()
-        return a
-      })
+      data.data.productos_a_reponer = data.data.productos_a_reponer.map(hydrateItem);
       module.productoFallas = [...data.data.productos_a_reponer];
   }
 
@@ -117,10 +165,7 @@ function procesarRespuesta(data) {
   }
 
   if (data.data.productos_oportunidad_unica && data.data.productos_oportunidad_unica.data) {
-    data.data.productos_oportunidad_unica.data = data.data.productos_oportunidad_unica.data.map(a => {
-      a.uuid = generateUUID()
-      return a
-    })
+    data.data.productos_oportunidad_unica.data = data.data.productos_oportunidad_unica.data.map(hydrateItem);
     module.productosOportunidadUnica = data.data.productos_oportunidad_unica;
   } else {
     module.productosOportunidadUnica = { data: [], total: 0 };
@@ -142,6 +187,56 @@ onMounted(async () => {
   }
 });
 
+import { watch } from "vue";
+
+// Registrar cambios manuales para persistencia
+watch(() => [module.productoFallas, module.productosOportunidadUnica.data], () => {
+  const allItems = [...module.productoFallas, ...(module.productosOportunidadUnica?.data || [])];
+  allItems.forEach(item => {
+    if (item.reponer !== undefined && item.productSupplier?.id) {
+      module.manualQuantities[item.productSupplier.id] = item.reponer;
+    }
+  });
+}, { deep: true });
+
+// Regla de sobre costo: al activar, aplicar a lo actual. Al desactivar, se mantienen manuales.
+watch(() => module.overcostMinOne, (val) => {
+  if (val) {
+    const applyRule = (item) => {
+      if (item.increase === true && (!item.reponer || item.reponer < 1)) {
+        item.reponer = 1;
+        module.manualQuantities[item.productSupplier.id] = 1;
+      }
+    };
+    module.productoFallas.forEach(applyRule);
+    module.productosOportunidadUnica.data?.forEach(applyRule);
+  }
+});
+
+const FALLAS_FILTRADAS = computed(() => {
+  return module.productoFallas.filter(item => {
+    if (module.excludeColombian && item.product.is_colombian_origin) return false;
+    if (module.excludedLaboratories.length > 0 && module.excludedLaboratories.includes(item.product.laboratory?.id)) return false;
+    return true;
+  });
+});
+
+const OPORTUNIDAD_FILTRADA = computed(() => {
+  if (!module.productosOportunidadUnica?.data) return { data: [], current_page: 1, last_page: 1, total: 0 };
+  
+  const filteredData = module.productosOportunidadUnica.data.filter(item => {
+    if (module.excludeColombian && item.product.is_colombian_origin) return false;
+    if (module.excludedLaboratories.length > 0 && module.excludedLaboratories.includes(item.product.laboratory?.id)) return false;
+    return true;
+  });
+
+  return { 
+    ...module.productosOportunidadUnica, 
+    data: filteredData,
+    total: filteredData.length // Ojo: esto es total local, si hay paginación real el total lo da el server
+  };
+});
+
 
 
 function actualizarIndexNavegacion(payload){
@@ -151,12 +246,7 @@ function actualizarIndexNavegacion(payload){
     router.push("/suppliers/supplieriaorderassistant")
   }
 
-  if(payload == 3){
-    // Al entrar al paso 3, mostramos la tabla de precios estables (se filtra en el componente)
-    seleccionarProductosParaElDetalle()
-  }
-
-  if(payload == 4){
+  if(payload == 3 || payload == 4){
     seleccionarProductosParaElDetalle()
   }
 }
@@ -181,10 +271,10 @@ function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosCo
 
 function seleccionarProductosParaElDetalle(){
   module.detalleOrder = []
-  const listaOportunidad = module.productosOportunidadUnica?.data || [];
+  const listaOportunidad = OPORTUNIDAD_FILTRADA.value?.data || [];
 
   let productosEnFalla = verificarSiHayProductosEnFallaEnLaLista(
-      [...module.productoFallas],
+      [...FALLAS_FILTRADAS.value],
       [...listaOportunidad]
   )
 
@@ -242,8 +332,8 @@ const TOTAL_ORDER= computed(() => {
 
 // KPI: productos de la lista de fallas que SÍ tienen un proveedor asignado para reponer
 const KPIS_ENCONTRADOS = computed(() => {
-  if (!module.productoFallas) return 0;
-  const uniqueIds = new Set(module.productoFallas.map(item => item.product?.id).filter(id => id));
+  if (!FALLAS_FILTRADAS.value) return 0;
+  const uniqueIds = new Set(FALLAS_FILTRADAS.value.map(item => item.product?.id).filter(id => id));
   return uniqueIds.size;
 })
 
@@ -255,7 +345,7 @@ const KPIS_NO_ENCONTRADOS = computed(() => {
 
 // Lista de productos sin proveedor: aquellos en productosSinReponer que no tienen cobertura en productoFallas
 const LISTA_NO_ENCONTRADOS = computed(() => {
-  const idsConCobertura = new Set(module.productoFallas.map(item => item.product?.id).filter(id => id));
+  const idsConCobertura = new Set(FALLAS_FILTRADAS.value.map(item => item.product?.id).filter(id => id));
   return module.productosSinReponer.filter(p => !idsConCobertura.has(p.id));
 })
 
@@ -496,7 +586,61 @@ function eliminarItemOrden(payload){
   <LoaderComponent :loadingApp="module.loadingApp" />
   <div class="generate-order-view pb-12 text-sm">
 
-    <div class="d-flex flex-column gap-6">
+    <!-- Configuraciones de Pedido -->
+    <VCard class="mx-6 mb-6 rounded-lg border shadow-sm overflow-hidden bg-var-theme-background">
+      <div class="pa-4">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-settings-automation" color="primary" />
+            <span class="text-subtitle-1 font-weight-black">Configuraciones de Pedido</span>
+          </div>
+          <div class="d-flex align-center flex-wrap gap-6">
+            <!-- Excluir Laboratorios -->
+            <div style="min-inline-size: 300px;">
+              <VSelect
+                v-model="module.excludedLaboratories"
+                :items="module.availableLaboratories"
+                item-title="name"
+                item-value="id"
+                label="Excluir Laboratorios"
+                placeholder="Selecciona labs a quitar"
+                multiple
+                chips
+                closable-chips
+                density="compact"
+                variant="outlined"
+                hide-details
+                collapse-chips
+              />
+            </div>
+
+            <!-- Excluir Colombianos -->
+            <VSwitch
+              v-model="module.excludeColombian"
+              label="Ocultar Colombianos"
+              color="error"
+              density="compact"
+              hide-details
+              inset
+            />
+
+            <!-- Sobre Costo Min 1 -->
+            <VBtn
+                :color="module.overcostMinOne ? 'success' : 'secondary'"
+                variant="tonal"
+                size="small"
+                class="font-weight-bold"
+                prepend-icon="tabler-trending-up"
+                @click="module.overcostMinOne = !module.overcostMinOne"
+            >
+                Sobre Costo: {{ module.overcostMinOne ? 'Min 1' : 'Sugerido' }}
+            </VBtn>
+          </div>
+        </div>
+      </div>
+    </VCard>
+
+    <div class="px-6 d-flex flex-column gap-6">
       <NavegationIaAutoOrder
         :index-navegacion="indexNavegacion"
         :encontrados="KPIS_ENCONTRADOS"
@@ -520,7 +664,7 @@ function eliminarItemOrden(payload){
             </VChip>
           </div>
         </template>
-        <ProductsExceededToleranceTable :list="module.productoFallas" />
+        <ProductsExceededToleranceTable :list="FALLAS_FILTRADAS" />
       </VCard>
       <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 2">
         <template #title>
@@ -533,11 +677,11 @@ function eliminarItemOrden(payload){
               size="small"
               class="font-weight-black"
             >
-              {{ module.productoFallas.filter((pro) => pro.increase == false).length }}
+              {{ FALLAS_FILTRADAS.filter((pro) => pro.increase == false).length }}
             </VChip>
           </div>
         </template>
-        <ProductsExceededDidNotToleranceTable :list="module.productoFallas" />
+        <ProductsExceededDidNotToleranceTable :list="FALLAS_FILTRADAS" />
       </VCard>
       <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 3">
         <template #title>
@@ -550,11 +694,11 @@ function eliminarItemOrden(payload){
               size="small"
               class="font-weight-black"
             >
-              {{ module.productoFallas.filter((pro) => pro.increase === null).length }}
+              {{ FALLAS_FILTRADAS.filter((pro) => pro.increase === null).length }}
             </VChip>
           </div>
         </template>
-        <ProductsStablePriceTable :list="module.productoFallas" />
+        <ProductsStablePriceTable :list="FALLAS_FILTRADAS" />
       </VCard>
 
     <div v-if="indexNavegacion == 4">
