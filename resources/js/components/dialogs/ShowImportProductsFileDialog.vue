@@ -66,12 +66,15 @@ const submitForm = async () => {
   }
 
   try {
-    toast.info(
-      `Procesando los datos de ${props.selectedSupplier.name}, le notificaremos al finalizar`
-    );
-    await axios.post(`/suppliers/${props.selectedSupplier.id}/import`, form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    console.log("[Import] Iniciando subida para Proveedor ID:", props.selectedSupplier.id);
+    console.log("[Import] Archivo seleccionado:", file.value);
+    
+    const uploadUrl = `/suppliers/${props.selectedSupplier.id}/import`;
+    console.log("[Import] URL de destino:", uploadUrl);
+
+    await axios.post(uploadUrl, form);
+
+    toast.success(`Datos cargados para ${props.selectedSupplier.name}`);
 
     start_row.value = 1;
     cod_supplier.value = "";

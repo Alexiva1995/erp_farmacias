@@ -162,6 +162,8 @@ class ProductQueryService
         // Filtros de fecha para lotes (independientes del filtro de stock)
         if (!empty($filters['startDate']) || !empty($filters['endDate'])) {
             $query->whereHas('lots', function ($lotQuery) use ($filters) {
+                $lotQuery->where('quantity', '>', 0); // Solo lotes con unidades activas
+
                 if (!empty($filters['startDate'])) {
                     $lotQuery->where('expiration_date', '>=', $filters['startDate']);
                 }
