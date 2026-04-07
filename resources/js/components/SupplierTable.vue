@@ -57,7 +57,7 @@ const headers = [
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3">
             <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
-              <span class="text-caption font-weight-bold">{{ item.name.charAt(0) }}</span>
+              <span class="text-caption font-weight-bold">{{ (item.name ?? '?').charAt(0) }}</span>
             </VAvatar>
             <span class="text-sm font-weight-bold text-high-emphasis">
               {{ item.name }}
@@ -101,12 +101,12 @@ const headers = [
         <template #item.debt="{ item }">
           <div class="d-flex flex-column align-end">
             <VChip
-              :color="item.debt > 0 ? 'error' : 'success'"
+              :color="(item.debt ?? 0) > 0 ? 'error' : 'success'"
               size="small"
               variant="flat"
               class="font-weight-bold rounded-lg"
             >
-              {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
+              {{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
             </VChip>
             <span v-if="item.debt > 0" class="text-xxs text-error mt-1">Deuda Pendiente</span>
           </div>
@@ -204,10 +204,10 @@ const headers = [
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex align-center gap-3">
                 <VAvatar color="primary" variant="tonal" size="40">
-                  <span class="text-sm font-weight-black">{{ item.name.charAt(0) }}</span>
+                  <span class="text-sm font-weight-black">{{ (item.name ?? '?').charAt(0) }}</span>
                 </VAvatar>
                 <div>
-                  <div class="text-sm font-weight-bold line-clamp-1">{{ item.name }}</div>
+                  <div class="text-sm font-weight-bold line-clamp-1">{{ item.name ?? 'Sin nombre' }}</div>
                   <div class="text-xs text-disabled">ID: {{ item.id }}</div>
                 </div>
               </div>
@@ -226,8 +226,8 @@ const headers = [
             <div class="d-flex justify-space-between align-center mb-4">
               <div class="d-flex flex-column">
                 <span class="text-caption text-disabled mb-1">Deuda Actual</span>
-                <span :class="item.debt > 0 ? 'text-error' : 'text-success'" class="text-h6 font-weight-bold">
-                  {{ item.debt.toLocaleString("es-VE", { minimumFractionDigits: 2 }) }} Bs
+                <span :class="(item.debt ?? 0) > 0 ? 'text-error' : 'text-success'" class="text-h6 font-weight-bold">
+                  {{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2 }) }} Bs
                 </span>
               </div>
               <div class="d-flex flex-column align-end">
