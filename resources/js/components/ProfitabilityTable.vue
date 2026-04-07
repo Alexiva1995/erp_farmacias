@@ -13,6 +13,8 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: 'asc' },
 });
 
 const emit = defineEmits(["refresh", "update:options", "editProduct"]);
@@ -186,6 +188,7 @@ const getProfitabilityPercentage = (item) => {
         :items="props.products"
         :items-length="props.totalProduct"
         :loading="props.loading"
+        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="premium-table text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -504,7 +507,9 @@ const getProfitabilityPercentage = (item) => {
           :items-per-page="props.itemsPerPage"
           :total-items="props.totalProduct"
           :loading="props.loading"
-          @change="(options) => emit('update:options', { ...options, sortBy: [] })"
+          :sort-by="props.sortBy"
+          :order-by="props.orderBy"
+          @change="(options) => emit('update:options', options)"
         />
       </VCard>
     </div>

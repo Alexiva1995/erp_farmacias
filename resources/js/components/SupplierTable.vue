@@ -5,6 +5,8 @@ const props = defineProps({
   totalSupplier: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: 'asc' },
   checkingApiId: { type: Number, default: null },
 });
 
@@ -43,6 +45,7 @@ const headers = [
         :items="props.suppliers"
         :items-length="props.totalSupplier"
         :loading="props.loading"
+        :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap premium-data-table"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -212,7 +215,7 @@ const headers = [
                 <VIcon
                   size="10"
                   :color="checkingApiId === item.id ? 'warning' : 'success'"
-                  icon="tabTarget-circle-filled"
+                  icon="tabler-circle-filled"
                   :class="checkingApiId === item.id ? 'spin-icon' : ''"
                 />
               </div>
@@ -229,10 +232,10 @@ const headers = [
               </div>
               <div class="d-flex flex-column align-end">
                  <span class="text-caption text-disabled mb-1">Calificación</span>
-                 <div class="d-flex align-center">
-                    <VIcon icon="tabTarget-star-filled" color="warning" size="14" class="me-1" />
+                  <div class="d-flex align-center">
+                    <VIcon icon="tabler-star-filled" color="warning" size="14" class="me-1" />
                     <span class="text-body-2 font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
-                 </div>
+                  </div>
               </div>
             </div>
 
@@ -242,7 +245,7 @@ const headers = [
                   <template #activator="{ props }">
                     <VBtn
                       v-bind="props"
-                      icon="tabTarget-brand-whatsapp"
+                      icon="tabler-brand-whatsapp"
                       variant="tonal"
                       color="success"
                       size="32"
@@ -256,7 +259,7 @@ const headers = [
                   <template #activator="{ props }">
                     <VBtn
                       v-bind="props"
-                      icon="tabTarget-phone"
+                      icon="tabler-phone"
                       variant="tonal"
                       color="info"
                       size="32"
@@ -269,21 +272,21 @@ const headers = [
 
               <div class="d-flex gap-1">
                 <VBtn
-                  icon="tabTarget-edit"
+                  icon="tabler-edit"
                   variant="text"
                   color="primary"
                   size="32"
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
-                  icon="tabTarget-settings-dollar"
+                  icon="tabler-settings-dollar"
                   variant="text"
                   color="warning"
                   size="32"
                   @click="emit('commercial-panel', item)"
                 />
                 <VBtn
-                  icon="tabTarget-credit-card-pay"
+                  icon="tabler-credit-card-pay"
                   variant="text"
                   color="secondary"
                   size="32"
@@ -305,7 +308,9 @@ const headers = [
             :items-per-page="props.itemsPerPage"
             :total-items="props.totalSupplier"
             :loading="props.loading"
-            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+            :sort-by="props.sortBy"
+            :order-by="props.orderBy"
+            @change="(options) => emit('update:options', options)"
           />
         </div>
       </template>

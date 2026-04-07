@@ -165,10 +165,16 @@ onMounted(async () => {
 });
 
 const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  const newPage = options.page
+  const newItemsPerPage = options.itemsPerPage
+  
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key
+    orderBy.value = options.sortBy[0]?.order
+  }
+
+  page.value = newPage
+  itemsPerPage.value = newItemsPerPage
 };
 
 const handleClearFilters = () => {
@@ -231,6 +237,8 @@ const handleOriginCreated = (newOrigin) => {
       :error-message="errorMessage"
       :laboratories="laboratories"
       :origins="origins"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       @update:options="updateTableOptions"
       @update-product="handleUpdateProduct"
       @laboratory-created="handleLaboratoryCreated"

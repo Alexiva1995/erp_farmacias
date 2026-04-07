@@ -138,13 +138,14 @@ const updateTableOptions = options => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
 
+  // Solo actualizar sortBy si hay una intención clara de ordenar desde la tabla
   if (options.sortBy && options.sortBy.length > 0) {
     sortBy.value = options.sortBy[0]?.key;
     orderBy.value = options.sortBy[0]?.order;
-  } else if (page.value === options.page && itemsPerPage.value === options.itemsPerPage) {
-    // Si no es un cambio de página/items, y sortBy está vacío, entonces sí limpiamos
-    sortBy.value = undefined;
-    orderBy.value = undefined;
+  } else if (!options.sortBy || options.sortBy.length === 0) {
+    // Si la tabla no envía sortBy pero ya teníamos uno (ej: vía filtros), lo preservamos
+    // a menos que estemos en un flujo donde realmente queramos limpiar.
+    // En Vuetify, al paginar, si no se clickeó cabecera, sortBy puede venir vacío.
   }
 };
 

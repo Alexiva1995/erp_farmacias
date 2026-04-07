@@ -11,6 +11,9 @@ const props = defineProps({
   totalItems: { type: Number, required: true },
   itemsPerPageOptions: { type: Array, default: () => [10, 25, 50, 100] },
   loading: { type: Boolean, default: false },
+  // Nuevas props para ordenamiento
+  sortBy: { type: String, default: undefined },
+  orderBy: { type: String, default: 'asc' },
 });
 
 const emit = defineEmits(["update:page", "update:itemsPerPage", "change"]);
@@ -22,13 +25,21 @@ const totalPages = computed(() => {
 
 const handlePageChange = (newPage) => {
   emit("update:page", newPage);
-  emit("change", { page: newPage, itemsPerPage: props.itemsPerPage });
+  emit("change", { 
+    page: newPage, 
+    itemsPerPage: props.itemsPerPage,
+    sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []
+  });
 };
 
 const handleItemsPerPageChange = (newItems) => {
   emit("update:itemsPerPage", newItems);
   emit("update:page", 1);
-  emit("change", { page: 1, itemsPerPage: newItems });
+  emit("change", { 
+    page: 1, 
+    itemsPerPage: newItems,
+    sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []
+  });
 };
 </script>
 

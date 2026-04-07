@@ -33,14 +33,6 @@ const headers = [
   { title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' },
 ];
 
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: [],
-  });
-};
-
 const getDiffColor = (val) => {
   const num = parseFloat(val);
   if (isNaN(num) || num === 0) return 'secondary';
@@ -98,7 +90,6 @@ const getDiffColor = (val) => {
             </div>
           </div>
         </template>
-
 
         <template #item.unit_cost="{ item }">
           <span class="font-weight-black text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
@@ -245,7 +236,9 @@ const getDiffColor = (val) => {
             :items-per-page="props.itemsPerPage"
             :total-items="props.totalProduct"
             :loading="props.loading"
-            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+            :sort-by="typeof props.sortBy === 'string' ? props.sortBy : (props.sortBy[0]?.key || undefined)"
+            :order-by="props.orderBy"
+            @change="(options) => emit('update:options', options)"
           />
       </div>
     </div>

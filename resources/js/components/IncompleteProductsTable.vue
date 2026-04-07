@@ -12,6 +12,8 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  sortBy: { type: [String, Array], default: () => [] },
+  orderBy: { type: String, default: 'asc' },
   productWithError: { type: [Number, null], default: null },
   errorMessage: { type: String, default: "" },
   laboratories: { type: Array, default: () => [] },
@@ -615,13 +617,15 @@ const nextExpirationDate = (product) => {
         </VCard>
 
         <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-4">
+        <div class="d-flex justify-center mt-4 pb-2">
            <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"
             :total-items="props.totalProduct"
             :loading="props.loading"
-            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+            :sort-by="typeof props.sortBy === 'string' ? props.sortBy : (props.sortBy?.[0]?.key || undefined)"
+            :order-by="props.orderBy"
+            @change="(options) => emit('update:options', options)"
           />
         </div>
       </div>

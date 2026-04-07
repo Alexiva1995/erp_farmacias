@@ -407,7 +407,9 @@ const handleMobilePageChange = (newPage) => {
           :items-per-page="props.itemsPerPage"
           :total-items="props.totalProduct"
           :loading="props.loading"
-          @change="(options) => emit('update:options', { ...options, sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : [] })"
+          :sort-by="props.sortBy"
+          :order-by="props.orderBy"
+          @change="(options) => emit('update:options', options)"
         />
       </div>
     </div>

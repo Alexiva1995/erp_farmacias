@@ -160,6 +160,9 @@ class ProductQueryService
         }
 
         // Filtros de fecha para lotes (independientes del filtro de stock)
+        // Se considera un lote "activo" en el rango si:
+        // 1. Fue creado antes o durante el fin del periodo (created_at <= endDate)
+        // 2. No había vencido antes del inicio del periodo (expiration_date >= startDate)
         if (!empty($filters['startDate']) || !empty($filters['endDate'])) {
             $query->whereHas('lots', function ($lotQuery) use ($filters) {
                 $lotQuery->where('quantity', '>', 0); // Solo lotes con unidades activas
@@ -168,7 +171,8 @@ class ProductQueryService
                     $lotQuery->where('expiration_date', '>=', $filters['startDate']);
                 }
                 if (!empty($filters['endDate'])) {
-                    $lotQuery->where('expiration_date', '<=', $filters['endDate']);
+                    // Usar created_at para asegurar que el lote ya existía en esa fecha
+                    $lotQuery->where('created_at', '<=', $filters['endDate'] . ' 23:59:59');
                 }
             });
         }
