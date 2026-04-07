@@ -581,7 +581,7 @@ function eliminarItemOrden(payload){
   <div class="generate-order-view pb-12 text-sm">
 
     <!-- Configuraciones de Pedido -->
-    <VCard class="mx-6 mb-6 rounded-lg border shadow-sm overflow-hidden bg-var-theme-background">
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-var-theme-background">
       <div class="pa-4">
         <div class="d-flex align-center justify-space-between flex-wrap gap-4">
           <div class="d-flex align-center gap-2">
@@ -634,7 +634,7 @@ function eliminarItemOrden(payload){
       </div>
     </VCard>
 
-    <div class="px-6 d-flex flex-column gap-6">
+    <div class="d-flex flex-column gap-6">
       <NavegationIaAutoOrder
         :index-navegacion="indexNavegacion"
         :encontrados="KPIS_ENCONTRADOS"
