@@ -108,12 +108,16 @@ const submitForm = async () => {
 
     emit("refresh-products");
   } catch (error) {
-    console.error(error);
+    console.error("[Import] Error en la petición:", error);
+    if (error.response) {
+      console.error("[Import] Respuesta del servidor:", error.response.status, error.response.data);
+    }
+    
     toast.error(
       `No se pudo cargar los datos del excel para el proveedor ${props.selectedSupplier.name}`
     );
 
-    if (error.response.status === 422) {
+    if (error.response && error.response.status === 422) {
       errors.value = error.response.data.errors;
     }
   }
