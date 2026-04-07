@@ -272,7 +272,7 @@ const handleMerge = async () => {
               <div class="header-indicator primary shadow-sm" />
               <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Ingresar Identificador</span>
             </div>
-            <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm">
+            <VCard variant="flat" class="pa-5 bg-surface rounded-xl border shadow-sm">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">ID del producto a buscar</span>
               <VTextField
                 v-model="inputId"
@@ -289,7 +289,7 @@ const handleMerge = async () => {
           </div>
         </VCardText>
 
-        <VCardActions class="pa-4 bg-white border-t px-6">
+        <VCardActions class="pa-4 bg-surface border-t px-6">
           <VRow dense class="w-100 ma-0">
             <VCol cols="6">
               <VBtn
@@ -381,7 +381,7 @@ const handleMerge = async () => {
                       variant="flat"
                       :class="[
                         'rounded-xl border shadow-sm cursor-pointer transition-all',
-                        selectedProductToKeep === 'product1' ? 'border-primary border-opacity-100 bg-primary-light elevation-2' : 'bg-white opacity-60'
+                        selectedProductToKeep === 'product1' ? 'border-primary border-opacity-100 bg-primary-light elevation-2' : 'bg-surface opacity-60'
                       ]"
                       @click="selectedProductToKeep = 'product1'; switchProductToKeep()"
                     >
@@ -427,7 +427,7 @@ const handleMerge = async () => {
                       variant="flat"
                       :class="[
                         'rounded-xl border shadow-sm cursor-pointer transition-all',
-                        selectedProductToKeep === 'product2' ? 'border-primary border-opacity-100 bg-primary-light elevation-2' : 'bg-white opacity-60'
+                        selectedProductToKeep === 'product2' ? 'border-primary border-opacity-100 bg-primary-light elevation-2' : 'bg-surface opacity-60'
                       ]"
                       @click="selectedProductToKeep = 'product2'; switchProductToKeep()"
                     >
@@ -477,7 +477,7 @@ const handleMerge = async () => {
                   <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Revisión de Datos Finales</span>
                 </div>
                 
-                <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm">
+                <VCard variant="flat" class="pa-5 bg-surface rounded-xl border shadow-sm">
                   <VRow dense>
                     <VCol cols="12" md="6">
                       <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre Maestro</span>
@@ -518,7 +518,7 @@ const handleMerge = async () => {
           </VContainer>
         </VCardText>
 
-        <VCardActions class="pa-4 bg-white border-t px-6">
+        <VCardActions class="pa-4 bg-surface border-t px-6">
           <VRow dense class="w-100 ma-0">
             <VCol cols="6">
               <VBtn
@@ -562,7 +562,7 @@ const handleMerge = async () => {
 }
 
 .bg-light {
-  background-color: #f8faff !important;
+  background-color: rgba(var(--v-border-color), 0.05) !important;
 }
 
 .bg-primary-light {
@@ -578,9 +578,9 @@ const handleMerge = async () => {
 }
 
 .header-indicator {
-  inline-size: 4px;
+  border-radius: 8px !important;
   block-size: 16px;
-  border-radius: 10px;
+  inline-size: 4px;
 }
 
 .header-indicator.primary {
