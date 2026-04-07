@@ -1,1 +1,21 @@
 // Write your overrides
+
+/* 
+  Global override to adjust the "oval" appearance of internal cards in modals.
+  As requested by the user, we change rounded-xl to 8px inside dialogs 
+  to achieve a cleaner, more modern look.
+*/
+.v-dialog {
+  // Target cards and any element with rounded-xl utility class inside a dialog
+  .v-card.rounded-xl,
+  .v-card.detail-dialog-card,
+  .rounded-xl {
+    border-radius: 8px !important;
+  }
+
+  // Ensure nested elements like avatars or indicators that use rounded-xl also adjust
+  .v-avatar.rounded-xl,
+  .header-indicator {
+    border-radius: 8px !important;
+  }
+}
