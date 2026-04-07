@@ -79,7 +79,13 @@ const submitForm = async () => {
     }
     
     if (fileToUpload && fileToUpload.size === 0) {
-      toast.error("El archivo seleccionado está vacío (0 bytes). Por favor, verifica el archivo o asegúrate de que no esté abierto en otro programa.");
+      console.warn("[Import] El navegador reporta 0 bytes. Intentando prueba de lectura forzada...");
+      const reader = new FileReader();
+      reader.onload = () => console.log("[Import] Prueba de lectura: ¡EXITOSA! El archivo es accesible a pesar del tamaño reportado.");
+      reader.onerror = () => console.error("[Import] Prueba de lectura: FALLIDA. El archivo está bloqueado o inaccesible.");
+      reader.readAsArrayBuffer(fileToUpload.slice(0, 10));
+      
+      toast.error("El navegador detecta el archivo como vacío (0 bytes). Verifica que no esté abierto en Excel o intenta renombrarlo a algo simple como 'datos.xlsx'.");
       return;
     }
 
@@ -446,10 +452,6 @@ watch(
 <style scoped>
 .header-gradient {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
-}
-
-.bg-light {
-  background-color: #f8faff !important;
 }
 
 .detail-dialog-card {

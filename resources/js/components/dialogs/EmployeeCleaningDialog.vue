@@ -413,10 +413,6 @@ const getStatusIcon = (status) => {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
 .header-indicator {
   inline-size: 4px;
   block-size: 16px;

@@ -434,10 +434,6 @@ watch(
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
 .premium-input-compact :deep(.v-field__outline) {
   --v-field-border-opacity: 0.15 !important;
   color: rgba(var(--v-border-color), 1) !important;

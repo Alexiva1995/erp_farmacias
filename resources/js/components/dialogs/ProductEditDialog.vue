@@ -4,8 +4,10 @@ import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { calculateStock, formatDate } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const authStore = useAuthStore();
+const { xs } = useDisplay();
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -252,14 +254,14 @@ const submitForm = () => {
     content-class="d-flex"
     :fullscreen="$vuetify.display.xs"
   >
-    <VCard v-if="formData" :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard v-if="formData" :class="xs ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+        <div :class="[xs ? 'pa-2' : 'pa-4', 'header-gradient d-flex align-center shadow-sm']">
           <VAvatar
             color="white"
             variant="flat"
-            size="40"
+            :size="xs ? 32 : 40"
             class="me-3 elevation-1"
           >
             <VIcon
@@ -309,10 +311,9 @@ const submitForm = () => {
         <VTabs
           v-model="activeTab"
           grow
-          bg-color="surface"
           color="primary"
           class="border-b"
-          height="54"
+          :height="xs ? 44 : 54"
         >
           <VTab :value="0" class="text-button font-weight-black">
             <VIcon icon="tabler-info-circle" class="me-2" size="18" />
@@ -330,7 +331,7 @@ const submitForm = () => {
 
         <VWindow
           v-model="activeTab"
-          class="pa-4 pa-sm-6"
+          :class="xs ? 'pa-3' : 'pa-4 pa-sm-6'"
           style="max-block-size: 60vh; overflow-y: auto;"
         >
           <!-- Pestaña General -->
@@ -345,7 +346,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-surface rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VForm @submit.prevent="submitForm">
                     <VRow dense>
@@ -444,7 +445,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-surface rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
                     <VCol cols="12" md="6">
@@ -510,7 +511,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-surface rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
                     <VCol cols="12" md="4">
@@ -696,7 +697,7 @@ const submitForm = () => {
 
                 <VCard
                   variant="flat"
-                  class="pa-5 bg-surface rounded-xl border shadow-sm"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <div class="pa-4 bg-light rounded-xl border-dashed-2">
                     <div class="d-flex align-center gap-2 mb-4 leading-none">
@@ -843,7 +844,7 @@ const submitForm = () => {
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-4 pa-sm-6 bg-surface border-t">
+      <VCardActions :class="[xs ? 'pa-2' : 'pa-4 pa-sm-6', 'bg-surface border-t']">
         <VRow
           dense
           class="w-100 ma-0"
@@ -855,7 +856,7 @@ const submitForm = () => {
             <VBtn
               color="secondary"
               variant="tonal"
-              height="50"
+              :height="xs ? 44 : 50"
               block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="closeDialog"
@@ -870,7 +871,7 @@ const submitForm = () => {
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              :height="xs ? 44 : 50"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               @click="submitForm"
@@ -880,7 +881,7 @@ const submitForm = () => {
                 size="18"
                 class="me-2"
               />
-              {{ isNewProduct ? "Crear Producto" : "Guardar Cambios" }}
+              {{ isNewProduct ? "Crear" : "Guardar" }}
             </VBtn>
           </VCol>
         </VRow>
@@ -993,9 +994,7 @@ const submitForm = () => {
     );
 }
 
-.bg-light {
-  background-color: rgba(var(--v-border-color), 0.05) !important;
-}
+
 
 .detail-dialog-card {
   border-radius: 12px !important;

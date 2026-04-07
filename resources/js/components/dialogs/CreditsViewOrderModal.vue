@@ -508,10 +508,6 @@ watch([filterClient, filterDate, filterCurrency], () => {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
 .detail-dialog-card {
   border-radius: 16px !important;
 }

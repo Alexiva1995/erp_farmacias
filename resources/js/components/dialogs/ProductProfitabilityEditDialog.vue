@@ -265,10 +265,6 @@ const checkExistenceAndSave = async () => {
   );
 }
 
-.bg-light {
-  background-color: #f8faff !important;
-}
-
 .detail-dialog-card {
   border-radius: 12px !important;
 }

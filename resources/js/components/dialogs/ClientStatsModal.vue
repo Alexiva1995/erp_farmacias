@@ -276,10 +276,6 @@ const onClose = () => {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #173b1f 100%);
 }
 
-.bg-light {
-  background-color: #f8fafc !important;
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;

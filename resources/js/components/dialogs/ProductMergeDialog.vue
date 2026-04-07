@@ -561,10 +561,6 @@ const handleMerge = async () => {
   );
 }
 
-.bg-light {
-  background-color: rgba(var(--v-border-color), 0.05) !important;
-}
-
 .bg-primary-light {
   background-color: rgba(var(--v-theme-primary), 0.03) !important;
 }
