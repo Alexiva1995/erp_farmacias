@@ -163,63 +163,28 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function generateListProductoToRequest(Request $request): JsonResponse
     {
-        $timeZone = new DateTimeZone(config("app.timezone"));
-        $dateToday = new DateTime("now", $timeZone);
+        $filtros = $request->all();
+        $filtros['stock'] = $request->get('stock', 'fallas');
 
+        // Para retrocompatibilidad y conteo inicial, traemos la lista completa pero ligera
+        // Aunque el frontend ahora usará paginación, este endpoint puede devolver los totales por pestaña
+        $reporte = $this->iaAssistantReportService->getReplenishReportPaginated([...$filtros, 'itemsPerPage' => 9999]);
+        
         $respuesta = [
-            "listaDeProductos" => [],
-            "productos" => [],
-            "productosFallas" => [],
-            "productos_a_reponer" => [],
-            "productos_oportunidad_unica" => [],
+            "productos_a_reponer" => [], // Se vacía para forzar uso de paginación o se deja la primera página?
+            // Mejor devolver la primera página para carga inicial rápida
+            "productos_a_reponer" => $this->iaAssistantReportService->getReplenishReportPaginated([...$filtros, 'page' => 1, 'itemsPerPage' => 20])->items(),
+            "totalFallas" => $reporte->total(), // Este es el total de "Encontrados"
+            "productosFallas" => [], // Opcional si se necesita la lista completa de fallas brutas
         ];
-
-        $productosFallas = null;
-        $filtrosFallas = [
-            "tipo_de_filtracion" => $request->tipo_filtracion,
-            "tipo_vista"         => false,
-            "lapso_de_tiempo" => $request->lapso_de_tiempo,
-            "laboratoryId"    => $request->laboratoryId,
-            "groups"          => $request->groups,
-            "stock"           => $request->get('stock', 'fallas'),
-            "q"               => $request->q,
-        ];
-
-        if ($request->filled("laboratoryId"))
-            $filtrosFallas["laboratoryId"] = $request->laboratoryId;
-        if ($request->filled("groups"))
-            $filtrosFallas["groups"] = $request->groups;
-        if ($request->filled("isColombian"))
-            $filtrosFallas["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
-
-        // Usar el servicio del asistente como fuente única de verdad para la lista de productos
-        // Convertimos a Eloquent Collection explicitamente para no romper la firma de ProductSupplierServices
-        $productosFallasRaw = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtrosFallas);
-        $productosFallas = new \Illuminate\Database\Eloquent\Collection($productosFallasRaw);
-
-        if ($productosFallas->isEmpty() && $request->get('stock') !== 'all') {
-            // Si no hay productos pero solicitó algo específico, devolvemos éxito vacío pero con total 0
-            $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
-            if ($totalFallas === 0) {
-                 return ApiResponse::success($respuesta, "ok", 200);
-            }
-        }
-
-        // Obtener totalFallas del mismo servicio para garantizar coincidencia absoluta
-        $totalFallas = $this->iaAssistantReportService->countFilteredProducts($filtrosFallas);
-
-
-        $tempReponer = $this->productSupplier->getSupplierToReplenishTheProducts($productosFallas, $request->con_descuento);
-        $tempReponer = $this->productSupplier->checkTolerance($tempReponer, $request->con_descuento);
-
-        $respuesta["productos_a_reponer"] = $this->orderByDiscount($tempReponer);
-        $respuesta["productosFallas"] = $productosFallas;
-        $respuesta["totalFallas"] = $totalFallas;
-
-        // $respuesta["productos_oportunidad_unica"] = $this->getOptimizedUniqueOpportunities($request);
-        $respuesta["productos_oportunidad_unica"] = [];
 
         return ApiResponse::success($respuesta, "ok", 200);
+    }
+
+    public function getReplenishPagination(Request $request): JsonResponse
+    {
+        $paginacion = $this->iaAssistantReportService->getReplenishReportPaginated($request->all());
+        return ApiResponse::success($paginacion, "ok", 200);
     }
 
 

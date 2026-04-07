@@ -36,6 +36,18 @@ const module = reactive({
   availableLaboratories: [],
   totalFallas: 0,
   loadingApp: true,
+  // Paginación para fallas
+  pagination: {
+    increased: { page: 1, total: 0, itemsPerPage: 20 },
+    decreased: { page: 1, total: 0, itemsPerPage: 20 },
+    stable: { page: 1, total: 0, itemsPerPage: 20 },
+  },
+  // Sublistas por tipo para evitar filtrado local masivo
+  listasPaginadas: {
+    increased: [],
+    decreased: [],
+    stable: [],
+  }
 })
 
 let gruposList=(route.query.groups)?JSON.parse(route.query.groups):[]
@@ -84,6 +96,41 @@ async function fetchSoloOportunidad(page = 1) {
   return respuestaApi.data.data;
 }
 
+async function handleReplenishPageChange(newPage, type) {
+  module.loadingApp = true;
+  module.pagination[type].page = newPage;
+
+  let data = {
+    "con_descuento": con_descuento.value,
+    "tipo_filtracion": tipo_de_filtracion.value,
+    "lapso_de_tiempo": lapso_de_tiempo.value,
+    "stock": stock.value,
+    "isColombian": isColombian.value,
+    "groups": groups.value,
+    "laboratoryId": laboratoryId.value,
+    "q": q.value,
+    "page": newPage,
+    "itemsPerPage": module.pagination[type].itemsPerPage,
+    "tipo_analisis": type, // increased, decreased, stable
+    "excludedLaboratories": module.excludedLaboratories,
+    "excludeColombian": module.excludeColombian,
+  }
+
+  try {
+    const response = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-replenish-page`, data);
+    if (response.data.data) {
+        const items = response.data.data.data.map(hydrateItem);
+        module.listasPaginadas[type] = items;
+        module.pagination[type].total = response.data.data.total;
+    }
+  } catch (error) {
+    console.error("Error cargando pagina de reposicion", error);
+    toast.error("Error al cargar la página");
+  } finally {
+    module.loadingApp = false;
+  }
+}
+
 async function handleChangePageOportunidad(newPage) {
   module.loadingApp = true;
   pageOportunidad.value = newPage;
@@ -117,11 +164,11 @@ function generateUUID() {
 
 function hydrateItem(item) {
   item.uuid = generateUUID();
-  if (module.manualQuantities[item.productSupplier.id] !== undefined) {
-    item.reponer = module.manualQuantities[item.productSupplier.id];
+  const saved = module.manualQuantities[item.productSupplier.id];
+  if (saved !== undefined) {
+    item.reponer = typeof saved === 'object' ? saved.reponer : saved;
   } else if (module.overcostMinOne && item.increase === true && (!item.reponer || item.reponer < 1)) {
       item.reponer = 1;
-      module.manualQuantities[item.productSupplier.id] = 1;
   }
   return item;
 }
@@ -154,10 +201,14 @@ function extractLaboratories(data) {
 function procesarRespuesta(data) {
   extractLaboratories(data.data);
 
-  // Asignar productos a reponer (Fallas visibles en tabla)
+  // Carga inicial de las 3 pestañas (primera página)
+  // Nota: generateListProductoToRequest ahora devuelve de forma simplificada o podemos disparar las 3 queries
   if(data.data.productos_a_reponer) {
-      data.data.productos_a_reponer = data.data.productos_a_reponer.map(hydrateItem);
-      module.productoFallas = [...data.data.productos_a_reponer];
+      // Si el backend mandó algo inicial, lo hidratamos
+      const hidratados = data.data.productos_a_reponer.map(hydrateItem);
+      // Por defecto los ponemos en la pestaña actual o inicializamos todos
+      // Para simplificar, refrescaremos las 3 pestañas la primera vez si no vienen separadas
+      module.productoFallas = hidratados;
   }
 
   if(data.data.productosFallas) {
@@ -173,6 +224,11 @@ function procesarRespuesta(data) {
 
   module.totalFallas = data.data.totalFallas || 0;
   module.dataProductos = { ...data.data };
+
+  // Disparar carga de las 3 pestañas para tener paginación independiente desde el inicio
+  handleReplenishPageChange(1, 'increased');
+  handleReplenishPageChange(1, 'decreased');
+  handleReplenishPageChange(1, 'stable');
 }
 
 onMounted(async () => {
@@ -189,12 +245,23 @@ onMounted(async () => {
 
 import { watch } from "vue";
 
-// Registrar cambios manuales para persistencia
-watch(() => [module.productoFallas, module.productosOportunidadUnica.data], () => {
-  const allItems = [...module.productoFallas, ...(module.productosOportunidadUnica?.data || [])];
+// Registrar cambios manuales para persistencia (objetos completos)
+watch(() => [
+  module.listasPaginadas.increased,
+  module.listasPaginadas.decreased,
+  module.listasPaginadas.stable,
+  module.productosOportunidadUnica.data
+], () => {
+  const allItems = [
+    ...module.listasPaginadas.increased,
+    ...module.listasPaginadas.decreased,
+    ...module.listasPaginadas.stable,
+    ...(module.productosOportunidadUnica?.data || [])
+  ];
   allItems.forEach(item => {
     if (item.reponer !== undefined && item.productSupplier?.id) {
-      module.manualQuantities[item.productSupplier.id] = item.reponer;
+      // Guardamos el objeto COMPLETO o al menos reponer para reconstruir
+      module.manualQuantities[item.productSupplier.id] = { ...item };
     }
   });
 }, { deep: true });
@@ -208,18 +275,35 @@ watch(() => module.overcostMinOne, (val) => {
         module.manualQuantities[item.productSupplier.id] = 1;
       }
     };
-    module.productoFallas.forEach(applyRule);
+    module.listasPaginadas.increased.forEach(applyRule);
     module.productosOportunidadUnica.data?.forEach(applyRule);
   }
 });
 
+// Actualizar reporte al cambiar filtros de exclusión
+watch(() => [module.excludedLaboratories, module.excludeColombian], () => {
+  handleReplenishPageChange(1, 'increased');
+  handleReplenishPageChange(1, 'decreased');
+  handleReplenishPageChange(1, 'stable');
+}, { deep: true });
+
 const FALLAS_FILTRADAS = computed(() => {
-  return module.productoFallas.filter(item => {
+  // Ahora usamos la pestaña actual según indexNavegacion
+  let lista = [];
+  if (indexNavegacion.value == 1) lista = module.listasPaginadas.increased;
+  if (indexNavegacion.value == 2) lista = module.listasPaginadas.decreased;
+  if (indexNavegacion.value == 3) lista = module.listasPaginadas.stable;
+  
+  return lista.filter(item => {
     if (module.excludeColombian && item.product.is_colombian_origin) return false;
     if (module.excludedLaboratories.length > 0 && module.excludedLaboratories.includes(item.product.laboratory?.id)) return false;
     return true;
   });
 });
+
+const PAGE_COUNT_INCREASED = computed(() => Math.ceil(module.pagination.increased.total / module.pagination.increased.itemsPerPage));
+const PAGE_COUNT_DECREASED = computed(() => Math.ceil(module.pagination.decreased.total / module.pagination.decreased.itemsPerPage));
+const PAGE_COUNT_STABLE = computed(() => Math.ceil(module.pagination.stable.total / module.pagination.stable.itemsPerPage));
 
 const OPORTUNIDAD_FILTRADA = computed(() => {
   if (!module.productosOportunidadUnica?.data) return { data: [], current_page: 1, last_page: 1, total: 0 };
@@ -270,23 +354,21 @@ function actualizarCantidadAReponerProductosEnFalla(productosEnFalla,productosCo
 }
 
 function seleccionarProductosParaElDetalle(){
-  module.detalleOrder = []
-  const listaOportunidad = OPORTUNIDAD_FILTRADA.value?.data || [];
+  module.loadingApp = true;
+  try {
+    // Reconstruir el detalle a partir de TODO lo que el usuario marcó en manualQuantities
+    const todosLosMarcados = Object.values(module.manualQuantities)
+      .filter(item => item.reponer > 0);
 
-  let productosEnFalla = verificarSiHayProductosEnFallaEnLaLista(
-      [...FALLAS_FILTRADAS.value],
-      [...listaOportunidad]
-  )
-
-  let productosSinFallas = removerProductosConProveedores(
-      [...productosEnFalla],
-      [...listaOportunidad]
-  )
-
-  let detalles = [...productosEnFalla, ...productosSinFallas]
-  detalles = detalles.filter(producto => producto.reponer > 0)
-
-  module.detalleOrder = detalles
+    // Aplicar filtros de exclusión (Labs/Origen) al detalle final
+    module.detalleOrder = todosLosMarcados.filter(item => {
+      if (module.excludeColombian && item.product?.is_colombian_origin) return false;
+      if (module.excludedLaboratories.length > 0 && module.excludedLaboratories.includes(item.product?.laboratory?.id)) return false;
+      return true;
+    });
+  } finally {
+    module.loadingApp = false;
+  }
 }
 
 // esta funcion es para remover los productos que estan en la lista de productos en falla de productos oportunidad unica
@@ -654,11 +736,21 @@ function eliminarItemOrden(payload){
               size="small"
               class="font-weight-black"
             >
-              {{ module.productoFallas.filter((pro) => pro.increase == true).length }}
+              {{ module.pagination.increased.total }}
             </VChip>
           </div>
         </template>
         <ProductsExceededToleranceTable :list="FALLAS_FILTRADAS" />
+        <VDivider />
+        <div class="pa-4 d-flex justify-center">
+          <VPagination
+            v-model="module.pagination.increased.page"
+            :length="PAGE_COUNT_INCREASED"
+            :total-visible="7"
+            density="comfortable"
+            @update:model-value="(val) => handleReplenishPageChange(val, 'increased')"
+          />
+        </div>
       </VCard>
       <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 2">
         <template #title>
@@ -671,11 +763,21 @@ function eliminarItemOrden(payload){
               size="small"
               class="font-weight-black"
             >
-              {{ FALLAS_FILTRADAS.filter((pro) => pro.increase == false).length }}
+              {{ module.pagination.decreased.total }}
             </VChip>
           </div>
         </template>
         <ProductsExceededDidNotToleranceTable :list="FALLAS_FILTRADAS" />
+        <VDivider />
+        <div class="pa-4 d-flex justify-center">
+          <VPagination
+            v-model="module.pagination.decreased.page"
+            :length="PAGE_COUNT_DECREASED"
+            :total-visible="7"
+            density="comfortable"
+            @update:model-value="(val) => handleReplenishPageChange(val, 'decreased')"
+          />
+        </div>
       </VCard>
       <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 3">
         <template #title>
@@ -688,11 +790,21 @@ function eliminarItemOrden(payload){
               size="small"
               class="font-weight-black"
             >
-              {{ FALLAS_FILTRADAS.filter((pro) => pro.increase === null).length }}
+              {{ module.pagination.stable.total }}
             </VChip>
           </div>
         </template>
         <ProductsStablePriceTable :list="FALLAS_FILTRADAS" />
+        <VDivider />
+        <div class="pa-4 d-flex justify-center">
+          <VPagination
+            v-model="module.pagination.stable.page"
+            :length="PAGE_COUNT_STABLE"
+            :total-visible="7"
+            density="comfortable"
+            @update:model-value="(val) => handleReplenishPageChange(val, 'stable')"
+          />
+        </div>
       </VCard>
 
     <div v-if="indexNavegacion == 4">

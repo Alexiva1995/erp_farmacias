@@ -8,8 +8,10 @@ use Illuminate\Support\Collection;
 
 class IaAssistantReportService
 {
-    public function __construct(protected \App\Contracts\Product $productRepository)
-    {
+    public function __construct(
+        protected \App\Contracts\Product $productRepository,
+        protected \App\Contracts\ProductSupplier $productSupplierRepository
+    ) {
     }
 
     /**
@@ -407,6 +409,80 @@ class IaAssistantReportService
         }
 
         return $items;
+    /**
+     * Obtiene el reporte de productos a reponer (con proveedores) de forma paginada y filtrada por tipo.
+     */
+    public function getReplenishReportPaginated(array $filtros)
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $tipoAnalisis = $filtros['tipo_analisis'] ?? 'all'; // increased, decreased, stable, all
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 20);
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        // 1. Obtener TODOS los productos que coinciden con los filtros base (Fallas en el asistente)
+        $allIds = $this->getFilteredIds($filtros, false);
+        
+        if (empty($allIds)) {
+            return new LengthAwarePaginator([], 0, $perPage, $page);
+        }
+
+        // 2. Hidratar todos estos productos (necesitamos procesarlos todos para saber quién es 'increased' etc.)
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $allIds;
+        
+        $tipoFiltracion = $filtros['tipo_de_filtracion'] ?? 'average';
+        if ($tipoFiltracion === 'sales') {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
+        } else {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
+        }
+
+        $productos = new \Illuminate\Database\Eloquent\Collection($productos);
+        
+        // 3. Obtener mejores proveedores y chequear tolerancia (Lógica core de reponer)
+        $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
+        $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
+
+        // 4. Filtrar por tipo de análisis (increased, decreased, stable)
+        $coleccionFinal = collect($itemsReponer);
+
+        if ($tipoAnalisis !== 'all') {
+            $coleccionFinal = $coleccionFinal->filter(function ($item) use ($tipoAnalisis) {
+                if ($tipoAnalisis === 'increased') return $item->increase === true;
+                if ($tipoAnalisis === 'decreased') return $item->increase === false;
+                if ($tipoAnalisis === 'stable') return $item->increase === null;
+                return true;
+            });
+        }
+
+        // 5. Ordenar por descuento como es habitual
+        $itemsOrdenados = $this->orderByDiscountCollection($coleccionFinal);
+
+        // 6. Paginar en memoria
+        $total = $itemsOrdenados->count();
+        $offset = ($page - 1) * $perPage;
+        $itemsPagina = $itemsOrdenados->slice($offset, $perPage)->values();
+
+        return new LengthAwarePaginator($itemsPagina, $total, $perPage, $page, [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]);
+    }
+
+    private function orderByDiscountCollection(Collection $listaProductos): Collection
+    {
+        return $listaProductos->sortByDesc(function ($item) {
+            $producto = $item->product;
+            $oferta = $item->productSupplier;
+            $precioBase = (float) ($producto->unit_cost ?? 0);
+            $precioOferta = (float) ($oferta->unit_cost_with_discount > 0
+                ? $oferta->unit_cost_with_discount
+                : $oferta->unit_cost);
+            
+            if ($precioBase <= 0) return -9999;
+            return (($precioBase - $precioOferta) / $precioBase) * 100;
+        });
     }
 }
 
