@@ -153,16 +153,20 @@ class ProductController extends Controller
         $query = $this->productQueryService->getFilteredQuery($request);
         $format = $request->input('format', 'xlsx');
 
-        // Optimizar consulta base para exportación (quitar relaciones pesadas)
-        $query->without(['lots', 'origin', 'category', 'group', 'profitability']);
+        // Optimizar consulta al máximo: solo las columnas necesarias
+        $query->select(['id', 'name', 'laboratory_id', 'sale_price'])
+              ->with('laboratory:id,name')
+              ->without(['lots', 'origin', 'category', 'group', 'profitability']);
 
         if ($format === 'pdf') {
-            // Usar DomPDF directo para evitar agotamiento de memoria del Spreadsheet/Excel bridge
-            // Esto es mucho más eficiente para 2000+ productos
+            // Obtener datos
             $products = $query->get();
             
+            // Usar DomPDF con opciones de optimización
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.products-pdf', compact('products'))
-                ->setPaper('a4', 'landscape');
+                ->setPaper('a4', 'landscape')
+                ->setOption('isPhpEnabled', false) // Deshabilitar PHP interno para ahorrar RAM
+                ->setOption('isRemoteEnabled', false); // Deshabilitar imágenes remotas
                 
             return $pdf->download('productos-' . now()->format('Y-m-d') . '.pdf');
         }
