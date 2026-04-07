@@ -17,7 +17,7 @@ const pasos = [
 <template>
   <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Header con KPIs minimalistas -->
-    <div class="d-flex align-center justify-space-between px-6 py-3 border-b bg-var-theme-background">
+    <div class="d-flex align-center justify-space-between py-3 border-b bg-var-theme-background">
       <div class="d-flex align-center gap-2">
         <span class="text-subtitle-2 font-weight-black text-uppercase text-disabled me-2">Análisis de Fallas:</span>
         <VTooltip text="Productos que tienen oferta de proveedores">
@@ -53,7 +53,7 @@ const pasos = [
     </div>
 
     <!-- Navegación -->
-    <div class="d-flex align-center justify-space-between px-6 py-4">
+    <div class="d-flex align-center justify-space-between py-4">
       <!-- Botón anterior -->
       <VBtn
         variant="tonal"
@@ -138,8 +138,8 @@ const pasos = [
 
 .step-item {
   position: relative;
-  transition: all 0.2s ease;
   z-index: 1;
+  transition: all 0.2s ease;
 }
 
 .step-item:hover .step-avatar {

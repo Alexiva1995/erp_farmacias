@@ -495,33 +495,8 @@ function eliminarItemOrden(payload){
 <template>
   <LoaderComponent :loadingApp="module.loadingApp" />
   <div class="generate-order-view pb-12 text-sm">
-    <!-- Header Premium (Tarjeta Flotante) -->
-    <VCard class="mx-6 mt-6 mb-6 rounded-lg border shadow-sm overflow-hidden">
-      <div class="header-bg pa-6">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-          <div class="d-flex align-center gap-4">
-            <VAvatar
-              size="54"
-              color="white"
-              variant="flat"
-              class="rounded-lg shadow-soft"
-            >
-              <VIcon icon="tabler-shopping-cart-plus" color="primary" size="28" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <h1 class="text-h4 font-weight-black text-white letter-spacing-tight">
-                Generar Pedido Inteligente
-              </h1>
-              <span class="text-sm font-weight-bold text-white opacity-80 uppercase letter-spacing-widest">
-                Revisión paso a paso de productos para reposición
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </VCard>
 
-    <div class="px-6 d-flex flex-column gap-6">
+    <div class="d-flex flex-column gap-6">
       <NavegationIaAutoOrder
         :index-navegacion="indexNavegacion"
         :encontrados="KPIS_ENCONTRADOS"
