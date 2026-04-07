@@ -146,17 +146,27 @@ class ProductController extends Controller
 
     public function export(Request $request)
     {
-        // Aumentar límites para reportes grandes
-        ini_set('memory_limit', '512M');
-        set_time_limit(300);
+        // Aumentar límites significativamente para reportes grandes
+        ini_set('memory_limit', '1024M');
+        set_time_limit(600);
 
         $query = $this->productQueryService->getFilteredQuery($request);
+        $format = $request->input('format', 'xlsx');
 
-        // Optimizar consulta para exportación: quitar relaciones pesadas innecesarias
-        // Mantenemos 'laboratory' porque se usa en el mapeo de la columna fusionada
+        // Optimizar consulta base para exportación (quitar relaciones pesadas)
         $query->without(['lots', 'origin', 'category', 'group', 'profitability']);
 
-        $format = $request->input('format', 'xlsx');
+        if ($format === 'pdf') {
+            // Usar DomPDF directo para evitar agotamiento de memoria del Spreadsheet/Excel bridge
+            // Esto es mucho más eficiente para 2000+ productos
+            $products = $query->get();
+            
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.products-pdf', compact('products'))
+                ->setPaper('a4', 'landscape');
+                
+            return $pdf->download('productos-' . now()->format('Y-m-d') . '.pdf');
+        }
+
         $fileName = 'productos-' . now()->format('Y-m-d') . '.' . $format;
         return Excel::download(new ProductsExport($query), $fileName);
     }
