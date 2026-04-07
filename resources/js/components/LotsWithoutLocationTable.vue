@@ -113,7 +113,7 @@ const handleLocationSearch = (search) => {
 </script>
 
 <template>
-  <VCard padding="0">
+  <VCard class="pa-0">
     <!-- Desktop Table -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -359,7 +359,7 @@ const handleLocationSearch = (search) => {
            <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"
-            :total-items="props.totalProduct"
+            :total-items="props.totalLots"
             :loading="props.loading"
             @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />

@@ -65,7 +65,7 @@ const handleItemsPerPageChange = (newItems) => {
       
       <div class="d-flex align-center gap-1">
         <span class="text-disabled font-weight-bold text-uppercase letter-spacing-05">Total:</span>
-        <span class="font-weight-black text-primary">{{ props.totalItems.toLocaleString() }}</span>
+        <span class="font-weight-black text-primary">{{ props.totalItems?.toLocaleString() ?? '0' }}</span>
       </div>
     </div>
 
@@ -93,8 +93,8 @@ const handleItemsPerPageChange = (newItems) => {
 
 .pagination-select :deep(.v-field__input) {
   block-size: 24px !important;
-  min-block-size: auto !important;
   font-size: 0.85rem !important;
+  min-block-size: auto !important;
   padding-inline-start: 4px !important;
 }
 
