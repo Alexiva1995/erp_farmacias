@@ -73,7 +73,8 @@ class IaAssistantReportService
             $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
             
             // Reutilizamos la lógica masiva existente
-            $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($procesado, $conDescuento);
+            $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
+            $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
             $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
             
             // Mapear de vuelta a los productos (O(N) ya que las listas están sincronizadas por orden)
@@ -155,7 +156,8 @@ class IaAssistantReportService
             // Hidratar proveedores si se solicita
             if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
-                $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($procesado, $conDescuento);
+                $eloquentGroupCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
+                $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentGroupCollection, $conDescuento);
                 $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
                 
                 foreach ($procesado as $index => $producto) {
