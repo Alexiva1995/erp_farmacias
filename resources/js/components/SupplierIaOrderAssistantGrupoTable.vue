@@ -12,7 +12,6 @@ const props = defineProps({
   currentPage: { type: Number, default: 1 },
   lastPage: { type: Number, default: 1 },
   loading: { type: Boolean, default: false },
-  showTrend: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['page-change', 'product-scarce-toggled']);
@@ -163,7 +162,7 @@ const grupoKpi = (productos) => {
               <tr>
                 <th class="text-xs font-weight-black text-uppercase" style="inline-size:50px">ID</th>
                 <th class="text-xs font-weight-black text-uppercase">Producto</th>
-                <th v-if="props.showTrend" class="text-xs font-weight-black text-uppercase text-center" style="inline-size:75px">Trend</th>
+                <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:75px">Trend</th>
                 <th class="text-xs font-weight-black text-uppercase text-right" style="inline-size:75px">Costo</th>
                 <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:60px">Vent.</th>
                 <th class="text-xs font-weight-black text-uppercase text-center" style="inline-size:60px">Stock</th>
@@ -209,7 +208,7 @@ const grupoKpi = (productos) => {
                     </div>
                   </div>
                 </td>
-                <td v-if="props.showTrend" class="text-center">
+                <td class="text-center">
                   <div style="block-size:22px; inline-size:70px; margin:auto; overflow:hidden;" v-intersect="() => markChartAsReady(item.id)">
                     <VueApexCharts
                       v-if="readyCharts.has(item.id)"
