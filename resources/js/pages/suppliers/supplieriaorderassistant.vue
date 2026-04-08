@@ -419,7 +419,7 @@ onMounted(async () => {
 }
 
 .assistant-content {
-  padding: 16px;
+  padding: 0;
 }
 
 .bg-var-theme-background {

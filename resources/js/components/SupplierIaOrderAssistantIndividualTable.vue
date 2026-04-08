@@ -60,7 +60,6 @@ const handleToggleScarce = async (product) => {
 
 // Acciones Directas
 const isProcessing = ref({});
-const isRemoving = ref({}); // Estado para animación de salida
 
 const onActionClick = async (item, action) => {
   if (isProcessing.value[item.id]) return;
@@ -80,13 +79,7 @@ const onActionClick = async (item, action) => {
         quantity: quantity,
         product_supplier_id: item.best_supplier.product_suppliers_id
       });
-      
-      // Animación de salida optimística
-      isRemoving.value[item.id] = true;
-      setTimeout(() => {
-        emit('remove-item', item.id);
-        delete isRemoving.value[item.id];
-      }, 300);
+      emit('remove-item', item.id);
     } catch (error) {
        console.error("Error adding to order:", error);
     } finally {
@@ -98,13 +91,7 @@ const onActionClick = async (item, action) => {
     isProcessing.value[item.id] = 'ignoring';
     try {
       await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
-      
-      // Animación de salida optimística
-      isRemoving.value[item.id] = true;
-      setTimeout(() => {
-        emit('remove-item', item.id);
-        delete isRemoving.value[item.id];
-      }, 300);
+      emit('remove-item', item.id);
     } catch (error) {
        console.error("Error ignoring product:", error);
     } finally {
@@ -205,79 +192,8 @@ function rowClass(item) {
           :loading="props.loading"
           :row-props="({ item }) => ({ class: rowClass(item) })"
           class="text-no-wrap assistant-data-table"
-          fixed-header
-          height="calc(100vh - 280px)"
           @update:options="(options) => emit('update:options', options)"
         >
-          <!-- Fila personalizada para aplicar animación -->
-          <template #item="{ item, index }">
-            <tr 
-              :class="[rowClass(item), { 'row-removing': isRemoving[item.id] }]"
-              class="v-data-table__tr"
-            >
-              <td class="v-data-table__td" style="width: 50px;">
-                <a :href="'/inventory/traceability?q=' + item.id" target="_blank" class="text-decoration-none text-sm font-weight-black text-primary">
-                  {{ item.id }}
-                </a>
-              </td>
-              <td class="v-data-table__td">
-                <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
-                  <span
-                    class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate cursor-pointer hover-opacity"
-                    :class="{ 'text-primary': item.psychotropic == 1, 'opacity-50': togglingScarce === item.id }"
-                    @click="handleToggleScarce(item)"
-                  >
-                    <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
-                    {{ item.name.toUpperCase() }}
-                  </span>
-                  <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
-                    <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
-                    <span class="text-disabled mx-1">|</span>
-                    <span class="text-primary font-weight-black text-uppercase truncate">
-                      {{ item.laboratory?.name || 'S/L' }}
-                      <span v-if="item.best_supplier && props.withSuppliers" class="text-warning ml-1">- {{ item.best_supplier?.name || 'S/P' }}</span>
-                    </span>
-                  </div>
-                </div>
-              </td>
-              <td class="v-data-table__td" style="width: 80px;">
-                <div style="block-size: 25px; inline-size: 80px;" v-intersect="() => markChartAsReady(item.id)">
-                  <VueApexCharts v-if="readyCharts.has(item.id)" type="area" height="25" :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')" :series="getSeries(item)" />
-                </div>
-              </td>
-              <td class="v-data-table__td text-right" style="width: 80px;">
-                $<!--v-if-->{{ Number(item.unit_cost || 0).toFixed(2) }}
-              </td>
-              <td v-if="props.withSuppliers" class="v-data-table__td text-right text-warning font-weight-black" style="width: 90px;">
-                ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
-              </td>
-              <td class="v-data-table__td text-right" style="width: 65px;">{{ item.total_sold_completed || 0 }}</td>
-              <td class="v-data-table__td text-right" style="width: 65px;">{{ item.lote_quantity || 0 }}</td>
-              <td class="v-data-table__td text-right" style="width: 70px;">{{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(2) : '—' }}</td>
-              <td class="v-data-table__td text-right" style="width: 70px;">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(2) : '—' }}</td>
-              <td class="v-data-table__td text-right" style="width: 70px;">
-                <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="small">{{ item.totalQuantityInAutoOrder || 0 }}</VChip>
-              </td>
-              <td class="v-data-table__td text-center" style="width: 100px;">
-                <div class="d-flex flex-column align-center py-1">
-                  <VTextField :model-value="getInputValue(item)" @update:model-value="(val) => updateInputValue(item, val)" type="number" density="compact" hide-details variant="outlined" class="centered-input-text-sm mb-1" />
-                  <span v-if="props.withSuppliers && item.best_supplier && item.best_supplier_percentage !== 0" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
-                    {{ item.best_supplier_percentage < 0 ? ' ahorro ' : ' subió ' }}{{ Math.abs(item.best_supplier_percentage).toFixed(1) }}%
-                  </span>
-                </div>
-              </td>
-              <td class="v-data-table__td text-right ga-1" style="width: 110px;">
-                <div class="d-flex align-center justify-end ga-1">
-                  <VBtn icon variant="tonal" color="success" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
-                    <VIcon icon="tabler-shopping-cart-plus" size="18" />
-                  </VBtn>
-                  <VBtn icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
-                    <VIcon icon="tabler-square-x" size="18" />
-                  </VBtn>
-                </div>
-              </td>
-            </tr>
-          </template>
           <!-- Estado vacío -->
           <template #no-data>
             <div class="d-flex flex-column align-center py-12 text-disabled">
@@ -573,7 +489,7 @@ function rowClass(item) {
 }
 
 :deep(.v-data-table__wrapper) {
-  overflow-y: auto !important;
+  overflow: visible !important;
 }
 
 :deep(.v-data-table__td),
@@ -686,18 +602,5 @@ function rowClass(item) {
 }
 .legend-needs { background: rgba(40, 199, 111, 40%); }
 .legend-excess { background: rgba(234, 84, 85, 40%); }
-
-/* Animación de remoción */
-.row-removing {
-  transition: all 0.3s ease-out;
-  opacity: 0 !important;
-  transform: translateX(20px);
-  pointer-events: none;
-}
-
-.assistant-table-container {
-  overflow: hidden;
-  max-width: 100%;
-}
 </style>
 鼓
