@@ -16,7 +16,7 @@ const props = defineProps({
   withSuppliers: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator"]);
+const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item"]);
 
 // Track edited pedido values per item id
 const editedValues = ref({});
@@ -72,30 +72,28 @@ const onActionClick = async (item, action) => {
       return;
     }
     
-    isProcessing.value[item.id] = 'adding';
+    // Remoción optimista
+    emit('remove-item', item.id);
+    
     try {
       await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {
         product_id: item.id,
         quantity: quantity,
         product_supplier_id: item.best_supplier.product_suppliers_id
       });
-      emit('refresh');
     } catch (error) {
        console.error("Error adding to order:", error);
-    } finally {
-      isProcessing.value[item.id] = null;
     }
   }
 
   if (action === 'ignore') {
-    isProcessing.value[item.id] = 'ignoring';
+    // Remoción optimista
+    emit('remove-item', item.id);
+    
     try {
       await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
-      emit('refresh');
     } catch (error) {
        console.error("Error ignoring product:", error);
-    } finally {
-      isProcessing.value[item.id] = null;
     }
   }
 };
@@ -603,3 +601,4 @@ function rowClass(item) {
 .legend-needs { background: rgba(40, 199, 111, 40%); }
 .legend-excess { background: rgba(234, 84, 85, 40%); }
 </style>
+鼓

@@ -167,6 +167,15 @@ const handleProductScarceToggled = (productId) => {
   }
 };
 
+const handleRemoveItem = (productId) => {
+  if (tipo_de_vista.value) {
+     handleProductScarceToggled(productId);
+  } else {
+    statuModule.items = statuModule.items.filter(item => item.id !== productId);
+    statuModule.total -= 1;
+  }
+};
+
 let filterTimeout = null;
 watch(
   [
@@ -277,8 +286,11 @@ const handleSendToAutoOrder = async ({ id, quantity }) => {
     await axios.post("/suppliers/add-product-to-order", form);
     
     toast.success("Producto añadido a la orden de compra.");
+    // Cerramos el modal
     isComparatorModalVisible.value = false;
-    actualizarTabla(); // Refrescar para que desaparezca el producto del asistente
+    // Removemos de la página actual para que el usuario pueda seguir trabajando
+    handleRemoveItem(comparatorProduct.value.id);
+    // No refrescamos toda la tabla para no ralentizar la UX
   } catch (error) {
     console.error("[Comparator] Error sending to order:", error);
     toast.error("Error al añadir producto a la orden.");
@@ -346,36 +358,49 @@ onMounted(async () => {
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
           @open-comparator="handleOpenComparator"
+          @remove-item="handleRemoveItem"
         />
       </div>
     </div>
 
     <!-- Dialogo de Comparación Manual (Buscador de Proveedores) -->
-    <VDialog v-model="isComparatorModalVisible" max-width="1000" scrollable>
-      <VCard class="rounded-lg shadow-xl overflow-hidden bg-var-theme-background">
-        <VCardTitle class="pa-4 bg-primary text-white d-flex align-center">
-          <VIcon icon="tabler-arrows-exchange" class="me-2" />
-          <span class="text-subtitle-1 font-weight-bold">Comparar Proveedores para Faltante</span>
-          <VSpacer />
-          <VBtn icon="tabler-x" variant="text" color="white" size="small" @click="isComparatorModalVisible = false" />
+    <VDialog v-model="isComparatorModalVisible" max-width="1200" scrollable persistent transition="dialog-bottom-transition">
+      <VCard class="rounded-xl shadow-2xl overflow-hidden border-0 elevation-24">
+        <VCardTitle class="pa-0">
+          <div class="bg-primary px-6 py-4 d-flex align-center justify-space-between w-100 border-b border-primary-darken-1">
+            <div class="d-flex align-center">
+              <div class="bg-white bg-opacity-10 pa-2 rounded-lg mr-4 border border-white border-opacity-10">
+                <VIcon icon="tabler-arrows-exchange" color="white" size="24" />
+              </div>
+              <div class="d-flex flex-column">
+                <span class="text-h6 font-weight-black text-white leading-tight mb-0">Comparador de Proveedores</span>
+                <span class="text-caption text-white text-opacity-80">
+                  Buscando alternativas para: <span class="bg-white bg-opacity-10 px-1 rounded">{{ comparatorProduct?.name }}</span>
+                </span>
+              </div>
+            </div>
+            <VBtn icon="tabler-x" variant="tonal" color="white" size="small" @click="isComparatorModalVisible = false" class="rounded-lg hover-rotate" />
+          </div>
         </VCardTitle>
         <VDivider />
-        <VCardText class="pa-4">
-          <ProductComparisionProductsTable
-            :products="comparatorProducts"
-            :loading="comparatorLoading"
-            :total-products="comparatorTotal"
-            :items-per-page="comparatorItemsPerPage"
-            :page="comparatorPage"
-            :search-query="comparatorSearchQuery"
-            :selected-product="comparatorProduct"
-            @update:searchQuery="comparatorSearchQuery = $event"
-            @update:options="(options) => { 
-                comparatorPage = options.page; 
-                comparatorItemsPerPage = options.itemsPerPage; 
-            }"
-            @send-product="handleSendToAutoOrder"
-          />
+        <VCardText class="pa-0 bg-var-theme-background">
+          <div class="pa-6">
+            <ProductComparisionProductsTable
+              :products="comparatorProducts"
+              :loading="comparatorLoading"
+              :total-products="comparatorTotal"
+              :items-per-page="comparatorItemsPerPage"
+              :page="comparatorPage"
+              :search-query="comparatorSearchQuery"
+              :selected-product="comparatorProduct"
+              @update:searchQuery="comparatorSearchQuery = $event"
+              @update:options="(options) => { 
+                  comparatorPage = options.page; 
+                  comparatorItemsPerPage = options.itemsPerPage; 
+              }"
+              @send-product="handleSendToAutoOrder"
+            />
+          </div>
         </VCardText>
       </VCard>
     </VDialog>
@@ -394,4 +419,20 @@ onMounted(async () => {
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.03);
 }
+
+.hover-rotate:hover { transform: rotate(90deg); transition: transform 0.3s ease; }
+
+:deep(.v-card) {
+  transition: all 0.3s ease;
+}
+
+:deep(.v-dialog .v-card) {
+  animation: slide-up 0.4s ease-out;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
 </style>
+鼓
