@@ -237,7 +237,8 @@ const handleScan = (code) => {
     :fullscreen="$vuetify.display.xs"
     transition="dialog-bottom-transition"
     class="premium-dialog"
-  >    <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
+  >
+    <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">

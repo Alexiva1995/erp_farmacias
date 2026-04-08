@@ -357,7 +357,7 @@ function rowClass(item) {
 
       <!-- Vista Móvil (Cards) -->
       <div v-else class="d-block d-md-none pa-2">
-        <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
+        <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
         
         <template v-if="props.products.length > 0">
           <div class="d-flex flex-column gap-2">

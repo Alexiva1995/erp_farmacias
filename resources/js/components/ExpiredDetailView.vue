@@ -133,7 +133,7 @@ const toggleSelection = (id) => {
 
     <!-- Vista de Móvil (Tarjetas) -->
     <div class="d-block d-md-none pa-2">
-      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-2" />
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
       <div v-if="props.logs.length === 0 && !props.loading" class="text-center py-8 text-disabled">
         No hay registros en este periodo.
