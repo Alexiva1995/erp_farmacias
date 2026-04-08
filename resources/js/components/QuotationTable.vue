@@ -207,7 +207,7 @@ const handleMobilePageChange = (newPage) => {
 
     <!-- Vista de Móvil (Cards) -->
     <div class="d-block d-md-none pa-3">
-      <VLinearProgress v-if="props.loading" indeterminate color="primary" class="mb-3" />
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-3" />
       
       <div v-if="props.products.length === 0 && !props.loading" class="text-center py-10 text-disabled">
         <VIcon icon="tabler-search-off" size="48" class="mb-2" />

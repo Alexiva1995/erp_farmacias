@@ -2,6 +2,7 @@
 import SupplierIaOrderAssistantFilter from "@/components/SupplierIaOrderAssistantFilter.vue";
 import SupplierIaOrderAssistantGrupoTable from "@/components/SupplierIaOrderAssistantGrupoTable.vue";
 import SupplierIaOrderAssistantIndividualTable from "@/components/SupplierIaOrderAssistantIndividualTable.vue";
+import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, reactive, ref, watch } from "vue";
@@ -32,8 +33,10 @@ const stock = ref("all");
 const con_descuento = ref(true);
 const isColombian = ref(false);
 const searchQuery = ref("");
+const withSuppliers = ref(false);
 
 const handleClearFilters = () => {
+  withSuppliers.value = false;
   con_descuento.value = true;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
@@ -73,6 +76,8 @@ async function consultarProductosConPaginacion() {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    with_suppliers: withSuppliers.value,
+    con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
   };
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
@@ -111,6 +116,11 @@ async function actualizarTabla() {
   } finally {
     loading.value = false;
   }
+}
+
+async function handleFetchSuppliers() {
+  withSuppliers.value = true;
+  await actualizarTabla();
 }
 
 const updateTableOptionsTable = (options) => {
@@ -157,6 +167,15 @@ const handleProductScarceToggled = (productId) => {
   }
 };
 
+const handleRemoveItem = (productId) => {
+  if (tipo_de_vista.value) {
+     handleProductScarceToggled(productId);
+  } else {
+    statuModule.items = statuModule.items.filter(item => item.id !== productId);
+    statuModule.total -= 1;
+  }
+};
+
 let filterTimeout = null;
 watch(
   [
@@ -168,6 +187,7 @@ watch(
     stock,
     isColombian,
     searchQuery,
+    con_descuento,
   ],
   () => {
     clearTimeout(filterTimeout);
@@ -204,6 +224,82 @@ function generarPedido() {
   });
 }
 
+// Modal de Comparación Manual (Productos sin proveedor)
+const isComparatorModalVisible = ref(false);
+const comparatorProduct = ref(null);
+const comparatorQuantity = ref(0);
+const comparatorSearchQuery = ref("");
+const comparatorProducts = ref([]);
+const comparatorLoading = ref(false);
+const comparatorTotal = ref(0);
+const comparatorPage = ref(1);
+const comparatorItemsPerPage = ref(10);
+const comparatorSortBy = ref([{ key: 'unit_cost_usd', order: 'asc' }]);
+
+const handleOpenComparator = ({ item, quantity }) => {
+  comparatorProduct.value = item;
+  comparatorQuantity.value = quantity;
+  
+  // Regla de búsqueda: Nombre (5) + Lab (3)
+  const namePart = item.name ? item.name.substring(0, 5) : "";
+  const labPart = item.laboratory?.name ? item.laboratory.name.substring(0, 3) : "";
+  comparatorSearchQuery.value = `${namePart} ${labPart}`.trim();
+  
+  comparatorPage.value = 1;
+  isComparatorModalVisible.value = true;
+};
+
+const fetchComparatorProducts = async () => {
+  if (!isComparatorModalVisible.value) return;
+  
+  comparatorLoading.value = true;
+  try {
+    const { data } = await axios.get("/suppliers/available-products", {
+      params: {
+        page: comparatorPage.value,
+        perPage: comparatorItemsPerPage.value,
+        q: comparatorSearchQuery.value,
+        sortBy: comparatorSortBy.value[0]?.key,
+        order: comparatorSortBy.value[0]?.order,
+      }
+    });
+    comparatorProducts.value = data.data;
+    comparatorTotal.value = data.total;
+  } catch (error) {
+    console.error("[Comparator] Error:", error);
+    toast.error("Error al buscar productos de proveedores");
+  } finally {
+    comparatorLoading.value = false;
+  }
+};
+
+watch([isComparatorModalVisible, comparatorSearchQuery, comparatorPage, comparatorItemsPerPage, comparatorSortBy], () => {
+  if (isComparatorModalVisible.value) {
+    fetchComparatorProducts();
+  }
+});
+
+const handleSendToAutoOrder = async ({ id, quantity }) => {
+  try {
+    const form = new FormData();
+    form.append("productId", id);
+    form.append("main_product_id", comparatorProduct.value.id);
+    form.append("quantity", quantity);
+    
+    await axios.post("/suppliers/add-product-to-order", form);
+    
+    toast.success("Producto añadido a la orden de compra.");
+    // Cerramos el modal
+    isComparatorModalVisible.value = false;
+    // Removemos de la página actual para que el usuario pueda seguir trabajando
+    handleRemoveItem(comparatorProduct.value.id);
+    // No refrescamos toda la tabla para no ralentizar la UX
+  } catch (error) {
+    console.error("[Comparator] Error sending to order:", error);
+    toast.error("Error al añadir producto a la orden.");
+  }
+};
+
 onMounted(async () => {
   await Promise.all([consultarGruposProductos(), consultarLaboratorios()]);
   await actualizarTabla();
@@ -234,6 +330,7 @@ onMounted(async () => {
         :isColombian="isColombian"
         @clear="handleClearFilters"
         @generarPedido="generarPedido"
+        @fetchSuppliers="handleFetchSuppliers"
       />
 
       <!-- Tabla -->
@@ -247,6 +344,7 @@ onMounted(async () => {
           :current-page="gruposData.current_page"
           :last-page="gruposData.last_page"
           :loading="loading"
+          :with-suppliers="withSuppliers"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
         />
@@ -258,12 +356,60 @@ onMounted(async () => {
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="page"
+          :with-suppliers="withSuppliers"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
+          @open-comparator="handleOpenComparator"
+          @remove-item="handleRemoveItem"
         />
       </div>
     </div>
+
+    <!-- Dialogo de Comparación Manual (Buscador de Proveedores) -->
+    <VDialog v-model="isComparatorModalVisible" max-width="1200" scrollable persistent transition="dialog-bottom-transition">
+      <VCard class="rounded-xl shadow-2xl overflow-hidden border-0 elevation-24">
+        <VCardTitle class="pa-0">
+          <div class="bg-primary px-6 py-4 d-flex align-center justify-space-between w-100 border-b border-primary-darken-1">
+            <div class="d-flex align-center">
+              <div class="bg-white bg-opacity-10 pa-2 rounded-lg mr-4 border border-white border-opacity-10">
+                <VIcon icon="tabler-arrows-exchange" color="white" size="24" />
+              </div>
+              <div class="d-flex flex-column overflow-hidden">
+                <span class="text-h6 font-weight-black text-white leading-tight mb-0">Comparador de Proveedores</span>
+                <span class="text-caption text-white text-opacity-80 d-flex align-center">
+                  Buscando para: <span class="bg-white text-primary px-3 py-1 rounded-pill ml-2 text-truncate font-weight-black" style="box-shadow: 0 2px 4px rgba(0, 0, 0, 10%); font-size: 0.75rem; max-inline-size: 600px;">{{ comparatorProduct?.name }}</span>
+                </span>
+              </div>
+            </div>
+            <VBtn icon="tabler-x" variant="tonal" color="white" size="small" @click="isComparatorModalVisible = false" class="rounded-lg hover-rotate" />
+          </div>
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-0 bg-var-theme-background">
+          <div class="pa-6">
+            <ProductComparisionProductsTable
+              :products="comparatorProducts"
+              :loading="comparatorLoading"
+              :total-products="comparatorTotal"
+              :items-per-page="comparatorItemsPerPage"
+              :page="comparatorPage"
+              :search-query="comparatorSearchQuery"
+              :selected-product="comparatorProduct"
+              enable-usd-amount-col
+              enable-discount-col
+              v-model:sort-by="comparatorSortBy"
+              @update:searchQuery="comparatorSearchQuery = $event"
+              @update:options="(options) => { 
+                  comparatorPage = options.page; 
+                  comparatorItemsPerPage = options.itemsPerPage; 
+              }"
+              @send-product="handleSendToAutoOrder"
+            />
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -271,4 +417,37 @@ onMounted(async () => {
 .assistant-ia-view {
   min-block-size: 100vh;
 }
+
+.assistant-content {
+  padding: 0;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.03);
+}
+
+.hover-rotate:hover {
+  transform: rotate(90deg);
+  transition: transform 0.3s ease;
+}
+
+:deep(.v-card) {
+  transition: all 0.3s ease;
+}
+
+:deep(.v-dialog .v-card) {
+  animation: slide-up 0.4s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>
+鼓

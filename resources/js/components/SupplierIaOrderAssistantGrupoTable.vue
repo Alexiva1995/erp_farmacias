@@ -209,10 +209,10 @@ const grupoKpi = (productos) => {
                   </div>
                 </td>
                 <td class="text-center">
-                  <div style="block-size:22px; inline-size:70px; margin:auto; overflow:visible;" v-intersect="() => markChartAsReady(item.id)">
+                  <div style="block-size:22px; inline-size:70px; margin:auto; overflow:hidden;" v-intersect="() => markChartAsReady(item.id)">
                     <VueApexCharts
                       v-if="readyCharts.has(item.id)"
-                      type="area" height="22"
+                      type="area" height="22" width="100%"
                       :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                       :series="getSeries(item)"
                     />

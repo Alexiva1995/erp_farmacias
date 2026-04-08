@@ -66,6 +66,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Public\SupplierPublicUploadController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
+use App\Http\Controllers\Api\IaAssistantActionController;
 
 // Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON)
 Route::prefix('fiscal')->group(function () {
@@ -543,7 +544,11 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
             Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
             Route::post('/unique-opportunity-page', [SuppliersIaOrderAssistantController::class, 'getUniqueOpportunityPagination']);
+            Route::post("/products-replenish-page", [SuppliersIaOrderAssistantController::class, "getReplenishPagination"]);
         });
+        // Acciones Asistente IA
+        Route::post("/add-to-order", [IaAssistantActionController::class, "addToOrder"]);
+        Route::post("/products/{product}/ignore", [IaAssistantActionController::class, "ignore"]);
     });
 
     Route::prefix("suppliers-ia-assistant-report")->group(function () {

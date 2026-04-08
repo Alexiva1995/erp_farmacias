@@ -96,31 +96,31 @@ class ProductRepository
             ) AS totalQuantityInAutoOrder'),
         ];
 
-        // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "sales_average";
-        if ($filtros["days"] == 7) {
+        // calcular promedio en base a los dias => promedio_calculado
+        $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
+        if (!is_string($lapso)) $lapso = $lapso . " days";
+
+        if (str_contains($lapso, "7")) {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
-        }
-
-        if ($filtros["days"] == 15) {
+        } elseif (str_contains($lapso, "15")) {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
-        }
-
-        if ($filtros["days"] == 30) {
+        } elseif (str_contains($lapso, "30") || str_contains($lapso, "1 month") || str_contains($lapso, "60") || str_contains($lapso, "90")) {
+             // Para 30, 60, 90 se maneja abajo si es necesario, pero garantizamos que exista la columna
+             if (str_contains($lapso, "30") || str_contains($lapso, "1 month")) {
+                $columnas[] = DB::raw('sales_average AS promedio_calculado');
+                $promedio_calculado = 'sales_average';
+             } elseif (str_contains($lapso, "60")) {
+                $columnas[] = DB::raw('sales_average * 2 AS promedio_calculado');
+                $promedio_calculado = 'sales_average * 2';
+             } else {
+                $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
+                $promedio_calculado = 'sales_average * 3';
+             }
+        } else {
             $columnas[] = DB::raw('sales_average AS promedio_calculado');
             $promedio_calculado = 'sales_average';
-        }
-
-        if ($filtros["days"] == 60) {
-            $columnas[] = DB::raw('sales_average * 2 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 2';
-        }
-
-        if ($filtros["days"] == 90) {
-            $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 3';
         }
 
         // calcular diferencia_product según tipo_filtracion
@@ -389,36 +389,29 @@ class ProductRepository
             ) AS cheapest_unit_cost'),
         ];
 
-        // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "sales_average";
-        if ($filtros["lapso_de_tiempo"] == "7 days") {
+        // calcular promedio en base a los dias => promedio_calculado
+        $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
+        if ($lapso == "7 days") {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "15 days") {
+        } elseif ($lapso == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "1 month") {
+        } elseif ($lapso == "1 month") {
             $columnas[] = DB::raw('sales_average AS promedio_calculado');
             $promedio_calculado = 'sales_average';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "3 month") {
+        } elseif ($lapso == "3 month") {
             $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 3';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "6 month") {
+        } elseif ($lapso == "6 month") {
             $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 6';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "1 year") {
+        } elseif ($lapso == "1 year") {
             $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 12';
+        } else {
+            $columnas[] = DB::raw('sales_average AS promedio_calculado');
+            $promedio_calculado = 'sales_average';
         }
 
         // calcular solicitar
@@ -713,36 +706,29 @@ class ProductRepository
             ) AS cheapest_unit_cost'),
         ];
 
-        // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "sales_average";
-        if ($filtros["lapso_de_tiempo"] == "7 days") {
+        // calcular promedio en base a los dias => promedio_calculado
+        $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
+        if ($lapso == "7 days") {
             $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 4';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "15 days") {
+        } elseif ($lapso == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "1 month") {
+        } elseif ($lapso == "1 month") {
             $columnas[] = DB::raw('sales_average AS promedio_calculado');
             $promedio_calculado = 'sales_average';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "3 month") {
+        } elseif ($lapso == "3 month") {
             $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 3';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "6 month") {
+        } elseif ($lapso == "6 month") {
             $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 6';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "1 year") {
+        } elseif ($lapso == "1 year") {
             $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 12';
+        } else {
+            $columnas[] = DB::raw('sales_average AS promedio_calculado');
+            $promedio_calculado = 'sales_average';
         }
 
         // demanda_ponderada = (promedio + ventas) / 2  (antes de restar stock/AO)
@@ -940,41 +926,35 @@ class ProductRepository
             ) AS totalQuantityInAutoOrder'),
         ];
 
-        // calcular promedio en vace a los dias => promedio_calculado
-        $promedio_calculado = "sales_average";
-        if ($filtros["lapso_de_tiempo"] == "15 days") {
+        // calcular promedio en base a los dias => promedio_calculado
+        $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
+        if ($lapso == "7 days") {
+            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 4';
+        } elseif ($lapso == "15 days") {
             $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
             $promedio_calculado = 'sales_average / 2';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "1 month") {
+        } elseif ($lapso == "1 month") {
             $columnas[] = DB::raw('sales_average AS promedio_calculado');
             $promedio_calculado = 'sales_average';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "3 month") {
+        } elseif ($lapso == "3 month") {
             $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 3';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "6 month") {
+        } elseif ($lapso == "6 month") {
             $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 6';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "12 month" || $filtros["lapso_de_tiempo"] == "1 year") {
+        } elseif ($lapso == "12 month" || $lapso == "1 year") {
             $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 12';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "18 month") {
+        } elseif ($lapso == "18 month") {
             $columnas[] = DB::raw('sales_average * 18 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 18';
-        }
-
-        if ($filtros["lapso_de_tiempo"] == "24 month") {
+        } elseif ($lapso == "24 month") {
             $columnas[] = DB::raw('sales_average * 24 AS promedio_calculado');
             $promedio_calculado = 'sales_average * 24';
+        } else {
+            $columnas[] = DB::raw('sales_average AS promedio_calculado');
+            $promedio_calculado = 'sales_average';
         }
 
         // Subconsulta del AO (unidades ya en pedido activo)
@@ -1245,7 +1225,30 @@ class ProductRepository
             ) AS cost_max'),
         ];
 
-        $columnas[] = DB::raw('sales_average / ' . $ventasIndividualDelProducto . ' AS promedio_calculado');
+        // calcular promedio en base a los dias => promedio_calculado
+        $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
+        if ($lapso == "7 days") {
+            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 4';
+        } elseif ($lapso == "15 days") {
+            $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
+            $promedio_calculado = 'sales_average / 2';
+        } elseif ($lapso == "1 month") {
+            $columnas[] = DB::raw('sales_average AS promedio_calculado');
+            $promedio_calculado = 'sales_average';
+        } elseif ($lapso == "3 month") {
+            $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 3';
+        } elseif ($lapso == "6 month") {
+            $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 6';
+        } elseif ($lapso == "1 year") {
+            $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
+            $promedio_calculado = 'sales_average * 12';
+        } else {
+            $columnas[] = DB::raw('sales_average AS promedio_calculado');
+            $promedio_calculado = 'sales_average';
+        }
 
         $consulta = Product::select($columnas);
         $consulta->where('is_deleted', false)->where('is_scarce', false)
@@ -1440,7 +1443,7 @@ class ProductRepository
         };
 
         // Solicitar según tipo de filtración
-        $tipo = $filtros["tipo_de_filtracion"] ?? "average";
+        $tipo = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo === "combinado") {
             $demanda = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
@@ -1458,7 +1461,20 @@ class ProductRepository
         // 2. Construir Query
         $query = Product::query()
             ->where('is_deleted', false)
-            ->where('is_scarce', false);
+            ->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('ignore_until')
+                  ->orWhere('ignore_until', '<=', now());
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('auto_order_details')
+                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+                    ->whereColumn('auto_order_details.product_id', 'products.id')
+                    ->where('auto_orders.status', 0) // Open
+                    ->whereNull('auto_orders.deleted_at')
+                    ->whereNull('auto_order_details.deleted_at');
+            });
 
         // Seleccionar solicitar para usar en having
         $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
@@ -1489,10 +1505,33 @@ class ProductRepository
             }
         }
 
+        // 4. Ordenamiento Dinámico
+        $sortCol = !empty($filtros['sortBy']) ? $filtros['sortBy'] : 'products.name';
+        $sortDir = strtolower(!empty($filtros['orderBy']) ? $filtros['orderBy'] : 'asc') === 'desc' ? 'desc' : 'asc';
+
+        // Mapeo de columnas de ordenamiento para tablas
+        if ($sortCol === 'lote_quantity' || $sortCol === 'stock') {
+            $query->orderByRaw("($subqueryStock) $sortDir");
+        } elseif ($sortCol === 'total_sold_completed') {
+            $query->orderByRaw("($subqueryTotalSold) $sortDir");
+        } elseif ($sortCol === 'promedio_calculado') {
+            $query->orderByRaw("($promedio_calculado) $sortDir");
+        } elseif ($sortCol === 'totalQuantityInAutoOrder') {
+            $query->orderByRaw("($subqueryAO) $sortDir");
+        } elseif ($sortCol === 'solicitar') {
+            $query->orderByRaw("($solicitarCol) $sortDir");
+        } elseif ($sortCol === 'preferencia_product') {
+            // Como preferencia requiere group_sales_average_sum, lo manejamos con una subconsulta simplificada o por products.name si falla
+            $query->orderBy('products.name', 'ASC');
+        } else {
+            $query->orderBy($sortCol, $sortDir);
+        }
+
         if ($porGrupo) {
             return $query
                 ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
                 ->addSelect('groups_products.name')
+                // No aplicar el orden dinámico aquí si es por grupo, habitualmente es alfabético
                 ->orderBy('groups_products.name', 'ASC')
                 ->get()
                 ->pluck('group_id')
@@ -1501,8 +1540,7 @@ class ProductRepository
                 ->toArray();
         }
 
-        return $query->orderBy('products.name', 'ASC')
-            ->get()
+        return $query->get()
             ->pluck('id')
             ->toArray();
     }

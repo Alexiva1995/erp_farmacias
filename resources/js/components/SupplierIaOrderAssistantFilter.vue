@@ -29,11 +29,12 @@ const emit = defineEmits([
   "update:isColombian",
   "clear",
   "generarPedido",
+  "fetchSuppliers",
 ]);
 
 const precio = [
-  { title: "Full",      value: true  },
-  { title: "Descuento", value: false },
+  { title: "Full",      value: false },
+  { title: "Descuento", value: true  },
 ];
 
 const tipoDeVistaOpcion = [
@@ -82,6 +83,18 @@ const hasAdvancedFilters = computed(() => (
     </template>
 
     <template #actions-extra>
+      <VBtn
+        icon
+        color="warning"
+        variant="tonal"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('fetchSuppliers')"
+      >
+        <VIcon icon="tabler-currency-dollar" size="20" />
+        <VTooltip activator="parent" location="top">Comparar Precios Mas Bajos</VTooltip>
+      </VBtn>
+
       <VBtn
         icon
         color="primary"

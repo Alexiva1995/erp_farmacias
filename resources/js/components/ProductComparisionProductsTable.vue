@@ -91,12 +91,12 @@ const formatBs = (amount) => {
   );
 };
 const formatUsd = (amount) => {
-  return (
-    new Intl.NumberFormat("es-VE", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  );
+  const num = parseFloat(amount);
+  if (isNaN(num)) return "0.00";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
 };
 
 const getPriceDiff = (item) => {
@@ -105,12 +105,14 @@ const getPriceDiff = (item) => {
   if (!currentCost || currentCost === 0) return null;
 
   const supplierCost = parseFloat(
-    props.enableDiscountCol ? item.final_cost_usd : item.unit_cost_usd
+    (props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0) 
+      ? item.final_cost_usd 
+      : item.unit_cost_usd
   );
-  if (!supplierCost) return null;
+  if (!supplierCost || isNaN(supplierCost)) return null;
 
   const diff = ((currentCost - supplierCost) / currentCost) * 100;
-  const absDiff = Math.abs(diff).toFixed(0);
+  const absDiff = Math.abs(diff).toFixed(1);
 
   if (diff > 0.5) {
     return { diff, label: `${absDiff}% más barato`, color: "success", icon: 'tabler-trending-down' };
@@ -120,11 +122,19 @@ const getPriceDiff = (item) => {
   return { diff: 0, label: "Precio igual", color: "warning", icon: 'tabler-minus' };
 };
 
+const isProcessing = ref({});
+
+const onActionClick = (item) => {
+  const qty = getQty(item.id);
+  isProcessing.value[item.id] = true;
+  emit('send-product', { id: item.id, quantity: qty });
+};
+
 const allHeaders = [
-  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "350px" },
-  { title: "COSTO", key: "unit_cost_usd", sortable: true, width: "80px" },
-  { title: "FINAL", key: "final_cost_usd", sortable: true, width: "80px" },
-  { title: "AHORRO", key: "price_diff", sortable: false, width: "120px" },
+  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "175px" },
+  { title: "COSTO", key: "our_cost", sortable: false, width: "90px", align: 'end' },
+  { title: "COSTP", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
+  { title: "AHORRO", key: "price_diff", sortable: false, width: "110px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ];
 
@@ -371,28 +381,28 @@ const headers = computed(() =>
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.name="{ item }">
-            <div class="d-flex align-center py-2">
-              <div class="d-flex flex-column overflow-hidden">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
-                  <a
-                    :href="'/inventory/traceability?q=' + item.id"
-                    target="_blank"
-                    class="text-decoration-none text-primary mr-2"
-                  >
-                    {{ item.id }}
-                  </a>
-                  <span class="text-disabled mr-2">|</span>
+            <div class="d-flex flex-column py-2" style="min-inline-size: 175px; white-space: normal !important;">
+                <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="item.name">
                   {{ item.name.toUpperCase() }}
                 </span>
-                <div class="d-flex align-center gap-1 text-super-xs">
-                  <span class="text-primary font-weight-black uppercase truncate" style="max-inline-size: 150px;">
-                    {{ item.laboratory_name || 'S/L' }}
+                
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                  <span v-if="item.laboratory_name" class="text-primary uppercase">
+                    {{ item.laboratory_name.toUpperCase() }}
                   </span>
-                  <span class="text-disabled mx-1">|</span>
-                  <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.supplier_name }}</span>
+                  <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
+                    <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
+                  </div>
                 </div>
-              </div>
             </div>
+          </template>
+
+          <template #item.our_cost>
+            <span v-if="selectedProduct" class="text-sm font-weight-medium text-disabled">
+              ${{ formatUsd(selectedProduct.current_unit_cost ?? selectedProduct.unit_cost ?? 0) }}
+            </span>
           </template>
 
           <template #item.price_diff="{ item }">
@@ -411,11 +421,14 @@ const headers = computed(() =>
           </template>
 
           <template #item.unit_cost_usd="{ item }">
-            <span class="text-sm font-weight-medium">${{ formatUsd(item.unit_cost_usd) }}</span>
-          </template>
-
-          <template #item.final_cost_usd="{ item }">
-            <span class="text-sm font-weight-bold text-primary">${{ formatUsd(item.final_cost_usd) }}</span>
+            <div class="d-flex flex-column align-end">
+              <span class="text-sm font-weight-bold" :class="(props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0) ? 'text-disabled text-xs' : 'text-high-emphasis'">
+                ${{ formatUsd(item.unit_cost_usd) }}
+              </span>
+              <div v-if="props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0 && parseFloat(item.final_cost_usd) !== parseFloat(item.unit_cost_usd)" class="text-xs font-weight-black text-primary">
+                ${{ formatUsd(item.final_cost_usd) }}
+              </div>
+            </div>
           </template>
 
           <template #item.actions="{ item }">
@@ -436,7 +449,8 @@ const headers = computed(() =>
                 color="primary"
                 size="small"
                 class="rounded-circle shadow-sm"
-                @click="emit('send-product', { id: item.id, quantity: getQty(item.id) })"
+                :loading="isProcessing[item.id]"
+                @click="onActionClick(item)"
               />
             </div>
           </template>
@@ -463,12 +477,19 @@ const headers = computed(() =>
           >
             <VCardText class="pa-4">
               <div class="mb-3">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1 leading-tight">
                   {{ item.name }}
                 </span>
-                <span class="text-xs text-disabled d-block">
-                  {{ item.laboratory_name }} | {{ item.supplier_name }}
-                </span>
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                  <span v-if="item.laboratory_name" class="text-primary uppercase">
+                    {{ item.laboratory_name.toUpperCase() }}
+                  </span>
+                  <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
+                    <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
+                  </div>
+                </div>
               </div>
 
               <div class="d-flex justify-space-between align-center mb-3">

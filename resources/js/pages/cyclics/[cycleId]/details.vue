@@ -412,7 +412,7 @@ const handleMobilePageChange = (newPage) => {
 
       <!-- Vista de Móvil (Cards) -->
       <div class="d-block d-md-none pa-2">
-        <VLinearProgress v-if="loading" indeterminate color="primary" class="mb-2" />
+        <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-2" />
         
         <div v-if="products.length === 0 && !loading" class="text-center py-8 text-disabled text-sm">
           No se encontraron registros de conteo.

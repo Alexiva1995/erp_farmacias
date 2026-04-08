@@ -8,8 +8,10 @@ use Illuminate\Support\Collection;
 
 class IaAssistantReportService
 {
-    public function __construct(protected \App\Contracts\Product $productRepository)
-    {
+    public function __construct(
+        protected \App\Contracts\Product $productRepository,
+        protected \App\Contracts\ProductSupplier $productSupplierRepository
+    ) {
     }
 
     /**
@@ -18,7 +20,7 @@ class IaAssistantReportService
     public function getFilteredReportWithPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_filtracion'] ?? 'average';
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
         if ($perPage <= 0) $perPage = 25;
@@ -66,6 +68,34 @@ class IaAssistantReportService
         // 5. Hidratar tendencia de ventas (Últimos 6 meses)
         $this->hydrateSalesTrend($procesado);
 
+        // 5.1 Hidratar proveedores si se solicita
+        if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+            
+            // Asegurar que los índices sean secuenciales para el mapeo
+            $procesado = $procesado->values();
+            
+            // Reutilizamos la lógica masiva existente
+            $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
+            $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
+            $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
+            
+            // Mapear de vuelta a los productos (O(N) ya que las listas están sincronizadas por orden)
+            foreach ($procesado as $index => $producto) {
+                $supplierData = $itemsWithSuppliers[$index] ?? null;
+                if ($supplierData) {
+                    $bestSupplier = $supplierData['supplier'] ?? null;
+                    if ($bestSupplier && isset($supplierData['productSupplier'])) {
+                        // Usar setAttribute para asegurar que se incluya en el JSON
+                        $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
+                    }
+                    $producto->setAttribute('best_supplier', $bestSupplier);
+                    $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
+                    $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
+                }
+            }
+        }
+
         // 6. Devolver paginador manual
         return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
             'path' => request()->url(),
@@ -79,7 +109,7 @@ class IaAssistantReportService
     public function getGroupedReportWithPaginate(array $filtros): array
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_filtracion'] ?? 'average';
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
         if ($perPage <= 0) $perPage = 25;
@@ -131,6 +161,32 @@ class IaAssistantReportService
 
             $this->hydrateSalesTrend($procesado);
 
+            // Hidratar proveedores si se solicita
+            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+                
+                // Asegurar que los índices sean secuenciales para el mapeo
+                $procesado = $procesado->values();
+                
+                $eloquentGroupCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
+                $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentGroupCollection, $conDescuento);
+                $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
+                
+                foreach ($procesado as $index => $producto) {
+                    $supplierData = $itemsWithSuppliers[$index] ?? null;
+                    if ($supplierData) {
+                        $bestSupplier = $supplierData['supplier'] ?? null;
+                        if ($bestSupplier && isset($supplierData['productSupplier'])) {
+                            // Usar setAttribute para asegurar que se incluya en el JSON
+                            $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
+                        }
+                        $producto->setAttribute('best_supplier', $bestSupplier);
+                        $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
+                        $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
+                    }
+                }
+            }
+
             // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
             $productosArray = json_decode(json_encode($procesado), true);
 
@@ -138,6 +194,9 @@ class IaAssistantReportService
                 'group_id'   => $groupId,
                 'group_name' => $grupoNombres[$groupId] ?? '',
                 'productos'  => array_values($productosArray),
+                'total_solicitar' => collect($productosArray)->sum(function($p) {
+                    return (float) ($p['solicitar'] ?? 0);
+                })
             ];
         }
 
@@ -162,15 +221,17 @@ class IaAssistantReportService
             'is_col' => $filtros['isColombian'] ?? null,
             'q' => $filtros['q'] ?? '',
             'stock' => $filtros['stock'] ?? 'fallas',
-            'tipo' => $filtros['tipo_de_filtracion'] ?? 'average',
+            'tipo' => $filtros['tipo_filtracion'] ?? 'average',
             'ws' => $filtros['without_supplier'] ?? false,
+            'sb' => $filtros['sortBy'] ?? '',
+            'ob' => $filtros['orderBy'] ?? '',
         ]));
 
         return Cache::remember($cacheKey, 600, function () use ($filtros, $porGrupo) {
             $filtrosLigero = $filtros;
             unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
             
-            $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
+            $tipo = $filtros['tipo_filtracion'] ?? 'average';
             
             return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
         });
@@ -192,7 +253,7 @@ class IaAssistantReportService
     public function getFilteredReportWithoutPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_de_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_filtracion'] ?? 'average';
         
         // Obtener los IDs filtrados (Fallas, etc.) para asegurar que el conteo coincida
         $allIds = $this->getFilteredIds($filtros, false);
@@ -320,8 +381,11 @@ class IaAssistantReportService
         $isPaginator = $resultados instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator;
         $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
 
+        // Hidratación masiva de AO para evitar N+1
+        $this->hydrateAutoOrderBulk($items);
+
         $items->transform(function ($item) use ($tipo) {
-            $item = $this->productRepository->calcularAOProduct($item);
+            // Ya no llamamos a calcularAOProduct individualmente
             
             // La demanda ponderada en reportes simples es el valor base (ventas o promedio)
             $item->demanda_ponderada = ($tipo === 'sales') 
@@ -329,7 +393,7 @@ class IaAssistantReportService
                 : ($item->promedio_calculado ?? 0);
 
             // La fórmula regular que venía en el controlador: solicitar = solicitar + AO
-            $item->solicitar = $item->solicitar + ($item->totalQuantityInAutoOrder ?? 0);
+            $item->solicitar = (float)($item->solicitar ?? 0) + (float)($item->totalQuantityInAutoOrder ?? 0);
             return $item;
         });
 
@@ -366,8 +430,11 @@ class IaAssistantReportService
         // En lugar de hacer $col->first() en memoria O(N) lo hacemos O(1)
         $ventasMap = collect($ventasDb)->keyBy('id');
 
+        // Hidratación masiva de AO para evitar N+1
+        $this->hydrateAutoOrderBulk($items);
+
         $items->transform(function ($item) use ($ventasMap) {
-            $item = $this->productRepository->calcularAOProduct($item);
+            // Ya no llamamos a calcularAOProduct individualmente
             
             // Buscar si tiene datos de venta en el mapa
             $itemVentas = $ventasMap->get($item->id);
@@ -393,20 +460,202 @@ class IaAssistantReportService
             }
 
             // Invertir el signo para el análisis visual (faltante => positivo)
-            $item->solicitar = -$resultado;
-            
-            // Redondear lógicamente: mantener el piso/techo según el signo original
-            $item->solicitar = $item->solicitar > 0 ? ceil($item->solicitar) : floor($item->solicitar);
-
+            $item->solicitar = $resultado;
             return $item;
         });
 
-        if ($isPaginator) {
-            $resultados->setCollection($items);
-            return $resultados;
-        }
-
         return $items;
     }
+
+    /**
+     * Obtiene TODO el reporte de productos a reponer clasificados por tipo de análisis.
+     * Diseñado para carga masiva inicial y paginación en el cliente.
+     */
+    public function getReplenishReportAll(array $filtros): array
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+
+        // 1. Obtener IDs base (fallas)
+        $allIds = $this->getFilteredIds($filtros, false);
+        if (empty($allIds)) {
+            return [
+                'increased' => [],
+                'decreased' => [],
+                'stable'    => [],
+                'no_supplier' => [],
+                'total'     => 0,
+                'totalFallasBrutas' => 0
+            ];
+        }
+
+        // 2. Hidratar productos
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $allIds;
+        $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'average';
+        
+        if ($tipoFiltracion === 'sales') {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
+        } else {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
+        }
+
+        $productos = new \Illuminate\Database\Eloquent\Collection($productos);
+        
+        // El repositorio ya tiene 'solicitar' calculado en el SELECT base.
+        // Como para el repositorio (fallas) 'solicitar' es positivo y el servicio de proveedores espera negativo para reponer, lo invertimos una vez.
+        $productos->each(function($p) {
+            $p->solicitar = -(float)($p->solicitar ?? 0);
+        });
+
+        $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
+        $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
+
+        // 4. Clasificar y ordenar
+        $coleccion = collect($itemsReponer);
+        
+        // Antes de clasificar, invertimos de nuevo para el frontend: faltante => positivo
+        $coleccion->each(function($item) {
+            $item['product']->solicitar = -$item['product']->solicitar;
+            // Redondear lógicamente: mantener el piso/techo según el signo original (que ahora es positivo)
+            $item['product']->solicitar = $item['product']->solicitar > 0 ? ceil($item['product']->solicitar) : floor($item['product']->solicitar);
+            // Sincronizar campo raíz
+            $item['solicitar'] = $item['product']->solicitar;
+        });
+
+        $increased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === true);
+        $decreased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === false);
+        $stable    = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === null);
+
+        // Identificar productos sin proveedor
+        $idsConProveedor = $coleccion->pluck('product.id')->unique()->toArray();
+        $idsSinProveedor = array_diff($allIds, $idsConProveedor);
+        
+        $productosSinProveedor = [];
+        if (!empty($idsSinProveedor)) {
+             $filtrosSinProveedor = $filtros;
+             $filtrosSinProveedor['ids_in'] = array_values($idsSinProveedor);
+             if ($tipoFiltracion === 'sales') {
+                 $productosSinProveedor = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosSinProveedor);
+             } else {
+                 $productosSinProveedor = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosSinProveedor);
+             }
+             
+             // Invertir el signo para el frontend (ya que el repo lo devuelve positivo para falta)
+             // No necesitamos procesarlos más porque el usuario ya vio estos números en la vista anterior
+        }
+
+        return [
+            'increased' => $this->orderByDiscountCollection($increased, $conDescuento)->values()->all(),
+            'decreased' => $this->orderByDiscountCollection($decreased, $conDescuento)->values()->all(),
+            'stable'    => $this->orderByDiscountCollection($stable, $conDescuento)->values()->all(),
+            'no_supplier' => $productosSinProveedor,
+            'total'     => $coleccion->count(),
+            'totalFallasBrutas' => count($allIds)
+        ];
+    }
+
+    /**
+     * Obtiene el reporte de productos a reponer (con proveedores) de forma paginada y filtrada por tipo.
+     */
+    public function getReplenishReportPaginated(array $filtros)
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $tipoAnalisis = $filtros['tipo_analisis'] ?? 'all'; // increased, decreased, stable, all
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 20);
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+
+        // Reutilizamos la lógica de filtrado inicial
+        $allIds = $this->getFilteredIds($filtros, false);
+        
+        if (empty($allIds)) {
+            return new LengthAwarePaginator([], 0, $perPage, $page);
+        }
+
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $allIds;
+        
+        $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'average';
+        if ($tipoFiltracion === 'sales') {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
+        } else {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
+        }
+
+        $productos = new \Illuminate\Database\Eloquent\Collection($productos);
+        $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
+        $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
+
+        $coleccionFinal = collect($itemsReponer);
+
+        if ($tipoAnalisis !== 'all') {
+            $coleccionFinal = $coleccionFinal->filter(function ($item) use ($tipoAnalisis) {
+                $increase = $item['increase'] ?? null;
+                if ($tipoAnalisis === 'increased') return $increase === true;
+                if ($tipoAnalisis === 'decreased') return $increase === false;
+                if ($tipoAnalisis === 'stable') return $increase === null;
+                return true;
+            });
+        }
+
+        $itemsOrdenados = $this->orderByDiscountCollection($coleccionFinal, $conDescuento);
+
+        $total = $itemsOrdenados->count();
+        $offset = ($page - 1) * $perPage;
+        $itemsPagina = $itemsOrdenados->slice($offset, $perPage)->values();
+
+        return new LengthAwarePaginator($itemsPagina, $total, $perPage, $page, [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]);
+    }
+
+    /**
+     * Hidrata masivamente las cantidades en Auto Order (AO) para evitar N+1 queries.
+     */
+    private function hydrateAutoOrderBulk($products): void
+    {
+        $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
+        if ($items->isEmpty()) return;
+
+        $productIds = $items->pluck('id')->toArray();
+
+        // Una sola consulta SQL para obtener todos los totales de AO
+        $aoData = \Illuminate\Support\Facades\DB::table('auto_order_details')
+            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+            ->select('product_suppliers.product_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total'))
+            ->whereIn('product_suppliers.product_id', $productIds)
+            ->groupBy('product_suppliers.product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $items->each(function($p) use ($aoData) {
+            $p->totalQuantityInAutoOrder = (float) ($aoData->get($p->id)->total ?? 0);
+        });
+    }
+
+    private function orderByDiscountCollection($listaProductos, $conDescuento): Collection
+    {
+        $useDiscount = $conDescuento === "true";
+
+        return $listaProductos->sortByDesc(function ($item) use ($useDiscount) {
+            $producto = $item['product'] ?? null;
+            $oferta = $item['productSupplier'] ?? null;
+            
+            if (!$producto || !$oferta) return -9999;
+
+            $precioBase = (float) ($producto->unit_cost ?? 0);
+            
+            // Usar unit_cost_usd o unit_cost_usd_with_discount según preferencia
+            $precioOferta = (float) ($useDiscount 
+                ? ($oferta->unit_cost_usd_with_discount ?? $oferta->unit_cost_usd ?? 0)
+                : ($oferta->unit_cost_usd ?? 0));
+            
+            if ($precioBase <= 0) return -9999;
+            return (($precioBase - $precioOferta) / $precioBase) * 100;
+        });
+    }
+
 }
 

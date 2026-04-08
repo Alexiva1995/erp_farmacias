@@ -204,6 +204,20 @@ class ProductActionService
         return $product;
     }
 
+    /**
+     * Marca un producto para ser ignorado en las sugerencias por un tiempo determinado.
+     *
+     * @param Product $product
+     * @param int $days
+     * @return Product
+     */
+    public function ignoreProduct(Product $product, int $days = 7): Product
+    {
+        $product->ignore_until = now()->addDays($days);
+        $product->save();
+        return $product;
+    }
+
     
     /**
      * Fusiona dos productos, actualizando todas las referencias del producto que se elimina

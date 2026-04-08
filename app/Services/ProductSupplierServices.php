@@ -35,7 +35,7 @@ class ProductSupplierServices implements ProductSupplier
         }
 
         $resta = $supplierPrice - $price;
-        $resultado = $resta / $price;
+        $resultado = ($resta / $price) * 100;
         return $resultado;
     }
 
@@ -62,44 +62,8 @@ class ProductSupplierServices implements ProductSupplier
 
     public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array
     {
-        $respuesta = [];
-        for ($index = 0; $index < count($products); $index++) {
-
-            $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index], $conDescuento);
-            $products[$index]->ofertas = $ofertas;
-
-            // Usar una variable temporal en lugar de modificar el original
-            // Se usa floor porque solicitar es negativo (-0.1 -> -1.0)
-            $solicitarTemporal = floor((float) $products[$index]->solicitar);
-
-            if ((int) $solicitarTemporal < 0) {
-                for ($index2 = 0; $index2 < count($ofertas); $index2++) {
-                    $oferta = $ofertas[$index2];
-
-                    if ($oferta->quantity != null && $oferta->quantity > 0) {
-                        $suma = null;
-
-                        if ((int) $solicitarTemporal >= 0) {
-                            $suma = $ofertas[$index2]->quantity - (int) $solicitarTemporal;
-                        } else {
-                            $suma = (int) $solicitarTemporal + $ofertas[$index2]->quantity;
-                        }
-
-                        if ($suma < 0) {
-                            $solicitarTemporal = $suma; // Modifica solo la variable temporal
-                            $reponer = $ofertas[$index2]->quantity;
-                            $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
-                        } else if ($suma >= 0) {
-                            $reponer = abs((int) $solicitarTemporal);
-                            $solicitarTemporal = 0; // Modifica solo la variable temporal
-                            $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return $respuesta;
+        // Delegamos al repositorio que ya tiene la lógica masiva optimizada y sin restricciones de 'solicitar'
+        return $this->productSupplierRepository->getSupplierToReplenishTheProducts($products, $conDescuento);
     }
 
     public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array
@@ -171,28 +135,31 @@ class ProductSupplierServices implements ProductSupplier
 
             $replenishTheProduct = $replenishTheProducts[$index];
             $unitCostProductSupplier = 0;
-            if ($conDescuento == "true") {
-                if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
-                    $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd);
-                    $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
-                }
-            } else {
-                if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
-                    $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
-                    $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
+
+            if ($replenishTheProduct["productSupplier"]) {
+                if ($conDescuento == "true") {
+                    if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
+                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
+                        $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
+                    }
+                } else {
+                    if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
+                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd);
+                        $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
+                    }
                 }
             }
 
 
             // si el prducto tiene un rango de precion entre el 0 o 4 manejamos un 20%
             if ($unitCostProductSupplier > 0 && $unitCostProductSupplier <= 4) {
-                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 0.20);
+                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 20);
                 // $replenishTheProduct["purchasingOpportunity"] = $this->checkPurchaseOpportunity($replenishTheProduct["percentageIncrease"], 0);
                 $replenishTheProduct["tolerance"] = 20;
             }
             // si el producto tiene un precio mayor a 4 manejamos un 10%
             else if ($unitCostProductSupplier > 4) {
-                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 0.10);
+                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 10);
                 $replenishTheProduct["tolerance"] = 10;
             }
 
