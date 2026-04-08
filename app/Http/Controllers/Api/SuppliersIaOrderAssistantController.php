@@ -183,6 +183,11 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function getReplenishPagination(Request $request): JsonResponse
     {
+        if ($request->boolean('all')) {
+            $data = $this->iaAssistantReportService->getReplenishReportAll($request->all());
+            return ApiResponse::success($data, "ok", 200);
+        }
+
         $paginacion = $this->iaAssistantReportService->getReplenishReportPaginated($request->all());
         return ApiResponse::success($paginacion, "ok", 200);
     }

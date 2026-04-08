@@ -408,12 +408,59 @@ class IaAssistantReportService
             return $item;
         });
 
-        if ($isPaginator) {
-            $resultados->setCollection($items);
-            return $resultados;
+        return $items;
+    }
+
+    /**
+     * Obtiene TODO el reporte de productos a reponer clasificados por tipo de análisis.
+     * Diseñado para carga masiva inicial y paginación en el cliente.
+     */
+    public function getReplenishReportAll(array $filtros): array
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        // 1. Obtener IDs base (fallas)
+        $allIds = $this->getFilteredIds($filtros, false);
+        if (empty($allIds)) {
+            return [
+                'increased' => [],
+                'decreased' => [],
+                'stable'    => [],
+                'total'     => 0
+            ];
         }
 
-        return $items;
+        // 2. Hidratar productos
+        $filtrosHidratacion = $filtros;
+        $filtrosHidratacion['ids_in'] = $allIds;
+        $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'average';
+        
+        if ($tipoFiltracion === 'sales') {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
+        } else {
+            $productos = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
+        }
+
+        $productos = new \Illuminate\Database\Eloquent\Collection($productos);
+        
+        // 3. Obtener proveedores y tolerancia
+        $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
+        $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
+
+        // 4. Clasificar y ordenar
+        $coleccion = collect($itemsReponer);
+        
+        $increased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === true);
+        $decreased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === false);
+        $stable    = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === null);
+
+        return [
+            'increased' => $this->orderByDiscountCollection($increased)->values()->all(),
+            'decreased' => $this->orderByDiscountCollection($decreased)->values()->all(),
+            'stable'    => $this->orderByDiscountCollection($stable)->values()->all(),
+            'total'     => $coleccion->count()
+        ];
     }
 
     /**
@@ -427,14 +474,13 @@ class IaAssistantReportService
         $perPage = (int) ($filtros['itemsPerPage'] ?? 20);
         $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // 1. Obtener TODOS los productos que coinciden con los filtros base (Fallas en el asistente)
+        // Reutilizamos la lógica de filtrado inicial
         $allIds = $this->getFilteredIds($filtros, false);
         
         if (empty($allIds)) {
             return new LengthAwarePaginator([], 0, $perPage, $page);
         }
 
-        // 2. Hidratar todos estos productos (necesitamos procesarlos todos para saber quién es 'increased' etc.)
         $filtrosHidratacion = $filtros;
         $filtrosHidratacion['ids_in'] = $allIds;
         
@@ -446,12 +492,9 @@ class IaAssistantReportService
         }
 
         $productos = new \Illuminate\Database\Eloquent\Collection($productos);
-        
-        // 3. Obtener mejores proveedores y chequear tolerancia (Lógica core de reponer)
         $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
         $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
 
-        // 4. Filtrar por tipo de análisis (increased, decreased, stable)
         $coleccionFinal = collect($itemsReponer);
 
         if ($tipoAnalisis !== 'all') {
@@ -464,10 +507,8 @@ class IaAssistantReportService
             });
         }
 
-        // 5. Ordenar por descuento como es habitual
         $itemsOrdenados = $this->orderByDiscountCollection($coleccionFinal);
 
-        // 6. Paginar en memoria
         $total = $itemsOrdenados->count();
         $offset = ($page - 1) * $perPage;
         $itemsPagina = $itemsOrdenados->slice($offset, $perPage)->values();

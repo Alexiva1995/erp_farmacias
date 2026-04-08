@@ -96,10 +96,8 @@ async function fetchSoloOportunidad(page = 1) {
   return respuestaApi.data.data;
 }
 
-async function handleReplenishPageChange(newPage, type) {
+async function fetchFullReplenishData() {
   module.loadingApp = true;
-  module.pagination[type].page = newPage;
-
   let data = {
     "con_descuento": con_descuento.value,
     "tipo_filtracion": tipo_de_filtracion.value,
@@ -109,23 +107,24 @@ async function handleReplenishPageChange(newPage, type) {
     "groups": groups.value,
     "laboratoryId": laboratoryId.value,
     "q": q.value,
-    "page": newPage,
-    "itemsPerPage": module.pagination[type].itemsPerPage,
-    "tipo_analisis": type, // increased, decreased, stable
-    "excludedLaboratories": module.excludedLaboratories,
-    "excludeColombian": module.excludeColombian,
+    "all": true,
   }
 
   try {
     const response = await axios.post(`/suppliers-ia-order-assistant/generate-order/products-replenish-page`, data);
     if (response.data.data) {
-        const items = response.data.data.data.map(hydrateItem);
-        module.listasPaginadas[type] = items;
-        module.pagination[type].total = response.data.data.total;
+        const d = response.data.data;
+        module.listasPaginadas.increased = (d.increased || []).map(hydrateItem);
+        module.listasPaginadas.decreased = (d.decreased || []).map(hydrateItem);
+        module.listasPaginadas.stable = (d.stable || []).map(hydrateItem);
+        
+        module.pagination.increased.total = module.listasPaginadas.increased.length;
+        module.pagination.decreased.total = module.listasPaginadas.decreased.length;
+        module.pagination.stable.total = module.listasPaginadas.stable.length;
     }
   } catch (error) {
-    console.error("Error cargando pagina de reposicion", error);
-    toast.error("Error al cargar la página");
+    console.error("Error cargando data completa de reposicion", error);
+    toast.error("Error al cargar los datos del asistente");
   } finally {
     module.loadingApp = false;
   }
@@ -201,16 +200,6 @@ function extractLaboratories(data) {
 function procesarRespuesta(data) {
   extractLaboratories(data.data);
 
-  // Carga inicial de las 3 pestañas (primera página)
-  // Nota: generateListProductoToRequest ahora devuelve de forma simplificada o podemos disparar las 3 queries
-  if(data.data.productos_a_reponer) {
-      // Si el backend mandó algo inicial, lo hidratamos
-      const hidratados = data.data.productos_a_reponer.map(hydrateItem);
-      // Por defecto los ponemos en la pestaña actual o inicializamos todos
-      // Para simplificar, refrescaremos las 3 pestañas la primera vez si no vienen separadas
-      module.productoFallas = hidratados;
-  }
-
   if(data.data.productosFallas) {
       module.productosSinReponer = [...data.data.productosFallas];
   }
@@ -225,10 +214,8 @@ function procesarRespuesta(data) {
   module.totalFallas = data.data.totalFallas || 0;
   module.dataProductos = { ...data.data };
 
-  // Disparar carga de las 3 pestañas para tener paginación independiente desde el inicio
-  handleReplenishPageChange(1, 'increased');
-  handleReplenishPageChange(1, 'decreased');
-  handleReplenishPageChange(1, 'stable');
+  // Carga total de las 3 pestañas de una sola vez
+  fetchFullReplenishData();
 }
 
 onMounted(async () => {
@@ -300,10 +287,6 @@ const FALLAS_FILTRADAS = computed(() => {
     return true;
   });
 });
-
-const PAGE_COUNT_INCREASED = computed(() => Math.ceil(module.pagination.increased.total / module.pagination.increased.itemsPerPage));
-const PAGE_COUNT_DECREASED = computed(() => Math.ceil(module.pagination.decreased.total / module.pagination.decreased.itemsPerPage));
-const PAGE_COUNT_STABLE = computed(() => Math.ceil(module.pagination.stable.total / module.pagination.stable.itemsPerPage));
 
 const OPORTUNIDAD_FILTRADA = computed(() => {
   if (!module.productosOportunidadUnica?.data) return { data: [], current_page: 1, last_page: 1, total: 0 };
@@ -741,16 +724,6 @@ function eliminarItemOrden(payload){
           </div>
         </template>
         <ProductsExceededToleranceTable :list="FALLAS_FILTRADAS" />
-        <VDivider />
-        <div class="pa-4 d-flex justify-center">
-          <VPagination
-            v-model="module.pagination.increased.page"
-            :length="PAGE_COUNT_INCREASED"
-            :total-visible="7"
-            density="comfortable"
-            @update:model-value="(val) => handleReplenishPageChange(val, 'increased')"
-          />
-        </div>
       </VCard>
       <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 2">
         <template #title>
@@ -768,16 +741,6 @@ function eliminarItemOrden(payload){
           </div>
         </template>
         <ProductsExceededDidNotToleranceTable :list="FALLAS_FILTRADAS" />
-        <VDivider />
-        <div class="pa-4 d-flex justify-center">
-          <VPagination
-            v-model="module.pagination.decreased.page"
-            :length="PAGE_COUNT_DECREASED"
-            :total-visible="7"
-            density="comfortable"
-            @update:model-value="(val) => handleReplenishPageChange(val, 'decreased')"
-          />
-        </div>
       </VCard>
       <VCard class="rounded-lg border shadow-sm overflow-hidden" v-if="indexNavegacion == 3">
         <template #title>
@@ -795,16 +758,6 @@ function eliminarItemOrden(payload){
           </div>
         </template>
         <ProductsStablePriceTable :list="FALLAS_FILTRADAS" />
-        <VDivider />
-        <div class="pa-4 d-flex justify-center">
-          <VPagination
-            v-model="module.pagination.stable.page"
-            :length="PAGE_COUNT_STABLE"
-            :total-visible="7"
-            density="comfortable"
-            @update:model-value="(val) => handleReplenishPageChange(val, 'stable')"
-          />
-        </div>
       </VCard>
 
     <div v-if="indexNavegacion == 4">
