@@ -557,6 +557,30 @@ class IaAssistantReportService
         ]);
     }
 
+    /**
+     * Hidrata masivamente las cantidades en Auto Order (AO) para evitar N+1 queries.
+     */
+    private function hydrateAutoOrderBulk($products): void
+    {
+        $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
+        if ($items->isEmpty()) return;
+
+        $productIds = $items->pluck('id')->toArray();
+
+        // Una sola consulta SQL para obtener todos los totales de AO
+        $aoData = \Illuminate\Support\Facades\DB::table('auto_order_details')
+            ->join('product_suppliers', 'auto_order_details.product_supplier_id', '=', 'product_suppliers.id')
+            ->select('product_suppliers.product_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total'))
+            ->whereIn('product_suppliers.product_id', $productIds)
+            ->groupBy('product_suppliers.product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $items->each(function($p) use ($aoData) {
+            $p->totalQuantityInAutoOrder = (float) ($aoData->get($p->id)->total ?? 0);
+        });
+    }
+
     private function orderByDiscountCollection($listaProductos, $conDescuento): Collection
     {
         $useDiscount = $conDescuento === "true";
