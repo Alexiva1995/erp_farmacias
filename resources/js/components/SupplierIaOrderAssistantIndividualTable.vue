@@ -243,11 +243,12 @@ function rowClass(item) {
           </template>
 
           <template #item.trend="{ item }">
-            <div style="block-size: 25px; inline-size: 80px;" v-intersect="() => markChartAsReady(item.id)">
+            <div style="block-size: 25px; inline-size: 80px; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
               <VueApexCharts
                 v-if="readyCharts.has(item.id)"
                 type="area"
                 height="25"
+                width="100%"
                 :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
                 :series="getSeries(item)"
               />
@@ -603,4 +604,4 @@ function rowClass(item) {
 .legend-needs { background: rgba(40, 199, 111, 40%); }
 .legend-excess { background: rgba(234, 84, 85, 40%); }
 </style>
-鼓
+
