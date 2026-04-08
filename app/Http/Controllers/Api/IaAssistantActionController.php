@@ -88,7 +88,7 @@ class IaAssistantActionController extends Controller
                     'product_id' => $productId,
                 ],
                 [
-                    'product_supplier_id' => $productSupplierId,
+                    'product_suppliers_id' => $productSupplierId,
                     'quantity' => DB::raw("quantity + $quantity"),
                 ]
             );
