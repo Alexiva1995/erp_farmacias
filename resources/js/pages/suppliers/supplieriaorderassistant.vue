@@ -372,10 +372,10 @@ onMounted(async () => {
               <div class="bg-white bg-opacity-10 pa-2 rounded-lg mr-4 border border-white border-opacity-10">
                 <VIcon icon="tabler-arrows-exchange" color="white" size="24" />
               </div>
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column overflow-hidden">
                 <span class="text-h6 font-weight-black text-white leading-tight mb-0">Comparador de Proveedores</span>
-                <span class="text-caption text-white text-opacity-80">
-                  Buscando alternativas para: <span class="bg-white bg-opacity-10 px-1 rounded">{{ comparatorProduct?.name }}</span>
+                <span class="text-caption text-white text-opacity-80 d-flex align-center">
+                  Buscando para: <span class="bg-white bg-opacity-10 px-2 py-0.5 rounded ml-1 text-truncate font-weight-bold" style="max-inline-size: 500px; font-size: 0.7rem;">{{ comparatorProduct?.name }}</span>
                 </span>
               </div>
             </div>

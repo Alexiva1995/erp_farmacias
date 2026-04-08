@@ -72,28 +72,30 @@ const onActionClick = async (item, action) => {
       return;
     }
     
-    // Remoción optimista
-    emit('remove-item', item.id);
-    
+    isProcessing.value[item.id] = 'adding';
     try {
       await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {
         product_id: item.id,
         quantity: quantity,
         product_supplier_id: item.best_supplier.product_suppliers_id
       });
+      emit('remove-item', item.id);
     } catch (error) {
        console.error("Error adding to order:", error);
+    } finally {
+      delete isProcessing.value[item.id];
     }
   }
 
   if (action === 'ignore') {
-    // Remoción optimista
-    emit('remove-item', item.id);
-    
+    isProcessing.value[item.id] = 'ignoring';
     try {
       await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      emit('remove-item', item.id);
     } catch (error) {
        console.error("Error ignoring product:", error);
+    } finally {
+      delete isProcessing.value[item.id];
     }
   }
 };

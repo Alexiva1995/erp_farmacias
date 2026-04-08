@@ -120,6 +120,14 @@ const getPriceDiff = (item) => {
   return { diff: 0, label: "Precio igual", color: "warning", icon: 'tabler-minus' };
 };
 
+const isProcessing = ref({});
+
+const onActionClick = (item) => {
+  const qty = getQty(item.id);
+  isProcessing.value[item.id] = true;
+  emit('send-product', { id: item.id, quantity: qty });
+};
+
 const allHeaders = [
   { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "350px" },
   { title: "COSTO", key: "unit_cost_usd", sortable: true, width: "80px" },
@@ -436,7 +444,8 @@ const headers = computed(() =>
                 color="primary"
                 size="small"
                 class="rounded-circle shadow-sm"
-                @click="emit('send-product', { id: item.id, quantity: getQty(item.id) })"
+                :loading="isProcessing[item.id]"
+                @click="onActionClick(item)"
               />
             </div>
           </template>
