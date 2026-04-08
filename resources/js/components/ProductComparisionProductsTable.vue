@@ -105,12 +105,14 @@ const getPriceDiff = (item) => {
   if (!currentCost || currentCost === 0) return null;
 
   const supplierCost = parseFloat(
-    props.enableDiscountCol ? item.final_cost_usd : item.unit_cost_usd
+    (props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0) 
+      ? item.final_cost_usd 
+      : item.unit_cost_usd
   );
-  if (!supplierCost) return null;
+  if (!supplierCost || isNaN(supplierCost)) return null;
 
   const diff = ((currentCost - supplierCost) / currentCost) * 100;
-  const absDiff = Math.abs(diff).toFixed(0);
+  const absDiff = Math.abs(diff).toFixed(1);
 
   if (diff > 0.5) {
     return { diff, label: `${absDiff}% más barato`, color: "success", icon: 'tabler-trending-down' };
@@ -379,7 +381,7 @@ const headers = computed(() =>
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2" style="white-space: normal !important; min-inline-size: 175px;">
+            <div class="d-flex flex-column py-2" style="min-inline-size: 175px; white-space: normal !important;">
                 <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="item.name">
                   {{ item.name.toUpperCase() }}
                 </span>
@@ -419,11 +421,13 @@ const headers = computed(() =>
           </template>
 
           <template #item.unit_cost_usd="{ item }">
-            <span class="text-sm font-weight-bold" :class="props.enableDiscountCol ? 'text-disabled' : 'text-high-emphasis'">
-              ${{ formatUsd(item.unit_cost_usd) }}
-            </span>
-            <div v-if="props.enableDiscountCol" class="text-super-xs font-weight-black text-primary">
-              ${{ formatUsd(item.final_cost_usd) }}
+            <div class="d-flex flex-column align-end">
+              <span class="text-sm font-weight-bold" :class="(props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0) ? 'text-disabled text-xs' : 'text-high-emphasis'">
+                ${{ formatUsd(item.unit_cost_usd) }}
+              </span>
+              <div v-if="props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0 && parseFloat(item.final_cost_usd) !== parseFloat(item.unit_cost_usd)" class="text-xs font-weight-black text-primary">
+                ${{ formatUsd(item.final_cost_usd) }}
+              </div>
             </div>
           </template>
 

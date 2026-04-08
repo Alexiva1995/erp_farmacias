@@ -32,12 +32,11 @@ const lapso_de_tiempo = ref("1 month");
 const stock = ref("all");
 const con_descuento = ref(true);
 const isColombian = ref(false);
+const searchQuery = ref("");
 const withSuppliers = ref(false);
-const showTrend = ref(true);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
-  showTrend.value = true;
   con_descuento.value = true;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
@@ -322,7 +321,6 @@ onMounted(async () => {
         v-model:stock="stock"
         v-model:isColombian="isColombian"
         v-model:searchQuery="searchQuery"
-        v-model:showTrend="showTrend"
         :groups="groups"
         :laboratories="laboratories"
         :tipo_de_filtracion="tipo_de_filtracion"
@@ -347,7 +345,6 @@ onMounted(async () => {
           :last-page="gruposData.last_page"
           :loading="loading"
           :with-suppliers="withSuppliers"
-          :show-trend="showTrend"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
         />
@@ -360,7 +357,6 @@ onMounted(async () => {
           :items-per-page="itemsPerPage"
           :page="page"
           :with-suppliers="withSuppliers"
-          :show-trend="showTrend"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
@@ -382,7 +378,7 @@ onMounted(async () => {
               <div class="d-flex flex-column overflow-hidden">
                 <span class="text-h6 font-weight-black text-white leading-tight mb-0">Comparador de Proveedores</span>
                 <span class="text-caption text-white text-opacity-80 d-flex align-center">
-                  Buscando para: <span class="bg-white bg-opacity-10 px-2 py-0.5 rounded ml-1 text-truncate font-weight-bold" style="max-inline-size: 500px; font-size: 0.7rem;">{{ comparatorProduct?.name }}</span>
+                  Buscando para: <span class="bg-white text-primary px-3 py-1 rounded-pill ml-2 text-truncate font-weight-black" style="box-shadow: 0 2px 4px rgba(0, 0, 0, 10%); font-size: 0.75rem; max-inline-size: 600px;">{{ comparatorProduct?.name }}</span>
                 </span>
               </div>
             </div>
@@ -430,7 +426,10 @@ onMounted(async () => {
   background-color: rgba(var(--v-border-color), 0.03);
 }
 
-.hover-rotate:hover { transform: rotate(90deg); transition: transform 0.3s ease; }
+.hover-rotate:hover {
+  transform: rotate(90deg);
+  transition: transform 0.3s ease;
+}
 
 :deep(.v-card) {
   transition: all 0.3s ease;
@@ -441,7 +440,14 @@ onMounted(async () => {
 }
 
 @keyframes slide-up {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
+鼓
