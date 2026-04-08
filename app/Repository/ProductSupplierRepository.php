@@ -19,9 +19,9 @@ class ProductSupplierRepository
             ->where("product_id", "=", $product_id);
 
         if ($conDescuento == "true") {
-            $consulta->orderBy("unit_cost_usd", "ASC");
-        } else {
             $consulta->orderBy("unit_cost_usd_with_discount", "ASC");
+        } else {
+            $consulta->orderBy("unit_cost_usd", "ASC");
         }
 
         return $consulta->get();
