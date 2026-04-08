@@ -35,7 +35,7 @@ class ProductSupplierServices implements ProductSupplier
         }
 
         $resta = $supplierPrice - $price;
-        $resultado = $resta / $price;
+        $resultado = ($resta / $price) * 100;
         return $resultado;
     }
 
@@ -153,13 +153,13 @@ class ProductSupplierServices implements ProductSupplier
 
             // si el prducto tiene un rango de precion entre el 0 o 4 manejamos un 20%
             if ($unitCostProductSupplier > 0 && $unitCostProductSupplier <= 4) {
-                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 0.20);
+                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 20);
                 // $replenishTheProduct["purchasingOpportunity"] = $this->checkPurchaseOpportunity($replenishTheProduct["percentageIncrease"], 0);
                 $replenishTheProduct["tolerance"] = 20;
             }
             // si el producto tiene un precio mayor a 4 manejamos un 10%
             else if ($unitCostProductSupplier > 4) {
-                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 0.10);
+                $replenishTheProduct["increase"] = $this->checkIfTheProductHasIncreasedInPrice($replenishTheProduct["percentageIncrease"], 10);
                 $replenishTheProduct["tolerance"] = 10;
             }
 
