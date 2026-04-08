@@ -543,6 +543,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/products-to-request", [SuppliersIaOrderAssistantController::class, "generateListProductoToRequest"]);
             Route::post("/products-without-supplier", [SuppliersIaOrderAssistantController::class, "consultarProductosSinProveedor"]);
             Route::post('/unique-opportunity-page', [SuppliersIaOrderAssistantController::class, 'getUniqueOpportunityPagination']);
+            Route::post("/products-replenish-page", [SuppliersIaOrderAssistantController::class, "getReplenishPagination"]);
         });
     });
 
