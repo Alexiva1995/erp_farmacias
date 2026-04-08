@@ -64,7 +64,14 @@ class IaAssistantActionController extends Controller
             }
 
             if (!$ps) {
-                return response()->json(['message' => 'No se pudo determinar el proveedor para este producto.'], 422);
+                return response()->json([
+                    'message' => 'No se pudo determinar el proveedor para este producto.',
+                    'debug' => [
+                        'product_id' => $productId,
+                        'supplier_id' => $supplierId,
+                        'product_supplier_id' => $productSupplierId
+                    ]
+                ], 422);
             }
 
             $supplierId = $ps->supplier_id;

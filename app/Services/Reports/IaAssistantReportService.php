@@ -86,8 +86,8 @@ class IaAssistantReportService
                 if ($supplierData) {
                     $bestSupplier = $supplierData['supplier'] ?? null;
                     if ($bestSupplier && isset($supplierData['productSupplier'])) {
-                        // Inyectar el ID del enlace para el frontend
-                        $bestSupplier->product_suppliers_id = $supplierData['productSupplier']->id ?? null;
+                        // Usar setAttribute para asegurar que se incluya en el JSON
+                        $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
                     }
                     $producto->setAttribute('best_supplier', $bestSupplier);
                     $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
@@ -177,8 +177,8 @@ class IaAssistantReportService
                     if ($supplierData) {
                         $bestSupplier = $supplierData['supplier'] ?? null;
                         if ($bestSupplier && isset($supplierData['productSupplier'])) {
-                            // Inyectar el ID del enlace para el frontend
-                            $bestSupplier->product_suppliers_id = $supplierData['productSupplier']->id ?? null;
+                            // Usar setAttribute para asegurar que se incluya en el JSON
+                            $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
                         }
                         $producto->setAttribute('best_supplier', $bestSupplier);
                         $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
