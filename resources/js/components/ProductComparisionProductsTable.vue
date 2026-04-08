@@ -130,9 +130,9 @@ const onActionClick = (item) => {
 
 const allHeaders = [
   { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "175px" },
-  { title: "COSTO PROV.", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
-  { title: "FINAL PROV.", key: "final_cost_usd", sortable: true, width: "90px", align: 'end' },
-  { title: "AHORRO / DIF.", key: "price_diff", sortable: false, width: "130px", align: 'center' },
+  { title: "COSTO", key: "our_cost", sortable: false, width: "90px", align: 'end' },
+  { title: "COSTP", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
+  { title: "AHORRO", key: "price_diff", sortable: false, width: "110px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ];
 
@@ -381,32 +381,26 @@ const headers = computed(() =>
           <template #item.name="{ item }">
             <div class="d-flex flex-column py-2" style="white-space: normal !important; min-inline-size: 175px;">
                 <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="item.name">
-                  <a
-                    :href="'/inventory/traceability?q=' + item.id"
-                    target="_blank"
-                    class="text-decoration-none text-primary mr-1"
-                  >
-                    {{ item.id }}
-                  </a>
                   {{ item.name.toUpperCase() }}
                 </span>
                 
-                <div class="d-flex flex-column gap-0.5 text-super-xs">
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                  <span v-if="item.laboratory_name" class="text-primary uppercase">
+                    {{ item.laboratory_name.toUpperCase() }}
+                  </span>
+                  <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
                   <div class="d-flex align-center gap-1">
                     <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
-                    <span class="text-disabled truncate font-weight-medium">{{ item.supplier_name }}</span>
-                  </div>
-                  
-                  <div v-if="selectedProduct" class="d-flex align-center gap-1 mt-0.5 pt-0.5 border-t border-opacity-10">
-                    <span class="text-disabled">Nuestro Costo:</span>
-                    <span class="font-weight-bold text-high-emphasis">${{ parseFloat(selectedProduct.current_unit_cost ?? selectedProduct.unit_cost ?? 0).toFixed(2) }}</span>
-                  </div>
-                  
-                  <div class="text-primary font-weight-black uppercase truncate mt-0.5">
-                    {{ item.laboratory_name || 'SIN LABORATORIO' }}
+                    <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
                   </div>
                 </div>
             </div>
+          </template>
+
+          <template #item.our_cost>
+            <span v-if="selectedProduct" class="text-sm font-weight-medium text-disabled">
+              ${{ formatUsd(selectedProduct.current_unit_cost ?? selectedProduct.unit_cost ?? 0) }}
+            </span>
           </template>
 
           <template #item.price_diff="{ item }">
@@ -425,11 +419,12 @@ const headers = computed(() =>
           </template>
 
           <template #item.unit_cost_usd="{ item }">
-            <span class="text-sm font-weight-medium">${{ formatUsd(item.unit_cost_usd) }}</span>
-          </template>
-
-          <template #item.final_cost_usd="{ item }">
-            <span class="text-sm font-weight-bold text-primary">${{ formatUsd(item.final_cost_usd) }}</span>
+            <span class="text-sm font-weight-bold" :class="props.enableDiscountCol ? 'text-disabled' : 'text-high-emphasis'">
+              ${{ formatUsd(item.unit_cost_usd) }}
+            </span>
+            <div v-if="props.enableDiscountCol" class="text-super-xs font-weight-black text-primary">
+              ${{ formatUsd(item.final_cost_usd) }}
+            </div>
           </template>
 
           <template #item.actions="{ item }">
@@ -481,13 +476,14 @@ const headers = computed(() =>
                 <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1 leading-tight">
                   {{ item.name }}
                 </span>
-                <div class="d-flex flex-column text-super-xs gap-0.5">
+                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                  <span v-if="item.laboratory_name" class="text-primary uppercase">
+                    {{ item.laboratory_name.toUpperCase() }}
+                  </span>
+                  <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
                   <div class="d-flex align-center gap-1">
                     <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
-                    <span class="text-disabled font-weight-bold">{{ item.supplier_name }}</span>
-                  </div>
-                  <div class="text-primary font-weight-black uppercase">
-                    {{ item.laboratory_name || 'SIN LABORATORIO' }}
+                    <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
                   </div>
                 </div>
               </div>
