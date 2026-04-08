@@ -62,44 +62,8 @@ class ProductSupplierServices implements ProductSupplier
 
     public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array
     {
-        $respuesta = [];
-        for ($index = 0; $index < count($products); $index++) {
-
-            $ofertas = $this->consultSupplierByProductWithBetterPrice($products[$index], $conDescuento);
-            $products[$index]->ofertas = $ofertas;
-
-            // Usar una variable temporal en lugar de modificar el original
-            // Se usa floor porque solicitar es negativo (-0.1 -> -1.0)
-            $solicitarTemporal = floor((float) $products[$index]->solicitar);
-
-            if ((int) $solicitarTemporal < 0) {
-                for ($index2 = 0; $index2 < count($ofertas); $index2++) {
-                    $oferta = $ofertas[$index2];
-
-                    if ($oferta->quantity != null && $oferta->quantity > 0) {
-                        $suma = null;
-
-                        if ((int) $solicitarTemporal >= 0) {
-                            $suma = $ofertas[$index2]->quantity - (int) $solicitarTemporal;
-                        } else {
-                            $suma = (int) $solicitarTemporal + $ofertas[$index2]->quantity;
-                        }
-
-                        if ($suma < 0) {
-                            $solicitarTemporal = $suma; // Modifica solo la variable temporal
-                            $reponer = $ofertas[$index2]->quantity;
-                            $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
-                        } else if ($suma >= 0) {
-                            $reponer = abs((int) $solicitarTemporal);
-                            $solicitarTemporal = 0; // Modifica solo la variable temporal
-                            $respuesta[] = $this->supplierProductFormat($products[$index], $ofertas[$index2]->supplier, $oferta, $reponer);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return $respuesta;
+        // Delegamos al repositorio que ya tiene la lógica masiva optimizada y sin restricciones de 'solicitar'
+        return $this->productSupplierRepository->getSupplierToReplenishTheProducts($products, $conDescuento);
     }
 
     public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array
