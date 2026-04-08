@@ -72,6 +72,9 @@ class IaAssistantReportService
         if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
             
+            // Asegurar que los índices sean secuenciales para el mapeo
+            $procesado = $procesado->values();
+            
             // Reutilizamos la lógica masiva existente
             $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
             $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
@@ -156,6 +159,10 @@ class IaAssistantReportService
             // Hidratar proveedores si se solicita
             if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+                
+                // Asegurar que los índices sean secuenciales para el mapeo
+                $procesado = $procesado->values();
+                
                 $eloquentGroupCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
                 $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentGroupCollection, $conDescuento);
                 $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
