@@ -569,7 +569,7 @@ class IaAssistantReportService
 
         // Una sola consulta SQL para obtener todos los totales de AO
         $aoData = \Illuminate\Support\Facades\DB::table('auto_order_details')
-            ->join('product_suppliers', 'auto_order_details.product_supplier_id', '=', 'product_suppliers.id')
+            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
             ->select('product_suppliers.product_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total'))
             ->whereIn('product_suppliers.product_id', $productIds)
             ->groupBy('product_suppliers.product_id')
