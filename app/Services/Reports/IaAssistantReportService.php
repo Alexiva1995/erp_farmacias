@@ -327,8 +327,11 @@ class IaAssistantReportService
         $isPaginator = $resultados instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator;
         $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
 
+        // Hidratación masiva de AO para evitar N+1
+        $this->hydrateAutoOrderBulk($items);
+
         $items->transform(function ($item) use ($tipo) {
-            $item = $this->productRepository->calcularAOProduct($item);
+            // Ya no llamamos a calcularAOProduct individualmente
             
             // La demanda ponderada en reportes simples es el valor base (ventas o promedio)
             $item->demanda_ponderada = ($tipo === 'sales') 
@@ -336,7 +339,7 @@ class IaAssistantReportService
                 : ($item->promedio_calculado ?? 0);
 
             // La fórmula regular que venía en el controlador: solicitar = solicitar + AO
-            $item->solicitar = $item->solicitar + ($item->totalQuantityInAutoOrder ?? 0);
+            $item->solicitar = (float)($item->solicitar ?? 0) + (float)($item->totalQuantityInAutoOrder ?? 0);
             return $item;
         });
 
@@ -373,8 +376,11 @@ class IaAssistantReportService
         // En lugar de hacer $col->first() en memoria O(N) lo hacemos O(1)
         $ventasMap = collect($ventasDb)->keyBy('id');
 
+        // Hidratación masiva de AO para evitar N+1
+        $this->hydrateAutoOrderBulk($items);
+
         $items->transform(function ($item) use ($ventasMap) {
-            $item = $this->productRepository->calcularAOProduct($item);
+            // Ya no llamamos a calcularAOProduct individualmente
             
             // Buscar si tiene datos de venta en el mapa
             $itemVentas = $ventasMap->get($item->id);
@@ -442,14 +448,25 @@ class IaAssistantReportService
 
         $productos = new \Illuminate\Database\Eloquent\Collection($productos);
         
+        // --- PASO CRITICO: Calcular demanda (solicitar) ANTES de buscar proveedores ---
+        if ($tipoFiltracion === 'combinado') {
+            $productos = $this->processCombinedReport($productos, $filtros);
+        } else {
+            $productos = $this->processRegularReport($productos, $tipoFiltracion);
+        }
+        
         // 3. Obtener proveedores y tolerancia
+        // El servicio espera que solicitar sea NEGATIVO para procesar la falta, por lo que lo invertimos
+        // (nuestros procesadores devuelven positivo para falta, invertido arriba)
+        $productos->each(fn($p) => $p->solicitar = -$p->solicitar);
+
         $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
         $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
 
         // 4. Clasificar y ordenar
         $coleccion = collect($itemsReponer);
         
-        // Antes de clasificar, invertimos el signo para el frontend: faltante => positivo
+        // Antes de clasificar, invertimos de nuevo para el frontend: faltante => positivo
         $coleccion->each(function($item) {
             $item['product']->solicitar = -$item['product']->solicitar;
             // Redondear lógicamente: mantener el piso/techo según el signo original (que ahora es positivo)
@@ -569,6 +586,30 @@ class IaAssistantReportService
             
             if ($precioBase <= 0) return -9999;
             return (($precioBase - $precioOferta) / $precioBase) * 100;
+        });
+    }
+
+    /**
+     * Hidrata masivamente las cantidades en Auto Order (AO) para evitar N+1 queries.
+     */
+    private function hydrateAutoOrderBulk($products): void
+    {
+        $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
+        if ($items->isEmpty()) return;
+
+        $productIds = $items->pluck('id')->toArray();
+
+        // Una sola consulta SQL para obtener todos los totales de AO
+        $aoData = \Illuminate\Support\Facades\DB::table('auto_order_details')
+            ->join('product_suppliers', 'auto_order_details.product_supplier_id', '=', 'product_suppliers.id')
+            ->select('product_suppliers.product_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total'))
+            ->whereIn('product_suppliers.product_id', $productIds)
+            ->groupBy('product_suppliers.product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $items->each(function($p) use ($aoData) {
+            $p->totalQuantityInAutoOrder = (float) ($aoData->get($p->id)->total ?? 0);
         });
     }
 }
