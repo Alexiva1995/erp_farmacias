@@ -168,14 +168,12 @@ class SuppliersIaOrderAssistantController extends Controller
 
         // Para retrocompatibilidad y conteo inicial, traemos la lista completa pero ligera
         // Aunque el frontend ahora usará paginación, este endpoint puede devolver los totales por pestaña
-        $reporte = $this->iaAssistantReportService->getReplenishReportPaginated([...$filtros, 'itemsPerPage' => 9999]);
+        $allIds = $this->iaAssistantReportService->getFilteredIds($filtros, false);
         
         $respuesta = [
-            "productos_a_reponer" => [], // Se vacía para forzar uso de paginación o se deja la primera página?
-            // Mejor devolver la primera página para carga inicial rápida
             "productos_a_reponer" => $this->iaAssistantReportService->getReplenishReportPaginated([...$filtros, 'page' => 1, 'itemsPerPage' => 20])->items(),
-            "totalFallas" => $reporte->total(), // Este es el total de "Encontrados"
-            "productosFallas" => [], // Opcional si se necesita la lista completa de fallas brutas
+            "totalFallas" => count($allIds), 
+            "productosFallas" => [], 
         ];
 
         return ApiResponse::success($respuesta, "ok", 200);

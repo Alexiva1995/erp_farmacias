@@ -455,11 +455,33 @@ class IaAssistantReportService
         $decreased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === false);
         $stable    = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === null);
 
+        // Identificar productos sin proveedor
+        $idsConProveedor = $coleccion->pluck('product.id')->unique()->toArray();
+        $idsSinProveedor = array_diff($allIds, $idsConProveedor);
+        
+        $productosSinProveedor = [];
+        if (!empty($idsSinProveedor)) {
+             $filtrosSinProveedor = $filtros;
+             $filtrosSinProveedor['ids_in'] = array_values($idsSinProveedor);
+             if ($tipoFiltracion === 'sales') {
+                 $productosSinProveedor = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosSinProveedor);
+             } else {
+                 $productosSinProveedor = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosSinProveedor);
+             }
+             if ($tipoFiltracion === 'combinado') {
+                 $productosSinProveedor = $this->processCombinedReport($productosSinProveedor, $filtros);
+             } else {
+                 $productosSinProveedor = $this->processRegularReport($productosSinProveedor, $tipoFiltracion);
+             }
+        }
+
         return [
             'increased' => $this->orderByDiscountCollection($increased)->values()->all(),
             'decreased' => $this->orderByDiscountCollection($decreased)->values()->all(),
             'stable'    => $this->orderByDiscountCollection($stable)->values()->all(),
-            'total'     => $coleccion->count()
+            'no_supplier' => $productosSinProveedor,
+            'total'     => $coleccion->count(),
+            'totalFallasBrutas' => count($allIds)
         ];
     }
 

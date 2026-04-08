@@ -117,10 +117,15 @@ async function fetchFullReplenishData() {
         module.listasPaginadas.increased = (d.increased || []).map(hydrateItem);
         module.listasPaginadas.decreased = (d.decreased || []).map(hydrateItem);
         module.listasPaginadas.stable = (d.stable || []).map(hydrateItem);
+        module.productosSinReponer = (d.no_supplier || []);
         
         module.pagination.increased.total = module.listasPaginadas.increased.length;
         module.pagination.decreased.total = module.listasPaginadas.decreased.length;
         module.pagination.stable.total = module.listasPaginadas.stable.length;
+
+        if (d.totalFallasBrutas) {
+            module.totalFallas = d.totalFallasBrutas;
+        }
     }
   } catch (error) {
     console.error("Error cargando data completa de reposicion", error);
@@ -200,9 +205,7 @@ function extractLaboratories(data) {
 function procesarRespuesta(data) {
   extractLaboratories(data.data);
 
-  if(data.data.productosFallas) {
-      module.productosSinReponer = [...data.data.productosFallas];
-  }
+  // module.productosSinReponer se poblará en fetchFullReplenishData desde no_supplier
 
   if (data.data.productos_oportunidad_unica && data.data.productos_oportunidad_unica.data) {
     data.data.productos_oportunidad_unica.data = data.data.productos_oportunidad_unica.data.map(hydrateItem);
@@ -391,9 +394,11 @@ const TOTAL_ORDER= computed(() => {
 
 // KPI: productos de la lista de fallas que SÍ tienen un proveedor asignado para reponer
 const KPIS_ENCONTRADOS = computed(() => {
-  if (!FALLAS_FILTRADAS.value) return 0;
-  const uniqueIds = new Set(FALLAS_FILTRADAS.value.map(item => item.product?.id).filter(id => id));
-  return uniqueIds.size;
+  const allIds = new Set();
+  module.listasPaginadas.increased.forEach(item => { if(item.product?.id) allIds.add(item.product.id) });
+  module.listasPaginadas.decreased.forEach(item => { if(item.product?.id) allIds.add(item.product.id) });
+  module.listasPaginadas.stable.forEach(item => { if(item.product?.id) allIds.add(item.product.id) });
+  return allIds.size;
 })
 
 // KPI: fallas sin proveedor = total fallas real - los que sí encontraron proveedor
@@ -404,8 +409,7 @@ const KPIS_NO_ENCONTRADOS = computed(() => {
 
 // Lista de productos sin proveedor: aquellos en productosSinReponer que no tienen cobertura en productoFallas
 const LISTA_NO_ENCONTRADOS = computed(() => {
-  const idsConCobertura = new Set(FALLAS_FILTRADAS.value.map(item => item.product?.id).filter(id => id));
-  return module.productosSinReponer.filter(p => !idsConCobertura.has(p.id));
+  return module.productosSinReponer;
 })
 
 // Lista filtrada por el buscador del modal
