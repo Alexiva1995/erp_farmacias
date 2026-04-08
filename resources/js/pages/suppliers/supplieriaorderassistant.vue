@@ -2,6 +2,7 @@
 import SupplierIaOrderAssistantFilter from "@/components/SupplierIaOrderAssistantFilter.vue";
 import SupplierIaOrderAssistantGrupoTable from "@/components/SupplierIaOrderAssistantGrupoTable.vue";
 import SupplierIaOrderAssistantIndividualTable from "@/components/SupplierIaOrderAssistantIndividualTable.vue";
+import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, reactive, ref, watch } from "vue";
@@ -214,6 +215,76 @@ function generarPedido() {
   });
 }
 
+// Modal de Comparación Manual (Productos sin proveedor)
+const isComparatorModalVisible = ref(false);
+const comparatorProduct = ref(null);
+const comparatorQuantity = ref(0);
+const comparatorSearchQuery = ref("");
+const comparatorProducts = ref([]);
+const comparatorLoading = ref(false);
+const comparatorTotal = ref(0);
+const comparatorPage = ref(1);
+const comparatorItemsPerPage = ref(10);
+
+const handleOpenComparator = ({ item, quantity }) => {
+  comparatorProduct.value = item;
+  comparatorQuantity.value = quantity;
+  
+  // Regla de búsqueda: Nombre (5) + Lab (3)
+  const namePart = item.name ? item.name.substring(0, 5) : "";
+  const labPart = item.laboratory?.name ? item.laboratory.name.substring(0, 3) : "";
+  comparatorSearchQuery.value = `${namePart} ${labPart}`.trim();
+  
+  comparatorPage.value = 1;
+  isComparatorModalVisible.value = true;
+};
+
+const fetchComparatorProducts = async () => {
+  if (!isComparatorModalVisible.value) return;
+  
+  comparatorLoading.value = true;
+  try {
+    const { data } = await axios.get("/suppliers/available-products", {
+      params: {
+        page: comparatorPage.value,
+        perPage: comparatorItemsPerPage.value,
+        q: comparatorSearchQuery.value,
+      }
+    });
+    comparatorProducts.value = data.data;
+    comparatorTotal.value = data.total;
+  } catch (error) {
+    console.error("[Comparator] Error:", error);
+    toast.error("Error al buscar productos de proveedores");
+  } finally {
+    comparatorLoading.value = false;
+  }
+};
+
+watch([isComparatorModalVisible, comparatorSearchQuery, comparatorPage, comparatorItemsPerPage], () => {
+  if (isComparatorModalVisible.value) {
+    fetchComparatorProducts();
+  }
+});
+
+const handleSendToAutoOrder = async ({ id, quantity }) => {
+  try {
+    const form = new FormData();
+    form.append("productId", id);
+    form.append("main_product_id", comparatorProduct.value.id);
+    form.append("quantity", quantity);
+    
+    await axios.post("/suppliers/add-product-to-order", form);
+    
+    toast.success("Producto añadido a la orden de compra.");
+    isComparatorModalVisible.value = false;
+    actualizarTabla(); // Refrescar para que desaparezca el producto del asistente
+  } catch (error) {
+    console.error("[Comparator] Error sending to order:", error);
+    toast.error("Error al añadir producto a la orden.");
+  }
+};
+
 onMounted(async () => {
   await Promise.all([consultarGruposProductos(), consultarLaboratorios()]);
   await actualizarTabla();
@@ -274,14 +345,53 @@ onMounted(async () => {
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
+          @open-comparator="handleOpenComparator"
         />
       </div>
     </div>
+
+    <!-- Dialogo de Comparación Manual (Buscador de Proveedores) -->
+    <VDialog v-model="isComparatorModalVisible" max-width="1000" scrollable>
+      <VCard class="rounded-lg shadow-xl overflow-hidden bg-var-theme-background">
+        <VCardTitle class="pa-4 bg-primary text-white d-flex align-center">
+          <VIcon icon="tabler-arrows-exchange" class="me-2" />
+          <span class="text-subtitle-1 font-weight-bold">Comparar Proveedores para Faltante</span>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="text" color="white" size="small" @click="isComparatorModalVisible = false" />
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-4">
+          <ProductComparisionProductsTable
+            :products="comparatorProducts"
+            :loading="comparatorLoading"
+            :total-products="comparatorTotal"
+            :items-per-page="comparatorItemsPerPage"
+            :page="comparatorPage"
+            :search-query="comparatorSearchQuery"
+            :selected-product="comparatorProduct"
+            @update:searchQuery="comparatorSearchQuery = $event"
+            @update:options="(options) => { 
+                comparatorPage = options.page; 
+                comparatorItemsPerPage = options.itemsPerPage; 
+            }"
+            @send-product="handleSendToAutoOrder"
+          />
+        </VCardText>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
 <style scoped>
 .assistant-ia-view {
   min-block-size: 100vh;
+}
+
+.assistant-content {
+  padding: 16px;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.03);
 }
 </style>

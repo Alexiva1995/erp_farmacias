@@ -1461,7 +1461,20 @@ class ProductRepository
         // 2. Construir Query
         $query = Product::query()
             ->where('is_deleted', false)
-            ->where('is_scarce', false);
+            ->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('ignore_until')
+                  ->orWhere('ignore_until', '<=', now());
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('auto_order_details')
+                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+                    ->whereColumn('auto_order_details.product_id', 'products.id')
+                    ->where('auto_orders.status', 0) // Open
+                    ->whereNull('auto_orders.deleted_at')
+                    ->whereNull('auto_order_details.deleted_at');
+            });
 
         // Seleccionar solicitar para usar en having
         $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));

@@ -16,7 +16,19 @@ const props = defineProps({
   withSuppliers: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled"]);
+const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator"]);
+
+// Track edited pedido values per item id
+const editedValues = ref({});
+
+const getInputValue = (item) => {
+  if (item.id in editedValues.value) return editedValues.value[item.id];
+  return roundIaAnalysis(item.solicitar ?? 0);
+};
+
+const updateInputValue = (item, val) => {
+  editedValues.value[item.id] = val;
+};
 
 // Estado para carga diferida de gráficos
 const readyCharts = ref(new Set());
@@ -43,6 +55,48 @@ const handleToggleScarce = async (product) => {
     console.error("Error toggling scarce status:", error);
   } finally {
     togglingScarce.value = null;
+  }
+};
+
+// Acciones Directas
+const isProcessing = ref({});
+
+const onActionClick = async (item, action) => {
+  if (isProcessing.value[item.id]) return;
+
+  if (action === 'add') {
+    const quantity = getInputValue(item);
+    if (!item.best_supplier) {
+      // Si no hay proveedor, abrir modal de comparación
+      emit('open-comparator', { item, quantity });
+      return;
+    }
+    
+    isProcessing.value[item.id] = 'adding';
+    try {
+      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {
+        product_id: item.id,
+        quantity: quantity,
+        product_supplier_id: item.best_supplier.product_suppliers_id
+      });
+      emit('refresh');
+    } catch (error) {
+       console.error("Error adding to order:", error);
+    } finally {
+      isProcessing.value[item.id] = null;
+    }
+  }
+
+  if (action === 'ignore') {
+    isProcessing.value[item.id] = 'ignoring';
+    try {
+      await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      emit('refresh');
+    } catch (error) {
+       console.error("Error ignoring product:", error);
+    } finally {
+      isProcessing.value[item.id] = null;
+    }
   }
 };
 
@@ -108,7 +162,8 @@ const headers = computed(() => {
     { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
     { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
     { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
-    { title: "Anál.", key: "solicitar", sortable: true, align: 'end', width: '85px' }
+    { title: "Pedido", key: "solicitar", sortable: true, align: 'center', width: '100px' },
+    { title: "Acción", key: "actions", sortable: false, align: 'end', width: '110px' }
   );
 
   return base;
@@ -249,25 +304,52 @@ function rowClass(item) {
             </VTooltip>
           </template>
 
-          <!-- Análisis -->
+          <!-- Pedido (Editable) -->
           <template #item.solicitar="{ item }">
-            <VTooltip :text="parseFloat(item.solicitar) > 0 ? 'Unidades sugeridas a reponer' : parseFloat(item.solicitar) < 0 ? 'Exceso: no se necesita comprar' : 'Stock suficiente'">
-              <template #activator="{ props: tp }">
-                <div class="d-flex flex-column align-end">
-                  <span
-                    v-bind="tp"
-                    class="font-weight-black text-xs"
-                    :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
-                  >
-                    {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
-                  </span>
-                  <!-- Comparativa de ahorros/sobrecosto -->
-                  <span v-if="props.withSuppliers && item.best_supplier && item.best_supplier_percentage !== 0" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
-                    {{ item.best_supplier_percentage < 0 ? 'Ahorras ' : 'Subió ' }}{{ Math.abs(item.best_supplier_percentage).toFixed(1) }}%
-                  </span>
-                </div>
-              </template>
-            </VTooltip>
+            <div class="d-flex flex-column align-center py-1" style="inline-size: 100px;">
+              <VTextField
+                :model-value="getInputValue(item)"
+                @update:model-value="(val) => updateInputValue(item, val)"
+                type="number"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="centered-input-text-sm mb-1"
+                @click.stop
+              />
+              <span v-if="props.withSuppliers && item.best_supplier && item.best_supplier_percentage !== 0" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                {{ item.best_supplier_percentage < 0 ? ' ahorro ' : ' subió ' }}{{ Math.abs(item.best_supplier_percentage).toFixed(1) }}%
+              </span>
+            </div>
+          </template>
+
+          <!-- Acciones -->
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-end ga-1">
+              <VBtn
+                icon
+                variant="tonal"
+                color="success"
+                size="32"
+                :loading="isProcessing[item.id] === 'adding'"
+                @click.stop="onActionClick(item, 'add')"
+              >
+                <VIcon icon="tabler-shopping-cart-plus" size="18" />
+                <VTooltip activator="parent" location="top">Añadir a Orden</VTooltip>
+              </VBtn>
+
+              <VBtn
+                icon
+                variant="tonal"
+                color="error"
+                size="32"
+                :loading="isProcessing[item.id] === 'ignoring'"
+                @click.stop="onActionClick(item, 'ignore')"
+              >
+                <VIcon icon="tabler-square-x" size="18" />
+                <VTooltip activator="parent" location="top">Rechazar (7 días)</VTooltip>
+              </VBtn>
+            </div>
           </template>
         </VDataTableServer>
       </div>
@@ -317,8 +399,14 @@ function rowClass(item) {
                     <div class="text-sm font-weight-black" :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'">
                       {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
                     </div>
-                    <div v-if="props.withSuppliers && item.best_supplier" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
-                      {{ item.best_supplier_percentage < 0 ? '↓ ' : '↑ ' }}{{ Math.abs(item.best_supplier_percentage).toFixed(1) }}%
+                    <!-- Acciones Móvil -->
+                    <div class="d-flex ga-1 justify-end mt-2">
+                       <VBtn icon variant="tonal" color="success" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
+                        <VIcon icon="tabler-shopping-cart-plus" size="18" />
+                      </VBtn>
+                      <VBtn icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
+                        <VIcon icon="tabler-square-x" size="18" />
+                      </VBtn>
                     </div>
                   </div>
                 </div>
@@ -417,6 +505,14 @@ function rowClass(item) {
   background-color: rgba(234, 84, 85, 4%) !important;
 }
 
+:deep(.centered-input-text-sm .v-field__input) {
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  min-block-size: 32px !important;
+  padding-block: 4px !important;
+  text-align: center !important;
+}
+
 /* Estilos para cards móviles */
 .row-needs.v-card {
   background-color: rgba(40, 199, 111, 2%) !important;
@@ -471,11 +567,11 @@ function rowClass(item) {
 }
 
 .chart-placeholder {
-  block-size: 25px;
-  inline-size: 100%;
+  animation: shimmer 1.5s infinite;
   background: linear-gradient(90deg, rgba(var(--v-border-color), 0.05) 25%, rgba(var(--v-border-color), 0.1) 50%, rgba(var(--v-border-color), 0.05) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  block-size: 25px;
+  inline-size: 100%;
 }
 
 @keyframes shimmer {
