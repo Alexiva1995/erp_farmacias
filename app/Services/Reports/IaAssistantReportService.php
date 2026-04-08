@@ -81,9 +81,9 @@ class IaAssistantReportService
             foreach ($procesado as $index => $producto) {
                 $supplierData = $itemsWithSuppliers[$index] ?? null;
                 if ($supplierData) {
-                    $producto->best_supplier = $supplierData['supplier'] ?? null;
-                    $producto->best_supplier_price = $supplierData['precio_final_supplier'] ?? 0;
-                    $producto->best_supplier_percentage = $supplierData['percentageIncrease'] ?? 0;
+                    $producto->setAttribute('best_supplier', $supplierData['supplier'] ?? null);
+                    $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
+                    $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
                 }
             }
         }
@@ -163,9 +163,9 @@ class IaAssistantReportService
                 foreach ($procesado as $index => $producto) {
                     $supplierData = $itemsWithSuppliers[$index] ?? null;
                     if ($supplierData) {
-                        $producto->best_supplier = $supplierData['supplier'] ?? null;
-                        $producto->best_supplier_price = $supplierData['precio_final_supplier'] ?? 0;
-                        $producto->best_supplier_percentage = $supplierData['percentageIncrease'] ?? 0;
+                        $producto->setAttribute('best_supplier', $supplierData['supplier'] ?? null);
+                        $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
+                        $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
                     }
                 }
             }

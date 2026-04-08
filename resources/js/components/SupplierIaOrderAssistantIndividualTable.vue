@@ -99,7 +99,7 @@ const headers = computed(() => {
   ];
 
   if (props.withSuppliers) {
-    base.push({ title: "Costo Prov", key: "best_supplier_price", sortable: true, align: 'end', width: '90px' });
+    base.push({ title: "COSTO PROV", key: "best_supplier_price", sortable: false, align: 'end', width: '90px' });
   }
 
   base.push(
