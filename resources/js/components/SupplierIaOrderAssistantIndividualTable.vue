@@ -400,6 +400,10 @@ function rowClass(item) {
   font-size: 0.8125rem !important;
 }
 
+:deep(.v-data-table__wrapper) {
+  overflow: visible !important;
+}
+
 :deep(.v-data-table__td),
 :deep(.v-data-table__th) {
   padding-inline: 4px !important;
