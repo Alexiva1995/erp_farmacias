@@ -71,7 +71,7 @@ class IaAssistantActionController extends Controller
             $autoOrder = AutoOrder::firstOrCreate(
                 [
                     'supplier_id' => $supplierId,
-                    'status' => AutoOrderStatus::Open,
+                    'status' => AutoOrderStatus::PENDING,
                 ],
                 [
                     'order_date' => now(),
