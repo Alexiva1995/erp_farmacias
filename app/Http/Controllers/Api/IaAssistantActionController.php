@@ -89,21 +89,26 @@ class IaAssistantActionController extends Controller
             );
 
             // 3. Añadir o actualizar el detalle
-            $detail = AutoOrderDetail::updateOrCreate(
-                [
+            $detail = AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $quantity;
+                $detail->unit_cost = $unitCost;
+                $detail->subtotal = (float) $detail->quantity * (float) $unitCost;
+                $detail->product_suppliers_id = $productSupplierId;
+                $detail->save();
+            } else {
+                $detail = AutoOrderDetail::create([
                     'order_id' => $autoOrder->id,
                     'product_id' => $productId,
-                ],
-                [
                     'product_suppliers_id' => $productSupplierId,
-                    'quantity' => DB::raw("quantity + $quantity"),
+                    'quantity' => $quantity,
                     'unit_cost' => $unitCost,
-                ]
-            );
-
-            // Recalcular subtotal (necesita refresh por el DB::raw de quantity)
-            $detail->refresh();
-            $detail->update(['subtotal' => (float)$detail->quantity * (float)$detail->unit_cost]);
+                    'subtotal' => (float) $quantity * (float) $unitCost,
+                ]);
+            }
 
             // 4. Actualizar totales de la orden (esto suele hacerse en un observer o servicio dedicado,
             // pero lo ponemos aquí para asegurar la inmediatez que pide el usuario)
