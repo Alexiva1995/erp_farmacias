@@ -42,30 +42,37 @@ class IaAssistantActionController extends Controller
         try {
             $product = Product::findOrFail($productId);
 
-            // 1. Si no hay product_supplier_id pero sí hay supplierId, intentar encontrar o crear el enlace
-            if (!$productSupplierId && $supplierId) {
+            // 1. Obtener el enlace producto-proveedor
+            $ps = null;
+            if ($productSupplierId) {
+                $ps = ProductSupplier::find($productSupplierId);
+            }
+
+            if (!$ps && $supplierId) {
                 $ps = ProductSupplier::where('product_id', $productId)
                     ->where('supplier_id', $supplierId)
                     ->first();
-                
-                if (!$ps) {
-                    // Crear enlace básico si no existe (esto sucede en el modal de comparación manual)
-                    $ps = ProductSupplier::create([
-                        'product_id' => $productId,
-                        'supplier_id' => $supplierId,
-                        'unit_cost_usd' => $product->unit_cost, // Valor base
-                    ]);
-                }
-                $productSupplierId = $ps->id;
             }
 
-            if (!$supplierId && $productSupplierId) {
-                $supplierId = ProductSupplier::find($productSupplierId)->supplier_id;
+            if (!$ps && $supplierId) {
+                // Crear enlace básico si no existe
+                $ps = ProductSupplier::create([
+                    'product_id' => $productId,
+                    'supplier_id' => $supplierId,
+                    'unit_cost_usd' => $product->unit_cost,
+                ]);
             }
 
-            if (!$supplierId) {
+            if (!$ps) {
                 return response()->json(['message' => 'No se pudo determinar el proveedor para este producto.'], 422);
             }
+
+            $supplierId = $ps->supplier_id;
+            $productSupplierId = $ps->id;
+            // Prioridad: Costo con descuento > Costo normal > Costo del producto base
+            $unitCost = $ps->unit_cost_usd_with_discount > 0 
+                ? $ps->unit_cost_usd_with_discount 
+                : ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : $product->unit_cost);
 
             // 2. Buscar o crear una AutoOrder abierta para este proveedor
             $autoOrder = AutoOrder::firstOrCreate(
@@ -90,8 +97,13 @@ class IaAssistantActionController extends Controller
                 [
                     'product_suppliers_id' => $productSupplierId,
                     'quantity' => DB::raw("quantity + $quantity"),
+                    'unit_cost' => $unitCost,
                 ]
             );
+
+            // Recalcular subtotal (necesita refresh por el DB::raw de quantity)
+            $detail->refresh();
+            $detail->update(['subtotal' => (float)$detail->quantity * (float)$detail->unit_cost]);
 
             // 4. Actualizar totales de la orden (esto suele hacerse en un observer o servicio dedicado,
             // pero lo ponemos aquí para asegurar la inmediatez que pide el usuario)
@@ -128,8 +140,9 @@ class IaAssistantActionController extends Controller
         $order->update([
             'total_items' => $details->count(),
             'total_quantity' => $details->sum('quantity'),
-            // El cálculo del total_amount depende de si los precios están en los detalles
-            // Por ahora mantenemos los ítems y cantidades.
+            'total_amount' => $details->sum(function($detail) {
+                return (float) $detail->quantity * (float) $detail->unit_cost;
+            }),
         ]);
     }
 }
