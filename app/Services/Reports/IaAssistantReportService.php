@@ -400,11 +400,7 @@ class IaAssistantReportService
             }
 
             // Invertir el signo para el análisis visual (faltante => positivo)
-            $item->solicitar = -$resultado;
-            
-            // Redondear lógicamente: mantener el piso/techo según el signo original
-            $item->solicitar = $item->solicitar > 0 ? ceil($item->solicitar) : floor($item->solicitar);
-
+            $item->solicitar = $resultado;
             return $item;
         });
 
@@ -418,7 +414,7 @@ class IaAssistantReportService
     public function getReplenishReportAll(array $filtros): array
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
 
         // 1. Obtener IDs base (fallas)
         $allIds = $this->getFilteredIds($filtros, false);
@@ -427,7 +423,9 @@ class IaAssistantReportService
                 'increased' => [],
                 'decreased' => [],
                 'stable'    => [],
-                'total'     => 0
+                'no_supplier' => [],
+                'total'     => 0,
+                'totalFallasBrutas' => 0
             ];
         }
 
@@ -451,6 +449,15 @@ class IaAssistantReportService
         // 4. Clasificar y ordenar
         $coleccion = collect($itemsReponer);
         
+        // Antes de clasificar, invertimos el signo para el frontend: faltante => positivo
+        $coleccion->each(function($item) {
+            $item['product']->solicitar = -$item['product']->solicitar;
+            // Redondear lógicamente: mantener el piso/techo según el signo original (que ahora es positivo)
+            $item['product']->solicitar = $item['product']->solicitar > 0 ? ceil($item['product']->solicitar) : floor($item['product']->solicitar);
+            // Sincronizar campo raíz
+            $item['solicitar'] = $item['product']->solicitar;
+        });
+
         $increased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === true);
         $decreased = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === false);
         $stable    = $coleccion->filter(fn($i) => ($i['increase'] ?? null) === null);
@@ -473,6 +480,12 @@ class IaAssistantReportService
              } else {
                  $productosSinProveedor = $this->processRegularReport($productosSinProveedor, $tipoFiltracion);
              }
+
+             // Invertir signo también para los sin proveedor (para el frontend: faltante => positivo)
+             foreach($productosSinProveedor as $p) {
+                 $p->solicitar = -$p->solicitar;
+                 $p->solicitar = $p->solicitar > 0 ? ceil($p->solicitar) : floor($p->solicitar);
+             }
         }
 
         return [
@@ -494,7 +507,7 @@ class IaAssistantReportService
         $tipoAnalisis = $filtros['tipo_analisis'] ?? 'all'; // increased, decreased, stable, all
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 20);
-        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
 
         // Reutilizamos la lógica de filtrado inicial
         $allIds = $this->getFilteredIds($filtros, false);
@@ -541,7 +554,7 @@ class IaAssistantReportService
         ]);
     }
 
-    private function orderByDiscountCollection(Collection $listaProductos): Collection
+    private function orderByDiscountCollection($listaProductos): Collection
     {
         return $listaProductos->sortByDesc(function ($item) {
             $producto = $item['product'] ?? null;
