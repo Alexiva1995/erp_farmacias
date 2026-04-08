@@ -234,6 +234,7 @@ const comparatorLoading = ref(false);
 const comparatorTotal = ref(0);
 const comparatorPage = ref(1);
 const comparatorItemsPerPage = ref(10);
+const comparatorSortBy = ref([{ key: 'unit_cost_usd', order: 'asc' }]);
 
 const handleOpenComparator = ({ item, quantity }) => {
   comparatorProduct.value = item;
@@ -258,6 +259,8 @@ const fetchComparatorProducts = async () => {
         page: comparatorPage.value,
         perPage: comparatorItemsPerPage.value,
         q: comparatorSearchQuery.value,
+        sortBy: comparatorSortBy.value[0]?.key,
+        order: comparatorSortBy.value[0]?.order,
       }
     });
     comparatorProducts.value = data.data;
@@ -270,7 +273,7 @@ const fetchComparatorProducts = async () => {
   }
 };
 
-watch([isComparatorModalVisible, comparatorSearchQuery, comparatorPage, comparatorItemsPerPage], () => {
+watch([isComparatorModalVisible, comparatorSearchQuery, comparatorPage, comparatorItemsPerPage, comparatorSortBy], () => {
   if (isComparatorModalVisible.value) {
     fetchComparatorProducts();
   }
@@ -393,6 +396,9 @@ onMounted(async () => {
               :page="comparatorPage"
               :search-query="comparatorSearchQuery"
               :selected-product="comparatorProduct"
+              enable-usd-amount-col
+              enable-discount-col
+              v-model:sort-by="comparatorSortBy"
               @update:searchQuery="comparatorSearchQuery = $event"
               @update:options="(options) => { 
                   comparatorPage = options.page; 
