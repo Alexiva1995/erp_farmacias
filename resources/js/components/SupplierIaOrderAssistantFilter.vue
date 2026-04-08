@@ -33,8 +33,8 @@ const emit = defineEmits([
 ]);
 
 const precio = [
-  { title: "Full",      value: true  },
-  { title: "Descuento", value: false },
+  { title: "Full",      value: false },
+  { title: "Descuento", value: true  },
 ];
 
 const tipoDeVistaOpcion = [

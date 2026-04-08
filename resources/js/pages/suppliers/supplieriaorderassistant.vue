@@ -177,6 +177,7 @@ watch(
     stock,
     isColombian,
     searchQuery,
+    con_descuento,
   ],
   () => {
     clearTimeout(filterTimeout);
