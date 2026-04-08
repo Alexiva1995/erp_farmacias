@@ -91,12 +91,12 @@ const formatBs = (amount) => {
   );
 };
 const formatUsd = (amount) => {
-  return (
-    new Intl.NumberFormat("es-VE", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  );
+  const num = parseFloat(amount);
+  if (isNaN(num)) return "0.00";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
 };
 
 const getPriceDiff = (item) => {
@@ -129,10 +129,10 @@ const onActionClick = (item) => {
 };
 
 const allHeaders = [
-  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "350px" },
-  { title: "COSTO", key: "unit_cost_usd", sortable: true, width: "80px" },
-  { title: "FINAL", key: "final_cost_usd", sortable: true, width: "80px" },
-  { title: "AHORRO", key: "price_diff", sortable: false, width: "120px" },
+  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "175px" },
+  { title: "COSTO PROV.", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
+  { title: "FINAL PROV.", key: "final_cost_usd", sortable: true, width: "90px", align: 'end' },
+  { title: "AHORRO / DIF.", key: "price_diff", sortable: false, width: "130px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ];
 
@@ -379,27 +379,33 @@ const headers = computed(() =>
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.name="{ item }">
-            <div class="d-flex align-center py-2">
-              <div class="d-flex flex-column overflow-hidden">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
+            <div class="d-flex flex-column py-2" style="white-space: normal !important; min-inline-size: 175px;">
+                <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="item.name">
                   <a
                     :href="'/inventory/traceability?q=' + item.id"
                     target="_blank"
-                    class="text-decoration-none text-primary mr-2"
+                    class="text-decoration-none text-primary mr-1"
                   >
                     {{ item.id }}
                   </a>
-                  <span class="text-disabled mr-2">|</span>
                   {{ item.name.toUpperCase() }}
                 </span>
-                <div class="d-flex align-center gap-1 text-super-xs">
-                  <span class="text-primary font-weight-black uppercase truncate" style="max-inline-size: 150px;">
-                    {{ item.laboratory_name || 'S/L' }}
-                  </span>
-                  <span class="text-disabled mx-1">|</span>
-                  <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.supplier_name }}</span>
+                
+                <div class="d-flex flex-column gap-0.5 text-super-xs">
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
+                    <span class="text-disabled truncate font-weight-medium">{{ item.supplier_name }}</span>
+                  </div>
+                  
+                  <div v-if="selectedProduct" class="d-flex align-center gap-1 mt-0.5 pt-0.5 border-t border-opacity-10">
+                    <span class="text-disabled">Nuestro Costo:</span>
+                    <span class="font-weight-bold text-high-emphasis">${{ parseFloat(selectedProduct.current_unit_cost ?? selectedProduct.unit_cost ?? 0).toFixed(2) }}</span>
+                  </div>
+                  
+                  <div class="text-primary font-weight-black uppercase truncate mt-0.5">
+                    {{ item.laboratory_name || 'SIN LABORATORIO' }}
+                  </div>
                 </div>
-              </div>
             </div>
           </template>
 
@@ -472,12 +478,18 @@ const headers = computed(() =>
           >
             <VCardText class="pa-4">
               <div class="mb-3">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1 leading-tight">
                   {{ item.name }}
                 </span>
-                <span class="text-xs text-disabled d-block">
-                  {{ item.laboratory_name }} | {{ item.supplier_name }}
-                </span>
+                <div class="d-flex flex-column text-super-xs gap-0.5">
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
+                    <span class="text-disabled font-weight-bold">{{ item.supplier_name }}</span>
+                  </div>
+                  <div class="text-primary font-weight-black uppercase">
+                    {{ item.laboratory_name || 'SIN LABORATORIO' }}
+                  </div>
+                </div>
               </div>
 
               <div class="d-flex justify-space-between align-center mb-3">
