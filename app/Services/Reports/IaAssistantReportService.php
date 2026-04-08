@@ -140,6 +140,9 @@ class IaAssistantReportService
                 'group_id'   => $groupId,
                 'group_name' => $grupoNombres[$groupId] ?? '',
                 'productos'  => array_values($productosArray),
+                'total_solicitar' => collect($productosArray)->sum(function($p) {
+                    return (float) ($p['solicitar'] ?? 0);
+                })
             ];
         }
 
@@ -166,6 +169,8 @@ class IaAssistantReportService
             'stock' => $filtros['stock'] ?? 'fallas',
             'tipo' => $filtros['tipo_de_filtracion'] ?? 'average',
             'ws' => $filtros['without_supplier'] ?? false,
+            'sb' => $filtros['sortBy'] ?? '',
+            'ob' => $filtros['orderBy'] ?? '',
         ]));
 
         return Cache::remember($cacheKey, 600, function () use ($filtros, $porGrupo) {

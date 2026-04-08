@@ -1492,10 +1492,33 @@ class ProductRepository
             }
         }
 
+        // 4. Ordenamiento Dinámico
+        $sortCol = $filtros['sortBy'] ?? 'products.name';
+        $sortDir = strtolower($filtros['orderBy'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+
+        // Mapeo de columnas de ordenamiento para tablas
+        if ($sortCol === 'lote_quantity' || $sortCol === 'stock') {
+            $query->orderByRaw("($subqueryStock) $sortDir");
+        } elseif ($sortCol === 'total_sold_completed') {
+            $query->orderByRaw("($subqueryTotalSold) $sortDir");
+        } elseif ($sortCol === 'promedio_calculado') {
+            $query->orderByRaw("($promedio_calculado) $sortDir");
+        } elseif ($sortCol === 'totalQuantityInAutoOrder') {
+            $query->orderByRaw("($subqueryAO) $sortDir");
+        } elseif ($sortCol === 'solicitar') {
+            $query->orderByRaw("($solicitarCol) $sortDir");
+        } elseif ($sortCol === 'preferencia_product') {
+            // Como preferencia requiere group_sales_average_sum, lo manejamos con una subconsulta simplificada o por products.name si falla
+            $query->orderBy('products.name', 'ASC');
+        } else {
+            $query->orderBy($sortCol, $sortDir);
+        }
+
         if ($porGrupo) {
             return $query
                 ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
                 ->addSelect('groups_products.name')
+                // No aplicar el orden dinámico aquí si es por grupo, habitualmente es alfabético
                 ->orderBy('groups_products.name', 'ASC')
                 ->get()
                 ->pluck('group_id')
@@ -1504,8 +1527,7 @@ class ProductRepository
                 ->toArray();
         }
 
-        return $query->orderBy('products.name', 'ASC')
-            ->get()
+        return $query->get()
             ->pluck('id')
             ->toArray();
     }
