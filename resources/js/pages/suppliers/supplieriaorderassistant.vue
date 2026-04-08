@@ -32,8 +32,10 @@ const stock = ref("all");
 const con_descuento = ref(true);
 const isColombian = ref(false);
 const searchQuery = ref("");
+const withSuppliers = ref(false);
 
 const handleClearFilters = () => {
+  withSuppliers.value = false;
   con_descuento.value = true;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
@@ -73,6 +75,8 @@ async function consultarProductosConPaginacion() {
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
+    with_suppliers: withSuppliers.value,
+    con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
   };
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
@@ -111,6 +115,11 @@ async function actualizarTabla() {
   } finally {
     loading.value = false;
   }
+}
+
+async function handleFetchSuppliers() {
+  withSuppliers.value = true;
+  await actualizarTabla();
 }
 
 const updateTableOptionsTable = (options) => {
@@ -234,6 +243,7 @@ onMounted(async () => {
         :isColombian="isColombian"
         @clear="handleClearFilters"
         @generarPedido="generarPedido"
+        @fetchSuppliers="handleFetchSuppliers"
       />
 
       <!-- Tabla -->
@@ -247,6 +257,7 @@ onMounted(async () => {
           :current-page="gruposData.current_page"
           :last-page="gruposData.last_page"
           :loading="loading"
+          :with-suppliers="withSuppliers"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
         />
@@ -258,6 +269,7 @@ onMounted(async () => {
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="page"
+          :with-suppliers="withSuppliers"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"

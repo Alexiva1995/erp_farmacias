@@ -68,6 +68,25 @@ class IaAssistantReportService
         // 5. Hidratar tendencia de ventas (Últimos 6 meses)
         $this->hydrateSalesTrend($procesado);
 
+        // 5.1 Hidratar proveedores si se solicita
+        if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+            
+            // Reutilizamos la lógica masiva existente
+            $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($procesado, $conDescuento);
+            $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
+            
+            // Mapear de vuelta a los productos (O(N) ya que las listas están sincronizadas por orden)
+            foreach ($procesado as $index => $producto) {
+                $supplierData = $itemsWithSuppliers[$index] ?? null;
+                if ($supplierData) {
+                    $producto->best_supplier = $supplierData['supplier'] ?? null;
+                    $producto->best_supplier_price = $supplierData['precio_final_supplier'] ?? 0;
+                    $producto->best_supplier_percentage = $supplierData['percentageIncrease'] ?? 0;
+                }
+            }
+        }
+
         // 6. Devolver paginador manual
         return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
             'path' => request()->url(),
@@ -132,6 +151,22 @@ class IaAssistantReportService
             }
 
             $this->hydrateSalesTrend($procesado);
+
+            // Hidratar proveedores si se solicita
+            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+                $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($procesado, $conDescuento);
+                $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
+                
+                foreach ($procesado as $index => $producto) {
+                    $supplierData = $itemsWithSuppliers[$index] ?? null;
+                    if ($supplierData) {
+                        $producto->best_supplier = $supplierData['supplier'] ?? null;
+                        $producto->best_supplier_price = $supplierData['precio_final_supplier'] ?? 0;
+                        $producto->best_supplier_percentage = $supplierData['percentageIncrease'] ?? 0;
+                    }
+                }
+            }
 
             // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
             $productosArray = json_decode(json_encode($procesado), true);

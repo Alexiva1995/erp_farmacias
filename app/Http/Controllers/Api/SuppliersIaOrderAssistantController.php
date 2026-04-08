@@ -102,6 +102,8 @@ class SuppliersIaOrderAssistantController extends Controller
             "tipo_filtracion" => $request->tipo_filtracion,
             "tipo_vista" => filter_var($request->tipo_vista, FILTER_VALIDATE_BOOLEAN),
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
+            "with_suppliers" => filter_var($request->with_suppliers, FILTER_VALIDATE_BOOLEAN),
+            "con_descuento" => filter_var($request->con_descuento, FILTER_VALIDATE_BOOLEAN),
         ];
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {

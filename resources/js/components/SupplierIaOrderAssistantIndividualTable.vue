@@ -4,6 +4,8 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useDisplay } from 'vuetify';
 import VueApexCharts from 'vue3-apexcharts';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
+import { ref, computed } from 'vue';
+import axios from 'axios';
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -11,12 +13,10 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  withSuppliers: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled"]);
-
-import { ref } from 'vue';
-import axios from 'axios';
 
 // Estado para carga diferida de gráficos
 const readyCharts = ref(new Set());
@@ -89,18 +89,30 @@ const getSeries = (item) => {
   return [{ name: 'Ventas', data }];
 };
 
-const headers = [
-  { title: "ID", key: "id", sortable: true, width: '50px' },
-  { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
-  { title: "Trend", key: "trend", sortable: false, width: '80px' },
-  { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' },
-  { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
-  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
-  { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
-  { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
-  { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
-  { title: "Anál.", key: "solicitar", sortable: true, align: 'end', width: '85px' },
-];
+// Headers computados dinámicos
+const headers = computed(() => {
+  const base = [
+    { title: "ID", key: "id", sortable: true, width: '50px' },
+    { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
+    { title: "Trend", key: "trend", sortable: false, width: '80px' },
+    { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' },
+  ];
+
+  if (props.withSuppliers) {
+    base.push({ title: "Costo Prov", key: "best_supplier_price", sortable: true, align: 'end', width: '90px' });
+  }
+
+  base.push(
+    { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
+    { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
+    { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
+    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
+    { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
+    { title: "Anál.", key: "solicitar", sortable: true, align: 'end', width: '85px' }
+  );
+
+  return base;
+});
 
 // Determina el color de fondo por fila
 function rowClass(item) {
@@ -161,11 +173,14 @@ function rowClass(item) {
                 <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
                 {{ item.name.toUpperCase() }}
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
+                <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                <span class="text-primary font-weight-black text-uppercase truncate">
                   {{ item.laboratory?.name || 'S/L' }}
+                  <span v-if="item.best_supplier && props.withSuppliers" class="text-warning ml-1">
+                    - {{ item.best_supplier?.name || 'S/P' }}
+                  </span>
                 </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
               </div>
@@ -189,6 +204,13 @@ function rowClass(item) {
           <template #item.unit_cost="{ item }">
             <span class="font-weight-medium">
               ${{ Number(item.unit_cost || 0).toFixed(2) }}
+            </span>
+          </template>
+
+          <!-- Costo Proveedor -->
+          <template v-if="props.withSuppliers" #item.best_supplier_price="{ item }">
+            <span class="font-weight-black text-warning">
+              ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
             </span>
           </template>
 
@@ -231,13 +253,19 @@ function rowClass(item) {
           <template #item.solicitar="{ item }">
             <VTooltip :text="parseFloat(item.solicitar) > 0 ? 'Unidades sugeridas a reponer' : parseFloat(item.solicitar) < 0 ? 'Exceso: no se necesita comprar' : 'Stock suficiente'">
               <template #activator="{ props: tp }">
-                <span
-                  v-bind="tp"
-                  class="font-weight-black"
-                  :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
-                >
-                  {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
-                </span>
+                <div class="d-flex flex-column align-end">
+                  <span
+                    v-bind="tp"
+                    class="font-weight-black text-xs"
+                    :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'"
+                  >
+                    {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
+                  </span>
+                  <!-- Comparativa de ahorros/sobrecosto -->
+                  <span v-if="props.withSuppliers && item.best_supplier && item.best_supplier_percentage !== 0" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                    {{ item.best_supplier_percentage < 0 ? 'Ahorras ' : 'Subió ' }}{{ Math.abs(item.best_supplier_percentage).toFixed(1) }}%
+                  </span>
+                </div>
               </template>
             </VTooltip>
           </template>
@@ -269,6 +297,7 @@ function rowClass(item) {
                     </a>
                     <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs text-disabled">
                       <span>{{ item.laboratory?.name || 'S/L' }}</span>
+                      <span v-if="props.withSuppliers && item.best_supplier" class="text-warning font-weight-bold">- {{ item.best_supplier?.name }}</span>
                       <span>|</span>
                       <span>{{ item.active_ingredient }}</span>
                       <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-small" label class="ml-1 text-super-xs">COL</VChip>
@@ -287,6 +316,9 @@ function rowClass(item) {
                     </div>
                     <div class="text-sm font-weight-black" :style="roundIaAnalysis(item.solicitar) > 0 ? 'color:#28c76f' : roundIaAnalysis(item.solicitar) < 0 ? 'color:#ea5455' : 'color:inherit'">
                       {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }} u.
+                    </div>
+                    <div v-if="props.withSuppliers && item.best_supplier" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                      {{ item.best_supplier_percentage < 0 ? '↓ ' : '↑ ' }}{{ Math.abs(item.best_supplier_percentage).toFixed(1) }}%
                     </div>
                   </div>
                 </div>
@@ -314,13 +346,13 @@ function rowClass(item) {
                     <span class="label">Costo</span>
                     <span class="value text-primary">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
                   </div>
+                  <div v-if="props.withSuppliers" class="info-item">
+                    <span class="label">Prov</span>
+                    <span class="value text-warning">${{ Number(item.best_supplier_price || 0).toFixed(2) }}</span>
+                  </div>
                   <div class="info-item">
                     <span class="label">Prom.</span>
                     <span class="value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">PREF</span>
-                    <span class="value">{{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) : '—' }}</span>
                   </div>
                 </div>
               </div>
