@@ -15,6 +15,7 @@ const props = defineProps({
   laboratories:       { type: Array,   default: () => [] },
   groups:             { type: Array,   default: () => [] },
   isColombian:        Boolean,
+  showTrend:          { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -27,6 +28,7 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedGroup",
   "update:isColombian",
+  "update:showTrend",
   "clear",
   "generarPedido",
   "fetchSuppliers",
@@ -224,6 +226,21 @@ const hasAdvancedFilters = computed(() => (
             @update:model-value="emit('update:isColombian', $event)"
           />
           <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
+        </div>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="2">
+        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+          <VSwitch
+            :model-value="props.showTrend"
+            label="Tendencia"
+            color="success"
+            hide-details
+            density="compact"
+            class="ms-1 font-weight-bold text-xs"
+            @update:model-value="emit('update:showTrend', $event)"
+          />
+          <VTooltip activator="parent" location="top">Mostrar/Ocultar gráficos de tendencia para mejor rendimiento</VTooltip>
         </div>
       </VCol>
     </template>

@@ -32,11 +32,12 @@ const lapso_de_tiempo = ref("1 month");
 const stock = ref("all");
 const con_descuento = ref(true);
 const isColombian = ref(false);
-const searchQuery = ref("");
 const withSuppliers = ref(false);
+const showTrend = ref(true);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
+  showTrend.value = true;
   con_descuento.value = true;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
@@ -321,6 +322,7 @@ onMounted(async () => {
         v-model:stock="stock"
         v-model:isColombian="isColombian"
         v-model:searchQuery="searchQuery"
+        v-model:showTrend="showTrend"
         :groups="groups"
         :laboratories="laboratories"
         :tipo_de_filtracion="tipo_de_filtracion"
@@ -345,6 +347,7 @@ onMounted(async () => {
           :last-page="gruposData.last_page"
           :loading="loading"
           :with-suppliers="withSuppliers"
+          :show-trend="showTrend"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
         />
@@ -357,6 +360,7 @@ onMounted(async () => {
           :items-per-page="itemsPerPage"
           :page="page"
           :with-suppliers="withSuppliers"
+          :show-trend="showTrend"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
