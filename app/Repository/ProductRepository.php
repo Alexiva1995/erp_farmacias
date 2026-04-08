@@ -1493,8 +1493,8 @@ class ProductRepository
         }
 
         // 4. Ordenamiento Dinámico
-        $sortCol = $filtros['sortBy'] ?? 'products.name';
-        $sortDir = strtolower($filtros['orderBy'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        $sortCol = !empty($filtros['sortBy']) ? $filtros['sortBy'] : 'products.name';
+        $sortDir = strtolower(!empty($filtros['orderBy']) ? $filtros['orderBy'] : 'asc') === 'desc' ? 'desc' : 'asc';
 
         // Mapeo de columnas de ordenamiento para tablas
         if ($sortCol === 'lote_quantity' || $sortCol === 'stock') {
