@@ -456,9 +456,10 @@ class IaAssistantReportService
 
         if ($tipoAnalisis !== 'all') {
             $coleccionFinal = $coleccionFinal->filter(function ($item) use ($tipoAnalisis) {
-                if ($tipoAnalisis === 'increased') return $item->increase === true;
-                if ($tipoAnalisis === 'decreased') return $item->increase === false;
-                if ($tipoAnalisis === 'stable') return $item->increase === null;
+                $increase = $item['increase'] ?? null;
+                if ($tipoAnalisis === 'increased') return $increase === true;
+                if ($tipoAnalisis === 'decreased') return $increase === false;
+                if ($tipoAnalisis === 'stable') return $increase === null;
                 return true;
             });
         }
@@ -480,12 +481,15 @@ class IaAssistantReportService
     private function orderByDiscountCollection(Collection $listaProductos): Collection
     {
         return $listaProductos->sortByDesc(function ($item) {
-            $producto = $item->product;
-            $oferta = $item->productSupplier;
+            $producto = $item['product'] ?? null;
+            $oferta = $item['productSupplier'] ?? null;
+            
+            if (!$producto || !$oferta) return -9999;
+
             $precioBase = (float) ($producto->unit_cost ?? 0);
-            $precioOferta = (float) ($oferta->unit_cost_with_discount > 0
+            $precioOferta = (float) (($oferta->unit_cost_with_discount ?? 0) > 0
                 ? $oferta->unit_cost_with_discount
-                : $oferta->unit_cost);
+                : ($oferta->unit_cost ?? 0));
             
             if ($precioBase <= 0) return -9999;
             return (($precioBase - $precioOferta) / $precioBase) * 100;
