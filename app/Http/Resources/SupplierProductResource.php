@@ -18,11 +18,11 @@ class SupplierProductResource extends JsonResource
             'id' => $this->id,
             'product_id' => $this->product_id,
             'name' => $this->name,
-            'laboratory_name' => $this->laboratory,
-            'unit_cost' => $this->unit_cost,
-            'unit_cost_usd' => $this->unit_cost_usd,
-            'final_cost_usd' => $this->unit_cost_usd_with_discount ?? $this->unit_cost_usd,
-            'supplier_name' => $this->supplier?->name ?? 'N/A',
+            'laboratory_name' => $this->laboratory_name ?? $this->laboratory ?? 'N/A',
+            'unit_cost' => $this->unit_cost_bs ?? $this->unit_cost ?? 0,
+            'unit_cost_usd' => $this->unit_cost_usd ?? 0,
+            'final_cost_usd' => $this->final_cost_usd ?? $this->unit_cost_usd_with_discount ?? $this->unit_cost_usd ?? 0,
+            'supplier_name' => $this->supplier_name ?? $this->supplier?->name ?? 'N/A',
         ];
     }
 }
