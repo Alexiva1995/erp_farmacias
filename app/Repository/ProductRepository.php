@@ -1443,7 +1443,7 @@ class ProductRepository
         };
 
         // Solicitar según tipo de filtración
-        $tipo = $filtros["tipo_de_filtracion"] ?? "average";
+        $tipo = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo === "combinado") {
             $demanda = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
