@@ -183,15 +183,17 @@ function rowClass(item) {
     <VCard class="rounded-lg border shadow-sm bg-surface">
       <!-- Vista Desktop -->
       <div v-if="mdAndUp" class="d-none d-md-block">
-        <VDataTableServer
-          :items-per-page="props.itemsPerPage"
-          :page="props.page"
-          :headers="headers"
-          :items="props.products"
-          :items-length="props.totalProduct"
-          :loading="props.loading"
-          :row-props="({ item }) => ({ class: rowClass(item) })"
-          class="text-no-wrap assistant-data-table"
+          <VDataTableServer
+            fixed-header
+            height="calc(100vh - 280px)"
+            :items-per-page="props.itemsPerPage"
+            :page="props.page"
+            :headers="headers"
+            :items="props.products"
+            :items-length="props.totalProduct"
+            :loading="props.loading"
+            :row-props="({ item }) => ({ class: rowClass(item) })"
+            class="text-no-wrap assistant-data-table"
           @update:options="(options) => emit('update:options', options)"
         >
           <!-- Estado vacío -->
@@ -243,7 +245,7 @@ function rowClass(item) {
           </template>
 
           <template #item.trend="{ item }">
-            <div style="block-size: 25px; inline-size: 80px; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
+            <div class="d-flex align-center justify-center p-0" style="block-size: 30px; inline-size: 80px; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
               <VueApexCharts
                 v-if="readyCharts.has(item.id)"
                 type="area"
@@ -490,7 +492,7 @@ function rowClass(item) {
 }
 
 :deep(.v-data-table__wrapper) {
-  overflow: visible !important;
+  overflow: auto !important;
 }
 
 :deep(.v-data-table__td),

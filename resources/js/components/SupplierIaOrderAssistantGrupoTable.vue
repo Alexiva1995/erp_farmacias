@@ -209,7 +209,7 @@ const grupoKpi = (productos) => {
                   </div>
                 </td>
                 <td class="text-center">
-                  <div style="block-size:22px; inline-size:70px; margin:auto; overflow:hidden;" v-intersect="() => markChartAsReady(item.id)">
+                  <div class="d-flex align-center justify-center p-0" style="block-size: 28px; inline-size: 70px; margin: auto; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
                     <VueApexCharts
                       v-if="readyCharts.has(item.id)"
                       type="area" height="22" width="100%"
