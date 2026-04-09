@@ -118,6 +118,8 @@ class ProductRepository
             $calcDiff = '(' . $stockEfectivo . ') - (((' . $subqueryTotalSold . ') + (' . $promedioCalculadoSql . ')) / 2)';
         } else {
             $calcDiff = '(' . $stockEfectivo . ') - (' . $promedioCalculadoSql . ')';
+        }
+
         if ($isGroup) {
             $columnas[] = DB::raw("SUM(CASE 
                 WHEN ($calcDiff) > 0 THEN CEIL($calcDiff) 
