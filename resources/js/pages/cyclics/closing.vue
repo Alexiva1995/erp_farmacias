@@ -268,34 +268,36 @@ const handleDeleteItem = async (item) => {
             />
           </div>
 
-          <!-- Acciones -->
+          <!-- Botones de Acción (Estilo Inventario) -->
           <div class="d-flex align-center gap-1">
             <VBtn
               icon variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="34"
-              class="rounded-lg"
+              size="38"
+              class="rounded-circle shadow-sm"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="22" />
+              <VTooltip activator="parent">Filtros Avanzados</VTooltip>
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
 
-            <VBtn icon variant="tonal" color="secondary" size="34" class="rounded-lg" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" size="20" />
+            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
+              <VIcon icon="tabler-eraser" size="22" />
+              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
             </VBtn>
 
             <VBtn
+              icon variant="flat"
               color="success"
-              variant="flat"
-              height="34"
-              class="font-weight-black px-4 rounded-lg text-xs"
+              size="38"
+              class="rounded-circle shadow-sm"
               :disabled="loading || isClosing"
               :loading="isClosing"
-              prepend-icon="tabler-lock-check"
               @click="handleCashClose"
             >
-              CERRAR
+              <VIcon icon="tabler-lock-check" size="22" />
+              <VTooltip activator="parent">Generar Cierre</VTooltip>
             </VBtn>
           </div>
         </div>

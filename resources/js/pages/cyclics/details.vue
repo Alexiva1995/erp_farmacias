@@ -232,36 +232,40 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             />
           </div>
 
-          <!-- Botones de Acción -->
+          <!-- Botones de Acción (Estilo Inventario) -->
           <div class="d-flex align-center gap-1">
             <VBtn
               icon variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="34"
-              class="rounded-lg"
+              size="38"
+              class="rounded-circle shadow-sm"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="22" />
+              <VTooltip activator="parent">Filtros Avanzados</VTooltip>
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
 
-            <VBtn icon variant="tonal" color="secondary" size="34" class="rounded-lg" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" size="20" />
+            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
+              <VIcon icon="tabler-eraser" size="22" />
+              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
             </VBtn>
 
-            <VBtn icon variant="tonal" color="secondary" size="34" class="rounded-lg" @click="goBack">
-              <VIcon icon="tabler-arrow-left" size="20" />
+            <VBtn icon variant="tonal" color="secondary" size="38" class="rounded-circle shadow-sm" @click="goBack">
+              <VIcon icon="tabler-arrow-left" size="22" />
+              <VTooltip activator="parent">Volver</VTooltip>
             </VBtn>
 
             <VBtn
               v-if="cycleInfo?.status === 'active'"
+              icon
               color="success"
               variant="flat"
-              height="34"
-              class="font-weight-black px-4 rounded-lg text-xs"
-              prepend-icon="tabler-lock"
+              size="38"
+              class="rounded-circle shadow-sm"
             >
-              CERRAR
+              <VIcon icon="tabler-lock" size="22" />
+              <VTooltip activator="parent">Cerrar Ciclo</VTooltip>
             </VBtn>
           </div>
         </div>

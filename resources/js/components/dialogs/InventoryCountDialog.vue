@@ -189,60 +189,61 @@ const handleSave = async () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-6">
+      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4 gap-sm-6">
         <!-- Perfil del Producto Premium -->
         <VCard
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm"
+          class="pa-3 pa-sm-5 bg-white rounded-xl border shadow-sm"
         >
           <div class="d-flex flex-column">
-            <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center justify-space-between mb-2 mb-sm-4">
               <div class="d-flex align-center gap-2">
                 <VChip
-                  size="small"
+                  size="x-small"
                   color="primary"
                   variant="flat"
-                  class="font-weight-black uppercase px-3 shadow-sm rounded-lg"
+                  class="font-weight-black uppercase px-2 shadow-sm rounded-lg"
                 >
                   ID: {{ product.id }}
                 </VChip>
                 <VChip
-                  size="small"
+                  v-if="product.category?.name"
+                  size="x-small"
                   color="secondary"
                   variant="tonal"
-                  class="font-weight-black uppercase px-3 rounded-lg"
+                  class="font-weight-black uppercase px-2 rounded-lg"
                 >
-                  {{ product.category?.name || "General" }}
+                  {{ product.category.name }}
                 </VChip>
               </div>
-              <div class="header-indicator primary shadow-sm" />
+              <div class="header-indicator primary shadow-sm d-none d-sm-block" />
             </div>
 
-            <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-4">
+            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-2 mb-sm-4">
               {{ product.name }}
             </h3>
 
             <VRow dense>
               <VCol cols="12" sm="6">
-                <div class="d-flex align-center gap-3 pa-3 bg-light rounded-lg border-dashed-2">
-                  <VAvatar size="32" color="white" class="shadow-sm border">
-                    <VIcon icon="tabler-building-factory" size="16" color="primary" />
+                <div class="d-flex align-center gap-2 gap-sm-3 pa-2 pa-sm-3 bg-light rounded-lg border-dashed-2">
+                  <VAvatar size="28" color="white" class="shadow-sm border">
+                    <VIcon icon="tabler-building-factory" size="14" color="primary" />
                   </VAvatar>
-                  <div class="d-flex flex-column">
-                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Laboratorio</span>
-                    <span class="text-xs font-weight-black text-high-emphasis uppercase">
+                  <div class="d-flex flex-column min-width-0">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-0">Laboratorio</span>
+                    <span class="text-xs font-weight-black text-high-emphasis uppercase truncate-1-line">
                       {{ product.laboratory?.name || "SIN REGISTRO" }}
                     </span>
                   </div>
                 </div>
               </VCol>
 
-              <VCol cols="12" sm="6">
+              <VCol cols="12" sm="6" class="d-none d-sm-block">
                 <div class="d-flex align-center gap-3 pa-3 bg-light rounded-lg border-dashed-2">
                   <VAvatar size="32" color="white" class="shadow-sm border">
                     <VIcon icon="tabler-flask" size="16" color="primary" />
                   </VAvatar>
-                  <div class="d-flex flex-column">
+                  <div class="d-flex flex-column min-width-0">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Principio Activo</span>
                     <span class="text-xs font-weight-black text-high-emphasis uppercase truncate-1-line">
                       {{ product.active_ingredient || "SIN REGISTRO" }}
@@ -259,11 +260,11 @@ const handleSave = async () => {
           <VCard
             variant="flat"
             :color="allowWithoutBarcode ? 'warning' : 'primary'"
-            class="pa-4 mb-6 rounded-xl border shadow-sm transition-all overflow-hidden"
+            class="pa-3 pa-sm-4 mb-4 mb-sm-6 rounded-xl border shadow-sm transition-all overflow-hidden"
             :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
           >
             <div
-              class="position-absolute"
+              class="position-absolute d-none d-sm-block"
               style="right: -10px; top: -10px; opacity: 0.1;"
             >
               <VIcon
@@ -276,28 +277,29 @@ const handleSave = async () => {
               v-model="allowWithoutBarcode"
               :color="allowWithoutBarcode ? 'warning' : 'primary'"
               hide-details
-              density="comfortable"
+              density="compact"
               class="ma-0 pa-0"
             >
               <template #label>
-                <div class="d-flex align-center gap-4">
+                <div class="d-flex align-center gap-3 gap-sm-4">
                   <VAvatar
                     :color="allowWithoutBarcode ? 'warning' : 'primary'"
-                    size="44"
+                    size="36"
+                    sm-size="44"
                     variant="flat"
                     class="shadow-sm border border-white"
                   >
                     <VIcon
                       :icon="allowWithoutBarcode ? 'tabler-keyboard' : 'tabler-scan'"
-                      size="24"
+                      size="20"
                       color="white"
                     />
                   </VAvatar>
                   <div class="d-flex flex-column leading-none">
-                    <span class="text-subtitle-1 font-weight-black uppercase d-block letter-spacing-1">
+                    <span class="text-subtitle-2 font-weight-black uppercase d-block letter-spacing-1">
                       {{ allowWithoutBarcode ? "CONTEO MANUAL" : "MODO ESCANEO" }}
                     </span>
-                    <span class="text-super-xs font-weight-bold opacity-75 uppercase mt-1">
+                    <span class="text-super-xs font-weight-bold opacity-75 uppercase d-none d-sm-block mt-1">
                       {{ allowWithoutBarcode ? "Ingreso directo por teclado" : "Validación obligatoria por scanner" }}
                     </span>
                   </div>
@@ -307,15 +309,15 @@ const handleSave = async () => {
           </VCard>
 
           <!-- Campo de Escaneo Premium -->
-          <div v-if="!allowWithoutBarcode" class="mb-6">
-            <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block ms-1">Validación de Código de Barras</span>
+          <div v-if="!allowWithoutBarcode" class="mb-4 mb-sm-6">
+            <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 mb-sm-2 d-block ms-1">Validación de Código</span>
             <AppTextField
               id="barcode-input"
               v-model="barcodeInput"
-              placeholder="APUNTA EL LECTOR AQUÍ..."
+              placeholder="ESCANEAR..."
               :error-messages="barcodeError"
               variant="outlined"
-              density="comfortable"
+              density="compact"
               prepend-inner-icon="tabler-barcode"
               class="rounded-lg font-weight-black shadow-sm"
               @keyup.enter="handleBarcodeEnter"
@@ -336,24 +338,24 @@ const handleSave = async () => {
           <!-- Input de Cantidad Auditada -->
           <VCard
             variant="flat"
-            class="pa-5 rounded-xl bg-white border shadow-sm"
+            class="pa-3 pa-sm-5 rounded-xl bg-white border shadow-sm"
           >
-            <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center justify-space-between mb-2 mb-sm-4">
               <div class="d-flex align-center gap-2">
                 <div class="header-indicator secondary shadow-sm" />
-                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Cantidad Auditada</span>
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Auditado</span>
               </div>
               <VChip
-                size="small"
+                size="x-small"
                 color="secondary"
                 variant="flat"
-                class="font-weight-black px-3 rounded-lg shadow-sm"
+                class="font-weight-black px-2 rounded-lg shadow-sm"
               >
-                UNIDADES FÍSICAS
+                UNIDADES
               </VChip>
             </div>
 
-            <div class="pa-4 bg-light rounded-xl border-dashed-2 d-flex justify-center align-center">
+            <div class="pa-2 pa-sm-4 bg-light rounded-xl border-dashed-2 d-flex justify-center align-center">
               <AppTextField
                 id="quantity-input"
                 v-model.number="countedQuantity"
@@ -374,32 +376,32 @@ const handleSave = async () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+      <VCardActions class="pa-3 pa-sm-6 bg-white border-t">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="tonal"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="handleCancel"
             >
-              Cancelar
+              Cerrar
             </VBtn>
           </VCol>
           <VCol cols="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :disabled="!canSave"
               @click="handleSave"
             >
               <VIcon start icon="tabler-check" size="18" />
-              Guardar Conteo
+              Guardar
             </VBtn>
           </VCol>
         </VRow>
@@ -474,12 +476,18 @@ const handleSave = async () => {
   border: none;
   background: transparent;
   color: rgb(var(--v-theme-primary)) !important;
-  font-size: 3.5rem !important;
+  font-size: 2.5rem !important;
   font-weight: 900 !important;
   inline-size: 100%;
   line-height: 1;
   outline: none;
   text-align: center !important;
+}
+
+@media (min-width: 600px) {
+  .audit-huge-input :deep(input) {
+    font-size: 3.5rem !important;
+  }
 }
 
 .audit-huge-input :deep(.v-field__input) {
@@ -501,5 +509,9 @@ const handleSave = async () => {
 
 .uppercase {
   text-transform: uppercase;
+}
+
+.min-width-0 {
+  min-inline-size: 0;
 }
 </style>
