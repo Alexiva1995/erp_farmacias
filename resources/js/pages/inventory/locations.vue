@@ -1,3 +1,4 @@
+<script setup>
 import { onMounted, ref, computed } from "vue";
 import LocationTable from "@/components/LocationTable.vue";
 import LocationEditDialog from "@/components/dialogs/LocationEditDialog.vue";
@@ -95,7 +96,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <VContainer fluid>
+  <VContainer fluid class="pa-0">
     <!-- Filtros y Acciones -->
     <AppFilterBase
       v-model:search="search"

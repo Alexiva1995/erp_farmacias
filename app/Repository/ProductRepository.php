@@ -182,7 +182,6 @@ class ProductRepository
         }
 
         return $consulta;
-    }ta;
     }
 
 

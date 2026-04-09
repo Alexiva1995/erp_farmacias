@@ -14,7 +14,7 @@ const emit = defineEmits([
 ]);
 
 const headers = [
-  { title: "ID", key: "id", sortable: true },
+  { title: "id", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
   { title: "Nombre de Ubicación", key: "name", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: 'center' },
 ];
@@ -22,70 +22,65 @@ const headers = [
 
 <template>
   <div class="location-table-container">
-    <VCard class="rounded-xl border-0 shadow-premium overflow-hidden">
-      <!-- Decoración de Cabecera -->
-      <div class="header-gradient pa-4 d-flex align-center justify-space-between text-white">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="white" variant="tonal" rounded="lg">
-            <VIcon icon="tabler-map-pin" color="white" />
-          </VAvatar>
-          <div>
-            <div class="text-h6 font-weight-black line-height-tight">Ubicaciones</div>
-            <div class="text-caption opacity-80">
-              Total: {{ props.locations.length }} registros
-            </div>
-          </div>
-        </div>
-      </div>
+    <VCard class="rounded-lg border shadow-sm overflow-hidden">
+      <!-- Cabecera Estándar (como en Productos) -->
+      <VCardTitle class="d-flex align-center pa-4">
+        <span class="text-h6 font-weight-bold">Listado de Ubicaciones</span>
+        <VSpacer />
+        <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+          {{ props.locations.length }} ITEMS
+        </VChip>
+      </VCardTitle>
 
-      <!-- Vista de Escritorio (Tabla) -->
+      <VDivider />
+
+      <!-- Vista de Escritorio (Tabla Compacta Estándar) -->
       <VDataTable
         v-if="!mobile"
         :headers="headers"
         :items="props.locations"
         :loading="props.loading"
-        class="premium-data-table"
+        class="text-no-wrap"
+        density="compact"
         hover
         no-data-text="No se encontraron ubicaciones registradas"
       >
         <template #item.id="{ item }">
-          <span class="text-subtitle-2 font-weight-black text-primary">#{{ item.id }}</span>
+          <span class="text-sm font-weight-black text-primary">#{{ item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-3">
+          <div class="d-flex align-center gap-2 py-2">
             <div class="header-indicator success rounded-pill"></div>
-            <span class="text-body-1 font-weight-bold text-high-emphasis">{{ item.name }}</span>
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
           </div>
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center gap-2">
+          <div class="d-flex align-center justify-center gap-1">
             <VTooltip text="Editar" location="top">
               <template #activator="{ props: tooltipProps }">
-                <VBtn
+                <IconBtn
                   v-bind="tooltipProps"
-                  icon="tabler-pencil"
-                  variant="tonal"
-                  color="primary"
-                  size="32"
-                  class="rounded-lg transition-all"
+                  color="warning"
+                  size="small"
                   @click="emit('edit-location', item)"
-                />
+                >
+                  <VIcon icon="tabler-edit" size="18" />
+                </IconBtn>
               </template>
             </VTooltip>
 
             <VTooltip text="Eliminar" location="top">
               <template #activator="{ props: tooltipProps }">
-                <VBtn
+                <IconBtn
                   v-bind="tooltipProps"
-                  icon="tabler-trash"
-                  variant="tonal"
                   color="error"
-                  size="32"
-                  class="rounded-lg transition-all"
+                  size="small"
                   @click="emit('delete-location', item.id)"
-                />
+                >
+                  <VIcon icon="tabler-trash" size="18" />
+                </IconBtn>
               </template>
             </VTooltip>
           </div>
@@ -99,11 +94,9 @@ const headers = [
         </template>
       </VDataTable>
 
-      <!-- Vista de Móvil (Tarjetas) -->
-      <div v-else class="pa-4 d-flex flex-column gap-3">
-        <div v-show="props.loading" class="text-center py-4">
-          <VProgressCircular indeterminate color="primary" />
-        </div>
+      <!-- Vista de Móvil (Tarjetas Estándar) -->
+      <div v-else class="pa-2 d-flex flex-column gap-2">
+        <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
 
         <div v-if="props.locations.length === 0 && !props.loading" class="text-center py-10 text-disabled">
           No se encontraron ubicaciones registradas
@@ -112,38 +105,39 @@ const headers = [
         <VCard
           v-for="location in props.locations"
           :key="location.id"
-          variant="outlined"
-          class="rounded-xl border-dashed-thin transition-all"
+          variant="flat"
+          class="location-mobile-card border mb-1"
         >
-          <VCardText class="pa-4">
-            <div class="d-flex justify-space-between align-start mb-3">
+          <div class="pa-3">
+            <div class="d-flex justify-space-between align-center mb-1">
               <div class="d-flex align-center gap-2">
-                <div class="header-indicator success rounded-pill"></div>
-                <div class="d-flex flex-column">
-                  <span class="text-caption text-disabled font-weight-bold">#{{ location.id }}</span>
-                  <span class="text-h6 font-weight-black">{{ location.name }}</span>
-                </div>
-              </div>
-              <div class="d-flex gap-2">
-                <VBtn
-                  icon="tabler-pencil"
-                  variant="tonal"
-                  color="primary"
-                  size="35"
-                  class="rounded-lg"
-                  @click="emit('edit-location', location)"
-                />
-                <VBtn
-                  icon="tabler-trash"
-                  variant="tonal"
-                  color="error"
-                  size="35"
-                  class="rounded-lg"
-                  @click="emit('delete-location', location.id)"
-                />
+                <span class="text-xs font-weight-black text-primary">#{{ location.id }}</span>
+                <span class="text-sm font-weight-black text-uppercase">{{ location.name }}</span>
               </div>
             </div>
-          </VCardText>
+            
+            <VDivider class="my-2 border-opacity-10" />
+
+            <div class="d-flex gap-2">
+              <VBtn 
+                color="warning" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="36"
+                icon="tabler-edit" 
+                @click="emit('edit-location', location)"
+              />
+              <VDivider vertical class="border-opacity-10" />
+              <VBtn 
+                color="error" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="36"
+                icon="tabler-trash" 
+                @click="emit('delete-location', location.id)"
+              />
+            </div>
+          </div>
         </VCard>
       </div>
     </VCard>
@@ -151,48 +145,28 @@ const headers = [
 </template>
 
 <style scoped>
-.shadow-premium {
-  box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 8%) !important;
-}
-
-.header-gradient {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+.location-mobile-card {
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
 }
 
 .header-indicator {
-  block-size: 20px;
-  inline-size: 4px;
+  block-size: 16px;
+  inline-size: 3px;
 }
 
 .header-indicator.success {
   background: linear-gradient(to bottom, #10b981, #059669);
 }
 
-.premium-data-table :deep(th) {
-  background-color: #f8fafc !important;
-  block-size: 48px !important;
-  color: #64748b !important;
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.05em;
+  font-weight: 700 !important;
   text-transform: uppercase;
 }
 
-.premium-data-table :deep(td) {
-  border-block-end: 1px dashed #e2e8f0 !important;
-  padding-block: 16px !important;
-}
-
-.transition-all {
-  transition: all 0.2s ease-in-out;
-}
-
-.transition-all:hover {
-  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.2);
-  transform: translateY(-2px);
-}
-
-.line-height-tight {
-  line-height: 1.2;
-}
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
 </style>

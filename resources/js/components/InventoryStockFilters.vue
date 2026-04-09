@@ -63,6 +63,11 @@ const tipoFiltracionOpcion = [
   { title: "Combinado", value: "combinado" },
 ];
 
+const viewTypeOptions = [
+  { title: "Individual", value: "individual" },
+  { title: "Grupal", value: "group" },
+];
+
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
@@ -84,25 +89,19 @@ const handleClear = () => {
   >
     <template #search-extra>
       <!-- Selector de Vista (Individual vs Grupal) -->
-      <VCol cols="auto" class="d-flex align-center">
-        <VBtnToggle
+      <VCol cols="12" sm="3" md="2" class="d-flex align-center">
+        <VSelect
           :model-value="props.viewType"
-          color="primary"
-          variant="tonal"
+          :items="viewTypeOptions"
+          label="Vista"
           density="compact"
-          mandatory
+          hide-details
+          prepend-inner-icon="tabler-layout-grid"
           @update:model-value="emit('update:viewType', $event)"
-        >
-          <VBtn value="individual" size="small" class="px-4">
-            <VIcon start size="18">tabler-user</VIcon>
-            <span class="d-none d-sm-inline">Individual</span>
-          </VBtn>
-          <VBtn value="group" size="small" class="px-4">
-            <VIcon start size="18">tabler-users-group</VIcon>
-            <span class="d-none d-sm-inline">Grupal</span>
-          </VBtn>
-        </VBtnToggle>
+        />
       </VCol>
+
+      <!-- Búsqueda Estricta -->
 
       <!-- Búsqueda Estricta -->
       <VCol cols="auto" class="d-none d-lg-flex">
