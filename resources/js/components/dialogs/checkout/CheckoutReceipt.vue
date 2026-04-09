@@ -21,11 +21,47 @@ const props = defineProps({
   showChangeAmount: Boolean,
   changeAmount: Number,
   changeAmountInCop: Number,
+  exchangeRates: Object,
 });
 
 const emit = defineEmits(["print", "cancel", "print-fiscal"]);
 
 const logoSrc = BASE64_LOGO_DATA;
+
+/**
+ * Convierte un monto a Bolívares (BS) usando las tasas de cambio proporcionadas.
+ */
+const convertToBS = (amount, fromCurrency) => {
+  const numAmount = Number(amount) || 0;
+  if (fromCurrency === "BS") return numAmount;
+
+  const rates = props.exchangeRates?.[fromCurrency];
+  const rateToBs = rates?.["BS"] || 0;
+
+  if (rateToBs > 0) {
+    return numAmount * rateToBs;
+  }
+
+  // Fallback: Si no hay tasa, intentar vía USD si la moneda es COP
+  if (fromCurrency === "COP") {
+    const rateToUsd = rates?.["USD"] || 0;
+    const usdRates = props.exchangeRates?.["USD"];
+    const usdToBs = usdRates?.["BS"] || 0;
+    if (rateToUsd > 0 && usdToBs > 0) {
+      return numAmount * rateToUsd * usdToBs;
+    }
+  }
+
+  return numAmount;
+};
+
+/**
+ * Formatea un monto siempre en BS, realizando la conversión si es necesario.
+ */
+const formatAsBS = (amount, fromCurrency = "BS") => {
+  const amountInBs = convertToBS(amount, fromCurrency);
+  return formatCurrency(amountInBs, "BS");
+};
 </script>
 
 <template>
@@ -64,7 +100,7 @@ const logoSrc = BASE64_LOGO_DATA;
               <span class="flex-grow-1 font-weight-medium">
                 {{ product.selectedQuantity }} x {{ product.title }}
               </span>
-              <span class="font-weight-black ms-2">{{ formatCurrency(getProductPrice(product, selectedCurrency), selectedCurrency) }}</span>
+              <span class="font-weight-black ms-2">{{ formatAsBS(getProductPrice(product, selectedCurrency), selectedCurrency) }}</span>
             </div>
           </div>
         </div>
@@ -74,27 +110,27 @@ const logoSrc = BASE64_LOGO_DATA;
         <div class="receipt-totals text-caption">
           <div v-if="activeDiscountDisplay" class="d-flex justify-space-between">
             <span>{{ activeDiscountDisplay.label }}:</span>
-            <span class="text-error">- {{ activeDiscountDisplay.formatted }}</span>
+            <span class="text-error">- {{ formatAsBS(activeDiscountDisplay.amount, selectedCurrency) }}</span>
           </div>
           
           <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between">
             <span>Dto. Vencimiento:</span>
-            <span class="text-error">- {{ formatCurrency(expirationDiscountTotal, selectedCurrency) }}</span>
+            <span class="text-error">- {{ formatAsBS(expirationDiscountTotal, selectedCurrency) }}</span>
           </div>
 
           <div v-if="appliesSpecialTax" class="d-flex justify-space-between">
             <span>Recargo SPE (3%):</span>
-            <span>{{ formatCurrency(specialTaxAmount, selectedCurrency) }}</span>
+            <span>{{ formatAsBS(specialTaxAmount, selectedCurrency) }}</span>
           </div>
 
           <div class="d-flex justify-space-between font-weight-black text-subtitle-2 mt-1 py-1 border-y">
             <span>TOTAL A PAGAR:</span>
-            <span>{{ formatCurrency(roundedTotalAmountToPay, selectedCurrency) }}</span>
+            <span>{{ formatAsBS(roundedTotalAmountToPay, selectedCurrency) }}</span>
           </div>
 
           <div v-if="orderData?.client?.is_spe" class="d-flex justify-space-between text-success font-weight-bold mt-1">
             <span>Ahorro SPE (75% IVA):</span>
-            <span>-{{ formatCurrency(totalSPESavings, selectedCurrency) }}</span>
+            <span>-{{ formatAsBS(totalSPESavings, selectedCurrency) }}</span>
           </div>
 
           <VDivider class="my-2 border-dashed" />
@@ -103,28 +139,27 @@ const logoSrc = BASE64_LOGO_DATA;
             <div class="font-weight-bold text-tiny uppercase mb-1">Detalle de Pagos:</div>
             <div v-for="payment in payments.filter(p => p.amount > 0)" :key="payment.method" class="d-flex justify-space-between text-tiny">
               <span>{{ getPaymentMethodLabel(payment.method, payment.currency) }}:</span>
-              <span>{{ formatCurrency(payment.amount, payment.currency) }}</span>
+              <span>{{ formatAsBS(payment.amount, payment.currency) }}</span>
             </div>
             <div v-if="hasCreditPayment" class="d-flex justify-space-between font-weight-bold text-tiny">
               <span>Crédito Aplicado:</span>
-              <span>{{ formatCurrency(roundedTotalAmountToPay, selectedCurrency) }}</span>
+              <span>{{ formatAsBS(roundedTotalAmountToPay, selectedCurrency) }}</span>
             </div>
           </div>
 
           <div v-if="showChangeAmount" class="border-t pt-1">
             <div class="d-flex justify-space-between font-weight-black text-success">
-              <span>DEVOLUCIÓN (COP):</span>
-              <span>{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
-            </div>
-            <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between text-tiny mt-1">
-              <span>VUELTO EN {{ selectedCurrency }}:</span>
-              <span>{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
+              <span>DEVOLUCIÓN (BS):</span>
+              <span>{{ formatAsBS(changeAmount, selectedCurrency) }}</span>
             </div>
           </div>
         </div>
 
         <div class="text-center mt-6 text-success font-weight-black text-caption border-t pt-2">
-          ¡GRACIAS POR SU PREFERENCIA!
+          ¡GRACIAS POR SU COMPRA!
+        </div>
+        <div class="text-center font-weight-black text-caption mt-1">
+          DOCUMENTO NO FISCAL
         </div>
       </div>
     </div>

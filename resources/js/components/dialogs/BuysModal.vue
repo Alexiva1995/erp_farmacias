@@ -1729,6 +1729,7 @@ const getAvailableMethodsForCurrency = (currency) => {
       <!-- Ticket Final -->
       <VCardText v-else class="pa-0">
         <CheckoutReceipt 
+          :exchange-rates="exchangeRates"
           :order-data="orderData"
           :order-products="orderProducts"
           :selected-currency="selectedCurrency"
