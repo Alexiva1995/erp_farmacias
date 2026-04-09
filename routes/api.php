@@ -77,6 +77,9 @@ Route::prefix('fiscal')->group(function () {
     Route::get('/commands/history', [FiscalPrinterController::class, 'history']);
     Route::get('/commands/pending', [FiscalPrinterController::class, 'getPendingCommand']);
     Route::patch('/commands/{id}/confirm', [FiscalPrinterController::class, 'confirmCommand']);
+    
+    // Nueva ruta de réplica
+    Route::patch('/confirm-replica/{id}', [FiscalPrinterController::class, 'confirmReplica']);
 });
 
 /*

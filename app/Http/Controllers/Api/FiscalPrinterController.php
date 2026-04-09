@@ -61,6 +61,43 @@ class FiscalPrinterController extends Controller
     }
 
     /**
+     * Confirm that a fiscal invoice has been printed (REPLICA).
+     * Ensures fiscal_id is always saved.
+     */
+    public function confirmReplica(Request $request, $id)
+    {
+        $request->validate([
+            'invoice_number' => 'required',
+            'fiscal_id' => 'nullable',
+        ]);
+
+        try {
+            Log::info("Fiscal Bridge Replica - Confirmando Factura #{$id}", $request->all());
+
+            $fiscal = FiscalHistory::findOrFail($id);
+            
+            // Si fiscal_id viene nulo pero invoice_number no, usamos invoice_number para ambos
+            $targetInvoiceNumber = $request->invoice_number;
+            $targetFiscalId = $request->fiscal_id ?? $request->invoice_number;
+
+            $fiscal->update([
+                'invoice_number' => $targetInvoiceNumber,
+                'fiscal_id' => $targetFiscalId,
+                'invoice_date' => now(),
+            ]);
+
+            return response()->json([
+                'message' => 'Factura confirmada exitosamente en RÉPLICA',
+                'invoice_number' => $targetInvoiceNumber,
+                'fiscal_id' => $targetFiscalId
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en FiscalPrinterController@confirmReplica: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al confirmar la impresión en REPLICA'], 500);
+        }
+    }
+
+    /**
      * Queue an order for fiscal printing.
      */
     public function queue(Request $request, $orderId)
