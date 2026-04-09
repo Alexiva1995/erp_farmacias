@@ -35,23 +35,27 @@ const convertToBS = (amount, fromCurrency) => {
   const numAmount = Number(amount) || 0;
   if (fromCurrency === "BS") return numAmount;
 
+  // Intentar obtener tasa directa (ej: COP -> BS o USD -> BS)
   const rates = props.exchangeRates?.[fromCurrency];
-  const rateToBs = rates?.["BS"] || 0;
+  let rateToBs = rates?.["BS"] || 0;
+
+  // Si no hay tasa directa, intentar vía USD (fromCurrency -> USD -> BS)
+  if (rateToBs <= 0) {
+    const rateToUsd = rates?.["USD"] || 0;
+    const usdRates = props.exchangeRates?.["USD"];
+    const usdToBs = usdRates?.["BS"] || 0;
+    
+    if (rateToUsd > 0 && usdToBs > 0) {
+      rateToBs = rateToUsd * usdToBs;
+    }
+  }
 
   if (rateToBs > 0) {
     return numAmount * rateToBs;
   }
 
-  // Fallback: Si no hay tasa, intentar vía USD si la moneda es COP
-  if (fromCurrency === "COP") {
-    const rateToUsd = rates?.["USD"] || 0;
-    const usdRates = props.exchangeRates?.["USD"];
-    const usdToBs = usdRates?.["BS"] || 0;
-    if (rateToUsd > 0 && usdToBs > 0) {
-      return numAmount * rateToUsd * usdToBs;
-    }
-  }
-
+  // Si no se encuentra ninguna tasa, registrar advertencia y retornar original (evitar mostrar 0 si no hay red)
+  console.warn(`No se encontró tasa de conversión para ${fromCurrency} a BS`);
   return numAmount;
 };
 
@@ -95,19 +99,19 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
         <VDivider class="my-2 border-dashed" />
 
         <div class="receipt-items mb-2">
-          <div v-for="product in orderProducts" :key="product.id" class="receipt-item mb-2">
-            <div class="d-flex justify-space-between align-start text-caption">
-              <span class="flex-grow-1 font-weight-medium">
+          <div v-for="product in orderProducts" :key="product.id" class="receipt-item mb-1">
+            <div class="d-flex flex-column text-caption border-b pb-1">
+              <span class="font-weight-medium leading-tight">
                 {{ product.selectedQuantity }} x {{ product.title }}
               </span>
-              <span class="font-weight-black ms-2">{{ formatAsBS(getProductPrice(product, selectedCurrency), selectedCurrency) }}</span>
+              <span v-if="product.laboratory || product.laboratory_name" class="text-tiny text-disabled font-weight-bold uppercase">
+                LAB: {{ product.laboratory || product.laboratory_name }}
+              </span>
             </div>
           </div>
         </div>
 
-        <VDivider class="my-2 border-dashed" />
-
-        <div class="receipt-totals text-caption">
+        <div class="receipt-totals text-caption mt-3">
           <div v-if="activeDiscountDisplay" class="d-flex justify-space-between">
             <span>{{ activeDiscountDisplay.label }}:</span>
             <span class="text-error">- {{ formatAsBS(activeDiscountDisplay.amount, selectedCurrency) }}</span>
@@ -123,7 +127,7 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
             <span>{{ formatAsBS(specialTaxAmount, selectedCurrency) }}</span>
           </div>
 
-          <div class="d-flex justify-space-between font-weight-black text-subtitle-2 mt-1 py-1 border-y">
+          <div class="d-flex justify-space-between font-weight-black text-subtitle-1 mt-1 py-1 border-y">
             <span>TOTAL A PAGAR:</span>
             <span>{{ formatAsBS(roundedTotalAmountToPay, selectedCurrency) }}</span>
           </div>
