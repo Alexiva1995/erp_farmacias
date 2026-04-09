@@ -2372,10 +2372,11 @@ const handleBuysCompletion = async (
       }*/
 
       // CÁLCULO FIJO EN BS PARA FISCALIDAD (Independiente de la moneda de pago)
-      const basePriceBs = getItemPriceByCurrency(item, "BS");
-      const finalPriceBs = basePriceBs * (1 - dPercent / 100);
+      // Usamos el precio original en BS (neto) y le aplicamos el descuento e IVA
+      const rawPriceBs = (item.originalPriceBs ?? item.original_price_bs ?? item.basePrice) || 0;
+      const finalPriceBs = rawPriceBs * (1 - dPercent / 100);
       const finalPriceTaxBs = finalPriceBs * taxMultiplier;
-      const finalPriceBeforeDiscountTaxBs = basePriceBs * taxMultiplier;
+      const finalPriceBeforeDiscountTaxBs = rawPriceBs * taxMultiplier;
 
       return {
         order_detail_id: item.order_detail_id,
