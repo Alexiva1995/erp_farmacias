@@ -21,6 +21,8 @@ class OrderDetail extends Model
         'discount_type',
         'discount_source_id',
         'price_before_discount',
+        'price_bs',
+        'price_before_discount_bs',
     ];
 
     public function order(): BelongsTo

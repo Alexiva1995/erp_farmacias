@@ -516,7 +516,7 @@ class OrderActionService
         }
     }
 
-    public function invoicing(Order $order, $spe, array $customItems = [])
+    public function invoicing(Order $order, $spe)
     {
 
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
@@ -536,20 +536,12 @@ class OrderActionService
                 $product = $detail->product;
                 $quantity = $detail->quantity;
 
-                // PRECISION FISCAL: Priorizar el precio enviado desde el POS (vista)
-                // Si no viene (fallback), usar la lógica de precio base BS del inventario
-                $customData = $customItems[$detail->id] ?? null;
-                $priceBs = null;
+                // Usar el precio en BS mandado desde el frontend (Fijo y exacto)
+                // Si por alguna razón no existe (ventas viejas), cae de nuevo al catálogo
+                $priceBsTotal = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)) * $quantity);
+                $priceBs = $quantity > 0 ? ($priceBsTotal / $quantity) : 0;
 
-                if ($customData && isset($customData['price_bs_fiscal'])) {
-                    $priceBs = (float) $customData['price_bs_fiscal'] / $quantity;
-                } else {
-                    $productPriceBs = $product->price_bs ?? 0;
-                    $discountPct = $detail->discount_percentage ?? 0;
-                    $priceBs = $productPriceBs * (1 - ($discountPct / 100));
-                }
-
-                // Si el producto tiene IVA, extraer el neto (porque el precio enviado ya incluye IVA)
+                // Si el producto tiene IVA, extraer el neto
                 if ($product->iva == 1) {
                     $priceBs = $priceBs / 1.16;
                 }
@@ -598,18 +590,11 @@ class OrderActionService
                 $unitPriceInOrderCurrency = $detail->unit_cost;
 
                 $product = $detail->product;
+                $quantity = $detail->quantity;
 
-                // Aplicar la misma prioridad para el desglose detallado
-                $customData = $customItems[$detail->id] ?? null;
-                $priceBs = null;
-
-                if ($customData && isset($customData['price_bs_fiscal'])) {
-                    $priceBs = (float) $customData['price_bs_fiscal'] / $detail->quantity;
-                } else {
-                    $productPriceBs = $product->price_bs ?? 0;
-                    $discountPct = $detail->discount_percentage ?? 0;
-                    $priceBs = $productPriceBs * (1 - ($discountPct / 100));
-                }
+                // Usar el precio en BS mandado desde el frontend para el desglose
+                $priceBsTotal = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)) * $quantity);
+                $priceBs = $quantity > 0 ? ($priceBsTotal / $quantity) : 0;
 
                 // Extraer el neto para el desglose detallado si tiene IVA
                 if ($product->iva == 1) {
@@ -736,6 +721,12 @@ class OrderActionService
                         $detail->price = ($itemData['price'] ?? 0) * $detail->quantity;
                         // $detail->unit_cost = $itemData['unit_cost'] ?? 0; // No sobreescribir costo real
                         $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0) * $detail->quantity;
+                    }
+                    if (isset($itemData['price_bs'])) {
+                        $detail->price_bs = $itemData['price_bs'] * $detail->quantity;
+                    }
+                    if (isset($itemData['price_before_discount_bs'])) {
+                        $detail->price_before_discount_bs = $itemData['price_before_discount_bs'] * $detail->quantity;
                     }
                     if (isset($itemData['discount_percentage'])) {
                         $detail->discount_percentage = $itemData['discount_percentage'];
@@ -902,18 +893,7 @@ class OrderActionService
             }
 
             if ($shouldInvoice) {
-                $customItems = [];
-                if ($request->has('items')) {
-                    $rawItems = is_string($request->items) ? json_decode($request->items, true) : $request->items;
-                    if (is_array($rawItems)) {
-                        foreach ($rawItems as $ri) {
-                            if (isset($ri['order_detail_id'])) {
-                                $customItems[$ri['order_detail_id']] = $ri;
-                            }
-                        }
-                    }
-                }
-                $this->invoicing($orderId, $request->spe, $customItems);
+                $this->invoicing($orderId, $request->spe);
                 $ivaEjecuted = true;
             }
 
