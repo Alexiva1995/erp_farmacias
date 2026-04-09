@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductLot;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LotQueryService
 {
@@ -306,6 +307,58 @@ class LotQueryService
             // Ordenamiento por defecto: alfabético por nombre de producto
             $this->applySorting($query, 'product.name', 'asc');
         }
+
+        return $query;
+    }
+
+    public function getProductsPendingLotificationQuery(Request $request)
+    {
+        // Subconsulta para obtener la suma de cantidades por producto
+        $subQuery = DB::table('product_lots')
+            ->select('product_id', DB::raw('SUM(quantity) as total_quantity'))
+            ->groupBy('product_id');
+
+        $query = Product::query()
+            ->from('products')
+            ->leftJoinSub($subQuery, 'lot_sums', function ($join) {
+                $join->on('products.id', '=', 'lot_sums.product_id');
+            })
+            ->select('products.*')
+            // Añadir el stock calculado desde la subconsulta
+            ->addSelect(DB::raw('COALESCE(lot_sums.total_quantity, 0) as stock_calculado'))
+            ->with(['laboratory', 'origin', 'category', 'lots'])
+            ->where('products.lotification_completed', false)
+            ->where('products.is_deleted', false)
+            ->where('products.is_active', true);
+
+        // Búsqueda por término (q)
+        if ($request->filled('q')) {
+            $searchTerm = $request->q;
+            $query->where(function ($sub) use ($searchTerm) {
+                $sub->where('products.name', 'like', "%{$searchTerm}%")
+                    ->orWhere('products.id', '=', $searchTerm)
+                    ->orWhere('products.barcode', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Filtros adicionales compatibles con la vista
+        if ($request->filled('laboratory_id')) {
+            $query->where('laboratory_id', $request->laboratory_id);
+        }
+
+        if ($request->filled('origin_id')) {
+            $query->where('origin_id', $request->origin_id);
+        }
+
+        // Ordenamiento
+        $sortBy = $request->input('sortBy', 'name');
+        $orderBy = $request->input('orderBy', 'asc');
+
+        // Mapeo básico de ordenamiento para evitar errores de ambigüedad
+        if ($sortBy === 'name') $sortBy = 'products.name';
+        if ($sortBy === 'id') $sortBy = 'products.id';
+
+        $query->orderBy($sortBy, $orderBy);
 
         return $query;
     }

@@ -14,24 +14,33 @@ export default [
         to: 'inventory-products',
       },
       {
-        title: 'Sin Grupo',
-        to: 'inventory-products-without-group',
+        title: 'Lotes',
+        to: 'lot-list',
       },
       {
-        title: 'Productos incompletos',
-        to: 'inventory-incomplete-products',
-      },
-      {
-        title: 'Lotes sin Ubicación',
-        to: 'inventory-lots-without-location',
+        title: 'Optimización',
+        children: [
+          {
+            title: 'Sin Grupo',
+            to: 'inventory-products-without-group',
+          },
+          {
+            title: 'Productos incompletos',
+            to: 'inventory-incomplete-products',
+          },
+          {
+            title: 'Lotes sin Ubicación',
+            to: 'inventory-lots-without-location',
+          },
+          {
+            title: 'Lotificación',
+            to: 'inventory-lotificacion',
+          },
+        ],
       },
       {
         title: 'Grupos de Productos',
         to: 'inventory-group-products',
-      },
-       {
-        title: 'Lotes',
-        to: 'lot-list',
       },
       {
         title: 'Caducidad',

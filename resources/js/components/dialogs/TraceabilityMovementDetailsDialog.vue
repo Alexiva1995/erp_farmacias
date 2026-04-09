@@ -4,6 +4,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import CompactOrderViewDialog from "@/components/dialogs/CompactOrderViewDialog.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -16,6 +17,20 @@ const router = useRouter();
 const { mobile } = useDisplay();
 const loading = ref(false);
 const movementDetails = ref(null);
+
+// Estados para el visor compacto de órdenes
+const isCompactOrderVisible = ref(false);
+const compactOrderLoading = ref(false);
+const compactOrderData = ref({
+  order: {},
+  products: [],
+  payments: [],
+  total: 0,
+  change: 0,
+  credit: 0,
+  hasCredit: false,
+  currency: 'COP'
+});
 
 const isDialogVisible = computed({
   get() {
@@ -69,10 +84,48 @@ const closeDialog = () => {
   movementDetails.value = null;
 };
 
-const handleViewOrder = (orderId) => {
-  const route = router.resolve({ path: '/tpv/order-general', query: { orderId } });
-  const url = route.href.startsWith('http') ? route.href : `${window.location.origin}${route.href}`;
-  window.open(url, '_blank');
+const handleViewOrder = async (orderId) => {
+  if (!orderId) return;
+  
+  compactOrderLoading.value = true;
+  try {
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
+    if (response.data?.data?.order) {
+      const { order, hasCreditPayment } = response.data.data;
+      
+      compactOrderData.value = {
+        order: order,
+        currency: order.currency?.toUpperCase() || 'COP',
+        products: order.details.map((detail) => ({
+          id: detail.product?.id ?? detail.product_id,
+          product_id: detail.product_id ?? detail.product?.id,
+          title: detail.product?.name,
+          active_ingredient: detail.product?.active_ingredient || null,
+          laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
+          selectedQuantity: detail.quantity,
+          taxRate: detail.product?.iva,
+          price_bs: parseFloat(detail.price),
+          price_cop: parseFloat(detail.price),
+          price: parseFloat(detail.price),
+          price_before_discount: parseFloat(detail.price_before_discount),
+        })),
+        payments: order.payment_methods || [],
+        change: parseFloat(order.money_returns || 0),
+        total: parseFloat(order.total_amount || 0),
+        credit: hasCreditPayment ? parseFloat(order.total_amount) : 0,
+        hasCredit: hasCreditPayment
+      };
+      
+      isCompactOrderVisible.value = true;
+    } else {
+      toast.error("No se pudo obtener la información de la orden.");
+    }
+  } catch (error) {
+    console.error("Error al cargar la orden:", error);
+    toast.error("Error al cargar los detalles de la orden.");
+  } finally {
+    compactOrderLoading.value = false;
+  }
 };
 
 const handleViewInvoice = (invoiceId) => {
@@ -287,6 +340,7 @@ const getUserDisplayName = (user) => {
                   color="primary" 
                   size="small" 
                   prepend-icon="tabler-eye"
+                  :loading="compactOrderLoading"
                   @click="handleViewOrder(movementDetails.order?.id || movementDetails.original_order?.id)"
                   class="elevation-1"
                 >
@@ -350,6 +404,19 @@ const getUserDisplayName = (user) => {
       </VCardActions>
     </VCard>
   </VDialog>
+
+  <!-- Visor Compacto de Órdenes -->
+  <CompactOrderViewDialog
+    v-model:is-dialog-visible="isCompactOrderVisible"
+    :order-data="compactOrderData.order"
+    :order-products="compactOrderData.products"
+    :payments="compactOrderData.payments"
+    :total-amount="compactOrderData.total"
+    :selected-currency="compactOrderData.currency"
+    :change-amount="compactOrderData.change"
+    :credit-amount="compactOrderData.credit"
+    :credit="compactOrderData.hasCredit"
+  />
 </template>
 
 <style scoped>

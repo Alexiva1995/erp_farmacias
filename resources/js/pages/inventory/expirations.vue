@@ -322,23 +322,22 @@ const handlePrintDonation = async (month) => {
       return;
     }
 
-    donationsToProcess.forEach((donationData) => {
-      if (donationData && donationData.institution_name) {
-        generateDonationPDF({
-          institution: donationData.institution_name,
-          products: donationData.products || [],
-          donationDate: donationData.donation_date,
-          totalCost: donationData.total_cost,
-        });
-      }
+    donationsToProcess.forEach((donation) => {
+      generateDonationPDF({
+        institution: donation.institution_name,
+        products: donation.products,
+        exchangeRateBs: donation.exchange_rate_bs,
+      });
     });
   } catch (error) {
-    console.error("Error al obtener datos para la donación:", error);
-    toast.error(
-      error.response?.data?.message ||
-        "No se pudieron obtener los datos para el PDF."
-    );
+    console.error("Error al obtener datos de donación:", error);
+    toast.error("No se pudieron cargar los datos para la impresión.");
   }
+};
+
+const handlePrintMonthlyReport = (month) => {
+  toast.info("Generando Acta de Desincorporación...");
+  window.open(`/api/products/expirations/month/${month}/report`, "_blank");
 };
 
 const handlePriceAdjustmentExpired = async (month) => {
@@ -480,6 +479,20 @@ const handleGeneratePriceAdjustment = async (adjustmentData) => {
   }
 };
 
+const handleExport = (format) => {
+  const params = new URLSearchParams();
+  params.append("format", format);
+  if (searchQueryLots.value) params.append("q", searchQueryLots.value);
+  if (selectedLaboratoryLots.value)
+    params.append("laboratory_id", selectedLaboratoryLots.value);
+  if (startDateLots.value) params.append("startDate", startDateLots.value);
+  if (endDateLots.value) params.append("endDate", endDateLots.value);
+  if (isStrictSearchLots.value) params.append("isStrict", "true");
+
+  toast.info(`Generando reporte ${format.toUpperCase()}...`);
+  window.open(`/api/products/expirations/export?${params.toString()}`, "_blank");
+};
+
 const showDetailView = (month) => {
   selectedMonth.value = month;
   isDetailViewVisible.value = true;
@@ -560,15 +573,14 @@ onMounted(() => {
         :selected-lots="selectedLots"
         @clear="handleClearFiltersLots"
         @expire-selected="handleExpireSelected"
+        @export="handleExport"
       />
 
       <VCard>
         <VCardTitle class="d-flex align-center justify-space-between">
           <div>
             <h4 class="text-h4 mb-1">Productos por Caducar</h4>
-            <p class="text-subtitle-1 text-medium-emphasis mb-0">
-              Gestiona los lotes próximos a su fecha de caducidad.
-            </p>
+
           </div>
         </VCardTitle>
 
@@ -659,6 +671,17 @@ onMounted(() => {
                         @click="showDetailView(item.month)"
                       >
                         <VIcon icon="tabler-eye" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
+                  <VTooltip text="Imprimir Acta de Desincorporación (Bajas)">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn
+                        v-bind="tooltipProps"
+                        color="warning"
+                        @click="handlePrintMonthlyReport(item.month)"
+                      >
+                        <VIcon icon="tabler-file-report" />
                       </IconBtn>
                     </template>
                   </VTooltip>

@@ -337,9 +337,13 @@ class LotActionService
             foreach ($lotsToCreate as $lot) {
                 $newTotalQuantity += (int) $lot['data']['quantity'];
             }
-            if ($newTotalQuantity !== $product->stock) {
-                $errors['stock'] = "La cantidad total de lotes ({$newTotalQuantity}) debe ser igual al stock del producto ({$product->stock}).";
-            }
+            /* 
+               Validación de stock omitida según requerimiento del usuario:
+               "aquí no tiene nada que ver el stock de la tabla productos debe ser igual que por ejemplo lotes"
+            */
+            // if ($newTotalQuantity !== $product->stock) {
+            //     $errors['stock'] = "La cantidad total de lotes ({$newTotalQuantity}) debe ser igual al stock del producto ({$product->stock}).";
+            // }
             $allLotsToValidate = array_merge($lotsToCreate, $lotsToUpdate);
 
             foreach ($allLotsToValidate as $lotItem) {
@@ -351,7 +355,7 @@ class LotActionService
                     'lot_number' => 'required|string|max:255',
                     'quantity' => 'required|integer|min:1',
                     'expiration_date' => 'required|date',
-                    'unit_cost' => $isNew ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+                    'unit_cost' => 'nullable|numeric|min:0',
                     'location' => 'nullable|string|max:100',
                 ];
 
@@ -367,6 +371,18 @@ class LotActionService
                 DB::rollBack();
                 return ['errors' => $errors];
             }
+
+            // Calcular valores predeterminados para agilizar el trabajo
+            $averageCost = ProductLot::where('product_id', $productId)
+                ->where('unit_cost', '>', 0)
+                ->avg('unit_cost') ?? $product->unit_cost ?? 0;
+
+            // Buscar la primera ubicación disponible para usarla como predeterminada
+            $defaultLocation = collect($lotsData)->first(fn($l) => !empty($l['location']))['location'] 
+                ?? ProductLot::where('product_id', $productId)
+                    ->whereNotNull('location')
+                    ->where('location', '!=', '')
+                    ->value('location');
 
             foreach ($lotsToDelete as $lotItem) {
                 $lotData = $lotItem['data'];
@@ -386,8 +402,8 @@ class LotActionService
                         'lot_number' => $lotData['lot_number'],
                         'quantity' => $lotData['quantity'],
                         'expiration_date' => $lotData['expiration_date'],
-                        'unit_cost' => $lotData['unit_cost'],
-                        'location' => $lotData['location'] ?? null,
+                        'unit_cost' => $lotData['unit_cost'] ?? $averageCost,
+                        'location' => $lotData['location'] ?? $defaultLocation,
                     ]);
                 }
             }
@@ -399,10 +415,12 @@ class LotActionService
                     'lot_number' => $lotData['lot_number'],
                     'quantity' => $lotData['quantity'],
                     'expiration_date' => $lotData['expiration_date'],
-                    'unit_cost' => $lotData['unit_cost'] ?? null,
-                    'location' => $lotData['location'] ?? null,
+                    'unit_cost' => $lotData['unit_cost'] ?? $averageCost,
+                    'location' => $lotData['location'] ?? $defaultLocation,
                 ]);
             }
+
+            $product->update(['lotification_completed' => true]);
 
             DB::commit();
             return ['success' => true];

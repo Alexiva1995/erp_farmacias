@@ -48,6 +48,7 @@ class Product extends Model
         'category_id',
         'group_id',
         'unit_cost',
+        'lotification_completed',
         'sale_price',
         'iva',
         'is_colombian_origin',

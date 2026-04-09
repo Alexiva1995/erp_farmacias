@@ -45,7 +45,7 @@ const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.u
       color="primary"
       variant="tonal"
     >
-      <VImg :src="avatar1" />
+      <VImg :src="userAvatar" />
 
       <!-- SECTION Menu -->
       <VMenu

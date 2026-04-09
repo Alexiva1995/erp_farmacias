@@ -2,145 +2,86 @@
 
 namespace App\Services\Expirations;
 
-use App\Models\DonativeLog;
-use App\Models\ExpiredLog;
+use App\Http\Resources\ExpirationResource;
 use App\Models\ProductLot;
-use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ExpirationQueryService
 {
     /**
-     * Prepara la consulta base para los lotes que están por expirar o ya vencieron.
+     * Obtiene la consulta de lotes próximos a vencer filtrada.
      */
-    private function getBaseQuery(): Builder
+    public function getExpiringLotsQuery(Request $request)
     {
-        $today = now()->startOfDay();
-        $expirationCutoffDate = now()->addMonths(6)->endOfDay();
+        $query = ProductLot::with(['product.laboratory', 'product.origin', 'product.category'])
+            ->where('quantity', '>', 0);
 
-        return ProductLot::with([
-            'product' => fn($query) => $query->with(['laboratory', 'origin', 'category'])
-        ])
-            ->where('quantity', '>', 0)
-            // Incluir lotes que ya vencieron (antes de hoy) y los que están por vencer (hasta 6 meses)
-            ->where('expiration_date', '<=', $expirationCutoffDate);
-    }
+        // Filtro por búsqueda de texto
+        if ($request->has('q')) {
+            $search = $request->input('q');
+            $isStrict = $request->boolean('isStrict');
 
-    /**
-     * Aplica filtros de búsqueda a la consulta.
-     * @param Builder $query
-     * @param Request $request
-     * @return Builder
-     */
-    private function applyFilters(Builder $query, Request $request): Builder
-    {
-        if ($request->filled('q')) {
-            $searchTerm = $request->q;
-            $isStrictSearch = filter_var($request->get('isStrictSearch', false), FILTER_VALIDATE_BOOLEAN);
-            
-            if ($isStrictSearch) {
-                $searchPattern = "%{$searchTerm}%";
-                $query->where(function ($subQuery) use ($searchPattern) {
-                    $subQuery->where('lot_number', 'like', $searchPattern)
-                        ->orWhereHas('product', function ($productQuery) use ($searchPattern) {
-                            $productQuery->where('name', 'like', $searchPattern)
-                                ->orWhere('active_ingredient', 'like', $searchPattern)
-                                ->orWhere('barcode', 'like', $searchPattern)
-                                ->orWhere('id', 'like', $searchPattern);
-                        });
-                });
-            } else {
-                $words = explode(' ', trim($searchTerm));
-                $query->where(function ($subQuery) use ($words) {
-                    foreach ($words as $word) {
-                        $wordPattern = "%{$word}%";
-                        $subQuery->where(function ($wordQuery) use ($wordPattern) {
-                            $wordQuery->where('lot_number', 'like', $wordPattern)
-                                ->orWhereHas('product', function ($productQuery) use ($wordPattern) {
-                                    $productQuery->where('name', 'like', $wordPattern)
-                                        ->orWhere('active_ingredient', 'like', $wordPattern)
-                                        ->orWhere('barcode', 'like', $wordPattern)
-                                        ->orWhere('id', 'like', $wordPattern)
-                                        ->orWhereHas('laboratory', function ($labQuery) use ($wordPattern) {
-                                            $labQuery->where('name', 'like', $wordPattern);
-                                        });
-                                });
-                        });
-                    }
-                });
-            }
-        }
-
-        if ($request->filled('laboratory_id')) {
-            $query->whereHas('product', function ($productQuery) use ($request) {
-                $productQuery->where('laboratory_id', $request->laboratory_id);
+            $query->whereHas('product', function ($q) use ($search, $isStrict) {
+                if ($isStrict) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
+                } else {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('active_ingredient', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
+                }
             });
         }
 
-        if ($request->filled('start_date')) {
-            $query->where('expiration_date', '>=', $request->start_date);
+        // Filtro por laboratorio
+        if ($request->has('laboratory_id')) {
+            $query->whereHas('product', function ($q) use ($request) {
+                $q->where('laboratory_id', $request->input('laboratory_id'));
+            });
         }
 
-        if ($request->filled('end_date')) {
-            $query->where('expiration_date', '<=', $request->end_date);
-        }
-
-        return $query;
-    }
-
-    /**
-     * Aplica la ordenación a la consulta.
-     */
-    private function applySorting(Builder $query, Request $request): Builder
-    {
-        if ($request->filled('sortBy') && $request->sortBy === 'product.name') {
-            return $query->join('products', 'product_lots.product_id', '=', 'products.id')
-                ->orderBy('products.name', $request->input('orderBy', 'asc'))
-                ->select('product_lots.*');
-        }
-
-        if ($request->filled('sortBy') && $request->filled('orderBy')) {
-            return $query->orderBy($request->sortBy, $request->orderBy);
+        // Filtro por rango de fechas
+        if ($request->has('startDate') && $request->has('endDate')) {
+            $query->whereBetween('expiration_date', [
+                $request->input('startDate'),
+                $request->input('endDate'),
+            ]);
+        } else {
+            // Por defecto: próximos 6 meses
+            $query->whereBetween('expiration_date', [
+                now()->startOfDay()->toDateString(),
+                now()->addMonths(6)->endOfMonth()->toDateString(),
+            ]);
         }
 
         return $query->orderBy('expiration_date', 'asc');
     }
 
     /**
-     * Método público principal que obtiene el constructor de consultas preparado.
+     * Obtiene los lotes próximos a vencer con paginación y recursos.
      */
-    public function getExpiringLotsQuery(Request $request): Builder
+    public function getExpiringLotsPaginated(Request $request)
     {
-        $query = $this->getBaseQuery();
-        $this->applyFilters($query, $request);
-        $this->applySorting($query, $request);
+        $perPage = $request->input('per_page', 15);
+        $lots = $this->getExpiringLotsQuery($request)->paginate($perPage);
 
-        return $query;
+        return ExpirationResource::collection($lots);
     }
 
-    public function getExpiredLotsLogQuery(Request $request): Builder
+    /**
+     * Obtiene todos los lotes próximos a vencer (sin paginación).
+     */
+    public function getExpiringLotsAll(Request $request)
     {
-        $query = ExpiredLog::with('product.laboratory', 'donativeLog');
-
-        if ($request->filled('q')) {
-            $searchTerm = "%{$request->q}%";
-            $query->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('product_name', 'like', $searchTerm)
-                    ->orWhere('lot_number', 'like', 'searchTerm');
-            });
-        }
-
-        if ($request->filled('sortBy') && $request->filled('orderBy')) {
-            $query->orderBy($request->sortBy, $request->orderBy);
-        } else {
-            $query->orderBy('created_at', 'desc');
-        }
-
-        return $query;
+        $lots = $this->getExpiringLotsQuery($request)->get();
+        return ExpirationResource::collection($lots);
     }
 
+    /**
+     * Obtiene un resumen histórico de lotes caducados agrupados por mes.
+     */
     public function getExpiredLotsSummary()
     {
         $summaries = DB::table('expired_logs')
@@ -154,9 +95,11 @@ class ExpirationQueryService
             ->get();
 
         foreach ($summaries as $summary) {
-            $summary->donation_count = DB::table('donations')
-                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$summary->month])
-                ->count();
+            $summary->donation_count = DB::table('donative_logs')
+                ->join('expired_logs', 'donative_logs.expired_log_id', '=', 'expired_logs.id')
+                ->whereRaw("DATE_FORMAT(expired_logs.created_at, '%Y-%m') = ?", [$summary->month])
+                ->distinct('donative_logs.donation_id')
+                ->count('donative_logs.donation_id');
 
             $summary->has_price_adjustment = DB::table('price_adjustment_logs')
                 ->where('month', $summary->month)
@@ -166,4 +109,21 @@ class ExpirationQueryService
         return $summaries;
     }
 
+    /**
+     * Obtiene todos los registros de lotes caducados de un mes específico para propósitos de reporte.
+     */
+    public function getExpiredLotsForMonth(string $month)
+    {
+        $logs = \App\Models\ExpiredLog::with(['product.laboratory'])
+            ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+            ->get();
+
+        return [
+            'month' => $month,
+            'logs' => $logs,
+            'total_cost' => $logs->sum('total_lost_value'),
+            'total_items' => $logs->count(),
+            'total_quantity' => $logs->sum('expired_quantity'),
+        ];
+    }
 }

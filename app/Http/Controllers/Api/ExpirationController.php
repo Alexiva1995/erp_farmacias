@@ -2,18 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\ExpiringLotsExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ExpireMultipleRequest;
+use App\Http\Requests\PriceAdjustmentRequest;
+use App\Http\Resources\ExpirationResource;
+use App\Http\Resources\ExpiredLogResource;
 use App\Models\ProductLot;
 use App\Services\Expirations\ExpirationActionService;
 use App\Services\Expirations\ExpirationQueryService;
+use App\Services\Resources\ResourceService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ExpirationController extends Controller
 {
     public function __construct(
         private ExpirationQueryService $queryService,
-        private ExpirationActionService $actionService
+        private ExpirationActionService $actionService,
+        private ResourceService $resourceService
     ) {}
 
     /**
@@ -26,20 +34,12 @@ class ExpirationController extends Controller
         $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
-            $items = $query->get();
-
-            return response()->json([
-                'data' => $items,
-                'total' => $items->count(),
-            ]);
+            return ExpirationResource::collection($query->get());
         }
 
         $paginatedResult = $query->paginate($perPage);
 
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total(),
-        ]);
+        return ExpirationResource::collection($paginatedResult);
     }
 
     /**
@@ -49,9 +49,7 @@ class ExpirationController extends Controller
     {
         $query = $this->queryService->getExpiringLotsQuery($request);
 
-        $allResults = $query->get();
-
-        return response()->json($allResults);
+        return ExpirationResource::collection($query->get());
     }
 
     /**
@@ -68,16 +66,15 @@ class ExpirationController extends Controller
             return response()->json(['message' => $e->getMessage()], $statusCode);
         }
     }
-    public function previewPriceAdjustment(Request $request)
-    {
-        $validated = $request->validate([
-            'month' => 'required|string|date_format:Y-m',
-            'excludedProductIds' => 'sometimes|array',
-            'excludedProductIds.*' => 'integer|exists:products,id',
-        ]);
 
+    /**
+     * Previsualiza el reajuste de precios antes de aplicarlo.
+     */
+    public function previewPriceAdjustment(PriceAdjustmentRequest $request)
+    {
         try {
-            // Delegamos la lógica al servicio de acciones
+            $validated = $request->validated();
+
             $previewData = $this->actionService->getAdjustmentPreview(
                 $validated['month'],
                 $validated['excludedProductIds'] ?? []
@@ -89,19 +86,16 @@ class ExpirationController extends Controller
             return response()->json(['message' => $e->getMessage()], $statusCode);
         }
     }
+
     /**
      * Reajusta los precios de productos caducados de un mes completo,
      * excluyendo los productos especificados.
      */
-    public function adjustExpiredProductsPrices(Request $request)
+    public function adjustExpiredProductsPrices(PriceAdjustmentRequest $request)
     {
-        $validated = $request->validate([
-            'month' => 'required|string|date_format:Y-m',
-            'excludedProductIds' => 'array',
-            'excludedProductIds.*' => 'integer|exists:products,id',
-        ]);
-
         try {
+            $validated = $request->validated();
+
             $result = $this->actionService->adjustExpiredProductsPricesWithExclusions(
                 $validated['month'],
                 $validated['excludedProductIds'] ?? []
@@ -145,24 +139,6 @@ class ExpirationController extends Controller
     }
 
     /**
-     * Reajusta el precio de un lote específico.
-     * @deprecated Esta funcionalidad ya no se usa
-     */
-    public function adjustPrice(ProductLot $lot)
-    {
-        return response()->json(['message' => 'Esta funcionalidad ha sido deshabilitada.'], 400);
-    }
-
-    /**
-     * Reajusta los precios de múltiples lotes.
-     * @deprecated Esta funcionalidad ya no se usa
-     */
-    public function adjustMultiplePrices(Request $request)
-    {
-        return response()->json(['message' => 'Esta funcionalidad ha sido deshabilitada.'], 400);
-    }
-
-    /**
      * Obtiene el resumen de lotes caducados por mes.
      */
     public function getSummary()
@@ -181,29 +157,19 @@ class ExpirationController extends Controller
         $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
-            $logs = $query->get();
-            return response()->json([
-                'data' => $logs,
-                'total' => $logs->count(),
-            ]);
+            return ExpiredLogResource::collection($query->get());
         }
 
         $paginatedResult = $query->paginate($perPage);
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total(),
-        ]);
+        return ExpiredLogResource::collection($paginatedResult);
     }
 
     /**
      * Marca múltiples lotes como caducados.
      */
-    public function expireMultiple(Request $request)
+    public function expireMultiple(ExpireMultipleRequest $request)
     {
-        $validated = $request->validate([
-            'lot_ids' => 'required|array|min:1',
-            'lot_ids.*' => 'integer',
-        ]);
+        $validated = $request->validated();
 
         $result = $this->actionService->expireMultipleLots($validated['lot_ids']);
 
@@ -219,4 +185,51 @@ class ExpirationController extends Controller
             'failed_lots' => $failedLots,
         ], 207);
     }
+
+    /**
+     * Exporta la lista de lotes próximos a vencer (PDF o Excel).
+     */
+    public function export(Request $request)
+    {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
+        $query = $this->queryService->getExpiringLotsQuery($request);
+        $format = $request->input('format', 'xlsx');
+
+        if ($format === 'pdf') {
+            $lots = $query->get();
+            
+            $pdfContent = Pdf::loadView('exports.expiring-lots-pdf', compact('lots'))
+                ->setPaper('a4', 'landscape');
+                
+            return $pdfContent->download('reporte-vencimientos-' . now()->format('Y-m-d') . '.pdf');
+        }
+
+        $fileName = 'reporte-vencimientos-' . now()->format('Y-m-d') . '.' . $format;
+        return Excel::download(new ExpiringLotsExport($query), $fileName);
+    }
+
+    /**
+     * Descarga el Acta de Desincorporación por Vencimiento de un mes específico.
+     */
+    public function downloadMonthlyReport(string $month)
+    {
+        ini_set('memory_limit', '512M');
+        app()->setLocale('es');
+        
+        $data = $this->queryService->getExpiredLotsForMonth($month);
+        
+        if ($data['logs']->isEmpty()) {
+            return response()->json(['message' => 'No hay registros de vencimiento para este periodo.'], 404);
+        }
+
+        $data['bs_rate'] = $this->resourceService->getExchangeRate('BS');
+
+        $pdf = Pdf::loadView('exports.expirations-monthly-report', $data)
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download("acta-desincorporacion-{$month}.pdf");
+    }
 }
+

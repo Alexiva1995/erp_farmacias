@@ -1,7 +1,6 @@
 <script setup>
 import AddProductsToGroupDialog from "@/components/dialogs/AddProductsToGroupDialog.vue";
 import GroupEditDialog from "@/components/dialogs/GroupEditDialog.vue";
-import ShowGroupProductsDialog from "@/components/dialogs/ShowGroupProductsDialog.vue";
 import GroupFilters from "@/components/GroupFilters.vue";
 import GroupTable from "@/components/GroupTable.vue";
 import axios from "@/plugins/axios";
@@ -21,7 +20,6 @@ const isLoadingFilters = ref(false);
 const isStrictSearch = ref(false);
 const searchQuery = ref("");
 
-const isGroupDialogVisible = ref(false);
 const isAddProductsDialogVisible = ref(false);
 const isEditDialogVisible = ref(false);
 const currentGroup = ref({});
@@ -89,11 +87,6 @@ const handleAddProducts = (group) => {
   currentGroup.value = group;
 };
 
-const handleShowGroup = (group) => {
-  isGroupDialogVisible.value = true;
-  currentGroup.value = group;
-};
-
 const handleDeleteGroup = async (id) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
@@ -103,22 +96,10 @@ const handleDeleteGroup = async (id) => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Eliminar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
+    customClass: {
+      confirmButton: 'v-btn v-btn--variant-flat v-theme--default bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase',
+      cancelButton: 'v-btn v-btn--variant-tonal v-theme--default text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
+    }
   });
 
   if (result.isConfirmed) {
@@ -136,7 +117,6 @@ const handleDeleteGroup = async (id) => {
 const handleSaveGroup = async (groupFormData) => {
   const isNew = !currentGroup.value.id;
   const url = isNew ? "/groups" : `/groups/${currentGroup.value.id}`;
-
   const method = isNew ? "post" : "put";
 
   try {
@@ -164,6 +144,7 @@ const handleAddGroup = () => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
+  isStrictSearch.value = false;
 };
 
 const clearFormErrors = () => {
@@ -173,7 +154,8 @@ const clearFormErrors = () => {
 
 <template>
   <div class="inventory-groups-view pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <div class="d-flex flex-column gap-3 mt-1">
+      <!-- Filtros Premium Estilo Asistente -->
       <GroupFilters
         v-model:searchQuery="searchQuery"
         v-model:isStrictSearch="isStrictSearch"
@@ -182,16 +164,7 @@ const clearFormErrors = () => {
         @add-group="handleAddGroup"
       />
 
-      <AddProductsToGroupDialog
-        v-model="isAddProductsDialogVisible"
-        :selected-group="currentGroup"
-      />
-
-      <ShowGroupProductsDialog
-        v-model="isGroupDialogVisible"
-        :selected-group="currentGroup"
-      />
-
+      <!-- Nuevo Sistema de Acordeones Premium -->
       <GroupTable
         :groups="groups"
         :loading="loading"
@@ -201,8 +174,13 @@ const clearFormErrors = () => {
         @update:options="updateTableOptions"
         @add-products="handleAddProducts"
         @edit-group="handleEditGroup"
-        @show-group="handleShowGroup"
         @delete-group="handleDeleteGroup"
+      />
+
+      <!-- Diálogos -->
+      <AddProductsToGroupDialog
+        v-model="isAddProductsDialogVisible"
+        :selected-group="currentGroup"
       />
 
       <GroupEditDialog
@@ -215,3 +193,10 @@ const clearFormErrors = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.inventory-groups-view {
+  min-height: 100vh;
+  background-color: rgba(var(--v-border-color), 0.02);
+}
+</style>

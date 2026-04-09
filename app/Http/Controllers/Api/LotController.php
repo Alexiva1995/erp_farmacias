@@ -133,12 +133,33 @@ class LotController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => ['data' => $items, 'total' => $items->count()]]);
+            return response()->json(['data' => $items, 'total' => $items->count()]);
         }
         
         $paginatedResult = $query->paginate($perPage);
         return response()->json([
-            'data' => ['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()],
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
+        ]);
+    }
+
+    public function getProductsPendingLotification(Request $request)
+    {
+        $query = $this->lotQueryService->getProductsPendingLotificationQuery($request);
+        $perPage = (int) $request->input('itemsPerPage', 10);
+
+        if ($perPage < 1) {
+            $items = $query->get();
+            return response()->json([
+                'data' => $items,
+                'total' => $items->count()
+            ]);
+        }
+
+        $paginatedResult = $query->paginate($perPage);
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total(),
         ]);
     }
 

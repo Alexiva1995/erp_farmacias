@@ -69,6 +69,7 @@ declare module 'vue' {
     ClosedCashClosure: typeof import('./resources/js/components/dialogs/ClosedCashClosure.vue')['default']
     ClosingHistoryTable: typeof import('./resources/js/components/ClosingHistoryTable.vue')['default']
     ClosingModal: typeof import('./resources/js/components/dialogs/ClosingModal.vue')['default']
+    CompactOrderViewDialog: typeof import('./resources/js/components/dialogs/CompactOrderViewDialog.vue')['default']
     CompaniesClientFormDialoge: typeof import('./resources/js/components/dialogs/CompaniesClientFormDialoge.vue')['default']
     CompaniesClientsFilters: typeof import('./resources/js/components/CompaniesClientsFilters.vue')['default']
     CompanyFilters: typeof import('./resources/js/components/CompanyFilters.vue')['default']

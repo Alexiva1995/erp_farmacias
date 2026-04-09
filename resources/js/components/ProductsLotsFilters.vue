@@ -18,6 +18,8 @@ const props = defineProps({
   addLotLoading:      { type: Boolean, default: false },
   isStrictSearch:     Boolean,
   isAdmin:            { type: Boolean, default: false },
+  showAdd:            { type: Boolean, default: true },
+  showCleanZero:      { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -130,7 +132,7 @@ const hasAdvancedFilters = computed(() => {
     <template #actions-extra>
       <!-- Añadir Lote (Solo Admin) -->
       <VBtn
-        v-if="props.isAdmin"
+        v-if="props.isAdmin && props.showAdd"
         icon
         color="primary"
         variant="flat"
@@ -144,7 +146,7 @@ const hasAdvancedFilters = computed(() => {
 
       <!-- Limpiar Cantidades Cero (Solo Admin) -->
       <VBtn
-        v-if="props.isAdmin"
+        v-if="props.isAdmin && props.showCleanZero"
         icon
         color="error"
         variant="tonal"

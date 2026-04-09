@@ -154,6 +154,7 @@ const nextExpirationDate = (product) => {
   <VDialog
     :model-value="props.modelValue"
     :max-width="isNewGroup || (associatedProducts.length === 0 && !isLoadingProducts) ? '600px' : '1000px'"
+    :fullscreen="$vuetify.display.xs"
     persistent
     @update:model-value="closeDialog"
     content-class="d-flex"
@@ -165,13 +166,13 @@ const nextExpirationDate = (product) => {
           <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
             <VIcon :icon="isNewGroup ? 'tabler-folder-plus' : 'tabler-folders'" color="primary" size="26" />
           </VAvatar>
-          <div class="flex-grow-1">
-            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+          <div class="flex-grow-1 overflow-hidden">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 truncate">
               {{ isNewGroup ? "Añadir Nuevo Grupo" : "Editar Grupo" }}
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
-              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem;">
-                Agrupación lógica de productos para gestión masiva
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold truncate" style="font-size: 0.65rem;">
+                {{ isNewGroup ? "Agrupación lógica de productos" : formData.name }}
               </span>
             </div>
           </div>
@@ -223,21 +224,22 @@ const nextExpirationDate = (product) => {
           </section>
 
           <!-- Seccion: Productos Vinculados -->
-          <template v-if="!isNewGroup">
+          <template v-if="!isNewGroup && associatedProducts.length > 0">
             <section>
               <div class="d-flex align-center gap-2 mb-4">
                 <div class="header-indicator secondary shadow-sm"></div>
-                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Productos Vinculados</span>
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Productos Vinculados ({{ associatedProducts.length }})</span>
               </div>
 
-              <VCard variant="flat" class="overflow-hidden bg-white rounded-lg elevation-1 border">
+              <!-- Desktop Table -->
+              <VCard variant="flat" class="d-none d-sm-block overflow-hidden bg-white rounded-lg elevation-1 border">
                 <VDataTable
                   :headers="productHeaders"
                   :items="associatedProducts"
                   :loading="isLoadingProducts"
                   density="compact"
                   no-data-text="No hay productos asignados a este grupo."
-                  class="premium-table"
+                  class="premium-table border-0"
                 >
                   <template #item.id="{ item }">
                     <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
@@ -251,7 +253,7 @@ const nextExpirationDate = (product) => {
                         variant="tonal"
                         rounded
                         :image="item.photo_url"
-                        class="elevation-1"
+                        class="elevation-1 border"
                       />
                       <VAvatar
                         v-else
@@ -265,27 +267,21 @@ const nextExpirationDate = (product) => {
                       </VAvatar>
                       <div class="d-flex flex-column">
                         <span
-                          class="text-body-2 font-weight-black text-high-emphasis leading-tight"
+                          class="text-body-2 font-weight-black text-high-emphasis leading-tight truncate uppercase"
+                          style="max-inline-size: 250px;"
                           :class="{ 
-                            'text-warning': item.psychotropic == 1 || item.psychotropic === true
+                            'text-warning': item.psychotropic == 1
                           }"
                         >
-                          {{ item.name.toUpperCase() }}
-                          <VBadge
-                            v-if="item.iva == 1"
-                            content="G"
-                            color="success"
-                            inline
-                            class="ms-1"
-                          />
+                          {{ item.name }}
                         </span>
-                        <span class="text-super-xs text-disabled font-weight-bold uppercase">{{ item.active_ingredient }}</span>
+                        <span class="text-super-xs text-disabled font-weight-bold uppercase truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
                       </div>
                     </div>
                   </template>
 
                   <template #item["laboratory.name"]="{ item }">
-                    <span class="text-xs font-weight-medium uppercase">{{ item.laboratory?.name || "—" }}</span>
+                    <span class="text-xs font-weight-medium uppercase truncate" style="max-inline-size: 150px;">{{ item.laboratory?.name || "—" }}</span>
                   </template>
 
                   <template #item.valid_stock="{ item }">
@@ -312,7 +308,7 @@ const nextExpirationDate = (product) => {
                       size="small"
                       :disabled="isUnassigningProduct === item.id"
                       @click="unassignProduct(item)"
-                      class="rounded-lg"
+                      class="rounded-lg bg-error-light"
                     >
                       <VProgressCircular
                         v-if="isUnassigningProduct === item.id"
@@ -324,8 +320,64 @@ const nextExpirationDate = (product) => {
                   </template>
                 </VDataTable>
               </VCard>
+
+              <!-- Mobile Cards -->
+              <div class="d-block d-sm-none d-flex flex-column gap-3">
+                <VCard
+                  v-for="item in associatedProducts"
+                  :key="item.id"
+                  variant="flat"
+                  class="rounded-lg border bg-white overflow-hidden shadow-sm"
+                >
+                  <div class="pa-3 d-flex align-center gap-3">
+                    <VAvatar
+                      v-if="item.photo_url"
+                      size="44"
+                      variant="tonal"
+                      rounded
+                      :image="item.photo_url"
+                      class="border"
+                    />
+                    <VAvatar v-else size="44" variant="tonal" color="primary" rounded>
+                        <VIcon icon="tabler-package" size="20" />
+                    </VAvatar>
+                    
+                    <div class="flex-grow-1 overflow-hidden">
+                      <div class="d-flex justify-space-between align-center mb-1">
+                        <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+                        <VChip size="x-super-small" color="info" variant="tonal" class="font-weight-black">{{ item.stock_calculado || 0 }} UNID</VChip>
+                      </div>
+                      <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-tight">
+                        {{ item.name }}
+                      </h3>
+                      <div class="d-flex align-center justify-space-between mt-1">
+                        <span class="text-super-xs text-disabled uppercase font-weight-bold truncate" style="max-inline-size: 150px;">{{ item.laboratory?.name || 'S/L' }}</span>
+                        <span class="text-super-xs font-weight-black" :class="new Date(nextExpirationDate(item)) < new Date() ? 'text-error' : 'text-secondary'">
+                            {{ formatDateSimple(nextExpirationDate(item)) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <VBtn
+                    color="error"
+                    variant="tonal"
+                    block
+                    height="40"
+                    class="rounded-0 font-weight-black text-xs"
+                    :loading="isUnassigningProduct === item.id"
+                    @click="unassignProduct(item)"
+                  >
+                    <VIcon icon="tabler-trash-x" size="16" class="me-1" />
+                    Quitar del Grupo
+                  </VBtn>
+                </VCard>
+              </div>
             </section>
           </template>
+          <div v-else-if="isLoadingProducts" class="text-center py-10">
+            <VProgressCircular indeterminate color="primary" />
+          </div>
         </VForm>
       </VCardText>
 
@@ -355,7 +407,7 @@ const nextExpirationDate = (product) => {
               @click="submitForm"
             >
               <VIcon icon="tabler-device-floppy" class="me-2" />
-              Guardar Cambios
+              {{ isNewGroup ? 'Crear Grupo' : 'Guardar Cambios' }}
             </VBtn>
           </VCol>
         </VRow>
@@ -391,6 +443,10 @@ const nextExpirationDate = (product) => {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
+.bg-error-light {
+  background-color: rgba(var(--v-theme-error), 0.1) !important;
+}
+
 .premium-table :deep(th) {
   background-color: #f8fafc !important;
   text-transform: uppercase !important;
@@ -400,7 +456,7 @@ const nextExpirationDate = (product) => {
 }
 
 .premium-table :deep(td) {
-  padding-block: 12px !important;
+  padding-block: 10px !important;
 }
 
 .text-super-xs {
@@ -418,5 +474,15 @@ const nextExpirationDate = (product) => {
 
 .leading-tight {
   line-height: 1.25 !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.x-super-small {
+  height: 14px !important;
+  font-size: 0.6rem !important;
+  padding: 0 4px !important;
 }
 </style>

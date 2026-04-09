@@ -22,6 +22,7 @@ const emit = defineEmits([
   "update:isStrictSearch",
   "clear",
   "expire-selected",
+  "export",
 ]);
 
 const searchQueryModel = computed({
@@ -119,6 +120,7 @@ const applyQuickFilter = (filter) => {
     class="py-1"
     @update:search="searchQueryModel = $event"
     @clear="emit('clear')"
+    @export="emit('export', $event)"
   >
     <template #search-extra>
       <!-- Filtros Rápidos (Chips) -->
@@ -193,28 +195,32 @@ const applyQuickFilter = (filter) => {
     </template>
 
     <template #actions-extra>
-      <!-- Barra de Acciones de Selección (Lotes) -->
-      <VExpandTransition>
-        <div v-if="hasSelectedLots" class="mt-4">
-          <div class="d-flex align-center justify-space-between bg-error-lighten-5 pa-2 rounded">
-            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-alert-circle" color="error" size="20" />
-              <span class="text-caption font-weight-black text-error">
-                {{ props.selectedLots.length }} SELECCIONADOS
-              </span>
-            </div>
+      <!-- Botón Compacto de Acción por Lotes (Badge + Icono) -->
+      <VFadeTransition>
+        <div v-if="hasSelectedLots" class="d-flex align-center">
+          <VBadge
+            color="error"
+            :content="props.selectedLots.length"
+            offset-x="3"
+            offset-y="-3"
+            class="ms-2"
+          >
             <VBtn
+              icon
               color="error"
               variant="flat"
-              size="small"
-              prepend-icon="tabler-calendar-off"
+              size="38"
+              class="rounded-circle shadow-sm"
               @click="emit('expire-selected')"
             >
-              MARCAR CADUCADOS
+              <VIcon icon="tabler-calendar-off" />
+              <VTooltip activator="parent" location="top">
+                Marcar {{ props.selectedLots.length }} items como caducados
+              </VTooltip>
             </VBtn>
-          </div>
+          </VBadge>
         </div>
-      </VExpandTransition>
+      </VFadeTransition>
     </template>
   </AppFilterBase>
 </template>

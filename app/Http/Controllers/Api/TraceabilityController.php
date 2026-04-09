@@ -150,50 +150,33 @@ class TraceabilityController extends Controller
 
             case 'adjustment':
             case 'loss':
-                // For adjustments and losses, find related ProductCount via ProductDistribution
-                // The movement is created when a ProductCount is approved and lot quantities are updated
-                // So we search for ProductCounts approved near the movement date
-                if ($movement->product_lot_id) {
-                    $movementDate = Carbon::parse($movement->movement_date);
-                    $startDate = $movementDate->copy()->subHours(2); // 2 hours before movement
-                    $endDate = $movementDate->copy()->addHours(2); // 2 hours after movement
+                $productCount = null;
 
-                    $productDistribution = ProductDistribution::where('product_lot_id', $movement->product_lot_id)
-                        ->whereHas('productCount', function ($query) use ($movement, $startDate, $endDate) {
-                            $query->where('status', 'approved')
-                                ->where('product_id', $movement->product_id)
-                                ->whereBetween('updated_at', [$startDate, $endDate])
-                                ->orderBy('updated_at', 'desc');
-                        })
-                        ->with(['productCount.user', 'productCount.supervisor'])
-                        ->first();
+                // 1. Vínculo directo y exacto (Garantía de precisión 100%)
+                if ($movement->product_count_id) {
+                    $productCount = \App\Models\ProductCount::with(['user', 'supervisor'])->find($movement->product_count_id);
+                }
 
-                    // Fallback: get the most recent approved ProductCount for this lot and product
-                    if (!$productDistribution) {
-                        $productDistribution = ProductDistribution::where('product_lot_id', $movement->product_lot_id)
-                            ->whereHas('productCount', function ($query) use ($movement) {
-                                $query->where('status', 'approved')
-                                    ->where('product_id', $movement->product_id)
-                                    ->orderBy('updated_at', 'desc');
-                            })
-                            ->with(['productCount.user', 'productCount.supervisor'])
-                            ->first();
+                // 2. Asignación de Responsables (Solo si hay vínculo exacto)
+                if ($productCount) {
+                    // El que contó originalmente
+                    $countedBy = $productCount->user;
+                    if ($countedBy) $countedBy->load('employee');
+                    $details['counted_by'] = $countedBy;
+
+                    // El que aprobó
+                    $approvedBy = $productCount->supervisor ?? $movement->user;
+                    if ($approvedBy instanceof \App\Models\User) {
+                        $approvedBy->load('employee');
                     }
-
-                    if ($productDistribution && $productDistribution->productCount) {
-                        $productCount = $productDistribution->productCount;
-                        $details['product_count'] = $productCount;
-                        $countedBy = $productCount->user;
-                        if ($countedBy) {
-                            $countedBy->load('employee');
-                        }
-                        $details['counted_by'] = $countedBy;
-                        $approvedBy = $productCount->supervisor;
-                        if ($approvedBy) {
-                            $approvedBy->load('employee');
-                        }
-                        $details['approved_by'] = $approvedBy;
-                    }
+                    $details['approved_by'] = $approvedBy;
+                    
+                    $details['product_count'] = $productCount;
+                } else {
+                    // Para registros antiguos o ajustes que no pasaron por ciclo de conteo, 
+                    // no mostramos "Auditado" ni "Aprobado" para evitar datos incorrectos
+                    $details['counted_by'] = null;
+                    $details['approved_by'] = null;
                 }
                 break;
 

@@ -156,6 +156,7 @@ Route::middleware("auth:sanctum")->group(function () {
     // Rutas de Expiraciones
     Route::get("/products/expirations", [ExpirationController::class, "index"]);
     Route::get("/products/expirations-all", [ExpirationController::class, "getExpiringAll"]);
+    Route::get("/products/expirations/export", [ExpirationController::class, "export"]);
     Route::put("/lots/{lot}/expire", [ExpirationController::class, "expire"]);
     Route::post("/lots/expire-multiple", [ExpirationController::class, "expireMultiple"]);
     Route::get("/expired-logs/summary", [ExpirationController::class, "getSummary"]);
@@ -165,6 +166,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/expirations/month/{month}/adjustment-status", [ExpirationController::class, "checkMonthAdjustmentStatus"]);
     Route::get("/price-adjustments", [ExpirationController::class, "getPriceAdjustmentHistory"]);
     Route::get("/price-adjustments/month/{month}", [ExpirationController::class, "getMonthPriceAdjustments"]);
+    Route::get("/products/expirations/month/{month}/report", [ExpirationController::class, "downloadMonthlyReport"]);
 
     // Rutas de Donaciones
     Route::post("/donations", [DonationController::class, "create"]);
@@ -176,8 +178,8 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/product-lots/batch-update', [LotController::class, 'batchUpdate']);
     Route::get('/product-lots/without-location', [LotController::class, 'lotsWithoutLocation']);
     Route::get('/product-without-lots', [LotController::class, 'productsWithInconsistentStock']);
-    Route::get('/products-without-lots', [LotController::class, 'productsWithoutLot']);
-    Route::get('/available-suppliers', [LotController::class, 'availableSuppliers']);
+    Route::get('/inventory/products-pending-lotification', [LotController::class, 'getProductsPendingLotification']);
+    Route::get('/product-lots/available-suppliers', [LotController::class, 'availableSuppliers']);
     Route::resource('product-lots', LotController::class)->except(['create', 'edit']);
     Route::get('lots/available-stock/{productId}', [LotController::class, 'getAvailableStock']);
     Route::get('lots/product/{productId}', [LotController::class, 'getProductLots']);

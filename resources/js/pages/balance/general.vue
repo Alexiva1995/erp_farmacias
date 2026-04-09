@@ -1,7 +1,7 @@
 <script setup>
 import { useBalance } from "@/composables/useBalance";
 import { hexToRgb } from "@layouts/utils";
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useTheme } from "vuetify";
 
 const vuetifyTheme = useTheme();
@@ -86,7 +86,10 @@ const barSeries = computed(() => [
   },
 ]);
 
+const isMounted = ref(false);
+
 onMounted(() => {
+  isMounted.value = true;
   fetchBalance();
 });
 </script>
@@ -199,6 +202,7 @@ onMounted(() => {
                 class="pa-4 d-flex align-center justify-center"
               >
                 <VueApexCharts
+                  v-if="isMounted"
                   type="donut"
                   height="250"
                   :options="chartOptions.donut"
@@ -368,6 +372,7 @@ onMounted(() => {
           <VCard class="rounded-lg border shadow-sm">
             <VCardText>
               <VueApexCharts
+                v-if="isMounted"
                 type="bar"
                 height="180"
                 :options="chartOptions.bar"

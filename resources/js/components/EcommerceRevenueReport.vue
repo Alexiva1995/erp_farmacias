@@ -250,7 +250,10 @@ const handleYearChange = () => {
   fetchRevenueReport();
 };
 
+const isMounted = ref(false);
+
 onMounted(() => {
+  isMounted.value = true;
   fetchRevenueReport();
 });
 </script>
@@ -268,7 +271,7 @@ onMounted(() => {
           <h6 class="text-h5 mb-sm-n8">Reporte de Ingresos</h6>
 
           <VueApexCharts
-            v-if="!loading && series.bar && series.bar.length > 0"
+            v-if="isMounted && !loading && series.bar && series.bar.length > 0"
             :key="`bar-${selectedYear}-${series.bar[0].data.length}`"
             :options="chartOptions.bar"
             :series="series.bar"
@@ -326,7 +329,7 @@ onMounted(() => {
           </div>
 
           <VueApexCharts
-            v-if="!loading && series.line && series.line.length > 0"
+            v-if="isMounted && !loading && series.line && series.line.length > 0"
             :key="`line-${selectedYear}-${series.line[0].data.length}`"
             :options="chartOptions.line"
             :series="series.line"
