@@ -88,21 +88,6 @@ const handleClear = () => {
     @export="ext => ext === 'xlsx' ? emit('export-excel', ext) : emit('export-pdf')"
   >
     <template #search-extra>
-      <!-- Selector de Vista (Individual vs Grupal) -->
-      <VCol cols="12" sm="3" md="2" class="d-flex align-center">
-        <VSelect
-          :model-value="props.viewType"
-          :items="viewTypeOptions"
-          label="Vista"
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-layout-grid"
-          @update:model-value="emit('update:viewType', $event)"
-        />
-      </VCol>
-
-      <!-- Búsqueda Estricta -->
-
       <!-- Búsqueda Estricta -->
       <VCol cols="auto" class="d-none d-lg-flex">
         <VCheckbox
@@ -118,7 +103,7 @@ const handleClear = () => {
 
     <template #advanced-filters>
       <!-- Filtros Primera Fila -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
@@ -134,7 +119,7 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.stockStatusFilter"
           placeholder="Estado Stock"
@@ -147,7 +132,7 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.stock"
           placeholder="Nivel Stock"
@@ -157,6 +142,19 @@ const handleClear = () => {
           hide-details
           prepend-inner-icon="tabler-chart-bar"
           @update:model-value="emit('update:stock', $event)"
+        />
+      </VCol>
+
+      <!-- Filtros Segunda Fila: Vista al lado de Días Proyección -->
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.viewType"
+          :items="viewTypeOptions"
+          placeholder="Vista"
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-layout-grid"
+          @update:model-value="emit('update:viewType', $event)"
         />
       </VCol>
 
@@ -172,7 +170,6 @@ const handleClear = () => {
         />
       </VCol>
 
-      <!-- Filtros Segunda Fila -->
       <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.tipoFiltracion"
@@ -185,7 +182,7 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" md="6" class="d-flex flex-wrap align-center gap-x-3 ps-4">
+      <VCol cols="12" sm="6" md="3" class="d-flex flex-wrap align-center gap-x-3 ps-4">
         <VCheckbox
           :model-value="props.expProd"
           label="Prox. Exp."
