@@ -117,7 +117,7 @@ const currentProgress = ref(0);
 const progressStages = [0, 100];
 const currentStageIndex = ref(0);
 
-const invoiceSwitch = ref(false);
+const invoiceSwitch = ref(true);
 const isFifthForeignSale = computed(() => {
   return (props.foreignOrdersCount + 1) % 5 === 0;
 });
@@ -789,6 +789,7 @@ watch(
 );
 
 // Watch para actualizar el monto restante cuando cambia la pestaña
+/*
 watch(
   () => selectedCurrencyTab.value,
   (newCurrency) => {
@@ -797,6 +798,7 @@ watch(
     invoiceSwitch.value = (newCurrency !== "BS") || shouldApplySpeRules.value;
   },
 );
+*/
 
 const getProductPriceSinIva = (product, currency) => {
   let basePrice = 0;
@@ -1643,7 +1645,7 @@ const getAvailableMethodsForCurrency = (currency) => {
         </div>
         <div class="ms-6 d-flex align-center">
           <span class="text-caption font-weight-bold me-2 uppercase">Factura</span>
-          <VSwitch v-model="invoiceSwitch" density="compact" color="primary" hide-details />
+          <VSwitch v-model="invoiceSwitch" density="compact" color="primary" hide-details readonly disabled />
         </div>
         <VSpacer />
         <VBtn
