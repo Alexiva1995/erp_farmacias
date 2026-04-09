@@ -179,10 +179,9 @@ const handleMobilePageChange = (newPage) => {
 
         <template #item.actions="{ item: cycle }">
           <IconBtn
-            icon="tabler-eye"
             size="small"
             color="info"
-            @click="viewCycleDetails(cycle.cycle_id)"
+            @click.stop="viewCycleDetails(cycle.cycle_id)"
           >
             <VIcon icon="tabler-eye" />
             <VTooltip activator="parent">Ver Detalles</VTooltip>
@@ -251,7 +250,7 @@ const handleMobilePageChange = (newPage) => {
                   color="info"
                   size="32"
                   class="rounded"
-                  @click="viewCycleDetails(cycle.cycle_id)"
+                  @click.stop="viewCycleDetails(cycle.cycle_id)"
                 >
                   <VIcon icon="tabler-eye" size="18" />
                 </IconBtn>

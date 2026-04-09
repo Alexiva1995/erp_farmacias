@@ -86,6 +86,7 @@ class ProductRepository
                 DB::raw('MAX(products.photo_url) as photo_url'),
                 DB::raw('SUM(' . $subqueryStockLotes . ') as lote_quantity'),
                 DB::raw('SUM(' . $subqueryTotalSold . ') as total_sold_completed'),
+                DB::raw('SUM(' . $subqueryTotalSold . ') as preferencia_product'),
                 DB::raw('SUM(' . $promedioCalculadoSql . ') as promedio_calculado'),
                 DB::raw('SUM(' . $subqueryAO . ') as totalQuantityInAutoOrder'),
                 DB::raw('MAX(products.unit_cost) as unit_cost'),
@@ -103,6 +104,7 @@ class ProductRepository
                 'products.is_colombian_origin',
                 DB::raw($subqueryStockLotes . ' AS lote_quantity'),
                 DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
+                DB::raw($subqueryTotalSold . ' AS preferencia_product'),
                 DB::raw($promedioCalculadoSql . ' AS promedio_calculado'),
                 DB::raw($subqueryAO . ' AS totalQuantityInAutoOrder'),
             ];

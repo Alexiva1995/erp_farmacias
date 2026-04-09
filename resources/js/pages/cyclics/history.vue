@@ -98,6 +98,7 @@ const handleSort = (sortOptions) => {
 };
 
 const viewCycleDetails = (cycleId) => {
+  if (!cycleId) return;
   router.push(`/cyclics/${cycleId}/details`);
 };
 </script>

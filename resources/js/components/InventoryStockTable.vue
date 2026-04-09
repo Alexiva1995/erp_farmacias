@@ -30,7 +30,7 @@ const headers = [
   { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
-  { title: "Prefaci.", key: "preferencia_product", sortable: true, align: 'center' },
+  { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
   { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
   { title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' },
   { title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' },
@@ -73,24 +73,14 @@ const getDiffColor = (val) => {
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-4 py-2">
             <VAvatar
-              v-if="!isGroup"
-              size="44"
-              variant="tonal"
-              rounded
-              :image="item.photo_url || ''"
-              class="border elevation-1 flex-shrink-0"
-            >
-              <VIcon v-if="!item.photo_url" icon="tabler-package" size="24" />
-            </VAvatar>
-            <VAvatar
-              v-else
-              size="44"
+              v-if="isGroup"
+              size="32"
               variant="tonal"
               rounded
               color="primary"
               class="border elevation-1 flex-shrink-0"
             >
-              <VIcon icon="tabler-users-group" size="24" />
+              <VIcon icon="tabler-users-group" size="20" />
             </VAvatar>
 
             <div class="d-flex flex-column truncate" style="max-inline-size: 350px;">
@@ -122,7 +112,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black"
           >
-            {{ item.lote_quantity }} UNDS
+            {{ item.lote_quantity }}
           </VChip>
         </template>
 
@@ -167,33 +157,28 @@ const getDiffColor = (val) => {
           <div class="pa-4">
             <!-- Header de Tarjeta -->
             <div class="d-flex gap-3 align-start mb-3">
-              <VAvatar
-                v-if="item.photo_url"
-                size="48"
-                variant="tonal"
-                rounded
-                :image="item.photo_url"
-                class="flex-shrink-0 border"
-              />
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center justify-space-between mb-1 text-truncate">
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
                     <a
+                      v-if="!isGroup"
                       :href="'/inventory/traceability?q=' + item.id"
                       target="_blank"
                       class="text-decoration-none text-primary"
                     >
                       #{{ item.id }}
                     </a>
+                    <span v-else class="text-primary font-weight-black">G-{{ item.group_id || item.id }}</span>
                     <span class="mx-1 text-disabled">|</span>
                     {{ item.name }}
                   </h3>
                 </div>
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
+                <div v-if="!isGroup" class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
                   <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 140px;">{{ item.active_ingredient || '' }}</span>
                   <span class="text-disabled">|</span>
                   <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 100px;">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
+                <div v-else class="text-super-xs mt-1 text-disabled"> Consolidado de grupo </div>
               </div>
             </div>
 
@@ -205,7 +190,7 @@ const getDiffColor = (val) => {
                 <div class="d-flex flex-column">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Actual</span>
                   <VChip :color="item.lote_quantity > 0 ? 'success' : 'error'" size="x-small" label class="font-weight-black mt-1" variant="flat">
-                    {{ item.lote_quantity }} UNDS
+                    {{ item.lote_quantity }}
                   </VChip>
                 </div>
                 <div class="d-flex flex-column text-right">
