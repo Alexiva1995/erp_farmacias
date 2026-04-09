@@ -1,7 +1,7 @@
-<script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import LocationTable from "@/components/LocationTable.vue";
 import LocationEditDialog from "@/components/dialogs/LocationEditDialog.vue";
+import AppFilterBase from "@/components/AppFilterBase.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -10,6 +10,13 @@ const locations = ref([]);
 const loading = ref(false);
 const isEditDialogVisible = ref(false);
 const currentLocation = ref({});
+const search = ref("");
+
+const filteredLocations = computed(() => {
+  if (!search.value) return locations.value;
+  const q = search.value.toLowerCase();
+  return locations.value.filter((l) => l.name.toLowerCase().includes(q));
+});
 
 const fetchLocations = async () => {
   loading.value = true;
@@ -88,13 +95,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <VContainer fluid class="locations-page">
+  <VContainer fluid>
+    <!-- Filtros y Acciones -->
+    <AppFilterBase
+      v-model:search="search"
+      search-placeholder="Buscar ubicación..."
+      show-add
+      add-button-text="Nueva Ubicación"
+      @add="handleAddLocation"
+      @clear="search = ''"
+    />
+
+    <!-- Tabla de Ubicaciones -->
     <VRow>
       <VCol cols="12">
         <LocationTable
-          :locations="locations"
+          :locations="filteredLocations"
           :loading="loading"
-          @add-location="handleAddLocation"
           @edit-location="handleEditLocation"
           @delete-location="handleDeleteLocation"
         />

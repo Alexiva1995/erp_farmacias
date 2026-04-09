@@ -27,8 +27,7 @@ let skipPaginationWatch = false;
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const stockStatusFilter = ref(null);
-const startDate = ref(null);
-const endDate = ref(null);
+const viewType = ref("individual");
 const days = ref(30);
 const stock = ref("all");
 const expProd = ref(false);
@@ -62,13 +61,12 @@ const fetchProducts = async () => {
   const data = {
     q: searchQuery.value,
     hasStock: stockStatusFilter.value,
+    viewType: viewType.value,
     laboratoryId: selectedLaboratory.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
     days: days.value,
     stock: stock.value,
     expProd: expProd.value,
@@ -99,8 +97,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
   stockStatusFilter.value = null;
-  startDate.value = null;
-  endDate.value = null;
+  viewType.value = "individual";
   stock.value = "all";
   days.value = 30;
   expProd.value = false;
@@ -128,8 +125,7 @@ watch(
     searchQuery,
     selectedLaboratory,
     stockStatusFilter,
-    startDate,
-    endDate,
+    viewType,
     isStrictSearch,
     tipoFiltracion,
     isColombian,
@@ -220,11 +216,10 @@ async function exportarPdf() {
   const filtros = {
     q: searchQuery.value,
     hasStock: stockStatusFilter.value,
+    viewType: viewType.value,
     laboratoryId: selectedLaboratory.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
     days: days.value,
     stock: stock.value,
     expProd: expProd.value,
@@ -236,7 +231,7 @@ async function exportarPdf() {
   console.log("respuesta => ", respuestaApi);
 
   if (respuestaApi.length == 0) {
-    toast.info("No hay clientes para poder genera un reporte");
+    toast.info("No hay productos para poder generar un reporte");
     return null;
   }
 
@@ -248,11 +243,10 @@ async function exportarExcel(formato) {
     const params = {
       q: searchQuery.value,
       hasStock: stockStatusFilter.value,
+      viewType: viewType.value,
       laboratoryId: selectedLaboratory.value,
       sortBy: sortBy.value,
       orderBy: orderBy.value,
-      startDate: startDate.value,
-      endDate: endDate.value,
       days: days.value,
       stock: stock.value,
       expProd: expProd.value,
@@ -308,8 +302,7 @@ async function exportarExcel(formato) {
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:stockStatusFilter="stockStatusFilter"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
+      v-model:viewType="viewType"
       v-model:days="days"
       v-model:stock="stock"
       v-model:expProd="expProd"
@@ -331,6 +324,7 @@ async function exportarExcel(formato) {
       :page="page"
       :sort-by="sortBy"
       :order-by="orderBy"
+      :view-type="viewType"
       @update:options="updateTableOptions"
     />
   </div>

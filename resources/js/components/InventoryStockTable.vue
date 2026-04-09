@@ -11,7 +11,10 @@ const props = defineProps({
   page: { type: Number, required: true },
   sortBy: { type: [String, Array], default: () => [] },
   orderBy: { type: String, default: "asc" },
+  viewType: { type: String, default: "individual" },
 });
+
+const isGroup = computed(() => props.viewType === "group");
 
 const sortByModel = computed(() => {
   if (!props.sortBy) return [];
@@ -23,11 +26,11 @@ const emit = defineEmits(["update:options"]);
 
 const headers = [
   { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
-  { title: "Producto", key: "name", sortable: true, width: "400px" },
+  { title: "Producto / Grupo", key: "name", sortable: true, width: "400px" },
   { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
-  { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
+  { title: "Prefaci.", key: "preferencia_product", sortable: true, align: 'center' },
   { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
   { title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' },
   { title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' },
@@ -57,36 +60,52 @@ const getDiffColor = (val) => {
       >
         <template #item.id="{ item }">
           <a
+            v-if="!isGroup"
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
             class="text-decoration-none font-weight-black text-primary"
           >
             {{ item.id }}
           </a>
+          <span v-else class="text-disabled font-weight-black">G-{{ item.group_id || item.id }}</span>
         </template>
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-4 py-2">
             <VAvatar
-              v-if="item.photo_url"
+              v-if="!isGroup"
               size="44"
               variant="tonal"
               rounded
-              :image="item.photo_url"
+              :image="item.photo_url || ''"
               class="border elevation-1 flex-shrink-0"
-            />
+            >
+              <VIcon v-if="!item.photo_url" icon="tabler-package" size="24" />
+            </VAvatar>
+            <VAvatar
+              v-else
+              size="44"
+              variant="tonal"
+              rounded
+              color="primary"
+              class="border elevation-1 flex-shrink-0"
+            >
+              <VIcon icon="tabler-users-group" size="24" />
+            </VAvatar>
+
             <div class="d-flex flex-column truncate" style="max-inline-size: 350px;">
               <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
                 {{ item.name || 'N/A' }}
-                <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-black"> (COL)</span>
+                <span v-if="!isGroup && item.is_colombian_origin == 1" class="text-info font-weight-black"> (COL)</span>
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs mt-1">
+              <div v-if="!isGroup" class="d-flex align-center gap-1 text-super-xs mt-1">
                 <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || "" }}</span>
                 <span class="text-disabled">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
               </div>
+              <div v-else class="text-super-xs mt-1 text-disabled"> Consolidado de grupo </div>
             </div>
           </div>
         </template>

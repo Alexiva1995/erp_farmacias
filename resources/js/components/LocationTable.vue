@@ -31,21 +31,16 @@ const headers = [
           </VAvatar>
           <div>
             <div class="text-h6 font-weight-black line-height-tight">Ubicaciones</div>
-            <div class="text-caption opacity-80">Gestión de espacios físicos</div>
+            <div class="text-caption opacity-80">
+              Total: {{ props.locations.length }} registros
+            </div>
           </div>
         </div>
-        <VBtn
-          color="white"
-          variant="tonal"
-          prepend-icon="tabler-plus"
-          class="rounded-lg font-weight-bold"
-          @click="$emit('add-location')"
-        >
-          Nueva Ubicación
-        </VBtn>
       </div>
 
+      <!-- Vista de Escritorio (Tabla) -->
       <VDataTable
+        v-if="!mobile"
         :headers="headers"
         :items="props.locations"
         :loading="props.loading"
@@ -66,7 +61,7 @@ const headers = [
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-2">
-            <VTooltip text="Editar Ubicación" location="top">
+            <VTooltip text="Editar" location="top">
               <template #activator="{ props: tooltipProps }">
                 <VBtn
                   v-bind="tooltipProps"
@@ -103,6 +98,54 @@ const headers = [
           </div>
         </template>
       </VDataTable>
+
+      <!-- Vista de Móvil (Tarjetas) -->
+      <div v-else class="pa-4 d-flex flex-column gap-3">
+        <div v-show="props.loading" class="text-center py-4">
+          <VProgressCircular indeterminate color="primary" />
+        </div>
+
+        <div v-if="props.locations.length === 0 && !props.loading" class="text-center py-10 text-disabled">
+          No se encontraron ubicaciones registradas
+        </div>
+
+        <VCard
+          v-for="location in props.locations"
+          :key="location.id"
+          variant="outlined"
+          class="rounded-xl border-dashed-thin transition-all"
+        >
+          <VCardText class="pa-4">
+            <div class="d-flex justify-space-between align-start mb-3">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator success rounded-pill"></div>
+                <div class="d-flex flex-column">
+                  <span class="text-caption text-disabled font-weight-bold">#{{ location.id }}</span>
+                  <span class="text-h6 font-weight-black">{{ location.name }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <VBtn
+                  icon="tabler-pencil"
+                  variant="tonal"
+                  color="primary"
+                  size="35"
+                  class="rounded-lg"
+                  @click="emit('edit-location', location)"
+                />
+                <VBtn
+                  icon="tabler-trash"
+                  variant="tonal"
+                  color="error"
+                  size="35"
+                  class="rounded-lg"
+                  @click="emit('delete-location', location.id)"
+                />
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </div>
     </VCard>
   </div>
 </template>

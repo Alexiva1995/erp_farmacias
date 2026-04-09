@@ -29,128 +29,29 @@ class ProductRepository
 
     public function builerFiltrarProductforStock($filtros): Builder
     {
+        $viewType = $filtros["viewType"] ?? "individual";
+        $isGroup = $viewType === "group";
 
-        $columnas = [
-            'products.id',
-            'products.name',
-            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
-            'products.group_id',
-            'products.laboratory_id',
-            "products.sales_average",
-            "products.sale_price",
-            "products.unit_cost",
-            "products.psychotropic",
-            "products.is_colombian_origin",
-            "products.active_ingredient",
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
-            DB::raw('(
-                SELECT COALESCE(SUM(order_details.quantity), 0)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-                AND orders.status = "Completed"
-            ) AS total_sold_completed'),
-            DB::raw('(
-                SELECT COALESCE(SUM(od.quantity), 0)
-                FROM order_details od
-                JOIN orders o ON o.id = od.order_id
-                JOIN products p ON p.id = od.product_id
-                WHERE p.group_id = products.group_id
-                AND o.status = "Completed"
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-            ) AS total_group_sales'),
-            //  para calcular la preferencia del producto veta del producto / ventas totales del grupo que pertenece el producto * 100
-            DB::raw(' NULLIF((
-            (
-                SELECT COALESCE(SUM(order_details.quantity), 0)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-                AND orders.status = "Completed"
-            ) / (
-                SELECT COALESCE(SUM(od.quantity), 0)
-                FROM order_details od
-                JOIN orders o ON o.id = od.order_id
-                JOIN products p ON p.id = od.product_id
-                WHERE p.group_id = products.group_id
-                AND o.status = "Completed"
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-            ) 
-            ),0)* 100 AS preferencia_product'),
-            DB::raw('(
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-            ) AS totalQuantityInAutoOrder'),
-        ];
+        // Asegurar que previousDate y dateToday estén definidos para cálculos de ventas y combinado
+        $days = $filtros["days"] ?? 30;
+        $timeZone = new \DateTimeZone(config("app.timezone"));
+        $dateToday = new \DateTime("now", $timeZone);
+        $previousDate = new \DateTime("now", $timeZone);
+        $previousDate->modify("-" . $days . " days");
+        
+        $dateTodayStr = $filtros["dateToday"] ?? $dateToday->format("Y-m-d H:i:s");
+        $previousDateStr = $filtros["previousDate"] ?? $previousDate->format("Y-m-d");
 
-        // calcular promedio en base a los dias => promedio_calculado
-        $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
-        if (!is_string($lapso)) $lapso = $lapso . " days";
-
-        if (str_contains($lapso, "7")) {
-            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
-            $promedio_calculado = 'sales_average / 4';
-        } elseif (str_contains($lapso, "15")) {
-            $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
-            $promedio_calculado = 'sales_average / 2';
-        } elseif (str_contains($lapso, "30") || str_contains($lapso, "1 month") || str_contains($lapso, "60") || str_contains($lapso, "90")) {
-             // Para 30, 60, 90 se maneja abajo si es necesario, pero garantizamos que exista la columna
-             if (str_contains($lapso, "30") || str_contains($lapso, "1 month")) {
-                $columnas[] = DB::raw('sales_average AS promedio_calculado');
-                $promedio_calculado = 'sales_average';
-             } elseif (str_contains($lapso, "60")) {
-                $columnas[] = DB::raw('sales_average * 2 AS promedio_calculado');
-                $promedio_calculado = 'sales_average * 2';
-             } else {
-                $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
-                $promedio_calculado = 'sales_average * 3';
-             }
-        } else {
-            $columnas[] = DB::raw('sales_average AS promedio_calculado');
-            $promedio_calculado = 'sales_average';
-        }
-
-        // calcular diferencia_product según tipo_filtracion
-        $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
-
-        // Asegurar que previousDate y dateToday estén definidos para sales y combinado
-        if (
-            ($tipoFiltracion == "sales" || $tipoFiltracion == "combinado") &&
-            (!isset($filtros["previousDate"]) || !isset($filtros["dateToday"]))
-        ) {
-            // Si no están definidos, usar valores por defecto basados en days o 30 días
-            $days = $filtros["days"] ?? 30;
-            $timeZone = new \DateTimeZone(config("app.timezone"));
-            $dateToday = new \DateTime("now", $timeZone);
-            $previousDate = new \DateTime("now", $timeZone);
-            $previousDate->modify("-" . $days . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
-            $filtros["previousDate"] = $previousDate->format("Y-m-d");
-        }
-
-        // Subconsulta para total_sold_completed (reutilizable)
+        // Subconsultas Base
+        $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
         $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
                 JOIN orders ON orders.id = order_details.order_id
                 WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
+                AND orders.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
                 AND orders.status = "Completed")';
 
-        // Stock efectivo = stock en lotes + cantidad en auto orden (producto pedido pendiente por recibir)
-        $subqueryAutoOrder = '(SELECT COALESCE(SUM(aod.quantity), 0)
+        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
@@ -159,85 +60,91 @@ class ProductRepository
                 AND aod.status = 0
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL)';
-        $stockQuery = $this->subConsultaParaCalcularStockPorLotes;
-        $stockEfectivo = '(COALESCE((' . $stockQuery . '), 0) + COALESCE((' . $subqueryAutoOrder . '), 0))';
 
-        $calcDiff = "";
+        // Cálculo de Promedio
+        $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
+        if (!is_string($lapso)) $lapso = $lapso . " days";
+
+        if (str_contains($lapso, "7")) {
+            $promedioCalculadoSql = 'products.sales_average / 4';
+        } elseif (str_contains($lapso, "15")) {
+            $promedioCalculadoSql = 'products.sales_average / 2';
+        } elseif (str_contains($lapso, "60")) {
+            $promedioCalculadoSql = 'products.sales_average * 2';
+        } elseif (str_contains($lapso, "90")) {
+            $promedioCalculadoSql = 'products.sales_average * 3';
+        } else {
+            $promedioCalculadoSql = 'products.sales_average';
+        }
+
+        // Definición de Columnas
+        if ($isGroup) {
+            $columnas = [
+                DB::raw('MIN(products.id) as id'),
+                DB::raw('COALESCE(groups_products.name, CONCAT("INDIVIDUAL: ", products.name)) as name'),
+                DB::raw('products.group_id'),
+                DB::raw('MAX(products.photo_url) as photo_url'),
+                DB::raw('SUM(' . $subqueryStockLotes . ') as lote_quantity'),
+                DB::raw('SUM(' . $subqueryTotalSold . ') as total_sold_completed'),
+                DB::raw('SUM(' . $promedioCalculadoSql . ') as promedio_calculado'),
+                DB::raw('SUM(' . $subqueryAO . ') as totalQuantityInAutoOrder'),
+                DB::raw('MAX(products.unit_cost) as unit_cost'),
+                DB::raw('MAX(products.laboratory_id) as laboratory_id'),
+            ];
+        } else {
+            $columnas = [
+                'products.id',
+                'products.name',
+                'products.group_id',
+                'products.photo_url',
+                'products.laboratory_id',
+                'products.unit_cost',
+                'products.active_ingredient',
+                'products.is_colombian_origin',
+                DB::raw($subqueryStockLotes . ' AS lote_quantity'),
+                DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
+                DB::raw($promedioCalculadoSql . ' AS promedio_calculado'),
+                DB::raw($subqueryAO . ' AS totalQuantityInAutoOrder'),
+            ];
+        }
+
+        // Diferencia de Producto
+        $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
+        $stockEfectivo = '(COALESCE((' . $subqueryStockLotes . '), 0) + COALESCE((' . $subqueryAO . '), 0))';
+        
         if ($tipoFiltracion == "sales") {
-            // Diferencia usando ventas: stock_efectivo - total_sold_completed
             $calcDiff = '(' . $stockEfectivo . ') - (' . $subqueryTotalSold . ')';
         } elseif ($tipoFiltracion == "combinado") {
-            // Diferencia usando combinado: stock_efectivo - ((total_sold_completed + promedio_calculado) / 2)
-            $calcDiff = '(' . $stockEfectivo . ') - (((' . $subqueryTotalSold . ') + (' . $promedio_calculado . ')) / 2)';
+            $calcDiff = '(' . $stockEfectivo . ') - (((' . $subqueryTotalSold . ') + (' . $promedioCalculadoSql . ')) / 2)';
         } else {
-            // Diferencia usando promedio (default): stock_efectivo - promedio_calculado
-            $calcDiff = '(' . $stockEfectivo . ') - (' . $promedio_calculado . ')';
-        }
+            $calcDiff = '(' . $stockEfectivo . ') - (' . $promedioCalculadoSql . ')';
+        }        // Filtros adicionales
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+            $isStrictSearch = $filtros["isStrictSearch"] ?? false;
+            $searchTerm = $filtros["q"];
 
-        $columnas[] = DB::raw("CASE 
-            WHEN ($calcDiff) > 0 THEN CEIL($calcDiff) 
-            ELSE FLOOR($calcDiff) 
-        END AS diferencia_product");
-
-        // calcular demanda_ajustada con promedio_calculado
-        $columnas[] = DB::raw('COALESCE(
-                (' . $this->subConsultaParaCalcularStockPorLotes . '), 0) - 
-                ((' . $promedio_calculado . ') * 
-                COALESCE((SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date))
-                FROM product_lots 
-                WHERE product_lots.product_id = products.id
-                AND expiration_date >= CURDATE()), 0)
-            ) AS demanda_ajustada');
-
-
-        $consulta = Product::select($columnas)
-            ->where(function ($q) {
-                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
-            })
-            ->with(["laboratory", "lots"]);
-
-        if (array_key_exists("q", $filtros)) {
-            if ($filtros["q"] != "") {
-                $isStrictSearch = $filtros["isStrictSearch"] ?? false;
-                $searchTerm = $filtros["q"];
-
-                $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
-                    if ($isStrictSearch) {
-                        // Búsqueda estricta: busca el término completo en los campos
-                        $query->where("name", "like", "%" . $searchTerm . "%")
-                            ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
-                            ->orWhere("barcode", "like", $searchTerm)
-                            ->orWhere("id", "like", "%" . $searchTerm . "%");
-                    } else {
-                        // Búsqueda por palabras: divide el término en palabras y busca cada una
-                        $words = explode(' ', trim($searchTerm));
-                        foreach ($words as $word) {
-                            $word = trim($word);
-                            if (empty($word))
-                                continue;
-                            $query->where(function ($wordQuery) use ($word) {
-                                $wordQuery->where("name", "like", "%" . $word . "%")
-                                    ->orWhere("active_ingredient", "like", "%" . $word . "%")
-                                    ->orWhere("id", "like", "%" . $word . "%")
-                                    ->orWhereHas("laboratory", function ($labQuery) use ($word) {
-                                        $labQuery->where("name", "like", "%" . $word . "%");
-                                    });
-                            });
-                        }
+            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+                if ($isStrictSearch) {
+                    $query->where("products.name", "like", "%" . $searchTerm . "%")
+                        ->orWhere("products.active_ingredient", "like", "%" . $searchTerm . "%")
+                        ->orWhere("products.id", "like", $searchTerm);
+                } else {
+                    $words = explode(' ', trim($searchTerm));
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $query->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where("products.name", "like", "%" . $word . "%")
+                                ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("products.id", "like", "%" . $word . "%");
+                        });
                     }
-                });
-            }
+                }
+            });
         }
 
-
-        if (array_key_exists("laboratoryId", $filtros)) {
-            $consulta->where("laboratory_id", "=", $filtros["laboratoryId"]);
-        }
-
-        if (array_key_exists("expProd", $filtros)) {
-            if ($filtros["expProd"] == true) {
-                $consulta->having("demanda_ajustada", ">", 0);
-            }
+        if (array_key_exists("laboratoryId", $filtros) && $filtros["laboratoryId"]) {
+            $consulta->where("products.laboratory_id", "=", $filtros["laboratoryId"]);
         }
 
         if (array_key_exists("hasStock", $filtros)) {
@@ -249,41 +156,33 @@ class ProductRepository
         }
 
         if (array_key_exists("stock", $filtros)) {
-
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("diferencia_product", ">", 0);
-            }
-            if ($filtros["stock"] == "fallas") {
+            } elseif ($filtros["stock"] == "fallas") {
                 $consulta->having("diferencia_product", "<", 0);
             }
         }
 
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true) {
-                $consulta->where("is_colombian_origin", "=", 1);
+                $consulta->where("products.is_colombian_origin", "=", 1);
             }
-        }
-
-        if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
-            $consulta->whereHas("lots", function ($query) use ($filtros) {
-                $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
-            });
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $sortCol = $filtros["sortBy"];
             $sortDir = strtolower($filtros["orderBy"]) === 'desc' ? 'desc' : 'asc';
-            if ($sortCol === 'totalQuantityInAutoOrder') {
-                $consulta->orderByRaw("({$subqueryAutoOrder}) {$sortDir}");
-            } else {
-                $consulta->orderBy($sortCol, $sortDir);
-            }
+            
+            // Mapear columnas si es necesario (ej: stock -> lote_quantity)
+            if ($sortCol === 'stock') $sortCol = 'lote_quantity';
+            
+            $consulta->orderBy($sortCol, $sortDir);
         } else {
             $consulta->orderBy("diferencia_product", "DESC");
         }
 
-
         return $consulta;
+    }ta;
     }
 
 

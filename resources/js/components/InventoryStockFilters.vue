@@ -8,8 +8,7 @@ const props = defineProps({
   selectedLaboratory: [Number, String, null],
   stockStatusFilter: [Boolean, null],
   expProd: [Boolean, null],
-  startDate: [String, null],
-  endDate: [String, null],
+  viewType: { type: String, default: "individual" },
   laboratories: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   days: [String, Number, null],
@@ -23,8 +22,7 @@ const emit = defineEmits([
   "update:searchQuery",
   "update:selectedLaboratory",
   "update:stockStatusFilter",
-  "update:startDate",
-  "update:endDate",
+  "update:viewType",
   "update:expProd",
   "update:isStrictSearch",
   "update:tipoFiltracion",
@@ -76,7 +74,7 @@ const handleClear = () => {
 <template>
   <AppFilterBase
     :search="props.searchQuery"
-    :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.startDate || props.endDate || props.stock || props.days || props.tipoFiltracion !== 'average' || props.expProd || props.isColombian)"
+    :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.stock || props.days || props.tipoFiltracion !== 'average' || props.expProd || props.isColombian)"
     :show-export="true"
     search-placeholder="ID, Producto, C. Activo..."
     class="py-1"
@@ -85,8 +83,29 @@ const handleClear = () => {
     @export="ext => ext === 'xlsx' ? emit('export-excel', ext) : emit('export-pdf')"
   >
     <template #search-extra>
+      <!-- Selector de Vista (Individual vs Grupal) -->
+      <VCol cols="auto" class="d-flex align-center">
+        <VBtnToggle
+          :model-value="props.viewType"
+          color="primary"
+          variant="tonal"
+          density="compact"
+          mandatory
+          @update:model-value="emit('update:viewType', $event)"
+        >
+          <VBtn value="individual" size="small" class="px-4">
+            <VIcon start size="18">tabler-user</VIcon>
+            <span class="d-none d-sm-inline">Individual</span>
+          </VBtn>
+          <VBtn value="group" size="small" class="px-4">
+            <VIcon start size="18">tabler-users-group</VIcon>
+            <span class="d-none d-sm-inline">Grupal</span>
+          </VBtn>
+        </VBtnToggle>
+      </VCol>
+
       <!-- Búsqueda Estricta -->
-      <VCol cols="auto" class="d-none d-sm-flex">
+      <VCol cols="auto" class="d-none d-lg-flex">
         <VCheckbox
           :model-value="props.isStrictSearch"
           label="Estricta"
@@ -130,33 +149,6 @@ const handleClear = () => {
       </VCol>
 
       <VCol cols="12" sm="6" md="3">
-        <AppDateTimePicker
-          :model-value="props.startDate"
-          placeholder="Fecha Inicial"
-          clearable
-          density="compact"
-          hide-details
-          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-          prepend-inner-icon="tabler-calendar-event"
-          @update:model-value="emit('update:startDate', $event)"
-        />
-      </VCol>
-
-      <VCol cols="12" sm="6" md="3">
-        <AppDateTimePicker
-          :model-value="props.endDate"
-          placeholder="Fecha Final"
-          clearable
-          density="compact"
-          hide-details
-          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-          prepend-inner-icon="tabler-calendar-event"
-          @update:model-value="emit('update:endDate', $event)"
-        />
-      </VCol>
-
-      <!-- Filtros Segunda Fila -->
-      <VCol cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.stock"
           placeholder="Nivel Stock"
@@ -169,7 +161,7 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.days"
           placeholder="Días Proyección"
@@ -181,7 +173,8 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="12" md="2">
+      <!-- Filtros Segunda Fila -->
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.tipoFiltracion"
           placeholder="Cálculo Por"

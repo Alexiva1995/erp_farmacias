@@ -39,6 +39,10 @@ class InventoryStockController extends Controller
             $filtros["laboratoryId"] = $request->laboratoryId;
         }
 
+        if ($request->filled("viewType")) {
+            $filtros["viewType"] = $request->viewType;
+        }
+
         if ($request->filled("stock")) {
             $filtros["stock"] = $request->stock;
         }
