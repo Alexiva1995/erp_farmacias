@@ -559,7 +559,7 @@ class OrderActionService
             }
 
             // --- CÁLCULOS Recarga Sujeto pasivo especial 3%---
-            $taxable_base = $exemptAmount + $taxableAmount + ($spe ? ($totalIva * 0.25) : $totalIva);
+            $taxable_base = $exemptAmount + $taxableAmount + $totalIva;
 
             $speRate = $order->spe_surcharge_rate ?? 0;
             $speAmountBs = ($speRate > 0) ? ($taxable_base * ($speRate / 100)) : 0;
