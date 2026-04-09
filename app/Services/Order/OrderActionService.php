@@ -558,13 +558,14 @@ class OrderActionService
                 }
             }
 
-            // --- CÁLCULOS Recarga Sujeto pasivo especial 3%---
+            // --- CÁLCULOS FISCALES (Uniformidad total BS/COP/USD) ---
             $taxable_base = $exemptAmount + $taxableAmount + $totalIva;
+            
+            // Forzamos que no se apliquen recargos SPE en el registro fiscal para mantener paridad
+            $speRate = 0;
+            $speAmountBs = 0;
 
-            $speRate = $order->spe_surcharge_rate ?? 0;
-            $speAmountBs = ($speRate > 0) ? ($taxable_base * ($speRate / 100)) : 0;
-
-            $totalAmountBs = $taxable_base + $speAmountBs;
+            $totalAmountBs = $taxable_base;
 
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
