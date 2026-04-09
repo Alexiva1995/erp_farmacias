@@ -253,7 +253,7 @@ const handleDeleteItem = async (item) => {
             </VAvatar>
             <div class="d-flex flex-column">
               <span class="text-xs text-disabled text-uppercase font-weight-black line-height-1">Ciclo Activo</span>
-              <span class="text-sm font-weight-bold">Desde: {{ formatDate(activeCycle.start_date) }}</span>
+              <span class="text-sm font-weight-bold">Desde: {{ formatDateSimple(activeCycle.start_date) }}</span>
             </div>
           </div>
 

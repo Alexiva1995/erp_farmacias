@@ -3,16 +3,14 @@ import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue"
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple } from "@/utils/formatters";
-// ...
-{{ formatDateSimple(item.created_at) }}
-// ...
-{{ formatDateSimple(item.created_at) }}
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router/auto";
 
 const route = useRoute();
 const router = useRouter();
-const cycleId = computed(() => route.params.cycleId);
+
+// Usamos query params para asegurar la carga correcta del componente
+const cycleId = computed(() => route.query.id);
 
 const cycleInfo = ref(null);
 const products = ref([]);
@@ -72,6 +70,7 @@ const fetchLaboratories = async () => {
 };
 
 const fetchCycleInfo = async () => {
+  if (!cycleId.value) return;
   try {
     const response = await axios.get(`/inventory/cycle/${cycleId.value}`);
     cycleInfo.value = response.data.data;
@@ -196,10 +195,6 @@ watch(
 watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selectedSupervisorId], () => {
   page.value = 1;
 });
-
-const handleMobilePageChange = (newPage) => {
-  page.value = newPage;
-};
 </script>
 
 <template>
@@ -390,7 +385,7 @@ const handleMobilePageChange = (newPage) => {
           </template>
 
           <template #item.created_at="{ item }">
-            <span class="text-xs text-medium-emphasis">{{ formatDate(item.created_at) }}</span>
+            <span class="text-xs text-medium-emphasis">{{ formatDateSimple(item.created_at) }}</span>
           </template>
 
           <template #item.user.email="{ item }">
@@ -439,7 +434,7 @@ const handleMobilePageChange = (newPage) => {
                     <span class="text-disabled">|</span>
                     <span class="d-flex align-center">
                       <VIcon icon="tabler-clock" size="10" class="me-1" />
-                      {{ formatDate(item.created_at) }}
+                      {{ formatDateSimple(item.created_at) }}
                     </span>
                   </div>
                 </div>

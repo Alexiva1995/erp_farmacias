@@ -103,7 +103,8 @@ const viewCycleDetails = (cycleId) => {
     console.error('[HISTORY] Error: ID de ciclo no definido');
     return;
   }
-  router.push(`/cyclics/${cycleId}/details`);
+  // Cambiamos a ruta plana con query params para evitar conflictos de matching
+  router.push(`/cyclics/details?id=${cycleId}`);
 };
 </script>
 

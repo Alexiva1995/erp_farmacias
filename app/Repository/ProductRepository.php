@@ -96,8 +96,8 @@ class ProductRepository
         if ($isGroup) {
             $columnas = [
                 DB::raw('MIN(products.id) as id'),
-                DB::raw('COALESCE(groups_products.name, CONCAT("INDIVIDUAL: ", products.name)) as name'),
-                DB::raw('products.group_id'),
+                DB::raw('MAX(COALESCE(groups_products.name, CONCAT("INDIVIDUAL: ", products.name))) as name'),
+                DB::raw('MAX(products.group_id) as group_id'),
                 DB::raw('MAX(products.photo_url) as photo_url'),
                 DB::raw('SUM(' . $subqueryStockLotes . ') as lote_quantity'),
                 DB::raw('SUM(' . $subqueryTotalSold . ') as total_sold_completed'),
