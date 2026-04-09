@@ -265,7 +265,7 @@ const productLineLabel = (product) => {
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
   >
-    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden">
+    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column" style="max-height: 90vh;">
       <!-- Premium Header -->
       <VCardTitle class="pa-0">
         <div class="premium-header pa-4 d-flex align-center gap-3">
@@ -303,8 +303,8 @@ const productLineLabel = (product) => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-3 pa-sm-4">
+      <VCardText class="pa-0 bg-light scrollable-content">
+        <div class="pa-3 pa-sm-4 pb-8">
           <!-- Document Info -->
           <div class="d-flex align-center gap-2 mb-4">
             <div class="header-indicator" />
@@ -472,6 +472,11 @@ const productLineLabel = (product) => {
 
 .order-view-card {
   background: white;
+}
+
+.scrollable-content {
+  overflow-y: auto;
+  flex: 1;
 }
 
 .premium-header {
