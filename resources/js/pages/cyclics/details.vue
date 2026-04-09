@@ -246,11 +246,6 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
 
-            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" size="22" />
-              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
-            </VBtn>
-
             <VBtn icon variant="tonal" color="secondary" size="38" class="rounded-circle shadow-sm" @click="goBack">
               <VIcon icon="tabler-arrow-left" size="22" />
               <VTooltip activator="parent">Volver</VTooltip>
@@ -266,6 +261,13 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             >
               <VIcon icon="tabler-lock" size="22" />
               <VTooltip activator="parent">Cerrar Ciclo</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2" />
+
+            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
+              <VIcon icon="tabler-eraser" size="22" />
+              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
             </VBtn>
           </div>
         </div>

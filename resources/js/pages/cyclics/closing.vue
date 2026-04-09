@@ -282,11 +282,6 @@ const handleDeleteItem = async (item) => {
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
 
-            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" size="22" />
-              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
-            </VBtn>
-
             <VBtn
               icon variant="flat"
               color="success"
@@ -298,6 +293,13 @@ const handleDeleteItem = async (item) => {
             >
               <VIcon icon="tabler-lock-check" size="22" />
               <VTooltip activator="parent">Generar Cierre</VTooltip>
+            </VBtn>
+
+            <VDivider vertical class="mx-1 my-2" />
+
+            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
+              <VIcon icon="tabler-eraser" size="22" />
+              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
             </VBtn>
           </div>
         </div>
