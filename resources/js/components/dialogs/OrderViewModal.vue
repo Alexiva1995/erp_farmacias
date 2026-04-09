@@ -259,7 +259,7 @@ const productLineLabel = (product) => {
 <template>
   <VDialog
     v-model="dialogVisible"
-    max-width="560"
+    max-width="700"
     persistent
     content-class="order-view-dialog"
     :fullscreen="mobile"
@@ -304,7 +304,7 @@ const productLineLabel = (product) => {
       </VCardTitle>
 
       <VCardText class="pa-0 bg-light">
-        <div class="pa-4 pa-sm-6">
+        <div class="pa-3 pa-sm-4">
           <!-- Document Info -->
           <div class="d-flex align-center gap-2 mb-4">
             <div class="header-indicator" />
@@ -379,7 +379,7 @@ const productLineLabel = (product) => {
                       <div class="d-flex flex-column">
                         <div class="d-flex align-center gap-1">
                           <span class="text-primary font-weight-black text-xs">#{{ productId(product) }}</span>
-                          <span class="text-sm font-weight-black text-uppercase truncate-text">{{ product.title }}</span>
+                          <span class="text-xs font-weight-bold text-uppercase truncate-text">{{ product.title }}</span>
                         </div>
                         <div class="d-flex align-center gap-1 mt-1">
                           <span class="text-super-xs text-disabled font-weight-medium">{{ product.active_ingredient || 'Sin Componente' }}</span>
@@ -388,11 +388,11 @@ const productLineLabel = (product) => {
                         </div>
                       </div>
                     </td>
-                    <td class="text-end table-amount font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td class="text-end table-amount text-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
                     <td class="text-center">
-                      <VChip size="x-small" variant="tonal" class="font-weight-black">{{ product.selectedQuantity }}</VChip>
+                      <VChip size="x-small" variant="tonal" class="font-weight-black" style="font-size: 0.65rem !important;">{{ product.selectedQuantity }}</VChip>
                     </td>
-                    <td class="text-end table-amount font-weight-black pe-4">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                    <td class="text-end table-amount text-xs font-weight-black pe-4">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -506,19 +506,19 @@ const productLineLabel = (product) => {
 .products-table th {
   background: rgba(var(--v-theme-on-surface), 0.03);
   color: rgba(var(--v-theme-on-surface), 0.6);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.05em;
-  padding-block: 10px;
-  padding-inline: 12px;
+  padding-block: 8px;
+  padding-inline: 8px;
   text-align: start;
   text-transform: uppercase;
 }
 
 .products-table td {
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  padding-block: 12px;
-  padding-inline: 12px;
+  padding-block: 8px;
+  padding-inline: 8px;
 }
 
 .products-table-row:last-child td {
