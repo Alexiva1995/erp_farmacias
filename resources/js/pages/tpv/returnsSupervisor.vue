@@ -215,6 +215,7 @@ watch(
 
   <LotDistributionModal
     v-model="showLotModal"
+    mode="return"
     :product-name="returnForLotDistribution?.product?.name ?? 'Producto'"
     :lots="lotsForDistribution"
     :target-quantity="returnForLotDistribution?.quantity ?? 0"
