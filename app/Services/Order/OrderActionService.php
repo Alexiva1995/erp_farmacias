@@ -567,6 +567,17 @@ class OrderActionService
 
             $totalAmountBs = $taxable_base;
 
+            // --- GENERACIÓN DE HASH DE AUDITORÍA ---
+            $auditString = implode('|', [
+                $client->identification,
+                number_format($exemptAmount, 2, '.', ''),
+                number_format($taxableAmount, 2, '.', ''),
+                number_format($totalIva, 2, '.', ''),
+                number_format($totalAmountBs, 2, '.', ''),
+                $order->id
+            ]);
+            $auditHash = hash('sha256', $auditString);
+
             $fiscalHistory = FiscalHistory::create([
                 'user_id' => $order->seller_id,
                 'order_id' => $order->id,
@@ -582,10 +593,10 @@ class OrderActionService
                 'spe_surcharge_amount' => $speAmountBs,
                 'exchange_rate' => $exchangeRate,
                 'invoice_date' => Carbon::now(),
-                'spe' => $spe
+                'spe' => $spe,
+                'is_queued' => true,
+                'audit_hash' => $auditHash,
             ]);
-
-            $fiscalHistory->save();
 
             foreach ($order->details as $detail) {
                 $unitPriceInOrderCurrency = $detail->unit_cost;

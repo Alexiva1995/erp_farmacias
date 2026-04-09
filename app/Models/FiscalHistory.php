@@ -27,6 +27,7 @@ class FiscalHistory extends Model
         'spe_surcharge_amount',
         'exchange_rate',
         'is_queued',
+        'audit_hash',
     ];
 
     public function user(): BelongsTo
