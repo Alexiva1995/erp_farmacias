@@ -242,95 +242,21 @@ const handleDeleteItem = async (item) => {
 
 <template>
   <div>
-    <!-- Resumen de Ciclo Superior -->
-    <VCard v-if="hasActiveCycle && activeCycle" class="mb-4 border-dashed border-primary overflow-hidden">
+    <!-- Dashboard de Control de Cierre Consolidado -->
+    <VCard v-if="hasActiveCycle && activeCycle" class="mb-6 elevation-1 overflow-hidden">
       <VCardText class="pa-3">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-          <!-- Info Ciclo -->
-          <div class="d-flex align-center gap-2">
-            <VAvatar color="primary" variant="tonal" size="32">
-              <VIcon icon="tabler-refresh-dot" size="18" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-xs text-disabled text-uppercase font-weight-black line-height-1">Ciclo Activo</span>
-              <span class="text-sm font-weight-bold">Desde: {{ formatDateSimple(activeCycle.start_date) }}</span>
-            </div>
-          </div>
-
-          <!-- Botón Generar Cierre (Móvil/Desktop) -->
-          <div class="d-flex d-md-none">
-            <VBtn
-              color="success"
-              variant="elevated"
-              icon
-              size="small"
-              :disabled="loading || isClosing"
-              :loading="isClosing"
-              @click="handleCashClose"
-            >
-              <VIcon icon="tabler-lock-check" size="20" />
-              <VTooltip activator="parent">GENERAR CIERRE</VTooltip>
-            </VBtn>
-          </div>
-
-          <VBtn
-            class="d-none d-md-flex"
-            color="success"
-            variant="elevated"
-            :disabled="loading || isClosing"
-            :loading="isClosing"
-            prepend-icon="tabler-lock-check"
-            @click="handleCashClose"
-          >
-            GENERAR CIERRE
-          </VBtn>
-        </div>
-
-        <VDivider class="my-3 border-opacity-10" />
-
-        <!-- Totales -->
-        <div class="d-flex align-center justify-space-between flex-wrap gap-x-6 gap-y-2">
-          <div class="d-flex flex-column">
-            <span class="text-super-xs text-disabled text-uppercase font-weight-black">Sobrante</span>
-            <span class="text-sm font-weight-bold text-success">{{ formatPrice(globalTotals.surplus) }}</span>
-          </div>
-          <VDivider vertical class="mx-1 d-none d-sm-block" />
-          <div class="d-flex flex-column">
-            <span class="text-super-xs text-disabled text-uppercase font-weight-black">Faltante</span>
-            <span class="text-sm font-weight-bold text-error">{{ formatPrice(globalTotals.shortage) }}</span>
-          </div>
-          <VDivider vertical class="mx-1 d-none d-sm-block" />
-          <div class="d-flex flex-column flex-grow-1 text-right text-sm-left">
-            <span class="text-super-xs text-disabled text-uppercase font-weight-black">Balance Neto</span>
-            <span 
-              class="text-sm font-weight-black"
-              :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
-            >
-              {{ formatPrice(globalTotals.netTotal) }}
+        <!-- Fila de Control: Info + Búsqueda + Acciones -->
+        <div class="d-flex align-center flex-wrap gap-3 mb-2">
+          <!-- Información del Ciclo (Compacta) -->
+          <div class="d-none d-sm-flex align-center me-2">
+            <VIcon icon="tabler-refresh" color="primary" size="20" class="me-2" />
+            <span class="text-xs font-weight-black text-high-emphasis text-uppercase letter-spacing-05">
+              Ciclo Activo ({{ formatDateSimple(activeCycle.start_date) }})
             </span>
           </div>
-        </div>
-      </VCardText>
-    </VCard>
 
-    <VBtn
-      v-else-if="!loading"
-      block
-      color="primary"
-      variant="tonal"
-      class="mb-4 py-6"
-      prepend-icon="tabler-plus"
-      :loading="isCreatingCycle"
-      @click="handleCreateCycle"
-    >
-      CREAR NUEVO CICLO DE INVENTARIO
-    </VBtn>
-
-    <!-- Filtros Colapsables -->
-    <VCard class="mb-6">
-      <VCardText class="pa-3">
-        <VRow align="center" no-gutters class="gap-2">
-          <VCol cols="12" md="4">
+          <!-- Buscador Central -->
+          <div class="flex-grow-1" style="min-inline-size: 200px;">
             <AppTextField
               v-model="filters.searchQuery"
               placeholder="Buscar producto, usuario..."
@@ -338,48 +264,46 @@ const handleDeleteItem = async (item) => {
               clearable
               density="compact"
               hide-details
+              variant="outlined"
             />
-          </VCol>
+          </div>
 
-          <VSpacer />
-
+          <!-- Acciones -->
           <div class="d-flex align-center gap-1">
             <VBtn
-              icon
-              variant="tonal"
+              icon variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="38"
+              size="34"
+              class="rounded-lg"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
-              <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
-              <VBadge
-                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
-                color="error"
-                dot
-                offset-x="3"
-                offset-y="-3"
-              />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
 
-            <VDivider vertical class="mx-1 my-2" />
+            <VBtn icon variant="tonal" color="secondary" size="34" class="rounded-lg" @click="handleClearFilters">
+              <VIcon icon="tabler-eraser" size="20" />
+            </VBtn>
 
             <VBtn
-              icon
-              variant="text"
-              color="secondary"
-              size="38"
-              @click="handleClearFilters"
+              color="success"
+              variant="flat"
+              height="34"
+              class="font-weight-black px-4 rounded-lg text-xs"
+              :disabled="loading || isClosing"
+              :loading="isClosing"
+              prepend-icon="tabler-lock-check"
+              @click="handleCashClose"
             >
-              <VIcon icon="tabler-eraser" />
-              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+              CERRAR
             </VBtn>
           </div>
-        </VRow>
+        </div>
 
+        <!-- Filtros Avanzados (Expandibles) -->
         <VExpandTransition>
-          <div v-show="isAdvancedFiltersVisible">
-            <VDivider class="my-3 border-opacity-10" />
+          <div v-show="isAdvancedFiltersVisible" class="py-2">
+            <VDivider class="my-2 border-opacity-10" />
             <VRow dense>
               <VCol cols="12" sm="6">
                 <AppDateTimePicker
@@ -406,8 +330,49 @@ const handleDeleteItem = async (item) => {
             </VRow>
           </div>
         </VExpandTransition>
+
+        <!-- Métricas Financieras (Footer Integrado - Solo montos) -->
+        <div v-if="globalTotals" class="d-flex align-center justify-space-around py-2 mt-2 border-t border-dashed-metrics">
+          <div class="d-flex align-center gap-1 px-3 border-e border-opacity-10 flex-grow-1 justify-center">
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">Sobrante:</span>
+            <span class="text-xs font-weight-black text-success">{{ formatPrice(globalTotals.surplus) }}</span>
+          </div>
+          
+          <VDivider vertical class="mx-1" />
+
+          <div class="d-flex align-center gap-1 px-3 border-e border-opacity-10 flex-grow-1 justify-center">
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">Faltante:</span>
+            <span class="text-xs font-weight-black text-error">{{ formatPrice(globalTotals.shortage) }}</span>
+          </div>
+          
+          <VDivider vertical class="mx-1" />
+
+          <div class="d-flex align-center gap-2 px-3 flex-grow-1 justify-center">
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">Balance:</span>
+            <span 
+              class="text-xs font-weight-black"
+              :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
+            >
+              {{ formatPrice(globalTotals.netTotal) }}
+            </span>
+          </div>
+        </div>
       </VCardText>
     </VCard>
+
+    <div v-else-if="!loading" class="mb-6">
+      <VBtn
+        block
+        color="primary"
+        variant="tonal"
+        class="py-6 rounded-lg border-dashed"
+        prepend-icon="tabler-plus"
+        :loading="isCreatingCycle"
+        @click="handleCreateCycle"
+      >
+        CREAR NUEVO CICLO DE INVENTARIO
+      </VBtn>
+    </div>
 
     <!-- Tabla / Vista de Cierre -->
     <CashCloseTable 

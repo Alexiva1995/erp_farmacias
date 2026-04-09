@@ -201,99 +201,75 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 
 <template>
   <div>
-    <VCard class="mb-6">
+    <VCard class="mb-6 overflow-hidden elevation-1">
       <VCardText class="pa-3">
-        <!-- Banner Resumen Optimizado -->
-        <div v-if="cycleInfo" class="summary-banner mb-4 pa-4 rounded border-dashed-2">
-          <div class="d-flex align-center justify-space-between flex-wrap gap-4 mb-3">
-            <div class="d-flex align-center">
-              <VAvatar color="primary" variant="tonal" size="38" class="me-3">
-                <VIcon :icon="cycleInfo.status === 'active' ? 'tabler-refresh' : 'tabler-circle-check'" size="22" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 line-height-1 mb-1">
-                  {{ cycleInfo.status === 'active' ? 'Ciclo Activo' : 'Ciclo Finalizado' }}
-                </span>
-                <span class="text-sm font-weight-bold text-high-emphasis">
-                  Desde: {{ formatDateSimple(cycleInfo.start_date) }}
-                </span>
-              </div>
-            </div>
-            
-            <VBtn
-              v-if="cycleInfo.status === 'active'"
-              color="success"
-              variant="flat"
-              class="font-weight-black px-6"
-              prepend-icon="tabler-lock"
-            >
-              GENERAR CIERRE
-            </VBtn>
+        <!-- Fila de Búsqueda y Acciones (Limpia) -->
+        <div class="d-flex align-center gap-3 mb-2">
+          <!-- Información de Ciclo Compacta -->
+          <div v-if="cycleInfo" class="d-none d-sm-flex align-center me-2">
+            <VIcon
+              :icon="cycleInfo.status === 'active' ? 'tabler-refresh' : 'tabler-circle-check'"
+              :color="cycleInfo.status === 'active' ? 'primary' : 'success'"
+              size="20"
+              class="me-2"
+            />
+            <span class="text-xs font-weight-black text-high-emphasis text-uppercase letter-spacing-05 truncate-1-line" style="max-inline-size: 150px;">
+              {{ cycleInfo.status === 'active' ? 'Ciclo Activo' : 'Cerrado' }} ({{ formatDateSimple(cycleInfo.start_date) }})
+            </span>
           </div>
 
-          <VDivider class="border-opacity-10 mb-3" />
-
-          <div class="d-flex align-center justify-space-around flex-wrap gap-y-4">
-            <div class="d-flex flex-column align-center text-center px-4">
-               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 mb-1">SOBRANTE</span>
-               <span class="text-base font-weight-black text-success">{{ formatPrice(cycleTotals?.total_surplus || 0) }}</span>
-            </div>
-            
-            <VDivider vertical class="d-none d-sm-block mx-2" />
-            
-            <div class="d-flex flex-column align-center text-center px-4">
-               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 mb-1">FALTANTE</span>
-               <span class="text-base font-weight-black text-error">{{ formatPrice(cycleTotals?.total_shortage || 0) }}</span>
-            </div>
-            
-            <VDivider vertical class="d-none d-sm-block mx-2" />
-            
-            <div class="d-flex flex-column align-center text-center px-4">
-               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 mb-1">BALANCE NETO</span>
-               <span class="text-base font-weight-black" :class="(cycleTotals?.net_total || 0) >= 0 ? 'text-primary' : 'text-warning'">
-                {{ formatPrice(cycleTotals?.net_total || 0) }}
-               </span>
-            </div>
-          </div>
-        </div>
-
-        <VRow align="center" no-gutters class="gap-2">
-          <VCol cols="12" md="4">
+          <!-- Buscador Central -->
+          <div class="flex-grow-1">
             <AppTextField
               v-model="searchQuery"
-              placeholder="Buscar producto o contador..."
+              placeholder="Buscar producto, laboratorio, contador..."
               prepend-inner-icon="tabler-search"
               clearable
               density="compact"
               hide-details
+              variant="outlined"
+              class="search-input-ultra-clean"
             />
-          </VCol>
-          <VSpacer />
+          </div>
+
+          <!-- Botones de Acción -->
           <div class="d-flex align-center gap-1">
             <VBtn
               icon variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="38"
+              size="34"
+              class="rounded-lg"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
-              <VTooltip activator="parent">Filtros Avanzados</VTooltip>
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
-            <VBtn icon variant="tonal" color="secondary" size="38" @click="goBack">
-              <VIcon icon="tabler-arrow-left" />
-              <VTooltip activator="parent">Volver</VTooltip>
+
+            <VBtn icon variant="tonal" color="secondary" size="34" class="rounded-lg" @click="handleClearFilters">
+              <VIcon icon="tabler-eraser" size="20" />
             </VBtn>
-            <VDivider vertical class="mx-1 my-2" />
-            <VBtn icon variant="text" color="secondary" size="38" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" />
-              <VTooltip activator="parent">Limpiar Filtros</VTooltip>
+
+            <VBtn icon variant="tonal" color="secondary" size="34" class="rounded-lg" @click="goBack">
+              <VIcon icon="tabler-arrow-left" size="20" />
+            </VBtn>
+
+            <VBtn
+              v-if="cycleInfo?.status === 'active'"
+              color="success"
+              variant="flat"
+              height="34"
+              class="font-weight-black px-4 rounded-lg text-xs"
+              prepend-icon="tabler-lock"
+            >
+              CERRAR
             </VBtn>
           </div>
-        </VRow>
+        </div>
+
+        <!-- Filtros Avanzados (Expandibles) -->
         <VExpandTransition>
-          <div v-show="isAdvancedFiltersVisible">
-            <VDivider class="my-3 border-opacity-10" />
+          <div v-show="isAdvancedFiltersVisible" class="py-2">
+            <VDivider class="my-2 border-opacity-10" />
             <VRow dense>
               <VCol cols="12" sm="6" md="3">
                 <VAutocomplete
@@ -304,7 +280,6 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   item-title="name"
                   item-value="id"
                   clearable density="compact" hide-details
-                  prepend-inner-icon="tabler-building"
                 />
               </VCol>
               <VCol cols="12" sm="6" md="3">
@@ -318,7 +293,6 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   ]"
                   placeholder="Discrepancia"
                   clearable density="compact" hide-details
-                  prepend-inner-icon="tabler-filter"
                 />
               </VCol>
               <VCol cols="12" sm="6" md="3">
@@ -328,7 +302,6 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   placeholder="Contador"
                   item-title="label" item-value="id"
                   clearable density="compact" hide-details
-                  prepend-inner-icon="tabler-user"
                 />
               </VCol>
               <VCol cols="12" sm="6" md="3">
@@ -338,12 +311,35 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   placeholder="Supervisor"
                   item-title="label" item-value="id"
                   clearable density="compact" hide-details
-                  prepend-inner-icon="tabler-user-check"
                 />
               </VCol>
             </VRow>
           </div>
         </VExpandTransition>
+
+        <!-- Métricas Integradas (Solo montos) -->
+        <div v-if="cycleTotals" class="d-flex align-center justify-space-around py-1 mt-1">
+          <div class="d-flex align-center gap-1 px-3 flex-grow-1 justify-center">
+            <span class="text-super-xs font-weight-bold text-disabled uppercase text-no-wrap">Sobrante:</span>
+            <span class="text-xs font-weight-black text-success">{{ formatPrice(cycleTotals.total_surplus || 0) }}</span>
+          </div>
+          
+          <VDivider vertical class="mx-1" />
+
+          <div class="d-flex align-center gap-1 px-3 flex-grow-1 justify-center">
+            <span class="text-super-xs font-weight-bold text-disabled uppercase text-no-wrap">Faltante:</span>
+            <span class="text-xs font-weight-black text-error">{{ formatPrice(cycleTotals.total_shortage || 0) }}</span>
+          </div>
+          
+          <VDivider vertical class="mx-1" />
+
+          <div class="d-flex align-center gap-2 px-3 flex-grow-1 justify-center">
+            <span class="text-super-xs font-weight-bold text-disabled uppercase text-no-wrap">Balance:</span>
+            <span class="text-xs font-weight-black" :class="(cycleTotals.net_total || 0) >= 0 ? 'text-primary' : 'text-warning'">
+              {{ formatPrice(cycleTotals.net_total || 0) }}
+            </span>
+          </div>
+        </div>
       </VCardText>
     </VCard>
 

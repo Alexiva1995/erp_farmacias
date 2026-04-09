@@ -88,8 +88,8 @@ const fetchSelectOptions = async () => {
 
     if (usersResponse.data && Array.isArray(usersResponse.data)) {
       users.value = usersResponse.data.map(user => {
-        const firstName = user.employee_name || '';
-        const lastName = user.employee_last_name || '';
+        const firstName = (user.employee_name || '').trim().split(' ')[0] || '';
+        const lastName = (user.employee_last_name || '').trim().split(' ')[0] || '';
         
         let displayName = '';
         if (firstName || lastName) {
