@@ -1,11 +1,9 @@
 <script setup>
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
-import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
-import VerifyCountModal from "@/components/dialogs/VerifyCountModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router/auto";
 
 const route = useRoute();
@@ -17,7 +15,6 @@ const cycleInfo = ref(null);
 const products = ref([]);
 const totalProducts = ref(0);
 const laboratories = ref([]);
-const locations = ref([]);
 const userOptions = ref([]);
 const supervisorOptions = ref([]);
 const loading = ref(false);
@@ -34,13 +31,11 @@ const selectedSupervisorId = ref(null);
 const sortBy = ref("product.name");
 const orderBy = ref("asc");
 
-// Modales de acciones
-const showVerifyModal = ref(false);
-const itemForVerification = ref(null);
-const showLotDistributionModal = ref(false);
-const itemForLotDistribution = ref(null);
-const targetQuantityForDistribution = ref(0);
-const pendingVerifyData = ref(null);
+// Modal de edición de discrepancia
+const isDiscrepancyModalVisible = ref(false);
+const itemToEdit = ref(null);
+const newDiscrepancy = ref(0);
+const isSaving = ref(false);
 
 const headers = [
   { title: "#", key: "product_id", value: "product_id", sortable: true, align: "center", width: 60 },
@@ -57,13 +52,11 @@ const headers = [
 const fetchLaboratories = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labsResponse, usersResponse, locsResponse] = await Promise.all([
+    const [labsResponse, usersResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/inventory/cycle/users-with-counts"),
-      axios.get("/locations")
     ]);
     laboratories.value = labsResponse.data || [];
-    locations.value = locsResponse.data.data || locsResponse.data || [];
     userOptions.value = (usersResponse.data || []).map(user => ({
       id: user.id,
       label:
@@ -124,53 +117,35 @@ const fetchProducts = async () => {
   }
 };
 
-// Acciones de Verificación
-const handleVerifyItem = async (item) => {
-  itemForVerification.value = item;
-  await nextTick();
-  showVerifyModal.value = true;
+const openEditModal = (item) => {
+  itemToEdit.value = item;
+  newDiscrepancy.value = item.discrepancy || 0;
+  isDiscrepancyModalVisible.value = true;
 };
 
-const callProcessApi = async (itemId, payload) => {
+const saveDiscrepancy = async () => {
+  if (!itemToEdit.value) return;
+  
+  isSaving.value = true;
   try {
-    const response = await axios.post(`/products/count/${itemId}/process`, payload);
+    const sourceType = itemToEdit.value.source_type || 'product_count';
+    const response = await axios.patch(`/inventory/count/${sourceType}/${itemToEdit.value.id}/discrepancy`, {
+      discrepancy: newDiscrepancy.value
+    });
+
     if (response.data.success) {
-      toast.success(response.data.message);
+      toast.success("Discrepancia actualizada correctamente.");
+      isDiscrepancyModalVisible.value = false;
       await fetchProducts();
     } else {
       toast.error(response.data.message);
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || "Error al procesar acción.");
+    console.error("Error al guardar discrepancia:", error);
+    toast.error(error.response?.data?.message || "Error al actualizar discrepancia.");
   } finally {
-    showLotDistributionModal.value = false;
-    itemForLotDistribution.value = null;
-    pendingVerifyData.value = null;
+    isSaving.value = false;
   }
-};
-
-const onVerifyNoDiscrepancy = async ({ countRecord }) => {
-  await callProcessApi(countRecord.id, { action: 'approve' });
-};
-
-const onVerifyWithDiscrepancy = async ({ countRecord, newCountedQuantity }) => {
-  pendingVerifyData.value = { countRecord, newCountedQuantity };
-  itemForLotDistribution.value = countRecord.product;
-  targetQuantityForDistribution.value = newCountedQuantity;
-  await nextTick();
-  showLotDistributionModal.value = true;
-};
-
-const handleLotsDistributed = async (distributionData) => {
-  if (!pendingVerifyData.value) return;
-  const { countRecord, newCountedQuantity } = pendingVerifyData.value;
-  const payload = {
-    action: 'approve',
-    corrected_quantity: newCountedQuantity,
-    updated_lots: distributionData.updatedLots,
-    new_lots: distributionData.newLots,
-  };
-  await callProcessApi(countRecord.id, payload);
 };
 
 const handleUpdateOptions = options => {
@@ -382,9 +357,9 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.actions="{ item }">
-            <IconBtn size="small" color="primary" variant="tonal" class="rounded" @click="handleVerifyItem(item)">
-              <VIcon icon="tabler-check" />
-              <VTooltip activator="parent">Verificar Conteo</VTooltip>
+            <IconBtn size="small" color="primary" variant="tonal" class="rounded" @click="openEditModal(item)">
+              <VIcon icon="tabler-edit" />
+              <VTooltip activator="parent">Editar Discrepancia</VTooltip>
             </IconBtn>
           </template>
         </VDataTableServer>
@@ -406,8 +381,8 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                     <span class="d-flex align-center"><VIcon icon="tabler-clock" size="10" class="me-1" /> {{ formatDateSimple(item.created_at) }}</span>
                   </div>
                 </div>
-                <IconBtn size="small" color="primary" variant="tonal" @click="handleVerifyItem(item)">
-                  <VIcon icon="tabler-check" />
+                <IconBtn size="small" color="primary" variant="tonal" @click="openEditModal(item)">
+                  <VIcon icon="tabler-edit" />
                 </IconBtn>
               </div>
               <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin mb-3">
@@ -446,22 +421,35 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
       </div>
     </VCard>
 
-    <!-- Modales -->
-    <VerifyCountModal
-      v-model="showVerifyModal"
-      :count-record="itemForVerification"
-      @verify-no-discrepancy="onVerifyNoDiscrepancy"
-      @verify-with-discrepancy="onVerifyWithDiscrepancy"
-    />
-    <LotDistributionModal
-      v-model="showLotDistributionModal"
-      :product-name="itemForLotDistribution?.name || 'Producto'"
-      :lots="itemForLotDistribution?.lots || []"
-      :target-quantity="targetQuantityForDistribution || 0"
-      :locations="locations"
-      mode="adjustment"
-      @save="handleLotsDistributed"
-    />
+    <!-- Modal de Edición de Discrepancia -->
+    <VDialog v-model="isDiscrepancyModalVisible" max-width="400">
+      <VCard title="Editar Discrepancia">
+        <DialogCloseBtn @click="isDiscrepancyModalVisible = false" />
+        
+        <VCardText class="pt-2">
+          <div class="mb-4 d-flex flex-column">
+            <span class="text-sm font-weight-bold text-primary">{{ itemToEdit?.product?.name }}</span>
+            <span class="text-xs text-disabled">Sistema: {{ itemToEdit?.system_quantity }} | Conteo: {{ itemToEdit?.final_quantity ?? itemToEdit?.counted_quantity }}</span>
+          </div>
+
+          <AppTextField
+            v-model.number="newDiscrepancy"
+            type="number"
+            label="Unidades de Discrepancia"
+            placeholder="Ej: -5, 2, 0"
+            persistent-placeholder
+            hint="Usa valores negativos para faltantes y positivos para sobrantes."
+            persistent-hint
+          />
+        </VCardText>
+
+        <VCardActions class="pa-4">
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" @click="isDiscrepancyModalVisible = false">Cancelar</VBtn>
+          <VBtn color="primary" variant="elevated" :loading="isSaving" @click="saveDiscrepancy">Guardar</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

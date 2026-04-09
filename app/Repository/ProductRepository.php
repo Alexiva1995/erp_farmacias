@@ -241,10 +241,41 @@ class ProductRepository
 
     public function filtrarProductforStocktWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
+        $viewType = $filtros["viewType"] ?? "individual";
+        $isGroup = $viewType === "group";
 
         $consulta = $this->builerFiltrarProductforStock($filtros);
+        $paginacion = $consulta->paginate($perPage);
 
-        return $consulta->paginate($perPage);
+        if ($isGroup && $paginacion->count() > 0) {
+            // Para la vista de acordeón, necesitamos los productos hijos de cada grupo en esta página
+            $groupIds = $paginacion->pluck('group_id')->filter()->toArray();
+            $productIds = $paginacion->whereNull('group_id')->pluck('id')->toArray();
+
+            // Clonamos los filtros pero forzamos vista individual para traer los hijos
+            $filtrosHijos = $filtros;
+            $filtrosHijos['viewType'] = 'individual';
+            
+            $consultaHijos = $this->builerFiltrarProductforStock($filtrosHijos);
+            
+            // Filtrar solo por los grupos o productos individuales de la página actual
+            $consultaHijos->where(function($q) use ($groupIds, $productIds) {
+                if (!empty($groupIds)) $q->whereIn('products.group_id', $groupIds);
+                if (!empty($productIds)) $q->orWhereIn('products.id', $productIds);
+            });
+
+            $hijos = $consultaHijos->get()->groupBy(function($item) {
+                return $item->group_id ? "g_" . $item->group_id : "p_" . $item->id;
+            });
+
+            $paginacion->getCollection()->transform(function($grupo) use ($hijos) {
+                $key = $grupo->group_id ? "g_" . $grupo->group_id : "p_" . $grupo->id;
+                $grupo->productos = $hijos->get($key, collect([]));
+                return $grupo;
+            });
+        }
+
+        return $paginacion;
     }
 
     /**

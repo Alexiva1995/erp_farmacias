@@ -1,6 +1,7 @@
 <script setup lang="js">
 import InventoryStockFilters from "@/components/InventoryStockFilters.vue";
 import InventoryStockTable from "@/components/InventoryStockTable.vue";
+import InventoryStockGrupoTable from "@/components/InventoryStockGrupoTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
@@ -317,6 +318,7 @@ async function exportarExcel(formato) {
       @export-excel="exportarExcel"
     />
     <InventoryStockTable
+      v-if="viewType === 'individual'"
       :products="modulo.items"
       :loading="loading"
       :total-product="modulo.totalItems"
@@ -326,6 +328,17 @@ async function exportarExcel(formato) {
       :order-by="orderBy"
       :view-type="viewType"
       @update:options="updateTableOptions"
+    />
+    <InventoryStockGrupoTable
+        v-else
+        :products="modulo.items"
+        :loading="loading"
+        :total-product="modulo.totalItems"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        :sort-by="sortBy"
+        :order-by="orderBy"
+        @update:options="updateTableOptions"
     />
   </div>
 </template>
