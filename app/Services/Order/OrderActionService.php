@@ -541,6 +541,11 @@ class OrderActionService
                     ? ($unitPriceInUsd * $exchangeRate)
                     : $unitPriceInOrderCurrency;
 
+                // Si el producto tiene IVA, extraer el neto (el precio en la orden ya incluye IVA)
+                if ($product->iva == 1) {
+                    $priceBs = $priceBs / 1.16;
+                }
+
                 $itemSubtotal = $priceBs * $quantity;
 
                 if ($product->iva == 1) {
@@ -593,6 +598,11 @@ class OrderActionService
                 $priceBs = (strtoupper($order->currency) !== 'BS')
                     ? ($unitPriceInUsd * $exchangeRate)
                     : $unitPriceInOrderCurrency;
+
+                // Extraer el neto para el desglose detallado si tiene IVA
+                if ($product->iva == 1) {
+                    $priceBs = $priceBs / 1.16;
+                }
 
                 $quantity = $detail->quantity;
                 $isTaxable = ($product->iva == 1);
