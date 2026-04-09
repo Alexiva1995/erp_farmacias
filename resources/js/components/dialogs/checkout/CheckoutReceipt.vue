@@ -111,34 +111,7 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
           </div>
         </div>
 
-        <div class="receipt-totals text-caption mt-3">
-          <div v-if="activeDiscountDisplay" class="d-flex justify-space-between">
-            <span>{{ activeDiscountDisplay.label }}:</span>
-            <span class="text-error">- {{ formatAsBS(activeDiscountDisplay.amount, selectedCurrency) }}</span>
-          </div>
-          
-          <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between">
-            <span>Dto. Vencimiento:</span>
-            <span class="text-error">- {{ formatAsBS(expirationDiscountTotal, selectedCurrency) }}</span>
-          </div>
-
-          <div v-if="appliesSpecialTax" class="d-flex justify-space-between">
-            <span>Recargo SPE (3%):</span>
-            <span>{{ formatAsBS(specialTaxAmount, selectedCurrency) }}</span>
-          </div>
-
-          <div class="d-flex justify-space-between font-weight-black text-subtitle-1 mt-1 py-1 border-y">
-            <span>TOTAL A PAGAR:</span>
-            <span>{{ formatAsBS(roundedTotalAmountToPay, selectedCurrency) }}</span>
-          </div>
-
-          <div v-if="orderData?.client?.is_spe" class="d-flex justify-space-between text-success font-weight-bold mt-1">
-            <span>Ahorro SPE (75% IVA):</span>
-            <span>-{{ formatAsBS(totalSPESavings, selectedCurrency) }}</span>
-          </div>
-
-          <VDivider class="my-2 border-dashed" />
-        </div>
+        <!-- Sección de totales eliminada por solicitud del usuario -->
 
         <div class="text-center mt-6 text-success font-weight-black text-caption border-t pt-2">
           ¡GRACIAS POR SU COMPRA!
