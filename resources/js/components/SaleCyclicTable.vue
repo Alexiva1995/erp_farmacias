@@ -39,6 +39,18 @@ const handleMobilePageChange = (newPage) => {
     sortBy: [],
   });
 };
+const formatOperatorName = (user) => {
+  if (!user) return '—';
+  
+  const firstName = user.employee_name?.trim().split(' ')[0] || '';
+  const lastName = user.employee_last_name?.trim().split(' ')[0] || '';
+  
+  if (firstName || lastName) {
+    return `${firstName} ${lastName}`.trim();
+  }
+  
+  return user.username || '—';
+};
 </script>
 
 <template>
@@ -109,9 +121,9 @@ const handleMobilePageChange = (newPage) => {
         <template #item.user.username="{ item }">
           <div class="d-flex align-center gap-2">
             <VAvatar size="24" color="primary" variant="tonal">
-              <span class="text-super-xs font-weight-black">{{ item.user?.username?.charAt(0).toUpperCase() }}</span>
+              <span class="text-super-xs font-weight-black">{{ (item.user?.username || 'U').charAt(0).toUpperCase() }}</span>
             </VAvatar>
-            <span class="text-caption font-weight-bold text-medium-emphasis">{{ item.user?.username || '—' }}</span>
+            <span class="text-caption font-weight-bold text-medium-emphasis">{{ formatOperatorName(item.user) }}</span>
           </div>
         </template>
 
@@ -183,7 +195,7 @@ const handleMobilePageChange = (newPage) => {
               </div>
               <div class="stat-box text-right">
                 <span class="label">Operador</span>
-                <span class="value text-caption truncate">{{ item.user?.username || '—' }}</span>
+                <span class="value text-caption truncate">{{ formatOperatorName(item.user) }}</span>
               </div>
             </div>
 

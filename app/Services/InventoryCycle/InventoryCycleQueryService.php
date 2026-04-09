@@ -992,4 +992,27 @@ class InventoryCycleQueryService
 
         return $query;
     }
+
+    public function getCycleFinancialTotals($cycleId)
+    {
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($cycleId, true);
+
+        return DB::query()->fromSub($unionQuery, 'counts')
+            ->leftJoin('products as p', 'counts.product_id', '=', 'p.id')
+            ->select([
+                DB::raw('SUM(CASE 
+                    WHEN counts.discrepancy > 0 
+                    THEN counts.discrepancy * p.unit_cost 
+                    ELSE 0 
+                END) as total_surplus'),
+                DB::raw('SUM(CASE 
+                    WHEN counts.discrepancy < 0 
+                    THEN ABS(counts.discrepancy) * p.unit_cost 
+                    ELSE 0 
+                END) as total_shortage'),
+                DB::raw('SUM(counts.discrepancy * p.unit_cost) as net_total'),
+            ])
+            ->where('counts.cycle_id', $cycleId)
+            ->first();
+    }
 }

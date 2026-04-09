@@ -12,6 +12,7 @@ const router = useRouter();
 const cycleId = computed(() => route.query.id);
 
 const cycleInfo = ref(null);
+const cycleTotals = ref(null);
 const products = ref([]);
 const totalProducts = ref(0);
 const laboratories = ref([]);
@@ -79,6 +80,7 @@ const fetchCycleInfo = async () => {
   try {
     const response = await axios.get(`/inventory/cycle/${cycleId.value}`);
     cycleInfo.value = response.data.data;
+    cycleTotals.value = response.data.totals;
   } catch (error) {
     console.error("Error al obtener info del ciclo:", error);
   }
@@ -201,6 +203,60 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
   <div>
     <VCard class="mb-6">
       <VCardText class="pa-3">
+        <!-- Banner Resumen Optimizado -->
+        <div v-if="cycleInfo" class="summary-banner mb-4 pa-4 rounded border-dashed-2">
+          <div class="d-flex align-center justify-space-between flex-wrap gap-4 mb-3">
+            <div class="d-flex align-center">
+              <VAvatar color="primary" variant="tonal" size="38" class="me-3">
+                <VIcon :icon="cycleInfo.status === 'active' ? 'tabler-refresh' : 'tabler-circle-check'" size="22" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 line-height-1 mb-1">
+                  {{ cycleInfo.status === 'active' ? 'Ciclo Activo' : 'Ciclo Finalizado' }}
+                </span>
+                <span class="text-sm font-weight-bold text-high-emphasis">
+                  Desde: {{ formatDateSimple(cycleInfo.start_date) }}
+                </span>
+              </div>
+            </div>
+            
+            <VBtn
+              v-if="cycleInfo.status === 'active'"
+              color="success"
+              variant="flat"
+              class="font-weight-black px-6"
+              prepend-icon="tabler-lock"
+            >
+              GENERAR CIERRE
+            </VBtn>
+          </div>
+
+          <VDivider class="border-opacity-10 mb-3" />
+
+          <div class="d-flex align-center justify-space-around flex-wrap gap-y-4">
+            <div class="d-flex flex-column align-center text-center px-4">
+               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 mb-1">SOBRANTE</span>
+               <span class="text-base font-weight-black text-success">{{ formatPrice(cycleTotals?.total_surplus || 0) }}</span>
+            </div>
+            
+            <VDivider vertical class="d-none d-sm-block mx-2" />
+            
+            <div class="d-flex flex-column align-center text-center px-4">
+               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 mb-1">FALTANTE</span>
+               <span class="text-base font-weight-black text-error">{{ formatPrice(cycleTotals?.total_shortage || 0) }}</span>
+            </div>
+            
+            <VDivider vertical class="d-none d-sm-block mx-2" />
+            
+            <div class="d-flex flex-column align-center text-center px-4">
+               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1 mb-1">BALANCE NETO</span>
+               <span class="text-base font-weight-black" :class="(cycleTotals?.net_total || 0) >= 0 ? 'text-primary' : 'text-warning'">
+                {{ formatPrice(cycleTotals?.net_total || 0) }}
+               </span>
+            </div>
+          </div>
+        </div>
+
         <VRow align="center" no-gutters class="gap-2">
           <VCol cols="12" md="4">
             <AppTextField

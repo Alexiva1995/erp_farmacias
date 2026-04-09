@@ -593,7 +593,12 @@ class InventoryCycleController extends Controller
                 return response()->json(['message' => 'Ciclo no encontrado'], 404);
             }
 
-            return response()->json(['data' => $cycle]);
+            $totals = $this->inventoryCycleQueryService->getCycleFinancialTotals($cycleId);
+
+            return response()->json([
+                'data' => $cycle,
+                'totals' => $totals
+            ]);
         } catch (Exception $e) {
             return response()->json(['message' => 'Error al obtener información del ciclo'], 500);
         }
