@@ -729,6 +729,7 @@ class InventoryCycleQueryService
                 'products.photo_url as product_photo_url',
                 'products.iva as product_iva',
                 'products.psychotropic as product_psychotropic',
+                'products.unit_cost as product_unit_cost',
                 'products.is_colombian_origin as product_is_colombian_origin',
                 'laboratories.name as laboratory_name',
                 'users.email as user_email',

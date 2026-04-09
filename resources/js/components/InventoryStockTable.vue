@@ -72,17 +72,6 @@ const getDiffColor = (val) => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-4 py-2">
-            <VAvatar
-              v-if="isGroup"
-              size="32"
-              variant="tonal"
-              rounded
-              color="primary"
-              class="border elevation-1 flex-shrink-0"
-            >
-              <VIcon icon="tabler-users-group" size="20" />
-            </VAvatar>
-
             <div class="d-flex flex-column truncate" style="max-inline-size: 350px;">
               <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
                 {{ item.name || 'N/A' }}
