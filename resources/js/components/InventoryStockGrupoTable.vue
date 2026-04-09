@@ -59,56 +59,58 @@ const getDiffColor = (val) => {
       >
         <!-- Cabecera del grupo -->
         <div
-          class="grupo-header d-flex align-center justify-space-between pa-3 pa-sm-4 cursor-pointer"
+          class="grupo-header d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between pa-4 pa-sm-5 cursor-pointer"
           :class="isExpanded(grupo.group_id || grupo.id) ? 'grupo-header--expanded' : ''"
           @click="toggleGroup(grupo.group_id || grupo.id)"
         >
-          <div class="d-flex align-center gap-2 gap-sm-3 min-width-0">
+          <!-- Información del Grupo (Izquierda) -->
+          <div class="d-flex align-center gap-3 min-width-0 mb-3 mb-sm-0 flex-grow-1">
             <VIcon
               :icon="isExpanded(grupo.group_id || grupo.id) ? 'tabler-chevron-down' : 'tabler-chevron-right'"
-              size="18"
+              size="20"
               color="primary"
               class="flex-shrink-0"
             />
             <div class="d-flex flex-column min-width-0">
-              <span class="text-xs text-sm-sm font-weight-black text-uppercase text-high-emphasis leading-tight truncate">
+              <span class="text-sm font-weight-black text-uppercase text-high-emphasis leading-tight mb-1">
                 {{ grupo.name }}
               </span>
-              <span class="text-super-xs text-disabled font-weight-bold">
-                {{ grupo.productos?.length || 0 }} productos integrados
-              </span>
+              <div class="d-flex align-center gap-2 text-super-xs text-disabled font-weight-bold">
+                <span class="bg-light px-1 rounded">ID: {{ grupo.group_id ? 'G-' + grupo.group_id : 'ID-' + grupo.id }}</span>
+                <span>•</span>
+                <span>{{ grupo.productos?.length || 0 }} productos integrados</span>
+              </div>
             </div>
           </div>
 
-          <!-- Totales en la cabecera (Adaptativos) -->
-          <div class="d-flex align-center gap-2 gap-sm-4 ml-2">
-            <!-- Stock (Visible siempre, más pequeño en móvil) -->
-            <div class="text-center px-1">
+          <!-- Totales en la cabecera (Derecha / Abajo en móvil) -->
+          <div class="d-flex align-center gap-4 gap-sm-6 w-100 w-sm-auto justify-space-between justify-sm-end">
+            <!-- Stock -->
+            <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Stock</span>
-              <span class="text-xs font-weight-black" :class="grupo.lote_quantity > 0 ? 'text-success' : 'text-error'">
+              <span class="text-sm font-weight-black" :class="grupo.lote_quantity > 0 ? 'text-success' : 'text-error'">
                 {{ grupo.lote_quantity }}
               </span>
             </div>
             
-            <VDivider vertical class="mx-0 d-none d-sm-block" />
+            <VDivider vertical class="mx-0" />
             
-            <!-- Ventas (Solo Desktop) -->
-            <div class="text-center px-2 d-none d-sm-block">
+            <!-- Ventas -->
+            <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Ventas</span>
-              <span class="text-xs font-weight-black">{{ grupo.total_sold_completed }}</span>
+              <span class="text-sm font-weight-black text-high-emphasis">{{ grupo.total_sold_completed }}</span>
             </div>
 
             <VDivider vertical class="mx-0" />
 
-            <!-- Diferencia (Visible siempre) -->
-            <div class="text-center px-1">
+            <!-- Diferencia -->
+            <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Dif.</span>
               <VChip
                 :color="getDiffColor(grupo.diferencia_product)"
                 size="x-small"
                 variant="flat"
-                class="font-weight-black text-super-xs px-1"
-                density="compact"
+                class="font-weight-black text-super-xs px-2"
               >
                 {{ parseFloat(grupo.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(grupo.diferencia_product)) }}
               </VChip>
@@ -242,6 +244,20 @@ const getDiffColor = (val) => {
 </template>
 
 <style scoped>
+.min-width-indicator {
+  min-width: 65px;
+}
+
+@media (max-width: 600px) {
+  .min-width-indicator {
+    min-width: 55px;
+  }
+}
+
+.bg-light {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: 1;
