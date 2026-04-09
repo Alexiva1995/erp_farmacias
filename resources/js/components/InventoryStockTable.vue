@@ -129,101 +129,105 @@ const getDiffColor = (val) => {
     </div>
 
     <!-- Vista de Móvil (Tarjetas) -->
-    <div class="d-block d-md-none pa-2 bg-light">
+    <div class="d-block d-md-none pa-1 bg-var-theme-background-light">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.products.length === 0 && !props.loading" class="text-center py-8 text-disabled">
-        No se encontraron productos registrados.
+      <div v-if="props.products.length === 0 && !props.loading" class="text-center py-12 text-disabled border rounded-lg bg-surface mx-2">
+        <VIcon icon="tabler-package-off" size="48" class="mb-2" />
+        <p>No se encontraron productos.</p>
       </div>
 
-      <div class="d-flex flex-column gap-3">
+      <div class="d-flex flex-column gap-2 px-1">
         <VCard
           v-for="item in props.products"
           :key="item.id"
           variant="flat"
-          class="border mb-1 overflow-hidden premium-card"
+          class="border mb-1 overflow-hidden premium-card bg-surface shadow-sm"
         >
-          <div class="pa-4">
+          <div class="pa-3">
             <!-- Header de Tarjeta -->
-            <div class="d-flex gap-3 align-start mb-3">
+            <div class="d-flex justify-space-between align-start mb-2">
               <div class="flex-grow-1 min-width-0">
-                <div class="d-flex align-center justify-space-between mb-1 text-truncate">
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                    <a
-                      v-if="!isGroup"
-                      :href="'/inventory/traceability?q=' + item.id"
-                      target="_blank"
-                      class="text-decoration-none text-primary"
-                    >
-                      #{{ item.id }}
-                    </a>
-                    <span v-else class="text-primary font-weight-black">G-{{ item.group_id || item.id }}</span>
-                    <span class="mx-1 text-disabled">|</span>
+                <div class="d-flex align-center gap-x-2">
+                  <a
+                    v-if="!isGroup"
+                    :href="'/inventory/traceability?q=' + item.id"
+                    target="_blank"
+                    class="text-decoration-none font-weight-black text-primary text-sm"
+                  >
+                    #{{ item.id }}
+                  </a>
+                  <span v-else class="text-primary font-weight-black text-sm">G-{{ item.group_id || item.id }}</span>
+                  <div class="v-divider vertical mx-0" style="height: 12px; border-left: 1px solid rgba(var(--v-border-color), 0.3);"></div>
+                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase truncate" style="max-width: 200px;">
                     {{ item.name }}
-                  </h3>
+                  </span>
                 </div>
-                <div v-if="!isGroup" class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 140px;">{{ item.active_ingredient || '' }}</span>
-                  <span class="text-disabled">|</span>
-                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 100px;">{{ item.laboratory?.name || 'S/L' }}</span>
+                
+                <div v-if="!isGroup" class="d-flex align-center flex-wrap gap-x-1 text-super-xs mt-1 text-disabled font-weight-bold">
+                  <span class="truncate" style="max-width: 130px;">{{ item.active_ingredient || 'S/G' }}</span>
+                  <span>•</span>
+                  <span class="text-primary text-uppercase truncate" style="max-width: 100px;">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
-                <div v-else class="text-super-xs mt-1 text-disabled"> Consolidado de grupo </div>
+                <div v-else class="text-super-xs mt-1 text-disabled font-weight-bold uppercase">Consolidado Grupal</div>
               </div>
+              
+              <VChip v-if="!isGroup && item.is_colombian_origin == 1" color="info" size="x-small" variant="flat" class="text-super-xs font-weight-black">COL</VChip>
             </div>
 
-            <VDivider class="my-3 border-opacity-10" />
-
-            <!-- Grid de Información -->
-            <div class="bg-var-theme-background-light px-3 py-2 rounded mb-3 border-dashed-thin">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Actual</span>
-                  <VChip :color="item.lote_quantity > 0 ? 'success' : 'error'" size="x-small" label class="font-weight-black mt-1" variant="flat">
-                    {{ item.lote_quantity }}
-                  </VChip>
-                </div>
-                <div class="d-flex flex-column text-right">
-                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Costo Unidad</span>
-                  <span class="text-sm font-weight-black text-high-emphasis mt-1">{{ formatPrice(item.unit_cost) }}</span>
-                </div>
+            <!-- Dashboard de Indicadores Rápidos -->
+            <div class="bg-var-theme-background-light rounded-lg pa-2 d-flex justify-space-between align-center border-dashed-thin">
+              <div class="text-left flex-1 px-1">
+                <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Stock</span>
+                <span class="text-sm font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
+                   {{ item.lote_quantity }}
+                </span>
               </div>
-
-              <div class="d-flex align-center justify-space-between pt-1 border-t border-opacity-10 mt-1">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Diferencia</span>
+              <VDivider vertical class="mx-1" />
+              <div class="text-center flex-1 px-1">
+                <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Costo</span>
+                <span class="text-sm font-weight-black text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
+              </div>
+              <VDivider vertical class="mx-1" />
+              <div class="text-right flex-1 px-1">
+                <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Dif.</span>
                 <VChip
                   :color="getDiffColor(item.diferencia_product)"
                   size="x-small"
-                  variant="tonal"
-                  class="font-weight-black"
+                  variant="flat"
+                  density="compact"
+                  class="font-weight-black text-super-xs px-1"
                 >
                   {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product || 0)) }}
                 </VChip>
               </div>
             </div>
 
-            <!-- Footer con Proyecciones -->
-            <div class="mt-3 bg-var-theme-background-light rounded pa-2 d-flex justify-space-between align-center border-s-4 border-warning">
-              <div class="text-center flex-1">
-                <span class="text-super-xs text-disabled d-block uppercase font-weight-black">Pref.</span>
-                <span class="text-caption font-weight-black">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%</span>
-              </div>
-              <VDivider vertical class="mx-2" />
-              <div class="text-center flex-1">
-                <span class="text-super-xs text-disabled d-block uppercase font-weight-black">Prom.</span>
-                <span class="text-caption font-weight-black">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</span>
-              </div>
-              <VDivider vertical class="mx-2" />
-              <div class="text-center flex-1">
-                <span class="text-super-xs text-disabled d-block uppercase font-weight-black">A.O.</span>
-                <span class="text-caption font-weight-black text-primary">{{ item.totalQuantityInAutoOrder || 0 }}</span>
-              </div>
+            <!-- Footer con Análisis -->
+            <div class="d-flex align-center justify-space-between mt-2 pt-2 border-t border-opacity-10 opacity-80">
+               <div class="d-flex align-center gap-x-3">
+                  <div class="d-flex flex-column align-center">
+                    <span class="text-super-xs text-disabled uppercase font-weight-black">Pref.</span>
+                    <span class="text-xs font-weight-black text-primary">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%</span>
+                  </div>
+                  <div class="d-flex flex-column align-center">
+                    <span class="text-super-xs text-disabled uppercase font-weight-black">Prom.</span>
+                    <span class="text-xs font-weight-black">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</span>
+                  </div>
+               </div>
+               <div class="d-flex flex-column align-end">
+                  <span class="text-super-xs text-disabled uppercase font-weight-black">A.O.</span>
+                  <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small" density="compact" class="font-weight-black">
+                     {{ item.totalQuantityInAutoOrder || 0 }}
+                  </VChip>
+               </div>
             </div>
           </div>
         </VCard>
       </div>
 
       <!-- Paginación Móvil -->
-      <div class="d-flex justify-center mt-4 pb-2">
+      <div class="d-flex justify-center mt-4 pb-4">
          <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"

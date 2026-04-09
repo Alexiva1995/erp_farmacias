@@ -59,48 +59,56 @@ const getDiffColor = (val) => {
       >
         <!-- Cabecera del grupo -->
         <div
-          class="grupo-header d-flex align-center justify-space-between pa-4 cursor-pointer"
+          class="grupo-header d-flex align-center justify-space-between pa-3 pa-sm-4 cursor-pointer"
           :class="isExpanded(grupo.group_id || grupo.id) ? 'grupo-header--expanded' : ''"
           @click="toggleGroup(grupo.group_id || grupo.id)"
         >
-          <div class="d-flex align-center gap-3">
+          <div class="d-flex align-center gap-2 gap-sm-3 min-width-0">
             <VIcon
               :icon="isExpanded(grupo.group_id || grupo.id) ? 'tabler-chevron-down' : 'tabler-chevron-right'"
-              size="20"
+              size="18"
               color="primary"
+              class="flex-shrink-0"
             />
-            <div class="d-flex flex-column">
-              <span class="text-sm font-weight-black text-uppercase text-high-emphasis leading-tight">
+            <div class="d-flex flex-column min-width-0">
+              <span class="text-xs text-sm-sm font-weight-black text-uppercase text-high-emphasis leading-tight truncate">
                 {{ grupo.name }}
               </span>
               <span class="text-super-xs text-disabled font-weight-bold">
-                ID: {{ grupo.group_id ? 'G-' + grupo.group_id : 'ID-' + grupo.id }} | 
                 {{ grupo.productos?.length || 0 }} productos integrados
               </span>
             </div>
           </div>
 
-          <!-- Totales rápidos en la cabecera -->
-          <div class="d-flex align-center gap-4 d-none d-sm-flex">
-            <div class="text-center px-2">
-              <span class="text-super-xs text-disabled d-block font-weight-black uppercase">Stock Total</span>
+          <!-- Totales en la cabecera (Adaptativos) -->
+          <div class="d-flex align-center gap-2 gap-sm-4 ml-2">
+            <!-- Stock (Visible siempre, más pequeño en móvil) -->
+            <div class="text-center px-1">
+              <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Stock</span>
               <span class="text-xs font-weight-black" :class="grupo.lote_quantity > 0 ? 'text-success' : 'text-error'">
                 {{ grupo.lote_quantity }}
               </span>
             </div>
-            <VDivider vertical class="mx-1" />
-            <div class="text-center px-2">
-              <span class="text-super-xs text-disabled d-block font-weight-black uppercase">Ventas</span>
+            
+            <VDivider vertical class="mx-0 d-none d-sm-block" />
+            
+            <!-- Ventas (Solo Desktop) -->
+            <div class="text-center px-2 d-none d-sm-block">
+              <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Ventas</span>
               <span class="text-xs font-weight-black">{{ grupo.total_sold_completed }}</span>
             </div>
-            <VDivider vertical class="mx-1" />
-            <div class="text-center px-2">
-              <span class="text-super-xs text-disabled d-block font-weight-black uppercase">Diferencia</span>
+
+            <VDivider vertical class="mx-0" />
+
+            <!-- Diferencia (Visible siempre) -->
+            <div class="text-center px-1">
+              <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Dif.</span>
               <VChip
                 :color="getDiffColor(grupo.diferencia_product)"
                 size="x-small"
                 variant="flat"
-                class="font-weight-black"
+                class="font-weight-black text-super-xs px-1"
+                density="compact"
               >
                 {{ parseFloat(grupo.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(grupo.diferencia_product)) }}
               </VChip>
@@ -108,11 +116,12 @@ const getDiffColor = (val) => {
           </div>
         </div>
 
-        <!-- Cuerpo el grupo (Tabla de productos hijos) -->
+        <!-- Cuerpo del grupo (Responsivo) -->
         <VExpandTransition>
-          <div v-if="isExpanded(grupo.group_id || grupo.id)" class="grupo-body border-t">
-            <div class="table-container overflow-x-auto">
-              <VTable density="compact" class="child-products-table">
+          <div v-if="isExpanded(grupo.group_id || grupo.id)" class="grupo-body border-t bg-var-theme-background-light">
+            <!-- Vista Desktop (Tabla) -->
+            <div class="table-container overflow-x-auto d-none d-md-block">
+              <VTable density="compact" class="child-products-table bg-transparent">
                 <thead>
                   <tr>
                     <th class="text-xs font-weight-black text-uppercase shadow-sm">ID</th>
@@ -170,6 +179,49 @@ const getDiffColor = (val) => {
                   </tr>
                 </tbody>
               </VTable>
+            </div>
+
+            <!-- Vista Móvil (Tarjetas Compactas) -->
+            <div class="d-block d-md-none pa-2">
+              <div 
+                v-for="item in grupo.productos" 
+                :key="item.id" 
+                class="mb-2 bg-surface rounded-lg border pa-2 shadow-xs"
+              >
+                <div class="d-flex justify-space-between align-start mb-1">
+                  <div class="d-flex align-center gap-2 truncate">
+                    <a :href="'/inventory/traceability?q=' + item.id" target="_blank" class="text-decoration-none font-weight-black text-primary text-xs flex-shrink-0">
+                      #{{ item.id }}
+                    </a>
+                    <span class="text-xs font-weight-black text-uppercase text-high-emphasis truncate">
+                      {{ item.name }}
+                    </span>
+                  </div>
+                  <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-super-xs" variant="flat" class="text-super-xs font-weight-black">COL</VChip>
+                </div>
+                
+                <div class="d-flex align-center justify-space-between text-super-xs mb-2 text-disabled font-weight-bold">
+                   <span class="truncate">{{ item.laboratory?.name || 'SIN LABORATORIO' }}</span>
+                   <span>Costo: {{ formatPrice(item.unit_cost) }}</span>
+                </div>
+
+                <div class="d-flex align-center justify-space-between gap-1">
+                  <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
+                    <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Stock</span>
+                    <span class="text-xs font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">{{ item.lote_quantity }}</span>
+                  </div>
+                  <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
+                    <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Pref.</span>
+                    <span class="text-xs font-weight-black text-primary">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%</span>
+                  </div>
+                  <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
+                    <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Dif.</span>
+                    <span class="text-xs font-weight-black" :class="'text-' + getDiffColor(item.diferencia_product)">
+                        {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product)) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </VExpandTransition>

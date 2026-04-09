@@ -421,32 +421,122 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
       </div>
     </VCard>
 
-    <!-- Modal de Edición de Discrepancia -->
-    <VDialog v-model="isDiscrepancyModalVisible" max-width="400">
-      <VCard title="Editar Discrepancia">
-        <DialogCloseBtn @click="isDiscrepancyModalVisible = false" />
-        
-        <VCardText class="pt-2">
-          <div class="mb-4 d-flex flex-column">
-            <span class="text-sm font-weight-bold text-primary">{{ itemToEdit?.product?.name }}</span>
-            <span class="text-xs text-disabled">Sistema: {{ itemToEdit?.system_quantity }} | Conteo: {{ itemToEdit?.final_quantity ?? itemToEdit?.counted_quantity }}</span>
+    <!-- Modal de Edición de Discrepancia (Premium) -->
+    <VDialog
+      v-model="isDiscrepancyModalVisible"
+      max-width="500"
+      persistent
+      :fullscreen="$vuetify.display.xs"
+      transition="dialog-bottom-transition"
+      class="premium-dialog"
+    >
+      <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+        <!-- Cabecera Premium -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+              <VIcon icon="tabler-edit" size="24" color="primary" />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                Ajustar Discrepancia
+              </h2>
+              <div class="d-flex align-center gap-2 mt-1">
+                <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem; letter-spacing: 0.05em;">
+                  Edición Administrativa de Inventario
+                </span>
+              </div>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="isDiscrepancyModalVisible = false"
+              :disabled="isSaving"
+            />
           </div>
+        </VCardTitle>
 
-          <AppTextField
-            v-model.number="newDiscrepancy"
-            type="number"
-            label="Unidades de Discrepancia"
-            placeholder="Ej: -5, 2, 0"
-            persistent-placeholder
-            hint="Usa valores negativos para faltantes y positivos para sobrantes."
-            persistent-hint
-          />
+        <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4">
+          <!-- Info del Producto -->
+          <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm">
+            <div class="d-flex align-center justify-space-between mb-4">
+              <VChip size="small" color="primary" variant="flat" class="font-weight-black px-3 rounded-lg">
+                ID: {{ itemToEdit?.product?.id }}
+              </VChip>
+              <div class="d-flex align-center gap-2 text-disabled leading-none">
+                <VIcon icon="tabler-building" size="16" />
+                <span class="text-super-xs font-weight-black uppercase letter-spacing-1">
+                  {{ itemToEdit?.product?.laboratory?.name }}
+                </span>
+              </div>
+            </div>
+            <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-1">
+              {{ itemToEdit?.product?.name }}
+            </h3>
+            <div class="d-flex align-center gap-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase letter-spacing-05">
+                Stock Sistema: {{ itemToEdit?.system_quantity }} | Conteo Actual: {{ itemToEdit?.final_quantity ?? itemToEdit?.counted_quantity }}
+              </span>
+            </div>
+          </VCard>
+
+          <!-- Input de Discrepancia Premium -->
+          <VCard variant="flat" class="pa-6 rounded-xl border-dashed-2 bg-white text-center shadow-sm">
+            <div class="d-flex align-center justify-center gap-2 mb-4">
+              <VAvatar color="primary" size="28" variant="tonal" class="rounded-lg">
+                <VIcon icon="tabler-adjustments-alt" size="16" />
+              </VAvatar>
+              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Nuevas Unidades de Diferencia</span>
+            </div>
+
+            <div class="d-flex justify-center align-center py-2">
+              <VTextField
+                v-model.number="newDiscrepancy"
+                type="number"
+                placeholder="0"
+                variant="plain"
+                class="ultra-huge-input-text h-auto font-weight-950"
+                density="compact"
+                hide-details
+                autofocus
+                @keyup.enter="saveDiscrepancy"
+              />
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-dashed d-flex flex-column align-center gap-2">
+              <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">
+                {{ newDiscrepancy === 0 ? "✓ Sincronizar stock (Sin diferencia)" : newDiscrepancy > 0 ? "⚠ Se registrará como sobrante de inventario" : "⚠ Se registrará como faltante de inventario" }}
+              </span>
+            </div>
+          </VCard>
         </VCardText>
 
-        <VCardActions class="pa-4">
-          <VSpacer />
-          <VBtn color="secondary" variant="tonal" @click="isDiscrepancyModalVisible = false">Cancelar</VBtn>
-          <VBtn color="primary" variant="elevated" :loading="isSaving" @click="saveDiscrepancy">Guardar</VBtn>
+        <VCardActions class="pa-4 bg-white border-t px-6">
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            height="50"
+            class="font-weight-black rounded-lg text-button uppercase flex-grow-1"
+            @click="isDiscrepancyModalVisible = false"
+            :disabled="isSaving"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            height="50"
+            class="font-weight-black rounded-lg shadow-primary text-button uppercase flex-grow-1"
+            :loading="isSaving"
+            @click="saveDiscrepancy"
+          >
+            <VIcon start icon="tabler-device-floppy" size="18" />
+            Guardar Ajuste
+          </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -457,12 +547,40 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 .count-mobile-card { overflow: hidden; border-radius: 8px !important; background: rgb(var(--v-theme-surface)); }
 .border-dashed-thin { border: 1px dashed rgba(var(--v-border-color), 0.3) !important; }
 .bg-var-theme-background { background-color: rgba(var(--v-border-color), 0.05); }
+
+/* Premium Modal Styles */
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+}
+.detail-dialog-card { border-radius: 12px !important; }
+.shadow-primary { box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important; }
+.border-dashed-2 { border: 1px dashed rgba(var(--v-border-color), 0.3) !important; }
+.border-t { border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important; }
+.leading-none { line-height: 1 !important; }
+.letter-spacing-1 { letter-spacing: 1px !important; }
+.letter-spacing-05 { letter-spacing: 0.5px !important; }
+
+.ultra-huge-input-text :deep(input) {
+  border: none;
+  background: transparent;
+  block-size: auto;
+  color: rgb(var(--v-theme-primary)) !important;
+  font-size: 2.5rem !important;
+  font-weight: 950 !important;
+  inline-size: 100%;
+  line-height: 1;
+  outline: none;
+  text-align: center !important;
+}
+.ultra-huge-input-text :deep(.v-field__input) { padding: 0 !important; }
+
 .text-super-xs { font-size: 0.65rem !important; line-height: 1.2; }
 .truncate-1-line { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-x-2 { column-gap: 8px !important; }
 .gap-x-3 { column-gap: 12px !important; }
+
 :deep(.v-data-table) { font-size: 0.8125rem; }
 :deep(.v-data-table th) { color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important; font-size: 0.75rem !important; font-weight: 700 !important; text-transform: uppercase; }
 </style>
