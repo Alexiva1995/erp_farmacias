@@ -534,16 +534,15 @@ class OrderActionService
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
                 $product = $detail->product;
-                //$priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
-                $unitPriceInOrderCurrency = $quantity > 0 ? ($detail->price / $quantity) : 0;
-                
-                // Conversión dinámica basada en la moneda de la orden
-                $priceBs = ($currencyOfOrder !== 'BS')
-                    ? ($unitPriceInOrderCurrency / $rateOfOrder) * $exchangeRate
-                    : $unitPriceInOrderCurrency;
 
-                // Si el producto tiene IVA, extraer el neto (el precio en la orden ya incluye IVA)
+                // PRECISION FISCAL: Usar precio base BS del inventario y aplicar descuento
+                // Esto ignora los redondeos de COP/USD realizados en el TPV
+                $productPriceBs = $product->price_bs ?? 0;
+                $discountPct = $detail->discount_percentage ?? 0;
+                $priceBs = $productPriceBs * (1 - ($discountPct / 100));
+
+                // Si el producto tiene IVA, extraer el neto (el precio base BS ya incluye IVA)
                 if ($product->iva == 1) {
                     $priceBs = $priceBs / 1.16;
                 }
@@ -592,14 +591,11 @@ class OrderActionService
                 $unitPriceInOrderCurrency = $detail->unit_cost;
 
                 $product = $detail->product;
-                //$priceBs = $product->price_bs;
 
-                $unitPriceInOrderCurrency = $detail->quantity > 0 ? ($detail->price / $detail->quantity) : 0;
-                
-                // Conversión dinámica para el detalle
-                $priceBs = ($currencyOfOrder !== 'BS')
-                    ? ($unitPriceInOrderCurrency / $rateOfOrder) * $exchangeRate
-                    : $unitPriceInOrderCurrency;
+                // Aplicar la misma precisión fiscal para el desglose detallado
+                $productPriceBs = $product->price_bs ?? 0;
+                $discountPct = $detail->discount_percentage ?? 0;
+                $priceBs = $productPriceBs * (1 - ($discountPct / 100));
 
                 // Extraer el neto para el desglose detallado si tiene IVA
                 if ($product->iva == 1) {
