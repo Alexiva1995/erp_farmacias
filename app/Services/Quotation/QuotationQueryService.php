@@ -142,6 +142,7 @@ class QuotationQueryService
 
         $filters = [
             'q' => $request->q,
+            'groupId' => $request->groupId,
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,

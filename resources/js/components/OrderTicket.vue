@@ -5,7 +5,8 @@ import { useAuthStore } from "@/stores/auth";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
+
 const props = defineProps({
   orderData: {
     type: Object,
@@ -138,6 +139,7 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   }
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
+
 const showChangeAmount = computed(() => {
   return props.changeAmount > 0;
 });
@@ -243,129 +245,18 @@ onMounted(() => {
         >
       </div>
 
-      <div class="d-flex flex-wrap justify-space-between textoPrint">
-        <p class="font-weight-bold text-h6">Métodos de Pago</p>
-        <div class="text-end">
-          <p
-            v-for="(payment, pIndex) in payments"
-            :key="`ticket-payment-${pIndex}`"
-            class="font-weight-bold my-1"
-          >
-            <span
-              >{{ getPaymentMethodLabel(payment.method, payment.currency) }} ({{
-                payment.currency
-              }})</span
-            >
-          </p>
-        </div>
-      </div>
-
       <div class="ticket-body mt-2">
         <div v-for="item in orderProducts" :key="item.id" class="ticket-item">
           <span class="ticket-item-qty">{{ item.selectedQuantity }}x</span>
           <span class="ticket-item-name">{{ item.title }}</span>
-       <span 
-        v-if="activeDiscountDisplay && item.discount_type !== 'expiration'" 
-        class="text-caption text-decoration-line-through text-error"
-        style=" color: #ff5252;font-size: 0.65rem; line-height: 1;"
-      >
-        {{ formatCurrency(item.price_before_discount, selectedCurrency) }}
-      </span>
-      <span class="ticket-item-price" style="font-weight: bold;">
-        {{ formatCurrency(getItemPriceByCurrency(item, selectedCurrency), selectedCurrency) }}
-      </span>
-        </div>
-
-        <hr />
-
-        <div
-          v-if="activeDiscountDisplay"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold tituloAzulPrint">
-            {{ activeDiscountDisplay.label }}:
-          </span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            - {{ activeDiscountDisplay.formatted }}
-          </span>
-        </div>
-        <div
-          v-if="props.expirationDiscountTotal > 0"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold tituloAzulPrint">
-            Descuento Vencimiento:
-          </span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            -
-            {{
-              formatCurrency(
-                props.expirationDiscountTotal,
-                props.selectedCurrency
-              )
-            }}
-          </span>
-        </div>
-
-
-         <div
-          v-if="isSpecialTaxpayer"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold tituloAzulPrint">
-            Recargo Sujeto Pasivo Especial (3%):
-          </span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(speSurchargeAmount, selectedCurrency) }}
-          </span>
-        </div>
-
-        <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold tituloAzulPrint">TOTAL VENTA:</span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(totalAmount, selectedCurrency) }}
-          </span>
-        </div>
-
-        <div class="ticket-total d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2 tituloAzulPrint">PAGO:</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in payments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1 tituloAzulPrint"
-            >
-              <span>
-                {{ getPaymentMethodLabel(payment.method, payment.currency) }}:
-                {{ formatCurrency(payment.amount || 0, payment.currency) }}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div
-          v-if="credit"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold tituloAzulPrint">{{ "CRÉDITO" }}:</span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(creditAmount, selectedCurrency) }}
-          </span>
-        </div>
-
-        <div
-          v-if="showChangeAmount"
-          class="ticket-total d-flex justify-space-between align-center"
-        >
-          <span class="font-weight-bold tituloAzulPrint">DEVOLUCION:</span>
-          <span class="text-end font-weight-black tituloAzulPrint">
-            {{ formatCurrency(changeAmount, "COP") }}
-          </span>
         </div>
       </div>
 
-      <p class="font-weight-bold text-center text-success">
+      <p class="font-weight-bold text-center text-success mb-0 mt-4">
         ¡GRACIAS POR SU COMPRA!
+      </p>
+      <p class="text-center font-weight-black text-h6 mt-1">
+        DOCUMENTO NO FISCAL
       </p>
     </VCard>
   </div>

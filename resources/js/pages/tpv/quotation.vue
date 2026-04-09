@@ -89,6 +89,7 @@ const stockStatusFilter = ref(null);
 
 const laboratories = ref([]);
 const origins = ref([]);
+const selectedGroupId = ref(null);
 
 const isLoadingFilters = ref(false);
 const selectedDisplayCurrency = ref("USD");
@@ -391,6 +392,7 @@ const fetchProducts = async () => {
     q: filterSearchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
+    groupId: selectedGroupId.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -425,6 +427,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    selectedGroupId,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -538,7 +541,7 @@ watch(selectedDiscountType, (newValue) => {
 });
 
 watch(
-  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
+  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, selectedGroupId],
   () => {
     page.value = 1;
   },
@@ -693,6 +696,7 @@ const handleClearFilters = () => {
   filterSearchQuery.value = "";
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
+  selectedGroupId.value = null;
   stockStatusFilter.value = null;
   sortBy.value = undefined;
   orderBy.value = undefined;
@@ -943,7 +947,15 @@ const fetchGroupProducts = async (groupId) => {
     toast.info("Este producto no pertenece a un grupo.");
     return;
   }
-  toast.info("Funcionalidad de grupos próximamente disponible.");
+  selectedGroupId.value = groupId;
+  page.value = 1;
+  fetchProducts();
+};
+
+const clearGroupFilter = () => {
+  selectedGroupId.value = null;
+  page.value = 1;
+  fetchProducts();
 };
 
 const fetchFailuresProducts = async (productId) => {
@@ -1088,6 +1100,22 @@ const handleCleanAfterSave = () => {
       @clear-sort="handleClearSortOrder"
     >
     </QuotationFilters>
+
+    <div v-if="selectedGroupId" class="d-flex align-center gap-2 mb-4 animate__animated animate__fadeIn">
+      <VBtn
+        variant="tonal"
+        color="secondary"
+        size="small"
+        prepend-icon="tabler-arrow-left"
+        class="rounded-lg font-weight-black"
+        @click="clearGroupFilter"
+      >
+        VOLVER A LA LISTA GENERAL
+      </VBtn>
+      <VChip color="info" size="small" variant="flat" class="font-weight-black shadow-sm">
+        VIENDO PRODUCTOS DEL GRUPO #{{ selectedGroupId }}
+      </VChip>
+    </div>
 
     <QuotationTable
       :products="products"

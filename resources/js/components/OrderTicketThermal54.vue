@@ -128,11 +128,10 @@ const clientDisplayLine = computed(() => {
       </div>
     </div>
 
-    <!-- Tabla de productos: "Cant. X Producto" + Monto -->
+    <!-- Tabla de productos: "Cant. X Producto" -->
     <div class="thermal-products">
       <div class="thermal-products-head">
         <span class="thermal-col-desc">Producto</span>
-        <span class="thermal-col-amount">Monto</span>
       </div>
       <div
         v-for="(item, idx) in orderProducts"
@@ -142,57 +141,13 @@ const clientDisplayLine = computed(() => {
         <div class="thermal-col-desc">
           <span class="thermal-product-name">{{ productLineText(item) }}</span>
         </div>
-        <span class="thermal-col-amount">{{ formatCurrency(getLineTotal(item), selectedCurrency) }}</span>
       </div>
-    </div>
-
-    <!-- Totales -->
-    <div class="thermal-totals">
-      <template v-if="activeDiscount">
-        <div class="thermal-total-row">
-          <span>{{ activeDiscount.label }}</span>
-          <span>- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
-        </div>
-      </template>
-      <template v-if="isSpecialTaxpayer && speSurchargeAmount">
-        <div class="thermal-total-row">
-          <span>Recargo SPE (3%)</span>
-          <span>{{ formatCurrency(Number(speSurchargeAmount), selectedCurrency) }}</span>
-        </div>
-      </template>
-      <div class="thermal-total-block">
-        <div class="thermal-total-row thermal-total-main">
-          <span>TOTAL</span>
-          <span>{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
-        </div>
-      </div>
-      <template v-if="payments?.length">
-        <div class="thermal-total-row" v-for="(p, i) in payments" :key="i">
-          <span>{{ getPaymentMethodLabel(p.method, p.currency) }} ({{ p.currency }})</span>
-          <span>{{ formatCurrency(p.amount || 0, p.currency) }}</span>
-        </div>
-      </template>
-      <template v-if="credit">
-        <div class="thermal-total-row">
-          <span>Crédito</span>
-          <span>{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
-        </div>
-      </template>
-      <template v-if="changeAmount > 0">
-        <div class="thermal-total-row">
-          <span>Devolución (COP)</span>
-          <span>{{ formatCurrency(changeAmount, "COP") }}</span>
-        </div>
-        <div v-if="selectedCurrency !== 'COP' && changeAmountOrigin > 0" class="thermal-total-row" style="font-size: 8px;">
-          <span>Vuelto ({{ selectedCurrency }})</span>
-          <span>{{ formatCurrency(changeAmountOrigin, selectedCurrency) }}</span>
-        </div>
-      </template>
     </div>
 
     <!-- Pie -->
     <footer class="thermal-footer">
-      ¡GRACIAS POR SU COMPRA!
+      <div>¡GRACIAS POR SU COMPRA!</div>
+      <div class="mt-2 thermal-non-fiscal-highlight">DOCUMENTO NO FISCAL</div>
     </footer>
   </div>
 </template>
@@ -383,5 +338,12 @@ const clientDisplayLine = computed(() => {
   margin-block-start: 3mm;
   padding-block-start: 2mm;
   text-align: center;
+}
+.thermal-non-fiscal-highlight {
+  border: 1px solid #000;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  margin-inline: 4mm;
+  padding-block: 1mm;
 }
 </style>
