@@ -528,6 +528,8 @@ class OrderActionService
 
         $resourceService = app(ResourceService::class);
         $exchangeRate = $resourceService->getExchangeRate('BS');
+        $currencyOfOrder = strtoupper($order->currency ?? 'BS');
+        $rateOfOrder = $resourceService->getExchangeRate($currencyOfOrder) ?: 1;
 
         if (!$fiscalexist) {
             foreach ($order->details as $detail) {
@@ -535,10 +537,10 @@ class OrderActionService
                 //$priceBs = $product->price_bs;
                 $quantity = $detail->quantity;
                 $unitPriceInOrderCurrency = $quantity > 0 ? ($detail->price / $quantity) : 0;
-                $unitPriceInUsd = $detail->unit_price_usd;
-
-                $priceBs = (strtoupper($order->currency) !== 'BS')
-                    ? ($unitPriceInUsd * $exchangeRate)
+                
+                // Conversión dinámica basada en la moneda de la orden
+                $priceBs = ($currencyOfOrder !== 'BS')
+                    ? ($unitPriceInOrderCurrency / $rateOfOrder) * $exchangeRate
                     : $unitPriceInOrderCurrency;
 
                 // Si el producto tiene IVA, extraer el neto (el precio en la orden ya incluye IVA)
@@ -593,10 +595,10 @@ class OrderActionService
                 //$priceBs = $product->price_bs;
 
                 $unitPriceInOrderCurrency = $detail->quantity > 0 ? ($detail->price / $detail->quantity) : 0;
-                $unitPriceInUsd = $detail->unit_price_usd;
-
-                $priceBs = (strtoupper($order->currency) !== 'BS')
-                    ? ($unitPriceInUsd * $exchangeRate)
+                
+                // Conversión dinámica para el detalle
+                $priceBs = ($currencyOfOrder !== 'BS')
+                    ? ($unitPriceInOrderCurrency / $rateOfOrder) * $exchangeRate
                     : $unitPriceInOrderCurrency;
 
                 // Extraer el neto para el desglose detallado si tiene IVA
