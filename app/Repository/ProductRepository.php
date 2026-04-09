@@ -61,6 +61,21 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL)';
 
+        $subqueryTotalSoldGroup = '(SELECT COALESCE(SUM(order_details.quantity), 1)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                JOIN products p2 ON p2.id = order_details.product_id
+                WHERE p2.group_id = products.group_id
+                AND p2.group_id IS NOT NULL
+                AND orders.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
+                AND orders.status = "Completed")';
+
+        // Cálculo de % de preferencia (participación en el grupo)
+        $prefPorcentajeSql = 'CASE 
+            WHEN products.group_id IS NULL THEN 100
+            ELSE ((' . $subqueryTotalSold . ') / ' . $subqueryTotalSoldGroup . ') * 100
+        END';
+
         // Cálculo de Promedio
         $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
         if (!is_string($lapso)) $lapso = $lapso . " days";
@@ -86,7 +101,7 @@ class ProductRepository
                 DB::raw('MAX(products.photo_url) as photo_url'),
                 DB::raw('SUM(' . $subqueryStockLotes . ') as lote_quantity'),
                 DB::raw('SUM(' . $subqueryTotalSold . ') as total_sold_completed'),
-                DB::raw('SUM(' . $subqueryTotalSold . ') as preferencia_product'),
+                DB::raw('100 as preferencia_product'), // En vista grupal el grupo es el 100% de sí mismo
                 DB::raw('SUM(' . $promedioCalculadoSql . ') as promedio_calculado'),
                 DB::raw('SUM(' . $subqueryAO . ') as totalQuantityInAutoOrder'),
                 DB::raw('MAX(products.unit_cost) as unit_cost'),
@@ -104,7 +119,7 @@ class ProductRepository
                 'products.is_colombian_origin',
                 DB::raw($subqueryStockLotes . ' AS lote_quantity'),
                 DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
-                DB::raw($subqueryTotalSold . ' AS preferencia_product'),
+                DB::raw($prefPorcentajeSql . ' AS preferencia_product'),
                 DB::raw($promedioCalculadoSql . ' AS promedio_calculado'),
                 DB::raw($subqueryAO . ' AS totalQuantityInAutoOrder'),
             ];

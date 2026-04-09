@@ -117,7 +117,7 @@ const getDiffColor = (val) => {
         </template>
 
         <template #item.preferencia_product="{ item }">
-          <span class="font-weight-bold">{{ parseFloat(item.preferencia_product || 0).toFixed(2) }}</span>
+          <span class="font-weight-bold">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%</span>
         </template>
 
         <template #item.promedio_calculado="{ item }">
@@ -216,7 +216,7 @@ const getDiffColor = (val) => {
             <div class="mt-3 bg-var-theme-background-light rounded pa-2 d-flex justify-space-between align-center border-s-4 border-warning">
               <div class="text-center flex-1">
                 <span class="text-super-xs text-disabled d-block uppercase font-weight-black">Pref.</span>
-                <span class="text-caption font-weight-black">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}</span>
+                <span class="text-caption font-weight-black">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%</span>
               </div>
               <VDivider vertical class="mx-2" />
               <div class="text-center flex-1">

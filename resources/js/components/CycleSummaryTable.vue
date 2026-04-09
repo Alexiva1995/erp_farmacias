@@ -79,8 +79,11 @@ const updateOptions = (options) => {
   emit("update:options", options);
 };
 
-const viewCycleDetails = (cycleId) => {
-  emit("view-cycle-details", cycleId);
+const viewCycleDetails = (item) => {
+  const id = item.cycle_id || item.id;
+  if (id) {
+    emit("view-cycle-details", id);
+  }
 };
 
 const handleMobilePageChange = (newPage) => {
@@ -177,11 +180,11 @@ const handleMobilePageChange = (newPage) => {
           </span>
         </template>
 
-        <template #item.actions="{ item: cycle }">
+        <template #item.actions="{ item }">
           <IconBtn
             size="small"
             color="info"
-            @click.stop="viewCycleDetails(cycle.cycle_id)"
+            @click.stop="viewCycleDetails(item)"
           >
             <VIcon icon="tabler-eye" />
             <VTooltip activator="parent">Ver Detalles</VTooltip>
@@ -250,7 +253,7 @@ const handleMobilePageChange = (newPage) => {
                   color="info"
                   size="32"
                   class="rounded"
-                  @click.stop="viewCycleDetails(cycle.cycle_id)"
+                  @click.stop="viewCycleDetails(cycle)"
                 >
                   <VIcon icon="tabler-eye" size="18" />
                 </IconBtn>

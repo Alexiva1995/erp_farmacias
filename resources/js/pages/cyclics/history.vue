@@ -4,7 +4,7 @@ import CycleSummaryTable from "@/components/CycleSummaryTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter } from "vue-router/auto";
 
 const cycles = ref([]);
 const totalCycles = ref(0);
@@ -98,7 +98,11 @@ const handleSort = (sortOptions) => {
 };
 
 const viewCycleDetails = (cycleId) => {
-  if (!cycleId) return;
+  console.log('[HISTORY] Intentando navegar al ciclo:', cycleId);
+  if (!cycleId) {
+    console.error('[HISTORY] Error: ID de ciclo no definido');
+    return;
+  }
   router.push(`/cyclics/${cycleId}/details`);
 };
 </script>
