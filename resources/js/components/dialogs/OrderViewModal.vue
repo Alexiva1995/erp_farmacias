@@ -268,16 +268,16 @@ const productLineLabel = (product) => {
     <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column" style="max-height: 90vh;">
       <!-- Premium Header -->
       <VCardTitle class="pa-0">
-        <div class="premium-header pa-4 d-flex align-center gap-3">
+        <div class="premium-header pa-2 d-flex align-center gap-2">
           <VAvatar
-            size="40"
+            size="24"
             color="white"
-            class="shadow-sm rounded-lg"
+            class="shadow-sm rounded"
           >
             <VIcon
               icon="tabler-receipt"
               color="primary"
-              size="24"
+              size="16"
             />
           </VAvatar>
           <div class="d-flex flex-column leading-none">
@@ -304,15 +304,15 @@ const productLineLabel = (product) => {
       </VCardTitle>
 
       <VCardText class="pa-0 bg-light scrollable-content">
-        <div class="pa-3 pa-sm-4 pb-8">
+        <div class="pa-2 pb-6">
           <!-- Document Info -->
-          <div class="d-flex align-center gap-2 mb-4">
+          <div class="d-flex align-center gap-2 mb-1">
             <div class="header-indicator" />
-            <span class="text-subtitle-2 font-weight-black text-uppercase text-primary">Información del Documento</span>
+            <span class="text-super-xs font-weight-black text-uppercase text-primary">Información General</span>
           </div>
 
-          <VCard variant="flat" class="rounded-lg border shadow-sm mb-6 bg-white overflow-hidden">
-            <VCardText class="pa-4">
+          <VCard variant="flat" class="rounded border shadow-sm mb-2 bg-white overflow-hidden">
+            <VCardText class="pa-2">
               <VRow dense>
                 <VCol cols="12" sm="6">
                   <div class="d-flex flex-column">
@@ -330,7 +330,7 @@ const productLineLabel = (product) => {
                 </VCol>
 
                 <VCol cols="12">
-                  <VDivider class="my-3 opacity-10" />
+                  <VDivider class="my-1 opacity-10" />
                 </VCol>
 
                 <VCol cols="12" sm="6">
@@ -357,42 +357,37 @@ const productLineLabel = (product) => {
           </VCard>
 
           <!-- Products Table -->
-          <div class="d-flex align-center gap-2 mb-4">
+          <div class="d-flex align-center gap-2 mb-1">
             <div class="header-indicator" />
-            <span class="text-subtitle-2 font-weight-black text-uppercase text-primary">Detalle de Productos</span>
+            <span class="text-super-xs font-weight-black text-uppercase text-primary">Detalle</span>
           </div>
 
-          <VCard variant="flat" class="rounded-lg border shadow-sm mb-6 bg-white overflow-hidden">
-            <div class="products-table-wrapper">
+          <VCard variant="flat" class="rounded border shadow-sm mb-2 bg-white overflow-hidden">
+            <div class="products-table-wrapper table-responsive">
               <table class="products-table">
                 <thead>
                   <tr>
-                    <th class="ps-4">Producto</th>
-                    <th class="text-end">Unit.</th>
-                    <th class="text-center">Cant.</th>
-                    <th class="text-end pe-4">Total</th>
+                    <th class="ps-2 py-1">Item</th>
+                    <th class="text-end py-1">P.U</th>
+                    <th class="text-center py-1">Cant</th>
+                    <th class="text-end pe-2 py-1">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(product, idx) in orderProducts" :key="product.id || product.product_id || idx" class="products-table-row">
-                    <td class="product-cell ps-4 py-3">
+                    <td class="product-cell ps-2 py-1">
                       <div class="d-flex flex-column">
                         <div class="d-flex align-center gap-1">
-                          <span class="text-primary font-weight-black text-xs">#{{ productId(product) }}</span>
-                          <span class="text-xs font-weight-bold text-uppercase truncate-text">{{ product.title }}</span>
-                        </div>
-                        <div class="d-flex align-center gap-1 mt-1">
-                          <span class="text-super-xs text-disabled font-weight-medium">{{ product.active_ingredient || 'Sin Componente' }}</span>
-                          <span class="text-super-xs text-disabled">|</span>
-                          <span class="text-super-xs text-primary font-weight-black">{{ product.laboratory || 'Sin Laboratorio' }}</span>
+                          <span class="text-primary font-weight-black text-super-xs">#{{ productId(product) }}</span>
+                          <span class="text-super-xs font-weight-bold text-uppercase truncate-text">{{ product.title }}</span>
                         </div>
                       </div>
                     </td>
-                    <td class="text-end table-amount text-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td class="text-end table-amount text-super-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
                     <td class="text-center">
-                      <VChip size="x-small" variant="tonal" class="font-weight-black" style="font-size: 0.65rem !important;">{{ product.selectedQuantity }}</VChip>
+                      <VChip size="x-small" density="compact" variant="tonal" class="font-weight-black" style="font-size: 0.6rem !important; height: 14px;">{{ product.selectedQuantity }}</VChip>
                     </td>
-                    <td class="text-end table-amount text-xs font-weight-black pe-4">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                    <td class="text-end table-amount text-super-xs font-weight-black pe-2">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -400,24 +395,24 @@ const productLineLabel = (product) => {
           </VCard>
 
           <!-- Summary -->
-          <VCard variant="flat" class="rounded-lg border shadow-sm bg-white overflow-hidden">
-            <VCardText class="pa-4">
-              <div class="summary-list d-flex flex-column gap-2">
-                <div v-if="activeDiscount" class="summary-row">
-                  <span class="summary-label">{{ activeDiscount.label }}</span>
-                  <span class="summary-value text-error">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
+          <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden">
+            <VCardText class="pa-2">
+              <div class="summary-list d-flex flex-column gap-0">
+                <div v-if="activeDiscount" class="summary-row" style="min-height: 18px;">
+                  <span class="summary-label" style="font-size: 0.65rem;">Desc.</span>
+                  <span class="summary-value text-error text-super-xs">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
                 </div>
-                <div v-if="isSpecialTaxpayer" class="summary-row">
-                  <span class="summary-label">Recargo SPE (3%)</span>
-                  <span class="summary-value">{{ props.orderData?.spe_surcharge_amount }} {{ selectedCurrency }}</span>
+                <div v-if="isSpecialTaxpayer" class="summary-row" style="min-height: 18px;">
+                  <span class="summary-label" style="font-size: 0.65rem;">SPE</span>
+                  <span class="summary-value font-weight-bold text-super-xs">{{ props.orderData?.spe_surcharge_amount }} {{ selectedCurrency }}</span>
                 </div>
-                <div v-if="credit" class="summary-row">
-                  <span class="summary-label">Crédito Acumulado</span>
-                  <span class="summary-value text-primary font-weight-black">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
+                <div v-if="credit" class="summary-row" style="min-height: 18px;">
+                  <span class="summary-label" style="font-size: 0.65rem;">Crédito</span>
+                  <span class="summary-value text-primary font-weight-black text-super-xs">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
                 </div>
-                <div v-if="debtPayments.length" class="summary-row">
-                  <span class="summary-label">Saldo Pendiente</span>
-                  <span class="summary-value text-warning font-weight-black">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
+                <div v-if="debtPayments.length" class="summary-row" style="min-height: 18px;">
+                  <span class="summary-label" style="font-size: 0.65rem;">Saldo Pendiente</span>
+                  <span class="summary-value text-warning font-weight-black text-super-xs">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
                 </div>
 
                 <template v-if="normalPayments.length">
