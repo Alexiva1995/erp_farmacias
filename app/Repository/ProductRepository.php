@@ -118,7 +118,32 @@ class ProductRepository
             $calcDiff = '(' . $stockEfectivo . ') - (((' . $subqueryTotalSold . ') + (' . $promedioCalculadoSql . ')) / 2)';
         } else {
             $calcDiff = '(' . $stockEfectivo . ') - (' . $promedioCalculadoSql . ')';
-        }        // Filtros adicionales
+        if ($isGroup) {
+            $columnas[] = DB::raw("SUM(CASE 
+                WHEN ($calcDiff) > 0 THEN CEIL($calcDiff) 
+                ELSE FLOOR($calcDiff) 
+            END) AS diferencia_product");
+        } else {
+            $columnas[] = DB::raw("CASE 
+                WHEN ($calcDiff) > 0 THEN CEIL($calcDiff) 
+                ELSE FLOOR($calcDiff) 
+            END AS diferencia_product");
+        }
+
+        // Construcción de la Consulta
+        $consulta = Product::select($columnas);
+
+        if ($isGroup) {
+            $consulta->leftJoin('groups_products', 'products.group_id', '=', 'groups_products.id')
+                ->groupBy(DB::raw('COALESCE(products.group_id, CONCAT("p_", products.id))'));
+        }
+
+        $consulta->where(function ($q) {
+                $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->with(["laboratory", "lots"]);
+
+        // Filtros adicionales
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
             $isStrictSearch = $filtros["isStrictSearch"] ?? false;
             $searchTerm = $filtros["q"];
