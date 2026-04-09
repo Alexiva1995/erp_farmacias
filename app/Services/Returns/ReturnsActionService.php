@@ -32,14 +32,14 @@ class ReturnsActionService
                 return Order::query()->whereRaw('1 = 0');
             }
 
-            // Órdenes de los últimos 7 días (una semana) para devoluciones (por fecha de orden)
-            $query = Order::where('order_date', '>=', Carbon::now()->subDays(7)->startOfDay())
+            // Órdenes de los últimos 30 días para devoluciones (por fecha de orden)
+            $query = Order::where('order_date', '>=', Carbon::now()->subDays(30)->startOfDay())
                 ->where('status', Order::COMPLETED)
                 ->with('client', 'details.product.laboratory')
                 ->where(function ($q) use ($searchTerm) {
-                    // Búsqueda por ID de orden (solo si es un número corto que podría ser ID)
-                    if (is_numeric($searchTerm) && strlen($searchTerm) <= 8) {
-                        $q->where('orders.id', (int) $searchTerm);
+                    // Búsqueda por ID de orden (si es numérico)
+                    if (is_numeric($searchTerm)) {
+                        $q->where('id', (int) $searchTerm);
                     }
                     // Búsqueda por cédula/identificación del cliente (ej: V-24150980, 24150980)
                     $q->orWhereHas('client', function ($sub) use ($searchTerm) {

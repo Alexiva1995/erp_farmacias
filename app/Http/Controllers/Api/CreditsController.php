@@ -131,6 +131,10 @@ class CreditsController extends Controller
                 : null;
 
             foreach ($methodPayments as $payment) {
+                if (($payment['amount'] ?? 0) <= 0) {
+                    continue;
+                }
+
                 $payments[] = [
                     'payment_date' => $paymentDate,
                     'amount' => $payment['amount'] ?? 0,
@@ -173,7 +177,8 @@ class CreditsController extends Controller
                 'cp.payment_date',
                 DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client"),
                 'seller.username as seller',
-            ]);
+            ])
+            ->where('payment.amount', '>', 0);
 
         if ($currency = $request->input('currency')) {
             $query->where('payment.currency', $currency);
