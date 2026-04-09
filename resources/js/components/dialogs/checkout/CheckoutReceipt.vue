@@ -138,25 +138,6 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
           </div>
 
           <VDivider class="my-2 border-dashed" />
-
-          <div class="mb-2">
-            <div class="font-weight-bold text-tiny uppercase mb-1">Detalle de Pagos:</div>
-            <div v-for="payment in payments.filter(p => p.amount > 0)" :key="payment.method" class="d-flex justify-space-between text-tiny">
-              <span>{{ getPaymentMethodLabel(payment.method, payment.currency) }}:</span>
-              <span>{{ formatAsBS(payment.amount, payment.currency) }}</span>
-            </div>
-            <div v-if="hasCreditPayment" class="d-flex justify-space-between font-weight-bold text-tiny">
-              <span>Crédito Aplicado:</span>
-              <span>{{ formatAsBS(roundedTotalAmountToPay, selectedCurrency) }}</span>
-            </div>
-          </div>
-
-          <div v-if="showChangeAmount" class="border-t pt-1">
-            <div class="d-flex justify-space-between font-weight-black text-success">
-              <span>DEVOLUCIÓN (BS):</span>
-              <span>{{ formatAsBS(changeAmount, selectedCurrency) }}</span>
-            </div>
-          </div>
         </div>
 
         <div class="text-center mt-6 text-success font-weight-black text-caption border-t pt-2">
