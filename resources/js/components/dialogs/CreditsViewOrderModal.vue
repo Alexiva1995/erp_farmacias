@@ -288,8 +288,7 @@ watch([filterClient, filterDate, filterCurrency], () => {
 
       <VDivider />
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-height: 75vh;">
+      <VCardText class="pa-4 pa-sm-6 bg-light">
           <!-- Información del Cliente -->
           <VCard variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 mb-6">
             <div class="d-flex align-center gap-2 mb-4">
@@ -482,7 +481,6 @@ watch([filterClient, filterDate, filterCurrency], () => {
               <VIcon icon="tabler-chevron-right" size="18" />
             </VBtn>
           </div>
-        </div>
       </VCardText>
 
       <VDivider />

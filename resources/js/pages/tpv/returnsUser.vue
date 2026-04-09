@@ -101,6 +101,7 @@ const handleClearSearch = () => {
     v-model="clientIdentification"
     @search-order="verifyClientOrder"
     @clear-search="handleClearSearch"
+    @keyup.enter="fetchOrders"
   />
   <VAlert
     v-if="clientIdentification && !loading && totalOrder === 0"
@@ -109,7 +110,7 @@ const handleClearSearch = () => {
     closable
     class="mb-6"
   >
-    No hay órdenes disponibles en los últimos 7 días para la búsqueda realizada.
+    No hay órdenes disponibles en las últimas 48 horas para la búsqueda realizada.
     Verifique la identificación o el N° de orden ingresado.
   </VAlert>
   <ReturnsOrderTable

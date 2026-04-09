@@ -41,6 +41,7 @@ const handleSearchOrder = () => {
     class="py-1"
     @update:search="updateIdentification"
     @clear="emit('clear-search')"
+    @keyup.enter="handleSearchOrder"
   >
     <template #search-append>
       <VBtn
