@@ -516,7 +516,7 @@ class OrderActionService
         }
     }
 
-    public function invoicing(Order $order, $spe)
+    public function invoicing(Order $order, $spe, array $customItems = [])
     {
 
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
@@ -536,13 +536,20 @@ class OrderActionService
                 $product = $detail->product;
                 $quantity = $detail->quantity;
 
-                // PRECISION FISCAL: Usar precio base BS del inventario y aplicar descuento
-                // Esto ignora los redondeos de COP/USD realizados en el TPV
-                $productPriceBs = $product->price_bs ?? 0;
-                $discountPct = $detail->discount_percentage ?? 0;
-                $priceBs = $productPriceBs * (1 - ($discountPct / 100));
+                // PRECISION FISCAL: Priorizar el precio enviado desde el POS (vista)
+                // Si no viene (fallback), usar la lógica de precio base BS del inventario
+                $customData = $customItems[$detail->id] ?? null;
+                $priceBs = null;
 
-                // Si el producto tiene IVA, extraer el neto (el precio base BS ya incluye IVA)
+                if ($customData && isset($customData['price_bs_fiscal'])) {
+                    $priceBs = (float) $customData['price_bs_fiscal'] / $quantity;
+                } else {
+                    $productPriceBs = $product->price_bs ?? 0;
+                    $discountPct = $detail->discount_percentage ?? 0;
+                    $priceBs = $productPriceBs * (1 - ($discountPct / 100));
+                }
+
+                // Si el producto tiene IVA, extraer el neto (porque el precio enviado ya incluye IVA)
                 if ($product->iva == 1) {
                     $priceBs = $priceBs / 1.16;
                 }
@@ -592,10 +599,17 @@ class OrderActionService
 
                 $product = $detail->product;
 
-                // Aplicar la misma precisión fiscal para el desglose detallado
-                $productPriceBs = $product->price_bs ?? 0;
-                $discountPct = $detail->discount_percentage ?? 0;
-                $priceBs = $productPriceBs * (1 - ($discountPct / 100));
+                // Aplicar la misma prioridad para el desglose detallado
+                $customData = $customItems[$detail->id] ?? null;
+                $priceBs = null;
+
+                if ($customData && isset($customData['price_bs_fiscal'])) {
+                    $priceBs = (float) $customData['price_bs_fiscal'] / $detail->quantity;
+                } else {
+                    $productPriceBs = $product->price_bs ?? 0;
+                    $discountPct = $detail->discount_percentage ?? 0;
+                    $priceBs = $productPriceBs * (1 - ($discountPct / 100));
+                }
 
                 // Extraer el neto para el desglose detallado si tiene IVA
                 if ($product->iva == 1) {
@@ -888,7 +902,18 @@ class OrderActionService
             }
 
             if ($shouldInvoice) {
-                $this->invoicing($orderId, $request->spe);
+                $customItems = [];
+                if ($request->has('items')) {
+                    $rawItems = is_string($request->items) ? json_decode($request->items, true) : $request->items;
+                    if (is_array($rawItems)) {
+                        foreach ($rawItems as $ri) {
+                            if (isset($ri['order_detail_id'])) {
+                                $customItems[$ri['order_detail_id']] = $ri;
+                            }
+                        }
+                    }
+                }
+                $this->invoicing($orderId, $request->spe, $customItems);
                 $ivaEjecuted = true;
             }
 

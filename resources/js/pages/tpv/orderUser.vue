@@ -2371,6 +2371,11 @@ const handleBuysCompletion = async (
           // Depending on if backend expects strict rounding or specific value
       }*/
 
+      // 5. CÁLCULO FISCAL BS (Puro, para sincronizar con la tabla fiscal)
+      const baseBs = item.originalPriceBs ?? item.original_price_bs ?? 0;
+      const priceWithDiscountBs = baseBs * (1 - dPercent / 100);
+      const priceTaxBs = priceWithDiscountBs * taxMultiplier;
+
       return {
         order_detail_id: item.order_detail_id,
         unit_cost: finalPrice,
@@ -2381,6 +2386,7 @@ const handleBuysCompletion = async (
         discount_percentage: dPercent > 0 ? dPercent : null,
         discount_type: dType,
         discount_source_id: dSourceId,
+        price_bs_fiscal: priceTaxBs,
       };
     });
     formData.append("items", JSON.stringify(mappedItems));
