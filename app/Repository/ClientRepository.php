@@ -121,6 +121,16 @@ class ClientRepository
             $consulta->where("status", "=", $filtros["status"]);
         }
 
+        if (array_key_exists("has_phone", $filtros) && $filtros["has_phone"] !== null && $filtros["has_phone"] !== "") {
+            if ($filtros["has_phone"] === 'yes') {
+                $consulta->whereNotNull('phone')->where('phone', '!=', '');
+            } elseif ($filtros["has_phone"] === 'no') {
+                $consulta->where(function($q) {
+                    $q->whereNull('phone')->orWhere('phone', '=', '');
+                });
+            }
+        }
+
         // $consulta->orderBy("name", "ASC");
 
         return $consulta;

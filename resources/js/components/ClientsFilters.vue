@@ -8,8 +8,9 @@ const props = defineProps({
   tipo_identificacion_filtro:[String, null],
   company_id_filtro:         [String, null],
   client_type_filtro:        [String, null],
-  fechaHasta_filtro:         [String, null],
-  fechaDesde_filtro:         [String, null],
+  fechaDesde_filtro:         { type: String, default: "" },
+  fechaHasta_filtro:         { type: String, default: "" },
+  has_phone_filtro:          { type: String, default: "" },
   companies:                 { type: Array, default: () => [] },
 });
 
@@ -18,8 +19,9 @@ const emit = defineEmits([
   "update:tipo_identificacion_filtro",
   "update:company_id_filtro",
   "update:client_type_filtro",
-  "update:fechaHasta_filtro",
   "update:fechaDesde_filtro",
+  "update:fechaHasta_filtro",
+  "update:has_phone_filtro",
   "clear",
   "add-client",
   "export-pdf",
@@ -36,10 +38,16 @@ const clientTypeOptions = [
   { title: "Inactivo",   value: "Inactivo"  },
 ];
 
+const phoneOptions = [
+  { title: "Todos", value: "" },
+  { title: "Con Teléfono", value: "yes" },
+  { title: "Sin Teléfono", value: "no" },
+];
+
 // Indicador de filtros avanzados activos
 const hasAdvancedFilters = computed(() =>
   !!(props.tipo_identificacion_filtro || props.company_id_filtro ||
-     props.client_type_filtro || props.fechaDesde_filtro || props.fechaHasta_filtro)
+     props.client_type_filtro || props.fechaDesde_filtro || props.fechaHasta_filtro || props.has_phone_filtro)
 );
 </script>
 
@@ -73,6 +81,19 @@ const hasAdvancedFilters = computed(() =>
     </template>
 
     <template #advanced-filters>
+      <!-- Filtro Teléfono -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="has_phone_filtro"
+          label="TELÉFONO"
+          :items="phoneOptions"
+          density="compact"
+          variant="outlined"
+          prepend-inner-icon="tabler-phone"
+          @update:model-value="emit('update:has_phone_filtro', $event)"
+        />
+      </VCol>
+
       <!-- Tipo de Identificación -->
       <VCol cols="12" sm="6" md="2">
         <VSelect

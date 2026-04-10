@@ -68,6 +68,7 @@ const company_id_filtro= ref("");
 const client_type_filtro= ref(null);
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
+const has_phone_filtro= ref("");
 
 
 function mostarModal(){
@@ -233,6 +234,7 @@ async function actualizarTabla(){
     client_type:client_type_filtro.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
+    has_phone: has_phone_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
   statuModule.itemsClientes=respuestaApiNaturles.data
@@ -258,6 +260,7 @@ async function actualizarTablaTablaClientes(){
     client_type:client_type_filtro.value,
     fechaDesde_filtro:fechaDesde_filtro.value,
     fechaHasta_filtro:fechaHasta_filtro.value,
+    has_phone: has_phone_filtro.value,
   }
   let respuestaApiNaturles= await filtrar(filtroNaturales)
   statuModule.itemsClientes=respuestaApiNaturles.data
@@ -379,6 +382,7 @@ watch(
       tipo_identificacion_filtro,
       fechaDesde_filtro,
       fechaHasta_filtro,
+      has_phone_filtro,
       company_id_filtro,
       client_type_filtro,
       page,
@@ -409,6 +413,7 @@ function limpiarFiltros(){
   client_type_filtro.value=null
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
+  has_phone_filtro.value=""
 }
 
 async function filtrar(dataFiltro){
@@ -447,6 +452,7 @@ async function exportarPdf(){
       client_type:client_type_filtro.value,
       fechaDesde_filtro:fechaDesde_filtro.value,
       fechaHasta_filtro:fechaHasta_filtro.value,
+      has_phone: has_phone_filtro.value,
   }
   let respuestaApi= await filtrarSinPaginar(filtros)
   console.log("respuesta => ",respuestaApi)
@@ -470,6 +476,7 @@ async function exportarExcel(formato){
       client_type:client_type_filtro.value,
       fechaDesde_filtro:fechaDesde_filtro.value,
       fechaHasta_filtro:fechaHasta_filtro.value,
+      has_phone: has_phone_filtro.value,
       formato,
     }
 
@@ -525,6 +532,7 @@ onMounted(async () => {
       v-model:client_type_filtro="client_type_filtro"
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
+      v-model:has_phone_filtro="has_phone_filtro"
       :companies="statuModule.comapanies"
       @clear="limpiarFiltros"
       @add-client="mostarModal"
