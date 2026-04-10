@@ -76,6 +76,7 @@ class ClientRepository
                         ->orWhere("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("last_name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("address", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("id", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%");
                 });
             }
