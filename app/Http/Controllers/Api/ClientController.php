@@ -305,7 +305,7 @@ class ClientController extends Controller
             ? Carbon::parse($lastOrder->order_date)->format('d/m/Y')
             : null;
 
-        // Top 5 productos más comprados (Cualquier orden no cancelada)
+        // Top 5 productos más comprados (Solo compras efectivas)
         $topProducts = OrderDetail::select(
                 'order_details.product_id',
                 'products.name as product_name',
@@ -316,13 +316,13 @@ class ClientController extends Controller
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.client_id', $id)
-            ->where('orders.status', '!=', 'Cancelled')
+            ->where('orders.status', Order::COMPLETED)
             ->groupBy('order_details.product_id', 'products.name', 'laboratories.name')
             ->orderByDesc('total_quantity')
             ->limit(5)
             ->get();
 
-        // Últimos 10 productos comprados con precio en USD (Cualquier orden no cancelada)
+        // Últimos 10 productos comprados con precio en USD (Solo compras efectivas)
         $lastProducts = OrderDetail::select(
                 'order_details.product_id',
                 'products.name as product_name',
@@ -348,7 +348,7 @@ class ClientController extends Controller
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.client_id', $id)
-            ->where('orders.status', '!=', 'Cancelled')
+            ->where('orders.status', Order::COMPLETED)
             ->orderByDesc('orders.order_date')
             ->limit(10)
             ->get();
