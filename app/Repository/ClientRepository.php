@@ -123,25 +123,10 @@ class ClientRepository
 
         if (array_key_exists("has_phone", $filtros) && $filtros["has_phone"] !== null && $filtros["has_phone"] !== "") {
             if ($filtros["has_phone"] === 'yes') {
-                // Solo los que tienen un teléfono que NO es basura y NO está vacío (manejando espacios)
-                $consulta->whereNotNull('phone')
-                    ->whereRaw('TRIM(phone) != ""')
-                    ->where('phone', 'NOT REGEXP', '^[0]+$')
-                    ->where('phone', 'NOT REGEXP', '^04[12][246]$')
-                    ->where(function($q) {
-                        $q->whereRaw('LENGTH(phone) >= 10');
-                    });
+                $consulta->whereNotNull('phone')->where('phone', '!=', '');
             } elseif ($filtros["has_phone"] === 'no') {
-                // Nulos, vacíos (con o sin espacios) o identificados como basura
-                $consulta->where(function ($query) {
-                    $query->whereNull('phone')
-                        ->orWhereRaw('TRIM(phone) = ""')
-                        ->orWhere('phone', 'REGEXP', '^[0]+$')
-                        ->orWhere('phone', 'REGEXP', '^04[12][246]$')
-                        ->orWhere('phone', 'REGEXP', '^4[12][246]$')
-                        ->orWhere('phone', 'REGEXP', '^04$')
-                        ->orWhere('phone', '12345678')
-                        ->orWhereRaw('LENGTH(phone) < 10');
+                $consulta->where(function($q) {
+                    $q->whereNull('phone')->orWhere('phone', '=', '');
                 });
             }
         }

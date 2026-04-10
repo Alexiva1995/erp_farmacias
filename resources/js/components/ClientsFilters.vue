@@ -85,24 +85,22 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="6" md="2">
         <VSelect
           :model-value="has_phone_filtro"
-          label="¿TIENE TELÉFONO?"
+          label="TELÉFONO"
           :items="phoneOptions"
           density="compact"
           variant="outlined"
-          hide-details
           prepend-inner-icon="tabler-phone"
           @update:model-value="emit('update:has_phone_filtro', $event)"
         />
       </VCol>
 
       <!-- Tipo de Identificación -->
-      <VCol cols="12" sm="6" md="1">
+      <VCol cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.tipo_identificacion_filtro"
           :items="['V-', 'J-', 'G-', 'E-']"
-          placeholder="TIPO"
+          placeholder="Tipo ID"
           density="compact"
-          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-id"
@@ -111,15 +109,15 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Empresa -->
-      <VCol cols="12" sm="12" md="3">
+      <VCol cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.company_id_filtro"
           :items="props.companies"
           item-title="name"
           item-value="id"
-          placeholder="EMPRESA"
+          placeholder="BUSCAR EMPRESA..."
+          persistent-placeholder
           density="compact"
-          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-building"
@@ -132,9 +130,8 @@ const hasAdvancedFilters = computed(() =>
         <VSelect
           :model-value="props.client_type_filtro"
           :items="clientTypeOptions"
-          placeholder="CATEGORÍA"
+          placeholder="Categoría"
           density="compact"
-          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-user-check"
@@ -146,9 +143,8 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="6" md="2">
         <AppDateTimePicker
           :model-value="props.fechaDesde_filtro"
-          placeholder="DESDE"
+          placeholder="Desde"
           clearable
-          variant="outlined"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-calendar"
@@ -161,9 +157,8 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="6" md="2">
         <AppDateTimePicker
           :model-value="props.fechaHasta_filtro"
-          placeholder="HASTA"
+          placeholder="Hasta"
           clearable
-          variant="outlined"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-calendar"

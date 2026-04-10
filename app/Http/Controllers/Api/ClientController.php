@@ -171,6 +171,10 @@ class ClientController extends Controller
             $filtros["client_type"] = $request->client_type;
         }
 
+        if ($request->filled("has_phone")) {
+            $filtros["has_phone"] = $request->has_phone;
+        }
+
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
@@ -214,6 +218,10 @@ class ClientController extends Controller
             $filtros["sortBy"] = $request->sortBy;
         }
 
+        if ($request->filled("has_phone")) {
+            $filtros["has_phone"] = $request->has_phone;
+        }
+
         $repuesta = $this->client->filterWithoutPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
@@ -238,6 +246,10 @@ class ClientController extends Controller
         if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
             $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
+        }
+
+        if ($request->filled("has_phone")) {
+            $filtros["has_phone"] = $request->has_phone;
         }
 
         if ($request->filled("company_id")) {
