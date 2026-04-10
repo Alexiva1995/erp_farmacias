@@ -11,6 +11,7 @@ use App\Contracts\Lottery;
 use App\Contracts\PurchaseOrder;
 use App\Contracts\Role;
 use App\Contracts\SocialBenefit;
+use App\Contracts\Specialty;
 use App\Contracts\Transaction;
 use App\Contracts\Location as LocationContract;
 use App\Http\Controllers\Api\ClientController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\PayslipController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\Api\SocialBenefitController;
+use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\LocationController;
 use App\Models\Payslip;
 use App\Services\ClientServices;
@@ -63,6 +65,7 @@ use App\Services\PurchaseOrderServices;
 use App\Services\RoleServices;
 use App\Services\PayslipServices;
 use App\Services\SocialBenefitServices;
+use App\Services\SpecialtyServices;
 use App\Services\TransactionServices;
 use App\Services\LocationServices;
 use App\Contracts\Accounting\BalanceRepositoryInterface;
@@ -107,6 +110,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(DoctorController::class)
             ->needs(Doctor::class)
             ->give(DoctorServices::class);
+
+        $this->app->when(DoctorController::class)
+            ->needs(Specialty::class)
+            ->give(SpecialtyServices::class);
 
         $this->app->when(LotteryController::class)
             ->needs(Lottery::class)

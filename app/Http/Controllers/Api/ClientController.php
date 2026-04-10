@@ -410,4 +410,21 @@ class ClientController extends Controller
 
         return ApiResponse::success($data, "Estadísticas del cliente obtenidas exitosamente", 200);
     }
+
+    public function bulkCleanup(): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+            $count = $this->client->bulkCleanupInvalid();
+            DB::commit();
+
+            return ApiResponse::success([
+                'deleted_at' => now(),
+                'count' => $count
+            ], "Limpieza completada: {$count} clientes eliminados.", 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return ApiResponse::error("Error al realizar la limpieza masiva: " . $e->getMessage(), 500);
+        }
+    }
 }

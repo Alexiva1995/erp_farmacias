@@ -4,6 +4,7 @@ const props= defineProps({
   titulo: {type: String, required: true},
   formData: {type: Object, default: () => []},
   formError: {type: Object, default: () => []},
+  specialties: {type: Array, default: () => []},
 })
 
 const emit= defineEmits(["modalClose", 'save', 'clearErrorForm'])
@@ -114,6 +115,21 @@ function submitForm(){
                     :error-messages="formError.identification"
                     variant="outlined"
                     density="comfortable"
+                    class="shadow-sm"
+                  />
+                </VCol>
+                <VCol cols="12">
+                   <VSelect
+                    v-model="formData.specialty_id"
+                    :items="props.specialties"
+                    item-title="name"
+                    item-value="id"
+                    label="Especialidad Médica"
+                    placeholder="Seleccione la especialidad"
+                    :error-messages="formError.specialty_id"
+                    variant="outlined"
+                    density="comfortable"
+                    prepend-inner-icon="tabler-award"
                     class="shadow-sm"
                   />
                 </VCol>

@@ -322,6 +322,49 @@ async function eliminarCliente(id){
   }
 }
 
+async function handleBulkCleanup() {
+  const result = await Swal.fire({
+    title: '¿Limpiar clientes inválidos?',
+    html: `
+      <div class="text-start">
+        <p>Esta acción eliminará masivamente a los clientes que cumplan <b>ambos</b> criterios:</p>
+        <ul class="mt-2">
+          <li><b>Sin compras:</b> No tienen ninguna orden registrada.</li>
+          <li><b>Datos inválidos:</b> Sin teléfono, teléfono "0", genérico (12345678) o que no cumpla con prefijos de Venezuela.</li>
+        </ul>
+        <p class="text-error mt-4 font-weight-bold">Nota: Se utilizará SoftDelete por seguridad.</p>
+      </div>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, limpiar base de datos',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+    },
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    loading.value = true;
+    try {
+      const response = await axios.post('/crm/clients/bulk-cleanup');
+      if (response.status === 200) {
+        const count = response.data.data.count;
+        toast.success(`Limpieza exitosa: ${count} clientes eliminados.`);
+        await actualizarTabla();
+      }
+    } catch (error) {
+      console.error("Error en limpieza masiva:", error);
+      toast.error(error.response?.data?.message || "Hubo un error al intentar limpiar la base de datos.");
+    } finally {
+      loading.value = false;
+    }
+  }
+}
+
 const updateTableOptions = options => {
   // console.log(options)
   page.value = options.page
@@ -487,6 +530,7 @@ onMounted(async () => {
       @add-client="mostarModal"
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
+      @bulk-cleanup="handleBulkCleanup"
     />
     <ClientFormDialoge
       :companies="statuModule.comapanies"

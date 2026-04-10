@@ -364,6 +364,10 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get("/help/check", [DoctorController::class, "helpCheck"]);
         });
 
+        Route::prefix("specialties")->group(function () {
+            Route::get("/", [SpecialtyController::class, "index"]);
+        });
+
         Route::prefix("companies")->group(function () {
             Route::post("/", [CompanyController::class, "create"]);
             Route::get("/", [CompanyController::class, "consultAll"]);
@@ -389,6 +393,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/pending", [ClientController::class, "pending"]);
             Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
             Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
+            Route::post("/bulk-cleanup", [ClientController::class, "bulkCleanup"]);
         });
 
         Route::prefix("lottery")->group(function () {

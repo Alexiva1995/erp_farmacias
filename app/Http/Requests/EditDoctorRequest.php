@@ -32,6 +32,7 @@ class EditDoctorRequest extends FormRequest
             "name"                   =>    "required|string|max:255",
             "identification"         =>    "required|string",
             "address"                =>    "nullable|string",
+            "specialty_id"           =>    "required|exists:specialties,id",
         ];
     }
 
@@ -49,7 +50,10 @@ class EditDoctorRequest extends FormRequest
             "identification.required" => "La identificación es obligatoria",
             "identification.string" => "La identificación debe ser texto",
 
-            "address.string" => "La dirección debe ser texto"
+            "address.string" => "La dirección debe ser texto",
+
+            "specialty_id.required" => "La especialidad es obligatoria",
+            "specialty_id.exists" => "La especialidad seleccionada no es válida",
         ];
     }
 
@@ -67,6 +71,7 @@ class EditDoctorRequest extends FormRequest
             "name"                    =>    $this->name,
             "identification"          =>    $this->identification,
             "address"                 =>    $this->address,
+            "specialty_id"            =>    $this->specialty_id,
         ]);
     }
 }

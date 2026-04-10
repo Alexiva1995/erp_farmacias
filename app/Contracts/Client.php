@@ -30,4 +30,6 @@ interface Client
     public function exportExcel(array $filtros): ClientsExport;
 
     public function updateCompany(int $client_id, int $company_id, bool $status): ?Model;
+
+    public function bulkCleanupInvalid(): int;
 }

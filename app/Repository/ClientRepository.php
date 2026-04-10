@@ -173,4 +173,19 @@ class ClientRepository
 
         return $client;
     }
+
+    public function bulkCleanupInvalid(): int
+    {
+        // Limpiamos clientes que NO tienen órdenes y tienen datos de contacto basura
+        // Incluye: sin teléfono, teléfono "0", genéricos o que no cumplen prefijos de Venezuela
+        return Client::whereDoesntHave('orders')
+            ->where(function ($query) {
+                $query->whereNull('phone')
+                    ->orWhere('phone', '')
+                    ->orWhere('phone', '0')
+                    ->orWhere('phone', '12345678')
+                    ->orWhere('phone', 'NOT REGEXP', '^(0?412|0?414|0?424|0?416|0?426|0?422)');
+            })
+            ->delete();
+    }
 }

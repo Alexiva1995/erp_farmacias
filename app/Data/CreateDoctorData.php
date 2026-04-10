@@ -13,5 +13,6 @@ class CreateDoctorData extends Data
         public string $name,
         public string $identification,
         public string|null $address,
+        public int|null $specialty_id,
     ) {}
 }

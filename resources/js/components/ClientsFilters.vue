@@ -24,6 +24,7 @@ const emit = defineEmits([
   "add-client",
   "export-pdf",
   "export-excel",
+  "bulk-cleanup",
 ]);
 
 const clientTypeOptions = [
@@ -56,6 +57,21 @@ const hasAdvancedFilters = computed(() =>
     @add="emit('add-client')"
     @export="(fmt) => fmt === 'pdf' ? emit('export-pdf') : emit('export-excel', fmt)"
   >
+    <template #actions-extra>
+      <!-- Botón Limpieza Masiva -->
+      <VBtn
+        icon
+        color="warning"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm"
+        @click="emit('bulk-cleanup')"
+      >
+        <VIcon icon="tabler-brush" />
+        <VTooltip activator="parent" location="top">Limpiar Clientes Inválidos</VTooltip>
+      </VBtn>
+    </template>
+
     <template #advanced-filters>
       <!-- Tipo de Identificación -->
       <VCol cols="12" sm="6" md="2">

@@ -15,7 +15,13 @@ class Doctor extends Model
         'name',
         'identification',
         'address',
+        'specialty_id',
     ];
+
+    public function specialty()
+    {
+        return $this->belongsTo(Specialty::class);
+    }
 
     public function offers()
     {

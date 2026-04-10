@@ -20,17 +20,17 @@ class DoctorRepository
     public function edit(array $data): Model
     {
         Doctor::where("id", "=", $data["id"])->update($data);
-        return Doctor::find($data["id"]);
+        return Doctor::with('specialty')->find($data["id"]);
     }
 
     public function consultAll(): Collection
     {
-        return Doctor::query()->orderBy("name", "ASC")->get();
+        return Doctor::with('specialty')->orderBy("name", "ASC")->get();
     }
 
     public function consultById(string $id): ?Model
     {
-        return Doctor::find($id);
+        return Doctor::with('specialty')->find($id);
     }
 
     public function deleteById(string $id): void
@@ -40,14 +40,17 @@ class DoctorRepository
 
     public function builerPaginate($filtros): Builder
     {
-        $consulta = Doctor::query();
+        $consulta = Doctor::with('specialty');
 
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
                 $consulta->where(function ($query) use ($filtros) {
                     $query->where("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
                         ->orWhere("address", "like", "%" . $filtros["buscardor_filtro"] . "%")
-                        ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%");
+                        ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhereHas('specialty', function ($q) use ($filtros) {
+                            $q->where('name', 'like', "%" . $filtros["buscardor_filtro"] . "%");
+                        });
                 });
             }
         }

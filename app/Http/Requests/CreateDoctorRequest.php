@@ -35,6 +35,7 @@ class CreateDoctorRequest extends FormRequest
             "name"                   =>    "required|string|max:255",
             "identification"         =>    "required|string|unique:doctors",
             "address"                =>    "nullable|string",
+            "specialty_id"           =>    "required|exists:specialties,id",
         ];
     }
 
@@ -49,7 +50,10 @@ class CreateDoctorRequest extends FormRequest
             "identification.string" => "La identificación debe ser texto",
             "identification.unique" => "La identificación ya está registrada",
 
-            "address.string" => "La dirección debe ser texto"
+            "address.string" => "La dirección debe ser texto",
+
+            "specialty_id.required" => "La especialidad es obligatoria",
+            "specialty_id.exists" => "La especialidad seleccionada no es válida",
         ];
     }
 
@@ -66,6 +70,7 @@ class CreateDoctorRequest extends FormRequest
             "name"                    =>    $this->name,
             "identification"          =>    $this->identification,
             "address"                 =>    $this->address,
+            "specialty_id"            =>    $this->specialty_id,
         ]);
     }
 }

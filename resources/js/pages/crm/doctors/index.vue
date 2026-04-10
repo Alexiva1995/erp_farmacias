@@ -20,6 +20,7 @@ const statuModule= reactive({
   items:[],
   total:0,
   comapanies:[],
+  specialties:[],
 })
 
 const formulario= reactive({
@@ -27,6 +28,7 @@ const formulario= reactive({
   identification:"",
   name:"",
   address:"",
+  specialty_id:null,
 })
 
 const formularioError= reactive({
@@ -34,6 +36,7 @@ const formularioError= reactive({
   identification:"",
   name:"",
   address:"",
+  specialty_id:"",
 })
 
 const loading = ref(false)
@@ -59,6 +62,7 @@ function insertarDatosAlFormulario(datos){
   formulario.identification=datos.identification
   formulario.name=datos.name
   formulario.address=remplazarSiEsNullPor(datos.address)
+  formulario.specialty_id=datos.specialty_id
 }
 
 function limpiarDatosFormulario(){
@@ -66,14 +70,15 @@ function limpiarDatosFormulario(){
   formulario.identification=""
   formulario.name=""
   formulario.address=""
+  formulario.specialty_id=null
 }
 
 function limpiarErroresFormulario(){
   formularioError.id=""
   formularioError.identification=""
-  formularioError.type_company=""
   formularioError.name=""
   formularioError.address=""
+  formularioError.specialty_id=""
 }
 
 function cargarErrores(errores){
@@ -81,6 +86,7 @@ function cargarErrores(errores){
   formularioError.identification=(errores.identification)?errores.identification.join(", "):""
   formularioError.name=(errores.name)?errores.name.join(", "):""
   formularioError.address=(errores.address)?errores.address.join(", "):""
+  formularioError.specialty_id=(errores.specialty_id)?errores.specialty_id.join(", "):""
 }
 
 function mostarModal(){
@@ -125,6 +131,16 @@ async function filtrarSinPaginar(dataFiltro){
   // console.log("respues api => ",respuestaApi)
 
   return [...respuestaApi.data.data]
+}
+
+async function fetchSpecialties(){
+  try {
+    const response = await axios.get("/crm/specialties")
+    statuModule.specialties = response.data.data
+  } catch (error) {
+    console.error("Error fetching specialties:", error)
+    toast.error("Error al cargar las especialidades")
+  }
 }
 
 
@@ -329,6 +345,7 @@ function remplazarSiEsNullPor(dato,por=""){
 
 onMounted(async () => {
   await actualizarTabla()
+  await fetchSpecialties()
 })
 </script>
 <template>
@@ -347,6 +364,7 @@ onMounted(async () => {
       :titulo="modal.titulo"
       :form-data="formulario"
       :form-error="formularioError"
+      :specialties="statuModule.specialties"
       @modal-close="cerrarModal"
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"

@@ -79,4 +79,9 @@ class ClientServices implements Client
             return $this->clientRepository->removerAssignCompany($client_id);
         }
     }
+
+    public function bulkCleanupInvalid(): int
+    {
+        return $this->clientRepository->bulkCleanupInvalid();
+    }
 }
