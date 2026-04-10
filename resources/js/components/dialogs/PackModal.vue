@@ -400,6 +400,7 @@ watch(
   () => props.isDialogVisible,
   async (newVal) => {
     if (newVal) {
+      resetForm(); // Limpiar siempre antes de abrir
       await loadAvailableProducts();
       if (props.packData && props.packData.id) {
         await loadPackData(props.packData.id);
