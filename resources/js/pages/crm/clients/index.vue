@@ -324,24 +324,24 @@ async function eliminarCliente(id){
 
 async function handleBulkCleanup() {
   const result = await Swal.fire({
-    title: '¿Limpiar clientes inválidos?',
+    title: '¿Corregir teléfonos inválidos?',
     html: `
       <div class="text-start">
-        <p>Esta acción eliminará masivamente a los clientes que cumplan <b>ambos</b> criterios:</p>
+        <p>Esta acción buscará y <b>reseteará</b> los números de teléfono basura en toda la base de datos.</p>
         <ul class="mt-2">
-          <li><b>Sin compras:</b> No tienen ninguna orden registrada.</li>
-          <li><b>Datos inválidos:</b> Sin teléfono, teléfono "0", genérico (12345678) o que no cumpla con prefijos de Venezuela.</li>
+          <li><b>Ejemplos:</b> "04", "0424", "00000000", "12345678".</li>
+          <li><b>Resultado:</b> Los clientes permanecerán en el sistema, pero su teléfono quedará como <i>"Sin Registrar"</i>.</li>
         </ul>
-        <p class="text-error mt-4 font-weight-bold">Nota: Se utilizará SoftDelete por seguridad.</p>
+        <p class="text-info mt-4 font-weight-bold">Nota: No se eliminará ningún cliente.</p>
       </div>
     `,
-    icon: 'warning',
+    icon: 'info',
     showCancelButton: true,
-    confirmButtonText: 'Sí, limpiar base de datos',
+    confirmButtonText: 'Sí, corregir base de datos',
     cancelButtonText: 'Cancelar',
     buttonsStyling: false,
     customClass: {
-      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-info v-btn--density-default v-btn--size-default v-btn--variant-elevated',
       cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
     },
     reverseButtons: true,
@@ -353,12 +353,12 @@ async function handleBulkCleanup() {
       const response = await axios.post('/crm/clients/bulk-cleanup');
       if (response.status === 200) {
         const count = response.data.data.count;
-        toast.success(`Limpieza exitosa: ${count} clientes eliminados.`);
+        toast.success(`Limpieza completada: ${count} teléfonos corregidos.`);
         await actualizarTabla();
       }
     } catch (error) {
       console.error("Error en limpieza masiva:", error);
-      toast.error(error.response?.data?.message || "Hubo un error al intentar limpiar la base de datos.");
+      toast.error(error.response?.data?.message || "Hubo un error al intentar corregir los teléfonos.");
     } finally {
       loading.value = false;
     }

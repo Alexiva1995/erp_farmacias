@@ -61,14 +61,14 @@ const hasAdvancedFilters = computed(() =>
       <!-- Botón Limpieza Masiva -->
       <VBtn
         icon
-        color="warning"
+        color="info"
         variant="tonal"
         size="38"
         class="rounded-circle shadow-sm"
         @click="emit('bulk-cleanup')"
       >
         <VIcon icon="tabler-brush" />
-        <VTooltip activator="parent" location="top">Limpiar Clientes Inválidos</VTooltip>
+        <VTooltip activator="parent" location="top">Corregir Teléfonos Inválidos</VTooltip>
       </VBtn>
     </template>
 

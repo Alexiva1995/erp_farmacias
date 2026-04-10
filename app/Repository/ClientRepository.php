@@ -177,16 +177,20 @@ class ClientRepository
 
     public function bulkCleanupInvalid(): int
     {
-        // Limpiamos clientes que NO tienen órdenes y tienen datos de contacto basura
-        // Incluye: sin teléfono, teléfono "0", genéricos o que no cumplen prefijos de Venezuela
-        return Client::whereDoesntHave('orders')
-            ->where(function ($query) {
-                $query->whereNull('phone')
-                    ->orWhere('phone', '')
-                    ->orWhere('phone', '0')
-                    ->orWhere('phone', '12345678')
-                    ->orWhere('phone', 'NOT REGEXP', '^(0?412|0?414|0?424|0?416|0?426|0?422)');
+        // En lugar de borrar, limpiamos los teléfonos basura poniéndolos en NULL
+        // Esto afecta a: solo ceros, solo prefijos (0424, 04, etc), o números muy cortos
+        return Client::where(function ($query) {
+                $query->where('phone', 'REGEXP', '^[0]+$')             // Solo ceros
+                    ->orWhere('phone', 'REGEXP', '^04[12][246]$')      // Solo el prefijo (0412, 0424, etc)
+                    ->orWhere('phone', 'REGEXP', '^4[12][246]$')       // Solo el prefijo sin el 0
+                    ->orWhere('phone', 'REGEXP', '^04$')               // Solo "04"
+                    ->orWhere('phone', '12345678')                     // Genérico
+                    ->orWhere(function($q) {
+                        $q->whereNotNull('phone')
+                          ->where('phone', '!=', '')
+                          ->whereRaw('LENGTH(phone) < 10');            // Longitud insuficiente para Vzla
+                    });
             })
-            ->delete();
+            ->update(['phone' => null]);
     }
 }
