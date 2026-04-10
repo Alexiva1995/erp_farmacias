@@ -254,8 +254,7 @@ const getVolumeRange = (scales) => {
                         size="36"
                         class="rounded-circle shadow-sm"
                         @click="emit('delete-offer', item.raw)"
-                      />
-                    </div>
+                    />
                   </div>
                 </div>
               </VCard>

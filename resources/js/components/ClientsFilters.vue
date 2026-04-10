@@ -78,7 +78,8 @@ const hasAdvancedFilters = computed(() =>
           :items="props.companies"
           item-title="name"
           item-value="id"
-          placeholder="Empresa"
+          placeholder="BUSCAR EMPRESA..."
+          persistent-placeholder
           density="compact"
           hide-details
           clearable
