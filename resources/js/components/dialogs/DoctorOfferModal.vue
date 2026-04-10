@@ -201,7 +201,6 @@ watch(
             <!-- Selector de Médico -->
             <VCol
               cols="12"
-              md="8"
             >
               <div class="mb-4">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Médico Aliado</span>
@@ -229,29 +228,6 @@ watch(
                   bg-color="grey-lighten-4"
                   class="rounded-lg font-weight-bold"
                   hide-details
-                />
-              </div>
-            </VCol>
-
-            <VCol
-              cols="12"
-              md="4"
-            >
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Estado de la Oferta</span>
-                <VSelect
-                  v-model="doctorsOfferData.is_active"
-                  :items="[
-                    { value: true, title: 'OBSEQUIO ACTIVO' },
-                    { value: false, title: 'OBSEQUIO INACTIVO' },
-                  ]"
-                  item-title="title"
-                  item-value="value"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg font-weight-black"
-                  :disabled="isSaving"
                 />
               </div>
             </VCol>
