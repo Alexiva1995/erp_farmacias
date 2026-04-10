@@ -15,6 +15,7 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Nombre', key: 'name', sortable: true },
   { title: 'Identificación', key: 'identification', sortable: true },
+  { title: 'Especialidad', key: 'specialty.name', sortable: true },
   { title: 'Dirección', key: 'address', sortable: false },
   { 
     title: 'Fecha', 
@@ -59,6 +60,19 @@ const handleMobilePageChange = (newPage) => {
           <span class="font-weight-bold uppercase text-high-emphasis">{{ item.name }}</span>
         </template>
 
+        <template #item.specialty.name="{ item }">
+          <VChip
+            v-if="item.specialty"
+            color="primary"
+            size="small"
+            variant="tonal"
+            class="font-weight-bold uppercase"
+          >
+            {{ item.specialty.name }}
+          </VChip>
+          <span v-else class="text-disabled text-xs font-italic uppercase">Sin especialidad</span>
+        </template>
+
         <template #item.acciones="{ item }">
           <div class="d-flex justify-center gap-1">
             <IconBtn @click="emit('edit', item.id)" color="warning" variant="tonal" size="small">
@@ -95,6 +109,10 @@ const handleMobilePageChange = (newPage) => {
                 <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
                   {{ item.name }}
                 </h3>
+                <div v-if="item.specialty" class="d-flex align-center mt-1">
+                  <VIcon icon="tabler-award" size="14" class="text-primary me-1" />
+                  <span class="text-xs font-weight-bold text-primary uppercase">{{ item.specialty.name }}</span>
+                </div>
               </div>
               <div class="d-flex gap-1">
                 <IconBtn

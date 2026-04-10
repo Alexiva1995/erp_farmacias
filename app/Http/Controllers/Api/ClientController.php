@@ -275,12 +275,10 @@ class ClientController extends Controller
             return ApiResponse::error("El cliente no fue encontrado", 404);
         }
 
-        // Órdenes completadas del cliente
-        $totalOrders = Order::where('client_id', $id)
-            ->where('status', Order::COMPLETED)
-            ->count();
+        // Total de órdenes (incluyendo pendientes, abandonadas, etc. para mostrar actividad real)
+        $totalOrders = Order::where('client_id', $id)->count();
 
-        // Total gastado en USD (manejo robusto: usa total_amount_usd si existe, si no y es USD usa total_amount)
+        // Total gastado en USD (solo ventas COMPLETED)
         $totalSpent = (float) Order::where('client_id', $id)
             ->where('status', Order::COMPLETED)
             ->sum(DB::raw('

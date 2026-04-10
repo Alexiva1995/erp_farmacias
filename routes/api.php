@@ -62,6 +62,7 @@ use App\Http\Controllers\Api\CashClosureController;
 use App\Http\Controllers\Api\FinancialStatementController;
 use App\Http\Controllers\Api\GeneralSettingController;
 use App\Http\Controllers\Api\ProductFailureController;
+use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Public\SupplierPublicUploadController;
 use App\Http\Controllers\Api\LocationController;
