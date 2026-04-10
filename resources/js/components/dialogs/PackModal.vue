@@ -54,16 +54,16 @@ const loadAvailableProducts = async (search = "") => {
     const trimmedSearch = String(search ?? "").trim();
     const params = {
       q: trimmedSearch || undefined,
-      itemsPerPage: 100,
-      isStrictSearch: false,
+      itemsPerPage: 500,
       sortBy: "name",
       orderBy: "asc",
     };
-    // Si es solo número, enviar product_id (snake_case) para búsqueda directa por ID
-    if (/^\d+$/.test(trimmedSearch)) {
-      params.product_id = parseInt(trimmedSearch, 10);
-    }
-    Object.keys(params).forEach((k) => params[k] === undefined && delete params[k]);
+    const params = {
+      q: trimmedSearch || undefined,
+      itemsPerPage: 500,
+      sortBy: "name",
+      orderBy: "asc",
+    };
 
     const response = await axios.get("/products", { params });
     const items = Array.isArray(response.data?.data) ? response.data.data : [];
@@ -450,7 +450,7 @@ watch(
       </VCardTitle>
 
       <VCardText class="pa-0 bg-light">
-        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-height: 75vh;">
+        <div class="pa-3 pa-sm-4">
           <!-- Información del Pack -->
           <div class="d-flex align-center gap-2 mb-4">
             <div class="header-indicator primary shadow-sm"></div>
@@ -520,8 +520,8 @@ watch(
             </VBtn>
           </div>
 
-          <div v-for="(item, index) in formData.pack_products" :key="index" class="mb-4">
-            <VCard v-if="item" variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 relative overflow-visible">
+          <div v-for="(item, index) in formData.pack_products" :key="index" class="mb-2">
+            <VCard v-if="item" variant="flat" class="border pa-2 pa-sm-3 bg-white rounded-lg elevation-1 relative overflow-visible">
               <!-- Botón eliminar flotante -->
               <VBtn
                 v-if="formData.pack_products.length > 1"
@@ -534,17 +534,17 @@ watch(
                 @click="removeProductRow(index)"
               />
 
-              <VRow dense align="end" class="align-center-mobile">
+              <VRow dense class="align-center-mobile py-1">
                 <VCol cols="12" md="6">
                   <AppAutocomplete
                     v-model="item.product"
                     :items="availableProducts"
                     item-title="name"
                     item-value="id"
-                    label="Seleccionar Producto"
-                    placeholder="Buscar producto..."
+                    label="Producto"
+                    placeholder="Buscar por nombre, ID o código..."
                     variant="outlined"
-                    density="comfortable"
+                    density="compact"
                     hide-details
                     :loading="loadingProducts"
                     return-object
@@ -554,39 +554,39 @@ watch(
                     class="shadow-sm"
                   >
                     <template #item="{ props: itemProps, item: productItem }">
-                      <VListItem v-bind="itemProps" :title="productItem.raw.name" :subtitle="`ID: #${productItem.raw.id} | Stock: ${productItem.raw.stock}`" />
+                      <VListItem v-bind="itemProps" :title="productItem.raw.name" :subtitle="`ID: #${productItem.raw.id} | Stock: ${productItem.raw.stock} | Código: ${productItem.raw.barcode || 'N/A'}`" />
                     </template>
                   </AppAutocomplete>
                 </VCol>
-                <VCol cols="12" md="2">
+                <VCol cols="4" md="2">
                   <AppTextField
                     v-model.number="item.quantity"
                     label="Cant."
                     type="number"
                     min="1"
-                    density="comfortable"
+                    density="compact"
                     hide-details
                     @update:model-value="calculateTotalPrice()"
                     class="shadow-sm text-center"
                   />
                 </VCol>
-                <VCol cols="12" md="2">
+                <VCol cols="4" md="2">
                   <AppTextField
                     v-model.number="item.discount_percentage"
                     label="Desc. %"
                     type="number"
                     min="0"
                     max="100"
-                    density="comfortable"
+                    density="compact"
                     hide-details
                     @update:model-value="calculateTotalPrice()"
                     class="shadow-sm text-center"
                   />
                 </VCol>
-                <VCol cols="12" md="2" class="text-end pb-3">
-                  <div class="d-flex flex-column">
-                    <span class="text-super-xs text-disabled uppercase font-weight-black mb-1">Subtotal Item</span>
-                    <span class="text-h6 font-weight-black text-success leading-none mb-1">
+                <VCol cols="4" md="2" class="text-end">
+                  <div class="d-flex flex-column pe-2">
+                    <span class="text-super-xs text-disabled uppercase font-weight-black">Subtotal</span>
+                    <span class="text-subtitle-1 font-weight-black text-success leading-none">
                       {{ formatCurrency(calculateProductPrice(item), 'USD') }}
                     </span>
                   </div>
