@@ -290,6 +290,7 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::post('/', [CompanyOfferController::class, "store"]);
                 Route::put('/{id}', [CompanyOfferController::class, "update"]);
                 Route::delete('/{id}', [CompanyOfferController::class, 'destroy']);
+                Route::post('/{id}/recalculate', [CompanyOfferController::class, "recalculate"]);
             });
             Route::prefix("doctor-offer")->group(function () {
                 Route::get('/', [DoctorOfferController::class, "index"]);

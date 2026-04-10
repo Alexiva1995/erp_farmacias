@@ -261,4 +261,40 @@ class CompanyOfferController extends Controller
         }
     }
 
+    public function recalculate($id): JsonResponse
+    {
+        try {
+            $offer = CompanyOffer::with('scales')->findOrFail($id);
+
+            // 1. Obtener IDs de clientes asociados a la empresa
+            $clientIds = \App\Models\Client::where('company_id', $offer->company_id)->pluck('id');
+
+            // 2. Sumar ventas completadas en el periodo de la oferta (en USD para consistencia)
+            $totalSales = \App\Models\Order::whereIn('client_id', $clientIds)
+                ->where('status', \App\Models\Order::COMPLETED)
+                ->whereBetween('created_at', [$offer->start_date . ' 00:00:00', $offer->end_date . ' 23:59:59'])
+                ->sum('total_amount_usd');
+
+            // 3. Determinar el nuevo estado basándose en la escala mínima
+            $minRequired = $offer->scales->min('min_amount') ?? 0;
+            $newStatus = $totalSales >= $minRequired;
+
+            // 4. Actualizar estado
+            $offer->update(['is_active' => $newStatus]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Recálculo completado exitosamente.',
+                'total_sales' => (float) round($totalSales, 2),
+                'min_required' => (float) $minRequired,
+                'is_active' => (bool) $newStatus,
+                'data' => $offer->load(['company', 'scales'])
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al recalcular la oferta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

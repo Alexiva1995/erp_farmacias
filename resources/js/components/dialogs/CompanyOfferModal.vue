@@ -151,6 +151,13 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
+// Configuración dinámica para la fecha de fin
+const endDateConfig = computed(() => ({
+  altFormat: "Y-m-d",
+  dateFormat: "Y-m-d",
+  minDate: companiesOfferData.value.start_date || undefined,
+}));
+
 watch(
   () => props.modelValue,
   (isVisible) => {
@@ -224,9 +231,7 @@ watch(
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-6 overflow-y-auto" style="max-height: 70vh;">
-          
+      <VCardText class="pa-6 bg-light">
           <!-- Datos Generales -->
           <div class="d-flex align-center gap-2 mb-4">
             <div class="header-indicator primary shadow-sm"></div>
@@ -245,10 +250,12 @@ watch(
                   placeholder="BUSCAR EMPRESA..."
                   variant="outlined"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   clearable
                   :disabled="isSaving"
                   class="premium-input-compact mb-4"
+                  :error="!!formErrors.company_id"
+                  :error-messages="formErrors.company_id"
                 />
               </VCol>
 
@@ -264,8 +271,10 @@ watch(
                   item-value="value"
                   variant="outlined"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   class="premium-input-compact mb-4"
+                  :error="!!formErrors.is_active"
+                  :error-messages="formErrors.is_active"
                 />
               </VCol>
 
@@ -276,8 +285,10 @@ watch(
                   placeholder="YYYY-MM-DD"
                   prepend-inner-icon="tabler-calendar-event"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   class="premium-input-compact"
+                  :error="!!formErrors.start_date"
+                  :error-messages="formErrors.start_date"
                   :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 />
               </VCol>
@@ -289,9 +300,11 @@ watch(
                   placeholder="YYYY-MM-DD"
                   prepend-inner-icon="tabler-calendar-off"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   class="premium-input-compact"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  :error="!!formErrors.end_date"
+                  :error-messages="formErrors.end_date"
+                  :config="endDateConfig"
                 />
               </VCol>
             </VRow>
@@ -385,8 +398,6 @@ watch(
             <span class="text-super-xs uppercase font-weight-black opacity-75 d-block mb-1">Nota sobre escalas</span>
             <span class="text-caption">Define el porcentaje de descuento que se aplicará según el monto total de la venta para esta empresa.</span>
           </VAlert>
-
-        </div>
       </VCardText>
 
       <VDivider />

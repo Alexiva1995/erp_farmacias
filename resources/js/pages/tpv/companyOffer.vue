@@ -6,7 +6,8 @@ import CompanyViewOffer from "@/components/dialogs/CompanyViewOffer.vue";
 import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 // Estados reactivos
 const companiesOfferData = ref([]);
@@ -172,6 +173,60 @@ const handleEditOffer = async (offer) => {
   }
 };
 
+// Recalcular una Oferta
+const handleRecalculateOffer = async (offer) => {
+  const result = await Swal.fire({
+    title: "¿Recalcular Estado?",
+    text: `Se analizarán las ventas acumuladas de ${offer.company_name} vinculadas a esta oferta para determinar si debe permanecer activa.`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonColor: "rgb(var(--v-theme-primary))",
+    cancelButtonColor: "rgb(var(--v-theme-secondary))",
+    confirmButtonText: "Sí, recalcular",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'rounded-lg',
+      cancelButton: 'rounded-lg'
+    }
+  });
+
+  if (result.isConfirmed) {
+    loadingCompanies.value = true;
+    try {
+      const response = await axios.post(`/tpv/promotions/company-offer/${offer.id}/recalculate`);
+      
+      if (response.data.success) {
+        const { total_sales, min_required, is_active } = response.data;
+        
+        await Swal.fire({
+          title: "Recálculo Exitoso",
+          html: `
+            <div class="text-start">
+              <p><b>Ventas Acumuladas:</b> ${formatCurrency(total_sales, 'USD')}</p>
+              <p><b>Mínimo Requerido:</b> ${formatCurrency(min_required, 'USD')}</p>
+              <p><b>Nuevo Estado:</b> <span class="badge ${is_active ? 'badge-success' : 'badge-danger'}">${is_active ? 'ACTIVA' : 'INACTIVA'}</span></p>
+            </div>
+          `,
+          icon: is_active ? "success" : "warning",
+          confirmButtonText: "Entendido",
+          customClass: {
+            confirmButton: 'rounded-lg'
+          }
+        });
+        
+        fetchCompaniesOffers();
+      } else {
+        toast.error(response.data.message || "Error al recalcular");
+      }
+    } catch (error) {
+      console.error("Error recalculating offer:", error);
+      toast.error(error.response?.data?.message || "Error al comunicarse con el servidor");
+    } finally {
+      loadingCompanies.value = false;
+    }
+  }
+};
+
 // Eliminar una Oferta
 const handleDeleteOffer = async (offer) => {
   const result = await Swal.fire({
@@ -258,6 +313,7 @@ onMounted(() => {
       @view-offer="handleViewOffer"
       @edit-offer="handleEditOffer"
       @delete-offer="handleDeleteOffer"
+      @recalculate-offer="handleRecalculateOffer"
     />
 
     <CompanyCreateOffer

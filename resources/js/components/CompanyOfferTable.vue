@@ -10,7 +10,7 @@ const props = defineProps({
   totalCompanies: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-offer", "delete-offer", "view-offer"]);
+const emit = defineEmits(["update:options", "edit-offer", "delete-offer", "view-offer", "recalculate-offer"]);
 
 const { mobile } = useDisplay();
 
@@ -119,6 +119,20 @@ const getVolumeRange = (scales) => {
 
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-2">
+            <VTooltip text="Recalcular Estado" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon="tabler-refresh"
+                  variant="tonal"
+                  color="warning"
+                  size="32"
+                  class="rounded-circle shadow-sm"
+                  :loading="props.loading"
+                  @click="emit('recalculate-offer', item)"
+                />
+              </template>
+            </VTooltip>
             <VTooltip text="Ver Detalles" location="top">
               <template #activator="{ props: tooltipProps }">
                 <VBtn
@@ -208,7 +222,15 @@ const getVolumeRange = (scales) => {
                       </span>
                     </div>
 
-                    <div class="d-flex gap-2">
+                       <VBtn
+                        icon="tabler-refresh"
+                        variant="tonal"
+                        color="warning"
+                        size="36"
+                        class="rounded-circle shadow-sm"
+                        :loading="props.loading"
+                        @click="emit('recalculate-offer', item.raw)"
+                      />
                        <VBtn
                         icon="tabler-eye"
                         variant="tonal"
