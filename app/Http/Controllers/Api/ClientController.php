@@ -291,9 +291,8 @@ class ClientController extends Controller
 
         $averageTicket = $totalOrders > 0 ? round($totalSpent / $totalOrders, 2) : 0;
 
-        // Días desde la última compra
+        // Días desde la última compra (Cualquier estado para reflejar actividad real)
         $lastOrder = Order::where('client_id', $id)
-            ->where('status', Order::COMPLETED)
             ->orderByDesc('order_date')
             ->first();
 
@@ -306,7 +305,7 @@ class ClientController extends Controller
             ? Carbon::parse($lastOrder->order_date)->format('d/m/Y')
             : null;
 
-        // Top 5 productos más comprados
+        // Top 5 productos más comprados (Cualquier orden no cancelada)
         $topProducts = OrderDetail::select(
                 'order_details.product_id',
                 'products.name as product_name',
@@ -317,13 +316,13 @@ class ClientController extends Controller
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.client_id', $id)
-            ->where('orders.status', Order::COMPLETED)
+            ->where('orders.status', '!=', 'Cancelled')
             ->groupBy('order_details.product_id', 'products.name', 'laboratories.name')
             ->orderByDesc('total_quantity')
             ->limit(5)
             ->get();
 
-        // Últimos 10 productos comprados con precio en USD
+        // Últimos 10 productos comprados con precio en USD (Cualquier orden no cancelada)
         $lastProducts = OrderDetail::select(
                 'order_details.product_id',
                 'products.name as product_name',
@@ -349,7 +348,7 @@ class ClientController extends Controller
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.client_id', $id)
-            ->where('orders.status', Order::COMPLETED)
+            ->where('orders.status', '!=', 'Cancelled')
             ->orderByDesc('orders.order_date')
             ->limit(10)
             ->get();

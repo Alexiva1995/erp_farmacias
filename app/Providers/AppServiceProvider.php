@@ -115,6 +115,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Specialty::class)
             ->give(SpecialtyServices::class);
 
+        $this->app->when(SpecialtyController::class)
+            ->needs(Specialty::class)
+            ->give(SpecialtyServices::class);
+
         $this->app->when(LotteryController::class)
             ->needs(Lottery::class)
             ->give(LotteryServices::class);
