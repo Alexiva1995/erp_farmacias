@@ -123,10 +123,17 @@ class ClientRepository
 
         if (array_key_exists("has_phone", $filtros) && $filtros["has_phone"] !== null && $filtros["has_phone"] !== "") {
             if ($filtros["has_phone"] === 'yes') {
-                $consulta->whereNotNull('phone')->where('phone', '!=', '');
+                $consulta->whereNotNull('phone')
+                    ->where('phone', '!=', '')
+                    ->where('phone', 'NOT REGEXP', '^[0]+$')
+                    ->whereRaw('LENGTH(phone) >= 10');
             } elseif ($filtros["has_phone"] === 'no') {
                 $consulta->where(function($q) {
-                    $q->whereNull('phone')->orWhere('phone', '=', '');
+                    $q->whereNull('phone')
+                        ->orWhere('phone', '')
+                        ->orWhere('phone', 'REGEXP', '^[0]+$')
+                        ->orWhere('phone', 'REGEXP', '^04[12][246]?$')
+                        ->orWhereRaw('LENGTH(phone) < 10');
                 });
             }
         }
