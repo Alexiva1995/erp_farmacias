@@ -82,76 +82,92 @@ const hasAdvancedFilters = computed(() =>
 
     <template #advanced-filters>
       <!-- Filtro Teléfono -->
-      <VCol cols="12" sm="6" md="1.5">
+      <VCol cols="12" sm="6" md="2">
         <VSelect
           :model-value="has_phone_filtro"
-          label="TELÉFONO"
+          label="¿TIENE TELÉFONO?"
           :items="phoneOptions"
           density="compact"
           variant="outlined"
+          hide-details
+          prepend-inner-icon="tabler-phone"
           @update:model-value="emit('update:has_phone_filtro', $event)"
         />
       </VCol>
 
       <!-- Tipo de Identificación -->
-      <VCol cols="12" sm="6" md="1.5">
+      <VCol cols="12" sm="6" md="1">
         <VSelect
-          :model-value="tipo_identificacion_filtro"
-          label="TIPO ID"
-          :items="idTypeOptions"
+          :model-value="props.tipo_identificacion_filtro"
+          :items="['V-', 'J-', 'G-', 'E-']"
+          placeholder="TIPO"
           density="compact"
           variant="outlined"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-id"
           @update:model-value="emit('update:tipo_identificacion_filtro', $event)"
         />
       </VCol>
 
       <!-- Empresa -->
-      <VCol cols="12" sm="6" md="3">
-        <VAutocomplete
-          :model-value="company_id_filtro"
-          label="EMPRESA"
-          :items="companies"
+      <VCol cols="12" sm="12" md="3">
+        <VSelect
+          :model-value="props.company_id_filtro"
+          :items="props.companies"
           item-title="name"
           item-value="id"
+          placeholder="EMPRESA"
           density="compact"
           variant="outlined"
-          persistent-placeholder
-          placeholder="BUSCAR..."
+          hide-details
           clearable
+          prepend-inner-icon="tabler-building"
           @update:model-value="emit('update:company_id_filtro', $event)"
         />
       </VCol>
 
-      <!-- Categoría -->
+      <!-- Categoría de cliente -->
       <VCol cols="12" sm="6" md="2">
         <VSelect
-          :model-value="client_type_filtro"
-          label="CATEGORÍA"
+          :model-value="props.client_type_filtro"
           :items="clientTypeOptions"
+          placeholder="CATEGORÍA"
           density="compact"
           variant="outlined"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-user-check"
           @update:model-value="emit('update:client_type_filtro', $event)"
         />
       </VCol>
 
-      <!-- Desde -->
+      <!-- Fecha desde -->
       <VCol cols="12" sm="6" md="2">
-        <AppTextField
-          :model-value="fechaDesde_filtro"
-          type="date"
-          label="DESDE"
+        <AppDateTimePicker
+          :model-value="props.fechaDesde_filtro"
+          placeholder="DESDE"
+          clearable
+          variant="outlined"
           density="compact"
+          hide-details
+          prepend-inner-icon="tabler-calendar"
+          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           @update:model-value="emit('update:fechaDesde_filtro', $event)"
         />
       </VCol>
 
-      <!-- Hasta -->
+      <!-- Fecha hasta -->
       <VCol cols="12" sm="6" md="2">
-        <AppTextField
-          :model-value="fechaHasta_filtro"
-          type="date"
-          label="HASTA"
+        <AppDateTimePicker
+          :model-value="props.fechaHasta_filtro"
+          placeholder="HASTA"
+          clearable
+          variant="outlined"
           density="compact"
+          hide-details
+          prepend-inner-icon="tabler-calendar"
+          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           @update:model-value="emit('update:fechaHasta_filtro', $event)"
         />
       </VCol>
