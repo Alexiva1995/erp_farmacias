@@ -57,7 +57,8 @@ const formularioError = reactive({
 const handleEditOffer = (indvOffer) => {
   currentOfferToEdit.value = { ...indvOffer };
   Object.assign(currentIndvOffer, indvOffer);
-  formularioError.value = {};
+  // Limpiar errores previos
+  Object.keys(formularioError).forEach(key => formularioError[key] = "");
   isOfferDialogVisible.value = true;
   isEditingMode.value = true;
 };
@@ -79,6 +80,8 @@ const handleAddIndividualOfferModal = () => {
     start_date: "",
     end_date: "",
   });
+  // Limpiar errores previos
+  Object.keys(formularioError).forEach(key => formularioError[key] = "");
   isEditingMode.value = false;
   currentOfferToEdit.value = null;
   isOfferDialogVisible.value = true;
@@ -148,6 +151,9 @@ function enviar(payload) {
 
 // Crear oferta
 async function crear(data) {
+  // Limpiar errores previos
+  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  
   try {
     let respuestaApi = await axios.post("/tpv/promotions/individual", data);
     if (respuestaApi.status == 201) {
@@ -156,7 +162,17 @@ async function crear(data) {
       await actualizarTabla();
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || "Error al crear la oferta");
+    if (error.response?.status === 422) {
+      const errors = error.response.data.errors;
+      Object.keys(errors).forEach(key => {
+        if (formularioError.hasOwnProperty(key)) {
+          formularioError[key] = Array.isArray(errors[key]) ? errors[key][0] : errors[key];
+        }
+      });
+      toast.error("Por favor, revisa los errores en el formulario");
+    } else {
+      toast.error(error.response?.data?.message || "Error al crear la oferta");
+    }
     console.error("Error al crear:", error);
   }
 }
@@ -185,6 +201,9 @@ async function actualizarTabla() {
 }
 
 async function actualizar(data) {
+  // Limpiar errores previos
+  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+
   try {
     let respuestaApi = await axios.put(
       `/tpv/promotions/individual/${data.id}`,
@@ -196,7 +215,17 @@ async function actualizar(data) {
       await actualizarTabla();
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || "Error al actualizar la oferta");
+    if (error.response?.status === 422) {
+      const errors = error.response.data.errors;
+      Object.keys(errors).forEach(key => {
+        if (formularioError.hasOwnProperty(key)) {
+          formularioError[key] = Array.isArray(errors[key]) ? errors[key][0] : errors[key];
+        }
+      });
+      toast.error("Por favor, revisa los errores en el formulario");
+    } else {
+      toast.error(error.response?.data?.message || "Error al actualizar la oferta");
+    }
     console.error("Error al actualizar:", error);
   }
 }

@@ -58,12 +58,6 @@ const loadAvailableProducts = async (search = "") => {
       sortBy: "name",
       orderBy: "asc",
     };
-    const params = {
-      q: trimmedSearch || undefined,
-      itemsPerPage: 500,
-      sortBy: "name",
-      orderBy: "asc",
-    };
 
     const response = await axios.get("/products", { params });
     const items = Array.isArray(response.data?.data) ? response.data.data : [];

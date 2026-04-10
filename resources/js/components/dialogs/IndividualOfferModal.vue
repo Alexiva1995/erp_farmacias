@@ -179,6 +179,13 @@ watch(
   { deep: true, immediate: true }
 );
 
+// Configuración dinámica para la fecha de fin (no permitir antes de la de inicio)
+const endDateConfig = computed(() => ({
+  altFormat: "Y-m-d",
+  dateFormat: "Y-m-d",
+  minDate: localFormData.value.start_date || undefined,
+}));
+
 // Al abrir, cargar productos
 watch(
   () => props.modelValue,
@@ -279,6 +286,8 @@ watch(
                   density="comfortable"
                   hide-details
                   class="rounded-lg"
+                  :error="!!props.formErrors.product_id"
+                  :error-messages="props.formErrors.product_id"
                   @update:search="handleProductSearch"
                 >
                   <template #item="{ props: itemProps, item: productItem }">
@@ -324,6 +333,7 @@ watch(
                   prepend-inner-icon="tabler-percentage"
                   class="rounded-lg font-weight-black"
                   :error="!!props.formErrors.discount_percent"
+                  :error-messages="props.formErrors.discount_percent"
                   :disabled="props.loading"
                 />
               </div>
@@ -344,6 +354,7 @@ watch(
                   hide-details
                   class="rounded-lg"
                   :error="!!props.formErrors.start_date"
+                  :error-messages="props.formErrors.start_date"
                   :disabled="props.loading"
                   :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 />
@@ -365,8 +376,9 @@ watch(
                   hide-details
                   class="rounded-lg"
                   :error="!!props.formErrors.end_date"
+                  :error-messages="props.formErrors.end_date"
                   :disabled="props.loading"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  :config="endDateConfig"
                 />
               </div>
             </VCol>
