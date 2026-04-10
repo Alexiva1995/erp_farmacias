@@ -37,6 +37,7 @@ const headers = [
   { title: 'ID', key: 'id', sortable: true },
   { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name == null) ? "" : item.last_name}`, sortable: true },
   { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true },
+  { title: 'Teléfono', key: 'phone', sortable: true },
   { title: 'Empresa', key: 'company.name', sortable: false },
   { title: 'Tipo', key: 'client_type', sortable: true },
   { title: 'Dirección', key: 'address', sortable: true },
@@ -192,6 +193,12 @@ const handleMobilePageChange = (newPage) => {
             </div>
 
             <div class="mt-3 pa-2 bg-light rounded-lg border-dashed">
+              <div class="d-flex align-center gap-2 mb-1">
+                <VIcon icon="tabler-phone" size="14" class="text-primary" />
+                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">
+                  {{ item.phone || 'SIN TELÉFONO' }}
+                </span>
+              </div>
               <div class="d-flex align-start gap-2">
                 <VIcon icon="tabler-map-pin" size="14" class="text-primary mt-1" />
                 <span class="text-super-xs text-medium-emphasis leading-tight truncate-2-lines uppercase font-weight-bold">
