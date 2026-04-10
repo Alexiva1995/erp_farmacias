@@ -62,27 +62,36 @@ const loadAvailableProducts = async (search = "") => {
     const response = await axios.get("/products", { params });
     const items = Array.isArray(response.data?.data) ? response.data.data : [];
     if (items.length > 0) {
+      // Mantener los productos ya seleccionados en el pack para que no desaparezcan de la lista
+      const currentSelectedProducts = formData.value.pack_products
+        .filter(item => item && item.product)
+        .map(item => item.product);
+
+      const allProducts = [...items, ...currentSelectedProducts];
+      
       const seenIds = new Set();
-      availableProducts.value = items
+      availableProducts.value = allProducts
         .filter((product) => {
-          if (seenIds.has(product.id)) return false;
+          if (!product || !product.id || seenIds.has(product.id)) return false;
           seenIds.add(product.id);
           return true;
         })
         .map((product) => ({
-          id: product.id,
-          name: product.name,
-          active_ingredient: product.active_ingredient,
+          ...product,
           stock: product.stock_calculado || product.stock || 0,
-          sale_price: product.sale_price,
-          unit_cost: product.unit_cost,
-          next_expiration: product.next_expiration,
-          laboratory: product.laboratory?.name,
-          photo_url: product.photo_url,
-          barcode: product.barcode,
         }));
     } else {
-      availableProducts.value = [];
+      // Si no hay resultados nuevos, al menos mantenemos los seleccionados
+      const currentSelectedProducts = formData.value.pack_products
+        .filter(item => item && item.product)
+        .map(item => item.product);
+      
+      const seenIds = new Set();
+      availableProducts.value = currentSelectedProducts.filter(p => {
+        if (!p || !p.id || seenIds.has(p.id)) return false;
+        seenIds.add(p.id);
+        return true;
+      });
     }
   } catch (error) {
     console.error("Error loading products:", error);
@@ -541,6 +550,7 @@ watch(
                     density="compact"
                     hide-details
                     :loading="loadingProducts"
+                    :no-filter="true"
                     return-object
                     clearable
                     @update:search="handleProductSearch"

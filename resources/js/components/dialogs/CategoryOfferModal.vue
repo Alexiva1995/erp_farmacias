@@ -73,6 +73,13 @@ const onCancel = () => {
   emit("modal-closed");
 };
 
+// Configuración dinámica para la fecha de fin (no permitir antes de la de inicio)
+const endDateConfig = computed(() => ({
+  altFormat: "Y-m-d",
+  dateFormat: "Y-m-d",
+  minDate: localFormData.value.start_date || undefined,
+}));
+
 // Resetear formulario cuando se abre el modal
 watch(
   () => props.modelValue,
@@ -158,6 +165,7 @@ watch(
               :disabled="props.loading"
               class="premium-input-compact mb-4"
               :error="!!props.formErrors.category_id"
+              :error-messages="props.formErrors.category_id"
             />
             <VTextField
               v-else
@@ -185,6 +193,7 @@ watch(
               hide-details
               class="premium-input-compact mb-4"
               :error="!!props.formErrors.is_active"
+              :error-messages="props.formErrors.is_active"
               :disabled="props.loading"
             />
           </VCol>
@@ -203,6 +212,7 @@ watch(
               prepend-inner-icon="tabler-percentage"
               class="premium-input-compact"
               :error="!!props.formErrors.discount_percentage"
+              :error-messages="props.formErrors.discount_percentage"
               :disabled="props.loading"
             />
           </VCol>
@@ -217,6 +227,7 @@ watch(
               hide-details
               class="premium-input-compact"
               :error="!!props.formErrors.start_date"
+              :error-messages="props.formErrors.start_date"
               :disabled="props.loading"
               :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
             />
@@ -232,8 +243,9 @@ watch(
               hide-details
               class="premium-input-compact"
               :error="!!props.formErrors.end_date"
+              :error-messages="props.formErrors.end_date"
               :disabled="props.loading"
-              :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+              :config="endDateConfig"
             />
           </VCol>
         </VRow>

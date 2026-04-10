@@ -120,6 +120,9 @@ const handleAddCategoriesOfferModal = async () => {
       is_active: true,
     });
     
+    // Resetear errores
+    formularioError.value = {};
+
     isEditingMode.value = false;
     currentOfferToEdit.value = null;
     isOfferDialogVisible.value = true;
@@ -174,6 +177,7 @@ function enviar(payload) {
 }
 
 async function actualizar(data) {
+  formularioError.value = {};
   try {
     let respuestaApi = await axios.put(
       `/tpv/promotions/category/${data.id}`,
@@ -185,13 +189,19 @@ async function actualizar(data) {
       await actualizarTabla();
     }
   } catch (error) {
-    const errorMessage = error.response?.data?.message || "Error al actualizar la oferta";
-    toast.error(errorMessage);
+    if (error.response?.status === 422) {
+      formularioError.value = error.response.data.errors;
+      toast.error("Por favor, revisa los errores en el formulario");
+    } else {
+      const errorMessage = error.response?.data?.message || "Error al actualizar la oferta";
+      toast.error(errorMessage);
+    }
     console.error("Error al actualizar:", error);
   }
 }
 
 async function crear(data) {
+  formularioError.value = {};
   try {
     let respuestaApi = await axios.post("/tpv/promotions/category", data);
     if (respuestaApi.status == 201) {
@@ -200,8 +210,13 @@ async function crear(data) {
       await actualizarTabla();
     }
   } catch (error) {
-    const errorMessage = error.response?.data?.message || "Error al crear la oferta";
-    toast.error(errorMessage);
+    if (error.response?.status === 422) {
+      formularioError.value = error.response.data.errors;
+      toast.error("Por favor, revisa los errores en el formulario");
+    } else {
+      const errorMessage = error.response?.data?.message || "Error al crear la oferta";
+      toast.error(errorMessage);
+    }
     console.error("Error al crear:", error);
   }
 }
