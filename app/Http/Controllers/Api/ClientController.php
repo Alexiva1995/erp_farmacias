@@ -340,7 +340,7 @@ class ClientController extends Controller
             ->limit(5)
             ->get();
 
-        // Últimos 10 productos comprados con precio en USD (Solo compras efectivas)
+        // Últimos 10 productos comprados con precio en USD (Solo compras con valor real)
         $lastProducts = OrderDetail::select(
                 'order_details.product_id',
                 'products.name as product_name',
@@ -368,8 +368,12 @@ class ClientController extends Controller
             ->where('orders.client_id', $id)
             ->where('orders.status', Order::COMPLETED)
             ->where(function($q) {
+                // Solo productos que tengan un precio superior a cero (calculado o directo)
                 $q->where('order_details.unit_price_usd', '>', 0)
-                  ->orWhere('orders.currency', 'USD');
+                  ->orWhere(function($sub) {
+                      $sub->where('orders.currency', 'USD')
+                          ->where('order_details.price', '>', 0);
+                  });
             })
             ->orderByDesc('orders.order_date')
             ->limit(10)
