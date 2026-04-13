@@ -65,7 +65,17 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo);
         }
 
-        // 5. Hidratar tendencia de ventas (Últimos 6 meses)
+        // 5. ORDENAMIENTO FINAL DINÁMICO (Garantiza coherencia total en la página actual)
+        $shortBy = $filtros['sortBy'] ?? 'solicitar';
+        $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        $procesado = ($orderDir === 'desc') 
+            ? $procesado->sortByDesc($shortBy) 
+            : $procesado->sortBy($shortBy);
+        
+        $procesado = $procesado->values();
+
+        // 6. Hidratar tendencia de ventas (Últimos 6 meses)
         $this->hydrateSalesTrend($procesado);
 
         // 5.1 Hidratar proveedores si se solicita
@@ -392,8 +402,9 @@ class IaAssistantReportService
                 ? ($item->total_sold_completed ?? 0) 
                 : ($item->promedio_calculado ?? 0);
 
-            // La fórmula regular que venía en el controlador: solicitar = solicitar + AO
-            $item->solicitar = (float)($item->solicitar ?? 0) + (float)($item->totalQuantityInAutoOrder ?? 0);
+            // La fórmula regular que venía en el controlador: solicitar = solicitar
+            // Nota: Ya se resta el AO en SQL, no volver a sumarlo aquí.
+            $item->solicitar = (float)($item->solicitar ?? 0);
             return $item;
         });
 

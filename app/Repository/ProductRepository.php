@@ -1433,6 +1433,7 @@ class ProductRepository
 
         // 2. Construir Query
         $query = Product::query()
+            ->distinct()
             ->where('is_deleted', false)
             ->where('is_scarce', false)
             ->where(function ($q) {
