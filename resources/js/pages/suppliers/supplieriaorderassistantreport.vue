@@ -3,6 +3,7 @@ import SupplierAssistantReportTable from '@/components/SupplierAssistantReportTa
 import SupplierIaOrderAssistantReportFilter from '@/components/SupplierIaOrderAssistantReportFilter.vue';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from 'sweetalert2';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
@@ -106,6 +107,41 @@ const handleClearFilters = () => {
   lapso_de_tiempo.value = "3 month";
   selectedLaboratory.value = [];
   selectProducts.value = [];
+};
+
+const handleClearIgnore = async () => {
+  const confirmResult = await Swal.fire({
+    title: '¿Estás seguro?',
+    text: "Esto restaurará todos los productos que fueron marcados para ignorar hasta una fecha específica.",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Sí, restaurar!',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (confirmResult.isConfirmed) {
+    loading.value = true;
+    try {
+      await axios.post('/suppliers-ia-assistant-report/clear-ignore-until');
+      toast.success("Todos los productos han sido restaurados.");
+      // Recargar datos
+      await Promise.all([
+        consultarKpisGlobales(),
+        (async () => {
+          statuModule.data = await consultarDataReport();
+          statuModule.total = statuModule.data.data.total;
+          statuModule.items = [...statuModule.data.data.data];
+        })()
+      ]);
+    } catch (error) {
+      console.error("Error al restaurar:", error);
+      toast.error("Ocurrió un error al restaurar los productos.");
+    } finally {
+      loading.value = false;
+    }
+  }
 };
 
 const updateTableOptionsTable = options => {
@@ -289,6 +325,7 @@ onMounted(async () => {
       :tipo_de_filtracion="tipo_de_filtracion"
       :lapso_de_tiempo="lapso_de_tiempo"
       @clear="handleClearFilters"
+      @clear-ignore="handleClearIgnore"
       @export-pdf="generarPdf"
       @export-excel="exportarExcel"
     />

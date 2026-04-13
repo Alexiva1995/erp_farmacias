@@ -335,6 +335,11 @@ class ClientController extends Controller
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.client_id', $id)
             ->where('orders.status', Order::COMPLETED)
+            ->where('order_details.quantity', '>', 0)
+            ->where(function($q) {
+                $q->where('order_details.unit_price_usd', '>', 0)
+                  ->orWhere('order_details.price', '>', 0);
+            })
             ->groupBy('order_details.product_id', 'products.name', 'laboratories.name')
             ->orderByDesc('total_quantity')
             ->limit(5)
@@ -369,7 +374,10 @@ class ClientController extends Controller
             ->where('orders.status', Order::COMPLETED)
             ->where(function($q) {
                 $q->where('order_details.unit_price_usd', '>', 0)
-                  ->orWhere('orders.currency', 'USD');
+                  ->orWhere(function($sub) {
+                      $sub->where('orders.currency', 'USD')
+                          ->where('order_details.price', '>', 0);
+                  });
             })
             ->orderByDesc('orders.order_date')
             ->limit(10)

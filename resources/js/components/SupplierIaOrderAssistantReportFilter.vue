@@ -18,6 +18,7 @@ const emit = defineEmits([
   "update:selectProducts",
   "update:checkColombia",
   "clear",
+  "clear-ignore",
   "export-excel",
   "export-pdf",
 ]);
@@ -143,6 +144,18 @@ const lapsoDeTiempoOpciones = [
           >
             <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+
+          <!-- Limpiar Ignore (Nuevo) -->
+          <VBtn
+            icon
+            variant="text"
+            color="warning"
+            size="38"
+            @click="emit('clear-ignore')"
+          >
+            <VIcon icon="tabler-eye-check" />
+            <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
           </VBtn>
         </div>
       </VRow>

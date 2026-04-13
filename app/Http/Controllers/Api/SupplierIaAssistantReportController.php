@@ -54,4 +54,15 @@ class SupplierIaAssistantReportController extends Controller
 
         return Excel::download($excel, $fileName);
     }
+
+    public function clearIgnoreUntil(): JsonResponse
+    {
+        try {
+            \App\Models\Product::whereNotNull('ignore_until')->update(['ignore_until' => null]);
+            return ApiResponse::success(null, "Fechas de restricción limpiadas correctamente.", 200);
+        } catch (\Exception $e) {
+            Log::error("Error al limpiar ignore_until: " . $e->getMessage());
+            return ApiResponse::error("Error al limpiar las fechas.", 500);
+        }
+    }
 }

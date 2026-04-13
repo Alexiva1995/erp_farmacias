@@ -568,6 +568,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
+        Route::post('/clear-ignore-until', [SupplierIaAssistantReportController::class, 'clearIgnoreUntil']);
     });
 
     Route::prefix("market-opportunities")->group(function () {
