@@ -11,14 +11,16 @@ class FixBsHistoryCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:fix-bs-history';
+    protected $signature = 'app:recalculate-historical-usd {--date=2026-02-01 : Fecha límite hacia atrás para procesar}';
 
-    protected $description = 'Reconstruye el historial de montos USD para ventas en Bolivares (Bs) usando tasas mensuales historicas del BCV.';
+    protected $description = 'Reconstruye el historial de montos USD para ventas antiguas en Bs y COP que no tienen valor en dólares.';
 
     public function handle()
     {
-        // Mapa de tasas medias mensuales BCV CORREGIDAS (Aproximadamente x10 segun realidad 2026)
-        $rates = [
+        $limitDate = $this->option('date');
+        
+        // Mapa de tasas medias mensuales BCV CORREGIDAS
+        $bsRates = [
             '2026-04' => 476.43,
             '2026-03' => 470.00,
             '2026-02' => 460.00,
@@ -43,30 +45,42 @@ class FixBsHistoryCommand extends Command
             '2022-12' => 150.00,
         ];
 
-        $this->info("Iniciando CORRECCIÓN de reconstrucción histórica de Bs a USD...");
-        
+        $copRate = 4000;
+
+        $this->info("Iniciando reconstrucción segura de historial USD...");
+        $this->comment("Fecha límite: {$limitDate} (Procesando solo registros anteriores)");
+
         $totalOrdersUpdated = 0;
         $totalDetailsUpdated = 0;
 
-        foreach ($rates as $month => $rate) {
-            $this->comment("Corrigiendo mes: {$month} (Tasa Real: {$rate} Bs/USD)");
+        // 1. PROCESAR BOLIVARES (BS) DINÁMICAMENTE
+        foreach ($bsRates as $month => $rate) {
+            $this->line("Procesando Bs para el mes: {$month} (Tasa: {$rate})");
 
-            // Actualizar órdenes del mes (Forzando actualización)
             $affectedOrders = \DB::table('orders')
                 ->where('currency', 'Bs')
                 ->where('status', 'Completed')
-                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+                ->where('order_date', '<', $limitDate)
+                ->whereRaw("DATE_FORMAT(order_date, '%Y-%m') = ?", [$month])
+                ->where(function($q) {
+                    $q->where('total_amount_usd', 0)
+                      ->orWhereNull('total_amount_usd');
+                })
                 ->update([
                     'total_amount_usd' => \DB::raw("total_amount / {$rate}"),
                     'updated_at' => now()
                 ]);
 
-            // Actualizar detalles de órdenes del mes (Forzando actualización)
             $affectedDetails = \DB::table('order_details')
                 ->join('orders', 'orders.id', '=', 'order_details.order_id')
                 ->where('orders.currency', 'Bs')
                 ->where('orders.status', 'Completed')
-                ->whereRaw("DATE_FORMAT(orders.created_at, '%Y-%m') = ?", [$month])
+                ->where('orders.order_date', '<', $limitDate)
+                ->whereRaw("DATE_FORMAT(orders.order_date, '%Y-%m') = ?", [$month])
+                ->where(function($q) {
+                    $q->where('order_details.unit_price_usd', 0)
+                      ->orWhereNull('order_details.unit_price_usd');
+                })
                 ->where('order_details.quantity', '>', 0)
                 ->update([
                     'order_details.unit_price_usd' => \DB::raw("(order_details.price / order_details.quantity) / {$rate}"),
@@ -76,6 +90,46 @@ class FixBsHistoryCommand extends Command
             $totalOrdersUpdated += $affectedOrders;
             $totalDetailsUpdated += $affectedDetails;
         }
+
+        // 2. PROCESAR PESOS (COP) TASA FIJA
+        $this->info("Procesando Pesos (COP) con tasa fija 4000...");
+        
+        $affectedOrdersCop = \DB::table('orders')
+            ->where('currency', 'COP')
+            ->where('status', 'Completed')
+            ->where('order_date', '<', $limitDate)
+            ->where(function($q) {
+                $q->where('total_amount_usd', 0)
+                  ->orWhereNull('total_amount_usd');
+            })
+            ->update([
+                'total_amount_usd' => \DB::raw("total_amount / {$copRate}"),
+                'updated_at' => now()
+            ]);
+
+        $affectedDetailsCop = \DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->where('orders.currency', 'COP')
+            ->where('orders.status', 'Completed')
+            ->where('orders.order_date', '<', $limitDate)
+            ->where(function($q) {
+                $q->where('order_details.unit_price_usd', 0)
+                  ->orWhereNull('order_details.unit_price_usd');
+            })
+            ->where('order_details.quantity', '>', 0)
+            ->update([
+                'order_details.unit_price_usd' => \DB::raw("(order_details.price / order_details.quantity) / {$copRate}"),
+                'order_details.updated_at' => now()
+            ]);
+
+        $totalOrdersUpdated += $affectedOrdersCop;
+        $totalDetailsUpdated += $affectedDetailsCop;
+
+        $this->info("Finalizado con éxito:");
+        $this->info("- Órdenes actualizadas: {$totalOrdersUpdated}");
+        $this->info("- Detalles actualizados: {$totalDetailsUpdated}");
+    }
+}
 
         $this->info("Finalizado con éxito:");
         $this->info("- Órdenes actualizadas: {$totalOrdersUpdated}");
