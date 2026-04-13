@@ -35,7 +35,7 @@ const clientTypeColor = (type) => {
 
 const headers = [
   { title: 'ID', key: 'id', sortable: true },
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name == null) ? "" : item.last_name}`, sortable: true },
+  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name == null) ? "" : item.last_name}`.toUpperCase(), sortable: true },
   { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true },
   { title: 'Teléfono', key: 'phone', sortable: true },
   { title: 'Días', key: 'days_since_last_purchase', sortable: true },
