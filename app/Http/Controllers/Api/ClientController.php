@@ -287,11 +287,12 @@ class ClientController extends Controller
             return ApiResponse::error("El cliente no fue encontrado", 404);
         }
 
-        // Total de órdenes reales (Con actividad económica > 0)
+        // Total de órdenes con valor económico real en USD (para promedios coherentes)
         $totalOrders = Order::where('client_id', $id)
+            ->where('status', Order::COMPLETED)
             ->where(function($q) {
-                $q->where('total_amount', '>', 0)
-                  ->orWhere('total_amount_usd', '>', 0);
+                $q->where('total_amount_usd', '>', 0)
+                  ->orWhere('currency', 'USD');
             })
             ->count();
 
@@ -366,6 +367,10 @@ class ClientController extends Controller
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.client_id', $id)
             ->where('orders.status', Order::COMPLETED)
+            ->where(function($q) {
+                $q->where('order_details.unit_price_usd', '>', 0)
+                  ->orWhere('orders.currency', 'USD');
+            })
             ->orderByDesc('orders.order_date')
             ->limit(10)
             ->get();
