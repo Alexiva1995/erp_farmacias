@@ -66,9 +66,9 @@ class ClientRepository
             ->select('clients.*')
             ->addSelect([
                 'days_since_last_purchase' => \DB::table('orders')
-                    ->selectRaw('DATEDIFF(NOW(), MAX(created_at))')
+                    ->selectRaw('DATEDIFF(NOW(), MAX(order_date))') // Sincronizado con stats (usa order_date)
                     ->whereColumn('client_id', 'clients.id')
-                    ->where('status', 'Completed')
+                    // Sin filtro de status para reflejar actividad real (intento de compra)
             ])
             ->with([
                 "company" => function ($query) {

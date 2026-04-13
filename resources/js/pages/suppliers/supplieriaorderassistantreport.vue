@@ -82,6 +82,8 @@ async function consultarDataReport(){
     lapso_de_tiempo:lapso_de_tiempo.value,
     tipo_filtracion:tipo_de_filtracion.value,
     stock:stock.value,
+    show_ignored: showIgnored.value,
+    with_trend: showGraphs.value,
   }
 
   let respuestaApi= await axios.post(`suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`,data)
@@ -230,6 +232,8 @@ async function generarPdf(){
     lapso_de_tiempo:lapso_de_tiempo.value,
     tipo_filtracion:tipo_de_filtracion.value,
     stock:stock.value,
+    show_ignored: showIgnored.value,
+    with_trend: showGraphs.value,
   }
 
   let respuestaApi=await filtrarSinPaginar(filtros)

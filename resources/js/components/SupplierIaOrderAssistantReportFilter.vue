@@ -9,6 +9,8 @@ const props = defineProps({
   selectedLaboratory: { type: Array, default: () => [] },
   products: { type: Array, default: () => [] },
   selectProducts: { type: Array, default: () => [] },
+  showIgnored: { type: Boolean, default: false },
+  showGraphs: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -21,6 +23,8 @@ const emit = defineEmits([
   "clear-ignore",
   "export-excel",
   "export-pdf",
+  "update:showIgnored",
+  "update:showGraphs",
 ]);
 
 const isAdvancedFiltersVisible = ref(false);
@@ -133,6 +137,30 @@ const lapsoDeTiempoOpciones = [
           </VMenu>
 
           <VDivider vertical class="mx-1 my-2" />
+
+          <!-- Mostrar Ignorados (Toggle) -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="props.showIgnored ? 'success' : 'secondary'"
+            size="38"
+            @click="emit('update:showIgnored', !props.showIgnored)"
+          >
+            <VIcon :icon="props.showIgnored ? 'tabler-eye' : 'tabler-eye-off'" />
+            <VTooltip activator="parent" location="top">{{ props.showIgnored ? 'Ocultar Ignorados' : 'Mostrar Ignorados' }}</VTooltip>
+          </VBtn>
+
+          <!-- Mostrar Gráficos (Toggle) -->
+          <VBtn
+            icon
+            variant="tonal"
+            :color="props.showGraphs ? 'primary' : 'secondary'"
+            size="38"
+            @click="emit('update:showGraphs', !props.showGraphs)"
+          >
+            <VIcon icon="tabler-chart-line" />
+            <VTooltip activator="parent" location="top">{{ props.showGraphs ? 'Ocultar Gráficos' : 'Mostrar Gráficos' }}</VTooltip>
+          </VBtn>
 
           <!-- Limpiar Filtros (Solo Icono) -->
           <VBtn

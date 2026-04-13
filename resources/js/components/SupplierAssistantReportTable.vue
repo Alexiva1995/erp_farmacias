@@ -1,6 +1,8 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useDisplay } from 'vuetify';
+import VueApexCharts from 'vue3-apexcharts';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -8,41 +10,100 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  showGraphs: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options"]);
 const { mobile } = useDisplay();
 
-// ... (headers definition stays same)
-const headers = [
-  { title: "id", key: "id", sortable: true, width: '80px' },
-  { title: "Producto", key: "name", sortable: true, minWidth: '320px' },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false, minWidth: '150px' },
-  { title: "Costo Actual", key: "unit_cost", sortable: false, align: 'center' },
-  { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
-  { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
-  { title: "Stock", key: "lote_quantity", sortable: true, align: 'end' },
-  {
-    title: "Prom.",
-    key: "promedio_calculado",
-    sortable: true,
-    align: 'end',
-    value: (item) =>
-      item.promedio_calculado != "" && item.promedio_calculado != null
-        ? parseFloat(item.promedio_calculado).toFixed(2)
-        : 0,
+const headers = computed(() => {
+  const baseData = [
+    { title: "id", key: "id", sortable: true, width: '80px' },
+    { title: "Producto", key: "name", sortable: true, minWidth: '320px' },
+    { title: "Laboratorio", key: "laboratory.name", sortable: false, minWidth: '150px' },
+  ];
+
+  if (props.showGraphs) {
+    baseData.push({ title: "Tendencia", key: "trend", sortable: false, width: '100px' });
+  }
+
+  baseData.push(
+    { title: "Costo Actual", key: "unit_cost", sortable: false, align: 'center' },
+    { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
+    { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
+    { title: "Stock", key: "lote_quantity", sortable: true, align: 'end' },
+    {
+      title: "Prom.",
+      key: "promedio_calculado",
+      sortable: true,
+      align: 'end',
+      value: (item) =>
+        item.promedio_calculado != "" && item.promedio_calculado != null
+          ? parseFloat(item.promedio_calculado).toFixed(2)
+          : 0,
+    },
+    {
+      title: "Análisis",
+      key: "solicitar",
+      sortable: true,
+      align: 'end',
+      value: (item) =>
+        item.solicitar != "" && item.solicitar != null
+          ? roundIaAnalysis(item.solicitar)
+          : 0,
+    }
+  );
+
+  return baseData;
+});
+
+// Estado para carga diferida de gráficos
+const readyCharts = ref(new Set());
+
+const markChartAsReady = (id) => {
+  if (!readyCharts.value.has(id)) {
+    requestAnimationFrame(() => {
+      readyCharts.value.add(id);
+    });
+  }
+};
+
+const getChartOptions = (item, color = '#7367f0') => ({
+  chart: {
+    type: 'area',
+    height: 25,
+    sparkline: { enabled: true },
+    animations: { enabled: true }
   },
-  {
-    title: "Análisis",
-    key: "solicitar",
-    sortable: true,
-    align: 'end',
-    value: (item) =>
-      item.solicitar != "" && item.solicitar != null
-        ? roundIaAnalysis(item.solicitar)
-        : 0,
+  stroke: { curve: 'smooth', width: 2 },
+  fill: {
+    type: 'gradient',
+    gradient: {
+      shadeIntensity: 1,
+      opacityFrom: 0.5,
+      opacityTo: 0,
+      stops: [0, 90, 100]
+    }
   },
-];
+  colors: [color],
+  tooltip: {
+    enabled: true,
+    fixed: { enabled: false },
+    x: { show: false },
+    y: {
+      title: { formatter: () => 'Ventas:' }
+    },
+    marker: { show: false }
+  }
+});
+
+const getSeries = (item) => {
+  const data = (item.sales_trend && item.sales_trend.length > 0) 
+    ? item.sales_trend 
+    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  
+  return [{ name: 'Ventas', data }];
+};
 
 const roundIaAnalysis = (val) => Math.round(val);
 
@@ -97,6 +158,21 @@ const getPriceDiff = (current, offer) => {
           <!-- ID -->
           <template #item.id="{ item }">
             <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+          </template>
+
+          <!-- Tendencia -->
+          <template #item.trend="{ item }">
+            <div style="block-size: 25px; inline-size: 80px; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
+              <VueApexCharts
+                v-if="readyCharts.has(item.id)"
+                type="area"
+                height="25"
+                width="100%"
+                :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
+                :series="getSeries(item)"
+              />
+              <div v-else class="chart-placeholder"></div>
+            </div>
           </template>
 
           <!-- Costo Actual -->
@@ -330,6 +406,19 @@ const getPriceDiff = (current, offer) => {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+.chart-placeholder {
+  animation: shimmer 1.5s infinite;
+  background: linear-gradient(90deg, rgba(var(--v-border-color), 0.05) 25%, rgba(var(--v-border-color), 0.1) 50%, rgba(var(--v-border-color), 0.05) 75%);
+  background-size: 200% 100%;
+  block-size: 25px;
+  inline-size: 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>
 
