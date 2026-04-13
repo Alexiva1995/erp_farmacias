@@ -38,7 +38,7 @@ const headers = [
   { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name == null) ? "" : item.last_name}`, sortable: true },
   { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true },
   { title: 'Teléfono', key: 'phone', sortable: true },
-  { title: 'Empresa', key: 'company.name', sortable: false },
+  { title: 'Días', key: 'days_since_last_purchase', sortable: true },
   { title: 'Tipo', key: 'client_type', sortable: true },
   { title: 'Dirección', key: 'address', sortable: true },
   { 
@@ -92,6 +92,21 @@ const handleMobilePageChange = (newPage) => {
               {{ item.client_type }}
             </VChip>
             <span v-else class="text-disabled">—</span>
+          </template>
+
+          <template #item.days_since_last_purchase="{ item }">
+            <div v-if="item.days_since_last_purchase !== null" class="d-flex align-center">
+              <VChip
+                :color="item.days_since_last_purchase > 30 ? 'error' : (item.days_since_last_purchase > 15 ? 'warning' : 'success')"
+                size="x-small"
+                variant="tonal"
+                class="font-weight-black"
+                style="min-width: 45px; justify-content: center;"
+              >
+                {{ item.days_since_last_purchase }} d
+              </VChip>
+            </div>
+            <span v-else class="text-disabled text-xs uppercase font-weight-bold">Nunca</span>
           </template>
 
           <template #item.acciones="{ item }">
@@ -174,8 +189,11 @@ const handleMobilePageChange = (newPage) => {
                 <span class="value font-weight-black uppercase">{{ item.identification_type }}{{ item.identification }}</span>
               </div>
               <div class="stat-box text-center">
-                <span class="label">Empresa</span>
-                <span class="value text-primary truncate uppercase">{{ item.company?.name || 'S/E' }}</span>
+                <span class="label">Días Inactivo</span>
+                <span v-if="item.days_since_last_purchase !== null" :class="item.days_since_last_purchase > 30 ? 'text-error' : (item.days_since_last_purchase > 15 ? 'text-warning' : 'text-success')" class="value font-weight-black">
+                  {{ item.days_since_last_purchase }} DÍAS
+                </span>
+                <span v-else class="value text-disabled">NUNCA</span>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Categoría</span>

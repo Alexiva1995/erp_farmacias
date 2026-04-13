@@ -62,11 +62,19 @@ class ClientRepository
 
     public function builerPaginate($filtros): Builder
     {
-        $consulta = Client::query()->with([
-            "company" => function ($query) {
-                $query->withTrashed();
-            }
-        ]);
+        $consulta = Client::query()
+            ->select('clients.*')
+            ->addSelect([
+                'days_since_last_purchase' => \DB::table('orders')
+                    ->selectRaw('DATEDIFF(NOW(), MAX(created_at))')
+                    ->whereColumn('client_id', 'clients.id')
+                    ->where('status', 'Completed')
+            ])
+            ->with([
+                "company" => function ($query) {
+                    $query->withTrashed();
+                }
+            ]);
 
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
