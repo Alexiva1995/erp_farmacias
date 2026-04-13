@@ -1436,9 +1436,11 @@ class ProductRepository
             ->distinct()
             ->where('is_deleted', false)
             ->where('is_scarce', false)
-            ->where(function ($q) {
-                $q->whereNull('ignore_until')
-                  ->orWhere('ignore_until', '<=', now());
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('ignore_until')
+                       ->orWhere('ignore_until', '<=', now());
+                });
             })
             ->whereNotExists(function ($q) {
                 $q->select(\Illuminate\Support\Facades\DB::raw(1))

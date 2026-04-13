@@ -33,6 +33,8 @@ const checkColombia= ref(false);
 const tipo_de_filtracion= ref("sales");// promedio o ventas
 const lapso_de_tiempo= ref("3 month");// tiempo
 const stock= ref("all");// Fallas , Execeso o All
+const showIgnored = ref(false);
+const showGraphs = ref(false);
 
 // KPIs globales
 const loadingStats = ref(false);
@@ -53,6 +55,8 @@ async function consultarKpisGlobales() {
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
       stock: stock.value,
+      show_ignored: showIgnored.value,
+      with_trend: showGraphs.value,
     };
     const resp = await axios.post('/suppliers-ia-assistant-report/filtrar-paginate?page=1', data);
     const items = resp.data?.data?.paginate?.data || [];
@@ -107,6 +111,8 @@ const handleClearFilters = () => {
   lapso_de_tiempo.value = "3 month";
   selectedLaboratory.value = [];
   selectProducts.value = [];
+  showIgnored.value = false;
+  showGraphs.value = false;
 };
 
 const handleClearIgnore = async () => {
@@ -160,6 +166,8 @@ watch([
   tipo_de_filtracion,
   lapso_de_tiempo,
   stock,
+  showIgnored,
+  showGraphs,
 ], async () => {
   // Solo cargar si hay laboratorios seleccionados
   if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) {
@@ -248,6 +256,8 @@ async function exportarExcel(formato){
         lapso_de_tiempo:lapso_de_tiempo.value,
         tipo_filtracion:tipo_de_filtracion.value,
         stock:stock.value,
+        show_ignored: showIgnored.value,
+        with_trend: showGraphs.value,
         formato
     }
 
@@ -319,11 +329,15 @@ onMounted(async () => {
       v-model:tipo_de_filtracion="tipo_de_filtracion"
       v-model:lapso_de_tiempo="lapso_de_tiempo"
       v-model:checkColombia="checkColombia"
+      v-model:showIgnored="showIgnored"
+      v-model:showGraphs="showGraphs"
       :checkColombia="checkColombia"
       :products="productosSelect"
       :laboratories="laboratories"
       :tipo_de_filtracion="tipo_de_filtracion"
       :lapso_de_tiempo="lapso_de_tiempo"
+      :showIgnored="showIgnored"
+      :showGraphs="showGraphs"
       @clear="handleClearFilters"
       @clear-ignore="handleClearIgnore"
       @export-pdf="generarPdf"
@@ -337,6 +351,7 @@ onMounted(async () => {
       :loading="loading"
       :items-per-page="itemsPerPage"
       :page="page"
+      :showGraphs="showGraphs"
       @update:options="updateTableOptionsTable"
     />
   </div>

@@ -75,8 +75,10 @@ class IaAssistantReportService
         
         $procesado = $procesado->values();
 
-        // 6. Hidratar tendencia de ventas (Últimos 6 meses)
-        $this->hydrateSalesTrend($procesado);
+        // 6. Hidratar tendencia de ventas (Últimos 6 meses) si se solicita
+        if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $this->hydrateSalesTrend($procesado);
+        }
 
         // 5.1 Hidratar proveedores si se solicita
         if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {

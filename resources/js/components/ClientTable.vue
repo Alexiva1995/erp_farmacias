@@ -94,16 +94,16 @@ const handleMobilePageChange = (newPage) => {
             <span v-else class="text-disabled">—</span>
           </template>
 
-          <template #item.days_since_last_purchase="{ item }">
-            <div v-if="item.days_since_last_purchase !== null" class="d-flex align-center">
+          <template #item.days_since_last_purchase="{ value }">
+            <div v-if="value !== null && value !== undefined" class="d-flex align-center">
               <VChip
-                :color="item.days_since_last_purchase > 30 ? 'error' : (item.days_since_last_purchase > 15 ? 'warning' : 'success')"
+                :color="value > 30 ? 'error' : (value > 15 ? 'warning' : 'success')"
                 size="x-small"
                 variant="tonal"
                 class="font-weight-black"
-                style="min-width: 45px; justify-content: center;"
+                style="min-width: 50px; justify-content: center;"
               >
-                {{ item.days_since_last_purchase }} d
+                {{ value }} d
               </VChip>
             </div>
             <span v-else class="text-disabled text-xs uppercase font-weight-bold">Nunca</span>
@@ -190,7 +190,7 @@ const handleMobilePageChange = (newPage) => {
               </div>
               <div class="stat-box text-center">
                 <span class="label">Días Inactivo</span>
-                <span v-if="item.days_since_last_purchase !== null" :class="item.days_since_last_purchase > 30 ? 'text-error' : (item.days_since_last_purchase > 15 ? 'text-warning' : 'text-success')" class="value font-weight-black">
+                <span v-if="item.days_since_last_purchase !== null && item.days_since_last_purchase !== undefined" :class="item.days_since_last_purchase > 30 ? 'text-error' : (item.days_since_last_purchase > 15 ? 'text-warning' : 'text-success')" class="value font-weight-black">
                   {{ item.days_since_last_purchase }} DÍAS
                 </span>
                 <span v-else class="value text-disabled">NUNCA</span>
