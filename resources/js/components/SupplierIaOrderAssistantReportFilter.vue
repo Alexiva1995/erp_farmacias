@@ -6,6 +6,7 @@ const props = defineProps({
   tipo_de_filtracion: String,
   lapso_de_tiempo: String,
   laboratories: { type: Array, default: () => [] },
+  selectedLaboratory: { type: Array, default: () => [] },
   products: { type: Array, default: () => [] },
   selectProducts: { type: Array, default: () => [] },
 });

@@ -25,8 +25,8 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
-const selectedLaboratory = ref();
-const selectProducts= ref();
+const selectedLaboratory = ref([]);
+const selectProducts= ref([]);
 const checkColombia= ref(false);
 
 const tipo_de_filtracion= ref("sales");// promedio o ventas
