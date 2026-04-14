@@ -22,7 +22,7 @@ const productosSelect = ref([]);
 const loading = ref(false);
 
 const page = ref(1);
-const itemsPerPage = ref(50);
+const itemsPerPage = ref(10);
 const sortBy = ref("solicitar");
 const orderBy = ref("desc");
 
