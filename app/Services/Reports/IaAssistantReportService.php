@@ -428,7 +428,8 @@ class IaAssistantReportService
 
             // La fórmula regular que venía en el controlador: solicitar = solicitar
             // Nota: Ya se resta el AO en SQL, no volver a sumarlo aquí.
-            $item->solicitar = (float)($item->solicitar ?? 0);
+            $val = (float)($item->solicitar ?? 0);
+            $item->solicitar = $val > 0 ? ceil($val) : floor($val);
             return $item;
         });
 
@@ -495,7 +496,8 @@ class IaAssistantReportService
             }
 
             // Invertir el signo para el análisis visual (faltante => positivo)
-            $item->solicitar = $resultado;
+            // Sincronizar redondeo con SQL: ceil si > 0, floor si < 0
+            $item->solicitar = $resultado > 0 ? ceil($resultado) : floor($resultado);
             return $item;
         });
 

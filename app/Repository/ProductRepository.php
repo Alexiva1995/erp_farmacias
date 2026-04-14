@@ -1418,7 +1418,12 @@ class ProductRepository
         // Solicitar según tipo de filtración
         $tipo = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo === "combinado") {
-            $demanda = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
+            // Demanda ponderada combinada: Si hay ventas usamos (ventas + promedio)/2. 
+            // Si subqueryTotalSold es 0, usamos el promedio directamente (igual que PHP).
+            $demanda = 'CASE 
+                WHEN ' . $subqueryTotalSold . ' > 0 THEN ((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)
+                ELSE ' . $promedio_calculado . '
+            END';
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         } elseif ($tipo === "sales") {
             $solicitarRaw = '(' . $subqueryTotalSold . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
