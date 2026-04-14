@@ -124,13 +124,6 @@ class FixBsHistoryCommand extends Command
 
         $totalOrdersUpdated += $affectedOrdersCop;
         $totalDetailsUpdated += $affectedDetailsCop;
-
-        $this->info("Finalizado con éxito:");
-        $this->info("- Órdenes actualizadas: {$totalOrdersUpdated}");
-        $this->info("- Detalles actualizados: {$totalDetailsUpdated}");
-    }
-}
-
         $this->info("Finalizado con éxito:");
         $this->info("- Órdenes actualizadas: {$totalOrdersUpdated}");
         $this->info("- Detalles actualizados: {$totalDetailsUpdated}");
