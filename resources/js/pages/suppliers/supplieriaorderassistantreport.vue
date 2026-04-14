@@ -23,8 +23,8 @@ const loading = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref("solicitar");
+const orderBy = ref("desc");
 
 const selectedLaboratory = ref([]);
 const selectProducts= ref([]);
@@ -155,8 +155,15 @@ const handleClearIgnore = async () => {
 const updateTableOptionsTable = options => {
   page.value = options.page
   itemsPerPage.value = options.itemsPerPage
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
+  
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key
+    orderBy.value = options.sortBy[0].order
+  } else {
+    // Si vuetify intenta limpiar el sort, mantenemos el default para no perder el orden
+    sortBy.value = "solicitar"
+    orderBy.value = "desc"
+  }
 }
 
 // Watchers con debounce para filtros
@@ -354,6 +361,7 @@ onMounted(async () => {
       :items-per-page="itemsPerPage"
       :page="page"
       :showGraphs="showGraphs"
+      :sort-by="[{ key: sortBy, order: orderBy }]"
       @update:options="updateTableOptionsTable"
     />
   </div>

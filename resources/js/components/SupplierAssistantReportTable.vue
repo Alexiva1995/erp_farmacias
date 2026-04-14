@@ -6,6 +6,7 @@ import { ref, computed } from 'vue';
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
+  sortBy: { type: Array, default: () => [{"key":"solicitar","order":"desc"}] },
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
@@ -79,6 +80,7 @@ const getPriceDiff = (current, offer) => {
           :items="props.products"
           :items-length="props.totalProduct"
           :loading="props.loading"
+          :sort-by="props.sortBy"
           :row-props="({ item }) => ({ class: rowClass(item) })"
           class="premium-table text-no-wrap"
           @update:options="(options) => emit('update:options', options)"
