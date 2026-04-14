@@ -259,6 +259,7 @@ const grupoKpi = (productos) => {
             :items-per-page="props.itemsPerPage"
             :total-items="props.totalProduct"
             :loading="props.loading"
+            :items-per-page-options="[10, 25, 40]"
             @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
     </div>

@@ -30,7 +30,7 @@ const selectedLaboratory = ref([]);
 const selectProducts= ref([]);
 const checkColombia= ref(false);
 
-const tipo_de_filtracion= ref("sales");// promedio o ventas
+const tipo_de_filtracion= ref("combinado"); // promedio o ventas o combinado
 const lapso_de_tiempo= ref("3 month");// tiempo
 const stock= ref("all");// Fallas , Execeso o All
 const showIgnored = ref(false);
