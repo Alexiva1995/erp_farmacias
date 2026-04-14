@@ -15,6 +15,8 @@ const props = defineProps({
   laboratories:       { type: Array,   default: () => [] },
   groups:             { type: Array,   default: () => [] },
   isColombian:        Boolean,
+  showIgnored:        { type: Boolean, default: false },
+  showGraphs:         { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -27,7 +29,10 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedGroup",
   "update:isColombian",
+  "update:showIgnored",
+  "update:showGraphs",
   "clear",
+  "clear-ignore",
   "generarPedido",
   "fetchSuppliers",
 ]);
@@ -83,6 +88,32 @@ const hasAdvancedFilters = computed(() => (
     </template>
 
     <template #actions-extra>
+      <!-- Mostrar Gráficos (Toggle) -->
+      <VBtn
+        icon
+        variant="tonal"
+        :color="props.showGraphs ? 'info' : 'primary'"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('update:showGraphs', !props.showGraphs)"
+      >
+        <VIcon icon="tabler-chart-line" />
+        <VTooltip activator="parent" location="top">{{ props.showGraphs ? 'Ocultar Gráficos' : 'Mostrar Gráficos' }}</VTooltip>
+      </VBtn>
+
+      <!-- Limpiar Ignore -->
+      <VBtn
+        icon
+        variant="text"
+        color="warning"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('clear-ignore')"
+      >
+        <VIcon icon="tabler-eye-check" />
+        <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
+      </VBtn>
+
       <VBtn
         icon
         color="warning"
@@ -105,6 +136,19 @@ const hasAdvancedFilters = computed(() => (
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
         <VTooltip activator="parent" location="top">Generar Pedido IA</VTooltip>
+      </VBtn>
+
+      <!-- Limpiar Filtros -->
+      <VBtn
+        icon
+        variant="text"
+        color="secondary"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('clear')"
+      >
+        <VIcon icon="tabler-eraser" />
+        <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
       </VBtn>
     </template>
 

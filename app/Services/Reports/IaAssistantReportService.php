@@ -171,7 +171,9 @@ class IaAssistantReportService
                 $procesado = $this->processRegularReport($resultado, $tipo);
             }
 
-            $this->hydrateSalesTrend($procesado);
+            if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $this->hydrateSalesTrend($procesado);
+            }
 
             // Hidratar proveedores si se solicita
             if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
@@ -306,9 +308,9 @@ class IaAssistantReportService
         $baseTrend = [];
         for ($i = 0; $i < 12; $i++) {
             $date = $sixMonthsAgo->copy()->addMonths($i);
-            $key = $date->format('Y-n'); // Ej: 2024-4
+            $key = $date->format('Y') . '-' . (int)$date->format('n');
             $baseTrend[$key] = [
-                'label' => $this->getMonthName($date->month),
+                'label' => $this->getMonthName((int)$date->format('n')),
                 'value' => 0
             ];
         }
@@ -331,23 +333,43 @@ class IaAssistantReportService
         // 3. Mapear los resultados de la DB
         $itemSalesMap = [];
         foreach ($salesData as $row) {
-            $key = $row->year . '-' . $row->month;
-            $itemSalesMap[$row->product_id][$key] = (float)$row->total;
+            $pId = (int)$row->product_id;
+            $key = (int)$row->year . '-' . (int)$row->month;
+            $itemSalesMap[$pId][$key] = (float)$row->total;
         }
 
         // 4. Asignar la tendencia normalizada a cada producto
-        $items->each(function ($product) use ($baseTrend, $itemSalesMap) {
-            $productTrend = $baseTrend; // Copia del esqueleto de 6 meses
-            $sales = $itemSalesMap[$product->id] ?? [];
+        $items->transform(function ($product) use ($baseTrend, $itemSalesMap) {
+            $id = is_array($product) ? ($product['id'] ?? null) : ($product->id ?? null);
+            if (!$id) return $product;
 
-            foreach ($sales as $key => $total) {
-                if (isset($productTrend[$key])) {
-                    $productTrend[$key]['value'] = $total;
+            $productTrend = $baseTrend;
+            $sales = $itemSalesMap[(int)$id] ?? [];
+            
+            foreach ($sales as $dateKey => $qty) {
+                if (isset($productTrend[$dateKey])) {
+                    $productTrend[$dateKey]['value'] = $qty;
                 }
             }
 
-            $product->sales_trend = array_column($productTrend, 'value');
-            $product->sales_trend_labels = array_column($productTrend, 'label');
+            $finalValues = array_values(array_column($productTrend, 'value'));
+            $finalLabels = array_values(array_column($productTrend, 'label'));
+
+            if (is_array($product)) {
+                $product['sales_trend'] = $finalValues;
+                $product['sales_trend_labels'] = $finalLabels;
+            } else {
+                // Usar setAttribute para asegurar que Laravel lo incluya en el JSON (Eloquents)
+                if (method_exists($product, 'setAttribute')) {
+                    $product->setAttribute('sales_trend', $finalValues);
+                    $product->setAttribute('sales_trend_labels', $finalLabels);
+                } else {
+                    $product->sales_trend = $finalValues;
+                    $product->sales_trend_labels = $finalLabels;
+                }
+            }
+            
+            return $product;
         });
     }
 

@@ -43,16 +43,8 @@ class SuppliersIaOrderAssistantController extends Controller
             // Vista grupal: devolver grupos paginados con productos anidados
             $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
         } else {
-            // Vista individual: paginación normal
-            if ($respuesta["tipo_filtracion"] == "combinado") {
-                $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
-            } elseif ($respuesta["tipo_filtracion"] == "average") {
-                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-            } elseif ($respuesta["tipo_filtracion"] == "sales") {
-                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeSales($filtros);
-            } else {
-                $respuesta["paginate"] = $this->product->filtrarIaOrderAssistantTypeAverage($filtros);
-            }
+            // Unificamos todo al servicio para garantizar hidratación de tendencias y AO
+            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
         }
 
         return ApiResponse::success($respuesta, "ok", 200);
@@ -104,6 +96,7 @@ class SuppliersIaOrderAssistantController extends Controller
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
             "with_suppliers" => filter_var($request->with_suppliers, FILTER_VALIDATE_BOOLEAN),
             "con_descuento" => filter_var($request->con_descuento, FILTER_VALIDATE_BOOLEAN),
+            "with_trend" => filter_var($request->with_trend, FILTER_VALIDATE_BOOLEAN),
         ];
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {

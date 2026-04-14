@@ -14,6 +14,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   withSuppliers: { type: Boolean, default: false },
+  showGraphs: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item"]);
@@ -148,9 +149,13 @@ const headers = computed(() => {
   const base = [
     { title: "ID", key: "id", sortable: true, width: '50px' },
     { title: "Producto", key: "name", sortable: true, minWidth: '160px' },
-    { title: "Trend", key: "trend", sortable: false, width: '80px' },
-    { title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' },
   ];
+
+  if (props.showGraphs) {
+    base.push({ title: "Trend", key: "trend", sortable: false, width: '80px' });
+  }
+
+  base.push({ title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' });
 
   if (props.withSuppliers) {
     base.push({ title: "COSTP", key: "best_supplier_price", sortable: false, align: 'end', width: '90px' });
@@ -242,10 +247,11 @@ function rowClass(item) {
             </div>
           </template>
 
-          <template #item.trend="{ item }">
+          <template v-if="props.showGraphs" #item.trend="{ item }">
             <div style="block-size: 25px; inline-size: 80px; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
               <VueApexCharts
                 v-if="readyCharts.has(item.id)"
+                :key="'chart-' + item.id + '-' + (item.sales_trend ? item.sales_trend.join(',') : 'empty')"
                 type="area"
                 height="25"
                 width="100%"

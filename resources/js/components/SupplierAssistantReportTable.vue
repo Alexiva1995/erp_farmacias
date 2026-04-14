@@ -1,7 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useDisplay } from 'vuetify';
-import VueApexCharts from 'vue3-apexcharts';
 import { ref, computed } from 'vue';
 
 const props = defineProps({
@@ -10,7 +9,6 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
-  showGraphs: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options"]);
@@ -22,10 +20,6 @@ const headers = computed(() => {
     { title: "Producto", key: "name", sortable: true, minWidth: '320px' },
     { title: "Laboratorio", key: "laboratory.name", sortable: false, minWidth: '150px' },
   ];
-
-  if (props.showGraphs) {
-    baseData.push({ title: "Tendencia", key: "trend", sortable: false, width: '100px' });
-  }
 
   baseData.push(
     { title: "Costo Actual", key: "unit_cost", sortable: false, align: 'center' },
@@ -57,62 +51,15 @@ const headers = computed(() => {
   return baseData;
 });
 
-// Estado para carga diferida de gráficos
-const readyCharts = ref(new Set());
-
-const markChartAsReady = (id) => {
-  if (!readyCharts.value.has(id)) {
-    requestAnimationFrame(() => {
-      readyCharts.value.add(id);
-    });
-  }
+const roundIaAnalysis = (value) => {
+  const number = Number(value);
+  return isNaN(number) ? 0 : Math.ceil(number);
 };
 
-const getChartOptions = (item, color = '#7367f0') => ({
-  chart: {
-    type: 'area',
-    height: 25,
-    sparkline: { enabled: true },
-    animations: { enabled: true }
-  },
-  stroke: { curve: 'smooth', width: 2 },
-  fill: {
-    type: 'gradient',
-    gradient: {
-      shadeIntensity: 1,
-      opacityFrom: 0.5,
-      opacityTo: 0,
-      stops: [0, 90, 100]
-    }
-  },
-  colors: [color],
-  tooltip: {
-    enabled: true,
-    fixed: { enabled: false },
-    x: { show: false },
-    y: {
-      title: { formatter: () => 'Ventas:' }
-    },
-    marker: { show: false }
-  }
-});
-
-const getSeries = (item) => {
-  const data = (item.sales_trend && item.sales_trend.length > 0) 
-    ? item.sales_trend 
-    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  
-  return [{ name: 'Ventas', data }];
+// Clases de fila condicionales
+const rowClass = (item) => {
+  return roundIaAnalysis(item.solicitar) > 0 ? 'bg-light-success-50' : '';
 };
-
-const roundIaAnalysis = (val) => Math.round(val);
-
-function rowClass(item) {
-  const val = roundIaAnalysis(item.solicitar);
-  if (val > 0) return 'row-needs';
-  if (val < 0) return 'row-excess';
-  return '';
-}
 
 const getPriceDiff = (current, offer) => {
   if (!current || !offer || current <= 0) return 0;
@@ -158,21 +105,6 @@ const getPriceDiff = (current, offer) => {
           <!-- ID -->
           <template #item.id="{ item }">
             <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
-          </template>
-
-          <!-- Tendencia -->
-          <template #item.trend="{ item }">
-            <div style="block-size: 25px; inline-size: 80px; overflow: hidden;" v-intersect="() => markChartAsReady(item.id)">
-              <VueApexCharts
-                v-if="readyCharts.has(item.id)"
-                type="area"
-                height="25"
-                width="100%"
-                :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
-                :series="getSeries(item)"
-              />
-              <div v-else class="chart-placeholder"></div>
-            </div>
           </template>
 
           <!-- Costo Actual -->
@@ -239,7 +171,6 @@ const getPriceDiff = (current, offer) => {
               :key="item.id"
               variant="flat"
               class="border mb-1 rounded-lg overflow-hidden"
-              :style="roundIaAnalysis(item.solicitar) > 0 ? 'border-inline-start: 4px solid #28c76f !important; background-color: rgba(40, 199, 111, 2%) !important;' : roundIaAnalysis(item.solicitar) < 0 ? 'border-inline-start: 4px solid #ea5455 !important; background-color: rgba(234, 84, 85, 2%) !important;' : ''"
             >
               <div class="pa-3">
                 <div class="d-flex justify-space-between align-start mb-2">

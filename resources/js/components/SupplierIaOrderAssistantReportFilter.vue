@@ -10,7 +10,6 @@ const props = defineProps({
   products: { type: Array, default: () => [] },
   selectProducts: { type: Array, default: () => [] },
   showIgnored: { type: Boolean, default: false },
-  showGraphs: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -24,7 +23,6 @@ const emit = defineEmits([
   "export-excel",
   "export-pdf",
   "update:showIgnored",
-  "update:showGraphs",
 ]);
 
 const isAdvancedFiltersVisible = ref(false);
@@ -65,7 +63,7 @@ const lapsoDeTiempoOpciones = [
       <!-- Fila Principal: Búsqueda y Acciones Rápidas -->
       <VRow align="center" no-gutters class="gap-2">
         <!-- Buscador Principal (Autocomplete de Productos) -->
-        <VCol cols="12" md="4" lg="5">
+        <VCol cols="12" md="4" lg="4">
           <VAutocomplete
             :model-value="props.selectProducts"
             :items="props.products"
@@ -138,28 +136,16 @@ const lapsoDeTiempoOpciones = [
 
           <VDivider vertical class="mx-1 my-2" />
 
-          <!-- Mostrar Ignorados (Toggle) -->
+          <!-- Limpiar Ignore (Nuevo) -->
           <VBtn
             icon
-            variant="tonal"
-            :color="props.showIgnored ? 'success' : 'secondary'"
+            variant="text"
+            color="warning"
             size="38"
-            @click="emit('update:showIgnored', !props.showIgnored)"
+            @click="emit('clear-ignore')"
           >
-            <VIcon :icon="props.showIgnored ? 'tabler-eye' : 'tabler-eye-off'" />
-            <VTooltip activator="parent" location="top">{{ props.showIgnored ? 'Ocultar Ignorados' : 'Mostrar Ignorados' }}</VTooltip>
-          </VBtn>
-
-          <!-- Mostrar Gráficos (Toggle) -->
-          <VBtn
-            icon
-            variant="tonal"
-            :color="props.showGraphs ? 'primary' : 'secondary'"
-            size="38"
-            @click="emit('update:showGraphs', !props.showGraphs)"
-          >
-            <VIcon icon="tabler-chart-line" />
-            <VTooltip activator="parent" location="top">{{ props.showGraphs ? 'Ocultar Gráficos' : 'Mostrar Gráficos' }}</VTooltip>
+            <VIcon icon="tabler-eye-check" />
+            <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
           </VBtn>
 
           <!-- Limpiar Filtros (Solo Icono) -->
@@ -172,18 +158,6 @@ const lapsoDeTiempoOpciones = [
           >
             <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-          </VBtn>
-
-          <!-- Limpiar Ignore (Nuevo) -->
-          <VBtn
-            icon
-            variant="text"
-            color="warning"
-            size="38"
-            @click="emit('clear-ignore')"
-          >
-            <VIcon icon="tabler-eye-check" />
-            <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
           </VBtn>
         </div>
       </VRow>

@@ -34,6 +34,8 @@ const con_descuento = ref(true);
 const isColombian = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
+const showIgnored = ref(false);
+const showGraphs = ref(false);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
@@ -46,6 +48,8 @@ const handleClearFilters = () => {
   selectedLaboratory.value = [];
   selectedGroup.value = [];
   searchQuery.value = "";
+  showIgnored.value = false;
+  showGraphs.value = false;
 };
 
 async function consultarLaboratorios() {
@@ -78,6 +82,8 @@ async function consultarProductosConPaginacion() {
     orderBy: orderBy.value,
     with_suppliers: withSuppliers.value,
     con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
+    show_ignored: showIgnored.value,
+    with_trend: showGraphs.value,
   };
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
@@ -167,6 +173,27 @@ const handleProductScarceToggled = (productId) => {
   }
 };
 
+const handleClearIgnore = async () => {
+  try {
+    const { isConfirmed } = await Swal.fire({
+      title: "¿Restaurar productos ocultos?",
+      text: "Todos los productos que fueron ignorados volverán a aparecer en los reportes.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, restaurar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (isConfirmed) {
+      await axios.post("/suppliers-ia-order-assistant/clear-ignored");
+      toast.success("Productos restaurados correctamente.");
+      await actualizarTabla();
+    }
+  } catch (error) {
+    toast.error("Error al restaurar productos.");
+  }
+};
+
 const handleRemoveItem = (productId) => {
   if (tipo_de_vista.value) {
      handleProductScarceToggled(productId);
@@ -188,6 +215,8 @@ watch(
     isColombian,
     searchQuery,
     con_descuento,
+    showIgnored,
+    showGraphs,
   ],
   () => {
     clearTimeout(filterTimeout);
@@ -318,17 +347,13 @@ onMounted(async () => {
         v-model:tipo_de_vista="tipo_de_vista"
         v-model:tipo_de_filtracion="tipo_de_filtracion"
         v-model:lapso_de_tiempo="lapso_de_tiempo"
-        v-model:stock="stock"
-        v-model:isColombian="isColombian"
         v-model:searchQuery="searchQuery"
+        v-model:showIgnored="showIgnored"
+        v-model:showGraphs="showGraphs"
         :groups="groups"
         :laboratories="laboratories"
-        :tipo_de_filtracion="tipo_de_filtracion"
-        :tipo_de_vista="tipo_de_vista"
-        :lapso_de_tiempo="lapso_de_tiempo"
-        :stock="stock"
-        :isColombian="isColombian"
         @clear="handleClearFilters"
+        @clear-ignore="handleClearIgnore"
         @generarPedido="generarPedido"
         @fetchSuppliers="handleFetchSuppliers"
       />
@@ -345,6 +370,7 @@ onMounted(async () => {
           :last-page="gruposData.last_page"
           :loading="loading"
           :with-suppliers="withSuppliers"
+          :show-graphs="showGraphs"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
         />
@@ -357,6 +383,7 @@ onMounted(async () => {
           :items-per-page="itemsPerPage"
           :page="page"
           :with-suppliers="withSuppliers"
+          :show-graphs="showGraphs"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
