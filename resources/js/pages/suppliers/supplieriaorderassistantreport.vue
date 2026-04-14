@@ -45,10 +45,6 @@ async function consultarKpisGlobales() {
   loadingStats.value = true;
   try {
     const data = {
-      itemsPerPage: 99999, // traer todos para contar
-      page: 1,
-      orderBy: orderBy.value,
-      sortBy: sortBy.value,
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
       is_colombia: checkColombia.value,
@@ -56,13 +52,15 @@ async function consultarKpisGlobales() {
       tipo_filtracion: tipo_de_filtracion.value,
       stock: stock.value,
       show_ignored: showIgnored.value,
-      with_trend: showGraphs.value,
     };
-    const resp = await axios.post('/suppliers-ia-assistant-report/filtrar-paginate?page=1', data);
-    const items = resp.data?.data?.paginate?.data || [];
-    kpiGlobal.necesitan = items.filter(p => roundIaAnalysis(p.solicitar) > 0).length;
-    kpiGlobal.exceso    = items.filter(p => roundIaAnalysis(p.solicitar) < 0).length;
-    kpiGlobal.ok        = items.filter(p => roundIaAnalysis(p.solicitar) == 0).length;
+    
+    // Usar el endpoint de estadísticas específico que calcula todo en el servidor
+    const resp = await axios.post('/suppliers-ia-assistant-report/stats', data);
+    const stats = resp.data?.data || { necesitan: 0, exceso: 0, ok: 0 };
+    
+    kpiGlobal.necesitan = stats.necesitan;
+    kpiGlobal.exceso    = stats.exceso;
+    kpiGlobal.ok        = stats.ok;
   } catch (e) {
     console.error('Error al cargar KPIs globales:', e);
   } finally {

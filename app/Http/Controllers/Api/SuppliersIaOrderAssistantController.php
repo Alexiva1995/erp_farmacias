@@ -54,15 +54,8 @@ class SuppliersIaOrderAssistantController extends Controller
     {
         $filtros = $this->prepararFiltros($request);
         
-        // Obtenemos todos los productos filtrados sin paginar
-        if ($request->tipo_filtracion == "combinado") {
-            // El servicio ya tiene un método para obtener sin paginar
-            $items = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
-        } elseif ($request->tipo_filtracion == "sales") {
-            $items = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
-        } else {
-            $items = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
-        }
+        // Obtenemos todos los productos filtrados sin hidratar para mayor velocidad
+        $items = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
 
         $stats = [
             'necesitan' => 0,
@@ -71,12 +64,13 @@ class SuppliersIaOrderAssistantController extends Controller
         ];
 
         foreach ($items as $item) {
-            $solicitarRounded = $this->roundIaAnalysis($item->solicitar);
+            $solicitarVal = (float)($item->solicitar ?? 0);
             $loteQuantity = (float)($item->lote_quantity ?? 0);
 
-            if ($solicitarRounded > 0 || ($solicitarRounded == 0 && $loteQuantity <= 0)) {
+            // Sincronizado con la lógica de UI y Repository
+            if ($solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0)) {
                 $stats['necesitan']++;
-            } elseif ($solicitarRounded < 0) {
+            } elseif ($solicitarVal < 0) {
                 $stats['exceso']++;
             } else {
                 $stats['ok']++;
