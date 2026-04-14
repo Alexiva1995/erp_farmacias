@@ -235,7 +235,7 @@ const getPriceDiff = (current, offer) => {
             :items-per-page="props.itemsPerPage"
             :total-items="props.totalProduct"
             :loading="props.loading"
-            :items-per-page-options="[10, 25, 40]"
+            :items-per-page-options="[10, 25, 50]"
             @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
           </div>
