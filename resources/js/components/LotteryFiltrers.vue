@@ -60,13 +60,15 @@ const hasActiveAdvancedFilters = computed(() => {
     <template #actions-extra>
       <!-- Realizar Sorteo -->
       <VBtn
+        icon
         color="primary"
         variant="flat"
-        class="shadow-sm px-4"
+        size="38"
+        class="shadow-sm"
         @click="emit('action-sortiar', 'ok')"
       >
-        <VIcon icon="tabler-trophy" start />
-        REALIZAR SORTEO
+        <VIcon icon="tabler-trophy" />
+        <VTooltip activator="parent" location="top">Realizar Sorteo</VTooltip>
       </VBtn>
     </template>
 

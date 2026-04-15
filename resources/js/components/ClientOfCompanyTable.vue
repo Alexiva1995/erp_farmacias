@@ -158,7 +158,8 @@ const headers = [
         </VCard>
       </div>
     </div>
-  </template>
+  </div>
+</template>
   
   <style scoped>
   .text-super-xs {
