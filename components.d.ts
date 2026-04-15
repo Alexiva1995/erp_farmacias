@@ -169,6 +169,7 @@ declare module 'vue' {
     HistoryFilters: typeof import('./resources/js/components/HistoryFilters.vue')['default']
     HistoryTable: typeof import('./resources/js/components/HistoryTable.vue')['default']
     I18n: typeof import('./resources/js/@core/components/I18n.vue')['default']
+    ImageCropperDialog: typeof import('./resources/js/components/dialogs/ImageCropperDialog.vue')['default']
     IncomeStatementFilters: typeof import('./resources/js/components/IncomeStatementFilters.vue')['default']
     IncompleteProductsTable: typeof import('./resources/js/components/IncompleteProductsTable.vue')['default']
     IndividualOfferFilters: typeof import('./resources/js/components/IndividualOfferFilters.vue')['default']

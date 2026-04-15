@@ -1,5 +1,6 @@
 <script setup>
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
+import ImageCropperDialog from "@/components/dialogs/ImageCropperDialog.vue";
 import { useAuthStore } from "@/stores/auth";
 import defaultAvatarImg from "@images/avatars/avatar-1.png";
 import axios from "@/plugins/axios";
@@ -24,6 +25,11 @@ const photoUploading = ref(false);
 const photoLoadFailed = ref(false);
 const photoPreview = ref(null);
 const activeView = ref("performance"); // "performance" o "salary"
+
+// Modales de Recorte
+const showCropper = ref(false);
+const tempImageSource = ref('');
+const originalFileName = ref('');
 
 // Configuración de documentos
 const photo = ref(null);
@@ -103,15 +109,30 @@ const onPhotoChange = async (event) => {
   }
 
   const previousPreview = photoPreview.value;
+  
+  // Guardar datos temporales para el cropper
+  tempImageSource.value = URL.createObjectURL(file);
+  originalFileName.value = file.name;
+  showCropper.value = true;
+
+  // El resto del proceso se maneja en handleCroppedImage
+  event.target.value = '';
+};
+
+/** Procesar la imagen después del recorte */
+const handleCroppedImage = async (blob) => {
+  let file = new File([blob], originalFileName.value, { type: 'image/jpeg' });
+  
   photoUploading.value = true;
+  const previousPreview = photoPreview.value;
 
   try {
-    // Aplicar compresión si es mayor a 500KB o simplemente para optimizar
-    if (file.size > 500 * 1024 || file.type === 'image/png') {
+    // Aplicar compresión adicional si es necesario (aunque el cropper ya la optimiza)
+    if (file.size > 500 * 1024) {
       try {
         file = await compressImage(file);
       } catch (err) {
-        console.error("Fallo la compresión, se usará original", err);
+        console.error("Fallo la compresión secundaria", err);
       }
     }
 
@@ -123,13 +144,14 @@ const onPhotoChange = async (event) => {
     if (!ok) {
       photoPreview.value = previousPreview;
     }
-    // No limpiamos photoPreview inmediatamente para evitar el parpadeo
-    // URL.revokeObjectURL(objectUrl); // Se recomienda revocar después de cargar o al desmontar
   } catch (error) {
     photoPreview.value = previousPreview;
   } finally {
     photoUploading.value = false;
-    event.target.value = '';
+    if (tempImageSource.value) {
+      URL.revokeObjectURL(tempImageSource.value);
+      tempImageSource.value = '';
+    }
   }
 };
 
@@ -426,6 +448,12 @@ watch(activeView, (view) => {
       :selectedEmployee="employee"
       :clear-data-on-close="false"
       @refresh-table="handleRefreshTable"
+    />
+
+    <ImageCropperDialog
+      v-model="showCropper"
+      :image-source="tempImageSource"
+      @confirm="handleCroppedImage"
     />
 
     <VRow>
