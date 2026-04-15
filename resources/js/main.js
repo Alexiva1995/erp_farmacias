@@ -12,6 +12,7 @@ import '@core-scss/template/index.scss';
 import '@styles/print.scss';
 import '@styles/styles.scss';
 import '@styles/sweetalert-styles.scss';
+import 'cropperjs/dist/cropper.css';
 
 async function startApp() {
   try {
