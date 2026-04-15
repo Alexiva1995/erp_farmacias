@@ -25,6 +25,11 @@ class EmployeeResource extends JsonResource
             'email' => $this->user?->email,
             'role' => $this->user?->role,
             'user_id' => $this->user_id,
+            'photo' => $this->photo,
+            'photo_url' => $this->photo_url,
+            'rif' => $this->rif,
+            'residence_letter' => $this->residence_letter,
+            'cv' => $this->cv,
         ];
     }
 }
