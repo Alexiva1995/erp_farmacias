@@ -1200,11 +1200,33 @@ const verifyClient = async (identification) => {
     const responseData = response.data.data;
 
     if (responseData.found === false) {
-      toast.info("Cliente no encontrado. Por favor, regístrelo.");
-      newClientFormData.value = {
-        ...newClientFormData.value,
-        identification: identification,
-      };
+      toast.info("Consultando identidad...");
+      
+      try {
+        const cneResponse = await axios.post('/crm/clients/cne-verify', {
+          identification: identification
+        });
+        
+        if (cneResponse.status === 200 && cneResponse.data.data) {
+          const cneData = cneResponse.data.data;
+          newClientFormData.value = {
+            ...newClientFormData.value,
+            identification: identification,
+            identification_type: 'V-',
+            name: cneData.name,
+            last_name: cneData.last_name
+          };
+          toast.success("Datos precargados desde CNE.");
+        }
+      } catch (cneError) {
+        console.log("[TPV] Sin datos CNE:", cneError);
+        newClientFormData.value = {
+          ...newClientFormData.value,
+          identification: identification,
+          identification_type: 'V-',
+        };
+      }
+
       showRegisterClientModal.value = true;
       return false;
     } else {

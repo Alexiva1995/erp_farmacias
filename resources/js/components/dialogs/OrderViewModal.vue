@@ -381,6 +381,9 @@ const productLineLabel = (product) => {
                           <span class="text-primary font-weight-black text-super-xs">#{{ productId(product) }}</span>
                           <span class="text-super-xs font-weight-bold text-uppercase truncate-text">{{ product.title }}</span>
                         </div>
+                        <span v-if="product.product?.laboratory?.name || product.laboratory" class="text-super-xs text-disabled uppercase" style="font-size: 0.6rem !important; line-height: 1;">
+                          {{ product.product?.laboratory?.name || product.laboratory }}
+                        </span>
                       </div>
                     </td>
                     <td class="text-end table-amount text-super-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>

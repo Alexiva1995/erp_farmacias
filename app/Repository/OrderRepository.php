@@ -28,7 +28,7 @@ class OrderRepository
 
     public function builerFiltrarOrdenesforLottery($filtros): Builder
     {
-        $consulta = Order::query()->with(["client", "seller"]);
+        $consulta = Order::query()->with(["client", "seller", "details.product.laboratory"]);
 
         if (array_key_exists("minimo", $filtros)) {
             $consulta->where("total_amount_usd", ">", $filtros["minimo"]);
