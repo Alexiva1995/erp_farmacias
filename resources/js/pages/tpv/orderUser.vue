@@ -1232,16 +1232,17 @@ const verifyClient = async (identification) => {
     } else {
       const clientData = responseData.client;
 
-      if (clientData.available_discount) {
-        const { discount_percentage, max_volume, min_volume } =
-          clientData.available_discount;
-        discount.value = Number(discount_percentage);
-        discountMinProducts.value = min_volume;
-        discountMaxProducts.value = max_volume;
-      } else {
-        discount.value = 0;
-        discountMinProducts.value = 0;
-        discountMaxProducts.value = 0;
+      // NUEVO: Si no tiene teléfono, abrir modal para completar datos
+      if (!clientData.phone) {
+        toast.warning("El cliente no tiene teléfono registrado. Por favor, complételo.");
+        newClientFormData.value = {
+          ...newClientFormData.value,
+          ...clientData,
+          identification: clientData.identification,
+          identification_type: clientData.identification_type
+        };
+        showRegisterClientModal.value = true;
+        return false;
       }
 
       selectedClient.value = clientData;
@@ -1383,9 +1384,12 @@ function cargarErrores(errores) {
 
 const handleSaveNewClient = async (formData) => {
   try {
-    let respuesApi = await axios.post("/crm/clients", formData);
+    const clientId = newClientFormData.value.id;
+    const url = clientId ? `/crm/clients/edit/${clientId}` : "/crm/clients";
+    
+    let respuesApi = await axios.post(url, formData);
     if (respuesApi.status == 200) {
-      toast.success("El cliente se ha guardado correctamente");
+      toast.success(clientId ? "Cliente actualizado" : "Cliente creado");
       handleCloseRegisterModal();
       addOrden(respuesApi.data.data.id);
     }

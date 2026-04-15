@@ -22,7 +22,7 @@ class StoreEmployeeDocumentsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'photo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'photo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'rif' => ['nullable', 'file', 'mimes:pdf'],
             'residence_letter' => ['nullable', 'file', 'mimes:pdf'],
             'cv' => ['nullable', 'file', 'mimes:pdf'],
@@ -34,7 +34,7 @@ class StoreEmployeeDocumentsRequest extends FormRequest
         return [
             'photo.file' => 'Debe subir un archivo',
             'photo.mimes' => 'El formato debe ser jpg, jpeg o png',
-            'photo.max' => 'La imagen no debe pesar más de 2MB',
+            'photo.max' => 'La imagen no debe pesar más de 10MB',
             'rif.file' => 'Debe subir un archivo',
             'rif.mimes' => 'El formato debe ser pdf',
             'residence_letter.file' => 'Debe subir un archivo',
