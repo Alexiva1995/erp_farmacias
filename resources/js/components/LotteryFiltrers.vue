@@ -57,18 +57,16 @@ const hasActiveAdvancedFilters = computed(() => {
       />
     </template>
 
-    <template #search-append>
+    <template #actions-extra>
       <!-- Realizar Sorteo -->
       <VBtn
-        icon
         color="primary"
         variant="flat"
-        size="38"
-        class="shadow-sm"
+        class="shadow-sm px-4"
         @click="emit('action-sortiar', 'ok')"
       >
-        <VIcon icon="tabler-trophy" />
-        <VTooltip activator="parent" location="top">Realizar Sorteo</VTooltip>
+        <VIcon icon="tabler-trophy" start />
+        REALIZAR SORTEO
       </VBtn>
     </template>
 
