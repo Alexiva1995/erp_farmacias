@@ -120,12 +120,11 @@ const onPhotoChange = async (event) => {
     photo.value = file;
     
     const ok = await handleUpdateEmployeeDocument(true);
-    if (ok) {
-      photoPreview.value = null;
-    } else {
+    if (!ok) {
       photoPreview.value = previousPreview;
     }
-    URL.revokeObjectURL(objectUrl);
+    // No limpiamos photoPreview inmediatamente para evitar el parpadeo
+    // URL.revokeObjectURL(objectUrl); // Se recomienda revocar después de cargar o al desmontar
   } catch (error) {
     photoPreview.value = previousPreview;
   } finally {
@@ -432,11 +431,11 @@ watch(activeView, (view) => {
     <VRow>
       <!-- Sidebar de Perfil (Sticky) -->
       <VCol cols="12" md="3">
-        <VCard class="rounded-xl border-0 shadow-sm sticky-sidebar overflow-visible mb-6">
+        <VCard class="rounded-lg border-0 shadow-sm sticky-sidebar overflow-visible mb-6">
           <!-- Header con Gradiente Premium -->
-          <div class="header-gradient rounded-t-xl pa-6 d-flex flex-column align-center position-relative">
+          <div class="header-gradient rounded-t-lg pa-6 d-flex flex-column align-center position-relative">
             <div class="position-relative mb-4">
-              <VAvatar size="100" class="elevation-12 rounded-xl photo-avatar" border="3px solid white">
+              <VAvatar size="100" class="elevation-12 rounded-lg photo-avatar" border="3px solid white">
                 <img v-if="photoPreview || employeePhotoUrl" :src="photoPreview || avatarDisplaySrc" @error="photoLoadFailed = true" />
                 <span v-else class="text-h4 font-weight-black text-white">{{ employeeInitials }}</span>
                 
@@ -551,7 +550,7 @@ watch(activeView, (view) => {
         </VCard>
 
         <!-- Sección de Documentos -->
-        <VCard class="rounded-xl border-1 shadow-sm overflow-hidden">
+        <VCard class="rounded-lg border-1 shadow-sm overflow-hidden">
           <div class="pa-4 bg-light font-weight-black text-super-xs text-primary uppercase letter-spacing-1 border-b d-flex align-center">
             <VIcon icon="tabler-files" size="16" class="me-2" />
             Documentación Digital
@@ -597,11 +596,11 @@ watch(activeView, (view) => {
                 { label: 'TICKET PROM', value: performanceData.salesMetrics.currentMonth.ticketAverage, icon: 'tabler-receipt', color: 'warning', format: 'currency' },
                 { label: 'CROSS-SELLING', value: crossSellingRate, icon: 'tabler-trending-up', color: 'info', format: 'percent' }
               ]" :key="kpi.label" cols="12" sm="6" lg="3">
-                <VCard class="rounded-xl border-0 shadow-sm kpi-card overflow-hidden h-100">
+                <VCard class="rounded-lg border-0 shadow-sm kpi-card overflow-hidden h-100">
                   <div :class="`kpi-glow bg-${kpi.color}`" />
                   <VCardText class="pa-5">
                     <div class="d-flex justify-space-between align-start mb-4">
-                      <VAvatar :color="kpi.color" variant="tonal" size="44" class="rounded-xl">
+                      <VAvatar :color="kpi.color" variant="tonal" size="44" class="rounded-lg">
                         <VIcon :icon="kpi.icon" size="24" />
                       </VAvatar>
                     </div>
@@ -615,7 +614,7 @@ watch(activeView, (view) => {
             </VRow>
 
             <!-- Comparativo Histórico (Estilo Compacto) -->
-            <VCard class="rounded-xl border-0 shadow-sm mb-8">
+            <VCard class="rounded-lg border-0 shadow-sm mb-8">
               <div class="pa-4 bg-light border-b font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
                 Acumulado Histórico
               </div>
@@ -639,7 +638,7 @@ watch(activeView, (view) => {
             <!-- Rankings y Detalles -->
             <VRow>
               <VCol cols="12" lg="6">
-                <VCard class="rounded-xl border-0 shadow-sm h-100 overflow-hidden">
+                <VCard class="rounded-lg border-0 shadow-sm h-100 overflow-hidden">
                   <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
                     <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 10 Productos (Unidades)</span>
                     <VIcon icon="tabler-crown" size="18" color="warning" />
@@ -694,9 +693,9 @@ watch(activeView, (view) => {
               <VChip color="success" variant="flat" class="font-weight-black px-4">ACTIVO</VChip>
             </div>
 
-            <VCard class="rounded-xl border-0 shadow-sm mb-6 overflow-hidden">
+            <VCard class="rounded-lg border-0 shadow-sm mb-6 overflow-hidden">
                <div class="pa-5 header-gradient d-flex align-center">
-                  <VAvatar color="white" variant="flat" size="48" class="me-4 rounded-xl shadow-sm">
+                  <VAvatar color="white" variant="flat" size="48" class="me-4 rounded-lg shadow-sm">
                     <VIcon icon="tabler-piggy-bank" color="primary" size="24" />
                   </VAvatar>
                   <div class="flex-grow-1">
@@ -712,7 +711,7 @@ watch(activeView, (view) => {
                       "La distribución de conceptos se calcula según la ley vigente y las políticas de la farmacia."
                     </div>
                     
-                    <div v-if="distribution" class="premium-invoice rounded-xl pa-8 border-1 shadow-sm position-relative overflow-hidden">
+                    <div v-if="distribution" class="premium-invoice rounded-lg pa-8 border-1 shadow-sm position-relative overflow-hidden">
                       <div class="invoice-watermark">PAYROLL</div>
                       <div class="d-flex justify-space-between align-center mb-8">
                         <span class="text-h6 font-weight-black text-primary uppercase">Detalle de Cobro</span>
@@ -741,7 +740,7 @@ watch(activeView, (view) => {
             </VCard>
 
             <!-- Historial -->
-            <VCard class="rounded-xl border-0 shadow-sm overflow-hidden mt-8">
+            <VCard class="rounded-lg border-0 shadow-sm overflow-hidden mt-8">
               <div class="pa-4 bg-light border-b font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
                 Historial de Pagos Procesados
               </div>
@@ -757,7 +756,7 @@ watch(activeView, (view) => {
               >
                 <template #item.fecha="{ item }">
                   <div class="d-flex align-center gap-3 py-2">
-                    <VAvatar color="primary" variant="tonal" size="32" class="rounded font-weight-black text-super-xs">
+                    <VAvatar color="primary" variant="tonal" size="32" class="rounded-lg font-weight-black text-super-xs">
                       {{ new Date(item.fecha).getMonth() + 1 }}
                     </VAvatar>
                     <span class="text-xs font-weight-black uppercase">{{ new Date(item.fecha).toLocaleString('es-VE', { month: 'long', year: 'numeric' }) }}</span>
