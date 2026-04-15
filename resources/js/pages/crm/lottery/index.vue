@@ -29,13 +29,13 @@ const itemsPerPage = ref(10)
 const sortBy = ref('id')
 const orderBy = ref('desc')
 
-const laboratory_id= ref(null);
+const laboratory_id= ref([]);
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
 const monto_minimo= ref(null);
 
 function limpiarFiltros(){
-  laboratory_id.value=null
+  laboratory_id.value=[]
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
   monto_minimo.value=null
@@ -100,7 +100,7 @@ async function filtrar(){
     }
 
     // Solo enviar filtros que tengan valor real
-    if(laboratory_id.value != null && laboratory_id.value !== ''){
+    if(laboratory_id.value && laboratory_id.value.length > 0){
       filtros.laboratory_id = laboratory_id.value
     }
     if(fechaDesde_filtro.value && fechaHasta_filtro.value){
@@ -146,7 +146,7 @@ async function sortiar(){
       sortBy:sortBy.value,
     }
 
-    if(laboratory_id.value != null && laboratory_id.value !== ''){
+    if(laboratory_id.value && laboratory_id.value.length > 0){
       filtros.laboratory_id = laboratory_id.value
     }
     if(fechaDesde_filtro.value && fechaHasta_filtro.value){

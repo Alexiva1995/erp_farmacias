@@ -376,7 +376,7 @@ async function handleBulkCneVerification() {
         <p>Esta acción consultará el Registro Electoral de Venezuela para <b>actualizar nombres y apellidos</b> de clientes con cédula (V-).</p>
         <ul class="mt-2">
           <li><b>Proceso:</b> Se procesarán los 100 registros más antiguos para evitar saturar el servicio externo.</li>
-          <li><b>Automatización:</b> El sistema también procesará un lote automáticamente cada noche (10 registros).</li>
+          <li><b>Automatización:</b> El sistema también procesará un lote automáticamente cada 2 horas (100 registros).</li>
         </ul>
         <p class="text-success mt-4 font-weight-bold">Nota: Esto garantiza que los nombres en el CRM coincidan con los datos oficiales.</p>
       </div>

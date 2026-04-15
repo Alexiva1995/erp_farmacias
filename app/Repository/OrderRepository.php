@@ -34,12 +34,18 @@ class OrderRepository
             $consulta->where("total_amount_usd", ">", $filtros["minimo"]);
         }
 
-        if (array_key_exists("laboratory_id", $filtros)) {
+        if (array_key_exists("laboratory_id", $filtros) && !empty($filtros["laboratory_id"])) {
             $consulta->select('orders.*')
                 ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-                ->join('products', 'order_details.product_id', '=', 'products.id')
-                ->where('products.laboratory_id', "=", $filtros["laboratory_id"])
-                ->distinct();
+                ->join('products', 'order_details.product_id', '=', 'products.id');
+
+            if (is_array($filtros["laboratory_id"])) {
+                $consulta->whereIn('products.laboratory_id', $filtros["laboratory_id"]);
+            } else {
+                $consulta->where('products.laboratory_id', "=", $filtros["laboratory_id"]);
+            }
+
+            $consulta->distinct();
         }
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {

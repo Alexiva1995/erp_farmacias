@@ -7,7 +7,7 @@ const props = defineProps({
   numero_de_premios: [String, Number, null],
   fechaHasta_filtro: [String, null],
   fechaDesde_filtro: [String, null],
-  laboratory_id: [String, Number, null],
+  laboratory_id: [Array, String, Number, null],
   monto_minimo: [String, Number, null],
   laboratories: { type: Array, default: () => [] },
 });
@@ -42,10 +42,13 @@ const hasActiveAdvancedFilters = computed(() => {
     <template #search>
       <VAutocomplete
         :model-value="props.laboratory_id"
-        placeholder="Seleccionar laboratorio..."
+        placeholder="Seleccionar laboratorios..."
         variant="outlined"
         density="compact"
         hide-details
+        multiple
+        chips
+        closable-chips
         :items="props.laboratories"
         item-title="name"
         item-value="id"

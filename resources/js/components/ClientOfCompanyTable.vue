@@ -158,33 +158,33 @@ const headers = [
         </VCard>
       </div>
     </div>
-  </div>
-
+  </template>
+  
   <style scoped>
   .text-super-xs {
     font-size: 0.65rem !important;
     line-height: normal;
   }
-
+  
   .bg-light {
     background-color: #f8fafc !important;
   }
-
+  
   .premium-card {
     border-radius: 12px !important;
     transition: transform 0.2s ease;
   }
-
+  
   .premium-card:active {
     transform: scale(0.98);
   }
-
+  
   .mobile-grid {
     display: grid;
     align-items: center;
     grid-template-columns: 1fr 1fr;
   }
-
+  
   .stat-box .label {
     display: block;
     color: rgba(var(--v-theme-on-surface), 0.45);
@@ -193,38 +193,37 @@ const headers = [
     margin-block-end: 2px;
     text-transform: uppercase;
   }
-
+  
   .stat-box .value {
     font-weight: 800;
   }
-
+  
   .truncate {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-
+  
   .truncate-2-lines {
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
-
+  
   .leading-tight {
     line-height: 1.25 !important;
   }
-
+  
   .gap-1 { gap: 4px !important; }
   .gap-2 { gap: 8px !important; }
   .gap-3 { gap: 12px !important; }
-
+  
   .uppercase {
     text-transform: uppercase;
   }
-
+  
   .border-dashed {
     border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
   }
   </style>
-</template>
