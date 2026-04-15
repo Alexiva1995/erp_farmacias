@@ -368,6 +368,50 @@ async function handleBulkCleanup() {
   }
 }
 
+async function handleBulkCneVerification() {
+  const result = await Swal.fire({
+    title: '¿Verificar identidades vía CNE?',
+    html: `
+      <div class="text-start">
+        <p>Esta acción consultará el Registro Electoral de Venezuela para <b>actualizar nombres y apellidos</b> de clientes con cédula (V-).</p>
+        <ul class="mt-2">
+          <li><b>Proceso:</b> Se procesarán los registros en lotes para evitar saturar el servicio externo.</li>
+          <li><b>Advertencia:</b> Esta operación puede tardar unos minutos dependiendo de la respuesta del CNE.</li>
+        </ul>
+        <p class="text-success mt-4 font-weight-bold">Nota: Esto garantiza que los nombres en el CRM coincidan con los datos oficiales.</p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, verificar y corregir',
+    cancelButtonText: 'Cancelar',
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-success v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+      cancelButton: 'v-btn v-theme--light text-secondary v-btn--density-default v-btn--size-default v-btn--variant-outlined mx-2'
+    },
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    loading.value = true;
+    try {
+      toast.info("Iniciando verificación masiva... por favor espera.");
+      const response = await axios.post('/crm/clients/bulk-cne-verify');
+      if (response.status === 200) {
+        const { updated, not_found } = response.data.data;
+        toast.success(`Proceso completado: ${updated} registros actualizados. (${not_found} no encontrados)`);
+        await actualizarTabla();
+      }
+    } catch (error) {
+      console.error("Error en verificación masiva CNE:", error);
+      toast.error(error.response?.data?.message || "Hubo un error al intentar consultar el CNE.");
+    } finally {
+      loading.value = false;
+    }
+  }
+}
+
 const updateTableOptions = options => {
   // console.log(options)
   page.value = options.page
@@ -539,6 +583,7 @@ onMounted(async () => {
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
       @bulk-cleanup="handleBulkCleanup"
+      @bulk-cne-verify="handleBulkCneVerification"
     />
     <ClientFormDialoge
       :companies="statuModule.comapanies"

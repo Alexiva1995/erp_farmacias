@@ -17,16 +17,14 @@ export default [
       },
       {
         title: 'Clientes',
-        children: [
-          {
-            title: 'Listado',
-            to: 'crm-clients',
+        to: 'crm-clients',
+        icon: {
+          is: 'font-awesome-icon', 
+          props: {
+            icon: ['fas', 'users'],
+            size: 'sm',
           },
-          {
-            title: 'Pendientes',
-            to: 'crm-clients-pending',
-          },
-        ]
+        },
       },
       {
         title: 'Empresas',

@@ -11,6 +11,7 @@ use App\Http\Requests\UpdateCompanyClientFormRequest;
 use App\Models\Client as ClientModel;
 use App\Models\Order;
 use App\Models\OrderDetail;
+use App\Services\Identity\CNEQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,8 @@ class ClientController extends Controller
     //
 
     public function __construct(
-        protected Client $client
+        protected Client $client,
+        protected CNEQueryService $cneService
     ) {
     }
 
@@ -263,18 +265,6 @@ class ClientController extends Controller
         return Excel::download($excel, $fileName);
     }
 
-    public function pending(Request $request)
-    {
-        $filtros = [
-            "itemsPerPage" => $request->itemsPerPage,
-            "page" => $request->page,
-            "status" => $request->status
-        ];
-
-        $repuesta = $this->client->pending($filtros);
-
-        return ApiResponse::success($repuesta, "OK", 200);
-    }
 
     /**
      * Obtener estadísticas del cliente para el dashboard modal.
@@ -451,6 +441,63 @@ class ClientController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             return ApiResponse::error("Error al realizar la limpieza masiva: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Consulta individual al CNE.
+     */
+    public function verifyCne(Request $request): JsonResponse
+    {
+        $cedula = $request->identification;
+        if (!$cedula) return ApiResponse::error("Cédula requerida", 400);
+
+        $data = $this->cneService->search($cedula);
+        if (!$data) return ApiResponse::error("No se encontraron datos en el CNE", 404);
+
+        return ApiResponse::success($data, "Datos encontrados", 200);
+    }
+
+    /**
+     * Proceso masivo para corregir nombres usando el CNE.
+     * Solo para cédulas V- (Venezolanos).
+     */
+    public function bulkVerifyCne(): JsonResponse
+    {
+        try {
+            // Buscamos clientes que tengan un nombre vacío o corto, o simplemente todos los V-
+            // Para evitar bloqueos, procesaremos una muestra (ej. 100)
+            $clients = ClientModel::where('identification_type', 'V-')
+                ->where('identification', 'regexp', '^[0-9]+$')
+                ->orderBy('updated_at', 'asc') // Procesar los menos recientemente actualizados
+                ->limit(100)
+                ->get();
+
+            $updatedCount = 0;
+            $notFoundCount = 0;
+
+            foreach ($clients as $client) {
+                $data = $this->cneService->search($client->identification);
+                if ($data) {
+                    $client->update([
+                        'name' => $data['name'],
+                        'last_name' => $data['last_name'],
+                    ]);
+                    $updatedCount++;
+                } else {
+                    $notFoundCount++;
+                }
+                
+                // Pequeña pausa para no saturar al CNE
+                usleep(500000); // 0.5 segundos
+            }
+
+            return ApiResponse::success([
+                'updated' => $updatedCount,
+                'not_found' => $notFoundCount,
+            ], "Verificación CNE completada: {$updatedCount} corregidos, {$notFoundCount} no encontrados.", 200);
+        } catch (\Throwable $e) {
+            return ApiResponse::error("Error en verificación masiva: " . $e->getMessage(), 500);
         }
     }
 }

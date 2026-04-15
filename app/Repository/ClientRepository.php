@@ -50,15 +50,6 @@ class ClientRepository
         return Client::query()->with("company")->get();
     }
 
-    public function pending($filters, $perPage = 10): LengthAwarePaginator
-    {
-        if (empty($filters['status']))
-            $filters['status'] = 0;
-
-        $query = $this->builerPaginate($filters);
-
-        return $query->paginate($perPage);
-    }
 
     public function builerPaginate($filtros): Builder
     {

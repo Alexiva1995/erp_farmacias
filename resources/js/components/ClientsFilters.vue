@@ -27,6 +27,7 @@ const emit = defineEmits([
   "export-pdf",
   "export-excel",
   "bulk-cleanup",
+  "bulk-cne-verify",
 ]);
 
 const clientTypeOptions = [
@@ -77,6 +78,19 @@ const hasAdvancedFilters = computed(() =>
       >
         <VIcon icon="tabler-brush" />
         <VTooltip activator="parent" location="top">Corregir Teléfonos Inválidos</VTooltip>
+      </VBtn>
+
+      <!-- Botón Verificar CNE -->
+      <VBtn
+        icon
+        color="success"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm ms-2"
+        @click="emit('bulk-cne-verify')"
+      >
+        <VIcon icon="tabler-user-search" />
+        <VTooltip activator="parent" location="top">Verificar Nombres vía CNE (Actualización Masiva)</VTooltip>
       </VBtn>
     </template>
 
