@@ -2,6 +2,7 @@
 
 namespace App\Services\Identity;
 
+use App\Models\Client as ClientModel;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -20,66 +21,79 @@ class CNEQueryService
             // Limpiar cédula (solo números)
             $cedula = preg_replace('/[^0-9]/', '', $cedula);
             
-            $url = "http://www.cne.gob.ve/web/registro_electoral/ce.php?nacionalidad={$nacionalidad}&cedula={$cedula}";
+            $appId = env('CEDULA_API_APP_ID');
+            $token = env('CEDULA_API_TOKEN');
+
+            // Nueva fuente oficial según Wiki: api.cedula.com.ve
+            $url = "https://api.cedula.com.ve/api/v1?app_id={$appId}&token={$token}&cedula={$cedula}";
 
             $response = Http::timeout(10)->get($url);
 
             if ($response->failed()) {
+                \Log::warning("Falla en API oficial cedula.com.ve para CI {$cedula}: " . $response->status());
                 return null;
             }
 
-            $html = $response->body();
+            $data = $response->json();
 
-            // Verificar si el ciudadano está inscrito
-            if (Str::contains($html, 'DATOS DEL ELECTOR')) {
-                // El nombre suele venir después de "Nombre:"
-                // Buscamos el patrón <b>Nombre:</b></td><td><b>NOMBRE COMPLETO</b>
+            // Verificar estructura oficial { error: false, data: { ... } }
+            if (isset($data['error']) && !$data['error'] && isset($data['data']) && $data['data']) {
+                $elector = $data['data'];
                 
-                // Limpieza básica del HTML para facilitar el regex
-                $html = preg_replace('/\s+/', ' ', $html);
+                // Construir nombres según la estructura de la api oficial
+                $names = trim(($elector['primer_nombre'] ?? '') . ' ' . ($elector['segundo_nombre'] ?? ''));
+                $lastNames = trim(($elector['primer_apellido'] ?? '') . ' ' . ($elector['segundo_apellido'] ?? ''));
 
-                // Regex para extraer el nombre (según la estructura actual del CNE)
-                // Estructura: <td align="left"><b>Nombre:</b></td> <td><b>APELLIDO1 APELLIDO2 NOMBRE1 NOMBRE2</b></td>
-                if (preg_match('/Nombre:<\/b><\/td>\s*<td><b>(.*?)<\/b><\/td>/i', $html, $matches)) {
-                    $fullName = trim($matches[1]);
-                    return $this->splitFullName($fullName);
-                }
+                return [
+                    'name' => mb_convert_case($names, MB_CASE_TITLE, "UTF-8"),
+                    'last_name' => mb_convert_case($lastNames, MB_CASE_TITLE, "UTF-8"),
+                ];
             }
 
             return null;
         } catch (\Exception $e) {
-            \Log::error("Error consultando CNE para CI {$cedula}: " . $e->getMessage());
+            \Log::error("Error consultando API Oficial para CI {$cedula}: " . $e->getMessage());
             return null;
         }
     }
 
     /**
-     * Divide el nombre completo del CNE en Nombre y Apellido.
-     * El CNE entrega: APELLIDO1 APELLIDO2 NOMBRE1 NOMBRE2
+     * Procesa un lote de clientes para verificar sus identidades.
      */
-    private function splitFullName(string $fullName): array
+    public function verifyBatch(int $limit = 10): array
     {
-        $parts = explode(' ', $fullName);
-        $count = count($parts);
+        $clients = ClientModel::where('identification_type', 'V-')
+            ->where('identification', 'regexp', '^[0-9]+$')
+            ->whereNull('cne_verified_at') // Solo los que no han sido verificados satisfactoriamente
+            ->orderBy('id', 'asc') // Procesar por orden de creación para ser más predecible
+            ->limit($limit)
+            ->get();
 
-        // Caso típico: 2 apellidos y 2 nombres
-        if ($count >= 4) {
-            $lastNames = $parts[0] . ' ' . $parts[1];
-            $names = implode(' ', array_slice($parts, 2));
-        } elseif ($count === 3) {
-            // 2 apellidos y 1 nombre (común) o 1 apellido y 2 nombres
-            // En Venezuela el CNE suele poner los apellidos primero.
-            $lastNames = $parts[0] . ' ' . $parts[1];
-            $names = $parts[2];
-        } else {
-            // Casos con menos partes
-            $lastNames = $parts[0] ?? '';
-            $names = $parts[1] ?? '';
+        $updatedCount = 0;
+        $notFoundCount = 0;
+
+        foreach ($clients as $client) {
+            $data = $this->search($client->identification);
+            if ($data) {
+                $client->update([
+                    'name' => $data['name'],
+                    'last_name' => $data['last_name'],
+                    'cne_verified_at' => now(), // Marcamos como verificado
+                ]);
+                $updatedCount++;
+            } else {
+                // Si no se encuentra, marcamos de todas formas la fecha para 
+                // que el sistema no se quede atascado intentando con el mismo registro.
+                $client->update(['cne_verified_at' => now()]);
+                $notFoundCount++;
+            }
+            
+            usleep(500000); // 0.5s delay
         }
 
         return [
-            'name' => mb_convert_case($names, MB_CASE_TITLE, "UTF-8"),
-            'last_name' => mb_convert_case($lastNames, MB_CASE_TITLE, "UTF-8"),
+            'updated' => $updatedCount,
+            'not_found' => $notFoundCount,
         ];
     }
 }

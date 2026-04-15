@@ -18,13 +18,6 @@ export default [
       {
         title: 'Clientes',
         to: 'crm-clients',
-        icon: {
-          is: 'font-awesome-icon', 
-          props: {
-            icon: ['fas', 'users'],
-            size: 'sm',
-          },
-        },
       },
       {
         title: 'Empresas',

@@ -450,12 +450,26 @@ class ClientController extends Controller
     public function verifyCne(Request $request): JsonResponse
     {
         $cedula = $request->identification;
+        $clientId = $request->client_id;
+        
         if (!$cedula) return ApiResponse::error("Cédula requerida", 400);
 
         $data = $this->cneService->search($cedula);
         if (!$data) return ApiResponse::error("No se encontraron datos en el CNE", 404);
 
-        return ApiResponse::success($data, "Datos encontrados", 200);
+        // Si se nos pasó un ID de cliente, actualizamos directamente
+        if ($clientId) {
+            $client = ClientModel::find($clientId);
+            if ($client) {
+                $client->update([
+                    'name' => $data['name'],
+                    'last_name' => $data['last_name'],
+                    'cne_verified_at' => now(),
+                ]);
+            }
+        }
+
+        return ApiResponse::success($data, "Datos actualizados correctamente desde el CNE", 200);
     }
 
     /**
@@ -465,37 +479,9 @@ class ClientController extends Controller
     public function bulkVerifyCne(): JsonResponse
     {
         try {
-            // Buscamos clientes que tengan un nombre vacío o corto, o simplemente todos los V-
-            // Para evitar bloqueos, procesaremos una muestra (ej. 100)
-            $clients = ClientModel::where('identification_type', 'V-')
-                ->where('identification', 'regexp', '^[0-9]+$')
-                ->orderBy('updated_at', 'asc') // Procesar los menos recientemente actualizados
-                ->limit(100)
-                ->get();
+            $results = $this->cneService->verifyBatch(100);
 
-            $updatedCount = 0;
-            $notFoundCount = 0;
-
-            foreach ($clients as $client) {
-                $data = $this->cneService->search($client->identification);
-                if ($data) {
-                    $client->update([
-                        'name' => $data['name'],
-                        'last_name' => $data['last_name'],
-                    ]);
-                    $updatedCount++;
-                } else {
-                    $notFoundCount++;
-                }
-                
-                // Pequeña pausa para no saturar al CNE
-                usleep(500000); // 0.5 segundos
-            }
-
-            return ApiResponse::success([
-                'updated' => $updatedCount,
-                'not_found' => $notFoundCount,
-            ], "Verificación CNE completada: {$updatedCount} corregidos, {$notFoundCount} no encontrados.", 200);
+            return ApiResponse::success($results, "Verificación CNE completada: {$results['updated']} corregidos, {$results['not_found']} no encontrados.", 200);
         } catch (\Throwable $e) {
             return ApiResponse::error("Error en verificación masiva: " . $e->getMessage(), 500);
         }

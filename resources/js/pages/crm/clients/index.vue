@@ -375,8 +375,8 @@ async function handleBulkCneVerification() {
       <div class="text-start">
         <p>Esta acción consultará el Registro Electoral de Venezuela para <b>actualizar nombres y apellidos</b> de clientes con cédula (V-).</p>
         <ul class="mt-2">
-          <li><b>Proceso:</b> Se procesarán los registros en lotes para evitar saturar el servicio externo.</li>
-          <li><b>Advertencia:</b> Esta operación puede tardar unos minutos dependiendo de la respuesta del CNE.</li>
+          <li><b>Proceso:</b> Se procesarán los 100 registros más antiguos para evitar saturar el servicio externo.</li>
+          <li><b>Automatización:</b> El sistema también procesará un lote automáticamente cada noche (10 registros).</li>
         </ul>
         <p class="text-success mt-4 font-weight-bold">Nota: Esto garantiza que los nombres en el CRM coincidan con los datos oficiales.</p>
       </div>
@@ -409,6 +409,33 @@ async function handleBulkCneVerification() {
     } finally {
       loading.value = false;
     }
+  }
+}
+
+async function handleIndividualCneVerification(client) {
+  if (client.identification_type !== 'V-') {
+    toast.warning("La verificación CNE solo está disponible para cédulas venezolanas (V-).");
+    return;
+  }
+
+  loading.value = true;
+  try {
+    toast.info(`Consultando CNE para CI: ${client.identification}...`);
+    const response = await axios.post('/crm/clients/cne-verify', {
+      identification: client.identification,
+      client_id: client.id
+    });
+
+    if (response.status === 200) {
+      toast.success("Datos actualizados correctamente.");
+      await actualizarTabla();
+    }
+  } catch (error) {
+    console.error("Error en verificación individual CNE:", error);
+    const mensaje = error.response?.data?.message || "No se pudo verificar la identidad.";
+    toast.error(mensaje);
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -609,6 +636,7 @@ onMounted(async () => {
         @delete="confirmarEliminarCliente"
         @view-stats="openStatsModal"
         @update:options="updateTableOptions"
+        @verify-cne="handleIndividualCneVerification"
       />
     </VCard>
 

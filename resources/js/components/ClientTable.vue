@@ -19,7 +19,7 @@ const sortByModel = computed(() => {
   return []
 })
 
-const emit = defineEmits(["edit", 'delete', 'update:options', 'view-stats'])
+const emit = defineEmits(["edit", 'delete', 'update:options', 'view-stats', 'verify-cne'])
 
 const clientTypeColor = (type) => {
   const map = {
@@ -114,6 +114,10 @@ const handleMobilePageChange = (newPage) => {
               <IconBtn @click="emit('view-stats', item.id)" color="info" variant="tonal" size="small">
                 <VIcon icon="tabler-eye" size="18" />
               </IconBtn>
+              <IconBtn @click="emit('verify-cne', item)" color="success" variant="tonal" size="small">
+                <VIcon icon="tabler-user-search" size="18" />
+                <VTooltip activator="parent" location="top">Verificar Identidad CNE</VTooltip>
+              </IconBtn>
               <IconBtn @click="emit('edit', item.id)" color="warning" variant="tonal" size="small">
                 <VIcon icon="tabler-edit" size="18" />
               </IconBtn>
@@ -159,6 +163,15 @@ const handleMobilePageChange = (newPage) => {
                   @click="emit('view-stats', item.id)"
                 >
                   <VIcon icon="tabler-eye" size="16" />
+                </IconBtn>
+                <IconBtn
+                  color="success"
+                  variant="tonal"
+                  size="x-small"
+                  class="rounded"
+                  @click="emit('verify-cne', item)"
+                >
+                  <VIcon icon="tabler-user-search" size="16" />
                 </IconBtn>
                 <IconBtn
                   color="warning"

@@ -47,13 +47,15 @@ class Client extends Model
         'balance',
         'is_spe',
         'status',
-        'client_type'
+        'client_type',
+        'cne_verified_at'
     ];
 
     // Casts para los campos de fecha de la rama 5.0-CRM
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'cne_verified_at' => 'datetime',
     ];
 
     /**
