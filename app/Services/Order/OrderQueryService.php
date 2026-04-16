@@ -601,10 +601,18 @@ class OrderQueryService
 
             // Calcular totales
             $totalIvaAmount = $fiscalRecords->sum('iva_amount');
-            $totalSpeAmount = $fiscalRecords->sum('spe_amount') ?? 0; // Si existe campo SPE
+            $totalSpeAmount = $fiscalRecords->sum('spe_amount') ?? 0;
 
             // El débito fiscal es la suma del IVA cobrado en ventas
             $totalDebito = $totalIvaAmount + $totalSpeAmount;
+
+            // IGTF: ventas marcadas como SPE — el 3% se aplica sobre el total_amount de la venta
+            $speRecords = DB::table('fiscal_history')
+                ->where('spe', 1)
+                ->whereBetween('invoice_date', [$startDate, $endDate])
+                ->get();
+            $totalSpeSalesAmount = $speRecords->sum('total_amount');
+            $totalSpeCount       = $speRecords->count();
 
             Log::info('Cálculo débito fiscal:', [
                 'periodo' => [$startDate, $endDate],
@@ -615,11 +623,13 @@ class OrderQueryService
             ]);
 
             return [
-                'total_records' => $fiscalRecords->count(),
-                'total_iva_amount' => $totalIvaAmount,
-                'total_spe_amount' => $totalSpeAmount,
-                'total_debito' => $totalDebito,
-                'records' => $fiscalRecords
+                'total_records'          => $fiscalRecords->count(),
+                'total_iva_amount'       => $totalIvaAmount,
+                'total_spe_amount'       => $totalSpeAmount,
+                'total_spe_sales_amount' => $totalSpeSalesAmount, // total de ventas SPE (base para IGTF)
+                'total_spe_count'        => $totalSpeCount,       // cantidad de ventas SPE
+                'total_debito'           => $totalDebito,
+                'records'                => $fiscalRecords
             ];
 
          } catch (\Exception $e) {

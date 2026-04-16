@@ -28,6 +28,48 @@ const sortOptions = [
 ];
 
 const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
+
+// Utilidades para fechas (Paridad con orderGeneral.vue)
+const toDateString = (date) => date.toISOString().split('T')[0];
+const getToday = () => toDateString(new Date());
+
+const setDateHoy = () => {
+  const t = new Date();
+  emit('update:startDate', toDateString(t));
+  emit('update:endDate', toDateString(t));
+};
+
+const setDateAyer = () => {
+  const a = new Date();
+  a.setDate(a.getDate() - 1);
+  const s = toDateString(a);
+  emit('update:startDate', s);
+  emit('update:endDate', s);
+};
+
+const setDateSemana = () => {
+  const h = new Date();
+  const inicio = new Date(h);
+  const dia = inicio.getDay();
+  const diff = inicio.getDate() - dia + (dia === 0 ? -6 : 1);
+  inicio.setDate(diff);
+  emit('update:startDate', toDateString(inicio));
+  emit('update:endDate', toDateString(h));
+};
+
+const setDateMes = () => {
+  const h = new Date();
+  const inicio = new Date(h.getFullYear(), h.getMonth(), 1);
+  emit('update:startDate', toDateString(inicio));
+  emit('update:endDate', toDateString(h));
+};
+
+const setDateAno = () => {
+  const h = new Date();
+  const inicio = `${h.getFullYear()}-01-01`;
+  emit('update:startDate', inicio);
+  emit('update:endDate', toDateString(h));
+};
 </script>
 
 <template>
@@ -44,6 +86,17 @@ const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
     @export="(fmt) => emit('export', fmt)"
     @sort="emit('sort', $event)"
   >
+    <!-- Slot extra: Rango Rápido de Fechas (Paridad Imagen 1) -->
+    <template #search-extra>
+      <div class="d-none d-lg-flex align-center gap-2 ms-4 border-s ps-4">
+        <span class="text-caption font-weight-bold text-uppercase text-disabled me-1">RANGO:</span>
+        <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateHoy">Hoy</VBtn>
+        <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateAyer">Ayer</VBtn>
+        <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateSemana">Semana</VBtn>
+        <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateMes">Mes</VBtn>
+        <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateAno">Año</VBtn>
+      </div>
+    </template>
     <template #advanced-filters>
       <!-- Fecha Desde -->
       <VCol cols="12" sm="6" md="4">

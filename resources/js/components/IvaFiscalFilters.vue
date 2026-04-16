@@ -14,6 +14,7 @@ const emit = defineEmits([
   "update:endDate",
   "apply-filter",
   "clear-filter",
+  "refresh",
 ]);
 
 // Validaciones
@@ -103,7 +104,7 @@ const setYearPreset = () => {
       </VRow>
     </template>
 
-    <template #search-append>
+    <template #actions-extra>
       <!-- Presets de Fecha -->
       <VMenu transition="scale-transition">
         <template #activator="{ props: menuProps }">
@@ -113,7 +114,7 @@ const setYearPreset = () => {
             variant="tonal"
             color="info"
             size="38"
-            class="rounded-circle shadow-sm"
+            class="rounded-circle shadow-sm me-1"
           >
             <VIcon icon="tabler-calendar-stats" size="20" />
             <VTooltip activator="parent" location="top">Períodos Predefinidos</VTooltip>
@@ -146,12 +147,25 @@ const setYearPreset = () => {
         color="primary"
         variant="flat"
         size="38"
-        class="rounded-circle shadow-sm"
+        class="rounded-circle shadow-sm me-1"
         :loading="props.loading"
         @click="emit('apply-filter')"
       >
         <VIcon icon="tabler-check" size="20" />
         <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
+      </VBtn>
+
+      <VBtn
+        icon
+        color="secondary"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm"
+        :loading="props.loading"
+        @click="emit('refresh')"
+      >
+        <VIcon icon="tabler-refresh" size="20" />
+        <VTooltip activator="parent" location="top">Sincronizar Datos</VTooltip>
       </VBtn>
     </template>
 

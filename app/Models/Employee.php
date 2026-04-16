@@ -19,6 +19,7 @@ class Employee extends Model
         "identification",
         "is_active",
         "photo",
+        "ci_file",
         "rif",
         "residence_letter",
         "cv",

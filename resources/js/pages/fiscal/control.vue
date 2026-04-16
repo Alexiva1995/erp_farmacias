@@ -77,47 +77,58 @@ onUnmounted(() => {
 
 <template>
   <VRow :class="mobile ? 'pa-2' : 'pa-4'">
-    <VCol cols="12">
-      <h1 class="text-h4 mb-4">Control de Máquina Fiscal</h1>
-      <p class="text-subtitle-1 text-muted">Gestione reportes, anulaciones y mantenimiento del hardware fiscal.</p>
-    </VCol>
-
     <!-- Card de Reportes Diarios -->
     <VCol cols="12" md="6">
-      <VCard title="Reportes Diarios" subtitle="Acciones de cierre y lectura" elevation="2">
-        <VCardText class="d-flex flex-wrap gap-4 py-6">
-          <VBtn
-            color="primary"
-            prepend-icon="mdi-file-document-outline"
-            size="large"
-            :loading="loading"
-            @click="handleReportX"
-          >
-            Reporte X (Lectura)
-          </VBtn>
-          <VBtn
-            color="error"
-            variant="elevated"
-            prepend-icon="mdi-lock-reset"
-            size="large"
-            :loading="loading"
-            @click="handleReportZ"
-          >
-            Reporte Z (Cierre)
-          </VBtn>
-          <VDivider class="my-4" />
+      <VCard border variant="flat" class="rounded-lg h-100">
+        <VCardItem>
+          <template #prepend>
+            <div class="pa-2 bg-info-tonal rounded-lg me-1">
+              <VIcon icon="tabler-file-analytics" color="info" size="24" />
+            </div>
+          </template>
+          <VCardTitle class="font-weight-black">Reportes Diarios</VCardTitle>
+          <VCardSubtitle>Acciones de cierre y lectura fiscal</VCardSubtitle>
+        </VCardItem>
+
+        <VCardText class="pt-4">
+          <div class="d-flex flex-wrap gap-4">
+            <VBtn
+              color="info"
+              variant="tonal"
+              prepend-icon="tabler-file-report"
+              class="flex-grow-1"
+              :loading="loading"
+              @click="handleReportX"
+            >
+              Reporte X
+            </VBtn>
+            <VBtn
+              color="error"
+              prepend-icon="tabler-lock-access"
+              class="flex-grow-1"
+              :loading="loading"
+              @click="handleReportZ"
+            >
+              Reporte Z
+            </VBtn>
+          </div>
+
+          <VDivider class="my-6" />
+
+          <VLabel class="mb-2 font-weight-bold text-xs uppercase text-disabled letter-spacing-1">Reimpresión de Reporte Z</VLabel>
           <VTextField
             v-model="zReportNumber"
             label="Número de Reporte Z"
             placeholder="Ej: 0005"
             variant="outlined"
             density="compact"
-            class="mb-2"
+            prepend-inner-icon="tabler-hash"
+            class="mb-3"
           />
           <VBtn
             color="secondary"
             variant="tonal"
-            prepend-icon="mdi-printer-refresh"
+            prepend-icon="tabler-printer"
             block
             :loading="loading"
             @click="handleReprintZ"
@@ -125,102 +136,199 @@ onUnmounted(() => {
             Reimprimir Reporte Z
           </VBtn>
         </VCardText>
-        <VDivider />
-        <VCardText class="text-caption">
-          Nota: El reporte Z realiza el cierre de la jornada fiscal. El reporte X es solo de lectura.
+        
+        <VCardText class="bg-light-primary rounded-b-lg py-3">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-info-circle" size="16" color="primary" />
+            <span class="text-caption text-primary font-weight-medium">
+              El reporte Z realiza el cierre fiscal definitivo de la jornada.
+            </span>
+          </div>
         </VCardText>
       </VCard>
     </VCol>
 
     <!-- Card de Acciones por Factura -->
     <VCol cols="12" md="6">
-      <VCard title="Acciones sobre Facturas" subtitle="Anulaciones y Re-impresiones" elevation="2">
-        <VCardText class="py-6">
+      <VCard border variant="flat" class="rounded-lg h-100">
+        <VCardItem>
+          <template #prepend>
+            <div class="pa-2 bg-warning-tonal rounded-lg me-1">
+              <VIcon icon="tabler-file-invoice" color="warning" size="24" />
+            </div>
+          </template>
+          <VCardTitle class="font-weight-black">Generar Nota de Crédito</VCardTitle>
+          <VCardSubtitle>Procesar devoluciones o anulaciones fiscales</VCardSubtitle>
+        </VCardItem>
+
+        <VCardText class="pt-4">
+          <p class="text-sm text-medium-emphasis mb-4">Ingrese el número de la factura a la cual se le generará la respectiva nota de crédito.</p>
+          
           <VTextField
             v-model="invoiceNumber"
-            label="Número de Factura Fiscal"
+            label="Número de Factura"
             placeholder="Ej: 00000054"
             variant="outlined"
-            prepend-inner-icon="mdi-barcode-scan"
-            class="mb-4"
+            prepend-inner-icon="tabler-scan"
+            class="mb-6"
           />
-          <div class="d-flex gap-4">
-            <VBtn
-              color="warning"
-              variant="tonal"
-              prepend-icon="mdi-close-circle-outline"
-              :loading="loading"
-              @click="handleAnnul"
-            >
-              Anular Factura
-            </VBtn>
-            <VBtn
-              color="info"
-              variant="tonal"
-              prepend-icon="mdi-printer-eye"
-              :loading="loading"
-              @click="handleReprint"
-            >
-              Re-imprimir
-            </VBtn>
-          </div>
+
+          <VBtn
+            color="warning"
+            block
+            prepend-icon="tabler-circle-x"
+            :loading="loading"
+            @click="handleAnnul"
+          >
+            Generar Nota de Crédito
+          </VBtn>
         </VCardText>
-        <VDivider />
-        <VCardText class="text-caption text-warning">
-          Atención: Asegúrese de que el número de factura sea el correcto antes de anular.
+
+        <VCardText class="bg-light-warning rounded-b-lg py-3 mt-auto">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-alert-triangle" size="16" color="warning" />
+            <span class="text-caption text-warning font-weight-black uppercase">
+              Esta acción emitirá un documento fiscal de crédito.
+            </span>
+          </div>
         </VCardText>
       </VCard>
     </VCol>
 
-    <!-- Tabla de Historial de Comandos -->
+    <!-- Historial de Acciones -->
     <VCol cols="12">
-      <VCard title="Historial de Acciones" subtitle="Últimos comandos enviados a la impresora">
-        <VTable hover>
+      <VCard border variant="flat" class="rounded-lg">
+        <VCardItem>
+          <template #prepend>
+            <div class="pa-2 bg-secondary-tonal rounded-lg me-1">
+              <VIcon icon="tabler-history" color="secondary" size="24" />
+            </div>
+          </template>
+          <VCardTitle class="font-weight-black">Historial de Acciones</VCardTitle>
+          <VCardSubtitle>Últimos comandos procesados por la impresora</VCardSubtitle>
+        </VCardItem>
+
+        <VDivider class="opacity-10" />
+
+        <!-- Vista de Escritorio (Tabla) -->
+        <VTable v-if="!mobile" hover class="premium-table text-no-wrap">
           <thead>
             <tr>
-              <th class="text-left">Comando</th>
-              <th class="text-left">Estado</th>
-              <th class="text-left">Respuesta / Error</th>
-              <th class="text-left">Fecha</th>
+              <th class="text-xs uppercase font-weight-black">Comando</th>
+              <th class="text-xs uppercase font-weight-black">Estado</th>
+              <th class="text-xs uppercase font-weight-black">Respuesta / Error</th>
+              <th class="text-xs uppercase font-weight-black">Fecha</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="cmd in commands" :key="cmd.id">
               <td>
-                <VChip :color="getCommandColor(cmd.command)" size="small" variant="flat">
-                  {{ cmd.command }}
+                <VChip 
+                  :color="getCommandColor(cmd.command)" 
+                  size="x-small" 
+                  variant="tonal"
+                  class="font-weight-black text-super-xs"
+                >
+                  {{ cmd.command.replace('_', ' ') }}
                 </VChip>
               </td>
               <td>
-                <VIcon
-                  :icon="getStatusIcon(cmd.status)"
-                  :color="getStatusColor(cmd.status)"
-                  class="me-2"
-                />
-                {{ cmd.status }}
+                <div class="d-flex align-center gap-2">
+                  <VIcon
+                    :icon="getStatusIcon(cmd.status)"
+                    :color="getStatusColor(cmd.status)"
+                    size="18"
+                  />
+                  <span class="text-sm font-weight-medium text-capitalize">
+                    {{ cmd.status }}
+                  </span>
+                </div>
               </td>
               <td class="text-truncate" style="max-width: 300px;">
-                {{ cmd.response || (cmd.status === 'pending' ? 'Esperando impresora...' : '-') }}
+                <span class="text-sm text-medium-emphasis">
+                  {{ cmd.response || (cmd.status === 'pending' ? 'Esperando impresora...' : '-') }}
+                </span>
               </td>
-              <td>{{ cmd.created_at }}</td>
+              <td>
+                <span class="text-sm text-medium-emphasis">{{ cmd.created_at }}</span>
+              </td>
             </tr>
             <tr v-if="commands.length === 0">
-              <td colspan="4" class="text-center py-4 text-muted">No hay acciones recientes.</td>
+              <td colspan="4" class="text-center py-8">
+                <div class="d-flex flex-column align-center gap-2">
+                  <VIcon icon="tabler-database-off" size="40" class="text-disabled" />
+                  <span class="text-medium-emphasis font-weight-medium">No hay acciones recientes registradas.</span>
+                </div>
+              </td>
             </tr>
           </tbody>
         </VTable>
+
+        <!-- Vista de Móvil (Cards) -->
+        <div v-else class="pa-4 flex-column d-flex gap-4">
+          <div 
+            v-for="cmd in commands" 
+            :key="cmd.id"
+            class="pa-4 border rounded-lg bg-light-surface d-flex flex-column gap-3"
+          >
+            <div class="d-flex justify-space-between align-center">
+              <VChip 
+                :color="getCommandColor(cmd.command)" 
+                size="x-small" 
+                variant="tonal"
+                class="font-weight-black text-super-xs"
+              >
+                {{ cmd.command.replace('_', ' ') }}
+              </VChip>
+              <div class="d-flex align-center gap-1">
+                <VIcon 
+                  :icon="getStatusIcon(cmd.status)" 
+                  :color="getStatusColor(cmd.status)" 
+                  size="16" 
+                />
+                <span class="text-xs font-weight-bold text-capitalize text-uppercase" :class="`text-${getStatusColor(cmd.status)}`">
+                  {{ cmd.status }}
+                </span>
+              </div>
+            </div>
+
+            <div v-if="cmd.response" class="bg-surface pa-3 rounded border-s-4 border-s-primary">
+              <p class="text-xs text-medium-emphasis mb-0 leading-normal">
+                {{ cmd.response }}
+              </p>
+            </div>
+
+            <div class="d-flex align-center justify-space-between mt-1">
+              <div class="d-flex align-center gap-1 text-disabled">
+                <VIcon icon="tabler-calendar" size="14" />
+                <span class="text-super-xs font-weight-medium">{{ cmd.created_at }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="commands.length === 0" class="text-center py-8 d-flex flex-column align-center gap-2 border rounded-lg border-dashed">
+            <VIcon icon="tabler-database-off" size="32" class="text-disabled" />
+            <span class="text-xs text-medium-emphasis font-weight-medium">No hay historial disponible</span>
+          </div>
+        </div>
       </VCard>
     </VCol>
 
     <!-- Estado del Trabajador (Python) -->
     <VCol cols="12">
       <VAlert
-        type="info"
+        border="start"
+        border-color="info"
         variant="tonal"
-        title="Estado del Puente Fiscal"
-        text="Asegúrese de que el script 'fiscal_bridge.py' esté ejecutándose en la computadora conectada a la impresora para procesar estos comandos."
+        icon="tabler-plug-connected"
         closable
-      />
+        class="rounded-lg"
+      >
+        <VAlertTitle class="font-weight-black text-info">Estado del Puente Fiscal</VAlertTitle>
+        <p class="mb-0 text-sm">
+          Asegúrese de que el servicio <strong>fiscal_bridge.py</strong> esté activo en la estación local para procesar los comandos encolados.
+        </p>
+      </VAlert>
     </VCol>
   </VRow>
 </template>
@@ -229,10 +337,10 @@ onUnmounted(() => {
 // Funciones auxiliares para la UI
 const getCommandColor = (cmd) => {
   if (cmd.includes('REPORT_Z')) return 'error';
-  if (cmd.includes('REPORT_X')) return 'primary';
+  if (cmd.includes('REPORT_X')) return 'info';
   if (cmd.includes('ANNUL')) return 'warning';
   if (cmd.includes('PRINT_INVOICE')) return 'success';
-  return 'info';
+  return 'secondary';
 };
 
 const getStatusColor = (status) => {
@@ -242,14 +350,42 @@ const getStatusColor = (status) => {
 };
 
 const getStatusIcon = (status) => {
-  if (status === 'success') return 'mdi-check-circle';
-  if (status === 'error') return 'mdi-alert-circle';
-  return 'mdi-clock-outline';
+  if (status === 'success') return 'tabler-circle-check';
+  if (status === 'error') return 'tabler-alert-circle';
+  return 'tabler-clock';
 };
 </script>
 
 <style scoped>
-.gap-4 {
-  gap: 1rem;
+.premium-table :deep(th) {
+  color: rgba(var(--v-theme-on-surface), 0.9) !important;
+  border-inline: none !important;
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+.premium-table :deep(td) {
+  border-inline: none !important;
+  color: rgba(var(--v-theme-on-surface), 0.8) !important;
+  padding-block: 12px !important;
+}
+
+.bg-info-tonal {
+  background-color: rgba(var(--v-theme-info), 0.12) !important;
+}
+
+.bg-warning-tonal {
+  background-color: rgba(var(--v-theme-warning), 0.12) !important;
+}
+
+.bg-secondary-tonal {
+  background-color: rgba(var(--v-theme-secondary), 0.12) !important;
+}
+
+.bg-light-primary {
+  background-color: rgba(var(--v-theme-primary), 0.05) !important;
+}
+
+.bg-light-warning {
+  background-color: rgba(var(--v-theme-warning), 0.05) !important;
 }
 </style>

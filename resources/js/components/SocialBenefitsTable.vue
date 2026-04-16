@@ -44,7 +44,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
 <template>
   <div class="social-benefits-container">
     <!-- Vista de Escritorio -->
-    <VCard class="border shadow-sm overflow-hidden rounded-lg">
+    <VCard class="d-none d-md-block border shadow-sm overflow-hidden rounded-lg">
       <VDataTableServer
         :headers="headers"
         :items-per-page="props.itemsPerPage"

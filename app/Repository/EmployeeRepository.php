@@ -29,23 +29,16 @@ class EmployeeRepository implements EmployeeContract
     $active = filter_var($data['active'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
     return Employee::query()
-      ->with('resignation')
-      ->select([
-        'employees.id as id',
-        'name',
-        'last_name',
-        'identification',
-        'employees.is_active as is_active',
-        'users.email as email',
-        "users.role_id"
-      ])
+      ->with(['user.role', 'resignation'])
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
+      ->select('employees.*')
+      ->addSelect('users.email as email')
       ->when(!empty($search), function ($query) use ($search) {
         $query->where(function ($q) use ($search) {
-          $q->where('name', 'like', "%$search%")
-            ->orWhere('last_name', 'like', "%$search%")
+          $q->where('employees.name', 'like', "%$search%")
+            ->orWhere('employees.last_name', 'like', "%$search%")
             ->orWhere('users.email', 'like', "%$search%")
-            ->orWhere('identification', 'like', "%$search%");
+            ->orWhere('employees.identification', 'like', "%$search%");
         });
       })
       ->when(auth()->user()->role_id === 3, function ($query) {
@@ -172,7 +165,7 @@ class EmployeeRepository implements EmployeeContract
   {
     $toUpdate = [];
 
-    foreach (['photo', 'rif', 'residence_letter', 'cv'] as $key) {
+    foreach (['photo', 'ci_file', 'rif', 'residence_letter', 'cv'] as $key) {
       if (array_key_exists($key, $data)) {
         $toUpdate[$key] = $this->handleDocument(
           $data[$key],
@@ -211,7 +204,7 @@ class EmployeeRepository implements EmployeeContract
 
   public function downloadDocument(Employee $employee, string $file): Exception|StreamedResponse
   {
-    $validFiles = ['rif', 'residence_letter', 'cv'];
+    $validFiles = ['ci_file', 'rif', 'residence_letter', 'cv'];
     if (!in_array($file, $validFiles)) {
       throw new Exception('Documento inválido');
     }

@@ -1190,7 +1190,8 @@ class PendingPaymentsController extends Controller
                 ->get();
 
             // CRÉDITO FISCAL: Facturas de proveedores con IVA
-            $invoicesWithIva = Invoice::where('tax_amount', '>', 0)
+            $invoicesWithIva = Invoice::with('supplier')
+                ->where('tax_amount', '>', 0)
                 ->whereBetween('created_invoice_date', [$startDate, $endDate])
                 ->get();
 
@@ -1219,16 +1220,20 @@ class PendingPaymentsController extends Controller
                 }
             }
 
+            // RETENCIONES: 75% del crédito fiscal total
+            $retencionesAmount = $creditoFiscal * 0.75;
+
             return ApiResponse::success([
                 'periodo' => [
                     'start_date' => $startDate,
-                    'end_date' => $endDate
+                    'end_date'   => $endDate
                 ],
-                'credito_fiscal' => round($creditoFiscal, 2),
+                'credito_fiscal'    => round($creditoFiscal, 2),
+                'retenciones'       => round($retencionesAmount, 2),
                 'detalle_credito' => [
-                    'total_expenses_with_iva' => $expensesWithIva->count() + $invoicesWithIva->count(),
-                    'total_amount_expenses' => round($totalAmount, 2),
-                    'iva_calculated' => round($creditoFiscal, 2)
+                    'total_expenses_with_iva'  => $expensesWithIva->count() + $invoicesWithIva->count(),
+                    'total_amount_expenses'    => round($totalAmount, 2),
+                    'iva_calculated'           => round($creditoFiscal, 2),
                 ]
             ], 'Crédito fiscal obtenido exitosamente');
         } catch (\Exception $e) {

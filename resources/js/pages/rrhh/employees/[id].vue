@@ -31,11 +31,24 @@ const showCropper = ref(false);
 const tempImageSource = ref('');
 const originalFileName = ref('');
 
+// UI: Colapsar perfil en móvil
+const isProfileCollapsed = ref(true);
+
 // Configuración de documentos
 const photo = ref(null);
-const residenceLetter = ref(null);
+const ci_file = ref(null);
+const residence_letter = ref(null);
 const rif = ref(null);
 const cv = ref(null);
+
+const documentLabels = {
+  ci_file: 'Cédula de Identidad',
+  rif: 'R.I.F.',
+  residence_letter: 'Constancia de Residencia',
+  cv: 'Currículum Vitae',
+};
+
+const docInputs = ref({}); // Para los refs de los inputs de archivos
 
 const triggerPhotoInput = () => {
   if (isAdmin) photoInput.value?.click();
@@ -115,8 +128,45 @@ const onPhotoChange = async (event) => {
   originalFileName.value = file.name;
   showCropper.value = true;
 
-  // El resto del proceso se maneja en handleCroppedImage
   event.target.value = '';
+};
+
+const triggerDocInput = (type) => {
+  docInputs.value[type]?.click();
+};
+
+const onDocChange = async (event, type) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf') {
+    toast.error('Solo se permiten archivos PDF');
+    event.target.value = '';
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('El archivo no debe pesar más de 5MB');
+    event.target.value = '';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append(type, file);
+
+  try {
+    photoUploading.value = true;
+    await axios.post(`rrhh/employees/${employee.value.id}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    toast.success(`${documentLabels[type]} actualizado`);
+    await fetchEmployee();
+  } catch (error) {
+    toast.error('Error al subir documento');
+  } finally {
+    photoUploading.value = false;
+    event.target.value = '';
+  }
 };
 
 /** Procesar la imagen después del recorte */
@@ -205,7 +255,7 @@ const translatedRole = computed(() => {
     supervisor: "Supervisor",
     hr: "Recursos Humanos",
   };
-  const roleName = employee.value?.user?.role?.name;
+  const roleName = employee.value?.role?.name;
   if (!roleName) return "N/A";
   const normalized = String(roleName).toLowerCase();
   return roleMap[normalized] ?? roleName;
@@ -409,7 +459,8 @@ const handleDownloadFile = async (file) => {
 const handleUpdateEmployeeDocument = async (photoOnly = false) => {
   const formData = new FormData();
   if (photo.value) formData.append('photo', photo.value);
-  if (residenceLetter.value) formData.append('residence_letter', residenceLetter.value);
+  if (ci_file.value) formData.append('ci_file', ci_file.value);
+  if (residence_letter.value) formData.append('residence_letter', residence_letter.value);
   if (rif.value) formData.append('rif', rif.value);
   if (cv.value) formData.append('cv', cv.value);
 
@@ -462,9 +513,21 @@ watch(activeView, (view) => {
         <VCard class="rounded-lg border-0 shadow-sm sticky-sidebar overflow-visible mb-6">
           <!-- Header con Gradiente Premium -->
           <div class="header-gradient rounded-t-lg pa-6 d-flex flex-column align-center position-relative">
-            <div class="position-relative mb-4">
-              <VAvatar size="100" class="elevation-12 rounded-lg photo-avatar" border="3px solid white">
-                <img v-if="photoPreview || employeePhotoUrl" :src="photoPreview || avatarDisplaySrc" @error="photoLoadFailed = true" />
+            <VBtn
+              v-if="mobile"
+              icon
+              variant="text"
+              color="white"
+              class="position-absolute"
+              style="top: 10px; right: 10px; z-index: 5;"
+              @click="isProfileCollapsed = !isProfileCollapsed"
+            >
+              <VIcon :icon="isProfileCollapsed ? 'tabler-chevron-down' : 'tabler-chevron-up'" />
+            </VBtn>
+
+            <div class="position-relative mb-4" :class="mobile && isProfileCollapsed ? 'avatar-mini' : ''">
+              <VAvatar :size="mobile && isProfileCollapsed ? 60 : 100" class="elevation-12 rounded-lg photo-avatar" border="3px solid white">
+                <img v-if="photoPreview || employeePhotoUrl" :src="photoPreview || avatarDisplaySrc" @error="photoLoadFailed = true" style="width: 100%; height: 100%; object-fit: cover;" />
                 <span v-else class="text-h4 font-weight-black text-white">{{ employeeInitials }}</span>
                 
                 <div v-if="photoUploading" class="upload-overlay d-flex flex-column align-center justify-center">
@@ -472,7 +535,7 @@ watch(activeView, (view) => {
                 </div>
               </VAvatar>
               <VBtn
-                v-if="isAdmin && !photoUploading"
+                v-if="isAdmin && !photoUploading && !(mobile && isProfileCollapsed)"
                 icon="tabler-camera"
                 color="primary"
                 size="34"
@@ -483,127 +546,150 @@ watch(activeView, (view) => {
             </div>
 
             <div class="text-center">
-              <h2 class="text-h6 font-weight-black text-white leading-tight mb-1 uppercase tracking-tight">
+              <h2 :class="mobile && isProfileCollapsed ? 'text-sm' : 'text-h6'" class="font-weight-black text-white leading-tight mb-1 uppercase tracking-tight">
                 {{ employee.name }} {{ employee.last_name }}
               </h2>
-              <VChip size="x-small" color="white" variant="flat" class="font-weight-black text-primary px-3 rounded">
+              <VChip v-if="!(mobile && isProfileCollapsed)" size="x-small" color="white" variant="flat" class="font-weight-black text-primary px-3 rounded">
                 {{ translatedRole }}
               </VChip>
             </div>
           </div>
 
-          <VCardText class="pa-5 bg-surface">
-            <!-- Navegación de Vistas -->
-            <VList class="premium-nav-list pa-0 mb-6">
-              <VListItem
-                :active="activeView === 'performance'"
-                prepend-icon="tabler-chart-bar"
-                title="DESEMPEÑO"
-                @click="activeView = 'performance'"
-                class="rounded-lg mb-2"
-                color="primary"
-                variant="tonal"
-              />
-              <VListItem
-                :active="activeView === 'salary'"
-                prepend-icon="tabler-wallet"
-                title="GESTIÓN SALARIAL"
-                @click="activeView = 'salary'"
-                class="rounded-lg"
-                color="primary"
-                variant="tonal"
-              />
-            </VList>
+          <VExpandTransition>
+            <div v-show="!mobile || !isProfileCollapsed">
+              <VCardText class="pa-5 bg-surface">
+                <!-- Navegación de Vistas -->
+                <VList class="premium-nav-list pa-0 mb-6">
+                  <VListItem
+                    :active="activeView === 'performance'"
+                    prepend-icon="tabler-chart-bar"
+                    title="DESEMPEÑO"
+                    @click="activeView = 'performance'; mobile && (isProfileCollapsed = true)"
+                    class="rounded-lg mb-2"
+                    color="primary"
+                    variant="tonal"
+                  />
+                  <VListItem
+                    :active="activeView === 'salary'"
+                    prepend-icon="tabler-wallet"
+                    title="GESTIÓN SALARIAL"
+                    @click="activeView = 'salary'; mobile && (isProfileCollapsed = true)"
+                    class="rounded-lg"
+                    color="primary"
+                    variant="tonal"
+                  />
+                </VList>
 
-            <VDivider class="border-dashed mb-6 opacity-30" />
+                <VDivider class="border-dashed mb-6 opacity-30" />
 
-            <!-- Información Básica -->
-            <div class="d-flex flex-column gap-5">
-              <div class="info-group">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Identificación</span>
-                <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis tracking-wide tabular-nums">
-                  {{ employee.identification || '—' }}
+                <!-- Información Básica -->
+                <div class="d-flex flex-column gap-5">
+                  <div class="info-group">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Identificación</span>
+                    <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis tracking-wide tabular-nums">
+                      {{ employee.identification || '—' }}
+                    </div>
+                    <VTextField v-else v-model="employee.identification" density="compact" hide-details class="premium-input-compact" />
+                  </div>
+
+                  <div class="info-group">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Correo Electrónico</span>
+                    <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis lowercase">
+                      {{ employee.user?.email || employee.email || '—' }}
+                    </div>
+                    <VTextField v-else v-model="employee.email" density="compact" hide-details class="premium-input-compact" />
+                  </div>
                 </div>
-                <VTextField v-else v-model="employee.identification" density="compact" hide-details class="premium-input-compact" />
-              </div>
 
-              <div class="info-group">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Correo Electrónico</span>
-                <div v-if="!isEditing" class="text-xs font-weight-black text-high-emphasis lowercase">
-                  {{ employee.user?.email || employee.email || '—' }}
+                <!-- Botones de Acción Global -->
+                <div class="mt-8 d-flex flex-column gap-3">
+                  <VBtn
+                    v-if="isAdmin"
+                    block
+                    :color="isEditing ? 'success' : 'primary'"
+                    variant="tonal"
+                    size="large"
+                    class="rounded-lg font-weight-black text-button"
+                    :loading="loading"
+                    @click="isEditing ? saveProfileChanges() : isEditing = true"
+                  >
+                    <VIcon start :icon="isEditing ? 'tabler-check' : 'tabler-pencil'" size="18" />
+                    {{ isEditing ? 'GUARDAR' : 'EDITAR PERFIL' }}
+                  </VBtn>
+
+                  <VBtn v-if="isAdmin && isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="isEditing = false">
+                    <VIcon start icon="tabler-x" size="18" />
+                    CANCELAR
+                  </VBtn>
+
+                  <VBtn v-if="isAdmin && !isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="handleReset2FA">
+                    <VIcon start icon="tabler-refresh" size="18" />
+                    REINICIAR 2FA
+                  </VBtn>
+
+                  <VBtn 
+                    v-if="isAdmin && !isEditing" 
+                    block 
+                    color="secondary" 
+                    variant="text" 
+                    size="small" 
+                    class="rounded-lg mt-2 font-weight-bold" 
+                    @click="showEditDialog = true"
+                  >
+                    Configuración Avanzada
+                    <VIcon end icon="tabler-chevron-right" size="14" />
+                  </VBtn>
                 </div>
-                <VTextField v-else v-model="employee.email" density="compact" hide-details class="premium-input-compact" />
-              </div>
+              </VCardText>
             </div>
-
-            <!-- Botones de Acción Global -->
-            <div class="mt-8 d-flex flex-column gap-3">
-              <VBtn
-                v-if="isAdmin"
-                block
-                :color="isEditing ? 'success' : 'primary'"
-                variant="tonal"
-                size="large"
-                class="rounded-lg font-weight-black text-button"
-                :loading="loading"
-                @click="isEditing ? saveProfileChanges() : isEditing = true"
-              >
-                <VIcon start :icon="isEditing ? 'tabler-check' : 'tabler-pencil'" size="18" />
-                {{ isEditing ? 'GUARDAR' : 'EDITAR PERFIL' }}
-              </VBtn>
-
-              <VBtn v-if="isAdmin && isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="isEditing = false">
-                CANCELAR
-              </VBtn>
-
-              <VBtn v-if="isAdmin && !isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="handleReset2FA">
-                <VIcon start icon="tabler-refresh" size="18" />
-                REINICIAR 2FA
-              </VBtn>
-
-              <VBtn 
-                v-if="isAdmin && !isEditing" 
-                block 
-                color="secondary" 
-                variant="text" 
-                size="small" 
-                class="rounded-lg mt-2 font-weight-bold" 
-                @click="showEditDialog = true"
-              >
-                Configuración Avanzada
-                <VIcon end icon="tabler-chevron-right" size="14" />
-              </VBtn>
-            </div>
-          </VCardText>
+          </VExpandTransition>
         </VCard>
 
         <!-- Sección de Documentos -->
-        <VCard class="rounded-lg border-1 shadow-sm overflow-hidden">
-          <div class="pa-4 bg-light font-weight-black text-super-xs text-primary uppercase letter-spacing-1 border-b d-flex align-center">
-            <VIcon icon="tabler-files" size="16" class="me-2" />
-            Documentación Digital
-          </div>
-          <VCardText class="pa-4 d-flex flex-column gap-2">
-            <div v-for="(file, label) in { residence_letter: 'Cédula / Rif', cv: 'Currículum Vitae' }" :key="file" class="document-item rounded-lg border pa-3 d-flex align-center justify-space-between transition-all">
-              <div class="d-flex align-center gap-3">
-                <VAvatar color="primary" variant="tonal" size="32" class="rounded">
-                  <VIcon icon="tabler-file-type-pdf" size="18" />
-                </VAvatar>
-                <span class="text-xs font-weight-bold text-high-emphasis">{{ label }}</span>
-              </div>
-              <VBtn 
-                v-if="employee[file]" 
-                icon="tabler-download" 
-                size="28" 
-                variant="tonal" 
-                color="primary" 
-                class="rounded" 
-                @click="handleDownloadFile(file)"
-              />
-              <VBtn icon="tabler-upload" size="28" variant="tonal" color="secondary" class="rounded" v-else />
+        <VExpandTransition>
+          <VCard v-show="!mobile || !isProfileCollapsed" class="rounded-lg border-1 shadow-sm overflow-hidden mt-6">
+            <div class="pa-4 bg-light font-weight-black text-super-xs text-primary uppercase letter-spacing-1 border-b d-flex align-center">
+              <VIcon icon="tabler-files" size="16" class="me-2" />
+              Documentación Digital
             </div>
-          </VCardText>
-        </VCard>
+            <VCardText class="pa-4 d-flex flex-column gap-2">
+              <div v-for="(vLabel, vField) in documentLabels" :key="vField" class="document-item rounded-lg border pa-3 d-flex align-center justify-space-between transition-all">
+                <input 
+                  type="file" 
+                  accept=".pdf" 
+                  class="d-none" 
+                  :ref="el => docInputs[vField] = el" 
+                  @change="onDocChange($event, vField)"
+                />
+                <div class="d-flex align-center gap-3">
+                  <VAvatar color="primary" variant="tonal" size="32" class="rounded">
+                    <VIcon icon="tabler-file-type-pdf" size="18" />
+                  </VAvatar>
+                  <span class="text-xs font-weight-bold text-high-emphasis">{{ vLabel }}</span>
+                </div>
+                <div class="d-flex gap-2">
+                  <VBtn 
+                    v-if="employee[vField]" 
+                    icon="tabler-download" 
+                    size="28" 
+                    variant="tonal" 
+                    color="primary" 
+                    class="rounded" 
+                    @click="handleDownloadFile(vField)"
+                  />
+                  <VBtn 
+                    icon="tabler-upload" 
+                    size="28" 
+                    variant="tonal" 
+                    :color="employee[vField] ? 'secondary' : 'primary'" 
+                    class="rounded" 
+                    @click="triggerDocInput(vField)" 
+                  />
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VExpandTransition>
       </VCol>
 
       <!-- Área de Contenido Principal -->
@@ -611,29 +697,29 @@ watch(activeView, (view) => {
         <VTabsWindow v-model="activeView">
           <!-- DASHBOARD DE DESEMPEÑO -->
           <VTabsWindowItem value="performance">
-            <div class="d-flex align-center justify-space-between mb-6">
-              <h2 class="text-h5 font-weight-black text-high-emphasis tracking-tight uppercase">Dashboard Operativo</h2>
-              <VChip color="primary" variant="flat" class="font-weight-black px-4">MES ACTUAL</VChip>
+            <div class="d-flex align-center gap-3 mb-6">
+              <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight uppercase">Dashboard Operativo</h2>
+              <VChip color="primary" variant="tonal" size="x-small" class="font-weight-black">MES ACTUAL</VChip>
             </div>
 
             <!-- KPIs Principales -->
-            <VRow class="mb-4">
+            <VRow class="mb-4" :dense="mobile">
               <VCol v-for="kpi in [
                 { label: 'VENTAS USD', value: performanceData.salesMetrics.currentMonth.totalAmount, icon: 'tabler-cash', color: 'primary', format: 'currency' },
                 { label: 'UNIDADES', value: performanceData.salesMetrics.currentMonth.totalUnits, icon: 'tabler-package', color: 'success', format: 'number' },
                 { label: 'TICKET PROM', value: performanceData.salesMetrics.currentMonth.ticketAverage, icon: 'tabler-receipt', color: 'warning', format: 'currency' },
                 { label: 'CROSS-SELLING', value: crossSellingRate, icon: 'tabler-trending-up', color: 'info', format: 'percent' }
-              ]" :key="kpi.label" cols="12" sm="6" lg="3">
+              ]" :key="kpi.label" cols="6" sm="6" lg="3">
                 <VCard class="rounded-lg border-0 shadow-sm kpi-card overflow-hidden h-100">
                   <div :class="`kpi-glow bg-${kpi.color}`" />
-                  <VCardText class="pa-5">
-                    <div class="d-flex justify-space-between align-start mb-4">
-                      <VAvatar :color="kpi.color" variant="tonal" size="44" class="rounded-lg">
-                        <VIcon :icon="kpi.icon" size="24" />
+                  <VCardText :class="mobile ? 'pa-2' : 'pa-4'">
+                    <div class="d-flex justify-space-between align-start" :class="mobile ? 'mb-2' : 'mb-4'">
+                      <VAvatar :color="kpi.color" variant="tonal" :size="mobile ? 32 : 44" class="rounded-lg">
+                        <VIcon :icon="kpi.icon" :size="mobile ? 18 : 24" />
                       </VAvatar>
                     </div>
-                    <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">{{ kpi.label }}</div>
-                    <div class="text-h5 font-weight-black text-high-emphasis tabular-nums leading-none">
+                    <div class="text-super-xs font-weight-black text-disabled uppercase mb-1 leading-none" style="font-size: 0.55rem !important;">{{ kpi.label }}</div>
+                    <div :class="mobile ? 'text-xs' : 'text-h6'" class="font-weight-black text-high-emphasis tabular-nums leading-none">
                       {{ kpi.format === 'currency' ? formatCurrency(kpi.value) : kpi.format === 'percent' ? kpi.value.toFixed(1) + '%' : kpi.value.toLocaleString() }}
                     </div>
                   </VCardText>
@@ -654,9 +740,9 @@ watch(activeView, (view) => {
                     { label: 'Ticket Prom. Hist', value: formatCurrency(performanceData.salesMetrics.historical.ticketAverage) },
                     { label: 'Unds. Prom. Hist', value: performanceData.salesMetrics.historical.unitsAverage.toFixed(1) }
                   ]" :key="idx" cols="6" md="3">
-                    <div class="pa-4 text-center" :class="idx < 3 ? 'border-r-sm' : ''">
-                      <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">{{ metric.label }}</div>
-                      <div class="text-subtitle-1 font-weight-black text-high-emphasis tabular-nums">{{ metric.value }}</div>
+                    <div class="pa-3 text-center" :class="idx < 3 ? 'border-r-sm' : ''">
+                      <div class="text-super-xs font-weight-black text-disabled uppercase mb-1 leading-tight">{{ metric.label }}</div>
+                      <div :class="mobile ? 'text-xs' : 'text-subtitle-1'" class="font-weight-black text-high-emphasis tabular-nums mb-0">{{ metric.value }}</div>
                     </div>
                   </VCol>
                 </VRow>
@@ -671,17 +757,17 @@ watch(activeView, (view) => {
                     <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 10 Productos (Unidades)</span>
                     <VIcon icon="tabler-crown" size="18" color="warning" />
                   </div>
-                  <VCardText class="pa-2">
-                    <VList density="compact" class="ranking-list">
-                      <VListItem v-for="(product, i) in performanceData.topProducts.slice(0, 10)" :key="i" class="rounded-lg mb-1">
+                  <VCardText :class="mobile ? 'pa-1' : 'pa-2'">
+                    <VList density="compact" class="ranking-list ultra-compact">
+                      <VListItem v-for="(product, i) in performanceData.topProducts.slice(0, 10)" :key="i" class="rounded-lg mb-0 px-2 py-1">
                         <template #prepend>
-                          <div :class="`rank-number rank-${i+1} font-weight-black text-xs me-3`">{{ i + 1 }}</div>
+                          <div :class="`rank-number rank-${i+1} font-weight-black text-super-xs me-2`" :style="mobile ? 'width: 18px; height: 18px;' : ''">{{ i + 1 }}</div>
                         </template>
-                        <VListItemTitle class="text-xs font-weight-black text-high-emphasis uppercase">{{ product.name || product.product_name }}</VListItemTitle>
+                        <VListItemTitle class="text-super-xs font-weight-black text-high-emphasis uppercase leading-tight">{{ product.name || product.product_name }}</VListItemTitle>
                         <template #append>
                           <div class="text-right d-flex flex-column align-end">
-                            <span class="text-xs font-weight-black text-primary">{{ product.units || product.total_units }} unds</span>
-                            <span class="text-super-xs text-disabled">{{ formatCurrency(product.amount || product.total_amount) }}</span>
+                            <span class="text-super-xs font-weight-black text-primary">{{ product.units || product.total_units }} unds</span>
+                            <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">{{ formatCurrency(product.amount || product.total_amount) }}</span>
                           </div>
                         </template>
                       </VListItem>
@@ -691,7 +777,7 @@ watch(activeView, (view) => {
               </VCol>
 
               <VCol cols="12" lg="6">
-                <VCard class="rounded-xl border-0 shadow-sm h-100 overflow-hidden">
+                <VCard class="rounded-lg border-0 shadow-sm h-100 overflow-hidden">
                   <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
                     <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 5 Laboratorios</span>
                     <VIcon icon="tabler-flask" size="18" color="info" />
@@ -717,7 +803,7 @@ watch(activeView, (view) => {
           <!-- GESTIÓN SALARIAL -->
           <VTabsWindowItem value="salary">
              <div class="d-flex align-center justify-space-between mb-6">
-              <h2 class="text-h5 font-weight-black text-high-emphasis tracking-tight uppercase">Nómina e Incentivos</h2>
+              <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight uppercase">Nómina e Incentivos</h2>
               <VChip color="success" variant="flat" class="font-weight-black px-4">ACTIVO</VChip>
             </div>
 
@@ -728,21 +814,43 @@ watch(activeView, (view) => {
                   </VAvatar>
                   <div class="flex-grow-1">
                     <div class="text-super-xs text-white opacity-70 font-weight-black uppercase letter-spacing-1 mb-1">Paquete Mensual Acordado</div>
-                    <div class="text-h4 font-weight-black text-white tabular-nums leading-none">{{ formatCurrency(paymentForm.total_package_usd) }}</div>
+                    <div class="d-flex align-center">
+                      <span class="text-h4 font-weight-black text-white me-2">USD</span>
+                      <input
+                        v-model.number="paymentForm.total_package_usd"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        :style="mobile ? 'width: 120px;' : 'width: 150px;'"
+                        :class="mobile ? 'text-h5' : 'text-h4'"
+                        class="salary-package-input font-weight-black text-white bg-transparent border-0 outline-none tabular-nums"
+                      />
+                    </div>
                   </div>
-                  <VBtn v-if="isAdmin" color="white" variant="flat" class="font-weight-black text-primary rounded-lg px-6" :loading="savingPackage" @click="savePackage">ACTUALIZAR</VBtn>
+                    <VBtn 
+                      v-if="isAdmin" 
+                      color="white" 
+                      variant="flat" 
+                      :size="mobile ? 'small' : 'default'" 
+                      class="font-weight-black text-primary rounded-lg px-6" 
+                      :loading="savingPackage" 
+                      @click="savePackage"
+                    >
+                      <VIcon :icon="mobile ? 'tabler-device-floppy' : 'tabler-refresh'" :start="!mobile" :class="mobile ? '' : 'me-2'" />
+                      <span v-if="!mobile">ACTUALIZAR</span>
+                    </VBtn>
                </div>
                
-               <VCardText class="pa-6">
+               <VCardText :class="mobile ? 'pa-4' : 'pa-6'">
                   <div class="max-600 mx-auto">
                     <div class="text-xs font-weight-bold text-medium-emphasis mb-6 text-center italic">
                       "La distribución de conceptos se calcula según la ley vigente y las políticas de la farmacia."
                     </div>
                     
-                    <div v-if="distribution" class="premium-invoice rounded-lg pa-8 border-1 shadow-sm position-relative overflow-hidden">
+                    <div v-if="distribution" :class="mobile ? 'pa-4' : 'pa-8'" class="premium-invoice rounded-lg border-1 shadow-sm position-relative overflow-hidden">
                       <div class="invoice-watermark">PAYROLL</div>
                       <div class="d-flex justify-space-between align-center mb-8">
-                        <span class="text-h6 font-weight-black text-primary uppercase">Detalle de Cobro</span>
+                        <span :class="mobile ? 'text-subtitle-1' : 'text-h6'" class="font-weight-black text-primary uppercase">Detalle de Cobro</span>
                         <VIcon icon="tabler-file-invoice" size="32" class="text-primary opacity-20" />
                       </div>
 
@@ -817,7 +925,21 @@ watch(activeView, (view) => {
 
 .photo-avatar {
   border: 4px solid rgba(255, 255, 255, 40%);
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avatar-mini {
+  transform: scale(0.8) translateY(-10px);
+}
+
+.ultra-compact :deep(.v-list-item) {
+  min-height: 32px !important;
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.ultra-compact :deep(.v-list-item__prepend) {
+  margin-inline-end: 8px !important;
 }
 
 .avatar-camera-btn {
@@ -910,6 +1032,23 @@ watch(activeView, (view) => {
 .tracking-tight { letter-spacing: -0.5px !important; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
 .text-super-xs { font-size: 0.65rem !important; }
+
+.salary-package-input {
+  width: 150px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2) !important;
+  transition: border-color 0.3s ease;
+}
+
+.salary-package-input:focus {
+  border-bottom-color: white !important;
+}
+
+.salary-package-input::-webkit-inner-spin-button,
+.salary-package-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .uppercase { text-transform: uppercase !important; }
 
 .border-dashed-b { border-block-end: 1px dashed rgba(0, 0, 0, 8%) !important; }

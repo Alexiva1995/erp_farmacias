@@ -1,6 +1,4 @@
 <script setup>
-import { useDisplay } from "vuetify";
-
 const props = defineProps({
   expensesData: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -11,30 +9,61 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options"]);
 
-const { mobile } = useDisplay();
-
 const headers = [
+  { 
+    title: "ID", 
+    key: "invoice_number", 
+    sortable: true,
+    value: item => item.invoice_number ? `#${item.invoice_number}` : '',
+    cellProps: { class: 'text-sm font-weight-black text-primary' }
+  },
+  { 
+    title: "RIF / IDENTIFICACIÓN", 
+    key: "supplier_rif", 
+    sortable: true,
+    value: item => (item.supplier_rif || 'N/A').toUpperCase(),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
   {
-    title: "Proveedor / Gasto",
+    title: "PROVEEDOR / RAZÓN SOCIAL",
     key: "supplier_name",
     sortable: true,
-    width: "25%",
+    width: "35%",
+    value: item => (item.supplier_name || 'N/A').toUpperCase(),
+    cellProps: { class: 'text-sm text-medium-emphasis text-uppercase truncate' }
   },
-  { title: "#Factura", key: "invoice_number", sortable: true },
-  {
-    title: "RIF / Razón Social",
-    key: "supplier_rif",
-    sortable: true,
-    width: "25%",
+  { 
+    title: "EXENTO", 
+    key: "exempt_amount", 
+    sortable: true, 
+    align: "end", 
+    value: item => formatCurrency(item.exempt_amount),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
   },
-  { title: "Exento", key: "exempt_amount", sortable: true, align: "end" },
   {
-    title: "Base Imponible",
+    title: "BASE IMPONIBLE",
     key: "taxable_base",
     sortable: true,
     align: "end",
+    value: item => formatCurrency(item.taxable_base),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
   },
-  { title: "IVA", key: "iva_amount", sortable: true, align: "end" },
+  { 
+    title: "IVA", 
+    key: "iva_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.iva_amount),
+    cellProps: { class: 'text-sm font-weight-black text-medium-emphasis' }
+  },
+  { 
+    title: "TOTAL", 
+    key: "total_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)),
+    cellProps: { class: 'text-sm font-weight-black text-info text-high-emphasis' }
+  }
 ];
 
 const formatCurrency = (amount) => {
@@ -62,168 +91,115 @@ const getCategoryChipColor = (categoryName) => {
 </script>
 
 <template>
-  <div>
+  <div class="fiscal-table-container">
     <!-- Vista de Escritorio -->
-    <VCard
-      v-if="!mobile"
-      class="rounded-lg border shadow-sm overflow-hidden bg-surface"
-    >
-      <VCardTitle class="pa-4 d-flex align-center">
-        <VAvatar color="info" variant="tonal" size="32" class="me-3 rounded-lg">
-          <VIcon icon="tabler-receipt-2" size="18" />
-        </VAvatar>
-        <span class="text-sm font-weight-black uppercase"
-          >Gastos (Crédito Fiscal)</span
-        >
-        <VSpacer />
-        <VChip
-          color="info"
-          size="x-small"
-          variant="tonal"
-          class="font-weight-black rounded"
-        >
-          {{ totalRecords }} DOCUMENTOS
-        </VChip>
-      </VCardTitle>
-
-      <VDivider class="opacity-10" />
-
-      <VDataTableServer
-        :items-per-page="props.itemsPerPage"
-        :page="props.page"
-        :headers="headers"
-        :items="props.expensesData"
-        :items-length="props.totalRecords"
-        :loading="props.loading"
-        class="text-no-wrap premium-table"
-        @update:options="(options) => emit('update:options', options)"
-      >
-        <template #item.supplier_name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span
-              class="text-sm font-weight-black text-high-emphasis truncate"
-              style="max-width: 200px"
-            >
-              {{ item.supplier_name || "N/A" }}
-            </span>
-            <VChip
-              v-if="item.category_name"
-              :color="getCategoryChipColor(item.category_name)"
-              variant="tonal"
-              size="x-small"
-              class="mt-1 align-self-start font-weight-black rounded"
-            >
-              {{ item.category_name }}
-            </VChip>
+    <div class="d-none d-md-block">
+      <VCard border variant="flat" class="rounded-lg overflow-hidden">
+        <VCardTitle class="pa-4 d-flex align-center">
+          <div class="pa-2 bg-info-tonal rounded-lg me-3">
+            <VIcon icon="tabler-receipt-2" size="18" color="info" />
           </div>
-        </template>
-
-        <template #item.invoice_number="{ item }">
-          <div class="d-flex flex-column">
-            <span class="font-weight-black text-primary">{{
-              item.invoice_number || "S/N"
-            }}</span>
-            <span class="text-super-xs text-disabled">{{
-              formatDate(item.expense_date)
-            }}</span>
-          </div>
-        </template>
-
-        <template #item.supplier_rif="{ item }">
-          <div class="d-flex flex-column truncate" style="max-width: 200px">
-            <span class="text-xs font-weight-black text-primary">{{
-              item.supplier_rif || "N/A"
-            }}</span>
-            <span
-              class="text-super-xs text-disabled truncate text-capitalize"
-              >{{ item.supplier_business_name || item.supplier_name }}</span
-            >
-          </div>
-        </template>
-
-        <template #item.exempt_amount="{ item }">
-          <span
-            class="text-xs font-weight-medium"
-            :class="
-              Number(item.exempt_amount) > 0 ? 'text-info' : 'text-disabled'
-            "
+          <span class="text-sm font-weight-black uppercase"
+            >Gastos (Crédito Fiscal)</span
           >
-            {{ formatCurrency(item.exempt_amount) }}
-          </span>
-        </template>
+          <VSpacer />
+          <VChip
+            color="info"
+            size="x-small"
+            variant="tonal"
+            class="font-weight-black rounded"
+          >
+            {{ totalRecords }} DOCUMENTOS
+          </VChip>
+        </VCardTitle>
 
-        <template #item.taxable_base="{ item }">
-          <span class="text-xs font-weight-medium">{{
-            formatCurrency(item.taxable_base)
-          }}</span>
-        </template>
+        <VDivider class="opacity-10" />
 
-        <template #item.iva_amount="{ item }">
-          <div class="d-flex flex-column align-end">
-            <span class="text-xs font-weight-black text-success">{{
-              formatCurrency(item.iva_amount)
+        <VDataTableServer
+          :items-per-page="props.itemsPerPage"
+          :page="props.page"
+          :headers="headers"
+          :items="props.expensesData"
+          :items-length="props.totalRecords"
+          :loading="props.loading"
+          class="text-no-wrap premium-table"
+          @update:options="(options) => emit('update:options', options)"
+        >
+
+          <template #item.supplier_name="{ item }">
+            <div class="d-flex flex-column py-2">
+              <span
+                class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
+                style="max-width: 350px"
+              >
+                {{ item.supplier_name || "N/A" }}
+              </span>
+              <div class="d-flex align-center gap-2 mt-1">
+                 <VChip
+                  v-if="item.category_name"
+                  :color="getCategoryChipColor(item.category_name)"
+                  variant="tonal"
+                  size="x-small"
+                  class="font-weight-black rounded"
+                >
+                  {{ item.category_name }}
+                </VChip>
+                <span class="text-super-xs text-disabled uppercase font-weight-medium">
+                  {{ formatDate(item.expense_date) }}
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <template #item.iva_amount="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span class="text-sm font-weight-black text-high-emphasis">{{
+                formatCurrency(item.iva_amount)
+              }}</span>
+              <span
+                v-if="item.is_deductible"
+                class="text-super-xs text-success font-weight-black uppercase"
+                >Deducible</span
+              >
+            </div>
+          </template>
+
+          <template #item.total_amount="{ item }">
+            <span class="text-sm font-weight-black text-info">{{
+              formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount))
             }}</span>
-            <span
-              v-if="item.is_deductible"
-              class="text-super-xs text-success font-weight-bold uppercase"
-              >Deducible</span
-            >
-          </div>
-        </template>
+          </template>
+        </VDataTableServer>
+      </VCard>
+    </div>
 
-        <template #bottom>
-          <VDivider class="opacity-10" />
-          <div class="d-flex align-center justify-space-between pa-4">
-            <VPagination
-              :model-value="props.page"
-              :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
-              size="small"
-              class="premium-pagination"
-              @update:model-value="
-                (newPage) => emit('update:options', { ...props, page: newPage })
-              "
-            />
-          </div>
-        </template>
-      </VDataTableServer>
-    </VCard>
-
-    <!-- Vista Móvil (Cards) -->
-    <div v-else class="d-flex flex-column gap-4">
-      <div v-if="props.loading" class="d-flex justify-center pa-8">
-        <VProgressCircular indeterminate color="info" />
+    <!-- Vista Móvil (Cards Premium) -->
+    <div class="d-block d-md-none pa-2 bg-light">
+      <VProgressLinear v-if="props.loading" indeterminate color="info" class="mb-2" />
+      
+      <div v-if="props.expensesData.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
+        No se encontraron gastos con IVA en este período.
       </div>
 
-      <template v-else-if="props.expensesData.length > 0">
+      <div class="d-flex flex-column gap-3">
         <VCard
           v-for="item in props.expensesData"
           :key="item.invoice_number"
-          class="rounded-lg border shadow-sm premium-card overflow-hidden"
+          variant="flat"
+          border
+          class="mb-1 overflow-hidden premium-card bg-white"
         >
-          <div class="premium-card-decoration bg-info-opacity"></div>
-
-          <VCardText class="pa-5">
-            <!-- Cabecera Móvil -->
-            <div class="d-flex align-center justify-space-between mb-4">
+          <div class="pa-4">
+            <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex align-center gap-3">
-                <VAvatar
-                  color="info"
-                  variant="tonal"
-                  size="38"
-                  class="rounded-lg shadow-sm"
-                >
-                  <VIcon icon="tabler-receipt-2" size="18" />
-                </VAvatar>
+                <div class="pa-2 bg-info-tonal rounded-lg">
+                   <VIcon icon="tabler-receipt-2" size="18" color="info" />
+                </div>
                 <div class="d-flex flex-column">
-                  <span
-                    class="text-xs font-weight-black text-disabled uppercase leading-tight"
-                    >Gasto / Factura</span
-                  >
-                  <span
-                    class="text-sm font-weight-black text-primary leading-tight truncate"
-                    style="max-width: 140px"
-                    >{{ item.invoice_number || "S/N" }}</span
-                  >
+                  <span class="text-primary font-weight-black text-xs uppercase mb-1">Factura</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
+                    {{ item.invoice_number || 'S/N' }}
+                  </h3>
                 </div>
               </div>
               <VChip
@@ -233,115 +209,79 @@ const getCategoryChipColor = (categoryName) => {
                 variant="flat"
                 class="font-weight-black rounded"
               >
-                {{ item.category_name }}
+                {{ item.category_name.toUpperCase() }}
               </VChip>
             </div>
 
-            <VDivider class="mb-4 opacity-10" />
+            <VDivider class="my-3 border-opacity-10" />
 
-            <!-- Info Proveedor -->
+            <!-- Proveedor Info -->
             <div class="mb-4">
-              <span
-                class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1"
-                >Proveedor / Razón Social</span
-              >
-              <span
-                class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1"
-                >{{ item.supplier_name }}</span
-              >
-              <span class="text-xs text-disabled leading-tight">{{
-                item.supplier_rif || "RIF No disponible"
-              }}</span>
+              <div class="d-flex align-center gap-2 mb-1">
+                 <span class="text-super-xs font-weight-black text-disabled uppercase">RIF:</span>
+                 <span class="text-xs font-weight-black text-primary uppercase">{{ item.supplier_rif || 'N/A' }}</span>
+              </div>
+              <span class="text-sm font-weight-black text-high-emphasis d-block leading-tight text-uppercase mb-1">
+                {{ item.supplier_name }}
+              </span>
             </div>
 
-            <!-- Stats IVA -->
-            <div class="d-flex gap-3 mb-4">
-              <div
-                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
-              >
-                <span
-                  class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
-                  >Base Imponible</span
-                >
-                <span class="text-sm font-weight-black">{{
-                  formatCurrency(item.taxable_base)
-                }}</span>
+            <div class="d-grid mobile-grid gap-3 mb-4">
+              <div class="stat-box">
+                <span class="label">Exento</span>
+                <span class="value font-weight-black text-high-emphasis">
+                  {{ formatCurrency(item.exempt_amount) }}
+                </span>
               </div>
-              <div
-                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-success-opacity"
-              >
-                <div class="d-flex align-center justify-space-between mb-1">
-                  <span
-                    class="text-super-xs text-success font-weight-bold uppercase"
-                    >IVA Pagado</span
-                  >
-                  <VIcon
-                    v-if="item.is_deductible"
-                    icon="tabler-shield-check"
-                    size="14"
-                    color="success"
-                  />
+              <div class="stat-box text-center">
+                <span class="label">Base Imp.</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.taxable_base) }}</span>
+              </div>
+              <div class="stat-box text-right">
+                <span class="label">IVA Pagado</span>
+                <div class="d-flex align-center justify-end gap-1">
+                   <VIcon v-if="item.is_deductible" icon="tabler-shield-check" size="12" color="success" />
+                   <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.iva_amount) }}</span>
                 </div>
-                <span class="text-sm font-weight-black text-success">{{
-                  formatCurrency(item.iva_amount)
-                }}</span>
               </div>
             </div>
 
-            <!-- Total Gasto -->
-            <div
-              class="d-flex align-center justify-space-between bg-info-opacity-2 pa-3 rounded-lg"
-            >
-              <span class="text-xs font-weight-black uppercase text-info"
-                >Total del Gasto</span
-              >
-              <span class="text-h6 font-weight-black text-info-darken-2"
-                >Bs.
-                {{
-                  formatCurrency(
-                    Number(item.taxable_base) +
-                      Number(item.iva_amount) +
-                      Number(item.exempt_amount),
-                  )
-                }}</span
-              >
+            <div class="pa-3 bg-light rounded-lg border-dashed d-flex align-center justify-space-between">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-medium-emphasis uppercase font-weight-black text-info">Total del Gasto</span>
+                <div class="d-flex align-center gap-1">
+                  <span class="text-xs font-weight-bold text-disabled">Bs.</span>
+                  <span class="text-h6 font-weight-black text-info-darken-2 leading-none">
+                    {{ formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)) }}
+                  </span>
+                </div>
+              </div>
+              <span class="text-super-xs text-disabled uppercase font-weight-black">
+                {{ formatDate(item.expense_date) }}
+              </span>
             </div>
-          </VCardText>
+          </div>
         </VCard>
+      </div>
 
-        <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-2">
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
-            size="small"
-            rounded="circle"
-            class="premium-pagination"
-            @update:model-value="
-              (newPage) => emit('update:options', { ...props, page: newPage })
-            "
+      <!-- Mobile Pagination -->
+      <div class="d-flex justify-center mt-4 pb-2">
+         <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalRecords"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
-        </div>
-      </template>
-
-      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
-        No se encontraron gastos con IVA en este período.
-      </VAlert>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
-}
-
 .premium-table :deep(.v-data-table-header th) {
   background: white !important;
-  color: rgba(
-    var(--v-theme-on-surface),
-    var(--v-high-emphasis-opacity)
-  ) !important;
+  color: rgba(var(--v-theme-on-surface), 0.9) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -350,13 +290,37 @@ const getCategoryChipColor = (categoryName) => {
 }
 
 .premium-table :deep(.v-data-table__td) {
-  padding-block: 12px !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+  padding-block: 10px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.06) !important;
+  color: rgba(var(--v-theme-on-surface), 0.8) !important;
+}
+
+.premium-table :deep(.v-data-table__tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
+}
+
+/* Eliminar bordes verticales */
+.premium-table :deep(table) {
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.premium-table :deep(.v-data-table__td),
+.premium-table :deep(.v-data-table-header th) {
+  border-inline: none !important;
+}
+
+.bg-info-tonal {
+   background-color: rgba(var(--v-theme-info), 0.1);
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;
+}
+
+.leading-none {
+  line-height: 1;
 }
 
 .leading-tight {
@@ -369,8 +333,12 @@ const getCategoryChipColor = (categoryName) => {
   white-space: nowrap;
 }
 
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
 .premium-card {
-  position: relative;
+  border-radius: 12px !important;
   transition: transform 0.2s ease;
 }
 
@@ -378,43 +346,27 @@ const getCategoryChipColor = (categoryName) => {
   transform: scale(0.98);
 }
 
-.premium-card-decoration {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 80px;
-  height: 80px;
-  border-radius: 0 0 0 100%;
+.mobile-grid {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
-.bg-info-opacity {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--v-theme-info), 0.1) 0%,
-    transparent 100%
-  );
+.stat-box .label {
+  display: block;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-size: 0.6rem;
+  font-weight: 900;
+  margin-block-end: 2px;
+  text-transform: uppercase;
 }
 
-.bg-info-opacity-2 {
-  background-color: rgba(var(--v-theme-info), 0.08) !important;
+.stat-box .value {
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
-.bg-success-opacity {
-  background-color: rgba(var(--v-theme-success), 0.05) !important;
-}
-
-.bg-surface-variant-opacity-2 {
-  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
-}
-
-.premium-pagination :deep(.v-btn) {
-  background-color: white !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-}
-
-.premium-pagination :deep(.v-pagination__item--active .v-btn) {
-  background: rgb(var(--v-theme-info)) !important;
-  color: white !important;
-  border: 0 !important;
+.border-dashed {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 </style>

@@ -215,199 +215,235 @@ const maxDate = computed(() => {
     :model-value="props.modelValue"
     max-width="600px"
     persistent
+    scrollable
+    :fullscreen="mobile"
+    transition="dialog-bottom-transition"
     @update:model-value="closeDialog"
-    :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard class="resignation-card">
-      <VCardTitle class="d-flex align-center pa-6">
-        <div class="d-flex align-center">
-          <VAvatar color="warning" variant="tonal" rounded size="40" class="me-3">
-            <VIcon icon="tabler-file-text" size="24" />
+    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card overflow-hidden border-0 elevation-12'">
+      <!-- Header Premium -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
+            <VIcon icon="tabler-file-text" color="primary" size="26" />
           </VAvatar>
-          <div>
-            <div class="text-h6 font-weight-bold">Generar Carta de Renuncia</div>
-            <div class="text-caption text-medium-emphasis">Complete los detalles para generar el documento PDF</div>
+          <div class="flex-grow-1">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Generar Carta de Renuncia
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem;">
+                Administración de Personal y Egresos
+              </span>
+            </div>
           </div>
+          <VSpacer />
+          <VBtn
+            icon
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg ms-3"
+            @click="closeDialog"
+            :disabled="loading"
+          >
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VSpacer />
-        <VBtn icon variant="text" @click="closeDialog" :disabled="loading">
-          <VIcon>tabler-x</VIcon>
-        </VBtn>
       </VCardTitle>
 
-      <VDivider />
-
-      <VContainer v-if="props.selectedEmployee" class="pa-6">
-        <!-- Información del Empleado -->
-        <VCard variant="tonal" border class="mb-6">
-          <VCardText class="pa-4">
-            <div class="d-flex align-center mb-4">
-              <VIcon icon="tabler-user-circle" class="me-2" color="primary" />
-              <span class="text-subtitle-1 font-weight-bold">Datos del Empleado</span>
+      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-6">
+        <div v-if="props.selectedEmployee" class="d-flex flex-column gap-6">
+          
+          <!-- Seccion: Información del Empleado -->
+          <section>
+            <div class="d-flex align-center gap-2 mb-4">
+              <div class="header-indicator primary shadow-sm"></div>
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos del Empleado</span>
             </div>
-            <VRow>
-              <VCol cols="12" sm="6" class="py-1">
-                <div class="text-caption text-medium-emphasis">Nombre Completo</div>
-                <div class="text-body-1 font-weight-medium">{{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}</div>
-              </VCol>
-              <VCol cols="12" sm="6" class="py-1">
-                <div class="text-caption text-medium-emphasis">Identificación</div>
-                <div class="text-body-1 font-weight-medium">{{ props.selectedEmployee.identification }}</div>
-              </VCol>
-              <VCol cols="12" sm="6" class="py-1">
-                <div class="text-caption text-medium-emphasis">Fecha de Ingreso</div>
-                <VTextField
-                  v-model="hireDate"
-                  type="date"
-                  variant="underlined"
-                  density="compact"
-                  hide-details
-                  class="mt-n1"
-                  :readonly="false"
-                  prepend-inner-icon="tabler-calendar"
-                />
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
 
-        <!-- Formulario de Renuncia -->
-        <VForm @submit.prevent="generateResignation">
-          <VRow>
-            <VCol cols="12">
-              <VSelect
-                v-model="resignationType"
-                label="Tipo de Renuncia *"
-                variant="outlined"
-                :items="resignationTypes"
-                :error-messages="errors.resignationType"
-                :disabled="loading"
-                required
-                prepend-inner-icon="tabler-category"
-              />
-            </VCol>
+            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
+              <VRow>
+                <VCol cols="12" sm="6" class="py-1">
+                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Nombre Completo</div>
+                  <div class="text-xs font-weight-black text-high-emphasis tracking-tight">
+                    {{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}
+                  </div>
+                </VCol>
+                <VCol cols="12" sm="6" class="py-1">
+                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Identificación</div>
+                  <div class="text-xs font-weight-black text-high-emphasis tabular-nums">
+                    {{ props.selectedEmployee.identification }}
+                  </div>
+                </VCol>
+                <VCol cols="12" class="py-1 mt-2">
+                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Fecha de Ingreso</div>
+                  <VTextField
+                    v-model="hireDate"
+                    type="date"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    class="premium-input-compact"
+                    :readonly="false"
+                    prepend-inner-icon="tabler-calendar"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+          </section>
 
-            <!-- Campo opcional para cargo -->
-            <VCol cols="12">
-              <VTextField
-                v-model="employeePosition"
-                label="Cargo del Empleado"
-                variant="outlined"
-                :error-messages="errors.employeePosition"
-                :disabled="loading"
-                hint="Opcional"
-                persistent-hint
-                placeholder="Ejemplo: vendedora"
-              >
-                <template #append-inner>
-                  <VTooltip location="top">
-                    <template #activator="{ props }">
-                      <VIcon
-                        icon="tabler-help-circle"
-                        size="small"
-                        color="grey"
-                        v-bind="props"
-                      />
-                    </template>
-                    <span
-                      >Ejemplo: vendedora, cajero, farmacéutico, etc. Si no se
-                      especifica, se usará 'empleado'</span
+          <!-- Seccion: Detalles de la Renuncia -->
+          <section>
+            <div class="d-flex align-center gap-2 mb-4">
+              <div class="header-indicator warning shadow-sm"></div>
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles de la Renuncia</span>
+            </div>
+
+            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
+              <VForm @submit.prevent="generateResignation">
+                <VRow>
+                  <VCol cols="12">
+                    <VSelect
+                      v-model="resignationType"
+                      label="Tipo de Renuncia *"
+                      variant="outlined"
+                      density="comfortable"
+                      :items="resignationTypes"
+                      :error-messages="errors.resignationType"
+                      :disabled="loading"
+                      required
+                      prepend-inner-icon="tabler-category"
+                      class="shadow-sm"
+                      hide-details="auto"
+                    />
+                  </VCol>
+
+                  <VCol cols="12">
+                    <VTextField
+                      v-model="employeePosition"
+                      label="Cargo del Empleado"
+                      variant="outlined"
+                      density="comfortable"
+                      :error-messages="errors.employeePosition"
+                      :disabled="loading"
+                      placeholder="Ejemplo: vendedora"
+                      prepend-inner-icon="tabler-briefcase"
+                      class="shadow-sm"
+                      hide-details="auto"
                     >
-                  </VTooltip>
-                </template>
-              </VTextField>
-            </VCol>
+                      <template #append-inner>
+                        <VTooltip location="top">
+                          <template #activator="{ props }">
+                            <VIcon
+                              icon="tabler-help-circle"
+                              size="18"
+                              color="grey"
+                              v-bind="props"
+                              class="opacity-60"
+                            />
+                          </template>
+                          <span>Ejemplo: vendedora, cajero, farmacéutico, etc. Si no se especifica, se usará 'empleado'</span>
+                        </VTooltip>
+                      </template>
+                    </VTextField>
+                  </VCol>
 
-            <VCol cols="12" sm="6">
-              <VTextField
-                v-model="requestDate"
-                label="Fecha de Solicitud *"
-                type="date"
-                variant="outlined"
-                :disabled="true"
-                readonly
-                hint="Fecha actual del sistema"
-                persistent-hint
-              />
-            </VCol>
+                  <VCol cols="12" sm="6">
+                    <VTextField
+                      v-model="requestDate"
+                      label="Fecha de Solicitud *"
+                      type="date"
+                      variant="outlined"
+                      density="comfortable"
+                      :disabled="loading"
+                      :readonly="false"
+                      class="shadow-sm opacity-80"
+                      hide-details="auto"
+                      prepend-inner-icon="tabler-calendar-check"
+                    />
+                  </VCol>
 
-            <VCol cols="12" sm="6">
-              <VTextField
-                v-model="effectiveDate"
-                label="Fecha Efectiva de Renuncia *"
-                type="date"
-                variant="outlined"
-                :max="maxDate"
-                :error-messages="errors.effectiveDate"
-                :disabled="loading"
-                required
-                hint="Puede ser anterior al día de hoy si se requiere"
-                persistent-hint
-                prepend-inner-icon="tabler-calendar-event"
-              />
-            </VCol>
-          </VRow>
+                  <VCol cols="12" sm="6">
+                    <VTextField
+                      v-model="effectiveDate"
+                      label="Fecha Efectiva *"
+                      type="date"
+                      variant="outlined"
+                      density="comfortable"
+                      :max="maxDate"
+                      :error-messages="errors.effectiveDate"
+                      :disabled="loading"
+                      required
+                      class="shadow-sm"
+                      hide-details="auto"
+                      prepend-inner-icon="tabler-calendar-event"
+                    />
+                  </VCol>
+                </VRow>
+              </VForm>
+            </VCard>
+          </section>
 
-          <!-- Resumen de la Renuncia -->
-          <VCard
-            variant="tonal"
-            color="warning"
-            class="mt-4"
-            v-if="resignationType && effectiveDate"
-          >
-            <VCardText>
-              <div class="text-h6 mb-2">
-                <VIcon icon="tabler-info-circle" class="me-2" />
-                Resumen de la Renuncia
-              </div>
-              <div class="text-body-2">
-                <strong
-                  >{{ props.selectedEmployee.name }}
-                  {{ props.selectedEmployee.last_name }}</strong
-                >
-                solicita
-                {{
-                  resignationTypes
-                    .find((t) => t.value === resignationType)
-                    ?.title.toLowerCase()
-                }}
-                como
-                <strong>{{ employeePosition || "empleado" }}</strong>
-                con fecha efectiva el
-                <strong>{{ formatDate(effectiveDate) }}</strong
-                >.
-              </div>
-            </VCardText>
-          </VCard>
-        </VForm>
-      </VContainer>
+          <!-- Resumen con Estilo Premium -->
+          <VExpandTransition>
+            <div v-if="resignationType && effectiveDate">
+              <VCard variant="flat" border class="resignation-summary rounded-lg overflow-hidden">
+                <div class="pa-4 bg-light d-flex align-center border-b">
+                  <VIcon icon="tabler-info-circle" class="me-2" color="warning" />
+                  <span class="text-super-xs font-weight-black text-warning uppercase letter-spacing-1">Resumen del Documento</span>
+                </div>
+                <VCardText class="pa-4 bg-white">
+                  <p class="text-xs text-high-emphasis leading-relaxed mb-0">
+                    <span class="font-weight-black text-primary">{{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}</span>
+                    solicita
+                    <span class="font-weight-black text-warning">{{ resignationTypes.find((t) => t.value === resignationType)?.title.toLowerCase() }}</span>
+                    como
+                    <span class="font-weight-black">{{ employeePosition || "empleado" }}</span>
+                    con fecha efectiva el
+                    <span class="font-weight-black text-error">{{ formatDate(effectiveDate) }}</span>.
+                  </p>
+                </VCardText>
+              </VCard>
+            </div>
+          </VExpandTransition>
+        </div>
+      </VCardText>
 
-      <VDivider />
-
-      <VCardActions class="pa-4">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          @click="closeDialog"
-          :disabled="loading"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="generateResignation"
-          :loading="loading"
-          :disabled="!resignationType || !effectiveDate"
-          width="100%"
-          class="flex-grow-1 w-0"
-        >
-          <VIcon icon="tabler-file-download" class="me-2" />
-          Generar Carta PDF
-        </VBtn>
+      <VCardActions class="pa-4 bg-light border-t">
+        <VRow no-gutters class="w-100">
+          <VCol cols="12" sm="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="tonal"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="closeDialog"
+              :disabled="loading"
+            >
+              <VIcon :icon="mobile ? 'tabler-x' : ''" :start="!mobile" :class="mobile ? '' : 'me-2'" />
+              <span v-if="!mobile">Cancelar</span>
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="50"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              @click="generateResignation"
+              :loading="loading"
+              :disabled="!resignationType || !effectiveDate"
+            >
+              <VIcon icon="tabler-file-download" :class="mobile ? '' : 'me-2'" />
+              <span v-if="!mobile">Generar Carta</span>
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -471,16 +507,63 @@ const maxDate = computed(() => {
 </template>
 
 <style scoped>
-.v-card {
-  border-radius: 12px;
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.v-dialog .v-card {
-  max-block-size: 90vh;
-  overflow-y: auto;
+.detail-dialog-card {
+  border-radius: 8px !important;
 }
 
-.text-medium-emphasis {
-  opacity: 0.7;
+.header-indicator {
+  inline-size: 4px;
+  block-size: 16px;
+  border-radius: 10px;
+}
+
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.header-indicator.warning {
+  background-color: rgb(var(--v-theme-warning));
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.premium-input-compact :deep(.v-field) {
+  background-color: white !important;
+  border-radius: 8px !important;
+}
+
+.resignation-summary {
+  border: 1px solid rgba(var(--v-theme-warning), 20%) !important;
+}
+
+.last\:border-0:last-child {
+  border-bottom: 0 !important;
 }
 </style>

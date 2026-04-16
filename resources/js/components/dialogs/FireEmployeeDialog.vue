@@ -244,37 +244,37 @@ const formatDate = (dateString) => {
     @click:outside.prevent
     @keydown.esc.prevent="closeDialog"
   >
-    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-lg overflow-hidden border-0 elevation-24'">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
-            <VIcon icon="tabler-file-analytics" color="primary" size="26" />
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-2">
+            <VIcon icon="tabler-file-analytics" color="primary" size="22" />
           </VAvatar>
           <div class="flex-grow-1">
-            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
+            <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0 uppercase">
               Liquidación de Haberes
             </h2>
             <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
-              Empleado: {{ props.selectedEmployee?.name }} {{ props.selectedEmployee?.last_name }} | C.I: {{ props.selectedEmployee?.identification }}
+              {{ props.selectedEmployee?.name }} {{ props.selectedEmployee?.last_name }} | C.I: {{ props.selectedEmployee?.identification }}
             </span>
           </div>
           <VBtn
             icon
             variant="tonal"
             color="white"
-            size="small"
+            size="x-small"
             class="rounded-lg ms-3"
             @click="closeDialog"
           >
-            <VIcon>tabler-x</VIcon>
+            <VIcon size="18">tabler-x</VIcon>
           </VBtn>
         </div>
       </VCardTitle>
 
       <VCardText class="pa-0 bg-light">
-        <div class="pa-4 bg-white border-b overflow-x-auto no-scrollbar">
-          <VTabs v-model="step" density="compact" class="premium-tabs" hide-slider>
+        <div class="pa-0 bg-white border-b overflow-x-auto no-scrollbar">
+          <VTabs v-model="step" class="premium-tabs px-4" hide-slider>
             <VTab value="employee" class="rounded-lg me-2 transition-all">
               <VIcon icon="tabler-calculator" class="me-2" size="18" />
               1. Configuración y Cálculo
@@ -286,16 +286,16 @@ const formatDate = (dateString) => {
           </VTabs>
         </div>
 
-        <VTabsWindow v-model="step" class="pa-4 pa-md-6">
+        <VTabsWindow v-model="step" class="pa-3 pa-md-4">
           <VTabsWindowItem value="employee">
-            <VRow dense>
+            <VRow dense class="ma-0">
               <!-- Sección: Parámetros -->
-              <VCol cols="12" lg="8">
-                <VCard variant="flat" class="rounded-xl border border-dashed pa-4 mb-4 bg-white shadow-xs">
-                  <div class="d-flex align-center mb-4">
-                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Parámetros de Cálculo</span>
+              <VCol cols="12" lg="8" class="pa-1">
+                <VCard variant="flat" class="rounded-lg border border-dashed pa-2 mb-2 bg-white shadow-xs">
+                  <div class="d-flex align-center mb-1">
+                    <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Parámetros de Cálculo</span>
                     <VSpacer />
-                    <VChip size="x-small" color="primary" variant="tonal" class="rounded font-weight-black">MODIFICABLES</VChip>
+                    <VChip size="x-small" color="primary" variant="tonal" class="rounded font-weight-black">EDITAR</VChip>
                   </div>
                   <VRow dense>
                     <VCol cols="12" md="4">
@@ -338,11 +338,11 @@ const formatDate = (dateString) => {
                 <!-- Tablas de Detalle -->
                 <VRow dense>
                   <!-- Devengaciones -->
-                  <VCol cols="12" md="6">
-                    <VCard variant="flat" class="rounded-xl border overflow-hidden shadow-xs h-100 bg-white">
-                      <div class="pa-3 bg-light border-b d-flex align-center">
-                        <VIcon icon="tabler-plus" color="success" size="16" class="me-2" />
-                        <span class="text-xs font-weight-black text-high-emphasis uppercase">Devengaciones</span>
+                  <VCol cols="12" md="6" class="pa-1">
+                    <VCard variant="flat" class="rounded-lg border overflow-hidden shadow-xs h-100 bg-white">
+                      <div class="pa-2 bg-light border-b d-flex align-center">
+                        <VIcon icon="tabler-plus" color="success" size="14" class="me-2" />
+                        <span class="text-super-xs font-weight-black text-high-emphasis uppercase">Devengaciones</span>
                       </div>
                       <VTable density="compact" class="premium-micro-table">
                         <thead>
@@ -383,11 +383,11 @@ const formatDate = (dateString) => {
                   </VCol>
 
                   <!-- Deducciones -->
-                  <VCol cols="12" md="6">
-                    <VCard variant="flat" class="rounded-xl border overflow-hidden shadow-xs h-100 bg-white">
-                      <div class="pa-3 bg-light border-b d-flex align-center">
-                        <VIcon icon="tabler-minus" color="error" size="16" class="me-2" />
-                        <span class="text-xs font-weight-black text-high-emphasis uppercase">Deducciones</span>
+                  <VCol cols="12" md="6" class="pa-1">
+                    <VCard variant="flat" class="rounded-lg border overflow-hidden shadow-xs h-100 bg-white">
+                      <div class="pa-2 bg-light border-b d-flex align-center">
+                        <VIcon icon="tabler-minus" color="error" size="14" class="me-2" />
+                        <span class="text-super-xs font-weight-black text-high-emphasis uppercase">Deducciones</span>
                       </div>
                       <VTable density="compact" class="premium-micro-table">
                         <thead>
@@ -457,17 +457,17 @@ const formatDate = (dateString) => {
               </VCol>
 
               <!-- Sección Derecha: Resumen -->
-              <VCol cols="12" lg="4">
-                <div class="d-flex flex-column gap-4 h-100">
-                  <VCard variant="flat" class="rounded-xl border bg-primary text-white shadow-sm pa-5">
-                    <div class="d-flex justify-space-between align-center mb-1">
+              <VCol cols="12" lg="4" class="pa-1">
+                <div class="d-flex flex-column gap-3 h-100">
+                  <VCard variant="flat" class="rounded-lg border bg-primary text-white shadow-sm pa-3">
+                    <div class="d-flex justify-space-between align-center mb-0">
                       <span class="text-super-xs font-weight-bold opacity-75 uppercase">Promedio Últimos Sueldos</span>
                       <VBtn icon size="x-small" variant="tonal" color="white" @click="showSalaryDetails = !showSalaryDetails">
-                        <VIcon size="14">{{ showSalaryDetails ? 'tabler-eye-off' : 'tabler-eye' }}</VIcon>
+                        <VIcon size="12">{{ showSalaryDetails ? 'tabler-eye-off' : 'tabler-eye' }}</VIcon>
                       </VBtn>
                     </div>
-                    <div class="text-h3 font-weight-black shadow-text leading-none mb-1">
-                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-h6 opacity-75">Bs</small>
+                    <div class="text-h4 font-weight-black shadow-text leading-none mb-1">
+                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-xs opacity-75">Bs</small>
                     </div>
                     <div class="d-flex gap-4 mt-3">
                        <div class="d-flex flex-column flex-grow-1 border-r border-white border-opacity-20 pe-2">
@@ -496,12 +496,12 @@ const formatDate = (dateString) => {
                     </div>
                   </VExpandTransition>
 
-                  <VCard variant="flat" class="rounded-xl border bg-primary-lighten-5 pa-5 flex-grow-1 d-flex flex-column justify-center shadow-xs">
+                  <VCard variant="flat" class="rounded-lg border bg-primary-lighten-5 pa-3 flex-grow-1 d-flex flex-column justify-center shadow-xs">
                     <div class="text-center">
                        <span class="text-super-xs font-weight-bold text-primary uppercase letter-spacing-1 d-block mb-1">Tasa BCV del Día</span>
-                       <div class="text-h5 font-weight-black text-primary mb-4">1 USD = {{ displayAmount(exchangeRate) }} Bs</div>
+                       <div class="text-subtitle-2 font-weight-black text-primary mb-1">1 USD = {{ displayAmount(exchangeRate) }} Bs</div>
                        
-                       <VDivider class="border-dashed my-4" />
+                       <VDivider class="border-dashed my-2" />
 
                        <VSlider
                          v-model="percentage"
@@ -511,21 +511,21 @@ const formatDate = (dateString) => {
                          color="primary"
                          density="compact"
                          hide-details
-                         class="mb-2"
+                         class="mb-1"
                        />
-                       <div class="d-flex justify-space-between align-center mb-6">
+                       <div class="d-flex justify-space-between align-center mb-3">
                          <span class="text-super-xs font-weight-black text-primary uppercase">% A LIQUIDAR</span>
-                         <span class="text-h6 font-weight-black text-primary">{{ percentage }}%</span>
+                         <span class="text-subtitle-1 font-weight-black text-primary">{{ percentage }}%</span>
                        </div>
 
                        <div class="text-overline font-weight-black text-primary leading-none mb-1 opacity-70">TOTAL NETO A PAGAR</div>
-                       <div class="text-h1 font-weight-black text-primary leading-none mb-2 tabular-nums">
+                       <div class="text-h3 font-weight-black text-primary leading-none mb-1 tabular-nums">
                          {{ displayAmount(amountToPay) }}
                        </div>
-                       <div class="text-h6 font-weight-bold text-medium-emphasis mb-0 mt-n1">
-                         USD <VIcon icon="tabler-currency-dollar" size="18" />
+                       <div class="text-caption font-weight-bold text-medium-emphasis mb-0 mt-n1">
+                         USD <VIcon icon="tabler-currency-dollar" size="16" />
                        </div>
-                       <div class="text-caption font-weight-black text-disabled uppercase mt-2">
+                       <div class="text-super-xs font-weight-black text-disabled uppercase mt-1">
                          ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.S
                        </div>
                     </div>
@@ -536,66 +536,115 @@ const formatDate = (dateString) => {
           </VTabsWindowItem>
 
           <VTabsWindowItem value="payment">
-            <div class="mx-auto" style="max-inline-size: 700px">
-              <VCard variant="flat" class="rounded-xl border-primary border-t-4 pa-8 mb-8 text-center bg-white shadow-primary">
-                 <VAvatar color="primary" variant="tonal" size="64" class="mb-4">
-                   <VIcon icon="tabler-wallet" size="32" />
-                 </VAvatar>
-                 <div class="text-overline text-primary font-weight-black letter-spacing-1">TOTAL LIQUIDACIÓN</div>
-                 <div class="text-h2 font-weight-black text-primary mb-2 tabular-nums">${{ displayAmount(amountToPay) }}</div>
-                 <div class="text-h6 font-weight-bold text-medium-emphasis">Equivalente a {{ displayAmount(amountToPay * exchangeRate) }} Bs.S</div>
-              </VCard>
+            <VRow dense class="ma-0">
+              <!-- Formulario de Pago (Izquierda) -->
+              <VCol cols="12" md="7" class="pa-1">
+                <VCard variant="flat" class="rounded-lg border pa-4 h-100 bg-white">
+                  <div class="d-flex align-center mb-4">
+                    <VIcon icon="tabler-settings-dollar" color="primary" class="me-2" size="20" />
+                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Detalles del Desembolso</span>
+                  </div>
+                  
+                  <VRow dense>
+                    <VCol cols="12" sm="6">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase ms-1 mb-1 d-block">Moneda de Pago</span>
+                      <VSelect
+                        v-model="currency"
+                        :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
+                        variant="outlined"
+                        density="compact"
+                        center-affix
+                        hide-details
+                        placeholder="SELECCIONAR"
+                        class="premium-input-compact mb-4"
+                        :error="!!errors.currency"
+                      />
+                    </VCol>
+                    <VCol cols="12" sm="6">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase ms-1 mb-1 d-block">Origen de Fondos</span>
+                      <VSelect
+                        v-model="count"
+                        :items="(countsFilterByCurrency[currency] ?? []).map(a => ({ title: a, value: a }))"
+                        variant="outlined"
+                        density="compact"
+                        center-affix
+                        hide-details
+                        placeholder="CUENTA"
+                        class="premium-input-compact mb-4"
+                        :disabled="!currency"
+                        :error="!!errors.count"
+                      />
+                    </VCol>
+                    <VCol cols="12">
+                      <div class="pa-4 rounded-lg bg-light border border-dashed text-center">
+                        <span class="text-super-xs font-weight-black text-primary uppercase d-block mb-3">Monto Confirmado para Entrega</span>
+                        <AppTextField
+                          v-model="payed"
+                          type="number"
+                          step="0.01"
+                          prefix="$"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          class="premium-input-compact mb-1 font-weight-black"
+                          :error="!!errors.payed"
+                        />
+                        <div class="text-super-xs font-weight-bold text-disabled uppercase mt-1">
+                          Ingrese la cantidad exacta en USD
+                        </div>
+                      </div>
+                    </VCol>
+                  </VRow>
+                </VCard>
+              </VCol>
 
-              <VRow dense>
-                <VCol cols="12" md="6">
-                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Método / Moneda</span>
-                  <VSelect
-                    v-model="currency"
-                    :items="Object.keys(countsFilterByCurrency).map(c => ({ title: c, value: c }))"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    class="premium-input-compact mb-4"
-                    :error="!!errors.currency"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Caja o Banco</span>
-                  <VSelect
-                    v-model="count"
-                    :items="(countsFilterByCurrency[currency] ?? []).map(a => ({ title: a, value: a }))"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    class="premium-input-compact mb-4"
-                    :disabled="!currency"
-                    :error="!!errors.count"
-                  />
-                </VCol>
-                <VCol cols="12">
-                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Monto Confirmado (USD)</span>
-                  <AppTextField
-                    v-model="payed"
-                    type="number"
-                    step="0.01"
-                    prefix="$"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    class="premium-input-compact mb-2 text-h5"
-                    :error="!!errors.payed"
-                  />
-                  <div class="text-super-xs font-weight-bold text-disabled uppercase ms-1">Ingrese el monto exacto entregado al empleado</div>
-                </VCol>
-              </VRow>
-            </div>
+              <!-- Resumen "Ticket" (Derecha) -->
+              <VCol cols="12" md="5" class="pa-1">
+                <VCard variant="flat" class="rounded-lg border-primary border-t-4 h-100 bg-white shadow-sm overflow-hidden d-flex flex-column">
+                  <div class="pa-4 text-center border-b bg-light">
+                    <VAvatar color="primary" variant="tonal" size="48" class="mb-2">
+                       <VIcon icon="tabler-receipt-tax" size="24" />
+                    </VAvatar>
+                    <div class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Resumen de Liquidación</div>
+                  </div>
+                  
+                  <div class="pa-4 flex-grow-1 d-flex flex-column gap-3 justify-center">
+                    <div class="d-flex justify-space-between align-center">
+                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Total Neto (USD)</span>
+                      <span class="text-subtitle-1 font-weight-black text-high-emphasis tabular-nums">${{ displayAmount(amountToPay) }}</span>
+                    </div>
+                    
+                    <VDivider class="border-dashed-t" />
+                    
+                    <div class="d-flex justify-space-between align-center opacity-70">
+                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Tasa de Cambio</span>
+                      <span class="text-super-xs font-weight-black text-medium-emphasis">{{ displayAmount(exchangeRate) }} Bs</span>
+                    </div>
+
+                    <div class="pa-3 rounded-lg bg-primary mt-2 text-center elevation-2">
+                       <span class="text-super-xs font-weight-bold text-white opacity-75 uppercase d-block leading-none mb-1">Total en Bolívares</span>
+                       <div class="text-h5 font-weight-black text-white tabular-nums">
+                         {{ displayAmount(amountToPay * exchangeRate) }} <small class="text-xs">Bs.S</small>
+                       </div>
+                    </div>
+                  </div>
+                  
+                  <div class="pa-3 bg-warning-light border-t mt-auto text-center">
+                    <div class="text-super-xs font-weight-black text-warning uppercase d-flex align-center justify-center gap-1">
+                      <VIcon icon="tabler-alert-circle" size="14" />
+                      Documento PDF Requerido
+                    </div>
+                  </div>
+                </VCard>
+              </VCol>
+            </VRow>
           </VTabsWindowItem>
         </VTabsWindow>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-6 bg-light border-t">
+      <VCardActions class="pa-4 bg-light border-t">
         <VRow dense class="w-100 ma-0">
           <VCol cols="12" sm="4" class="pa-1">
             <VBtn
@@ -638,13 +687,17 @@ const formatDate = (dateString) => {
   background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
 }
 
-.bg-white { background-color: white !important; }
+.detail-dialog-card {
+  border-radius: 8px !important;
+}
 
 .premium-tabs :deep(.v-tab) {
-  font-size: 0.75rem !important;
+  font-size: 0.7rem !important;
   font-weight: 800 !important;
   color: #64748b !important;
   letter-spacing: 0.5px;
+  min-height: 48px !important;
+  padding-bottom: 4px !important;
 }
 
 .premium-tabs :deep(.v-tab--selected) {
@@ -654,35 +707,33 @@ const formatDate = (dateString) => {
 
 .premium-input-compact :deep(.v-field) {
   border-radius: 8px !important;
-  min-height: 38px !important;
   background-color: white !important;
 }
 
 .premium-input-compact :deep(.v-field__input) {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
   font-size: 0.75rem !important;
   font-weight: 700;
-  min-height: 38px !important;
   text-transform: uppercase;
 }
 
 .premium-micro-table :deep(th) {
   background-color: #f8fafc !important;
-  height: 32px !important;
+  height: 28px !important;
+  padding-inline: 8px !important;
 }
 
 .premium-micro-table :deep(td) {
-  height: 36px !important;
+  height: 30px !important;
   color: #334155 !important;
+  padding-inline: 8px !important;
 }
 
 .micro-input {
   width: 100%;
   border: none;
   background: transparent;
-  padding: 4px 8px;
-  font-size: 0.75rem;
+  padding: 2px 4px;
+  font-size: 0.7rem;
   outline: none;
   border-radius: 4px;
 }

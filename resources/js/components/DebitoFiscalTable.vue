@@ -1,6 +1,4 @@
 <script setup>
-import { useDisplay } from "vuetify";
-
 const props = defineProps({
   fiscalData: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -11,26 +9,61 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options"]);
 
-const { mobile } = useDisplay();
-
 const headers = [
-  { title: "#Orden", key: "order_id", sortable: true },
-  { title: "#Factura", key: "invoice_number", sortable: true },
+  { 
+    title: "ID", 
+    key: "fiscal_id", 
+    sortable: true,
+    value: item => item.fiscal_id ? `#${item.fiscal_id}` : '',
+    cellProps: { class: 'text-sm font-weight-black text-primary' }
+  },
+  { 
+    title: "IDENTIFICACIÓN", 
+    key: "identification", 
+    sortable: true,
+    value: item => (item.identification || 'N/A').toUpperCase(),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
   {
-    title: "Cliente / Razón Social",
+    title: "RAZÓN SOCIAL",
     key: "business_name",
     sortable: true,
-    width: "30%",
+    width: "35%",
+    value: item => (item.business_name || 'N/A').toUpperCase(),
+    cellProps: { class: 'text-sm text-medium-emphasis text-uppercase truncate' }
   },
-  { title: "Exento", key: "exempt_amount", sortable: true, align: "end" },
+  { 
+    title: "EXENTO", 
+    key: "exempt_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.exempt_amount),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
   {
-    title: "Base Imponible",
+    title: "BASE IMPONIBLE",
     key: "taxable_base",
     sortable: true,
     align: "end",
+    value: item => formatCurrency(item.taxable_base),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
   },
-  { title: "IVA", key: "iva_amount", sortable: true, align: "end" },
-  { title: "Total", key: "total_amount", sortable: true, align: "end" },
+  { 
+    title: "IVA", 
+    key: "iva_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.iva_amount),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
+  { 
+    title: "TOTAL", 
+    key: "total_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.total_amount),
+    cellProps: { class: 'text-sm font-weight-black text-primary' }
+  }
 ];
 
 const formatCurrency = (amount) => {
@@ -49,293 +82,178 @@ const formatDate = (dateString) => {
     day: "2-digit",
   });
 };
-
-const getInitials = (name) => {
-  if (!name) return "C";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .substring(0, 2)
-    .toUpperCase();
-};
 </script>
 
 <template>
-  <div class="mb-6">
+  <div class="fiscal-table-container">
     <!-- Vista de Escritorio -->
-    <VCard
-      v-if="!mobile"
-      class="rounded-lg border shadow-sm overflow-hidden bg-surface mt-6"
-    >
-      <VCardTitle class="pa-4 d-flex align-center">
-        <VAvatar
-          color="warning"
-          variant="tonal"
-          size="32"
-          class="me-3 rounded-lg"
-        >
-          <VIcon icon="tabler-receipt" size="18" />
-        </VAvatar>
-        <span class="text-sm font-weight-black uppercase"
-          >Ventas (Débito Fiscal)</span
-        >
-        <VSpacer />
-        <VChip
-          color="warning"
-          size="x-small"
-          variant="tonal"
-          class="font-weight-black rounded"
-        >
-          {{ totalRecords }} DOCUMENTOS
-        </VChip>
-      </VCardTitle>
-
-      <VDivider class="opacity-10" />
-
-      <VDataTableServer
-        :items-per-page="props.itemsPerPage"
-        :page="props.page"
-        :headers="headers"
-        :items="props.fiscalData"
-        :items-length="props.totalRecords"
-        :loading="props.loading"
-        class="text-no-wrap premium-table"
-        @update:options="(options) => emit('update:options', options)"
-      >
-        <template #item.order_id="{ item }">
-          <span class="font-weight-black text-primary"
-            >#{{ item.order_id }}</span
-          >
-        </template>
-
-        <template #item.invoice_number="{ item }">
-          <div class="d-flex flex-column">
-            <span class="font-weight-black text-primary">{{
-              item.invoice_number
-            }}</span>
-            <span class="text-super-xs text-disabled">{{
-              formatDate(item.invoice_date)
-            }}</span>
+    <div class="d-none d-md-block">
+      <VCard border variant="flat" class="rounded-lg overflow-hidden">
+        <VCardTitle class="pa-4 d-flex align-center">
+          <div class="pa-2 bg-warning-tonal rounded-lg me-3">
+            <VIcon icon="tabler-receipt" size="18" color="warning" />
           </div>
-        </template>
+          <span class="text-sm font-weight-black uppercase"
+            >Ventas (Débito Fiscal)</span
+          >
+          <VSpacer />
+          <VChip
+            color="warning"
+            size="x-small"
+            variant="tonal"
+            class="font-weight-black rounded"
+          >
+            {{ totalRecords }} DOCUMENTOS
+          </VChip>
+        </VCardTitle>
 
-        <template #item.business_name="{ item }">
-          <div class="d-flex align-center gap-3 py-2">
-            <VAvatar
-              color="warning"
-              variant="tonal"
-              size="30"
-              class="rounded-lg"
-            >
-              <span class="text-super-xs font-weight-black">{{
-                getInitials(item.business_name)
+        <VDivider class="opacity-10" />
+
+        <VDataTableServer
+          :items-per-page="props.itemsPerPage"
+          :page="props.page"
+          :headers="headers"
+          :items="props.fiscalData"
+          :items-length="props.totalRecords"
+          :loading="props.loading"
+          class="text-no-wrap premium-table"
+          @update:options="(options) => emit('update:options', options)"
+        >
+
+          <template #item.fiscal_id="{ item }">
+            <span class="text-xs font-weight-black text-primary">#{{
+              item.fiscal_id
+            }}</span>
+          </template>
+
+          <template #item.business_name="{ item }">
+            <div class="d-flex flex-column py-2">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase truncate" style="max-width: 350px">
+                  {{ item.business_name }}
+                </span>
+                <span class="text-super-xs text-disabled truncate uppercase font-weight-medium">
+                  {{ formatDate(item.invoice_date) }}
+                </span>
+            </div>
+          </template>
+
+          <template #item.iva_amount="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span class="text-sm font-weight-black text-high-emphasis">{{
+                formatCurrency(item.iva_amount)
               }}</span>
-            </VAvatar>
-            <div class="d-flex flex-column truncate" style="max-width: 250px">
               <span
-                class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate"
-                >{{ item.business_name }}</span
-              >
-              <span
-                class="text-super-xs text-primary font-weight-black uppercase truncate"
-                >{{ item.identification }}</span
+                v-if="item.spe"
+                class="text-super-xs text-warning font-weight-black"
+                >+IGTF</span
               >
             </div>
-          </div>
-        </template>
+          </template>
 
-        <template #item.exempt_amount="{ item }">
-          <span
-            class="text-xs font-weight-medium"
-            :class="
-              Number(item.exempt_amount) > 0 ? 'text-info' : 'text-disabled'
-            "
-          >
-            {{ formatCurrency(item.exempt_amount) }}
-          </span>
-        </template>
+          <template #item.total_amount="{ item }">
+            <span class="text-sm font-weight-bold">{{ formatCurrency(item.total_amount) }}</span>
+          </template>
+        </VDataTableServer>
+      </VCard>
+    </div>
 
-        <template #item.taxable_base="{ item }">
-          <span class="text-xs font-weight-medium">{{
-            formatCurrency(item.taxable_base)
-          }}</span>
-        </template>
-
-        <template #item.iva_amount="{ item }">
-          <div class="d-flex flex-column align-end">
-            <span class="text-xs font-weight-black text-success">{{
-              formatCurrency(item.iva_amount)
-            }}</span>
-            <span
-              v-if="item.spe"
-              class="text-super-xs text-warning font-weight-black"
-              >+SPE</span
-            >
-          </div>
-        </template>
-
-        <template #item.total_amount="{ item }">
-          <span class="text-sm font-weight-black text-warning-darken-2">{{
-            formatCurrency(item.total_amount)
-          }}</span>
-        </template>
-
-        <template #bottom>
-          <VDivider class="opacity-10" />
-          <div class="d-flex align-center justify-space-between pa-4">
-            <VPagination
-              :model-value="props.page"
-              :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
-              size="small"
-              class="premium-pagination"
-              @update:model-value="
-                (newPage) => emit('update:options', { ...props, page: newPage })
-              "
-            />
-          </div>
-        </template>
-      </VDataTableServer>
-    </VCard>
-
-    <!-- Vista Móvil (Cards) -->
-    <div v-else class="d-flex flex-column gap-4">
-      <div v-if="props.loading" class="d-flex justify-center pa-8">
-        <VProgressCircular indeterminate color="warning" />
+    <!-- Vista Móvil (Cards Premium) -->
+    <div class="d-block d-md-none pa-2 bg-light">
+      <VProgressLinear v-if="props.loading" indeterminate color="warning" class="mb-2" />
+      
+      <div v-if="props.fiscalData.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
+        No hay registros de ventas para este período.
       </div>
 
-      <template v-else-if="props.fiscalData.length > 0">
+      <div class="d-flex flex-column gap-3">
         <VCard
           v-for="item in props.fiscalData"
           :key="item.order_id"
-          class="rounded-lg border shadow-sm premium-card overflow-hidden"
+          variant="flat"
+          border
+          class="mb-1 overflow-hidden premium-card bg-white"
         >
-          <div class="premium-card-decoration bg-warning-opacity"></div>
-
-          <VCardText class="pa-5">
-            <!-- Cabecera Móvil -->
-            <div class="d-flex align-center justify-space-between mb-4">
+          <div class="pa-4">
+            <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex align-center gap-3">
-                <VAvatar
-                  color="warning"
-                  variant="tonal"
-                  size="38"
-                  class="rounded-lg shadow-sm"
-                >
-                  <VIcon icon="tabler-receipt" size="18" />
-                </VAvatar>
+                <div class="pa-2 bg-warning-tonal rounded-lg">
+                   <VIcon icon="tabler-receipt" size="18" color="warning" />
+                </div>
                 <div class="d-flex flex-column">
-                  <span
-                    class="text-xs font-weight-black text-disabled uppercase leading-tight"
-                    >Factura #</span
-                  >
-                  <span
-                    class="text-sm font-weight-black text-primary leading-tight"
-                    >{{ item.invoice_number }}</span
-                  >
+                  <span class="text-primary font-weight-black text-xs uppercase mb-1">Factura</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
+                    {{ item.invoice_number }}
+                  </h3>
                 </div>
               </div>
-              <div class="d-flex flex-column align-end">
-                <span
-                  class="text-xs font-weight-black text-disabled uppercase leading-tight"
-                  >Orden</span
-                >
-                <span class="text-xs font-weight-bold leading-tight"
-                  >#{{ item.order_id }}</span
-                >
-              </div>
             </div>
 
-            <VDivider class="mb-4 opacity-10" />
+            <VDivider class="my-3 border-opacity-10" />
 
-            <!-- Info Cliente -->
+            <!-- Cliente Info -->
             <div class="mb-4">
-              <span
-                class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1"
-                >Cliente / RIF</span
-              >
-              <span
-                class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1"
-                >{{ item.business_name }}</span
-              >
-              <span class="text-xs text-disabled leading-tight">{{
-                item.identification
-              }}</span>
+               <div class="d-flex align-center gap-2 mb-1">
+                 <span class="text-super-xs font-weight-black text-disabled uppercase">Identificación:</span>
+                 <span class="text-xs font-weight-black text-primary uppercase">{{ item.identification }}</span>
+              </div>
+              <span class="text-sm font-weight-black text-high-emphasis d-block leading-tight text-uppercase mb-1">
+                {{ item.business_name }}
+              </span>
             </div>
 
-            <!-- Stats IVA -->
-            <div class="d-flex gap-3 mb-4">
-              <div
-                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-info-opacity"
-              >
-                <span
-                  class="text-super-xs text-info font-weight-bold uppercase d-block mb-1"
-                  >Exento</span
-                >
-                <span class="text-sm font-weight-black">{{
-                  formatCurrency(item.exempt_amount)
-                }}</span>
+            <div class="d-grid mobile-grid gap-3 mb-4">
+              <div class="stat-box">
+                <span class="label">Exento</span>
+                <span class="value font-weight-black text-high-emphasis">
+                  {{ formatCurrency(item.exempt_amount) }}
+                </span>
               </div>
-              <div
-                class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-success-opacity"
-              >
-                <span
-                  class="text-super-xs text-success font-weight-bold uppercase d-block mb-1"
-                  >IVA Cobrado</span
-                >
-                <span class="text-sm font-weight-black">{{
-                  formatCurrency(item.iva_amount)
-                }}</span>
+              <div class="stat-box text-center">
+                <span class="label">Base Imp.</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.taxable_base) }}</span>
+              </div>
+              <div class="stat-box text-right">
+                <span class="label">IVA Cobrado</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.iva_amount) }}</span>
               </div>
             </div>
 
-            <!-- Total -->
-            <div
-              class="d-flex align-center justify-space-between bg-surface-variant-opacity-2 pa-3 rounded-lg"
-            >
-              <span class="text-xs font-weight-black uppercase"
-                >Monto Total</span
-              >
-              <span class="text-h6 font-weight-black text-warning-darken-2"
-                >Bs. {{ formatCurrency(item.total_amount) }}</span
-              >
+            <div class="pa-3 bg-light rounded-lg border-dashed d-flex align-center justify-space-between">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-medium-emphasis uppercase font-weight-black">Monto Total</span>
+                <div class="d-flex align-center gap-1">
+                  <span class="text-xs font-weight-bold text-disabled">Bs.</span>
+                  <span class="text-h6 font-weight-black text-success leading-none">
+                    {{ formatCurrency(item.total_amount) }}
+                  </span>
+                </div>
+              </div>
+              <span class="text-super-xs text-disabled uppercase font-weight-black">
+                {{ formatDate(item.invoice_date) }}
+              </span>
             </div>
-          </VCardText>
+          </div>
         </VCard>
+      </div>
 
-        <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-2">
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
-            size="small"
-            rounded="circle"
-            class="premium-pagination"
-            @update:model-value="
-              (newPage) => emit('update:options', { ...props, page: newPage })
-            "
+      <!-- Mobile Pagination -->
+      <div class="d-flex justify-center mt-4 pb-2">
+         <AppMobilePagination
+            :page="props.page"
+            :items-per-page="props.itemsPerPage"
+            :total-items="props.totalRecords"
+            :loading="props.loading"
+            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
           />
-        </div>
-      </template>
-
-      <VAlert v-else type="info" variant="tonal" class="rounded-lg">
-        No hay registros de ventas para este período.
-      </VAlert>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
-}
-
 .premium-table :deep(.v-data-table-header th) {
   background: white !important;
-  color: rgba(
-    var(--v-theme-on-surface),
-    var(--v-high-emphasis-opacity)
-  ) !important;
+  color: rgba(var(--v-theme-on-surface), 0.9) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -344,13 +262,22 @@ const getInitials = (name) => {
 }
 
 .premium-table :deep(.v-data-table__td) {
-  padding-block: 12px !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+  padding-block: 10px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.06) !important;
+  color: rgba(var(--v-theme-on-surface), 0.8) !important;
+}
+
+.bg-warning-tonal {
+   background-color: rgba(var(--v-theme-warning), 0.1);
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;
+}
+
+.leading-none {
+  line-height: 1;
 }
 
 .leading-tight {
@@ -363,8 +290,12 @@ const getInitials = (name) => {
   white-space: nowrap;
 }
 
+.bg-light {
+  background-color: #f8fafc !important;
+}
+
 .premium-card {
-  position: relative;
+  border-radius: 12px !important;
   transition: transform 0.2s ease;
 }
 
@@ -372,43 +303,27 @@ const getInitials = (name) => {
   transform: scale(0.98);
 }
 
-.premium-card-decoration {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 80px;
-  height: 80px;
-  border-radius: 0 0 0 100%;
+.mobile-grid {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
-.bg-warning-opacity {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--v-theme-warning), 0.1) 0%,
-    transparent 100%
-  );
+.stat-box .label {
+  display: block;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-size: 0.6rem;
+  font-weight: 900;
+  margin-block-end: 2px;
+  text-transform: uppercase;
 }
 
-.bg-info-opacity {
-  background-color: rgba(var(--v-theme-info), 0.05) !important;
+.stat-box .value {
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
-.bg-success-opacity {
-  background-color: rgba(var(--v-theme-success), 0.05) !important;
-}
-
-.bg-surface-variant-opacity-2 {
-  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
-}
-
-.premium-pagination :deep(.v-btn) {
-  background-color: white !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-}
-
-.premium-pagination :deep(.v-pagination__item--active .v-btn) {
-  background: rgb(var(--v-theme-warning)) !important;
-  color: white !important;
-  border: 0 !important;
+.border-dashed {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 </style>

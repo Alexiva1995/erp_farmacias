@@ -92,9 +92,10 @@ const reset = () => cropper.value?.reset();
     :model-value="props.modelValue"
     max-width="600"
     persistent
+    scrollable
     transition="scale-transition"
   >
-    <VCard class="cropper-card overflow-hidden">
+    <VCard class="cropper-card">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center">
@@ -175,7 +176,7 @@ const reset = () => cropper.value?.reset();
 .cropper-container {
   background-color: #000;
   min-height: 300px;
-  max-height: 500px;
+  max-height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;

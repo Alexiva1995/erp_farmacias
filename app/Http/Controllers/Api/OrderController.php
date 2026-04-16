@@ -357,9 +357,11 @@ class OrderController extends Controller
                 ],
                 'debito_fiscal' => $debitoFiscalData['total_debito'],
                 'detalle_debito' => [
-                    'total_orders_with_iva' => $debitoFiscalData['total_records'],
-                    'total_iva_amount' => $debitoFiscalData['total_iva_amount'],
-                    'total_spe_amount' => $debitoFiscalData['total_spe_amount'] ?? 0,
+                    'total_orders_with_iva'  => $debitoFiscalData['total_records'],
+                    'total_iva_amount'       => $debitoFiscalData['total_iva_amount'],
+                    'total_spe_amount'       => $debitoFiscalData['total_spe_amount'] ?? 0,
+                    'total_spe_sales_amount' => $debitoFiscalData['total_spe_sales_amount'] ?? 0,
+                    'total_spe_count'        => $debitoFiscalData['total_spe_count'] ?? 0,
                 ]
             ], 'Débito fiscal obtenido exitosamente');
 

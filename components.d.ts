@@ -296,6 +296,7 @@ declare module 'vue' {
     ReportAbcTable: typeof import('./resources/js/components/ReportAbcTable.vue')['default']
     ResignationFilters: typeof import('./resources/js/components/ResignationFilters.vue')['default']
     ResignationFormDialog: typeof import('./resources/js/components/dialogs/ResignationFormDialog.vue')['default']
+    ResignationIntroDialog: typeof import('./resources/js/components/dialogs/ResignationIntroDialog.vue')['default']
     RetentionFilters: typeof import('./resources/js/components/RetentionFilters.vue')['default']
     RetentionTable: typeof import('./resources/js/components/RetentionTable.vue')['default']
     ReturnsClientCard: typeof import('./resources/js/components/cards/ReturnsClientCard.vue')['default']
