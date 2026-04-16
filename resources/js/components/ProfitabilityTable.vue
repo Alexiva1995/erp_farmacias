@@ -420,7 +420,8 @@ const getProfitabilityPercentage = (item) => {
           <VChip
             :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
             variant="elevated"
-            class="font-weight-black px-4 rounded-lg shadow-sm"
+            class="font-weight-black px-2 rounded-lg shadow-sm text-xs"
+            style="min-width: 42px; justify-content: center;"
           >
             {{ getProfitabilityPercentage(item) }}%
           </VChip>
