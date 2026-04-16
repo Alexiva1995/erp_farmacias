@@ -27,35 +27,28 @@ const hasActiveFilters = computed(() => {
   return props.startDate || props.endDate;
 });
 
-// Presets de fechas comunes
-const setMonthPreset = () => {
+// Presets de meses específicos del año en curso
+const months = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
+
+const setSpecificMonth = (monthIndex) => {
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const year = now.getFullYear();
+  // El mes en Date usa base 0 (0 = Enero, 11 = Diciembre)
+  const startOfMonth = new Date(year, monthIndex, 1);
+  const endOfMonth = new Date(year, monthIndex + 1, 0);
 
-  emit("update:startDate", startOfMonth.toISOString().split("T")[0]);
-  emit("update:endDate", endOfMonth.toISOString().split("T")[0]);
-  setTimeout(() => emit("apply-filter"), 100);
-};
+  // Formato local en lugar de toISOString para evitar desfase horario
+  const formatOffsetDate = (date) => {
+    const d = new Date(date);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split("T")[0];
+  };
 
-const setQuarterPreset = () => {
-  const now = new Date();
-  const quarter = Math.floor(now.getMonth() / 3);
-  const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1);
-  const endOfQuarter = new Date(now.getFullYear(), (quarter + 1) * 3, 0);
-
-  emit("update:startDate", startOfQuarter.toISOString().split("T")[0]);
-  emit("update:endDate", endOfQuarter.toISOString().split("T")[0]);
-  setTimeout(() => emit("apply-filter"), 100);
-};
-
-const setYearPreset = () => {
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const endOfYear = new Date(now.getFullYear(), 11, 31);
-
-  emit("update:startDate", startOfYear.toISOString().split("T")[0]);
-  emit("update:endDate", endOfYear.toISOString().split("T")[0]);
+  emit("update:startDate", formatOffsetDate(startOfMonth));
+  emit("update:endDate", formatOffsetDate(endOfMonth));
   setTimeout(() => emit("apply-filter"), 100);
 };
 </script>
@@ -120,24 +113,17 @@ const setYearPreset = () => {
             <VTooltip activator="parent" location="top">Períodos Predefinidos</VTooltip>
           </VBtn>
         </template>
-        <VList class="rounded-lg shadow-lg border-0 pa-2" min-width="180">
-          <VListItem class="rounded-md mb-1" @click="setMonthPreset">
+        <VList class="rounded-lg shadow-lg border-0 pa-2" min-width="180" max-height="300">
+          <VListItem 
+            v-for="(month, index) in months" 
+            :key="index"
+            class="rounded-md mb-1" 
+            @click="setSpecificMonth(index)"
+          >
             <template #prepend>
               <VIcon icon="tabler-calendar-month" size="18" class="me-3" color="info" />
             </template>
-            <VListItemTitle class="text-xs font-weight-bold">Mes Actual</VListItemTitle>
-          </VListItem>
-          <VListItem class="rounded-md mb-1" @click="setQuarterPreset">
-            <template #prepend>
-              <VIcon icon="tabler-calendar-stats" size="18" class="me-3" color="info" />
-            </template>
-            <VListItemTitle class="text-xs font-weight-bold">Trimestre Actual</VListItemTitle>
-          </VListItem>
-          <VListItem class="rounded-md" @click="setYearPreset">
-            <template #prepend>
-              <VIcon icon="tabler-calendar-year" size="18" class="me-3" color="info" />
-            </template>
-            <VListItemTitle class="text-xs font-weight-bold">Año Actual</VListItemTitle>
+            <VListItemTitle class="text-xs font-weight-bold">{{ month }}</VListItemTitle>
           </VListItem>
         </VList>
       </VMenu>
