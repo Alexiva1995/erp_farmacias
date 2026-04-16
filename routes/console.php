@@ -47,3 +47,8 @@ Schedule::command('app:classify-clients')->dailyAt('03:00')->withoutOverlapping(
 Schedule::command('app:close-monthly-performance')->monthlyOn(1, '00:01');
 Schedule::command('suppliers:evaluate')->dailyAt('01:00')->withoutOverlapping();
 Schedule::command('app:verify-clients-cne')->everyTwoHours()->withoutOverlapping();
+Schedule::command('app:apply-global-profitability')
+    ->dailyAt('02:00')
+    ->onOneServer()
+    ->withoutOverlapping();
+

@@ -62,6 +62,29 @@ class ProfitabilityServices implements Profitability
         return $this->profitabilityRepository->edit($data);
     }
 
+    /**
+     * Aplica el porcentaje de rentabilidad global a todos los productos no bloqueados.
+     */
+    public function applyGlobalProfitabilityToAllProducts(): void
+    {
+        $settings = $this->consultOne();
+        if (!$settings) {
+            return;
+        }
+
+        $percentage = (float) $settings->default_profitability_percentage;
+
+        // Obtener IDs de productos que no tienen rentabilidad o que no están bloqueados
+        $productIds = Product::query()
+            ->whereDoesntHave('profitability')
+            ->orWhereHas('profitability', fn ($q) => $q->where('is_locked', '!=', 1))
+            ->pluck('id');
+
+        foreach ($productIds as $productId) {
+            $this->updateProductPrice((int) $productId, $percentage);
+        }
+    }
+
     private function updateProductPrice(int $productId, float $percentage): void
     {
         $product = \App\Models\Product::find($productId);
