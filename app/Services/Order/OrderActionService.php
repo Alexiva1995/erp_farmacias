@@ -518,6 +518,10 @@ class OrderActionService
 
     public function invoicing(Order $order, $spe)
     {
+        // Regla de Negocio: Toda venta en COP o USD debe marcarse obligatoriamente como SPE (1)
+        if (in_array(strtoupper($order->currency ?? 'BS'), ['COP', 'USD'])) {
+            $spe = 1;
+        }
 
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
         $totalIva = 0;
