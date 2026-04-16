@@ -403,7 +403,7 @@ onMounted(() => {
                 </div>
                 <VDivider class="mb-3 opacity-20" />
                 <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-medium text-medium-emphasis">3% del total — {{ detalleDebito.total_spe_count || 0 }} ventas SPE</span>
+                  <span class="text-caption font-weight-medium text-medium-emphasis">3% del total — {{ detalleDebito.total_spe_count || 0 }} ventas con IGTF</span>
                   <VIcon icon="tabler-building-bank" size="16" color="error" class="opacity-50" />
                 </div>
               </VCardText>
