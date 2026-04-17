@@ -343,8 +343,7 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
               class="font-weight-black px-4 rounded-lg"
             >
               {{ totalItems }} REGISTROS ENCONTRADOS
-            </VChip>
-          </div>
+          </VChip>
         </div>
 
         <VCardText class="pa-0">
