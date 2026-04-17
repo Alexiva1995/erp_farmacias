@@ -61,8 +61,8 @@ const handleClearFilters = () => {
 onMounted(() => fetchPayslips());
 
 const handleFinalizePayslip = (payslip) => {
-  showFinalizeDialog.value = true;
   selectedPayslip.value = payslip;
+  showFinalizeDialog.value = true;
 };
 
 const handleClosePayslip = () => {

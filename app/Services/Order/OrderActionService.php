@@ -1231,22 +1231,7 @@ class OrderActionService
                     }
                 }
 
-                $total_bs = $cashClosing->bs_cash + $cashClosing->bs_mobile + $cashClosing->bs_transfer + $cashClosing->bs_card_debito + $cashClosing->bs_card_credit;
-                $total_cop = ($cashClosing->cop_cash + $cashClosing->cop_transfer) - $cashClosing->cop_conversion;
-                $total_usd = $cashClosing->usd_cash + $cashClosing->usd_binance + $cashClosing->usd_paypal + $cashClosing->usd_balance + $cashClosing->usd_conversion;
-
-                $cashClosing->total_bs = $total_bs;
-                $cashClosing->total_cop = $total_cop;
-                $cashClosing->total_usd = $total_usd;
-                $cashClosing->usd_delivered = $cashClosing->usd_cash + $cashClosing->usd_conversion;
-                $cashClosing->cop_delivered = $cashClosing->cop_cash - ($cashClosing->cop_conversion + $cashClosing->cop_conversion_payment_credit);
-                $cashClosing->bs_delivered = $cashClosing->bs_cash;
-
-                $cop_in_usd = $cashClosing->total_cop_in_usd;
-                $bs_in_usd = $cashClosing->total_bs_in_usd;
-                $cashClosing->total_sales = $cashClosing->total_usd + $cashClosing->usd_credit + $cop_in_usd + $bs_in_usd;
-
-                $cashClosing->update();
+                $cashClosing->recalculateTotals();
             }
 
             DB::commit();

@@ -13,6 +13,7 @@ class GeneralSetting extends Model
         'all_foreign_sales_spe',
         'rif',
         'address',
+        'income_statement_reset_date',
     ];
 
     protected $casts = [

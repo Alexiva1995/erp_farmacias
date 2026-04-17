@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Expense;
 use App\Models\ExchangeRate;
+use App\Models\GeneralSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -59,6 +60,15 @@ class FinancialStatementController extends Controller
     }
 
     /**
+     * Obtener fecha de inicio por defecto
+     */
+    private function getDefaultStartDate(): string
+    {
+        $config = GeneralSetting::first();
+        return $config->income_statement_reset_date ?? '2020-01-01';
+    }
+
+    /**
      * Obtener el estado de resultados completo
      */
     public function index(Request $request): JsonResponse
@@ -69,7 +79,7 @@ class FinancialStatementController extends Controller
 
             // Si no se proporcionan fechas, usar desde el principio de los tiempos
             if (!$startDate) {
-                $startDate = '2020-01-01';
+                $startDate = $this->getDefaultStartDate();
             }
             if (!$endDate) {
                 $endDate = now()->format('Y-m-d');
@@ -145,7 +155,7 @@ class FinancialStatementController extends Controller
             $endDate = $request->input('end_date');
             // Si no se proporcionan fechas, usar desde el principio de los tiempos
             if (!$startDate) {
-                $startDate = '2020-01-01';
+                $startDate = $this->getDefaultStartDate();
             }
             if (!$endDate) {
                 $endDate = now()->format('Y-m-d');
@@ -243,7 +253,7 @@ class FinancialStatementController extends Controller
     public function getDetails(Request $request): JsonResponse
     {
         try {
-            $startDate = $request->input('start_date', '2020-01-01');
+            $startDate = $request->input('start_date', $this->getDefaultStartDate());
             $endDate = $request->input('end_date', now()->format('Y-m-d'));
             $perPage = $request->input('per_page', 50);
 
@@ -391,6 +401,35 @@ class FinancialStatementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener los detalles: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reiniciar la fecha de inicio del estado de resultados
+     */
+    public function reset(): JsonResponse
+    {
+        try {
+            $config = GeneralSetting::first();
+            if (!$config) {
+                $config = GeneralSetting::create([
+                    'fiscal_mode' => 'demo',
+                    'special_taxpayer_status' => 'desactivada'
+                ]);
+            }
+
+            $config->update(['income_statement_reset_date' => now()->format('Y-m-d')]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de resultados reiniciado con éxito. Se tomarán datos a partir de hoy.',
+                'data' => ['reset_date' => $config->income_statement_reset_date]
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reiniciar el estado de resultados: ' . $e->getMessage()
             ], 500);
         }
     }

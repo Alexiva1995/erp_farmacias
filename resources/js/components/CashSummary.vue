@@ -18,7 +18,7 @@ const currencies = computed(() => {
   
   return [
     {
-      label: 'Total USD',
+      label: 'Venta USD',
       amount: data.total_usd || "0.00",
       amountUSD: parseFloat(data.total_usd) || 0,
       approxUSD: null,
@@ -28,7 +28,7 @@ const currencies = computed(() => {
       barColor: '#28C76F',
     },
     {
-      label: 'Total Bs',
+      label: 'Venta Bs',
       amount: data.total_bs || "0.00",
       amountUSD: parseFloat(data.total_bs_in_usd) || 0,
       approxUSD: parseFloat(data.total_bs_in_usd) || 0,
@@ -38,7 +38,7 @@ const currencies = computed(() => {
       barColor: '#FF9F43',
     },
     {
-      label: 'Total COP',
+      label: 'Venta COP',
       amount: data.total_cop || "0.00",
       amountUSD: parseFloat(data.total_cop_in_usd) || 0,
       approxUSD: parseFloat(data.total_cop_in_usd) || 0,

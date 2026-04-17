@@ -223,7 +223,7 @@ const completeClosure = () => {
               </VCol>
               <VCol cols="12" sm="6">
                 <div class="d-flex flex-column pa-3 h-100 justify-center">
-                  <span class="text-caption text-medium-emphasis mb-1">Efectivo a entregar (COP)</span>
+                  <span class="text-caption text-medium-emphasis mb-1">Efectivo Físico (COP)</span>
                   <span class="text-h6 font-weight-bold text-info">
                     {{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}
                   </span>

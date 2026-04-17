@@ -92,13 +92,15 @@ class CashClosing extends Model
     public function recalculateTotals()
     {
         // 1. Totales de Venta (Solo Órdenes - Rendimiento de la jornada)
-        // Incluimos usd_balance y usd_credit porque representan ventas (aunque sean a crédito o a saldo)
-        $this->total_cop = ($this->cop_cash + $this->cop_transfer) - $this->cop_conversion;
+        // total_cop ahora representa la venta neta esperada en pesos por órdenes facturadas en esa moneda.
+        // NO restamos cop_conversion aquí porque cop_conversion puede incluir vueltos de órdenes en USD.
+        // La lógica de negocio dicta que cop_cash debe ser el neto de (Pagos COP recibidos - Vueltos de órdenes COP).
+        $this->total_cop = ($this->cop_cash + $this->cop_transfer);
         $this->total_usd = ($this->usd_cash + $this->usd_transfer + $this->usd_paypal + $this->usd_binance + $this->usd_balance + $this->usd_conversion);
         $this->total_bs  = ($this->bs_cash + $this->bs_transfer + $this->bs_mobile + $this->bs_card_debito + $this->bs_card_credit);
 
-        // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos)
-        // Aquí NO sumamos transferencias ni créditos, solo el efectivo físico y sus vueltos
+        // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos de cambio cruzado)
+        // cop_delivered = (Efectivo neto de ventas COP) - (Vueltos dados en COP para pagos en USD) + (Pagos de créditos en COP)
         $this->cop_delivered = ($this->cop_cash - $this->cop_conversion) + ($this->cop_cash_payment_credit - $this->cop_conversion_payment_credit);
         $this->usd_delivered = ($this->usd_cash - $this->usd_conversion) + ($this->usd_cash_payment_credit - $this->usd_conversion_payment_credit);
         $this->bs_delivered  = $this->bs_cash + $this->bs_cash_payment_credit;

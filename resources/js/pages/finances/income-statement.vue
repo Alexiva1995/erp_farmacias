@@ -103,6 +103,31 @@ const formatCurrency = (amount) => {
   }).format(amount || 0);
 };
 
+const handleReset = async () => {
+  const result = await toast.fire({
+    title: "¿Estás seguro?",
+    text: "El reporte se reiniciará para tomar datos desde hoy en adelante por defecto. Podrás volver a ver datos antiguos seleccionando el rango de fechas manualmente.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, reiniciar",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: "v-btn v-btn--elevated v-theme--light bg-error v-btn--density-default v-btn--size-default v-btn--variant-elevated",
+      cancelButton: "v-btn v-btn--flat v-theme--light bg-secondary v-btn--density-default v-btn--size-default v-btn--variant-text",
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.post("/finances/income-statement/reset");
+      toast.success("Reporte reiniciado con éxito");
+      loadData();
+    } catch (error) {
+      toast.error("Error al reiniciar el reporte");
+    }
+  }
+};
+
 const formatDate = (date) => {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("es-VE");
@@ -307,14 +332,27 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
               >
             </div>
           </div>
-          <VChip
-            color="primary"
-            variant="flat"
-            size="small"
-            class="font-weight-black px-4 rounded-lg"
-          >
-            {{ totalItems }} REGISTROS ENCONTRADOS
-          </VChip>
+          <div class="d-flex align-center gap-3 flex-wrap">
+            <VChip
+              color="primary"
+              variant="flat"
+              size="small"
+              class="font-weight-black px-4 rounded-lg"
+            >
+              {{ totalItems }} REGISTROS ENCONTRADOS
+            </VChip>
+            
+            <VBtn
+              color="error"
+              variant="tonal"
+              size="small"
+              prepend-icon="tabler-rotate"
+              class="font-weight-black rounded-lg"
+              @click="handleReset"
+            >
+              REINICIAR REPORTE
+            </VBtn>
+          </div>
         </div>
 
         <VCardText class="pa-0">

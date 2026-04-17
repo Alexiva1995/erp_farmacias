@@ -180,7 +180,7 @@ const changeTab = (newTab) => {
 </script>
 
 <template>
-  <div class="payroll-details-page" :class="mobile ? 'pa-0' : 'pa-4'">
+  <div class="payroll-details-page pa-0">
     <!-- Header Premium -->
     <div class="header-premium mb-6 overflow-hidden position-relative rounded-lg" :class="mobile ? 'rounded-0' : ''">
       <div class="header-overlay pa-6">
@@ -306,15 +306,7 @@ const changeTab = (newTab) => {
           class="payroll-table premium-table"
         >
           <template #item.employee_full_name="{ item }">
-            <div class="d-flex align-center py-2">
-              <VAvatar color="primary" variant="tonal" size="30" class="rounded-lg me-3">
-                <span class="text-xs font-weight-black">{{ item.name?.[0] }}{{ item.last_name?.[0] }}</span>
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-xs font-weight-black text-high-emphasis leading-tight">{{ item.employee_full_name }}</span>
-                <span class="text-super-xs text-disabled uppercase">{{ item.identification }}</span>
-              </div>
-            </div>
+            <span class="text-xs font-weight-black text-high-emphasis leading-tight">{{ item.employee_full_name }}</span>
           </template>
 
           <template #item.identification="{ value }">

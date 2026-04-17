@@ -104,6 +104,7 @@ Route::prefix("finances")->group(function () {
     Route::get("/income-statement", [FinancialStatementController::class, "index"]);
     Route::get("/income-statement/summary", [FinancialStatementController::class, "getSummary"]);
     Route::get("/income-statement/details", [FinancialStatementController::class, "getDetails"]);
+    Route::post("/income-statement/reset", [FinancialStatementController::class, "reset"]);
 });
 
 // Rutas protegidas que requieren autenticación (Sanctum)

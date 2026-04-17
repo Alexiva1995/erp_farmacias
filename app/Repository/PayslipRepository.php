@@ -23,9 +23,10 @@ class PayslipRepository
     $query = Payslip::with('details.salary.concept')
       ->select('payslips.*')
       ->addSelect(DB::raw("(
-          SELECT ROUND(SUM(((employees.total_package_usd - 40) / 2 + 40) * {$cop_rate}), 2)
-          FROM employees
-          WHERE employees.is_active = 1
+          SELECT ROUND(SUM(pd.amount * {$cop_rate}), 2)
+          FROM payslip_details pd
+          WHERE pd.payslip_id = payslips.id
+          AND pd.amount > 0
       ) as total_full_cop"))
       ->orderByDesc('id');
 

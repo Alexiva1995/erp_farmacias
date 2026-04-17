@@ -112,13 +112,20 @@ const submit = async () => {
 watch(
   () => props.modalValue,
   (val) => {
-    if (val && props.selectedPayslip) {
+    if (val && props.selectedPayslip && Object.keys(props.selectedPayslip).length > 0) {
       fetchExchangeRate();
       currency.value = 'COP';
       count.value = 'Efectivo';
-      payed.value = props.selectedPayslip.total_full_cop; // Use the computed setter
+      
+      // Aseguramos que el monto se asigne y se active el setter para formatear payedDisplay
+      if (props.selectedPayslip.total_full_cop) {
+        payed.value = props.selectedPayslip.total_full_cop;
+      } else {
+        payedDisplay.value = "0";
+      }
     }
-  }
+  },
+  { immediate: true }
 );
 </script>
 <template>
