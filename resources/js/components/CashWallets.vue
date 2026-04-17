@@ -123,8 +123,9 @@ const isCollapsed = ref(false);
           <VCol
             v-for="wallet in section.wallets"
             :key="wallet.key"
-            cols="12"
-            sm="6"
+            cols="6"
+            md="4"
+            lg="3"
           >
             <VCard
               :class="[
@@ -207,7 +208,7 @@ const isCollapsed = ref(false);
 
     <!-- Skeleton loader -->
     <VRow v-else>
-      <VCol v-for="i in 4" :key="i" cols="12" sm="6">
+      <VCol v-for="i in 4" :key="i" cols="6" md="4" lg="3">
         <VSkeletonLoader type="card" height="140" class="rounded-lg shadow-sm" />
       </VCol>
     </VRow>
