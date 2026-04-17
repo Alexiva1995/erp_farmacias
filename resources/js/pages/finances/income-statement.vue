@@ -152,30 +152,16 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
 <template>
   <div class="income-statement-view pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
-      <!-- Filtros Colapsables -->
-      <VExpansionPanels class="mb-5 custom-expansion-panels">
-        <VExpansionPanel class="border shadow-sm rounded-lg">
-          <VExpansionPanelTitle class="py-2 px-4 min-h-0">
-            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-filter" size="18" color="primary" />
-              <span class="text-sm font-weight-black uppercase">Filtros Avanzados</span>
-              <VChip v-if="startDate || endDate || selectedType" color="primary" size="x-small" density="comfortable" class="ms-2">
-                Activos
-              </VChip>
-            </div>
-          </VExpansionPanelTitle>
-          <VExpansionPanelText class="pa-0">
-            <IncomeStatementFilters
-              v-model:searchQuery="searchQuery"
-              v-model:startDate="startDate"
-              v-model:endDate="endDate"
-              v-model:selectedType="selectedType"
-              @clear="clearFilters"
-              @reset="handleReset"
-            />
-          </VExpansionPanelText>
-        </VExpansionPanel>
-      </VExpansionPanels>
+      <!-- Filtros -->
+      <IncomeStatementFilters
+        v-model:searchQuery="searchQuery"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        v-model:selectedType="selectedType"
+        @clear="clearFilters"
+        @reset="handleReset"
+        class="mb-5"
+      />
 
       <!-- Tarjetas de Resumen Premium -->
       <VRow class="ma-0 mx-n1 mb-5" dense>

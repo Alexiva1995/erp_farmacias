@@ -61,7 +61,7 @@ function setQuickFilter(days) {
   >
     <template #advanced-filters>
       <!-- Rango de Fechas -->
-      <VCol cols="12" sm="6" md="4">
+      <VCol cols="12" sm="6" md="3">
         <AppDateTimePicker
           :model-value="props.startDate"
           placeholder="Fecha Inicial"
@@ -74,7 +74,7 @@ function setQuickFilter(days) {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="4">
+      <VCol cols="12" sm="6" md="3">
         <AppDateTimePicker
           :model-value="props.endDate"
           placeholder="Fecha Final"
@@ -88,7 +88,7 @@ function setQuickFilter(days) {
       </VCol>
 
       <!-- Tipo de Transacción -->
-      <VCol cols="12" sm="6" md="4">
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.selectedType"
           :items="typeOptions"
