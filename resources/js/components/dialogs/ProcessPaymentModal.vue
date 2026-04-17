@@ -29,6 +29,7 @@ const { mobile } = useDisplay();
 
 const form = ref({
   payment_type: "full",
+  is_partial: false,
   payment_currency: "USD",
   payment_amount: 0,
   payment_date: new Date().toISOString().split("T")[0],
@@ -137,7 +138,7 @@ const processPayment = async () => {
 
     const response = await axios.post("/finances/pending-payments/process-payment", {
       ...form.value,
-      payment_type: "full", // Forzado a full por requerimiento del usuario (aunque sea menor)
+      payment_type: form.value.is_partial ? "partial" : "full",
       payment_method: frontendToEnumMap[form.value.payment_method],
       invoice_ids: props.invoices.map(i => i.id)
     });
@@ -279,9 +280,24 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                 color="primary"
                 class="font-weight-black rounded mb-1"
               >
-                {{ props.invoices.length }} FACTURAS
+                {{ props.invoices.length }} {{ props.invoices.length === 1 ? 'FACTURA' : 'FACTURAS' }}
               </VChip>
               <span class="text-super-xs text-disabled uppercase font-weight-bold">Sujeto a Tasa: {{ exchangeRate }} Bt/USD</span>
+            </div>
+          </div>
+
+          <!-- Facturas Incluidass (Sutil) -->
+          <VDivider class="border-dashed opacity-10 mx-5" />
+          <div class="px-5 py-3 d-flex flex-wrap gap-2 align-center bg-light-hint">
+            <span class="text-super-xs font-weight-black text-disabled uppercase">Detalle:</span>
+            <div class="d-flex flex-wrap gap-1">
+              <span 
+                v-for="invoice in props.invoices" 
+                :key="invoice.id"
+                class="invoice-tag text-xs font-weight-bold px-2 py-0.5 rounded border text-medium-emphasis"
+              >
+                #{{ invoice.invoice_number }}
+              </span>
             </div>
           </div>
         </VCard>
@@ -321,10 +337,22 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                     type="number"
                     variant="outlined"
                     density="comfortable"
-                    class="premium-input mb-4"
+                    class="premium-input mb-2"
                     hide-details
                     prefix="$"
                   />
+                  <VCheckbox
+                    v-model="form.is_partial"
+                    label="¿Es un abono? (Pago Parcial)"
+                    density="compact"
+                    hide-details
+                    color="warning"
+                    class="mt-1"
+                  >
+                    <template #label>
+                      <span class="text-xs font-weight-bold text-warning uppercase">¿Es un abono?</span>
+                    </template>
+                  </VCheckbox>
                 </VCol>
 
                 <VCol cols="12">
@@ -502,5 +530,20 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.bg-light-hint {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.invoice-tag {
+  background-color: white;
+  transition: all 0.2s ease;
+}
+
+.invoice-tag:hover {
+  background-color: rgb(var(--v-theme-primary));
+  color: white !important;
+  border-color: rgb(var(--v-theme-primary)) !important;
 }
 </style>
