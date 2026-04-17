@@ -750,6 +750,10 @@ watch([selectedSupplier, selectedCurrency, startDate, endDate], () => {
   fetchPaymentHistory();
 });
 
+watch(searchQuery, () => {
+  handleSearch();
+});
+
 // Formateadores
 const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString("es-ES") : "N/A";

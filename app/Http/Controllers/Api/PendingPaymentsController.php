@@ -107,7 +107,12 @@ class PendingPaymentsController extends Controller
 
             if ($request->filled('q')) {
                 $search = $request->input('q');
-                $query->where('invoice_number', $search);
+                $query->where(function ($q) use ($search) {
+                    $q->where('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('supplier', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%");
+                        });
+                });
             }
 
             // Filtro de facturas vencidas
@@ -542,8 +547,12 @@ class PendingPaymentsController extends Controller
                 ]);
             }
 
-            // 6. Determinar estado de pago considerando solo pagos anteriores
-            $paymentStatus = $this->determinePaymentStatusCorrected($request->invoice_ids, $amountUSD, $totalInvoiceAmount);
+            // 6. Determinar estado de pago (Respetar la decisión del usuario en el checkbox)
+            if ($request->payment_type === 'full') {
+                $paymentStatus = 1; // Pago Completo: se liquida la factura
+            } else {
+                $paymentStatus = $this->determinePaymentStatusCorrected($request->invoice_ids, $amountUSD, $totalInvoiceAmount);
+            }
 
             // CORRECCIÓN CRÍTICA: Mantener status compatible con query Por Pagar
             // Solo cambiar status_payment, mantener status en valores válidos para Por Pagar
@@ -624,13 +633,16 @@ class PendingPaymentsController extends Controller
 
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->whereHas('invoices', function ($q) use ($search) {
-                    $q->where('invoice_number', 'like', "%{$search}%")
-                        ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
-                            $supplierQuery->where('name', 'like', "%{$search}%");
-                        });
-                })
-                    ->orWhere('reference', 'like', "%{$search}%");
+                $query->where(function ($groupedQuery) use ($search) {
+                    $groupedQuery->whereHas('invoices', function ($q) use ($search) {
+                        $q->where('invoice_number', 'like', "%{$search}%")
+                            ->orWhere('control_number', 'like', "%{$search}%")
+                            ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                                $supplierQuery->where('name', 'like', "%{$search}%");
+                            });
+                    })
+                        ->orWhere('reference', 'like', "%{$search}%");
+                });
             }
 
             $payments = $query->paginate(15);
