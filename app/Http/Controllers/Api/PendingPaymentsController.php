@@ -645,7 +645,12 @@ class PendingPaymentsController extends Controller
                 });
             }
 
-            $payments = $query->paginate(15);
+            $perPage = (int) $request->input('itemsPerPage', 15);
+            if ($perPage === -1) {
+                $perPage = $query->count() ?: 1;
+            }
+
+            $payments = $query->paginate($perPage);
 
             // Agregar información adicional a cada pago
             $payments->getCollection()->transform(function ($payment) {
