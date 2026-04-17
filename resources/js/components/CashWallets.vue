@@ -207,10 +207,11 @@ const isCollapsed = ref(false);
 
     <!-- Skeleton loader -->
     <VRow v-else>
-      <VCol v-for="i in 4" :key="i" cols="12" sm="6" md="4" lg="3">
+      <VCol v-for="i in 4" :key="i" cols="12" sm="6">
         <VSkeletonLoader type="card" height="140" class="rounded-lg shadow-sm" />
       </VCol>
     </VRow>
+    </div>
     </VExpandTransition>
   </div>
 </template>
