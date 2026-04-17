@@ -121,6 +121,13 @@ const handleReset = async () => {
     try {
       await axios.post("/finances/income-statement/reset");
       toast.success("Reporte reiniciado con éxito");
+      
+      // Limpiar filtros para que el backend use la nueva fecha de corte por defecto
+      startDate.value = null;
+      endDate.value = null;
+      searchQuery.value = "";
+      selectedType.value = null;
+      
       loadData();
     } catch (error) {
       toast.error("Error al reiniciar el reporte");
@@ -133,10 +140,6 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString("es-VE");
 };
 
-const getAvatarInitial = (name) => {
-  if (!name || name === "N/A") return "?";
-  return name.charAt(0).toUpperCase();
-};
 
 onMounted(() => {
   loadSummary();
@@ -157,6 +160,7 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
           v-model:endDate="endDate"
           v-model:selectedType="selectedType"
           @clear="clearFilters"
+          @reset="handleReset"
           class="mb-5"
         />
       </div>
@@ -332,7 +336,6 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
               >
             </div>
           </div>
-          <div class="d-flex align-center gap-3 flex-wrap">
             <VChip
               color="primary"
               variant="flat"
@@ -341,17 +344,6 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
             >
               {{ totalItems }} REGISTROS ENCONTRADOS
             </VChip>
-            
-            <VBtn
-              color="error"
-              variant="tonal"
-              size="small"
-              prepend-icon="tabler-rotate"
-              class="font-weight-black rounded-lg"
-              @click="handleReset"
-            >
-              REINICIAR REPORTE
-            </VBtn>
           </div>
         </div>
 
@@ -401,21 +393,9 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
               </template>
 
               <template #item.client="{ item }">
-                <div class="d-flex align-center gap-3">
-                  <VAvatar
-                    size="26"
-                    variant="tonal"
-                    :color="item.type === 'sale' ? 'primary' : 'secondary'"
-                    class="rounded-lg shadow-soft"
-                  >
-                    <span class="text-xs font-weight-black">
-                      {{ getAvatarInitial(item.client || item.category) }}
-                    </span>
-                  </VAvatar>
-                  <span class="text-sm font-weight-medium text-high-emphasis">{{
-                    item.client || item.category || "N/A"
-                  }}</span>
-                </div>
+                <span class="text-sm font-weight-medium text-high-emphasis">{{
+                  item.client || item.category || "N/A"
+                }}</span>
               </template>
 
               <template #item.amount="{ item }">
@@ -474,11 +454,9 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
                 >
                   <div class="d-flex justify-space-between align-start mb-4">
                     <div class="d-flex align-center gap-3">
-                      <VAvatar
-                        :color="item.type === 'sale' ? 'success' : 'error'"
-                        variant="tonal"
-                        size="44"
-                        class="rounded-lg"
+                      <div
+                        class="pa-2 rounded-lg"
+                        :class="item.type === 'sale' ? 'bg-success-opacity-1' : 'bg-error-opacity-1'"
                       >
                         <VIcon
                           :icon="
@@ -487,8 +465,9 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
                               : 'tabler-arrow-down-left'
                           "
                           size="24"
+                          :color="item.type === 'sale' ? 'success' : 'error'"
                         />
-                      </VAvatar>
+                      </div>
                       <div class="d-flex flex-column">
                         <span
                           class="text-super-xs font-weight-black text-disabled uppercase"
@@ -527,16 +506,6 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
                     class="d-flex justify-space-between align-center pt-3 border-t border-dashed"
                   >
                     <div class="d-flex align-center gap-2">
-                      <VAvatar
-                        size="24"
-                        variant="tonal"
-                        :color="item.type === 'sale' ? 'primary' : 'secondary'"
-                        class="rounded-lg"
-                      >
-                        <span class="text-xs font-weight-black">{{
-                          getAvatarInitial(item.client || item.category)
-                        }}</span>
-                      </VAvatar>
                       <span
                         class="text-super-xs font-weight-black text-disabled uppercase"
                         >{{ item.client || item.category || "N/A" }}</span

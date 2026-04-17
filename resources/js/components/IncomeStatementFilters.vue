@@ -15,7 +15,8 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "update:selectedType",
-  "clear"
+  "clear",
+  "reset"
 ]);
 
 const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate || props.selectedType));
@@ -127,6 +128,19 @@ function setQuickFilter(days) {
           <VListItem @click="setQuickFilter('last_month')"><VListItemTitle class="text-xs font-weight-bold">Mes Pasado</VListItemTitle></VListItem>
         </VList>
       </VMenu>
+
+      <!-- Botón de Reinicio (Corte) -->
+      <VBtn
+        variant="tonal"
+        color="error"
+        size="38"
+        icon
+        class="rounded-circle shadow-sm ms-2"
+        @click="emit('reset')"
+      >
+        <VIcon icon="tabler-rotate" size="20" />
+        <VTooltip activator="parent" location="top">Reiniciar Reporte (Punto de Corte)</VTooltip>
+      </VBtn>
     </template>
   </AppFilterBase>
 </template>
