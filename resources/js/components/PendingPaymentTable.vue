@@ -337,16 +337,34 @@ const getInitials = (name) => {
     <!-- Barra de Selección Móvil Flotante -->
     <VSlideYReverseTransition>
       <div v-if="mobile && props.selectedTableInvoices.length > 0" class="mobile-action-bar pa-4">
-        <VCard color="primary" class="rounded-lg shadow-lg pa-4 d-flex align-center justify-space-between border-0">
-          <div class="d-flex align-center gap-3">
+        <VCard color="primary" class="rounded-xl shadow-lg pa-3 d-flex align-center justify-space-between border-0">
+          <div class="d-flex align-center gap-3 ms-2">
             <VAvatar color="white" variant="tonal" size="32" class="rounded-lg">
               <span class="text-xs font-weight-black text-white">{{ props.selectedTableInvoices.length }}</span>
             </VAvatar>
-            <span class="text-sm font-weight-black text-white uppercase">Sleccionados</span>
+            <span class="text-xs font-weight-black text-white uppercase letter-spacing-1">Seleccionados</span>
           </div>
           <div class="d-flex gap-2">
-            <VBtn color="white" variant="text" size="small" class="text-xs font-weight-black" @click="emit('deselect-all')">CANCELAR</VBtn>
-            <VBtn color="white" variant="flat" size="small" class="text-xs font-weight-black px-4 shadow-sm" @click="emit('process-multiple')">PAGAR</VBtn>
+            <VBtn
+              icon
+              variant="tonal"
+              color="white"
+              size="38"
+              class="rounded-lg"
+              @click="emit('deselect-all')"
+            >
+              <VIcon icon="tabler-x" size="20" />
+            </VBtn>
+            <VBtn
+              icon
+              variant="flat"
+              color="white"
+              size="38"
+              class="rounded-lg shadow-sm"
+              @click="emit('process-multiple')"
+            >
+              <VIcon icon="tabler-credit-card" size="20" color="primary" />
+            </VBtn>
           </div>
         </VCard>
       </div>

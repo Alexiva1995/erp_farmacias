@@ -9,7 +9,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:selectedYear", "refresh", "clear"]);
+const emit = defineEmits(["update:selectedYear", "refresh", "clear", "adjust-ut"]);
 
 const yearModel = computed({
   get: () => props.selectedYear,
@@ -45,14 +45,27 @@ const yearModel = computed({
       </div>
     </template>
 
-    <template #search-append>
+    <template #actions-extra>
+      <!-- Ajuste UT -->
+      <VBtn
+        icon
+        color="info"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm me-1"
+        @click="emit('adjust-ut')"
+      >
+        <VIcon icon="tabler-adjustments-alt" size="20" />
+        <VTooltip activator="parent" location="top">Ajustar Unidad Tributaria</VTooltip>
+      </VBtn>
+
       <!-- Actualizar -->
       <VBtn
         icon
         color="primary"
         variant="flat"
         size="38"
-        class="rounded-circle shadow-sm"
+        class="rounded-circle shadow-sm me-1"
         :loading="props.loading"
         @click="emit('refresh')"
       >

@@ -2,7 +2,7 @@
 import RetentionFilters from "@/components/RetentionFilters.vue";
 import RetentionTable from "@/components/RetentionTable.vue";
 import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
+import { toast, Swal } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
@@ -26,7 +26,7 @@ const orderBy = ref("desc");
 
 const setYearPreset = () => {
   const now = new Date();
-  startDate.value = `${now.getFullYear()}-01-01`;
+  startDate.value = `2026-03-01`;
   endDate.value = `${now.getFullYear()}-12-31`;
 };
 
@@ -93,12 +93,40 @@ const handleBulkGenerate = async () => {
     
     selected.value = [];
     fetchRetentions();
-  } catch (error) {
-    console.error("Error al generar retenciones:", error);
-    toast.error("Hubo un problema al procesar la solicitud.");
   } finally {
     loading.value = false;
   }
+};
+
+const handleBatchGenerateAll = async () => {
+    const result = await Swal.fire({
+        title: '¿Generar todas las retenciones?',
+        text: `Se procesarán todas las facturas pendientes entre el ${startDate.value} y el ${endDate.value}. Esta acción creará un comprobante por cada proveedor.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#fb8c00',
+        cancelButtonColor: '#9e9e9e',
+        confirmButtonText: 'SÍ, GENERAR TODO',
+        cancelButtonText: 'CANCELAR'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        loading.value = true;
+        const response = await axios.post("/retentions/batch-generate-all", {
+            start_date: startDate.value,
+            end_date: endDate.value,
+        });
+        
+        toast.success(response.data.message);
+        fetchRetentions();
+    } catch (error) {
+        console.error("Error en generación masiva:", error);
+        toast.error(error.response?.data?.message || "Ocurrió un error al procesar la solicitud.");
+    } finally {
+        loading.value = false;
+    }
 };
 
 const downloadPdf = async (id, isRetention = true) => {
@@ -168,6 +196,7 @@ onMounted(() => {
         :current-tab="currentTab"
         @clear="clearFilters"
         @bulk-generate="handleBulkGenerate"
+        @batch-generate-all="handleBatchGenerateAll"
         class="mb-0"
       />
 

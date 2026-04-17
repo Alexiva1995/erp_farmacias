@@ -204,49 +204,40 @@ watch(
         @clear="clearFilters"
         @refresh="fetchPendingPayments"
         class="mb-0"
-      />
-
-      <!-- Cabecera de Tabla Premium (Escritorio) -->
-      <VCard
-        v-if="!mobile"
-        class="ma-0 rounded-lg border-0 shadow-sm overflow-hidden bg-surface mb-2"
       >
-        <VCardTitle class="pa-4 px-6 d-flex align-center">
-          <VAvatar
-            color="primary"
-            variant="tonal"
-            size="32"
-            class="me-3 rounded-lg"
-          >
-            <VIcon icon="tabler-list-check" size="18" />
-          </VAvatar>
-          <span class="text-sm font-weight-black uppercase"
-            >Listado de Facturas</span
-          >
-          <VSpacer />
-          <div class="d-flex align-center gap-2">
+        <template #selection-actions>
+          <div v-if="!mobile" class="d-flex align-center gap-1 me-1">
             <VBtn
               v-if="selectedTableInvoices.length > 0"
+              icon
               variant="tonal"
               color="secondary"
-              class="rounded-lg text-xs font-weight-black"
+              size="38"
+              class="rounded-circle shadow-sm"
               @click="selectedTableInvoices = []"
             >
-              DESELECCIONAR ({{ selectedTableInvoices.length }})
+              <VBadge color="error" :content="selectedTableInvoices.length" offset-x="-2" offset-y="-2">
+                <VIcon icon="tabler-deselect" size="20" />
+              </VBadge>
+              <VTooltip activator="parent" location="top">Deseleccionar Todo</VTooltip>
             </VBtn>
+
             <VBtn
               :disabled="selectedTableInvoices.length === 0"
+              icon
               color="success"
               variant="flat"
-              class="rounded-lg text-xs font-weight-black px-6 shadow-sm"
+              size="38"
+              class="rounded-circle shadow-sm"
               @click="processMultiplePayments"
             >
-              <VIcon start icon="tabler-credit-card" size="18" />
-              PAGAR SELECCIONADOS
+              <VIcon icon="tabler-credit-card" size="20" />
+              <VTooltip activator="parent" location="top">Pagar Seleccionados ({{ selectedTableInvoices.length }})</VTooltip>
             </VBtn>
           </div>
-        </VCardTitle>
-      </VCard>
+        </template>
+      </PendingPaymentFilters>
+
 
       <!-- Tabla y Cards Premium -->
       <PendingPaymentTable

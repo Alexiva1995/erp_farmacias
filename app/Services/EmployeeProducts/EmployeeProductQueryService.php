@@ -17,7 +17,8 @@ class EmployeeProductQueryService
     {
         $query = Employee::where('is_active', true)
             ->with(['products'])
-            ->withCount('products');
+            ->withCount('products')
+            ->orderByRaw('photo IS NOT NULL DESC');
 
         // Búsqueda por nombre de empleado
         if (!empty($data['q'])) {
@@ -61,6 +62,7 @@ class EmployeeProductQueryService
             return [
                 'employee_id' => $employee->id,
                 'employee_name' => trim($employee->name . ' ' . $employee->last_name),
+                'photo_url' => $employee->photo_url,
                 'identification' => $employee->identification,
                 'is_active' => $employee->is_active,
                 'products' => $employee->products->map(function ($prod) {

@@ -635,11 +635,13 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);
             Route::get('/stats', [TransactionController::class, 'getByType']);
             Route::get('/wallets', [TransactionController::class, 'getWallets']);
+            Route::post('/adjustment', [TransactionController::class, 'adjustBalance']);
         });
 
         Route::prefix('payslips')->group(function () {
             Route::get('', [PayslipController::class, 'index']);
             Route::post('', [PayslipController::class, 'store']);
+            Route::post('/regenerate-history', [PayslipController::class, 'regenerateHistory']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
             Route::get('/{payslip}/download/pdf', [PayslipController::class, 'downloadPdf']);
@@ -760,6 +762,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix('retentions')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
         Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
+        Route::post('/batch-generate-all', [\App\Http\Controllers\Api\RetentionController::class, 'batchGenerateAll']);
         Route::get('/download', [\App\Http\Controllers\Api\RetentionController::class, 'downloadPdf']);
     });
 });

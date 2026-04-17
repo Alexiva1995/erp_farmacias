@@ -21,6 +21,7 @@ const emit = defineEmits([
   "update:endDate",
   "clear",
   "bulk-generate",
+  "batch-generate-all",
 ]);
 
 const hasAdvancedFilters = computed(() =>
@@ -53,6 +54,20 @@ const hasAdvancedFilters = computed(() =>
           <VTooltip activator="parent" location="top">Generar {{ props.selectedCount }} Retenciones</VTooltip>
         </VBtn>
       </VExpandTransition>
+
+      <!-- Botón Generación Automática Total (Solo si hay fechas) -->
+      <VBtn
+        v-if="props.currentTab === 'pending' && props.startDate && props.endDate"
+        icon
+        color="warning"
+        variant="elevated"
+        size="38"
+        class="ml-2 shadow-sm"
+        @click="emit('batch-generate-all')"
+      >
+        <VIcon icon="tabler-wand" size="20" />
+        <VTooltip activator="parent" location="top">Generar TODAS las Pendientes (Rango Actual)</VTooltip>
+      </VBtn>
     </template>
 
     <template #advanced-filters>

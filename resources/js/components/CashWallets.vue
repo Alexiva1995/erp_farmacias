@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from "vue";
+
 const props = defineProps({
   sections: { type: Array, default: () => [] },
   totalUsd: { type: Number, default: 0 },
@@ -8,7 +10,7 @@ const props = defineProps({
   selectedOption: { type: String, default: '' },
 });
 
-const emit = defineEmits(['select']);
+const emit = defineEmits(['select', 'adjust']);
 
 const currencyConfig = {
   USD: {
@@ -61,22 +63,27 @@ const handleSelect = (wallet) => {
     option: wallet.key,
   });
 };
+
+const isCollapsed = ref(false);
 </script>
 
 <template>
   <div class="cash-wallets-wrapper">
     <!-- Título del Panel -->
     <div class="d-flex align-center justify-space-between mb-4">
-      <div class="d-flex align-center gap-2">
-        <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
-          <VIcon icon="tabler-wallet" size="18" />
+      <div class="d-flex align-center gap-2 cursor-pointer" @click="isCollapsed = !isCollapsed">
+        <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg transition-all" :class="{ 'rotate-180': isCollapsed }">
+          <VIcon :icon="isCollapsed ? 'tabler-chevron-down' : 'tabler-wallet'" size="18" />
         </VAvatar>
-        <span class="text-subtitle-1 font-weight-black uppercase letter-spacing-1">Estado de Cajas</span>
+        <div class="d-flex flex-column">
+          <span class="text-subtitle-1 font-weight-black uppercase letter-spacing-1">Estado de Cajas</span>
+          <span v-if="isCollapsed" class="text-super-xs text-primary font-weight-bold uppercase">Click para expandir</span>
+        </div>
         <VChip v-if="dateFiltered" size="x-small" color="info" variant="elevated" class="ms-1 font-weight-black px-2 py-0">
           FILTRADO
         </VChip>
       </div>
-      <div class="d-flex flex-column align-end">
+      <div v-if="!isCollapsed" class="d-flex flex-column align-end transition-all">
         <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Total Consolidado</span>
         <span class="text-h6 font-weight-black text-success">
           USD {{ new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalUsd) }}
@@ -84,8 +91,11 @@ const handleSelect = (wallet) => {
       </div>
     </div>
 
-    <!-- Secciones por moneda -->
-    <div v-if="!loading" class="d-flex flex-column gap-6">
+    <!-- Contenido Colapsable -->
+    <VExpandTransition>
+      <div v-show="!isCollapsed">
+        <!-- Secciones por moneda -->
+        <div v-if="!loading" class="d-flex flex-column gap-6">
       <div v-for="section in sections" :key="section.currency" class="currency-section">
         <!-- Encabezado de moneda Premium -->
         <div class="d-flex align-center mb-3">
@@ -115,8 +125,6 @@ const handleSelect = (wallet) => {
             :key="wallet.key"
             cols="12"
             sm="6"
-            md="4"
-            lg="3"
           >
             <VCard
               :class="[
@@ -125,6 +133,17 @@ const handleSelect = (wallet) => {
               ]"
               @click="handleSelect(wallet)"
             >
+              <!-- Botón de Ajuste -->
+              <VBtn
+                icon="tabler-edit"
+                variant="text"
+                size="x-small"
+                color="medium-emphasis"
+                class="position-absolute wallet-edit-btn"
+                @click.stop="emit('adjust', wallet)"
+                v-if="!dateFiltered"
+              />
+
               <div
                 class="card-bg-decoration"
                 :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${currencyConfig[section.currency]?.color}), 0.1), transparent)` }"
@@ -192,6 +211,7 @@ const handleSelect = (wallet) => {
         <VSkeletonLoader type="card" height="140" class="rounded-lg shadow-sm" />
       </VCol>
     </VRow>
+    </VExpandTransition>
   </div>
 </template>
 
@@ -255,5 +275,25 @@ const handleSelect = (wallet) => {
 
 .currency-section:not(:last-child) {
   margin-bottom: 0.25rem;
+}
+
+.wallet-edit-btn {
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  z-index: 10;
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.stats-card:hover .wallet-edit-btn {
+  opacity: 1;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.transition-all {
+  transition: all 0.3s ease;
 }
 </style>

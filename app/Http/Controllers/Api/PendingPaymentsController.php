@@ -554,16 +554,19 @@ class PendingPaymentsController extends Controller
                 $paymentStatus = $this->determinePaymentStatusCorrected($request->invoice_ids, $amountUSD, $totalInvoiceAmount);
             }
 
-            // CORRECCIÓN CRÍTICA: Mantener status compatible con query Por Pagar
-            // Solo cambiar status_payment, mantener status en valores válidos para Por Pagar
-            $newStatus = 'ordered'; // Pagos completos
-
-            Invoice::whereIn('id', $request->invoice_ids)->update([
-                'status' => $newStatus,
+            // Preparar datos de actualización
+            $updateData = [
+                'status' => 'ordered', // Mantener status compatible con query Por Pagar
                 'status_payment' => $paymentStatus,
-                'payment_date' => $request->payment_date,
                 'updated_at' => now(),
-            ]);
+            ];
+
+            // SOLO actualizar la fecha de pago de la factura si el pago es COMPLETO
+            if ($paymentStatus === 1) {
+                $updateData['payment_date'] = $request->payment_date;
+            }
+
+            Invoice::whereIn('id', $request->invoice_ids)->update($updateData);
 
             // 7. Crear expense
             $this->createExpense($invoices, $payment, false);

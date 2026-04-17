@@ -26,14 +26,16 @@ class UpdateEmployeeRequest extends FormRequest
         $user_id = $this->employee->user->id;
 
         return [
-            'name' => 'required|string|min:3|max:40',
-            'last_name' => 'required|string|min:3|max:40',
+            'name' => 'sometimes|required|string|min:3|max:40',
+            'last_name' => 'sometimes|required|string|min:3|max:40',
             'identification' => [
+                'sometimes',
                 'required',
                 'digits_between:6,8',
                 Rule::unique('employees', 'identification')->ignore($employee_id),
             ],
             'email' => [
+                'sometimes',
                 'required',
                 'email',
                 Rule::unique('users', 'email')->ignore($user_id),

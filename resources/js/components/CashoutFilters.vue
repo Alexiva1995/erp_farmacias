@@ -19,6 +19,7 @@ const emit = defineEmits([
   "update:selectedCurrency",
   "update:selectedTab",
   "update:selectedOption",
+  "adjust",
   "clear",
 ]);
 
@@ -58,7 +59,9 @@ function handleWalletSelect({ currency, option }) {
       :date-filtered="!!dateRange"
       :selected-currency="selectedCurrency"
       :selected-option="selectedOption"
+      :selected-option="selectedOption"
       @select="handleWalletSelect"
+      @adjust="emit('adjust', $event)"
       class="mb-7"
     />
 

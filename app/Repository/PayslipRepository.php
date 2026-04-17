@@ -149,18 +149,29 @@ class PayslipRepository
   private function getTotalConsumoFarmacia(Employee $employee, int $month, int $year): float
   {
     $identification = $employee->identification;
-    if (!$identification) return 0.0;
+    $ordersTotal = 0.0;
+    
+    if ($identification) {
+      $client = \App\Models\Client::where('identification', $identification)->first();
+      if ($client) {
+        $ordersTotal = (float) \App\Models\Order::where('client_id', $client->id)
+          ->whereMonth('order_date', $month)
+          ->whereYear('order_date', $year)
+          ->where(function ($q) {
+            $q->where('status', 'Completed')->orWhereNotNull('completed_at');
+          })
+          ->sum('total_amount_usd');
+      }
+    }
 
-    $client = \App\Models\Client::where('identification', $identification)->first();
-    if (!$client) return 0.0;
+    // Sumar consumo manual/crédito si existe
+    $manualConsumption = (float) \DB::table('employee_health_consumption')
+      ->where('employee_id', $employee->id)
+      ->where('month', $month)
+      ->where('year', $year)
+      ->value('amount') ?? 0.0;
 
-    return (float) \App\Models\Order::where('client_id', $client->id)
-      ->whereMonth('order_date', $month)
-      ->whereYear('order_date', $year)
-      ->where(function ($q) {
-        $q->where('status', 'Completed')->orWhereNotNull('completed_at');
-      })
-      ->sum('total_amount_usd');
+    return round($ordersTotal + $manualConsumption, 2);
   }
 
   private function createTempDetail(Employee $employee, string $conceptName, float $amount): object

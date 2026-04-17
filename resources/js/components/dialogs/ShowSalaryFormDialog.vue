@@ -129,7 +129,7 @@ watch(
     :scrollable="true"
     content-class="d-flex"
   >
-    <VCard :class="['rounded-xl border-0 shadow-lg bg-surface overflow-hidden', mobile ? 'rounded-0' : '']">
+    <VCard :class="['rounded-lg border-0 shadow-lg bg-surface overflow-hidden', mobile ? 'rounded-0' : '']">
       <VCardTitle class="d-flex align-center pa-6">
         <div class="d-flex align-center">
            <VAvatar color="primary" variant="tonal" rounded size="48" class="me-4 shadow-sm">

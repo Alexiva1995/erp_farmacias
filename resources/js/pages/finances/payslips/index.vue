@@ -1,5 +1,6 @@
 <script setup>
 import FinalizePayslipFormDialog from "@/components/dialogs/FinalizePayslipFormDialog.vue";
+import GeneratePayslipDialog from "@/components/dialogs/GeneratePayslipDialog.vue";
 import PayslipTable from "@/components/PayslipTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -17,6 +18,8 @@ const selectedStatus = ref(null);
 
 const selectedPayslip = ref(null);
 const showFinalizeDialog = ref(false);
+const showGenerateDialog = ref(false);
+const isGenerating = ref(false);
 
 const fetchPayslips = async () => {
   loading.value = true;
@@ -160,15 +163,52 @@ const handleDownloadBulk = async () => {
   }
 };
 
-const handleManualPayment = async () => {
+const handleManualPayment = async (date = null) => {
+  if (!date) {
+    showGenerateDialog.value = true;
+    return;
+  }
+
+  isGenerating.value = true;
   try {
-    const { data } = await axios.post("/finances/payslips");
+    const { data } = await axios.post("/finances/payslips", { date });
     if (data.status === "success") {
       toast.success(data.message || "Nómina generada exitosamente");
+      showGenerateDialog.value = false;
       fetchPayslips();
     }
   } catch (error) {
     toast.error("Error al generar la nómina manual");
+  } finally {
+    isGenerating.value = false;
+  }
+};
+
+const handleRegenerateHistory = async () => {
+  const result = await toast.fire({
+    title: '¿Regenerar historial?',
+    text: "Se borrarán y recalcularán las nóminas del 31/03 y 15/04 con las tasas y exclusiones oficiales. Esta acción no se puede deshacer.",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: 'var(--v-theme-primary)',
+    cancelButtonColor: 'var(--v-theme-error)',
+    confirmButtonText: 'Sí, regenerar',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (result.isConfirmed) {
+    loading.value = true;
+    try {
+      const { data } = await axios.post("/finances/payslips/regenerate-history");
+      if (data.status === "success") {
+        toast.success(data.message || "Historial regenerado con éxito");
+        fetchPayslips();
+      }
+    } catch (error) {
+      toast.error("Error al regenerar el historial de nóminas");
+    } finally {
+      loading.value = false;
+    }
   }
 };
 </script>
@@ -183,6 +223,12 @@ const handleManualPayment = async () => {
         @close="handleClosePayslip"
       />
 
+      <GeneratePayslipDialog
+        v-model="showGenerateDialog"
+        :loading="isGenerating"
+        @generate="handleManualPayment"
+      />
+
       <!-- Filtros Premium Colapsables -->
       <PayslipFilters
         v-model:search-query="searchQuery"
@@ -192,6 +238,7 @@ const handleManualPayment = async () => {
         :loading="loading"
         @clear="handleClearFilters"
         @generated="handleManualPayment"
+        @regenerate-history="handleRegenerateHistory"
         @download-bulk="handleDownloadBulk"
         @refresh="fetchPayslips"
       />

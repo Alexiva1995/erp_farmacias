@@ -16,6 +16,10 @@ const selectedCurrency = ref("");
 const previousCurrency = ref("");
 const selectedOption = ref("");
 const previousTotalUsd = ref(0);
+const isAdjustmentModalOpen = ref(false);
+const isAdjusting = ref(false);
+const adjustmentValue = ref(0);
+const adjustmentWallet = ref(null);
 
 const page = ref(1);
 const transactionsTotal = ref(0);
@@ -138,6 +142,48 @@ watch(
   { deep: true },
 );
 
+// ─── Ajustes de Saldo ────────────────────────────────────────────────────────
+const handleAdjustRequest = (wallet) => {
+  adjustmentWallet.value = wallet;
+  adjustmentValue.value = wallet.balance;
+  isAdjustmentModalOpen.value = true;
+};
+
+const submitAdjustment = async () => {
+  if (!adjustmentWallet.value) return;
+
+  isAdjusting.value = true;
+  try {
+    await axios.post("/finances/transactions/adjustment", {
+      currency: adjustmentWallet.value.currency,
+      type: adjustmentWallet.value.method,
+      new_balance: adjustmentValue.value,
+    });
+
+    toast.success("Saldo ajustado correctamente");
+    isAdjustmentModalOpen.value = false;
+
+    // Refrescar datos
+    fetchTransactions({
+      date: dateRange.value,
+      currency: selectedCurrency.value,
+      detailed: dataDetailed.value,
+      option: selectedOption.value,
+    });
+    fetchTransactionsGroupped({
+      date: dateRange.value,
+      currency: selectedCurrency.value,
+      detailed: dataDetailed.value,
+    });
+    fetchWallets(dateRange.value);
+  } catch (error) {
+    console.error("Error al ajustar saldo:", error);
+    toast.error(error.response?.data?.message || "Error al ajustar el saldo.");
+  } finally {
+    isAdjusting.value = false;
+  }
+};
+
 // ─── Ciclo de vida ────────────────────────────────────────────────────────────
 onMounted(() => {
   fetchTransactions();
@@ -159,6 +205,7 @@ onMounted(() => {
         :wallets="wallets"
         :wallets-loading="walletsLoading"
         @clear="handleClearFilters"
+        @adjust="handleAdjustRequest"
         class="mb-0"
       />
 
@@ -175,6 +222,60 @@ onMounted(() => {
         class="ma-0"
       />
     </div>
+
+    <!-- Modal de Ajuste de Saldo -->
+    <VDialog v-model="isAdjustmentModalOpen" max-width="400" persistent>
+      <VCard class="pa-4 rounded-xl shadow-lg border-0">
+        <VCardTitle class="px-0 pt-0 d-flex align-center gap-2 mb-4">
+          <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
+            <VIcon icon="tabler-adjustments-alt" size="18" />
+          </VAvatar>
+          <div class="d-flex flex-column">
+            <span class="text-subtitle-1 font-weight-black uppercase letter-spacing-1">Ajustar Saldo</span>
+            <span class="text-super-xs text-disabled font-weight-medium">Modificar balance de cuenta</span>
+          </div>
+        </VCardTitle>
+
+        <VCardText class="px-0 pb-6">
+          <div class="mb-6 pa-4 bg-surface-variant-light rounded-xl border">
+            <span class="text-super-xs text-disabled uppercase font-weight-black d-block mb-1">Cuenta actual</span>
+            <div class="d-flex align-center gap-3">
+              <VAvatar size="40" :color="adjustmentWallet?.currency === 'USD' ? 'warning' : (adjustmentWallet?.currency === 'BS' ? 'error' : 'primary')" variant="tonal" class="rounded-lg">
+                <VIcon icon="tabler-building-bank" size="20" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-sm font-weight-black">{{ adjustmentWallet?.method }} ({{ adjustmentWallet?.currency }})</span>
+                <span class="text-xs text-medium-emphasis">Saldo actual: {{ adjustmentWallet?.currency }} {{ adjustmentWallet?.balance }}</span>
+              </div>
+            </div>
+          </div>
+
+          <VTextField
+            v-model="adjustmentValue"
+            label="Nuevo Saldo Deseado"
+            type="number"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="tabler-edit"
+            :prefix="adjustmentWallet?.currency"
+            class="rounded-lg"
+            placeholder="0.00"
+            hide-details="auto"
+            autofocus
+            @keyup.enter="submitAdjustment"
+          />
+        </VCardText>
+
+        <VCardActions class="px-0 pb-0 gap-2">
+          <VBtn color="secondary" variant="tonal" class="flex-grow-1 font-weight-black" @click="isAdjustmentModalOpen = false" :disabled="isAdjusting">
+            CANCELAR
+          </VBtn>
+          <VBtn color="primary" variant="elevated" class="flex-grow-1 font-weight-black shadow-primary" :loading="isAdjusting" @click="submitAdjustment">
+            AJUSTAR
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

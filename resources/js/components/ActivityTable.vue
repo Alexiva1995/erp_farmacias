@@ -22,7 +22,7 @@ const headers = [
   { title: "ACTIVIDAD", key: "activity", sortable: true, width: "35%" },
   { title: "DESCRIPCIÓN", key: "description", sortable: false, width: "35%" },
   { title: "FRECUENCIA", key: "frequency", sortable: true, align: 'center' },
-  { title: "ACCIONES", key: "actions", sortable: false, align: "end" },
+  { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
 ];
 
 const getFrequencyColor = (frequency) => {
@@ -36,19 +36,6 @@ const getFrequencyColor = (frequency) => {
     Anual: "default",
   };
   return colors[frequency] || "default";
-};
-
-const getFrequencyIcon = (frequency) => {
-  const icons = {
-    Diaria: "tabler-refresh",
-    Semanal: "tabler-calendar-event",
-    Bimestral: "tabler-calendar-stats",
-    Mensual: "tabler-calendar",
-    Trimestral: "tabler-calendar-repeat",
-    Semestral: "tabler-calendar-due",
-    Anual: "tabler-calendar-star",
-  };
-  return icons[frequency] || "tabler-activity";
 };
 </script>
 
@@ -64,24 +51,24 @@ const getFrequencyIcon = (frequency) => {
       :items-length="props.totalActivities"
       :loading="props.loading"
       class="premium-table text-no-wrap"
+      density="compact"
       @update:options="(options) => emit('update:options', options)"
     >
       <template #item.id="{ item }">
-        <span class="font-weight-black text-primary tabular-nums">{{ item.id }}</span>
+        <span class="font-weight-black text-primary tabular-nums text-xs uppercase">{{ item.id }}</span>
       </template>
 
       <template #item.activity="{ item }">
-        <div class="d-flex align-center gap-3 py-2">
-          <VAvatar color="primary" variant="tonal" size="32" class="rounded font-weight-black text-super-xs">
-            {{ item.activity.charAt(0).toUpperCase() }}
-          </VAvatar>
-          <span class="text-xs font-weight-black text-high-emphasis leading-tight">{{ item.activity }}</span>
+        <div class="py-2">
+          <span class="text-sm font-weight-black text-high-emphasis leading-tight text-uppercase">
+            {{ item.activity }}
+          </span>
         </div>
       </template>
 
       <template #item.description="{ item }">
-        <div class="text-xs text-medium-emphasis text-truncate" style="max-inline-size: 300px;">
-          {{ item.description || 'Sin descripción' }}
+        <div class="text-xs text-medium-emphasis text-truncate text-uppercase font-weight-black" style="max-inline-size: 300px;">
+          {{ item.description || 'SIN DESCRIPCIÓN' }}
         </div>
       </template>
 
@@ -89,132 +76,152 @@ const getFrequencyIcon = (frequency) => {
         <VChip
           :color="getFrequencyColor(item.frequency)"
           size="x-small"
-          class="font-weight-black px-2 rounded"
-          variant="flat"
+          class="font-weight-black px-2 rounded text-uppercase"
+          variant="tonal"
         >
-          {{ item.frequency.toUpperCase() }}
+          {{ item.frequency }}
         </VChip>
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex justify-end gap-1">
-          <VTooltip text="Editar" location="top">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn v-bind="tooltipProps" icon="tabler-edit" variant="text" color="warning" size="32" @click="emit('edit-activity', item)" />
-            </template>
-          </VTooltip>
-          <VTooltip text="Eliminar" location="top">
-            <template #activator="{ props: tooltipProps }">
-              <VBtn v-bind="tooltipProps" icon="tabler-trash" variant="text" color="error" size="32" @click="emit('delete-activity', item.id)" />
-            </template>
-          </VTooltip>
+        <div class="d-flex justify-center gap-1">
+          <IconBtn
+            size="small"
+            color="warning"
+            variant="tonal"
+            class="rounded"
+            @click="emit('edit-activity', item)"
+          >
+            <VIcon icon="tabler-edit" size="18" />
+          </IconBtn>
+          <IconBtn
+            size="small"
+            color="error"
+            variant="tonal"
+            class="rounded"
+            @click="emit('delete-activity', item.id)"
+          >
+            <VIcon icon="tabler-trash" size="18" />
+          </IconBtn>
+        </div>
+      </template>
+
+      <template #bottom>
+        <VDivider class="opacity-10" />
+        <div class="d-flex align-center justify-space-between pa-2">
+          <span class="text-super-xs text-disabled font-weight-black uppercase ms-2">
+            Total: {{ props.totalActivities }} registros
+          </span>
+          <VPagination
+            :model-value="props.page"
+            :length="Math.ceil(props.totalActivities / props.itemsPerPage)"
+            size="small"
+            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+          />
         </div>
       </template>
     </VDataTableServer>
 
     <!-- Vista Móvil: Cards Premium -->
     <div v-else class="pa-4 bg-light">
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-4 rounded" />
+
+      <div v-if="props.activities.length === 0 && !props.loading" class="text-center pa-12">
+        <VIcon icon="tabler-package-off" size="64" class="text-disabled mb-4 opacity-20" />
+        <p class="text-sm uppercase font-weight-black text-disabled">No se encontraron actividades</p>
+      </div>
+
       <VRow>
         <VCol v-for="item in props.activities" :key="item.id" cols="12">
           <VCard class="rounded-lg border shadow-sm mb-4 overflow-hidden">
-            <div class="pa-4 border-b d-flex justify-space-between align-center bg-surface">
-              <div class="d-flex align-center gap-3">
-                <VAvatar color="primary" variant="tonal" size="40" class="rounded font-weight-black">
-                  {{ item.activity.charAt(0).toUpperCase() }}
-                </VAvatar>
-                <div class="d-flex flex-column">
-                  <span class="text-sm font-weight-black text-high-emphasis leading-tight">{{ item.activity }}</span>
-                  <span class="text-super-xs text-primary uppercase font-weight-black">{{ item.id }}</span>
+            <div class="pa-4">
+              <div class="d-flex justify-space-between align-start mb-4">
+                <div class="d-flex flex-column min-width-0">
+                  <span class="text-primary font-weight-black text-super-xs uppercase mb-1">Actividad</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
+                    {{ item.activity }}
+                  </h3>
+                  <span class="text-super-xs text-disabled uppercase font-weight-black mt-1">ID: #{{ item.id }}</span>
+                </div>
+                <div class="d-flex gap-1">
+                  <IconBtn
+                    size="small"
+                    color="warning"
+                    variant="tonal"
+                    class="rounded"
+                    @click="emit('edit-activity', item)"
+                  >
+                    <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                  <IconBtn
+                    size="small"
+                    color="error"
+                    variant="tonal"
+                    class="rounded"
+                    @click="emit('delete-activity', item.id)"
+                  >
+                    <VIcon icon="tabler-trash" size="18" />
+                  </IconBtn>
                 </div>
               </div>
-              <VChip
-                :color="getFrequencyColor(item.frequency)"
-                size="x-small"
-                class="font-weight-black px-2 rounded"
-                variant="flat"
-              >
-                {{ item.frequency.toUpperCase() }}
-              </VChip>
-            </div>
-            
-            <VCardText class="pa-4">
+
+              <VDivider class="my-4 border-opacity-10" />
+
               <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Descripción</span>
-                <p class="text-xs text-medium-emphasis leading-relaxed mb-0 italic">
-                  {{ item.description || 'No hay descripción detallada para esta actividad.' }}
-                </p>
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase">Frecuencia</span>
+                  <VChip
+                    :color="getFrequencyColor(item.frequency)"
+                    size="x-small"
+                    class="font-weight-black px-2 rounded text-uppercase"
+                    variant="tonal"
+                  >
+                    {{ item.frequency }}
+                  </VChip>
+                </div>
+                <div>
+                   <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Descripción</span>
+                   <p class="text-xs text-medium-emphasis leading-relaxed mb-0 font-weight-black text-uppercase truncate-2-lines">
+                    {{ item.description || 'Sin descripción detallada' }}
+                  </p>
+                </div>
               </div>
-              
-              <VDivider class="border-dashed mb-4" />
-              
-              <div class="d-flex gap-2">
-                <VBtn 
-                  block 
-                  color="warning" 
-                  variant="tonal" 
-                  size="small" 
-                  class="rounded-lg flex-grow-1 font-weight-black" 
-                  @click="emit('edit-activity', item)"
-                >
-                  <VIcon start icon="tabler-edit" size="16" />
-                  EDITAR
-                </VBtn>
-                <VBtn 
-                  block 
-                  color="error" 
-                  variant="tonal" 
-                  size="small" 
-                  class="rounded-lg flex-grow-1 font-weight-black" 
-                  @click="emit('delete-activity', item.id)"
-                >
-                  <VIcon start icon="tabler-trash" size="16" />
-                  BORRAR
-                </VBtn>
-              </div>
-            </VCardText>
+            </div>
           </VCard>
         </VCol>
       </VRow>
       
-      <div v-if="props.activities.length === 0 && !props.loading" class="text-center py-12">
-        <VIcon icon="tabler-mood-empty" size="64" color="disabled" class="mb-4 opacity-20" />
-        <div class="text-sm font-weight-black text-disabled uppercase tabular-nums">Sin actividades registradas</div>
-      </div>
-      
-      <div v-if="props.loading" class="text-center py-12">
-        <VProgressCircular indeterminate color="primary" size="32" class="mb-4" />
-        <div class="text-super-xs font-weight-black text-disabled uppercase">Cargando actividades...</div>
+      <div v-if="props.totalActivities > props.itemsPerPage" class="mt-6 d-flex justify-center">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalActivities / props.itemsPerPage)"
+          size="small"
+          @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+        />
       </div>
     </div>
   </VCard>
 </template>
 
 <style scoped>
-/* Estilos para Tabla Premium */
 :deep(.premium-table) {
   background: transparent !important;
 
-  thead {
+  thead th {
     background: white !important;
-
-    th {
-      background: white !important;
-      color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-      font-size: 0.75rem !important;
-      font-weight: 700 !important;
-      text-transform: uppercase !important;
-      letter-spacing: 0.05rem !important;
-      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-    }
+    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05rem !important;
+    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
   }
 
   tbody tr {
     transition: background-color 0.2s ease;
-
     &:hover {
       background-color: rgba(var(--v-theme-primary), 0.02) !important;
     }
-
     td {
       padding-block: 12px !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
@@ -237,18 +244,24 @@ const getFrequencyIcon = (frequency) => {
 }
 
 .leading-relaxed {
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-.border-dashed {
-  border-style: dashed !important;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.italic {
-  font-style: italic;
+.truncate-2-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 :deep(.v-data-table-footer) {
-  border-block-start: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  display: none !important;
 }
 </style>
+

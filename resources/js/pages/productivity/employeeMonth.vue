@@ -322,7 +322,7 @@ const statistics = computed(() => [
         <VCol
           v-for="item in statistics"
           :key="item.title"
-          cols="12"
+          cols="6"
           sm="6"
           md="2"
           class="pa-2"

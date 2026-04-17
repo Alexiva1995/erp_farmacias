@@ -68,6 +68,32 @@ class RetentionController extends Controller
     }
 
     /**
+     * Generar todas las retenciones pendientes por rango de fecha.
+     */
+    public function batchGenerateAll(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date'
+        ]);
+
+        try {
+            $count = $this->retentionService->generateAllPendingInRange(
+                $request->start_date,
+                $request->end_date
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Se generaron $count retenciones correctamente.",
+                'count' => $count
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
      * Generar y descargar PDF de retención.
      */
     public function downloadPdf(Request $request)

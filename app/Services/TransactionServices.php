@@ -32,6 +32,11 @@ class TransactionServices implements Transaction
     return $this->transactionRepository->getWallets($data);
   }
 
+  public function adjustBalance(array $data): void
+  {
+    $this->transactionRepository->adjustBalance($data);
+  }
+
   public function createTransactionSalida(Expense $expense): ?ModelsTransaction
   {
     $timeZone = new DateTimeZone(config("app.timezone"));

@@ -94,11 +94,15 @@ class EmployeeRepository implements EmployeeContract
 
   public function update(Employee $employee, array $data): bool
   {
-    $username = $data['name'] . " " . $data["last_name"];
+    $name = $data['name'] ?? $employee->name;
+    $lastName = $data['last_name'] ?? $employee->last_name;
+    $username = $name . " " . $lastName;
+    
     $role = $data['role'] ?? $employee->user?->role_id;
-    $email = $data['email'];
-    $role_id = $role ? Role::find($role)?->id ?? $employee->user?->role_id : $employee->user?->role_id;
-
+    $email = $data['email'] ?? $employee->user?->email;
+    
+    $role_id = $role ? (Role::find($role)?->id ?? $employee->user?->role_id) : $employee->user?->role_id;
+    
     $userData = [
       'username' => $username,
       'role_id' => $role_id,
@@ -111,7 +115,7 @@ class EmployeeRepository implements EmployeeContract
 
     $employee->user()->update($userData);
 
-    unset($role, $email, $data['password'], $data['role']);
+    unset($data['password'], $data['role']);
 
     $employee->update($data);
 
@@ -297,7 +301,7 @@ class EmployeeRepository implements EmployeeContract
     $bonoAlimentacion = self::BONO_ALIMENTACION;
     
     // Obtener consumo del mes actual para visualización
-    $consumoSaludReintegro = $this->getTotalConsumoFarmacia($employee);
+    $consumoSaludReintegro = $this->getTotalConsumoFarmacia($employee, (int) now()->month, (int) now()->year);
 
     // Para la vista global, calculamos la capacidad mensual tras fijos y salud
     // No puede exceder el sobrante del paquete
@@ -334,22 +338,33 @@ class EmployeeRepository implements EmployeeContract
    * Calcular el consumo total del empleado en la farmacia como cliente (por cédula).
    * Suma todas las órdenes completadas del empleado como cliente, sin filtro de mes.
    */
-  private function getTotalConsumoFarmacia(Employee $employee): float
+  private function getTotalConsumoFarmacia(Employee $employee, int $month, int $year): float
   {
     $identification = $employee->identification;
-    if (!$identification) return 0.0;
+    $ordersTotal = 0.0;
+    
+    if ($identification) {
+      $client = Client::where('identification', $identification)->first();
+      if ($client) {
+        $ordersTotal = (float) Order::where('client_id', $client->id)
+          ->whereMonth('order_date', $month)
+          ->whereYear('order_date', $year)
+          ->where(function ($q) {
+            $q->where('status', 'Completed')
+              ->orWhereNotNull('completed_at');
+          })
+          ->sum('total_amount_usd');
+      }
+    }
 
-    $client = Client::where('identification', $identification)->first();
-    if (!$client) return 0.0;
+    // Sumar consumo manual/crédito si existe
+    $manualConsumption = (float) \DB::table('employee_health_consumption')
+      ->where('employee_id', $employee->id)
+      ->where('month', $month)
+      ->where('year', $year)
+      ->value('amount') ?? 0.0;
 
-    return (float) Order::where('client_id', $client->id)
-      ->whereMonth('order_date', now()->month)
-      ->whereYear('order_date', now()->year)
-      ->where(function ($q) {
-        $q->where('status', 'Completed')
-          ->orWhereNotNull('completed_at');
-      })
-      ->sum('total_amount_usd');
+    return round($ordersTotal + $manualConsumption, 2);
   }
 
   /**
@@ -384,7 +399,7 @@ class EmployeeRepository implements EmployeeContract
 
     $consumoFarmaciaActual = isset($data['consumo_farmacia_actual'])
       ? (float) $data['consumo_farmacia_actual']
-      : $this->getTotalConsumoFarmacia($employee);
+      : $this->getTotalConsumoFarmacia($employee, $month, $year);
 
     $saldoDeudaAnterior = $this->getSaldoDeudaAnteriorParaMes($employee, $year, $month);
     $salarioBase = $this->getEmployeeSalarioBase($employee);

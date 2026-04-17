@@ -26,6 +26,10 @@ const rentaBruta = computed(() => islrData.value.gross_income || 0);
 const deducciones = computed(() => islrData.value.deductions || 0);
 const montoConDeducciones = computed(() => islrData.value.net_income || 0);
 
+// Variables adicionales para el Consolidado Fiscal
+const totalVentas = computed(() => rentaBruta.value);
+const totalCompras = computed(() => islrData.value.costs || 0);
+
 const impuestoISLR = computed(() => {
   if (unidadesTributarias.value === 0) return 0;
 
@@ -49,16 +53,16 @@ const impuestoISLREnBolivares = computed(() => {
 
 const tramoISLR = computed(() => {
   if (unidadesTributarias.value === 0)
-    return { tramo: "N/A", tasa: 0, ajuste: 0 };
+    return { tramo: "N/A", tasa: 0, sustraendo: 0 };
 
   const utCalculadas = montoConDeducciones.value / unidadesTributarias.value;
 
   if (utCalculadas <= 2000) {
-    return { tramo: "Hasta 2.000 UT", tasa: 15, ajuste: 0 };
+    return { tramo: "Hasta 2.000 UT", tasa: 15, sustraendo: 0 };
   } else if (utCalculadas <= 3000) {
-    return { tramo: "2.001 a 3.000 UT", tasa: 22, ajuste: 140 };
+    return { tramo: "2.001 a 3.000 UT", tasa: 22, sustraendo: 140 };
   } else {
-    return { tramo: "Más de 3.000 UT", tasa: 34, ajuste: 500 };
+    return { tramo: "Más de 3.000 UT", tasa: 34, sustraendo: 500 };
   }
 });
 
@@ -264,39 +268,6 @@ onMounted(() => {
         </VCol>
       </VRow>
 
-      <!-- Unidades Tributarias Floating Alert -->
-      <VAlert
-        variant="tonal"
-        color="info"
-        class="ma-0 rounded-lg border-dashed border-info py-2"
-      >
-        <div class="d-flex align-center justify-space-between w-100 px-2">
-          <div class="d-flex align-center gap-2">
-            <VAvatar color="info" variant="tonal" size="32" class="rounded-lg">
-              <VIcon icon="tabler-adjustments-alt" size="18" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span
-                class="text-super-xs font-weight-black uppercase leading-tight"
-                >U.T. Vigente</span
-              >
-              <span class="text-sm font-weight-black"
-                >Bs. {{ formatCurrency(unidadesTributarias) }}</span
-              >
-            </div>
-          </div>
-          <VBtn
-            color="info"
-            variant="flat"
-            size="small"
-            class="rounded-lg text-super-xs font-weight-black px-4 shadow-sm"
-            @click="showEditUTDialog = true"
-          >
-            AJUSTAR VALOR
-          </VBtn>
-        </div>
-      </VAlert>
-
       <!-- Filtros Premium Colapsables -->
       <IslrFilters
         v-model:selected-year="selectedYear"
@@ -304,6 +275,7 @@ onMounted(() => {
         :loading="loading"
         @refresh="handleRefresh"
         @clear="handleClear"
+        @adjust-ut="showEditUTDialog = true"
       />
 
       <!-- Detalle Financiero Consolidado -->
@@ -420,66 +392,12 @@ onMounted(() => {
       </VCard>
     </div>
 
-    <!-- Edit UT Dialog -->
-    <VDialog v-model="showEditUTDialog" max-width="400" persistent>
-      <VCard class="rounded-xl overflow-hidden border-0 shadow-lg">
-        <div class="bg-primary pa-6 text-center position-relative">
-          <VAvatar
-            color="white"
-            size="64"
-            class="mb-3 shadow-sm border border-opacity-10"
-          >
-            <VIcon icon="tabler-settings-automation" color="primary" size="32" />
-          </VAvatar>
-          <h3 class="text-h5 font-weight-black text-white">Ajustar U.T.</h3>
-          <p class="text-caption text-white opacity-80 mb-0">
-            Valores para el ejercicio {{ selectedYear }}
-          </p>
-        </div>
-
-        <VCardText class="pa-6">
-          <VTextField
-            v-model="utValueEdit"
-            label="Valor Unidad Tributaria"
-            prefix="Bs."
-            type="number"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="rounded-lg mb-4"
-          />
-
-          <VAlert
-            type="warning"
-            variant="tonal"
-            class="rounded-lg mb-0 text-caption font-weight-medium"
-          >
-            Este cambio afectará los cálculos de impuestos de todo el sistema.
-          </VAlert>
-        </VCardText>
-
-        <VDivider />
-
-        <VCardActions class="pa-4 pt-0 justify-end gap-2 mt-2">
-          <VBtn
-            variant="text"
-            color="secondary"
-            class="rounded-lg font-weight-black px-4"
-            @click="showEditUTDialog = false"
-          >
-            CANCELAR
-          </VBtn>
-          <VBtn
-            variant="flat"
-            color="primary"
-            class="rounded-lg font-weight-black px-6 shadow-sm"
-            @click="updateUT"
-          >
-            GUARDAR CAMBIOS
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <!-- Edit UT Dialog Component -->
+    <EditUTDialog
+      v-model="showEditUTDialog"
+      :current-value="unidadesTributarias"
+      @save="handleSaveUT"
+    />
   </div>
 </template>
 

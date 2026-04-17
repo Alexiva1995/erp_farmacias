@@ -57,3 +57,5 @@ export const toast = {
     });
   },
 }
+export { Swal };
+export default Swal;

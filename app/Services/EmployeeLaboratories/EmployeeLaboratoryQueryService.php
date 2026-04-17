@@ -37,7 +37,10 @@ class EmployeeLaboratoryQueryService
             });
         }
 
-        // Ordenamiento
+        // Ordenamiento prioritario por foto (quienes tienen foto primero)
+        $query->orderByRaw('CASE WHEN photo IS NOT NULL AND photo != "" AND photo != "null" THEN 0 ELSE 1 END');
+
+        // Ordenamiento especificado o por nombre por defecto
         if (!empty($data['sortBy']) && !empty($data['orderBy'])) {
             $sortBy = $data['sortBy'];
             $orderBy = $data['orderBy'];
@@ -71,6 +74,7 @@ class EmployeeLaboratoryQueryService
                     ];
                 }),
                 'laboratories_count' => $employee->laboratories_count,
+                'photo_url' => $employee->photo_url,
             ];
         });
 

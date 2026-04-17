@@ -39,6 +39,8 @@ const hasAdvancedFilters = computed(() =>
     @clear="emit('clear')"
   >
     <template #actions-extra>
+      <slot name="selection-actions" />
+      
       <VBtn
         icon
         variant="tonal"

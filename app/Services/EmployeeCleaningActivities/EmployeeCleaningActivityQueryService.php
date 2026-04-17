@@ -22,7 +22,8 @@ class EmployeeCleaningActivityQueryService
                         ->orderBy('activity', 'asc');
                 }
             ])
-            ->withCount('cleaningActivities');
+            ->withCount('cleaningActivities')
+            ->orderByRaw('photo IS NOT NULL DESC');
 
         // Búsqueda por nombre de empleado
         if (!empty($data['q'])) {
@@ -90,6 +91,7 @@ class EmployeeCleaningActivityQueryService
         return [
             'employee_id' => $employee->id,
             'employee_name' => trim($employee->name . ' ' . $employee->last_name),
+            'photo_url' => $employee->photo_url,
             'identification' => $employee->identification,
             'is_active' => $employee->is_active,
             'cleaning_activities' => $employee->cleaningActivities->map(function ($activity) {
@@ -420,6 +422,7 @@ class EmployeeCleaningActivityQueryService
                 'execution_id' => $execution->id,
                 'employee_id' => $execution->employee_id,
                 'employee_name' => $execution->employee ? trim($execution->employee->name . ' ' . $execution->employee->last_name) : 'N/A',
+                'employee_photo' => $execution->employee ? $execution->employee->photo_url : null,
                 'activity_id' => $execution->cleaning_activity_id,
                 'activity_name' => $execution->cleaningActivity->activity,
                 'description' => $execution->cleaningActivity->description,

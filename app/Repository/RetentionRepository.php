@@ -83,14 +83,19 @@ class RetentionRepository
         $totalTax = $invoices->sum('tax_amount');
         $totalWithheld = round($totalTax * $retentionPercentage, 2);
 
-        $prefix = now()->format('Ym');
-        $lastRetention = Retention::where('number', 'like', "{$prefix}%")
-            ->orderBy('number', 'desc')
-            ->first();
+        // --- Nueva Lógica de Fecha Fiscal ---
+        $fiscalDate = $this->calculateFiscalDate();
+        $prefix = $fiscalDate->format('Ym');
 
+        // --- Nueva Lógica de Numeración Continua ---
+        // Buscamos la última retención absoluta en el sistema
+        $lastOverall = Retention::orderBy('id', 'desc')->first();
+        
         $nextCorrelative = 1;
-        if ($lastRetention) {
-            $lastCorrelative = substr($lastRetention->number, 6);
+        if ($lastOverall) {
+            // Extraemos los últimos 8 dígitos del número (correlativo)
+            // Asumiendo formato YYYYMMXXXXXXXX
+            $lastCorrelative = substr($lastOverall->number, -8);
             $nextCorrelative = (int)$lastCorrelative + 1;
         }
 
@@ -99,7 +104,7 @@ class RetentionRepository
         $retention = Retention::create([
             'supplier_id' => $supplierId,
             'number' => $number,
-            'date' => now(),
+            'date' => $fiscalDate,
             'total_taxable_base' => $totalTaxable,
             'total_tax_amount' => $totalTax,
             'total_withheld_amount' => $totalWithheld,
@@ -113,6 +118,59 @@ class RetentionRepository
             ]);
 
         return $retention;
+    }
+
+    /**
+     * Calcula la fecha fiscal según reglas de negocio:
+     * 14-17 -> Día 15
+     * 30-31 -> Fin de mes actual
+     * 1-2   -> Fin de mes anterior
+     * Otros -> Fecha del día
+     */
+    private function calculateFiscalDate(): \Carbon\Carbon
+    {
+        $now = now();
+        $day = $now->day;
+
+        if ($day >= 14 && $day <= 17) {
+            return $now->copy()->day(15);
+        }
+
+        if ($day >= 30) {
+            return $now->copy()->endOfMonth();
+        }
+
+        if ($day >= 1 && $day <= 2) {
+            return $now->copy()->subMonth()->endOfMonth();
+        }
+
+        return $now;
+    }
+
+    /**
+     * Genera todas las retenciones pendientes para todos los proveedores en un rango.
+     */
+    public function generateAllPendingInRange(string $startDate, string $endDate): int
+    {
+        $pendingInvoices = Invoice::where('tax_amount', '>', 0)
+            ->where('retention_generated', false)
+            ->whereDate('created_invoice_date', '>=', $startDate)
+            ->whereDate('created_invoice_date', '<=', $endDate)
+            ->get();
+
+        if ($pendingInvoices->isEmpty()) {
+            return 0;
+        }
+
+        $groupedBySupplier = $pendingInvoices->groupBy('supplier_id');
+        $generatedCount = 0;
+
+        foreach ($groupedBySupplier as $supplierId => $invoices) {
+            $this->generateRetentions($invoices->pluck('id')->toArray());
+            $generatedCount++;
+        }
+
+        return $generatedCount;
     }
 
     public function getGeneratedRetentions(array $filters, int $perPage): LengthAwarePaginator

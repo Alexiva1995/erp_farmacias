@@ -189,18 +189,7 @@ onMounted(() => {
 });
 
 // Computed for summary
-const avgPrice = computed(() => {
-  if (!products.value.length) return 0;
-  return (
-    products.value.reduce((acc, p) => acc + (parseFloat(p.unit_cost) || 0), 0) /
-    products.value.length
-  );
-});
 
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("es-US", { style: "currency", currency: "USD" }).format(
-    amount,
-  );
 </script>
 
 <template>
@@ -209,7 +198,7 @@ const formatCurrency = (amount) =>
       <!-- Dashboard de KPIs -->
       <VRow class="ma-0 mb-6 mx-n1 match-height">
         <!-- Configuración Global -->
-        <VCol cols="12" md="4" class="pa-1">
+        <VCol cols="12" md="6" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <div
               class="card-bg-decoration"
@@ -265,7 +254,7 @@ const formatCurrency = (amount) =>
         </VCol>
 
         <!-- Productos -->
-        <VCol cols="12" sm="6" md="2" class="pa-1">
+        <VCol cols="6" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -288,34 +277,9 @@ const formatCurrency = (amount) =>
           </VCard>
         </VCol>
 
-        <!-- Costo Promedio -->
-        <VCol cols="12" sm="6" md="2" class="pa-1">
-          <VCard class="stats-card border-0 overflow-hidden">
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex flex-column align-center text-center">
-                <VAvatar
-                  color="success"
-                  variant="tonal"
-                  size="44"
-                  rounded="lg"
-                  class="mb-3"
-                >
-                  <VIcon icon="tabler-currency-dollar" size="24" />
-                </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
-                  >Costo Prom</span
-                >
-                <h4 class="text-h5 font-weight-black text-success">
-                  {{ formatCurrency(avgPrice) }}
-                </h4>
-              </div>
-            </VCardText>
-            <div class="accent-border bg-success opacity-20"></div>
-          </VCard>
-        </VCol>
 
         <!-- Bloqueados -->
-        <VCol cols="12" sm="6" md="2" class="pa-1">
+        <VCol cols="6" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -344,7 +308,7 @@ const formatCurrency = (amount) =>
         </VCol>
 
         <!-- Última Actualización -->
-        <VCol cols="12" sm="6" md="2" class="pa-1">
+        <VCol cols="12" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">

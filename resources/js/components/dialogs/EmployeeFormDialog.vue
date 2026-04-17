@@ -134,11 +134,18 @@ watch(
   () => props.selectedEmployee,
   (employee) => {
     if (employee) {
-      name.value = employee.name;
-      lastName.value = employee.last_name;
-      identification.value = employee.identification;
+      name.value = employee.name || "";
+      lastName.value = employee.last_name || "";
+      identification.value = employee.identification || "";
       email.value = employee?.user?.email ?? employee.email ?? "";
-      const currentRoleId = employee?.user?.role_id ?? employee.role_id ?? employee?.user?.role?.id ?? null;
+      
+      // Intento de encontrar el role_id en varias rutas posibles del objeto
+      const currentRoleId = employee?.user?.role_id 
+        ?? employee.role_id 
+        ?? employee?.user?.role?.id 
+        ?? employee?.role?.id 
+        ?? null;
+        
       role.value = currentRoleId != null ? Number(currentRoleId) : null;
       password.value = "";
       totalPackageUsd.value = employee.total_package_usd != null ? String(employee.total_package_usd) : "";

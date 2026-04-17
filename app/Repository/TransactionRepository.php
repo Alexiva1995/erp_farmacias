@@ -4,7 +4,10 @@ namespace App\Repository;
 
 use App\Data\CreateTransactionData;
 use App\Models\Transaction;
+use App\Models\CashClosing;
 use App\TransactionType;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TransactionRepository
@@ -302,5 +305,86 @@ class TransactionRepository
         $record->exchange_rate = $data->exchange_rate ?? 1.0000;
         $record->save();
         return $record;
+    }
+
+    /**
+     * Ajusta el saldo de un método/moneda creando una transacción de ajuste.
+     */
+    public function adjustBalance(array $data): void
+    {
+        $currency = $data['currency'];
+        $type = $data['type'];
+        $newBalance = (float)$data['new_balance'];
+
+        // 1. Obtener balance actual para este método/moneda
+        $wallets = $this->getWallets(['start_date' => null, 'end_date' => null]);
+        $currentBalance = 0;
+
+        foreach ($wallets['sections'] as $section) {
+            if ($section['currency'] === $currency) {
+                foreach ($section['wallets'] as $wallet) {
+                    if ($wallet['method'] === $type) {
+                        $currentBalance = (float)$wallet['balance'];
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        $diff = $newBalance - $currentBalance;
+        if (abs($diff) < 0.01) return;
+
+        DB::transaction(function () use ($currency, $type, $diff) {
+            // 2. Crear transacción de ajuste
+            $transaction = new Transaction();
+            $transaction->user_id = Auth::id();
+            $transaction->description = "Ajuste manual de saldo (" . TransactionType::from($type)->label() . " $currency)";
+            $transaction->currency = $currency;
+            $transaction->type = $type;
+            $transaction->amount = abs($diff);
+            $transaction->movement_type = $diff > 0 ? 'IN' : 'OUT';
+            $transaction->transaction_date = Carbon::now();
+            $transaction->exchange_rate = 1.0;
+            $transaction->save();
+
+            // 3. Sincronizar con CashClosing si hay uno abierto para el vendedor
+            $cashClosing = CashClosing::where('seller_id', Auth::id())
+                ->where('status', CashClosing::OPEN)
+                ->first();
+
+            if ($cashClosing) {
+                $field = $this->mapMethodToField($currency, $type);
+                if ($field) {
+                    $cashClosing->$field += $diff;
+                    $cashClosing->recalculateTotals();
+                    $cashClosing->save();
+                }
+            }
+        });
+    }
+
+    private function mapMethodToField(string $currency, string $method): ?string
+    {
+        $map = [
+            'USD' => [
+                'CASH' => 'usd_cash',
+                'BINANCE' => 'usd_binance',
+                'PAYPAL' => 'usd_paypal',
+                'CREDIT' => 'usd_credit',
+                'TRANSFER' => 'usd_transfer',
+            ],
+            'BS' => [
+                'CASH' => 'bs_cash',
+                'MOBILE' => 'bs_mobile',
+                'TRANSFER' => 'bs_transfer',
+                'CARD' => 'bs_card_debito',
+            ],
+            'COP' => [
+                'CASH' => 'cop_cash',
+                'TRANSFER' => 'cop_transfer',
+            ],
+        ];
+
+        return $map[$currency][$method] ?? null;
     }
 }

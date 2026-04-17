@@ -135,28 +135,40 @@ const hasActiveAdvancedFilters = computed(() => {
             </VList>
           </VMenu>
 
-          <!-- Cerrar Mes -->
-          <VBtn
-            v-if="!props.isLocked"
-            icon
-            color="error"
-            variant="flat"
-            size="38"
-            @click="emit('lock-month')"
-          >
-            <VIcon icon="tabler-lock" />
-            <VTooltip activator="parent" location="top">Cerrar Mes</VTooltip>
-          </VBtn>
-          <VChip 
-            v-else 
-            color="success" 
-            variant="tonal" 
-            class="rounded-lg h-38 font-weight-black"
-            size="small"
-          >
-            <VIcon start icon="tabler-lock-check" size="18" />
-            HISTÓRICO
-          </VChip>
+          <!-- Cerrar Mes / Recalcular -->
+          <template v-if="!props.isLocked">
+            <VBtn
+              icon
+              color="error"
+              variant="flat"
+              size="38"
+              @click="emit('lock-month')"
+            >
+              <VIcon icon="tabler-lock" />
+              <VTooltip activator="parent" location="top">Cerrar Mes</VTooltip>
+            </VBtn>
+          </template>
+          <div v-else class="d-flex align-center gap-1">
+            <VChip 
+              color="success" 
+              variant="tonal" 
+              class="rounded-lg h-38 font-weight-black"
+              size="small"
+            >
+              <VIcon start icon="tabler-lock-check" size="18" />
+              HISTÓRICO
+            </VChip>
+            <VBtn
+              icon
+              color="warning"
+              variant="tonal"
+              size="30"
+              @click="emit('lock-month')"
+            >
+              <VIcon icon="tabler-refresh" size="18" />
+              <VTooltip activator="parent" location="top">Recalcular y Volver a Cerrar</VTooltip>
+            </VBtn>
+          </div>
 
           <VDivider vertical class="mx-1 my-2" />
 

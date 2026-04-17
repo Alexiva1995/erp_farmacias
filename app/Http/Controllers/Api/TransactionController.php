@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\Transaction;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finances\AjusteBalanceRequest;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
@@ -55,5 +56,11 @@ class TransactionController extends Controller
 
         $results = $this->transaction->getWallets($data);
         return ApiResponse::success($results);
+    }
+
+    public function adjustBalance(AjusteBalanceRequest $request)
+    {
+        $this->transaction->adjustBalance($request->validated());
+        return ApiResponse::success(null, 'Saldo ajustado correctamente');
     }
 }

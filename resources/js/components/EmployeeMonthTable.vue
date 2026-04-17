@@ -6,18 +6,17 @@ const props = defineProps({
   },
 });
 
-
 const headers = [
-  { title: "Empleado", key: "name", width: "250px" },
-  { title: "Puntaje Final", key: "scores.total", align: "end", width: "130px" },
-  { title: "Ventas", key: "scores.sales", align: "center", width: "130px" },
-  { title: "Crecimiento", key: "scores.growth", align: "center", width: "130px" },
-  { title: "Vencimientos", key: "scores.expiration", align: "center", width: "130px" },
-  { title: "Inventario", key: "scores.inventory", align: "center", width: "130px" },
-  { title: "Premium", key: "scores.premium", align: "center", width: "130px" },
-  { title: "Facturación", key: "scores.invoice", align: "center", width: "130px" },
-  { title: "Limpieza", key: "scores.cleaning", align: "center", width: "110px" },
-  { title: "Estratégico", key: "scores.strategy", align: "center", width: "130px" },
+  { title: "EMPLEADO", key: "name", width: "250px" },
+  { title: "PUNTAJE FINAL", key: "scores.total", align: "end", width: "130px" },
+  { title: "VENTAS", key: "scores.sales", align: "center", width: "130px" },
+  { title: "CRECIMIENTO", key: "scores.growth", align: "center", width: "130px" },
+  { title: "VENCIMIENTOS", key: "scores.expiration", align: "center", width: "130px" },
+  { title: "INVENTARIO", key: "scores.inventory", align: "center", width: "130px" },
+  { title: "PREMIUM", key: "scores.premium", align: "center", width: "130px" },
+  { title: "FACTURACIÓN", key: "scores.invoice", align: "center", width: "130px" },
+  { title: "LIMPIEZA", key: "scores.cleaning", align: "center", width: "110px" },
+  { title: "ESTRATÉGICO", key: "scores.strategy", align: "center", width: "130px" },
 ];
 
 const getScoreInfo = (key) => {
@@ -57,90 +56,84 @@ const formatCurrency = (amount) =>
 <template>
   <div class="employee-month-table-container">
     <!-- Vista de Escritorio: Tabla Premium -->
-    <VCard v-if="!$vuetify.display.smAndDown" class="rounded-lg border shadow-sm overflow-hidden">
+    <VCard v-if="!$vuetify.display.smAndDown" class="border shadow-sm overflow-hidden">
       <VDataTable
         :headers="headers"
         :items="props.items"
         item-value="id"
         class="premium-performance-table text-no-wrap"
+        density="compact"
       >
         <!-- Custom Headers with Tooltips -->
         <template v-for="header in headers" :key="header.key" #[`header.${header.key}`]="{ column }">
           <div class="d-flex align-center gap-1 justify-center" v-if="header.key !== 'name' && header.key !== 'scores.total'">
-            <span class="text-uppercase">{{ column.title }}</span>
+            <span class="text-uppercase font-weight-black">{{ column.title }}</span>
             <VTooltip location="top" :text="getScoreInfo(header.key).desc">
               <template #activator="{ props: tooltipProps }">
-                <VIcon v-bind="tooltipProps" icon="tabler-info-circle" size="14" class="text-disabled" />
+                <VIcon v-bind="tooltipProps" icon="tabler-info-circle" size="12" class="text-disabled" />
               </template>
             </VTooltip>
           </div>
-          <span v-else class="text-uppercase">{{ column.title }}</span>
+          <span v-else class="text-uppercase font-weight-black">{{ column.title }}</span>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-3 py-3">
+          <div class="d-flex align-center gap-3 py-2">
             <div class="position-relative">
               <VAvatar 
                 :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'" 
-                :variant="props.items.indexOf(item) === 0 ? 'elevated' : 'tonal'" 
-                size="42"
-                v-if="item.photo"
-              >
-                <VImg :src="item.photo" />
-              </VAvatar>
-              <VAvatar
-                v-else
-                :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'"
                 variant="tonal"
-                size="42"
+                size="34"
+                class="rounded"
               >
-                <span class="font-weight-bold text-lg">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
+                <VImg v-if="item.photo" :src="item.photo" cover />
+                <span v-else class="text-super-xs font-weight-black">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
               </VAvatar>
               <VIcon
                 v-if="props.items.indexOf(item) === 0"
                 color="warning"
                 icon="tabler-crown"
-                size="20"
+                size="16"
                 class="position-absolute leader-crown"
               />
             </div>
             <div class="d-flex flex-column">
-              <span :class="['font-weight-black', props.items.indexOf(item) === 0 ? 'text-warning' : 'text-high-emphasis']">
+              <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight">
                 {{ item.name }} {{ item.last_name }}
               </span>
-              <span class="text-super-xs text-primary uppercase font-weight-black">ID: {{ item.identification || item.id }}</span>
+              <span class="text-super-xs text-disabled uppercase font-weight-black mt-1">ID: #{{ item.id }}</span>
             </div>
           </div>
         </template>
 
         <template #item.scores.total="{ item }">
-          <div class="d-flex flex-column align-end pe-4">
+          <div class="pe-2">
             <VChip
               :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'"
-              :variant="props.items.indexOf(item) === 0 ? 'elevated' : 'tonal'"
-              class="font-weight-black px-4 rounded-lg"
-              size="large"
+              variant="tonal"
+              class="font-weight-black px-3 rounded text-uppercase"
+              size="small"
             >
-              {{ formatNumber(item.scores.total) }}
+              {{ formatNumber(item.scores.total) }} PTS
             </VChip>
           </div>
         </template>
 
         <template v-for="key in ['sales', 'growth', 'expiration', 'inventory', 'premium', 'invoice', 'cleaning', 'strategy']" :key="key" #[`item.scores.${key}`]="{ item }">
-          <div class="score-cell-desktop py-2">
-            <div class="d-flex justify-space-between text-xs mb-1">
-              <span class="font-weight-bold" :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : 'text-error') : ''">
+          <div class="score-cell-desktop py-1">
+            <div class="d-flex justify-space-between text-super-xs mb-1 font-weight-black text-uppercase">
+              <span :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : (item.growth < 0 ? 'text-error' : '')) : ''">
                 {{ key === 'sales' ? formatCurrency(item.sales) : 
-                   key === 'growth' ? `${item.growth > 0 ? '+' : ''}${item.growth}%` :
-                   key === 'expiration' ? `${item.expirations} u.` :
-                   key === 'inventory' ? `${item.inventory_counted} c.` :
-                   key === 'premium' ? `${item.premium_products} u.` :
-                   key === 'invoice' ? `${item.invoice_items} icon.` :
+                   key === 'growth' ? `${item.growth}%` :
+                   key === 'expiration' ? `${item.expirations} U.` :
+                   key === 'inventory' ? `${item.inventory_counted} C.` :
+                   key === 'premium' ? `${item.premium_products} U.` :
+                   key === 'invoice' ? `${item.invoice_items} I.` :
                    key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
-                   `${item.strategy_sales} u.`
+                   `${item.strategy_sales} U.`
                 }}
               </span>
-              <span class="text-disabled font-weight-bold">{{ formatNumber(item.scores[key]) }}/{{ getScoreInfo(`scores.${key}`).max }}</span>
+              <span class="text-disabled">{{ formatNumber(item.scores[key]) }}</span>
             </div>
             <VProgressLinear
               :model-value="(item.scores[key] / getScoreInfo(`scores.${key}`).max) * 100"
@@ -155,75 +148,67 @@ const formatCurrency = (amount) =>
       </VDataTable>
     </VCard>
 
-    <!-- Vista Móvil: Cards de Desempeño -->
-    <div v-else class="d-flex flex-column gap-4">
+    <!-- Vista Móvil: Cards de Desempeño Premium -->
+    <div v-else class="pa-1 bg-light">
       <VCard
         v-for="(item, index) in props.items"
         :key="item.id"
-        class="performance-card-mobile rounded-lg border shadow-sm overflow-hidden"
-        :class="{ 'leader-card-border': index === 0 }"
+        class="rounded-lg border shadow-sm mb-4 overflow-hidden"
       >
         <!-- Header del Card -->
-        <div class="pa-4 d-flex align-center gap-3" :class="index === 0 ? 'bg-warning-lighten-5' : 'bg-surface'">
+        <div class="pa-4 d-flex align-center gap-3">
           <div class="position-relative">
             <VAvatar 
               :color="index === 0 ? 'warning' : 'primary'" 
-              :variant="index === 0 ? 'elevated' : 'tonal'" 
-              size="48"
-              class="rounded-lg shadow-sm"
+              variant="tonal"
+              size="44"
+              class="rounded shadow-sm"
             >
-              <VImg v-if="item.photo" :src="item.photo" />
-              <span v-else class="font-weight-black">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
+              <VImg v-if="item.photo" :src="item.photo" cover />
+              <span v-else class="font-weight-black text-uppercase">{{ item.name.charAt(0) }}{{ item.last_name.charAt(0) }}</span>
             </VAvatar>
-            <VIcon v-if="index === 0" icon="tabler-crown" color="warning" size="20" class="position-absolute leader-crown-mobile" />
+            <VIcon v-if="index === 0" icon="tabler-crown" color="warning" size="18" class="position-absolute leader-crown-mobile" />
           </div>
           
-          <div class="d-flex flex-column flex-grow-1">
-            <span class="text-base font-weight-black leading-tight" :class="index === 0 ? 'text-warning' : ''">
+          <div class="d-flex flex-column flex-grow-1 min-width-0">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
               {{ item.name }} {{ item.last_name }}
             </span>
-            <span class="text-super-xs text-disabled uppercase">Ranking #{{ index + 1 }}</span>
+            <span class="text-super-xs text-primary font-weight-black mt-1 uppercase">Ranking #{{ index + 1 }} • PTS: {{ formatNumber(item.scores.total) }}</span>
           </div>
-
-          <VChip
-            :color="index === 0 ? 'warning' : 'primary'"
-            variant="flat"
-            class="font-weight-black px-4 rounded-lg shadow-sm"
-          >
-            {{ formatNumber(item.scores.total) }} pts
-          </VChip>
         </div>
 
-        <VDivider class="opacity-10" />
+        <VDivider class="border-opacity-10" />
 
         <!-- Grid de Desempeño Móvil -->
-        <div class="pa-4">
-          <div class="performance-grid">
-            <div v-for="key in ['sales', 'growth', 'expiration', 'inventory', 'premium', 'invoice', 'cleaning', 'strategy']" :key="key" class="perf-item pa-2 rounded-lg border border-opacity-10">
-              <div class="d-flex align-center gap-1 mb-1">
-                <VIcon :icon="getScoreInfo(`scores.${key}`).icon" size="14" class="text-disabled" />
-                <span class="text-super-xs font-weight-black text-disabled uppercase truncate">{{ getScoreInfo(`scores.${key}`).title }}</span>
+        <div class="pa-4 pt-1">
+          <VRow dense>
+            <VCol v-for="key in ['sales', 'growth', 'expiration', 'inventory', 'premium', 'invoice', 'cleaning', 'strategy']" :key="key" cols="6" class="mt-3">
+              <div class="pa-2 rounded-lg border border-opacity-10 bg-surface">
+                <div class="d-flex align-center gap-1 mb-2">
+                  <VIcon :icon="getScoreInfo(`scores.${key}`).icon" size="12" class="text-disabled" />
+                  <span class="text-super-xs font-weight-black text-disabled uppercase truncate">{{ getScoreInfo(`scores.${key}`).title }}</span>
+                </div>
+                <div class="d-flex justify-space-between align-end mb-1">
+                  <span class="text-xs font-weight-black text-uppercase truncate max-width-100">
+                    {{ key === 'sales' ? formatCurrency(item.sales) : 
+                       key === 'growth' ? `${item.growth}%` :
+                       key === 'expiration' ? `${item.expirations}` :
+                       `${item.scores[key]}`
+                    }}
+                  </span>
+                  <span class="text-super-xs font-weight-black text-primary">{{ formatNumber(item.scores[key]) }} pts</span>
+                </div>
+                <VProgressLinear
+                  :model-value="(item.scores[key] / getScoreInfo(`scores.${key}`).max) * 100"
+                  height="4"
+                  rounded
+                  :color="getScoreColor(key, item)"
+                  bg-opacity="0.1"
+                />
               </div>
-              <div class="d-flex justify-space-between align-end">
-                <span class="text-xs font-weight-black">
-                  {{ key === 'sales' ? formatCurrency(item.sales) : 
-                     key === 'growth' ? `${item.growth}%` :
-                     key === 'expiration' ? `${item.expirations}` :
-                     `${item.scores[key]}`
-                  }}
-                </span>
-                <span class="text-super-xs font-weight-bold text-primary">{{ formatNumber(item.scores[key]) }} pts</span>
-              </div>
-              <VProgressLinear
-                :model-value="(item.scores[key] / getScoreInfo(`scores.${key}`).max) * 100"
-                height="4"
-                rounded
-                :color="getScoreColor(key, item)"
-                bg-opacity="0.1"
-                class="mt-1"
-              />
-            </div>
-          </div>
+            </VCol>
+          </VRow>
         </div>
       </VCard>
     </div>
@@ -231,63 +216,55 @@ const formatCurrency = (amount) =>
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.625rem !important;
-  letter-spacing: 0.05em !important;
-  line-height: normal;
-}
-
-.leader-crown {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 10%));
-  inset-block-start: -10px;
-  inset-inline-end: -8px;
-  transform: rotate(15deg);
-}
-
-.leader-crown-mobile {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 20%));
-  inset-block-start: -8px;
-  inset-inline-end: -6px;
-  transform: rotate(15deg);
-}
-
-.score-cell-desktop {
-  min-inline-size: 110px;
-}
-
 :deep(.premium-performance-table) {
-  .v-data-table-header th {
+  background: transparent !important;
+
+  thead th {
     background: white !important;
     color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
     font-size: 0.75rem !important;
-    font-weight: 700 !important;
+    font-weight: 900 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05rem !important;
     border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
   }
 
-  .v-data-table__tr:hover {
-    background-color: rgba(var(--v-theme-primary), 0.02) !important;
+  tbody tr {
+    transition: background-color 0.2s ease;
+    &:hover {
+      background-color: rgba(var(--v-theme-primary), 0.02) !important;
+    }
+    td {
+      padding-block: 8px !important;
+      border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+    }
   }
-
-  .v-data-table__td {
-    padding-block: 12px !important;
-    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
-  }
 }
 
-.performance-grid {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(2, 1fr);
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
+  line-height: normal;
 }
 
-.bg-warning-lighten-5 {
-  background-color: rgba(var(--v-theme-warning), 0.05) !important;
+.leader-crown {
+  inset-block-start: -8px;
+  inset-inline-end: -8px;
+  transform: rotate(15deg);
 }
 
-.leader-card-border {
-  border: 1px solid rgba(var(--v-theme-warning), 0.3) !important;
+.leader-crown-mobile {
+  inset-block-start: -6px;
+  inset-inline-end: -6px;
+  transform: rotate(15deg);
+}
+
+.score-cell-desktop {
+  min-inline-size: 100px;
+}
+
+.bg-light {
+  background-color: rgba(var(--v-theme-on-surface), 0.015);
 }
 
 .truncate {
@@ -296,9 +273,16 @@ const formatCurrency = (amount) =>
   white-space: nowrap;
 }
 
-@media (max-width: 600px) {
-  .performance-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.max-width-100 {
+  max-width: 100px;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+:deep(.v-data-table-footer) {
+  display: none !important;
 }
 </style>
+

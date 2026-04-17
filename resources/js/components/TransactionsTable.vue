@@ -186,21 +186,9 @@ const groupedByDay = computed(() => {
                   {{ item.id }}
                 </td>
                 <td>
-                  <div class="d-flex align-center gap-2">
-                    <VAvatar
-                      size="28"
-                      color="secondary"
-                      variant="tonal"
-                      class="rounded-lg"
-                    >
-                      <span class="text-xs font-weight-black">{{
-                        item.user_name?.charAt(0)
-                      }}</span>
-                    </VAvatar>
-                    <span class="text-xs font-weight-bold">{{
+                   <span class="text-xs font-weight-bold">{{
                       item.user_name
                     }}</span>
-                  </div>
                 </td>
                 <td
                   class="text-truncate text-xs px-4"
@@ -310,26 +298,16 @@ const groupedByDay = computed(() => {
 
               <!-- Descripción -->
               <div
-                class="text-sm text-medium-emphasis mb-4 bg-surface-variant-light pa-2 rounded-lg italic border border-dashed"
+                class="text-sm text-medium-emphasis mb-4 bg-surface-variant-light pa-2 rounded-lg italic border"
               >
                 "{{ item.description }}"
               </div>
 
               <!-- Footer de la Card con Balance Destacado -->
               <div
-                class="d-flex justify-space-between align-center pt-3 border-t border-dashed"
+                class="d-flex justify-space-between align-center pt-3 border-t"
               >
                 <div class="d-flex align-center gap-2">
-                  <VAvatar
-                    size="20"
-                    color="secondary"
-                    variant="tonal"
-                    class="rounded-sm"
-                  >
-                    <span class="text-super-xs font-weight-black">{{
-                      item.user_name?.charAt(0)
-                    }}</span>
-                  </VAvatar>
                   <span
                     class="text-super-xs font-weight-black text-disabled uppercase"
                     >{{ item.user_name }}</span

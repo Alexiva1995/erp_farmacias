@@ -133,7 +133,27 @@ const handleManualPayment = async () => {
           activator="parent"
           location="top"
         >
-          Generar Nómina Manual
+          Generar Nómina Actual
+        </VTooltip>
+      </VBtn>
+
+      <VBtn
+        color="warning"
+        variant="elevated"
+        size="38"
+        icon
+        class="rounded-circle shadow-sm"
+        @click="emit('regenerate-history')"
+      >
+        <VIcon
+          icon="tabler-history"
+          size="20"
+        />
+        <VTooltip
+          activator="parent"
+          location="top"
+        >
+          Sincronizar Periodos Críticos (Mar 31 & Abr 15)
         </VTooltip>
       </VBtn>
     </template>

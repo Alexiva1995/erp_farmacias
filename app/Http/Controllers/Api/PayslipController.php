@@ -12,6 +12,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
+use App\Models\PayslipDetails;
+use App\Models\SalaryConcept;
+use Illuminate\Support\Facades\DB;
 
 class PayslipController extends Controller
 {
@@ -74,9 +78,13 @@ class PayslipController extends Controller
         return ApiResponse::success(['status' => $results]);
     }
 
-    public function store()
+    public function store(Request $request)
     {
-        Artisan::call('app:generate-payslip');
+        $date = $request->input('date', now()->toDateString());
+        
+        Artisan::call('app:generate-payslip', [
+            '--date' => $date
+        ]);
 
         return ApiResponse::success(['message' => 'Nómina generada exitosamente']);
     }
@@ -120,5 +128,65 @@ class PayslipController extends Controller
         $filename = "nominas_consolidadas_{$year}.pdf";
 
         return $pdf->download($filename);
+    }
+
+    public function regenerateHistory()
+    {
+        try {
+            DB::beginTransaction();
+
+            // 1. Sincronizar Conceptos Críticos
+            $concepts = [
+                'Salario Básico Mensual' => ['type' => 'salary', 'frequency' => 'fortnight'],
+                'Bono de Alimentación' => ['type' => 'salary', 'frequency' => 'monthly'],
+                'Asistencia Social de Salud (Art. 105 LOTTT)' => ['type' => 'salary', 'frequency' => 'monthly'],
+                'Bono Extraordinario de Rendimiento' => ['type' => 'salary', 'frequency' => 'monthly'],
+                'IVSS (4%)' => ['type' => 'deduction', 'frequency' => 'fortnight'],
+                'RPE - Paro Forzoso (0.5%)' => ['type' => 'deduction', 'frequency' => 'fortnight'],
+                'FAOV (1%)' => ['type' => 'deduction', 'frequency' => 'fortnight']
+            ];
+
+            foreach ($concepts as $name => $data) {
+                SalaryConcept::updateOrCreate(['name' => $name], $data);
+            }
+
+            // 2. Limpiar periodos específicos
+            Payslip::whereIn('payslip_date', ['2026-03-31', '2026-04-15'])->each(function($p) {
+                $p->details()->delete();
+                $p->delete();
+            });
+
+            // 3. Generar Marzo 31
+            $march31 = Carbon::parse('2026-03-31');
+            $this->payslipServices->generate($march31);
+            $pMarch = Payslip::where('payslip_date', '2026-03-31')->latest()->first();
+            if ($pMarch) {
+                $pMarch->update(['exchange_rate' => 473.87]);
+                // Excluir Marianny (UID 89)
+                PayslipDetails::where('payslip_id', $pMarch->id)
+                    ->whereHas('salary', function($q) { $q->where('user_id', 89); })
+                    ->delete();
+                $pMarch->update(['total' => PayslipDetails::where('payslip_id', $pMarch->id)->where('amount', '>', 0)->sum('amount')]);
+            }
+
+            // 4. Generar Abril 15
+            $april15 = Carbon::parse('2026-04-15');
+            $this->payslipServices->generate($april15);
+            $pApril = Payslip::where('payslip_date', '2026-04-15')->latest()->first();
+            if ($pApril) {
+                $pApril->update(['exchange_rate' => 478.58]);
+                // Excluir Marianny (89) y Jose (90)
+                PayslipDetails::where('payslip_id', $pApril->id)
+                    ->whereHas('salary', function($q) { $q->whereIn('user_id', [89, 90]); })
+                    ->delete();
+                $pApril->update(['total' => PayslipDetails::where('payslip_id', $pApril->id)->where('amount', '>', 0)->sum('amount')]);
+            }
+
+            DB::commit();
+            return ApiResponse::success(['message' => 'Historial de nóminas (Marzo/Abril) regenerado con éxito.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ApiResponse::error('Error al regenerar historial: ' . $e->getMessage());
+        }
     }
 }

@@ -41,7 +41,7 @@ class EmployeePerformanceQueryService
                             'name' => $s->name,
                             'last_name' => $s->last_name,
                             'identification' => $s->employee->identification ?? '',
-                            'photo' => $s->employee->photo ?? '',
+                            'photo' => $s->employee->photo_url ?? '',
                             'sales' => (float)$s->sales,
                             'growth' => (float)$s->growth,
                             'expirations' => $s->expirations,
@@ -78,6 +78,8 @@ class EmployeePerformanceQueryService
         // 1. Calculate RAW metrics for all employees (Live)
         $employeesData = Employee::where('is_active', true)
             ->select(['id', 'name', 'last_name', 'identification', 'photo', 'user_id'])
+            ->orderByRaw('photo IS NOT NULL DESC')
+            ->orderBy('name', 'ASC')
             ->get()
             ->map(function ($employee) use ($month, $year, $prevMonth, $prevYear) {
 
@@ -147,14 +149,15 @@ class EmployeePerformanceQueryService
             $metrics = $data['metrics'];
 
             // Puntaje de Crecimiento (Growth) - Refactorizado para proporcionalidad y capping
-            if ($maxGrowth > 0) {
+            if ($maxGrowth == 0) {
+                // El mejor es 0% (nadie creció positivamente). Ese recibe los 15 puntos.
+                $growthScore = ($metrics['growth'] == 0) ? 15 : 0;
+            } elseif ($maxGrowth > 0) {
                 $growthScore = ($metrics['growth'] / $maxGrowth) * 15;
-            } elseif ($maxGrowth < 0) {
-                // Si todos decrecen, el que decrece menos (más cercano a 0) obtiene 15 puntos.
+            } else {
+                // Si todos decrecen (< 0), el que decrece menos (más cercano a 0) obtiene 15 puntos.
                 // Usamos la relación inversa: maxGrowth / growth actual.
                 $growthScore = ($metrics['growth'] != 0) ? ($maxGrowth / $metrics['growth']) * 15 : 0;
-            } else {
-                $growthScore = 0;
             }
 
             // Aplicar Capping de -15 a 15
@@ -178,7 +181,7 @@ class EmployeePerformanceQueryService
                 'name' => $employee->name,
                 'last_name' => $employee->last_name,
                 'identification' => $employee->identification,
-                'photo' => $employee->photo,
+                'photo' => $employee->photo_url ?? '',
                 'is_locked' => false,
                 'scores' => $scores,
                 ...$metrics

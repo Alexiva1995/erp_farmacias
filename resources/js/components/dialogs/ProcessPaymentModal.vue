@@ -203,11 +203,11 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
     <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
           <VAvatar
             color="white"
             variant="flat"
-            size="40"
+            size="32"
             class="me-3 elevation-1"
           >
             <VIcon
@@ -241,35 +241,34 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
+      <VCardText class="pa-3 pa-sm-4 bg-light overflow-y-auto" style="max-block-size: 70vh;">
         <!-- Resumen de Deuda Destacado -->
         <VCard
           variant="flat"
-          class="rounded-xl border shadow-sm mb-6 bg-white overflow-hidden"
+          class="rounded-xl border shadow-sm mb-3 bg-white overflow-hidden"
         >
-          <div class="pa-5 d-flex align-center justify-space-between flex-wrap gap-4">
+          <div class="pa-3 d-flex align-center justify-space-between flex-wrap gap-2">
             <div class="d-flex align-center gap-3">
               <VAvatar
                 color="primary"
                 variant="tonal"
-                size="44"
+                size="36"
                 class="rounded-lg text-primary"
               >
                 <VIcon
                   icon="tabler-receipt-2"
-                  size="24"
+                  size="20"
                 />
               </VAvatar>
               <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Monto Total Pendiente</span>
-                <div class="d-flex align-center gap-3">
-                  <span class="text-h4 font-weight-black text-primary leading-none">{{ formatCurrency(totalInUSD, 'USD') }}</span>
+                <div class="d-flex align-center gap-2">
+                  <span class="text-h5 font-weight-black text-primary leading-none">{{ formatCurrency(totalInUSD, 'USD') }}</span>
                   <VDivider
                     vertical
                     class="opacity-10"
-                    style="block-size: 20px;"
+                    style="block-size: 16px;"
                   />
-                  <span class="text-h6 font-weight-black text-success leading-none">Bs. {{ formatCurrency(totalInBS, 'Bs', true) }}</span>
+                  <span class="text-h6 font-weight-bold text-success leading-none">Bs. {{ formatCurrency(totalInBS, 'Bs', true) }}</span>
                 </div>
               </div>
             </div>
@@ -287,8 +286,8 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
           </div>
 
           <!-- Facturas Incluidass (Sutil) -->
-          <VDivider class="border-dashed opacity-10 mx-5" />
-          <div class="px-5 py-3 d-flex flex-wrap gap-2 align-center bg-light-hint">
+          <VDivider class="border-dashed opacity-10 mx-3" />
+          <div class="px-3 py-2 d-flex flex-wrap gap-2 align-center bg-light-hint">
             <span class="text-super-xs font-weight-black text-disabled uppercase">Detalle:</span>
             <div class="d-flex flex-wrap gap-1">
               <span 
@@ -308,59 +307,59 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
             cols="12"
             md="6"
           >
-            <div class="d-flex align-center gap-2 mb-4">
+            <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Origen del Pago</span>
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Origen del Pago</span>
             </div>
 
             <VCard
               variant="flat"
-              class="pa-5 bg-white rounded-lg elevation-1 border"
+              class="pa-3 bg-white rounded-lg elevation-1 border"
             >
               <VRow dense>
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Moneda de Pago</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Moneda de Pago</span>
                   <VSelect
                     v-model="form.payment_currency"
                     :items="[ {title: 'USD - Dólar', value: 'USD'}, {title: 'VES - Bolívar', value: 'VES'}, {title: 'COP - Peso', value: 'COP'} ]"
                     variant="outlined"
-                    density="comfortable"
-                    class="premium-input mb-4"
+                    density="compact"
+                    class="premium-input mb-3"
                     hide-details
                   />
                 </VCol>
 
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Monto del Pago</span>
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase">Monto</span>
+                    <VCheckbox
+                      v-model="form.is_partial"
+                      density="compact"
+                      hide-details
+                      color="warning"
+                    >
+                      <template #label>
+                        <span class="text-super-xs font-weight-bold text-warning uppercase">¿Es abono?</span>
+                      </template>
+                    </VCheckbox>
+                  </div>
                   <VTextField
                     v-model="form.payment_amount"
                     type="number"
                     variant="outlined"
-                    density="comfortable"
-                    class="premium-input mb-2"
+                    density="compact"
+                    class="premium-input mb-3"
                     hide-details
                     prefix="$"
                   />
-                  <VCheckbox
-                    v-model="form.is_partial"
-                    label="¿Es un abono? (Pago Parcial)"
-                    density="compact"
-                    hide-details
-                    color="warning"
-                    class="mt-1"
-                  >
-                    <template #label>
-                      <span class="text-xs font-weight-bold text-warning uppercase">¿Es un abono?</span>
-                    </template>
-                  </VCheckbox>
                 </VCol>
 
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha del Pago</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha del Pago</span>
                   <AppDateTimePicker
                     v-model="form.payment_date"
                     variant="outlined"
-                    density="comfortable"
+                    density="compact"
                     class="premium-input"
                     hide-details
                   />
@@ -374,26 +373,26 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
             cols="12"
             md="6"
           >
-            <div class="d-flex align-center gap-2 mb-4">
+            <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Verificación</span>
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Verificación</span>
             </div>
 
             <VCard
               variant="flat"
-              class="pa-5 bg-white rounded-lg elevation-1 border"
+              class="pa-3 bg-white rounded-lg elevation-1 border"
             >
               <VRow dense>
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Método de Pago</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Método de Pago</span>
                   <VSelect
                     v-model="form.payment_method"
                     :items="availablePaymentMethods"
                     item-title="label"
                     item-value="value"
                     variant="outlined"
-                    density="comfortable"
-                    class="premium-input mb-4"
+                    density="compact"
+                    class="premium-input mb-3"
                     hide-details
                   >
                     <template #item="{ props, item }">
@@ -406,22 +405,22 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                 </VCol>
 
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Referencia</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Referencia</span>
                   <VTextField
                     v-model="form.reference"
                     placeholder="# Transacción o Lote..."
                     variant="outlined"
-                    density="comfortable"
-                    class="premium-input mb-4"
+                    density="compact"
+                    class="premium-input mb-3"
                     hide-details
                   />
                 </VCol>
 
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Comprobante (Imagen/PDF)</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Comprobante</span>
                   <VFileInput
                     variant="outlined"
-                    density="comfortable"
+                    density="compact"
                     class="premium-input"
                     prepend-icon="tabler-camera"
                     placeholder="Adjuntar recibo..."
@@ -437,7 +436,7 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
       </VCardText>
 
       <!-- Botones de Acción -->
-      <VCardActions class="pa-4 bg-light border-t">
+      <VCardActions class="pa-3 bg-light border-t">
         <VRow
           no-gutters
           class="w-100"
@@ -450,7 +449,7 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
             <VBtn
               color="secondary"
               variant="tonal"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="closeModal"
@@ -466,7 +465,7 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="loading"

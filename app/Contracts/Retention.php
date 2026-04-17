@@ -11,4 +11,5 @@ interface Retention
     public function generateRetentions(array $invoiceIds): MRetention;
     public function getGeneratedRetentions(array $filters, int $perPage): LengthAwarePaginator;
     public function prepareRetentionData($source): array;
+    public function generateAllPendingInRange(string $startDate, string $endDate): int;
 }

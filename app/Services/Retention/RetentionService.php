@@ -111,4 +111,9 @@ class RetentionService implements RetentionContract
             ]
         ];
     }
+
+    public function generateAllPendingInRange(string $startDate, string $endDate): int
+    {
+        return $this->retentionRepository->generateAllPendingInRange($startDate, $endDate);
+    }
 }

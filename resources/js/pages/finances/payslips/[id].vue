@@ -180,12 +180,12 @@ const changeTab = (newTab) => {
 </script>
 
 <template>
-  <div class="payroll-details-page" :class="mobile ? 'pa-0' : 'pa-6'">
+  <div class="payroll-details-page" :class="mobile ? 'pa-0' : 'pa-4'">
     <!-- Header Premium -->
-    <div class="header-premium mb-6 overflow-hidden position-relative rounded-xl" :class="mobile ? 'rounded-0' : ''">
+    <div class="header-premium mb-6 overflow-hidden position-relative rounded-lg" :class="mobile ? 'rounded-0' : ''">
       <div class="header-overlay pa-6">
         <div class="d-flex align-center flex-wrap gap-4">
-          <VAvatar color="white" variant="flat" size="64" class="rounded-xl shadow-lg">
+          <VAvatar color="white" variant="flat" size="64" class="rounded-lg shadow-lg">
             <VIcon icon="tabler-file-spreadsheet" size="32" color="primary" />
           </VAvatar>
           <div class="flex-grow-1">
@@ -243,9 +243,9 @@ const changeTab = (newTab) => {
     </div>
 
     <!-- Stats Cards Refinadas -->
-    <VRow class="mb-6 px-4">
+    <VRow class="mb-6">
       <VCol cols="12" sm="4">
-        <VCard class="rounded-xl border-0 shadow-sm stats-card overflow-hidden">
+        <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden">
           <VCardText class="d-flex align-center pa-4">
             <VAvatar color="success" variant="tonal" size="48" class="rounded-lg me-4">
               <VIcon icon="tabler-circle-plus" size="24" />
@@ -258,7 +258,7 @@ const changeTab = (newTab) => {
         </VCard>
       </VCol>
       <VCol cols="12" sm="4">
-        <VCard class="rounded-xl border-0 shadow-sm stats-card overflow-hidden">
+        <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden">
           <VCardText class="d-flex align-center pa-4">
             <VAvatar color="error" variant="tonal" size="48" class="rounded-lg me-4">
               <VIcon icon="tabler-circle-minus" size="24" />
@@ -271,7 +271,7 @@ const changeTab = (newTab) => {
         </VCard>
       </VCol>
       <VCol cols="12" sm="4">
-        <VCard class="rounded-xl border-0 shadow-sm stats-card overflow-hidden bg-primary-gradient shadow-lg">
+        <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden bg-primary-gradient shadow-lg">
           <VCardText class="d-flex align-center pa-4">
             <VAvatar color="white" variant="flat" size="48" class="rounded-lg me-4 opacity-20">
               <VIcon icon="tabler-wallet" size="24" color="white" />
@@ -286,8 +286,8 @@ const changeTab = (newTab) => {
     </VRow>
 
     <!-- Tabla / Cards de Trabajadores -->
-    <div class="px-4">
-      <VCard class="rounded-xl border-0 shadow-sm overflow-hidden bg-surface mb-6">
+    <div>
+      <VCard class="rounded-lg border-0 shadow-sm overflow-hidden bg-surface mb-6">
         <VCardTitle class="pa-4 flex align-center bg-surface-variant-opacity-2">
           <VIcon icon="tabler-users" size="20" class="me-2 text-primary" />
           <span class="text-sm font-weight-black uppercase">Listado de Trabajadores</span>
@@ -347,7 +347,7 @@ const changeTab = (newTab) => {
              <VCard 
                v-for="item in employeesWithVouchers" 
                :key="item.id"
-               class="rounded-xl border-0 shadow-sm overflow-hidden"
+               class="rounded-lg border-0 shadow-sm overflow-hidden"
              >
                <VCardText class="pa-4">
                  <div class="d-flex align-center justify-space-between mb-4">
