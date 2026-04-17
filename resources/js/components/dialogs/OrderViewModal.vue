@@ -150,6 +150,11 @@ const getPaymentMethodLabel = (methodValue, currency) => {
   return methodValue.replace(/_/g, " ").toUpperCase();
 };
 const getItemPriceByCurrency = (item, currency) => {
+  // Si ya se proporciona el precio unitario final (ej. desde el historial), usarlo directamente
+  if (item.unit_price !== undefined && item.unit_price !== null) {
+    return item.unit_price;
+  }
+  
   if (item.fixed_price !== undefined && item.fixed_price !== null) {
     return item.fixed_price;
   }

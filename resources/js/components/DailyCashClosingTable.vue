@@ -21,13 +21,15 @@ const { mobile } = useDisplay();
 
 const headers = [
   { title: "Fecha", key: "date", sortable: true },
+  { title: "CUSD", key: "total_credits", sortable: true, align: "end" },
   { title: "USD", key: "total_usd", sortable: true, align: "end" },
-  { title: "COP", key: "total_cop", sortable: true, align: "end" },
-  { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
   { title: "E. USD", key: "usd_delivered", sortable: true, align: "end" },
+  { title: "COP", key: "total_cop", sortable: true, align: "end" },
   { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
   { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
   { title: "Bs Tarjeta", key: "bs_card", sortable: true, align: "end" },
+  { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
+  { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
   {
     title: "Acciones",
     key: "actions",
@@ -127,6 +129,16 @@ const getAvatarColor = (id) => {
           </div>
         </template>
 
+        <template #item.total_credits="{ item }">
+          <span class="text-sm font-weight-bold text-error">{{
+            fmtUsd(item.total_credits)
+          }}</span>
+        </template>
+        <template #item.usd_delivered="{ item }">
+          <span class="text-sm font-weight-bold">{{
+            fmtUsd(item.usd_delivered)
+          }}</span>
+        </template>
         <template #item.total_usd="{ item }">
           <span class="text-sm font-weight-bold text-primary">{{
             fmtUsd(item.total_usd)
@@ -135,17 +147,6 @@ const getAvatarColor = (id) => {
         <template #item.total_cop="{ item }">
           <span class="text-sm font-weight-bold text-success">{{
             fmtCop(item.total_cop)
-          }}</span>
-        </template>
-        <template #item.total_bs="{ item }">
-          <span class="text-sm font-weight-bold text-warning">{{
-            fmtBs(item.total_bs)
-          }}</span>
-        </template>
-
-        <template #item.usd_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{
-            fmtUsd(item.usd_delivered)
           }}</span>
         </template>
         <template #item.cop_delivered="{ item }">
@@ -162,6 +163,21 @@ const getAvatarColor = (id) => {
           <span class="text-xs font-weight-medium text-info">{{
             fmtBs(item.bs_card)
           }}</span>
+        </template>
+        <template #item.total_bs="{ item }">
+          <span class="text-sm font-weight-bold text-warning">{{
+            fmtBs(item.total_bs)
+          }}</span>
+        </template>
+        <template #item.total_sales="{ item }">
+          <VChip
+            size="x-small"
+            variant="flat"
+            color="primary"
+            class="font-weight-black rounded px-2"
+          >
+            {{ fmtUsd(item.total_sales) }}
+          </VChip>
         </template>
 
         <template #item.actions="{ item }">
@@ -250,85 +266,85 @@ const getAvatarColor = (id) => {
 
           <VDivider class="mb-4 opacity-10" />
 
-          <!-- Resumen de Ventas -->
-          <span
-            class="text-super-xs font-weight-black text-primary uppercase d-block mb-3"
-            >Ventas Consolidadas</span
-          >
-          <div class="d-flex gap-3 mb-4">
-            <div
-              class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
-            >
-              <span
-                class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
-                >USD</span
+          <!-- Grid de Totales -->
+          <div class="d-flex flex-column gap-2 mb-4">
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Créditos USD (CUSD)</span
               >
-              <span class="text-sm font-weight-black text-primary">{{
-                fmtUsd(item.total_usd)
+              <span class="text-xs font-weight-black text-error">{{
+                fmtUsd(item.total_credits)
               }}</span>
             </div>
-            <div
-              class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
-            >
-              <span
-                class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
-                >COP</span
-              >
-              <span class="text-sm font-weight-black text-success">{{
-                fmtCop(item.total_cop)
-              }}</span>
-            </div>
-            <div
-              class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2"
-            >
-              <span
-                class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
-                >Bs.</span
-              >
-              <span class="text-sm font-weight-black text-warning">{{
-                fmtBs(item.total_bs)
-              }}</span>
-            </div>
-          </div>
-
-          <!-- Resumen de Entregas/Métodos -->
-          <span
-            class="text-super-xs font-weight-black text-secondary uppercase d-block mb-3"
-            >Detalle de Recepción</span
-          >
-          <div class="bg-surface-variant-opacity-2 rounded-lg pa-4 mb-4">
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs text-disabled font-weight-medium"
-                >Entregado USD</span
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Efectivo USD</span
               >
               <span class="text-xs font-weight-black">{{
                 fmtUsd(item.usd_delivered)
               }}</span>
             </div>
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs text-disabled font-weight-medium"
-                >Entregado COP</span
+            <VDivider class="my-1 opacity-5" />
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Venta USD</span
+              >
+              <span class="text-xs font-weight-black text-primary">{{
+                fmtUsd(item.total_usd)
+              }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Venta COP</span
+              >
+              <span class="text-xs font-weight-black text-success">{{
+                fmtCop(item.total_cop)
+              }}</span>
+            </div>
+            <VDivider class="my-1 opacity-5" />
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Efectivo COP</span
               >
               <span class="text-xs font-weight-black">{{
                 fmtCop(item.cop_delivered)
               }}</span>
             </div>
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs text-disabled font-weight-medium"
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
                 >Pago Móvil Bs.</span
               >
               <span class="text-xs font-weight-black text-info">{{
                 fmtBs(item.bs_mobile)
               }}</span>
             </div>
-            <div class="d-flex justify-space-between align-center">
-              <span class="text-xs text-disabled font-weight-medium"
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
                 >Tarjeta Bs.</span
               >
               <span class="text-xs font-weight-black text-info">{{
                 fmtBs(item.bs_card)
               }}</span>
             </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Venta Bs.</span
+              >
+              <span class="text-xs font-weight-black text-warning">{{
+                fmtBs(item.total_bs)
+              }}</span>
+            </div>
+          </div>
+
+          <div
+            class="bg-primary-gradient pa-3 rounded-lg d-flex justify-space-between align-center shadow-sm mb-4"
+          >
+            <span class="text-xs font-weight-black text-white uppercase"
+              >Venta Total (USD)</span
+            >
+            <span class="text-sm font-weight-black text-white">{{
+              fmtUsd(item.total_sales)
+            }}</span>
           </div>
 
           <!-- Acciones Móvil -->
@@ -377,39 +393,15 @@ const getAvatarColor = (id) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header th) {
-  background: white !important;
-  color: rgba(
-    var(--v-theme-on-surface),
-    var(--v-high-emphasis-opacity)
-  ) !important;
-  block-size: 44px !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05rem !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+.bg-primary-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    #9575cd 100%
+  );
 }
 
-.premium-table :deep(.v-data-table__td) {
-  padding-block: 12px !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-}
-
-.leading-tight {
-  line-height: 1.25;
-}
-
-.bg-surface-variant-opacity-2 {
-  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
-}
-
-.h-10 {
-  block-size: 40px !important;
+.premium-card {
+  position: relative;
 }
 </style>

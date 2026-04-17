@@ -153,17 +153,29 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
   <div class="income-statement-view pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
       <!-- Filtros Colapsables -->
-      <div>
-        <IncomeStatementFilters
-          v-model:searchQuery="searchQuery"
-          v-model:startDate="startDate"
-          v-model:endDate="endDate"
-          v-model:selectedType="selectedType"
-          @clear="clearFilters"
-          @reset="handleReset"
-          class="mb-5"
-        />
-      </div>
+      <VExpansionPanels class="mb-5 custom-expansion-panels">
+        <VExpansionPanel class="border shadow-sm rounded-lg">
+          <VExpansionPanelTitle class="py-2 px-4 min-h-0">
+            <div class="d-flex align-center gap-2">
+              <VIcon icon="tabler-filter" size="18" color="primary" />
+              <span class="text-sm font-weight-black uppercase">Filtros Avanzados</span>
+              <VChip v-if="startDate || endDate || selectedType" color="primary" size="x-small" density="comfortable" class="ms-2">
+                Activos
+              </VChip>
+            </div>
+          </VExpansionPanelTitle>
+          <VExpansionPanelText class="pa-0">
+            <IncomeStatementFilters
+              v-model:searchQuery="searchQuery"
+              v-model:startDate="startDate"
+              v-model:endDate="endDate"
+              v-model:selectedType="selectedType"
+              @clear="clearFilters"
+              @reset="handleReset"
+            />
+          </VExpansionPanelText>
+        </VExpansionPanel>
+      </VExpansionPanels>
 
       <!-- Tarjetas de Resumen Premium -->
       <VRow class="ma-0 mx-n1 mb-5" dense>
@@ -309,7 +321,6 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
             </VCardText>
             <div class="accent-border bg-info"></div>
           </VCard>
-        </VCol>
       </VRow>
 
       <!-- Tabla de Detalles Premium -->
@@ -336,14 +347,6 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
               >
             </div>
           </div>
-            <VChip
-              color="primary"
-              variant="flat"
-              size="small"
-              class="font-weight-black px-4 rounded-lg"
-            >
-              {{ totalItems }} REGISTROS ENCONTRADOS
-          </VChip>
         </div>
 
         <VCardText class="pa-0">
@@ -427,113 +430,77 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
             </VDataTableServer>
           </template>
 
-          <!-- Vista Móvil: Grid de Tarjetas Reales (No Tabla) -->
-          <div v-else class="pa-4">
+          <!-- Vista Móvil: Grid de Tarjetas (2 por fila) -->
+          <div v-else class="pa-2">
             <div v-if="loadingDetails" class="text-center py-12">
-              <VProgressCircular indeterminate color="primary" size="48" />
-              <p
-                class="text-caption mt-2 font-weight-bold text-disabled uppercase"
-              >
+              <VProgressCircular indeterminate color="primary" size="32" />
+              <p class="text-caption mt-2 font-weight-bold text-disabled uppercase">
                 Cargando...
               </p>
             </div>
 
             <template v-else-if="transactions.length > 0">
-              <div class="d-flex flex-column gap-4">
-                <VCard
+              <VRow dense>
+                <VCol
                   v-for="item in transactions"
                   :key="item.id"
-                  variant="flat"
-                  class="border rounded-lg px-4 py-4 bg-white shadow-xs"
-                  :class="
-                    item.type === 'sale'
-                      ? 'border-success-subtle'
-                      : 'border-error-subtle'
-                  "
+                  cols="6"
+                  md="3"
+                  class="pa-1"
                 >
-                  <div class="d-flex justify-space-between align-start mb-4">
-                    <div class="d-flex align-center gap-3">
-                      <div
-                        class="pa-2 rounded-lg"
-                        :class="item.type === 'sale' ? 'bg-success-opacity-1' : 'bg-error-opacity-1'"
+                  <VCard
+                    variant="flat"
+                    class="h-100 border rounded-lg pa-3 bg-white shadow-xs position-relative overflow-hidden"
+                  >
+                    <div
+                      :class="['position-absolute top-0 left-0 h-1 w-100', item.type === 'sale' ? 'bg-success' : 'bg-error']"
+                    ></div>
+                    
+                    <div class="d-flex justify-space-between align-start mb-2 mt-1">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase">
+                        {{ formatDate(item.date) }}
+                      </span>
+                      <VChip
+                        :color="item.type === 'sale' ? 'success' : 'error'"
+                        size="x-small"
+                        variant="tonal"
+                        class="font-weight-bold"
+                        style="height: 16px; font-size: 8px;"
                       >
-                        <VIcon
-                          :icon="
-                            item.type === 'sale'
-                              ? 'tabler-arrow-up-right'
-                              : 'tabler-arrow-down-left'
-                          "
-                          size="24"
-                          :color="item.type === 'sale' ? 'success' : 'error'"
-                        />
+                        {{ item.type === "sale" ? "ING" : "EGR" }}
+                      </VChip>
+                    </div>
+
+                    <p class="text-xs font-weight-bold text-high-emphasis line-clamp-2 mb-2" style="min-height: 2.5em;">
+                      {{ item.description }}
+                    </p>
+
+                    <VDivider class="my-2 opacity-10" />
+
+                    <div class="d-flex flex-column gap-1">
+                      <div class="d-flex justify-space-between align-center text-super-xs">
+                        <span class="text-disabled">MONTO:</span>
+                        <span :class="['font-weight-black', item.type === 'sale' ? 'text-success' : 'text-error']">
+                          {{ item.type === 'sale' ? '+' : '-' }}{{ formatCurrency(item.amount) }}
+                        </span>
                       </div>
-                      <div class="d-flex flex-column">
-                        <span
-                          class="text-super-xs font-weight-black text-disabled uppercase"
-                          >{{ formatDate(item.date) }}</span
-                        >
-                        <span
-                          class="text-xs font-weight-black"
-                          :class="
-                            item.type === 'sale' ? 'text-success' : 'text-error'
-                          "
-                        >
-                          {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
+                      <div v-if="item.costs > 0" class="d-flex justify-space-between align-center text-super-xs">
+                        <span class="text-disabled">COSTO:</span>
+                        <span class="font-weight-black text-warning">-{{ formatCurrency(item.costs) }}</span>
+                      </div>
+                      <div class="d-flex justify-space-between align-center text-xs pt-1 border-t mt-1">
+                        <span class="font-weight-bold text-disabled">UTIL:</span>
+                        <span :class="['font-weight-black', item.profit >= 0 ? 'text-info' : 'text-error']">
+                          {{ formatCurrency(item.profit) }}
                         </span>
                       </div>
                     </div>
-                    <div class="text-right">
-                      <div
-                        :class="[
-                          'text-xl font-weight-black',
-                          item.type === 'sale' ? 'text-success' : 'text-error',
-                        ]"
-                      >
-                        {{ item.type === "sale" ? "+" : "-"
-                        }}{{ formatCurrency(item.amount) }}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    class="text-sm font-weight-bold mb-4 bg-surface-variant-light pa-3 rounded-lg border-dashed"
-                  >
-                    {{ item.description }}
-                  </div>
-
-                  <div
-                    class="d-flex justify-space-between align-center pt-3 border-t border-dashed"
-                  >
-                    <div class="d-flex align-center gap-2">
-                      <span
-                        class="text-super-xs font-weight-black text-disabled uppercase"
-                        >{{ item.client || item.category || "N/A" }}</span
-                      >
-                    </div>
-
-                    <div class="d-flex flex-column align-end">
-                      <span
-                        class="text-super-xs font-weight-black text-primary uppercase"
-                        >Utilidad de Op.</span
-                      >
-                      <span
-                        :class="[
-                          'text-sm font-weight-black',
-                          item.profit >= 0 ? 'text-success' : 'text-error',
-                        ]"
-                      >
-                        {{ item.profit >= 0 ? "+" : ""
-                        }}{{ formatCurrency(item.profit) }}
-                      </span>
-                    </div>
-                  </div>
-                </VCard>
-              </div>
+                  </VCard>
+                </VCol>
+              </VRow>
 
               <!-- Paginación Móvil -->
-              <VCard
-                class="rounded-lg border shadow-sm pa-3 d-flex justify-center mt-6"
-              >
+              <div class="pa-4 d-flex justify-center mt-4">
                 <VPagination
                   v-model="page"
                   :length="Math.ceil(totalItems / itemsPerPage)"
@@ -542,7 +509,7 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
                   active-color="primary"
                   @update:model-value="loadDetails"
                 />
-              </VCard>
+              </div>
             </template>
 
             <div
@@ -694,7 +661,7 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
 
 :deep(.v-data-table.premium-table td) {
   block-size: 64px !important;
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
   padding-block: 12px !important;
 }
 

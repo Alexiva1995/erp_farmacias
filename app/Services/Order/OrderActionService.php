@@ -648,42 +648,47 @@ class OrderActionService
      * Valida que la suma de los pagos cubra el total de la orden (en la moneda de la orden).
      * Lanza \InvalidArgumentException si no coinciden o la suma es menor.
      */
-    private function validatePaymentsCoverOrderTotal(Order $order, array $payments): void
+    private function validatePaymentsCoverOrderTotal(Order $order, array $payments, float $moneyReturns): void
     {
         $resourceService = app(ResourceService::class);
         $orderCurrency = strtoupper($order->currency ?? 'USD');
         $orderTotal = (float) $order->total_amount;
-        $tolerance = 0.02; // Tolerancia para redondeos (2 centavos)
+        $tolerance = 0.5; // Tolerancia permitida para discrepancias menores (centavos o redondeos COP)
 
         $rates = [
             'USD' => $resourceService->getExchangeRate('USD') ?: 1,
             'COP' => $resourceService->getExchangeRate('COP') ?: 1,
             'BS' => $resourceService->getExchangeRate('BS') ?: 1,
         ];
-        $orderRate = $rates[$orderCurrency] ?? 1;
-
-
 
         $sumInOrderCurrency = 0;
         foreach ($payments as $p) {
             $amount = (float) ($p['amount'] ?? 0);
             $currency = strtoupper($p['currency'] ?? 'USD');
             $rate = $rates[$currency] ?? 1;
-            // Convertir a moneda de la orden: amount en X -> USD -> orden
-            // $amountInOrderCurrency = $rate > 0 ? ($amount / $rate) * $orderRate : 0;
-            // $sumInOrderCurrency += $amountInOrderCurrency;
+            
             if ($currency === $orderCurrency) {
                 $sumInOrderCurrency += $amount;
             } else {
                 $amountInBase = ($currency === 'USD') ? $amount : ($amount / $rate);
-                $sumInOrderCurrency += $amountInBase * $orderRate;
+                $sumInOrderCurrency += $amountInBase * ($rates[$orderCurrency] ?? 1);
             }
-
         }
 
-        if ($sumInOrderCurrency < ($orderTotal - $tolerance)) {
+        $netPaid = $sumInOrderCurrency - $moneyReturns;
+
+        if (abs($netPaid - $orderTotal) > $tolerance) {
+            Log::warning("Discrepancia de pago bloqueada:", [
+                'order_id' => $order->id,
+                'total_paid' => $sumInOrderCurrency,
+                'money_returns' => $moneyReturns,
+                'net_paid' => $netPaid,
+                'order_total' => $orderTotal,
+                'diff' => abs($netPaid - $orderTotal)
+            ]);
+
             throw new \InvalidArgumentException(
-                'La suma de los pagos (' . round($sumInOrderCurrency, 2) . ') no cubre el total de la orden (' . round($orderTotal, 2) . ' ' . $orderCurrency . ').'
+                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ') no coincide con el total de la factura (' . round($orderTotal, 2) . '). Por favor, verifique los montos ingresados.'
             );
         }
     }
@@ -857,8 +862,8 @@ class OrderActionService
                 return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
             });
 
-            // Validación de integridad financiera: suma de pagos debe cubrir el total
-            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments);
+            // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total
+            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
 
             // Recargo Sujeto Pasivo Especial
             $orderId->taxable_base = $request->taxable_base ?? 0;

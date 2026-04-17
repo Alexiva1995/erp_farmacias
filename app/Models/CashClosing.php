@@ -100,9 +100,9 @@ class CashClosing extends Model
         $this->total_bs  = ($this->bs_cash + $this->bs_transfer + $this->bs_mobile + $this->bs_card_debito + $this->bs_card_credit);
 
         // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos de cambio cruzado)
-        // cop_delivered = (Efectivo neto de ventas COP) - (Vueltos dados en COP para pagos en USD) + (Pagos de créditos en COP)
-        $this->cop_delivered = ($this->cop_cash - $this->cop_conversion) + ($this->cop_cash_payment_credit - $this->cop_conversion_payment_credit);
-        $this->usd_delivered = ($this->usd_cash - $this->usd_conversion) + ($this->usd_cash_payment_credit - $this->usd_conversion_payment_credit);
+        // La resta de conversion ya se realizó en OrderActionService sobre usd_cash/cop_cash
+        $this->cop_delivered = $this->cop_cash + $this->cop_cash_payment_credit;
+        $this->usd_delivered = $this->usd_cash + $this->usd_cash_payment_credit;
         $this->bs_delivered  = $this->bs_cash + $this->bs_cash_payment_credit;
 
         // 3. Venta Bruta (USD equivalente) - Refleja el rendimiento consolidado incluyendo créditos otorgados

@@ -15,8 +15,13 @@ const { mobile } = useDisplay();
 
 const headers = [
   { title: "Vendedor", key: "seller.username", sortable: true },
+  { title: "CUSD", key: "usd_credit", sortable: true, align: "end" },
   { title: "USD", key: "total_usd", sortable: true, align: "end" },
+  { title: "E. USD", key: "usd_delivered", sortable: true, align: "end" },
   { title: "COP", key: "total_cop", sortable: true, align: "end" },
+  { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
+  { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
+  { title: "Bs Tarjeta", key: "bs_card", sortable: false, align: "end" },
   { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
   { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
   { title: "Estado", key: "status", sortable: true, align: "center" },
@@ -51,9 +56,13 @@ const fmtBs = (val) =>
 
 const formatUsername = (username) => {
   if (!username) return "—";
-  return username
+  const parts = username
     .replace(/[._]/g, " ")
     .split(" ")
+    .filter(word => word.length > 0);
+  
+  // Tomar solo los dos primeros elementos (Primer Nombre y Primer Apellido)
+  return parts.slice(0, 2)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 };
@@ -116,7 +125,7 @@ const getAvatarColor = (id) => {
             </VAvatar>
             <div class="d-flex flex-column">
               <span class="text-sm font-weight-black text-primary">{{
-                item.seller?.username
+                formatUsername(item.seller?.username)
               }}</span>
               <span class="text-xs font-weight-medium text-disabled uppercase"
                 >ID: {{ item.id }}</span
@@ -126,6 +135,16 @@ const getAvatarColor = (id) => {
         </template>
 
         <!-- Monedas -->
+        <template #item.usd_credit="{ item }">
+          <span class="text-sm font-weight-bold text-error">{{
+            fmtUsd(item.usd_credit)
+          }}</span>
+        </template>
+        <template #item.usd_delivered="{ item }">
+          <span class="text-sm font-weight-bold">{{
+            fmtUsd(item.usd_delivered)
+          }}</span>
+        </template>
         <template #item.total_usd="{ item }">
           <span class="text-sm font-weight-bold text-primary">{{
             fmtUsd(item.total_usd)
@@ -141,6 +160,21 @@ const getAvatarColor = (id) => {
             fmtBs(item.total_bs)
           }}</span>
         </template>
+        <template #item.cop_delivered="{ item }">
+          <span class="text-sm font-weight-bold">{{
+            fmtCop(item.cop_delivered)
+          }}</span>
+        </template>
+        <template #item.bs_mobile="{ item }">
+          <span class="text-xs font-weight-medium text-info">{{
+            fmtBs(item.bs_mobile)
+          }}</span>
+        </template>
+        <template #item.bs_card="{ item }">
+          <span class="text-xs font-weight-medium text-info">{{
+            fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0))
+          }}</span>
+        </template>
         <template #item.total_sales="{ item }">
           <VChip
             size="x-small"
@@ -154,21 +188,22 @@ const getAvatarColor = (id) => {
 
         <!-- Estado -->
         <template #item.status="{ item }">
-          <VChip
-            :color="statusMap[item.status]?.color ?? 'default'"
-            variant="tonal"
-            size="x-small"
-            class="font-weight-black rounded px-2 text-uppercase"
-          >
-            <template #prepend>
-              <VIcon
-                :icon="statusMap[item.status]?.icon"
-                size="14"
-                class="me-1"
-              />
+          <VTooltip :text="statusMap[item.status]?.label ?? item.status" location="top">
+            <template #activator="{ props: tip }">
+              <VAvatar
+                v-bind="tip"
+                :color="statusMap[item.status]?.color ?? 'default'"
+                variant="tonal"
+                size="28"
+                class="rounded-lg"
+              >
+                <VIcon
+                  :icon="statusMap[item.status]?.icon"
+                  size="18"
+                />
+              </VAvatar>
             </template>
-            {{ statusMap[item.status]?.label ?? item.status }}
-          </VChip>
+          </VTooltip>
         </template>
 
         <!-- Acciones -->
@@ -257,7 +292,24 @@ const getAvatarColor = (id) => {
           <div class="d-flex flex-column gap-2 mb-4">
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Base USD</span
+                >Créditos USD (CUSD)</span
+              >
+              <span class="text-xs font-weight-black text-error">{{
+                fmtUsd(item.usd_credit)
+              }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Efectivo USD</span
+              >
+              <span class="text-xs font-weight-black">{{
+                fmtUsd(item.usd_delivered)
+              }}</span>
+            </div>
+            <VDivider class="my-1 opacity-5" />
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Venta USD</span
               >
               <span class="text-xs font-weight-black text-primary">{{
                 fmtUsd(item.total_usd)
@@ -265,7 +317,7 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Base COP</span
+                >Venta COP</span
               >
               <span class="text-xs font-weight-black text-success">{{
                 fmtCop(item.total_cop)
@@ -273,10 +325,35 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Base Bs.</span
+                >Venta Bs.</span
               >
               <span class="text-xs font-weight-black text-warning">{{
                 fmtBs(item.total_bs)
+              }}</span>
+            </div>
+            <VDivider class="my-1 opacity-5" />
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Efectivo COP</span
+              >
+              <span class="text-xs font-weight-black">{{
+                fmtCop(item.cop_delivered)
+              }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Pago Móvil Bs.</span
+              >
+              <span class="text-xs font-weight-black text-info">{{
+                fmtBs(item.bs_mobile)
+              }}</span>
+            </div>
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
+                >Tarjeta Bs.</span
+              >
+              <span class="text-xs font-weight-black text-info">{{
+                fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0))
               }}</span>
             </div>
           </div>

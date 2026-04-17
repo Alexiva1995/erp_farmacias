@@ -626,6 +626,16 @@ const handleCompletePurchase = () => {
       return;
     }
 
+    // Validación de Integridad: El pago neto debe coincidir con el total
+    const netPaid = totalPaidAmount.value - changeAmount.value;
+    const orderTotal = roundedTotalAmountToPay.value;
+    const balanceTolerance = props.selectedCurrency === 'COP' ? 1 : 0.01;
+
+    if (Math.abs(netPaid - orderTotal) > balanceTolerance) {
+      toast.error("Error de balance: El pago neto no coincide con el total de la orden. Por favor reintente los pagos.");
+      return;
+    }
+
     const invalidPayment = payments.value.find((p) => {
       // Ignorar pagos sin método
       if (!p.method) return false;
@@ -694,7 +704,7 @@ const handleCompletePurchase = () => {
         props.orderData?.id,
         validPayments,
         hasCreditPayment.value,
-        changeAmountInCop.value,
+        changeAmount.value,
         changeAmountInUsd.value,
         {
           invoice_switch: invoiceSwitch.value || shouldApplySpeRules.value,
@@ -706,7 +716,7 @@ const handleCompletePurchase = () => {
           spe_surcharge_rate: shouldApplySpeRules.value ? 1 : null,
           generate_invoice: shouldApplySpeRules.value ? true : invoiceSwitch.value,
         },
-        changeAmount.value,
+        changeAmountInCop.value,
       );
     } catch (error) {
       console.error("Error al completar la compra:", error);

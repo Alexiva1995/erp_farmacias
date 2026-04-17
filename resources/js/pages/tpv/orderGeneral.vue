@@ -729,7 +729,8 @@ const handleViewOrder = async (orderId) => {
         active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
-        taxRate: detail.product?.iva,
+        taxRate: 0, // Seteamos a 0 porque el unit_price ya incluye impuestos
+        unit_price: detail.quantity > 0 ? parseFloat(detail.price) / detail.quantity : parseFloat(detail.price),
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
