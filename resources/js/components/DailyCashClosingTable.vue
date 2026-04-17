@@ -270,21 +270,12 @@ const getAvatarColor = (id) => {
           <div class="d-flex flex-column gap-2 mb-4">
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Créditos USD (CUSD)</span
+                >Créditos (CUSD)</span
               >
               <span class="text-xs font-weight-black text-error">{{
                 fmtUsd(item.total_credits)
               }}</span>
             </div>
-            <div class="d-flex justify-space-between align-center px-2">
-              <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Efectivo USD</span
-              >
-              <span class="text-xs font-weight-black">{{
-                fmtUsd(item.usd_delivered)
-              }}</span>
-            </div>
-            <VDivider class="my-1 opacity-5" />
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
                 >Venta USD</span
@@ -295,16 +286,24 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
+                >E. USD (Físico)</span
+              >
+              <span class="text-xs font-weight-black">{{
+                fmtUsd(item.usd_delivered)
+              }}</span>
+            </div>
+            <VDivider class="my-1 opacity-5" />
+            <div class="d-flex justify-space-between align-center px-2">
+              <span class="text-xs text-disabled font-weight-bold uppercase"
                 >Venta COP</span
               >
               <span class="text-xs font-weight-black text-success">{{
                 fmtCop(item.total_cop)
               }}</span>
             </div>
-            <VDivider class="my-1 opacity-5" />
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Efectivo COP</span
+                >E. COP (Físico)</span
               >
               <span class="text-xs font-weight-black">{{
                 fmtCop(item.cop_delivered)

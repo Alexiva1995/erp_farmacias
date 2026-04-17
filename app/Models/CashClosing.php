@@ -91,24 +91,20 @@ class CashClosing extends Model
      */
     public function recalculateTotals()
     {
-        // 1. Totales de Venta (Solo Órdenes - Rendimiento de la jornada)
-        // total_cop ahora representa la venta neta esperada en pesos por órdenes facturadas en esa moneda.
-        // NO restamos cop_conversion aquí porque cop_conversion puede incluir vueltos de órdenes en USD.
-        // La lógica de negocio dicta que cop_cash debe ser el neto de (Pagos COP recibidos - Vueltos de órdenes COP).
-        $this->total_cop = ($this->cop_cash + $this->cop_transfer);
-        $this->total_usd = ($this->usd_cash + $this->usd_transfer + $this->usd_paypal + $this->usd_binance + $this->usd_balance + $this->usd_conversion);
-        $this->total_bs  = ($this->bs_cash + $this->bs_transfer + $this->bs_mobile + $this->bs_card_debito + $this->bs_card_credit);
+        // 1. Totales de Venta (Rendimiento Real - Basado en Órdenes facturadas + Ajustes)
+        $this->total_cop = $this->orders()->where('currency', 'COP')->sum('total_amount') + ($this->cop_spare ?? 0);
+        $this->total_usd = $this->orders()->where('currency', 'USD')->sum('total_amount');
+        $this->total_bs  = $this->orders()->where('currency', 'BS')->sum('total_amount');
 
-        // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos de cambio cruzado)
-        // La resta de conversion ya se realizó en OrderActionService sobre usd_cash/cop_cash
-        $this->cop_delivered = $this->cop_cash + $this->cop_cash_payment_credit;
+        // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos - Ajustes)
+        $this->cop_delivered = $this->cop_cash + $this->cop_cash_payment_credit + ($this->cop_spare ?? 0);
         $this->usd_delivered = $this->usd_cash + $this->usd_cash_payment_credit;
         $this->bs_delivered  = $this->bs_cash + $this->bs_cash_payment_credit;
 
         // 3. Venta Bruta (USD equivalente) - Refleja el rendimiento consolidado incluyendo créditos otorgados
         $copInUsd = $this->getServiceExchangeRate('COP') > 0 ? ($this->total_cop / $this->getServiceExchangeRate('COP')) : 0;
         $bsInUsd  = $this->getServiceExchangeRate('BS')  > 0 ? ($this->total_bs  / $this->getServiceExchangeRate('BS'))  : 0;
-        $this->total_sales = round($this->total_usd + $this->usd_credit + $copInUsd + $bsInUsd, 2);
+        $this->total_sales = round($this->total_usd + $copInUsd + $bsInUsd, 2);
 
         $this->save();
         return $this;

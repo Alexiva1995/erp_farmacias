@@ -321,6 +321,7 @@ watch([startDate, endDate, searchQuery, selectedType], () => loadData());
             </VCardText>
             <div class="accent-border bg-info"></div>
           </VCard>
+        </VCol>
       </VRow>
 
       <!-- Tabla de Detalles Premium -->

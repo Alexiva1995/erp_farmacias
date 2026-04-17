@@ -90,16 +90,21 @@ const isSingleSeller = computed(() => {
   return filteredCashClosings.value.length === 1;
 });
 
-const totalBsGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_bs || 0), 0);
-});
-
-const totalCopGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_cop || 0), 0);
+const totalCreditsUsdGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.usd_credit || 0), 0);
 });
 
 const totalUsdGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + (parseFloat(c.total_usd || 0) + parseFloat(c.usd_credit || 0)), 0);
+  // Ahora total_usd ya incluye los créditos según la nueva lógica del backend
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_usd || 0), 0);
+});
+
+const usdDeliveredGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.usd_delivered || 0), 0);
+});
+
+const copDeliveredGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.cop_delivered || 0), 0);
 });
 
 const totalSalesGlobal = computed(() => {
@@ -350,60 +355,64 @@ defineExpose({ printReport });
               md="3"
             >
               <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Total USD</span>
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Créditos (CUSD)</span>
+                <div class="d-flex align-center gap-1">
+                  <VIcon
+                    icon="tabler-file-invoice"
+                    color="error"
+                    size="18"
+                  />
+                  <h4 class="text-h6 font-weight-black text-error">
+                    {{ formatCurrency(totalCreditsUsdGlobal, 'USD') }}
+                  </h4>
+                </div>
+                <span class="text-super-xs text-medium-emphasis mt-1 italic">Monto en Crédito</span>
+              </div>
+            </VCol>
+
+            <VCol
+              cols="12"
+              sm="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Dólares (USD)</span>
                 <div class="d-flex align-center gap-1">
                   <VIcon
                     icon="tabler-currency-dollar"
+                    color="primary"
+                    size="18"
+                  />
+                  <h4 class="text-h6 font-weight-black text-primary">
+                    {{ formatCurrency(totalUsdGlobal, 'USD') }}
+                  </h4>
+                </div>
+                <div class="text-super-xs font-weight-black text-grey-darken-1 mt-1">
+                  E. USD: {{ formatCurrency(usdDeliveredGlobal, 'USD') }}
+                </div>
+              </div>
+            </VCol>
+
+            <VCol
+              cols="12"
+              sm="6"
+              md="3"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Pesos (COP)</span>
+                <div class="d-flex align-center gap-1">
+                  <VIcon
+                    icon="tabler-currency-peso"
                     color="success"
                     size="18"
                   />
                   <h4 class="text-h6 font-weight-black text-success">
-                    {{ formatCurrency(totalUsdGlobal, 'USD') }}
-                  </h4>
-                </div>
-                <span class="text-super-xs text-medium-emphasis mt-1 italic">Efectivo + Transf.</span>
-              </div>
-            </VCol>
-
-            <VCol
-              cols="12"
-              sm="6"
-              md="3"
-            >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Total Bs</span>
-                <div class="d-flex align-center gap-1">
-                  <VIcon
-                    icon="tabler-currency-bolivar"
-                    color="warning"
-                    size="18"
-                  />
-                  <h4 class="text-h6 font-weight-black text-high-emphasis">
-                    {{ formatCurrency(totalBsGlobal, 'BS') }}
-                  </h4>
-                </div>
-                <span class="text-super-xs text-warning font-weight-bold mt-1">&asymp; {{ formatCurrency(props.cashData.total_bs_in_usd, 'USD') }}</span>
-              </div>
-            </VCol>
-
-            <VCol
-              cols="12"
-              sm="6"
-              md="3"
-            >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Total COP</span>
-                <div class="d-flex align-center gap-1">
-                  <VIcon
-                    icon="tabler-currency-peso"
-                    color="info"
-                    size="18"
-                  />
-                  <h4 class="text-h6 font-weight-black text-high-emphasis">
                     {{ formatCurrency(totalCopGlobal, 'COP') }}
                   </h4>
                 </div>
-                <span class="text-super-xs text-info font-weight-bold mt-1">&asymp; {{ formatCurrency(props.cashData.total_cop_in_usd, 'USD') }}</span>
+                <div class="text-super-xs font-weight-black text-grey-darken-1 mt-1">
+                  E. COP: {{ formatCurrency(copDeliveredGlobal, 'COP') }}
+                </div>
               </div>
             </VCol>
 
@@ -417,7 +426,7 @@ defineExpose({ printReport });
                 color="primary"
                 class="rounded-lg pa-3 text-center"
               >
-                <span class="text-super-xs font-weight-black text-white opacity-80 uppercase d-block mb-1">Venta Bruta General</span>
+                <span class="text-super-xs font-weight-black text-white opacity-80 uppercase d-block mb-1">Venta Total (USD)</span>
                 <h4 class="text-h5 font-weight-black text-white leading-none">
                   {{ formatCurrency(totalSalesGlobal, 'USD') }}
                 </h4>
@@ -429,7 +438,7 @@ defineExpose({ printReport });
         <!-- LISTA DE VENDEDORES -->
         <div class="d-flex align-center gap-2 mb-4">
           <div class="header-indicator secondary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Desglose por Vendedores</span>
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Arqueo por Cajas</span>
         </div>
 
         <VRow>
@@ -477,27 +486,39 @@ defineExpose({ printReport });
                 >
                   <tbody>
                     <tr>
-                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">USD:</td>
-                      <td class="text-right font-weight-black pr-6 py-2 text-primary">
-                        {{ formatCurrency(closing.real_usd, 'USD') }}
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">Créditos (CUSD):</td>
+                      <td class="text-right font-weight-black pr-6 py-1 text-error">
+                        {{ formatCurrency(closing.usd_credit, 'USD') }}
                       </td>
                     </tr>
                     <tr>
-                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Bolívares:</td>
-                      <td class="text-right font-weight-bold pr-6 py-2">
-                        <span class="text-high-emphasis">{{ formatCurrency(closing.real_bs, 'BS') }}</span>
-                        <div class="text-super-xs text-warning font-weight-black">
-                          &asymp; {{ formatCurrency(closing.total_bs_in_usd, 'USD') }}
-                        </div>
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">USD (Venta):</td>
+                      <td class="text-right font-weight-black pr-6 py-1 text-primary">
+                        {{ formatCurrency(closing.total_usd, 'USD') }}
                       </td>
                     </tr>
                     <tr>
-                      <td class="font-weight-black text-disabled uppercase pl-6 py-2">Pesos:</td>
-                      <td class="text-right font-weight-bold pr-6 py-2">
-                        <span class="text-high-emphasis">{{ formatCurrency(closing.real_cop, 'COP') }}</span>
-                        <div class="text-super-xs text-info font-weight-black">
-                          &asymp; {{ formatCurrency(closing.total_cop_in_usd, 'USD') }}
-                        </div>
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">E. USD (Físico):</td>
+                      <td class="text-right font-weight-black pr-6 py-1 text-high-emphasis">
+                        {{ formatCurrency(closing.usd_delivered, 'USD') }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">COP (Venta):</td>
+                      <td class="text-right font-weight-black pr-6 py-1 text-success">
+                        {{ formatCurrency(closing.total_cop, 'COP') }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">E. COP (Físico):</td>
+                      <td class="text-right font-weight-black pr-6 py-1 text-high-emphasis">
+                        {{ formatCurrency(closing.cop_delivered, 'COP') }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">Bolívares:</td>
+                      <td class="text-right font-weight-bold pr-6 py-1">
+                        <span class="text-high-emphasis">{{ formatCurrency(closing.total_bs, 'BS') }}</span>
                       </td>
                     </tr>
                   </tbody>
@@ -576,21 +597,14 @@ defineExpose({ printReport });
           <table class="data-table">
             <thead>
               <tr>
-                <th style="padding: 4px; font-size: 8pt;">
-                  RESPONSABLE / MÉTODO
-                </th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">
-                  Bs
-                </th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">
-                  COP
-                </th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">
-                  USD
-                </th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">
-                  TOTAL USD
-                </th>
+                <th style="padding: 4px; font-size: 8pt;">RESPONSABLE</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">CUSD</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">USD</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">E. USD</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">COP</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">E. COP</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">Bs.</th>
+                <th style="padding: 4px; font-size: 8pt; text-align: end;">TOTAL USD</th>
               </tr>
             </thead>
             <tbody>
@@ -599,11 +613,26 @@ defineExpose({ printReport });
                 :key="cash.id"
               >
                 <tr class="total-row">
-                  <td
-                    colspan="4"
-                    style="padding: 4px; font-size: 8pt;"
-                  >
+                  <td style="padding: 4px; font-size: 8pt;">
                     {{ index + 1 }}. {{ (cash.seller?.username || 'Sin Nombre').toUpperCase() }}
+                  </td>
+                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(cash.usd_credit, 'USD') }}
+                  </td>
+                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(cash.total_usd, 'USD') }}
+                  </td>
+                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(cash.usd_delivered, 'USD') }}
+                  </td>
+                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(cash.total_cop, 'COP') }}
+                  </td>
+                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(cash.cop_delivered, 'COP') }}
+                  </td>
+                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(cash.total_bs, 'BS') }}
                   </td>
                   <td style="padding: 4px; font-size: 8pt; text-align: end;">
                     {{ formatCurrency(cash.real_total_usd, 'USD') }}

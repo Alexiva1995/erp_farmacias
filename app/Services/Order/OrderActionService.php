@@ -990,9 +990,15 @@ class OrderActionService
 
             if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
                 // Caso cambio moneda cruzada
-                $current_cash->usd_cash -= $request->changeAmountUSD;
-                $current_cash->cop_conversion += $request->changeAmount ?? null;
-                $current_cash->usd_conversion += $request->changeAmountUSD ?? null;
+                if (isset($request->changeAmount) && $request->changeAmount > 0) {
+                    // El vuelto se dio físicamente en Pesos (COP)
+                    $current_cash->cop_cash -= $request->changeAmount;
+                    $current_cash->cop_conversion += $request->changeAmount;
+                } else {
+                    // El vuelto se dio físicamente en Dólares (USD)
+                    $current_cash->usd_cash -= $request->changeAmountUSD;
+                }
+                $current_cash->usd_conversion += $request->changeAmountUSD;
             } else {
                 // Caso misma moneda
                 if (isset($request->changeAmount)) {
