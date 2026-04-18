@@ -180,21 +180,21 @@ class OrderQueryService
                 'laboratories.name as laboratory_name',
                 DB::raw('NULL as pack_config'),
                 DB::raw("'product' as item_type"),
-                DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE() AND product_lots.quantity > 0) as next_expiration'),
-                DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) as valid_stock_sum'),
+                DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.quantity > 0) as next_expiration'),
+                DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) as valid_stock_sum'),
                 DB::raw("(
                     SELECT GREATEST(
                         COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0),
                         COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0),
-                        COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0 AND TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0)
+                        COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0)
                     )
                 ) as discount_percentage"),
                 DB::raw("(
                     SELECT CASE
-                        WHEN COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0 AND TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0) >= GREATEST(
+                        WHEN COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0) >= GREATEST(
                             COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0),
                             COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)
-                        ) AND (SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0 AND TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1) > 0
+                        ) AND (SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1) > 0
                         THEN 'expiration'
                         WHEN COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0) >=
                              COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)
@@ -327,10 +327,10 @@ class OrderQueryService
 
         $hasStock = $filters['hasStock'] ?? null;
         if ($hasStock === true) {
-            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) > 0');
+            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) > 0');
             $packsQuery->where('product_packs.max_quantity', '>', 0);
         } elseif ($hasStock === false) {
-            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.expiration_date >= CURDATE() AND pl.quantity > 0), 0) = 0');
+            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) = 0');
             $packsQuery->where('product_packs.max_quantity', '=', 0);
             ;
         }
