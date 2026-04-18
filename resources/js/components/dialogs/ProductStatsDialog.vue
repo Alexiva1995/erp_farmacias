@@ -20,9 +20,8 @@ const stats = ref(null);
 const chartOptions = computed(() => ({
   chart: {
     type: "area",
-    toolbar: { show: false },
-    zoom: { enabled: false },
-    sparkline: { enabled: false },
+    toolbar: { show: true },
+    zoom: { enabled: true },
     animations: {
       enabled: true,
       easing: "easeinout",
@@ -30,13 +29,13 @@ const chartOptions = computed(() => ({
     },
   },
   dataLabels: { enabled: false },
-  stroke: { curve: "smooth", width: 3 },
+  stroke: { curve: "smooth", width: 2 },
   fill: {
     type: "gradient",
     gradient: {
       shadeIntensity: 1,
-      opacityFrom: 0.7,
-      opacityTo: 0.1,
+      opacityFrom: 0.5,
+      opacityTo: 0.05,
       stops: [0, 90, 100],
     },
   },
@@ -47,7 +46,7 @@ const chartOptions = computed(() => ({
     labels: {
       style: {
         colors: "rgba(var(--v-theme-on-surface), 0.45)",
-        fontSize: "12px",
+        fontSize: "10px",
         fontWeight: 600,
       },
     },
@@ -56,24 +55,75 @@ const chartOptions = computed(() => ({
     labels: {
       style: {
         colors: "rgba(var(--v-theme-on-surface), 0.45)",
-        fontSize: "12px",
+        fontSize: "10px",
         fontWeight: 600,
       },
     },
   },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'left',
+    fontSize: '11px',
+    fontWeight: 600,
+    labels: {
+      colors: "rgba(var(--v-theme-on-surface), 0.8)",
+    },
+    markers: { radius: 12 }
+  },
   grid: {
     borderColor: "rgba(var(--v-border-color), 0.1)",
     strokeDashArray: 5,
-    xaxis: { lines: { show: true } },
   },
-  colors: ["#7367f0"],
+  colors: ["#7367f0", "#28c76f", "#ea5455", "#ff9f43", "#00cfe8", "#4b4b4b"],
   tooltip: {
     theme: "dark",
-    x: { show: true },
+    shared: true,
+    intersect: false,
   },
 }));
 
-const series = computed(() => stats.value?.trend_chart?.series || [{ name: "Ventas", data: [] }]);
+const marketShareOptions = computed(() => ({
+  chart: { type: 'radialBar' },
+  plotOptions: {
+    radialBar: {
+      startAngle: -135,
+      endAngle: 135,
+      hollow: { size: '70%' },
+      dataLabels: {
+        name: {
+          fontSize: '13px',
+          color: 'rgba(var(--v-theme-on-surface), 0.6)',
+          offsetY: -10,
+          fontWeight: 600,
+        },
+        value: {
+          offsetY: 5,
+          fontSize: '22px',
+          color: 'rgba(var(--v-theme-on-surface), 0.87)',
+          fontWeight: 800,
+          formatter: val => `${val}%`,
+        },
+      },
+    },
+  },
+  fill: {
+    type: 'gradient',
+    gradient: {
+      shade: 'dark',
+      shadeIntensity: 0.15,
+      inverseColors: false,
+      opacityFrom: 1,
+      opacityTo: 1,
+      stops: [0, 50, 65, 91]
+    },
+  },
+  stroke: { dashArray: 4 },
+  labels: ['Mkt Share'],
+  colors: ['#7367f0'],
+}));
+
+const series = computed(() => stats.value?.trend_chart?.series || []);
+const marketShareSeries = computed(() => [stats.value?.market_share || 0]);
 
 const fetchStats = async () => {
   if (!props.product?.id) return;
@@ -103,23 +153,24 @@ const closeDialog = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="1100px"
+    max-width="900px"
     @update:model-value="closeDialog"
     persistent
     :fullscreen="xs"
+    scrollable
   >
     <VCard v-if="props.product" class="stats-dialog-card rounded-xl border-0 overflow-hidden bg-surface">
-      <!-- Cabecera Premium -->
-      <div class="header-gradient pa-5 d-flex align-center shadow-lg">
-        <VAvatar color="white" variant="flat" size="48" class="me-4 elevation-2">
-          <VIcon icon="tabler-chart-bar" size="28" color="primary" />
+      <!-- Cabecera Premium más compacta -->
+      <div class="header-gradient px-5 py-3 d-flex align-center shadow-sm">
+        <VAvatar color="white" variant="flat" size="36" class="me-3 elevation-2">
+          <VIcon icon="tabler-chart-bar" size="20" color="primary" />
         </VAvatar>
         <div class="d-flex flex-column">
-          <h2 class="text-h5 font-weight-black text-white leading-tight mb-0 uppercase tracking-wide">
+          <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0 uppercase tracking-wide">
             Analítica de Producto
           </h2>
-          <span class="text-white opacity-75 font-weight-bold text-xs uppercase tracking-tighter">
-            {{ props.product.name }} • {{ props.product.laboratory?.name || 'SIN LABORATORIO' }}
+          <span class="text-white opacity-75 font-weight-bold text-super-xs uppercase tracking-tighter truncate" style="max-inline-size: 600px;">
+            {{ props.product.name }}
           </span>
         </div>
         <VSpacer />
@@ -127,115 +178,109 @@ const closeDialog = () => {
           icon="tabler-x"
           variant="tonal"
           color="white"
-          size="small"
+          size="x-small"
           class="rounded-lg"
           @click="closeDialog"
         />
       </div>
 
-      <VCardText class="pa-6 bg-light">
-        <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-6 rounded" height="6" />
+      <VCardText class="pa-4 bg-light overflow-y-auto">
+        <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-4 rounded" height="4" />
 
         <template v-if="stats">
-          <VRow>
-            <!-- KPI Cards -->
-            <VCol cols="12" md="4">
-              <VCard variant="flat" class="kpi-card pa-5 rounded-xl border-dashed-2 h-100 position-relative overflow-hidden">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <span class="text-xs font-weight-black text-disabled uppercase letter-spacing-1">Unidades Totales</span>
-                  <VIcon icon="tabler-box" size="20" color="primary" />
+          <VRow dense>
+            <!-- Lado Izquierdo: KPIs y Market Share -->
+            <VCol cols="12" md="4" class="d-flex flex-column gap-2">
+              <VCard variant="flat" class="pa-4 rounded-lg border shadow-sm bg-surface flex-grow-1 d-flex flex-column align-center justify-center">
+                <div class="text-xs font-weight-black text-disabled uppercase mb-2">Preferencia de Compra</div>
+                <VueApexCharts
+                  type="radialBar"
+                  height="220"
+                  :options="marketShareOptions"
+                  :series="marketShareSeries"
+                />
+                <div class="text-super-xs font-weight-bold text-center text-medium-emphasis px-4">
+                  Participación del producto dentro de su grupo competitivo.
                 </div>
-                <div class="d-flex align-end gap-2">
-                  <h3 class="text-h3 font-weight-black text-primary leading-none">{{ stats.total_units_sold }}</h3>
-                  <span class="text-caption font-weight-bold text-disabled pb-1">UNDS</span>
-                </div>
-                <div class="mt-4 text-xs font-weight-bold text-medium-emphasis">
-                  Acumulado histórico de ventas
-                </div>
-                <div class="card-glow primary" />
               </VCard>
-            </VCol>
 
-            <VCol cols="12" md="4">
-              <VCard variant="flat" class="kpi-card pa-5 rounded-xl border-dashed-2 h-100 position-relative overflow-hidden">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <span class="text-xs font-weight-black text-disabled uppercase letter-spacing-1">Promedio Mensual</span>
-                  <VIcon icon="tabler-trending-up" size="20" color="success" />
-                </div>
-                <div class="d-flex align-end gap-2">
-                  <h3 class="text-h3 font-weight-black text-success leading-none">{{ stats.monthly_average }}</h3>
-                  <span class="text-caption font-weight-bold text-disabled pb-1">/MES</span>
-                </div>
-                <div class="mt-4 text-xs font-weight-bold text-medium-emphasis">
-                  Media de los últimos 12 meses
-                </div>
-                <div class="card-glow success" />
-              </VCard>
-            </VCol>
-
-            <VCol cols="12" md="4">
-              <VCard variant="flat" class="kpi-card pa-5 rounded-xl border-dashed-2 h-100 position-relative overflow-hidden">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <span class="text-xs font-weight-black text-disabled uppercase letter-spacing-1">Última Venta</span>
-                  <VIcon icon="tabler-clock" size="20" color="info" />
-                </div>
-                <template v-if="stats.last_sale">
-                  <div class="d-flex flex-column gap-1">
-                    <h3 class="text-h5 font-weight-black text-info leading-tight">
-                      {{ formatDateSimple(stats.last_sale.date) }}
-                    </h3>
-                    <div class="d-flex align-center gap-2 mt-1">
-                      <VChip size="x-small" color="info" variant="flat" class="font-weight-black">
-                        {{ formatPrice(stats.last_sale.price) }}
-                      </VChip>
-                      <span class="text-caption text-disabled font-weight-bold">
-                        x {{ stats.last_sale.quantity }} Unid.
-                      </span>
-                    </div>
+              <div class="d-flex gap-2">
+                <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface flex-grow-1">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Total Vendido</span>
+                  <div class="d-flex align-center gap-1">
+                    <span class="text-h6 font-weight-black text-primary">{{ stats.total_units_sold }}</span>
+                    <span class="text-super-xs font-weight-bold text-disabled pt-1">UNDS</span>
                   </div>
-                </template>
-                <template v-else>
-                  <span class="text-medium-emphasis font-weight-bold italic">Sin ventas registradas</span>
-                </template>
-                <div class="card-glow info" />
-              </VCard>
+                </VCard>
+                <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface flex-grow-1">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Promedio Mes</span>
+                  <div class="d-flex align-center gap-1">
+                    <span class="text-h6 font-weight-black text-success">{{ stats.monthly_average }}</span>
+                    <span class="text-super-xs font-weight-bold text-disabled pt-1">/MES</span>
+                  </div>
+                </VCard>
+              </div>
             </VCol>
 
-            <!-- Chart Section -->
-            <VCol cols="12">
-              <VCard variant="flat" class="pa-6 rounded-xl border shadow-sm bg-surface mt-4">
-                <div class="d-flex align-center justify-space-between mb-6">
-                  <div class="d-flex align-center gap-3">
-                    <div class="header-indicator primary shadow-sm" />
-                    <span class="text-subtitle-1 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-                      Tendencia de Ventas (Últimos 6 Meses)
+            <!-- Lado Derecho: Tendencia Comparativa -->
+            <VCol cols="12" md="8">
+              <VCard variant="flat" class="pa-4 rounded-lg border shadow-sm bg-surface h-100">
+                <div class="d-flex align-center justify-space-between mb-4">
+                  <div class="d-flex align-center gap-2">
+                    <div class="header-indicator primary" />
+                    <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                      Tendencia Histórica vs Competidores
                     </span>
-                  </div>
-                  <div class="d-flex gap-2">
-                    <VChip size="x-small" label color="primary" variant="tonal" class="font-weight-black">UNIDADES</VChip>
                   </div>
                 </div>
                 
-                <div class="mx-n4">
+                <div class="mx-n2">
                   <VueApexCharts
                     type="area"
-                    height="320"
+                    height="300"
                     :options="chartOptions"
                     :series="series"
                   />
                 </div>
               </VCard>
             </VCol>
+
+            <!-- Card de Última Venta (Footer del modal body) -->
+            <VCol cols="12">
+              <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-3">
+                  <VIcon icon="tabler-history" size="18" color="info" />
+                  <span class="text-xs font-weight-bold text-medium-emphasis">Detalle de la última operación registrada:</span>
+                </div>
+                <template v-if="stats.last_sale">
+                  <div class="d-flex align-center gap-4">
+                    <div class="d-flex flex-column align-end">
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Fecha</span>
+                      <span class="text-xs font-weight-black text-high-emphasis">{{ formatDateSimple(stats.last_sale.date) }}</span>
+                    </div>
+                    <div class="d-flex flex-column align-end">
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Precio</span>
+                      <span class="text-xs font-weight-black text-primary">{{ formatPrice(stats.last_sale.price) }}</span>
+                    </div>
+                    <div class="d-flex flex-column align-end">
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Cantidad</span>
+                      <span class="text-xs font-weight-black text-info">{{ stats.last_sale.quantity }} Unds</span>
+                    </div>
+                  </div>
+                </template>
+                <span v-else class="text-xs font-weight-bold text-disabled italic">No hay ventas previas</span>
+              </VCard>
+            </VCol>
           </VRow>
         </template>
         
-        <!-- Loading State Skeleton -->
-        <VRow v-else>
-          <VCol cols="12" md="4" v-for="i in 3" :key="i">
-            <VSkeletonLoader type="article" class="rounded-xl border h-100" />
+        <!-- Loading -->
+        <VRow v-else dense>
+          <VCol cols="12" sm="4" v-for="i in 3" :key="i">
+            <VSkeletonLoader type="list-item-two-line" class="rounded-lg border" />
           </VCol>
           <VCol cols="12">
-            <VSkeletonLoader type="image" class="rounded-xl border" height="300" />
+            <VSkeletonLoader type="image" class="rounded-lg border" height="200" />
           </VCol>
         </VRow>
       </VCardText>
