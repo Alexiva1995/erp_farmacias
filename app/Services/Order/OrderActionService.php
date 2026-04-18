@@ -188,17 +188,17 @@ class OrderActionService
 
                 if ($orderItem) {
                     $orderItem->quantity = $requestedQuantity;
-                    // Pack price handling (usually overridden by caller or pack logic, but keeping existing update logic)
-                    $orderItem->price = $unitPriceAtOrder * $requestedQuantity;
-                    $orderItem->unit_cost = $product->unit_cost; // Costo real, no precio de venta
+                    // Pack price handling (unit price)
+                    $orderItem->price = $unitPriceAtOrder;
+                    $orderItem->unit_cost = $product->unit_cost; 
                     $orderItem->unit_price_usd = $price_usd;
                     $orderItem->save();
                 } else {
                     $orderItem = $order->details()->create([
                         'product_id' => $validatedData['product_id'],
                         'quantity' => $requestedQuantity,
-                        'price' => $unitPriceAtOrder * $requestedQuantity,
-                        'unit_cost' => $product->unit_cost, // Costo real, no precio de venta
+                        'price' => $unitPriceAtOrder,
+                        'unit_cost' => $product->unit_cost, 
                         'unit_price_usd' => $price_usd,
                         'pack_id' => $packId,
                         'product_type' => 'pack',
@@ -348,13 +348,13 @@ class OrderActionService
                     }
                 }
 
-                // Compute Total Price Explicitly (Unit * Qty)
-                $calculatedTotalPrice = (float) ($finalUnitPrice * $qty);
+                // Compute Unit Price Explicitly
+                $calculatedUnitPrice = (float) $finalUnitPrice;
 
                 $newItem = $order->details()->create([
                     'product_id' => $validatedData['product_id'],
                     'quantity' => $qty,
-                    'price' => $calculatedTotalPrice,
+                    'price' => $calculatedUnitPrice,
                     'unit_cost' => $product->unit_cost, // Costo real del producto (siempre en moneda base USD de costos)
                     'unit_price_usd' => $discountPct > 0 ? ($price_usd * (1 - ($discountPct / 100))) : $price_usd,
                     'pack_id' => null,
@@ -463,7 +463,7 @@ class OrderActionService
                     $priceToSet = $priceToSet * $discountFactor;
                 }
 
-                $item->price = $priceToSet * $item->quantity;
+                $item->price = $priceToSet;
                 // $item->unit_cost = $priceToSet; // NO sobreescribir el costo real con el precio de venta recalculado
                 $item->save();
             }
@@ -542,8 +542,7 @@ class OrderActionService
 
                 // Usar el precio en BS mandado desde el frontend (Fijo y exacto)
                 // Si por alguna razón no existe (ventas viejas), cae de nuevo al catálogo
-                $priceBsTotal = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)) * $quantity);
-                $priceBs = $quantity > 0 ? ($priceBsTotal / $quantity) : 0;
+                $priceBs = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)));
 
                 // Si el producto tiene IVA, extraer el neto
                 if ($product->iva == 1) {
@@ -609,8 +608,7 @@ class OrderActionService
                 $quantity = $detail->quantity;
 
                 // Usar el precio en BS mandado desde el frontend para el desglose
-                $priceBsTotal = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)) * $quantity);
-                $priceBs = $quantity > 0 ? ($priceBsTotal / $quantity) : 0;
+                $priceBs = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)));
 
                 // Extraer el neto para el desglose detallado si tiene IVA
                 if ($product->iva == 1) {
@@ -619,10 +617,8 @@ class OrderActionService
 
                 $quantity = $detail->quantity;
                 $isTaxable = ($product->iva == 1);
-                $subtotal = $priceBs * $detail->quantity;
-                $ivaAmount = $isTaxable ? ($subtotal * 0.16) : 0;
-                $totalItem = $subtotal + $ivaAmount;
-
+                $ivaAmountUnit = $isTaxable ? ($priceBs * 0.16) : 0;
+                $totalItemUnit = $priceBs + $ivaAmountUnit;
 
                 // Insertamos en la tabla de detalles
                 FiscalHistoryDetail::create([
@@ -631,10 +627,10 @@ class OrderActionService
                     'product_name' => $product->name,
                     'quantity' => $quantity,
                     'vat_status' => $isTaxable ? 1 : 0,
-                    'exempt_amount' => !$isTaxable ? $subtotal : 0,
-                    'iva_amount' => $ivaAmount,
-                    'total_amount' => $totalItem,
-                    'big_amount' => $totalItem,
+                    'exempt_amount' => !$isTaxable ? $priceBs : 0,
+                    'iva_amount' => $ivaAmountUnit,
+                    'total_amount' => $totalItemUnit,
+                    'big_amount' => $totalItemUnit,
                 ]);
             }
 
@@ -735,19 +731,17 @@ class OrderActionService
                         $detail->quantity = $itemData['quantity'];
                     }
                     if ($orderId->currency === 'COP') {
-                        $detail->price = ceil(($itemData['price'] ?? 0) * $detail->quantity / 100) * 100;
-                        // $detail->unit_cost = ceil(($itemData['unit_cost'] ?? 0) / 100) * 100; // No sobreescribir costo real
-                        $detail->price_before_discount = ceil(($itemData['price_before_discount'] ?? 0) * $detail->quantity / 100) * 100;
+                        $detail->price = ceil(($itemData['price'] ?? 0) / 100) * 100;
+                        $detail->price_before_discount = ceil(($itemData['price_before_discount'] ?? 0) / 100) * 100;
                     } else {
-                        $detail->price = ($itemData['price'] ?? 0) * $detail->quantity;
-                        // $detail->unit_cost = $itemData['unit_cost'] ?? 0; // No sobreescribir costo real
-                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0) * $detail->quantity;
+                        $detail->price = ($itemData['price'] ?? 0);
+                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
                     }
                     if (isset($itemData['price_bs'])) {
-                        $detail->price_bs = $itemData['price_bs'] * $detail->quantity;
+                        $detail->price_bs = $itemData['price_bs'];
                     }
                     if (isset($itemData['price_before_discount_bs'])) {
-                        $detail->price_before_discount_bs = $itemData['price_before_discount_bs'] * $detail->quantity;
+                        $detail->price_before_discount_bs = $itemData['price_before_discount_bs'];
                     }
                     if (isset($itemData['discount_percentage'])) {
                         $detail->discount_percentage = $itemData['discount_percentage'];

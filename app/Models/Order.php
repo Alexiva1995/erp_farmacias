@@ -113,9 +113,9 @@ class Order extends Model
 
     public function updateTotals()
     {
-        // Sumamos todos los price de los detalles vinculados
-        $newTotal = $this->details()->sum('price');
-        $totalCost = $this->details()->sum(DB::raw('unit_cost * quantity'));
+        // Sumamos (precio unitario * cantidad) de los detalles vinculados
+        $newTotal = $this->details()->select(DB::raw('SUM(price * quantity) as total'))->value('total') ?? 0;
+        $totalCost = $this->details()->select(DB::raw('SUM(unit_cost * quantity) as total'))->value('total') ?? 0;
 
         $totalUsd = 0;
         if (strtoupper($this->currency) === 'USD') {
