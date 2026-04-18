@@ -128,6 +128,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/products/{product}/stock', [ProductController::class, 'getStock']);
     Route::patch('/products/incomplete/{product}', [ProductController::class, 'updateIncomplete']);
     Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
+    Route::get('/products/{product}/stats', [ProductController::class, 'getStats']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::get('/products/export', [ProductController::class, 'export']);

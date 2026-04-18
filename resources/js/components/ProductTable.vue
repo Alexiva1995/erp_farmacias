@@ -26,6 +26,7 @@ const emit = defineEmits([
   "count-product",
   "add-product-to-invoice",
   "product-merged",
+  "view-stats",
 ]);
 
 const headers = ref([
@@ -230,6 +231,10 @@ const handleMobilePageChange = (newPage) => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
             <template v-if="mode === 'products'">
+              <IconBtn @click="emit('view-stats', item)" color="primary" size="small">
+                <VIcon icon="tabler-eye" size="18" />
+                <VTooltip activator="parent">Ver Estadísticas</VTooltip>
+              </IconBtn>
               <IconBtn @click="emit('edit-product', item)" color="warning" size="small">
                 <VIcon icon="tabler-edit" size="18" />
                 <VTooltip activator="parent">Editar</VTooltip>
@@ -344,6 +349,15 @@ const handleMobilePageChange = (newPage) => {
           <!-- Acciones Rectangulares al 100% -->
           <div class="d-flex border-t border-opacity-10">
             <template v-if="mode === 'products'">
+              <VBtn 
+                color="primary" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-eye" 
+                @click="emit('view-stats', item)"
+              />
+              <VDivider vertical class="border-opacity-10" />
               <VBtn 
                 color="warning" 
                 variant="text" 

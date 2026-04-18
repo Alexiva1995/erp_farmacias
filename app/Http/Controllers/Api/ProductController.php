@@ -10,6 +10,7 @@ use App\Http\Requests\Product\UpdateProductRequest;
 use App\Models\Product;
 use App\Services\Products\ProductActionService;
 use App\Services\Products\ProductQueryService;
+use App\Services\Products\ProductStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Maatwebsite\Excel\Facades\Excel;
@@ -18,7 +19,8 @@ class ProductController extends Controller
 {
     public function __construct(
         private ProductQueryService $productQueryService,
-        private ProductActionService $productActionService
+        private ProductActionService $productActionService,
+        private ProductStatsService $productStatsService
     ) {
     }
 
@@ -502,6 +504,27 @@ class ProductController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener estadísticas de ventas del producto.
+     */
+    public function getStats(Product $product): JsonResponse
+    {
+        try {
+            $stats = $this->productStatsService->getProductSalesStats($product);
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats,
+                'message' => 'Estadísticas obtenidas exitosamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener estadísticas: ' . $e->getMessage()
             ], 500);
         }
     }

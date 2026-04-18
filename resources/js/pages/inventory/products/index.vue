@@ -1,6 +1,7 @@
 <script setup>
 import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
+import ProductStatsDialog from "@/components/dialogs/ProductStatsDialog.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -36,9 +37,9 @@ const categories = ref([]);
 const groups = ref([]);
 
 const isEditDialogVisible = ref(false);
-const currentProduct = ref({});
-
 const productFormErrors = ref({});
+const isStatsDialogVisible = ref(false);
+const selectedProductForStats = ref(null);
 
 const isLoadingFilters = ref(false);
 
@@ -153,6 +154,11 @@ const handleEditProduct = product => {
   currentProduct.value = { ...product };
   productFormErrors.value = {};
   isEditDialogVisible.value = true;
+};
+
+const handleViewStats = product => {
+  selectedProductForStats.value = product;
+  isStatsDialogVisible.value = true;
 };
 
 const handleDeleteProduct = async id => {
@@ -348,6 +354,7 @@ const handleSort = sortOptions => {
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"
       @product-merged="fetchProducts"
+      @view-stats="handleViewStats"
     />
 
     <ProductEditDialog
@@ -363,6 +370,11 @@ const handleSort = sortOptions => {
       @save="handleSaveProduct"
       @clear-errors="clearFormErrors"
       @laboratory-created="fetchSelectOptions"
+    />
+
+    <ProductStatsDialog
+      v-model="isStatsDialogVisible"
+      :product="selectedProductForStats"
     />
   </div>
 </template>
