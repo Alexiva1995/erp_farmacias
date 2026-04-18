@@ -148,6 +148,7 @@ watch(
       clonedProduct.is_colombian_origin = clonedProduct.is_colombian_origin
         ? 1
         : 0;
+      clonedProduct.is_scarce = clonedProduct.is_scarce ? 1 : 0;
       formData.value = clonedProduct;
     } else {
       formData.value = {
@@ -164,6 +165,7 @@ watch(
         iva: 0,
         psychotropic: 0,
         is_colombian_origin: 0,
+        is_scarce: 0,
         lots: [],
         photo_url: null,
       };
@@ -514,7 +516,7 @@ const submitForm = () => {
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
-                    <VCol cols="12" md="4">
+                    <VCol cols="12" sm="6" md="3">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
@@ -531,7 +533,7 @@ const submitForm = () => {
                         />
                       </VCard>
                     </VCol>
-                    <VCol cols="12" md="4">
+                    <VCol cols="12" sm="6" md="3">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
@@ -548,7 +550,7 @@ const submitForm = () => {
                         />
                       </VCard>
                     </VCol>
-                    <VCol cols="12" md="4">
+                    <VCol cols="12" sm="6" md="3">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
@@ -559,6 +561,23 @@ const submitForm = () => {
                           :true-value="1"
                           :false-value="0"
                           color="primary"
+                          density="compact"
+                          hide-details
+                          class="font-weight-black scale-90"
+                        />
+                      </VCard>
+                    </VCol>
+                    <VCol cols="12" sm="6" md="3">
+                      <VCard
+                        variant="flat"
+                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
+                      >
+                        <VSwitch
+                          v-model="formData.is_scarce"
+                          label="Producto Redundante"
+                          :true-value="1"
+                          :false-value="0"
+                          color="error"
                           density="compact"
                           hide-details
                           class="font-weight-black scale-90"

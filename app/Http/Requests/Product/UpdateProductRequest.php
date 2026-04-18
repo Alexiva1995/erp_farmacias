@@ -26,10 +26,10 @@ class UpdateProductRequest extends FormRequest
         if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
             $this->request->remove('photo_url');
         }
-        $this->merge([
             'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
             'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
+            'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
 
@@ -54,6 +54,7 @@ class UpdateProductRequest extends FormRequest
             'psychotropic' => 'sometimes|boolean',
             'iva' => 'sometimes|boolean',
             'is_colombian_origin' => 'sometimes|boolean',
+            'is_scarce' => 'sometimes|boolean',
             'group_id' => 'nullable|integer|exists:groups_products,id',
             'photo_url' => [
                 'sometimes',
