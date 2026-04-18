@@ -99,12 +99,13 @@ const totalUsdGlobal = computed(() => {
   return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_usd || 0), 0);
 });
 
-const usdDeliveredGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.usd_delivered || 0), 0);
+
+const totalCopGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_cop || 0), 0);
 });
 
-const copDeliveredGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.cop_delivered || 0), 0);
+const totalBsGlobal = computed(() => {
+  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_bs || 0), 0);
 });
 
 const totalSalesGlobal = computed(() => {
@@ -346,15 +347,16 @@ defineExpose({ printReport });
 
         <VCard
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+          :class="mobile ? 'pa-3' : 'pa-5'"
+          class="bg-white rounded-xl border shadow-sm mb-6"
         >
-          <VRow>
+          <VRow :class="mobile ? 'row-gap-2' : 'row-gap-3'">
             <VCol
-              cols="12"
-              sm="6"
-              md="3"
+              cols="6"
+              sm="4"
+              md="2"
             >
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column h-100 justify-center">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Créditos (CUSD)</span>
                 <div class="d-flex align-center gap-1">
                   <VIcon
@@ -362,43 +364,39 @@ defineExpose({ printReport });
                     color="error"
                     size="18"
                   />
-                  <h4 class="text-h6 font-weight-black text-error">
+                  <h4 class="text-subtitle-2 font-weight-black text-error mb-0">
                     {{ formatCurrency(totalCreditsUsdGlobal, 'USD') }}
                   </h4>
                 </div>
-                <span class="text-super-xs text-medium-emphasis mt-1 italic">Monto en Crédito</span>
               </div>
             </VCol>
 
             <VCol
-              cols="12"
-              sm="6"
-              md="3"
+              cols="6"
+              sm="4"
+              md="2"
             >
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column h-100 justify-center text-end text-sm-start">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Dólares (USD)</span>
-                <div class="d-flex align-center gap-1">
+                <div class="d-flex align-center justify-end justify-sm-start gap-1">
                   <VIcon
                     icon="tabler-currency-dollar"
                     color="primary"
                     size="18"
                   />
-                  <h4 class="text-h6 font-weight-black text-primary">
+                  <h4 class="text-subtitle-2 font-weight-black text-primary mb-0">
                     {{ formatCurrency(totalUsdGlobal, 'USD') }}
                   </h4>
-                </div>
-                <div class="text-super-xs font-weight-black text-grey-darken-1 mt-1">
-                  E. USD: {{ formatCurrency(usdDeliveredGlobal, 'USD') }}
                 </div>
               </div>
             </VCol>
 
             <VCol
-              cols="12"
-              sm="6"
-              md="3"
+              cols="6"
+              sm="4"
+              md="2"
             >
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column h-100 justify-center">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Pesos (COP)</span>
                 <div class="d-flex align-center gap-1">
                   <VIcon
@@ -406,12 +404,29 @@ defineExpose({ printReport });
                     color="success"
                     size="18"
                   />
-                  <h4 class="text-h6 font-weight-black text-success">
+                  <h4 class="text-subtitle-2 font-weight-black text-success mb-0">
                     {{ formatCurrency(totalCopGlobal, 'COP') }}
                   </h4>
                 </div>
-                <div class="text-super-xs font-weight-black text-grey-darken-1 mt-1">
-                  E. COP: {{ formatCurrency(copDeliveredGlobal, 'COP') }}
+              </div>
+            </VCol>
+
+            <VCol
+              cols="6"
+              sm="6"
+              md="3"
+            >
+              <div class="d-flex flex-column h-100 justify-center text-end text-sm-start">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Bolívares (BS)</span>
+                <div class="d-flex align-center justify-end justify-sm-start gap-1">
+                  <VIcon
+                    icon="tabler-coin"
+                    color="warning"
+                    size="18"
+                  />
+                  <h4 class="text-subtitle-2 font-weight-black text-warning mb-0">
+                    {{ formatCurrency(totalBsGlobal, 'BS') }}
+                  </h4>
                 </div>
               </div>
             </VCol>
@@ -424,10 +439,10 @@ defineExpose({ printReport });
               <VCard
                 variant="flat"
                 color="primary"
-                class="rounded-lg pa-3 text-center"
+                class="rounded-lg pa-3 text-center h-100 d-flex flex-column justify-center shadow-sm"
               >
                 <span class="text-super-xs font-weight-black text-white opacity-80 uppercase d-block mb-1">Venta Total (USD)</span>
-                <h4 class="text-h5 font-weight-black text-white leading-none">
+                <h4 class="text-subtitle-1 font-weight-black text-white leading-none mb-0">
                   {{ formatCurrency(totalSalesGlobal, 'USD') }}
                 </h4>
               </VCard>
@@ -450,9 +465,9 @@ defineExpose({ printReport });
           >
             <VCard
               variant="flat"
-              class="bg-white rounded-xl border shadow-sm h-100 overflow-hidden"
+              class="rounded-xl border shadow-md h-100 overflow-hidden seller-card-premium"
             >
-              <div class="pa-4 border-b bg-light d-flex justify-space-between align-center">
+              <div class="pa-4 border-b seller-card-header d-flex justify-space-between align-center">
                 <div class="d-flex gap-3 align-center">
                   <VAvatar
                     color="primary"
@@ -498,21 +513,9 @@ defineExpose({ printReport });
                       </td>
                     </tr>
                     <tr>
-                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">E. USD (Físico):</td>
-                      <td class="text-right font-weight-black pr-6 py-1 text-high-emphasis">
-                        {{ formatCurrency(closing.usd_delivered, 'USD') }}
-                      </td>
-                    </tr>
-                    <tr>
                       <td class="font-weight-black text-disabled uppercase pl-6 py-1">COP (Venta):</td>
                       <td class="text-right font-weight-black pr-6 py-1 text-success">
                         {{ formatCurrency(closing.total_cop, 'COP') }}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td class="font-weight-black text-disabled uppercase pl-6 py-1">E. COP (Físico):</td>
-                      <td class="text-right font-weight-black pr-6 py-1 text-high-emphasis">
-                        {{ formatCurrency(closing.cop_delivered, 'COP') }}
                       </td>
                     </tr>
                     <tr>
@@ -600,9 +603,7 @@ defineExpose({ printReport });
                 <th style="padding: 4px; font-size: 8pt;">RESPONSABLE</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">CUSD</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">USD</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">E. USD</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">COP</th>
-                <th style="padding: 4px; font-size: 8pt; text-align: end;">E. COP</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">Bs.</th>
                 <th style="padding: 4px; font-size: 8pt; text-align: end;">TOTAL USD</th>
               </tr>
@@ -623,13 +624,7 @@ defineExpose({ printReport });
                     {{ formatCurrency(cash.total_usd, 'USD') }}
                   </td>
                   <td style="padding: 4px; font-size: 8pt; text-align: end;">
-                    {{ formatCurrency(cash.usd_delivered, 'USD') }}
-                  </td>
-                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
                     {{ formatCurrency(cash.total_cop, 'COP') }}
-                  </td>
-                  <td style="padding: 4px; font-size: 8pt; text-align: end;">
-                    {{ formatCurrency(cash.cop_delivered, 'COP') }}
                   </td>
                   <td style="padding: 4px; font-size: 8pt; text-align: end;">
                     {{ formatCurrency(cash.total_bs, 'BS') }}
@@ -644,14 +639,11 @@ defineExpose({ printReport });
                   <td style="font-size: 7pt; padding-block: 2px; padding-inline: 15px 0;">
                     POS (TD y TC)
                   </td>
+                  <td style="font-size: 7pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- CUSD -->
+                  <td style="font-size: 7pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- USD -->
+                  <td style="font-size: 7pt; text-align: end;">{{ formatCurrency(0, 'COP') }}</td> <!-- COP -->
                   <td style="font-size: 7pt; text-align: end;">
                     {{ formatCurrency(parseFloat(cash.bs_card_debito || 0) + parseFloat(cash.bs_card_credit || 0) + parseFloat(cash.bs_card_payment_credit || 0), 'BS') }}
-                  </td>
-                  <td style="font-size: 7pt; text-align: end;">
-                    {{ formatCurrency(0, 'COP') }}
-                  </td>
-                  <td style="font-size: 7pt; text-align: end;">
-                    {{ formatCurrency(0, 'USD') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
                     {{ formatCurrency((parseFloat(cash.bs_card_debito || 0) + parseFloat(cash.bs_card_credit || 0) + parseFloat(cash.bs_card_payment_credit || 0)) / parseFloat(props.cashData.exchange_rate || 1), 'USD') }}
@@ -659,18 +651,19 @@ defineExpose({ printReport });
                 </tr>
 
                 <!-- Transferencia -->
-                <tr v-if="(parseFloat(cash.bs_transfer || 0) + parseFloat(cash.bs_mobile || 0) + parseFloat(cash.cop_transfer || 0) + parseFloat(cash.usd_transfer || 0) + parseFloat(cash.usd_paypal || 0) + parseFloat(cash.usd_binance || 0) + parseFloat(cash.bs_transfer_payment_credit || 0) + parseFloat(cash.bs_mobile_payment_credit || 0) + parseFloat(cash.cop_transfer_payment_credit || 0) + parseFloat(cash.usd_paypal_payment_credit || 0) + parseFloat(cash.usd_binance_payment_credit || 0)) > 0">
+                <tr v-if="(parseFloat(cash.bs_transfer || 0) + parseFloat(cash.bs_mobile || 0) + parseFloat(cash.cop_transfer || 0) + parseFloat(cash.usd_transfer || 0) + parseFloat(cash.usd_paypal || 0) + parseFloat(cash.usd_binance || 0) + parseFloat(cash.bs_transfer_payment_credit || 0) + parseFloat(cash.bs_mobile_payment_credit || 0) + parseFloat(cash.cop_transfer_payment_credit || 0) + parseFloat(usd_paypal_payment_credit || 0) + parseFloat(usd_binance_payment_credit || 0)) > 0">
                   <td style="font-size: 7pt; padding-block: 2px; padding-inline: 15px 0;">
                     TRANSFERENCIA (PAGO MÓVIL / BANCOS)
                   </td>
+                  <td style="font-size: 7pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- CUSD -->
                   <td style="font-size: 7pt; text-align: end;">
-                    {{ formatCurrency(parseFloat(cash.bs_transfer || 0) + parseFloat(cash.bs_mobile || 0) + parseFloat(cash.bs_transfer_payment_credit || 0) + parseFloat(cash.bs_mobile_payment_credit || 0), 'BS') }}
+                    {{ formatCurrency(parseFloat(cash.usd_transfer || 0) + parseFloat(cash.usd_paypal || 0) + parseFloat(cash.usd_binance || 0) + parseFloat(cash.usd_paypal_payment_credit || 0) + parseFloat(cash.usd_binance_payment_credit || 0), 'USD') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
                     {{ formatCurrency(parseFloat(cash.cop_transfer || 0) + parseFloat(cash.cop_transfer_payment_credit || 0), 'COP') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
-                    {{ formatCurrency(parseFloat(cash.usd_transfer || 0) + parseFloat(cash.usd_paypal || 0) + parseFloat(cash.usd_binance || 0) + parseFloat(cash.usd_paypal_payment_credit || 0) + parseFloat(cash.usd_binance_payment_credit || 0), 'USD') }}
+                    {{ formatCurrency(parseFloat(cash.bs_transfer || 0) + parseFloat(cash.bs_mobile || 0) + parseFloat(cash.bs_transfer_payment_credit || 0) + parseFloat(cash.bs_mobile_payment_credit || 0), 'BS') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
                     {{ formatCurrency((parseFloat(cash.usd_transfer || 0) + parseFloat(cash.usd_paypal || 0) + parseFloat(cash.usd_binance || 0) + parseFloat(cash.usd_paypal_payment_credit || 0) + parseFloat(cash.usd_binance_payment_credit || 0)) + (parseFloat(cash.bs_transfer || 0) + parseFloat(cash.bs_mobile || 0) + parseFloat(cash.bs_transfer_payment_credit || 0) + parseFloat(cash.bs_mobile_payment_credit || 0)) / parseFloat(props.cashData.exchange_rate || 1) + (parseFloat(cash.cop_transfer || 0) + parseFloat(cash.cop_transfer_payment_credit || 0)) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}
@@ -682,14 +675,15 @@ defineExpose({ printReport });
                   <td style="font-size: 7pt; padding-block: 2px; padding-inline: 15px 0;">
                     EN EFECTIVO (FONDO FÍSICO)
                   </td>
+                  <td style="font-size: 7pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- CUSD -->
                   <td style="font-size: 7pt; text-align: end;">
-                    {{ formatCurrency(parseFloat(cash.bs_cash || 0) + parseFloat(cash.bs_cash_payment_credit || 0), 'BS') }}
+                    {{ formatCurrency(parseFloat(cash.usd_cash || 0) + parseFloat(cash.usd_cash_payment_credit || 0) + parseFloat(cash.usd_conversion || 0), 'USD') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
                     {{ formatCurrency(parseFloat(cash.cop_cash || 0) + parseFloat(cash.cop_cash_payment_credit || 0), 'COP') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
-                    {{ formatCurrency(parseFloat(cash.usd_cash || 0) + parseFloat(cash.usd_cash_payment_credit || 0) + parseFloat(cash.usd_conversion || 0), 'USD') }}
+                    {{ formatCurrency(parseFloat(cash.bs_cash || 0) + parseFloat(cash.bs_cash_payment_credit || 0), 'BS') }}
                   </td>
                   <td style="font-size: 7pt; text-align: end;">
                     {{ formatCurrency((parseFloat(cash.usd_cash || 0) + parseFloat(cash.usd_cash_payment_credit || 0) + parseFloat(cash.usd_conversion || 0)) + (parseFloat(cash.bs_cash || 0) + parseFloat(cash.bs_cash_payment_credit || 0)) / parseFloat(props.cashData.exchange_rate || 1) + (parseFloat(cash.cop_cash || 0) + parseFloat(cash.cop_cash_payment_credit || 0)) / parseFloat(props.cashData.cop_exchange_rate || 1), 'USD') }}
@@ -697,7 +691,7 @@ defineExpose({ printReport });
                 </tr>
                 <tr>
                   <td
-                    colspan="5"
+                    colspan="6"
                     style="padding: 4px; border-block-end: 1px solid #dee2e6; color: #7f8c8d; font-size: 7pt;"
                   >
                     OBSERVACIONES: ____________________________________________________________________________________________________
@@ -711,13 +705,16 @@ defineExpose({ printReport });
                   TOTAL GENERAL CONSOLIDADO
                 </td>
                 <td style="padding: 6px; font-size: 9pt; text-align: end;">
-                  {{ formatCurrency(totalBsGlobal, 'BS') }}
+                  {{ formatCurrency(totalCreditsUsdGlobal, 'USD') }}
+                </td>
+                <td style="padding: 6px; font-size: 9pt; text-align: end;">
+                  {{ formatCurrency(totalUsdGlobal, 'USD') }}
                 </td>
                 <td style="padding: 6px; font-size: 9pt; text-align: end;">
                   {{ formatCurrency(totalCopGlobal, 'COP') }}
                 </td>
                 <td style="padding: 6px; font-size: 9pt; text-align: end;">
-                  {{ formatCurrency(totalUsdGlobal, 'USD') }}
+                  {{ formatCurrency(totalBsGlobal, 'BS') }}
                 </td>
                 <td style="padding: 6px; font-size: 9pt; text-align: end;">
                   {{ formatCurrency(totalSalesGlobal, 'USD') }}
@@ -729,14 +726,11 @@ defineExpose({ printReport });
                 <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">
                   DETALLE TOTAL POS
                 </td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- CUSD -->
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- USD -->
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'COP') }}</td> <!-- COP -->
                 <td style="font-size: 8pt; text-align: end;">
                   {{ formatCurrency(totalPosBsGlobal, 'BS') }}
-                </td>
-                <td style="font-size: 8pt; text-align: end;">
-                  {{ formatCurrency(0, 'COP') }}
-                </td>
-                <td style="font-size: 8pt; text-align: end;">
-                  {{ formatCurrency(0, 'USD') }}
                 </td>
                 <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">
                   {{ formatCurrency(totalPosEquivalentUsd, 'USD') }}
@@ -746,14 +740,15 @@ defineExpose({ printReport });
                 <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">
                   DETALLE TOTAL TRANSFERENCIA
                 </td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- CUSD -->
                 <td style="font-size: 8pt; text-align: end;">
-                  {{ formatCurrency(totalTransferBsGlobal, 'BS') }}
+                  {{ formatCurrency(totalTransferUsdGlobal, 'USD') }}
                 </td>
                 <td style="font-size: 8pt; text-align: end;">
                   {{ formatCurrency(totalTransferCopGlobal, 'COP') }}
                 </td>
                 <td style="font-size: 8pt; text-align: end;">
-                  {{ formatCurrency(totalTransferUsdGlobal, 'USD') }}
+                  {{ formatCurrency(totalTransferBsGlobal, 'BS') }}
                 </td>
                 <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">
                   {{ formatCurrency(totalTransferEquivalentUsd, 'USD') }}
@@ -763,14 +758,15 @@ defineExpose({ printReport });
                 <td style="font-size: 8pt; font-weight: bold; padding-inline-start: 10px;">
                   DETALLE TOTAL EFECTIVO
                 </td>
+                <td style="font-size: 8pt; text-align: end;">{{ formatCurrency(0, 'USD') }}</td> <!-- CUSD -->
                 <td style="font-size: 8pt; text-align: end;">
-                  {{ formatCurrency(totalCashBsGlobal, 'BS') }}
+                  {{ formatCurrency(totalCashUsdGlobal, 'USD') }}
                 </td>
                 <td style="font-size: 8pt; text-align: end;">
                   {{ formatCurrency(totalCashCopGlobal, 'COP') }}
                 </td>
                 <td style="font-size: 8pt; text-align: end;">
-                  {{ formatCurrency(totalCashUsdGlobal, 'USD') }}
+                  {{ formatCurrency(totalCashBsGlobal, 'BS') }}
                 </td>
                 <td style="font-size: 8pt; font-weight: bold; padding-inline-end: 5px; text-align: end;">
                   {{ formatCurrency(totalCashEquivalentUsd, 'USD') }}
@@ -902,5 +898,20 @@ defineExpose({ printReport });
 
 .italic {
   font-style: italic;
+}
+
+.seller-card-premium {
+  background-color: #f8fafc !important; /* Un gris azulado muy suave que contrasta con el blanco y el gris claro */
+  border-inline-start: 4px solid rgb(var(--v-theme-primary)) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.seller-card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+}
+
+.seller-card-header {
+  background-color: rgba(var(--v-theme-primary), 0.04) !important;
 }
 </style>

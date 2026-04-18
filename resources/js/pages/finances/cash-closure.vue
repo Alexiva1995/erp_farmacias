@@ -105,6 +105,16 @@ const fetchDailyCashData = async () => {
     });
     dailyCash.value = response.data.data;
     totalDailyCash.value = response.data.total;
+
+    // Sincronización automática de referencias si el modal está abierto
+    if (viewModalReference.value && dailyCashData.value.id) {
+      const updatedDaily = dailyCash.value.find(d => d.id === dailyCashData.value.id);
+      if (updatedDaily) {
+        // No llamamos a referenceDaily directamente para evitar re-abrir modal
+        // solo recalculamos las referencias
+        syncReferenceData(updatedDaily);
+      }
+    }
   } catch (error) {
     console.error("Hubo un error al obtener los cierres diarios:", error);
     toast.error("Error al obtener los cierres diarios.");
@@ -485,6 +495,31 @@ const viewDailyCash = async (daily) => {
 
 const loadingRefId = ref(null);
 
+const syncReferenceData = (daily) => {
+  if (!daily || !daily.cash_closings) return;
+  
+  const allPaymentReferences = daily.cash_closings.flatMap((closing) => {
+    return (closing.orders || []).flatMap((order) => {
+      let paymentMethods = order.payment_methods;
+      if (typeof paymentMethods === "string") {
+        try { paymentMethods = JSON.parse(paymentMethods); } catch (e) { paymentMethods = []; }
+      }
+      if (!Array.isArray(paymentMethods)) {
+        paymentMethods = paymentMethods ? [paymentMethods] : [];
+      }
+      return (paymentMethods || []).filter(m => m && m.reference).map((method) => ({
+        ...method,
+        order_id: order.id,
+        order_currency: order.currency,
+        seller_name: closing.seller?.username || "N/A",
+        is_confirmed: method.is_confirmed || false,
+      }));
+    });
+  });
+  referenceData.value = allPaymentReferences;
+  dailyCashData.value = daily;
+};
+
 const referenceDaily = async (daily) => {
   try {
     if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
@@ -734,6 +769,7 @@ const closingDaily = async (daily) => {
       v-model:isDialogVisible="viewModalReference"
       :reference="referenceData"
       :cashData="dailyCashData"
+      @refresh="fetchDailyCashData"
       @close="handleCloseViewModalReference"
     />
 

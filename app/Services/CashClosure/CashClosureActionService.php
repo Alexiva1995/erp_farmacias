@@ -331,21 +331,32 @@ class CashClosureActionService
             return ['summary' => collect(), 'global_total_sales' => 0.0];
         }
 
-        $rates = $this->getFormattedRates();
-        $bsRate = $rates['EUR'] ?? 1; // BS se convierte usando tasa EUR
-        $copRate = $rates['COP'] ?? 1;
+        // Subconsulta para obtener los totales históricos de las órdenes agrupadas por cierre de caja
+        // Esto captura el valor real en USD que tenía cada moneda en el momento de la venta
+        $ordersSubquery = DB::table('orders')
+            ->where('status', Order::COMPLETED)
+            ->select('cash_closing_id',
+                DB::raw('SUM(CASE WHEN currency = "BS" THEN total_amount_usd ELSE 0 END) as total_bs_usd_hist'),
+                DB::raw('SUM(CASE WHEN currency = "COP" THEN total_amount_usd ELSE 0 END) as total_cop_usd_hist'),
+                DB::raw('SUM(CASE WHEN currency = "USD" THEN total_amount_usd ELSE 0 END) as total_usd_usd_hist')
+            )
+            ->groupBy('cash_closing_id');
 
         $sellerSummary = CashClosing::query()
             ->whereIn('daily_closure_id', $dailyClosureIds)
             ->join('users', 'users.id', '=', 'cash_closing.seller_id')
+            ->leftJoinSub($ordersSubquery, 'order_totals', 'order_totals.cash_closing_id', '=', 'cash_closing.id')
             ->select(
                 'cash_closing.seller_id',
                 'users.username',
-                DB::raw('COUNT(cash_closing.id) as cash_closures_count'),
-                DB::raw('SUM(total_usd) as total_usd_seller'),
-                DB::raw('SUM(total_cop) as total_cop_seller'),
-                DB::raw('SUM(total_bs) as total_bs_seller'),
-                DB::raw('SUM(total_sales) as total_sales_seller')
+                DB::raw('COUNT(DISTINCT cash_closing.id) as cash_closures_count'),
+                DB::raw('SUM(total_usd) as total_usd_seller_native'),
+                DB::raw('SUM(total_cop) as total_cop_seller_native'),
+                DB::raw('SUM(total_bs) as total_bs_seller_native'),
+                DB::raw('SUM(total_sales) as total_sales_seller'),
+                // Recogemos las sumas históricas del JOIN
+                DB::raw('SUM(COALESCE(order_totals.total_bs_usd_hist, 0)) as total_bs_usd_hist'),
+                DB::raw('SUM(COALESCE(order_totals.total_cop_usd_hist, 0)) as total_cop_usd_hist')
             )
             ->groupBy('cash_closing.seller_id', 'users.username')
             ->orderByDesc('total_sales_seller')
@@ -358,14 +369,15 @@ class CashClosureActionService
         $totalSalesGlobalCopInUsd = 0.0;
         $totalSalesGlobal = 0.0;
 
-        $summaryData = $sellerSummary->map(function ($summary) use ($bsRate, $copRate, &$totalSalesBs, &$totalSalesUsd, &$totalSalesCop, &$totalSalesBsInUSD, &$totalSalesGlobalCopInUsd, &$totalSalesGlobal) {
+        $summaryData = $sellerSummary->map(function ($summary) use (&$totalSalesBs, &$totalSalesUsd, &$totalSalesCop, &$totalSalesBsInUSD, &$totalSalesGlobalCopInUsd, &$totalSalesGlobal) {
 
-            $bsInUsd = $summary->total_bs_seller / $bsRate;
-            $copInUsd = $summary->total_cop_seller / $copRate;
+            // Ya no usamos tasas actuales, usamos el valor histórico traído del JOIN
+            $bsInUsd = (float) $summary->total_bs_usd_hist;
+            $copInUsd = (float) $summary->total_cop_usd_hist;
 
-            $totalSalesBs += $summary->total_bs_seller;
-            $totalSalesUsd += $summary->total_usd_seller;
-            $totalSalesCop += $summary->total_cop_seller;
+            $totalSalesBs += (float) $summary->total_bs_seller_native;
+            $totalSalesUsd += (float) $summary->total_usd_seller_native;
+            $totalSalesCop += (float) $summary->total_cop_seller_native;
             $totalSalesBsInUSD += $bsInUsd;
             $totalSalesGlobalCopInUsd += $copInUsd;
             $totalSalesGlobal += (float) $summary->total_sales_seller;
@@ -375,9 +387,9 @@ class CashClosureActionService
                 'seller_name' => $summary->username,
                 'closures_count' => $summary->cash_closures_count,
                 'total_sales' => number_format($summary->total_sales_seller, 2, ',', '.'),
-                'total_usd' => number_format($summary->total_usd_seller, 2, ',', '.'),
-                'total_cop' => number_format($summary->total_cop_seller, 0, ',', '.'),
-                'total_bs' => number_format($summary->total_bs_seller, 2, ',', '.'),
+                'total_usd' => number_format($summary->total_usd_seller_native, 2, ',', '.'),
+                'total_cop' => number_format($summary->total_cop_seller_native, 0, ',', '.'),
+                'total_bs' => number_format($summary->total_bs_seller_native, 2, ',', '.'),
 
                 'total_bs_in_usd' => number_format($bsInUsd, 2, ',', '.'),
                 'total_cop_in_usd' => number_format($copInUsd, 2, ',', '.'),

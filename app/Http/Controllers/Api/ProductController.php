@@ -31,7 +31,7 @@ class ProductController extends Controller
             $product = Product::with(['category', 'laboratory', 'origin', 'group', 'profitability', 'lots'])
                 ->find((int) $productId);
             if ($product) {
-                $product->stock_calculado = $product->lots->where('expiration_date', '>=', now())->sum('quantity');
+                $product->stock_calculado = $product->lots->sum('quantity');
                 return response()->json(['data' => [$product], 'total' => 1]);
             }
             return response()->json(['data' => [], 'total' => 0]);
@@ -252,7 +252,6 @@ class ProductController extends Controller
         // Obtener lotes disponibles (no expirados y con stock)
         $availableLots = $product->lots()
             ->where('quantity', '>', 0)
-            ->where('expiration_date', '>', now())
             ->orderBy('expiration_date')
             ->get();
 
@@ -382,7 +381,6 @@ class ProductController extends Controller
             $formattedProducts = $products->map(function ($product) {
                 $nextLot = $product->lots
                     ->where('quantity', '>', 0)
-                    ->where('expiration_date', '>', now())
                     ->sortBy('expiration_date')
                     ->first();
 
@@ -393,7 +391,6 @@ class ProductController extends Controller
                     'stock' => $product->stock,
                     'available_stock' => $product->lots
                         ->where('quantity', '>', 0)
-                        ->where('expiration_date', '>', now())
                         ->sum('quantity'),
                     'sale_price' => (float) $product->sale_price,
                     'unit_cost' => (float) $product->unit_cost,
@@ -405,7 +402,6 @@ class ProductController extends Controller
                     'is_available' => true, // Porque ya filtramos por stock y activo
                     'lots' => $product->lots
                         ->where('quantity', '>', 0)
-                        ->where('expiration_date', '>', now())
                         ->sortBy('expiration_date')
                         ->values()
                         ->map(function ($lot) {

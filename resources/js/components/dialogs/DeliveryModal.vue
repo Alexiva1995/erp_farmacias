@@ -411,15 +411,16 @@ defineExpose({ printReport });
 
         <VCard
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+          :class="mobile ? 'pa-3' : 'pa-5'"
+          class="bg-white rounded-xl border shadow-sm mb-6"
         >
-          <VRow>
+          <VRow :class="mobile ? 'row-gap-2' : 'row-gap-3'">
             <VCol
-              cols="12"
+              cols="6"
               sm="6"
               md="3"
             >
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column h-100">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">USD Entregado</span>
                 <div class="d-flex align-center gap-1">
                   <VIcon
@@ -427,28 +428,28 @@ defineExpose({ printReport });
                     color="success"
                     size="18"
                   />
-                  <h4 class="text-h6 font-weight-black text-success">
+                  <h4 class="text-subtitle-2 font-weight-black text-success">
                     {{ formatCurrency(totalUsdGlobal, 'USD') }}
                   </h4>
                 </div>
-                <span class="text-super-xs text-medium-emphasis mt-1 italic">Efectivo + Electrónico</span>
+                <span v-if="!mobile" class="text-super-xs text-medium-emphasis mt-1 italic">Efectivo + Electrónico</span>
               </div>
             </VCol>
 
             <VCol
-              cols="12"
+              cols="6"
               sm="6"
               md="3"
             >
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column h-100 text-end text-sm-start">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">BS Entregado</span>
-                <div class="d-flex align-center gap-1">
+                <div class="d-flex align-center justify-end justify-sm-start gap-1">
                   <VIcon
                     icon="tabler-currency-bolivar"
                     color="warning"
                     size="18"
                   />
-                  <h4 class="text-h6 font-weight-black text-high-emphasis">
+                  <h4 class="text-subtitle-2 font-weight-black text-high-emphasis">
                     {{ formatCurrency(totalBsGlobal, 'BS') }}
                   </h4>
                 </div>
@@ -457,11 +458,11 @@ defineExpose({ printReport });
             </VCol>
 
             <VCol
-              cols="12"
+              cols="6"
               sm="6"
               md="3"
             >
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column h-100">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">COP Entregado</span>
                 <div class="d-flex align-center gap-1">
                   <VIcon
@@ -469,7 +470,7 @@ defineExpose({ printReport });
                     color="info"
                     size="18"
                   />
-                  <h4 class="text-h6 font-weight-black text-high-emphasis">
+                  <h4 class="text-subtitle-2 font-weight-black text-high-emphasis">
                     {{ formatCurrency(totalCopGlobal, 'COP') }}
                   </h4>
                 </div>
@@ -478,17 +479,17 @@ defineExpose({ printReport });
             </VCol>
 
             <VCol
-              cols="12"
+              cols="6"
               sm="6"
               md="3"
             >
               <VCard
                 variant="flat"
                 color="primary"
-                class="rounded-lg pa-3 text-center"
+                class="rounded-lg pa-3 text-center h-100 d-flex flex-column justify-center shadow-sm"
               >
                 <span class="text-super-xs font-weight-black text-white opacity-80 uppercase d-block mb-1">Carga Total (USD)</span>
-                <h4 class="text-h5 font-weight-black text-white leading-none">
+                <h4 class="text-subtitle-1 font-weight-black text-white leading-none">
                   {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}
                 </h4>
               </VCard>
@@ -511,9 +512,9 @@ defineExpose({ printReport });
           >
             <VCard
               variant="flat"
-              class="bg-white rounded-xl border shadow-sm h-100 overflow-hidden"
+              class="rounded-xl border shadow-md h-100 overflow-hidden seller-card-premium"
             >
-              <div class="pa-4 border-b bg-light d-flex justify-space-between align-center">
+              <div class="pa-4 border-b seller-card-header d-flex justify-space-between align-center">
                 <div class="d-flex gap-3 align-center">
                   <VAvatar
                     color="primary"
@@ -731,6 +732,9 @@ defineExpose({ printReport });
                     POS (TD y TC)
                   </td>
                   <td style="font-size: 8pt; text-align: end;">
+                    {{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito + seller.total_bs_card_paymentCredit, 'BS') }}
+                  </td>
+                  <td style="font-size: 8pt; text-align: end;">
                     {{ formatCurrency(0, 'COP') }}
                   </td>
                   <td style="font-size: 8pt; text-align: end;">
@@ -782,7 +786,7 @@ defineExpose({ printReport });
                 <tr>
                   <td
                     colspan="5"
-                    style=" padding: 4px;border-block-end: 1px solid #2c3e50; color: #7f8c8d; font-size: 7pt;"
+                    style=" padding: 4px;border-block-end: 1px solid #dee2e6; color: #7f8c8d; font-size: 7pt;"
                   >
                     OBSERVACIONES: ____________________________________________________________________________________________________
                   </td>
@@ -992,5 +996,20 @@ defineExpose({ printReport });
 
 .italic {
   font-style: italic;
+}
+
+.seller-card-premium {
+  background-color: #f8fafc !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-primary)) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.seller-card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+}
+
+.seller-card-header {
+  background-color: rgba(var(--v-theme-primary), 0.04) !important;
 }
 </style>

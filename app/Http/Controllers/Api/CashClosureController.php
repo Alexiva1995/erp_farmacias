@@ -201,15 +201,24 @@ class CashClosureController extends Controller
     {
         $request->validate([
             'order_id' => 'required|exists:orders,id',
-            'reference_code' => 'required|string',
+            'reference_code' => 'required',
         ]);
 
         $order = Order::findOrFail($request->order_id);
-        $paymentMethods = $order->payment_methods;
+        // Obtenemos los métodos de pago crudos (sin filtros del accessor)
+        $rawPaymentMethods = $order->getRawOriginal('payment_methods');
+        $paymentMethods = is_string($rawPaymentMethods) ? json_decode($rawPaymentMethods, true) : ($rawPaymentMethods ?? []);
+        
         $updated = false;
+        
+        // Normalizamos el código buscado (Mayúsculas y sin espacios)
+        $searchRef = strtoupper(preg_replace('/\s+/', '', (string)$request->reference_code));
 
         foreach ($paymentMethods as &$method) {
-            if (isset($method['reference']) && (string)$method['reference'] === (string)$request->reference_code) {
+            // Normalizamos el código actual del mismo modo para una comparación infalible
+            $currentRef = isset($method['reference']) ? strtoupper(preg_replace('/\s+/', '', (string)$method['reference'])) : null;
+            
+            if ($currentRef === $searchRef) {
                 $method['is_confirmed'] = true;
                 $updated = true;
                 break;
@@ -217,11 +226,24 @@ class CashClosureController extends Controller
         }
 
         if ($updated) {
-            $order->payment_methods = $paymentMethods;
-            $order->save();
-            return response()->json(['message' => 'Referencia confirmada con éxito']);
+            // Persistencia de "Hierro": Usamos DB::table para saltar accessors y cache de Eloquent
+            \Illuminate\Support\Facades\DB::table('orders')
+                ->where('id', $order->id)
+                ->update(['payment_methods' => json_encode($paymentMethods)]);
+            
+            \Illuminate\Support\Facades\Log::info("Referencia confirmada y ESCRITA EN DISCO: {$searchRef} en Orden #{$order->id}");
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Referencia confirmada con éxito'
+            ]);
         }
 
-        return response()->json(['message' => 'Referencia no encontrada'], 404);
+        \Illuminate\Support\Facades\Log::warning("No se encontró coincidencia para: {$searchRef} en los métodos de la Orden #{$order->id}");
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Referencia no encontrada'
+        ], 404);
     }
 }

@@ -413,7 +413,6 @@ class Product extends Model
     {
         $nextLot = $this->lots()
             ->withStock()
-            ->where('expiration_date', '>', now())
             ->orderBy('expiration_date')
             ->first();
 
@@ -427,7 +426,6 @@ class Product extends Model
     {
         return $this->lots()
             ->withStock()
-            ->where('expiration_date', '>', now())
             ->orderBy('expiration_date')
             ->first();
     }
@@ -439,7 +437,6 @@ class Product extends Model
     {
         return $this->lots()
             ->withStock()
-            ->where('expiration_date', '>', now())
             ->orderBy('expiration_date')
             ->get();
     }
@@ -459,7 +456,6 @@ class Product extends Model
     {
         return $this->lots()
             ->withStock()
-            ->where('expiration_date', '>', now())
             ->sum('quantity');
     }
 }

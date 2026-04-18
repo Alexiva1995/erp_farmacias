@@ -15,7 +15,7 @@ class ProductQueryService
     private function getBaseQuery(): Builder
     {
         return Product::query()
-            ->select('products.*', DB::raw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) AS stock_calculado"))
+            ->select('products.*', DB::raw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado"))
             ->with([
             'category',
             'laboratory',
@@ -152,11 +152,11 @@ class ProductQueryService
         $hasStock = $filters['hasStock'] ?? null;
 
         if ($hasStock === false) {
-            // Sin stock: verificar que la suma de lotes válidos sea 0 o que no existan lotes válidos
-            $query->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) <= 0');
+            // Sin stock: verificar que la suma de lotes sea 0
+            $query->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) <= 0');
         } elseif ($hasStock === true) {
-            // Con stock: verificar que la suma de lotes válidos sea mayor que 0
-            $query->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) > 0');
+            // Con stock: verificar que la suma de lotes sea mayor que 0
+            $query->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) > 0');
         }
 
         // Filtros de fecha para lotes (independientes del filtro de stock)
@@ -205,12 +205,12 @@ class ProductQueryService
                     ->orderBy('laboratories.name', $orderBy);
 
             case 'valid_stock':
-                $subQuery = DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0)');
+                $subQuery = DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0)');
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'stock_calculado':
                 // Ordenar por stock calculado como número
-                $subQuery = DB::raw('CAST(COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) AS UNSIGNED)');
+                $subQuery = DB::raw('CAST(COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS UNSIGNED)');
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'next_expiration':
@@ -385,7 +385,7 @@ class ProductQueryService
     public function subColumn(Builder $query): Builder
     {
         return $query->addSelect([
-            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE()), 0) as stock_calculado'),
+            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) as stock_calculado'),
             'ultima_fecha_vencimiento' => DB::table('product_lots')
                 ->selectRaw('MAX(expiration_date)')
                 ->whereColumn('product_lots.product_id', 'products.id'),

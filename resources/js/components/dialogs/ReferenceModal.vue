@@ -12,7 +12,7 @@ const props = defineProps({
   cashData: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:isDialogVisible", "modal-closed", "close"]);
+const emit = defineEmits(["update:isDialogVisible", "modal-closed", "close", "refresh"]);
 
 const loading = ref(false);
 
@@ -30,17 +30,22 @@ const headers = [
 ];
 
 const translateMethod = (methodKey) => {
-  if (!methodKey) return "Desconocido";
+  if (!methodKey) return "DESCONOCIDO";
   const translations = {
-    CARD: "Tarjeta",
-    BANK_TRANSFER: "Transferencia",
-    BANK_TRANSFER_BS: "Transferencia",
-    BINANCE: "Binance",
-    PAYPAL: "PayPal",
-    MOBILE_PAYMENT: "Pago Móvil",
+    CARD: "TARJETA",
+    DEBIT_CARD: "TARJETA DE DÉBITO",
+    CREDIT_CARD: "TARJETA DE CRÉDITO",
+    BANK_TRANSFER: "TRANSFERENCIA",
+    BANK_TRANSFER_BS: "TRANSFERENCIA BS",
+    BINANCE: "BINANCE",
+    PAYPAL: "PAYPAL",
+    MOBILE_PAYMENT: "PAGO MÓVIL",
+    CASH: "EFECTIVO",
+    ZELLE: "ZELLE",
+    TRANSFERENCIA: "TRANSFERENCIA",
   };
-  const key = String(methodKey).toUpperCase();
-  return translations[key] || key.replace(/_/g, " ");
+  const key = String(methodKey).trim().toUpperCase();
+  return translations[key] || key.replace(/_/g, " ").toUpperCase();
 };
 
 // Normalizar moneda a código ISO 4217 válido
@@ -76,6 +81,7 @@ const confirmReference = async (item) => {
     // Actualizar localmente el estado de confirmación
     item.is_confirmed = true;
     toast.success("Referencia confirmada correctamente");
+    emit("refresh");
   } catch (error) {
     console.error("Error al confirmar referencia:", error);
     toast.error("No se pudo confirmar la referencia");
@@ -146,103 +152,197 @@ const closeModal = () => {
           <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Listado de Transacciones</span>
         </div>
 
-        <VCard
-          variant="flat"
-          class="rounded-xl border shadow-sm overflow-hidden bg-white"
-        >
-          <VDataTable
-            :headers="headers"
-            :items="formattedReferences"
-            class="reference-table"
-            density="comfortable"
-            hover
-            :loading="loading"
+        <div v-if="!mobile">
+          <VCard
+            variant="flat"
+            class="rounded-xl border shadow-sm overflow-hidden bg-white"
           >
-            <!-- Vendedor -->
-            <template #item.seller_name="{ item }">
-              <div class="d-flex align-center gap-3 py-1">
+            <VDataTable
+              :headers="headers"
+              :items="formattedReferences"
+              class="reference-table"
+              density="comfortable"
+              hover
+              :loading="loading"
+            >
+              <!-- Vendedor -->
+              <template #item.seller_name="{ item }">
+                <div class="d-flex align-center gap-3 py-1">
+                  <VAvatar
+                    size="32"
+                    color="primary"
+                    variant="tonal"
+                    class="font-weight-black text-caption rounded-lg"
+                  >
+                    {{ item.seller_name?.charAt(0).toUpperCase() }}
+                  </VAvatar>
+                  <div class="d-flex flex-column leading-none">
+                    <span class="font-weight-black text-high-emphasis">{{ item.seller_name }}</span>
+                    <span class="text-super-xs text-disabled uppercase mt-1">Cajero Asignado</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Método -->
+              <template #item.method_label="{ item }">
+                <VChip
+                  size="x-small"
+                  variant="flat"
+                  color="info"
+                  class="font-weight-black px-2 shadow-sm uppercase"
+                >
+                  {{ item.method_label }}
+                </VChip>
+              </template>
+
+              <!-- Referencia -->
+              <template #item.reference="{ item }">
+                <code class="px-2 py-1 bg-light rounded text-primary font-weight-black border border-primary border-opacity-10">{{ item.reference }}</code>
+              </template>
+
+              <!-- Monto -->
+              <template #item.amount="{ item }">
+                <span class="font-weight-black text-success">{{ item.amount_display }}</span>
+              </template>
+
+              <!-- Acciones / Estado -->
+              <template #item.actions="{ item }">
+                <VBtn
+                  v-if="item.is_confirmed"
+                  size="small"
+                  variant="flat"
+                  color="success"
+                  class="font-weight-black rounded-lg shadow-sm text-super-xs px-4 no-pointer-events cursor-default"
+                  readonly
+                >
+                  <VIcon
+                    start
+                    icon="tabler-circle-check"
+                    size="14"
+                  />
+                  CONFIRMADA
+                </VBtn>
+                <VBtn
+                  v-else
+                  size="small"
+                  variant="flat"
+                  color="primary"
+                  class="font-weight-black rounded-lg shadow-sm text-super-xs px-4"
+                  @click="confirmReference(item)"
+                  :loading="loading"
+                >
+                  <VIcon
+                    start
+                    icon="tabler-check"
+                    size="14"
+                  />
+                  Confirmar
+                </VBtn>
+              </template>
+
+              <template #no-data>
+                <div class="py-12 text-center bg-white">
+                  <VIcon
+                    icon="tabler-clipboard-off"
+                    size="48"
+                    color="disabled"
+                    class="mb-3 opacity-20"
+                  />
+                  <p class="text-subtitle-2 font-weight-black text-disabled uppercase letter-spacing-1">
+                    Sin referencias pendientes en este cierre
+                  </p>
+                </div>
+              </template>
+            </VDataTable>
+          </VCard>
+        </div>
+
+        <!-- Vista de Cards para Móvil -->
+        <div v-else class="d-flex flex-column gap-4">
+          <div v-if="formattedReferences.length === 0" class="py-12 text-center bg-white rounded-xl border">
+            <VIcon
+              icon="tabler-clipboard-off"
+              size="48"
+              color="disabled"
+              class="mb-3 opacity-20"
+            />
+            <p class="text-subtitle-2 font-weight-black text-disabled uppercase letter-spacing-1 px-4">
+              Sin referencias pendientes
+            </p>
+          </div>
+
+          <VCard
+            v-for="(item, index) in formattedReferences"
+            :key="index"
+            variant="flat"
+            class="rounded-xl border shadow-sm overflow-hidden bg-white seller-card-premium"
+          >
+            <div class="pa-4 border-b seller-card-header d-flex justify-space-between align-center">
+              <div class="d-flex align-center gap-3">
                 <VAvatar
-                  size="32"
+                  size="36"
                   color="primary"
                   variant="tonal"
-                  class="font-weight-black text-caption rounded-lg"
+                  class="font-weight-black rounded-lg"
                 >
                   {{ item.seller_name?.charAt(0).toUpperCase() }}
                 </VAvatar>
                 <div class="d-flex flex-column leading-none">
-                  <span class="font-weight-black text-high-emphasis">{{ item.seller_name }}</span>
-                  <span class="text-super-xs text-disabled uppercase mt-1">Cajero Asignado</span>
+                  <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase">{{ item.seller_name }}</span>
+                  <VChip
+                    size="x-small"
+                    variant="flat"
+                    color="info"
+                    class="font-weight-black px-2 mt-1 uppercase"
+                    style="width: fit-content;"
+                  >
+                    {{ item.method_label }}
+                  </VChip>
                 </div>
               </div>
-            </template>
-
-            <!-- Método -->
-            <template #item.method_label="{ item }">
-              <VChip
-                size="x-small"
-                variant="flat"
-                color="info"
-                class="font-weight-black px-2 shadow-sm uppercase"
-              >
-                {{ item.method_label }}
-              </VChip>
-            </template>
-
-            <!-- Referencia -->
-            <template #item.reference="{ item }">
-              <code class="px-2 py-1 bg-light rounded text-primary font-weight-black border border-primary border-opacity-10">{{ item.reference }}</code>
-            </template>
-
-            <!-- Monto -->
-            <template #item.amount="{ item }">
-              <span class="font-weight-black text-success">{{ item.amount_display }}</span>
-            </template>
-
-            <!-- Acciones / Estado -->
-            <template #item.actions="{ item }">
-              <div
+              <div class="text-end">
+                <div class="font-weight-black text-success">{{ item.amount_display }}</div>
+                <div class="text-super-xs text-disabled font-weight-bold mt-1 uppercase">Ref: {{ item.reference }}</div>
+              </div>
+            </div>
+            
+            <VCardActions class="pa-3 bg-light justify-center">
+              <VBtn
                 v-if="item.is_confirmed"
-                class="d-flex align-center justify-center gap-1 text-success bg-success bg-opacity-10 rounded-pill px-3 py-1"
+                block
+                size="large"
+                variant="flat"
+                color="success"
+                class="font-weight-black rounded-lg shadow-sm no-pointer-events cursor-default"
+                readonly
               >
                 <VIcon
+                  start
                   icon="tabler-circle-check"
-                  size="16"
+                  size="20"
                 />
-                <span class="text-super-xs font-weight-black uppercase">Confirmada</span>
-              </div>
+                CONFIRMADA
+              </VBtn>
               <VBtn
                 v-else
-                size="small"
+                block
+                size="large"
                 variant="flat"
                 color="primary"
-                class="font-weight-black rounded-lg shadow-sm text-super-xs px-4"
+                class="font-weight-black rounded-lg shadow-sm"
                 @click="confirmReference(item)"
                 :loading="loading"
               >
                 <VIcon
                   start
                   icon="tabler-check"
-                  size="14"
+                  size="18"
                 />
-                Confirmar
+                Confirmar Referencia
               </VBtn>
-            </template>
-
-            <template #no-data>
-              <div class="py-12 text-center bg-white">
-                <VIcon
-                  icon="tabler-clipboard-off"
-                  size="48"
-                  color="disabled"
-                  class="mb-3 opacity-20"
-                />
-                <p class="text-subtitle-2 font-weight-black text-disabled uppercase letter-spacing-1">
-                  Sin referencias pendientes en este cierre
-                </p>
-              </div>
-            </template>
-          </VDataTable>
-        </VCard>
+            </VCardActions>
+          </VCard>
+        </div>
       </VCardText>
 
       <VDivider />

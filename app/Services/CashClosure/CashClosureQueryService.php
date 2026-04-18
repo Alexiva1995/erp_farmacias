@@ -245,10 +245,8 @@ class CashClosureQueryService
             $bs    = (float) $summary->amount_bs_month;
             $cop   = (float) $summary->amount_cop_month;
 
-            // Convertir cada moneda a USD antes de sumar (corrección crítica)
-            $bsInUsd  = $bsRate  > 0 ? $bs  / $bsRate  : 0;
-            $copInUsd = $copRate > 0 ? $cop / $copRate : 0;
-            $totalUsdEquivalent = round($usd + $bsInUsd + $copInUsd, 2);
+            // Usamos directamente la suma acumulada de ventas históricas (USD)
+            $totalUsdEquivalent = (float) $summary->total_sales_month;
 
             $daysClosed = $summary->days_closed;
             $dailyAverageRaw = ($daysClosed > 0) ? ((float)$summary->total_sales_month / $daysClosed) : 0;
