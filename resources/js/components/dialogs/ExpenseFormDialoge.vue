@@ -74,29 +74,24 @@ watch(
   { deep: true },
 );
 
-// Watch para calcular total USD automáticamente
-watch(
-  () => [
-    props.formData.total_amount,
-    props.formData.currency,
-    props.formData.exchange_rate,
-  ],
-  () => {
-    const totalAmount = Number(props.formData.total_amount) || 0;
-    const currency = props.formData.currency;
-    const exchangeRate = Number(props.formData.exchange_rate) || 0;
+// Computed para equivalencia USD centralizado
+const computedTotalUsd = computed(() => {
+  const totalAmount = Number(props.formData.total_amount) || 0;
+  const currency = props.formData.currency;
+  const exchangeRate = Number(props.formData.exchange_rate) || 0;
 
-    let totalUsd = 0;
-    if (currency === "USD") {
-      totalUsd = totalAmount;
-    } else if (exchangeRate > 0) {
-      totalUsd = totalAmount / exchangeRate;
-    }
+  let totalUsd = 0;
+  if (currency === "USD") {
+    totalUsd = totalAmount;
+  } else if (exchangeRate > 0) {
+    totalUsd = totalAmount / exchangeRate;
+  }
 
-    props.formData.total_usd = parseFloat(totalUsd.toFixed(2));
-  },
-  { deep: true },
-);
+  // Sincronizamos con el formData para el envío
+  props.formData.total_usd = parseFloat(totalUsd.toFixed(2));
+  
+  return props.formData.total_usd;
+});
 
 // Watch para limpiar tasa de cambio si la moneda es USD
 watch(
@@ -140,14 +135,19 @@ watch(
 );
 
 // FIXED: Handle file upload correctly for Vuetify VFileInput
-const handleFileUpload = (files) => {
-  // VFileInput passes the files array directly, not an event object
-  if (!files || files.length === 0) {
+const handleFileUpload = (input) => {
+  // Manejo robusto: Vuetify puede pasar un arreglo o un solo objeto File
+  let file = null;
+  if (Array.isArray(input) && input.length > 0) {
+    file = input[0];
+  } else if (input instanceof File) {
+    file = input;
+  }
+
+  if (!file) {
     clearSelectedFile();
     return;
   }
-
-  const file = files[0]; // Get the first file
 
   // Validate file type
   const allowedTypes = [
@@ -255,7 +255,7 @@ async function submitForm() {
     :fullscreen="$vuetify.display.smAndDown"
     transition="dialog-bottom-transition"
   >
-    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl bg-surface">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
@@ -296,7 +296,10 @@ async function submitForm() {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
+      <VCardText 
+        class="pa-4 pa-sm-6 bg-light"
+        style="max-block-size: calc(90vh - 160px); overflow-y: auto;"
+      >
         <!-- Información General -->
         <div class="d-flex align-center gap-2 mb-4">
           <div class="header-indicator primary shadow-sm" />
@@ -305,7 +308,7 @@ async function submitForm() {
 
         <VCard
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+          class="pa-3 bg-white rounded-xl border shadow-sm mb-4"
         >
           <VRow>
             <VCol
@@ -430,7 +433,7 @@ async function submitForm() {
 
         <VCard
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm mb-6"
+          class="pa-3 bg-white rounded-xl border shadow-sm mb-4"
         >
           <VRow>
             <VCol
@@ -510,48 +513,48 @@ async function submitForm() {
               </div>
             </VCol>
           </VRow>
-
-          <VRow
-            v-if="shouldShowExchangeRate || props.formData.total_amount"
-            class="mt-4 pt-4 border-t border-dashed"
-          >
-            <VCol
-              v-if="shouldShowExchangeRate"
-              cols="12"
-              sm="6"
+  
+            <VRow
+              v-if="shouldShowExchangeRate || props.formData.total_amount"
+              class="mt-2 pt-2 border-t border-dashed"
             >
-              <VTextField
-                v-model.number="props.formData.exchange_rate"
-                :error-messages="props.formError.exchange_rate"
-                label="Tasa de Cambio (Oficial)"
-                type="number"
-                variant="solo"
-                density="compact"
-                flat
-                bg-color="grey-lighten-4"
-                prepend-inner-icon="tabler-trending-up"
-                class="rounded-lg font-weight-bold"
-                hide-details="auto"
-              />
-            </VCol>
-            <VCol
-              cols="12"
-              :sm="shouldShowExchangeRate ? 6 : 12"
-            >
-              <div class="pa-3 rounded-lg bg-error bg-opacity-10 d-flex justify-space-between align-center border border-error border-opacity-20 animate__animated animate__fadeIn">
-                <div class="d-flex align-center gap-2 font-weight-black text-error text-xs uppercase">
-                  <VIcon
-                    icon="tabler-currency-dollar"
-                    size="18"
-                  />
-                  EQUIVALENCIA USD
+              <VCol
+                v-if="shouldShowExchangeRate"
+                cols="12"
+                sm="6"
+              >
+                <VTextField
+                  v-model.number="props.formData.exchange_rate"
+                  :error-messages="props.formError.exchange_rate"
+                  label="Tasa de Cambio (Oficial)"
+                  type="number"
+                  variant="solo"
+                  density="compact"
+                  flat
+                  bg-color="grey-lighten-4"
+                  prepend-inner-icon="tabler-trending-up"
+                  class="rounded-lg font-weight-bold"
+                  hide-details="auto"
+                />
+              </VCol>
+              <VCol
+                cols="12"
+                :sm="shouldShowExchangeRate ? 6 : 12"
+              >
+                <div class="pa-2 rounded-lg bg-surface border-lg border-error border-opacity-50 d-flex justify-space-between align-center animate__animated animate__fadeIn">
+                  <div class="d-flex align-center gap-2 font-weight-black text-error text-xs uppercase">
+                    <VIcon
+                      icon="tabler-currency-dollar"
+                      size="18"
+                    />
+                    Equivalente USD
+                  </div>
+                  <div class="text-h6 font-weight-black text-error leading-tight">
+                    ${{ computedTotalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                  </div>
                 </div>
-                <div class="text-h6 font-weight-black text-error leading-none">
-                  ${{ Number(props.formData.total_usd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
-                </div>
-              </div>
-            </VCol>
-          </VRow>
+              </VCol>
+            </VRow>
         </VCard>
 
         <!-- Documentación -->
@@ -562,7 +565,7 @@ async function submitForm() {
 
         <VCard
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm"
+          class="pa-4 bg-white rounded-xl border shadow-sm"
         >
           <VRow>
             <VCol cols="12">
@@ -758,13 +761,13 @@ async function submitForm() {
 }
 
 :deep(.v-field--variant-underlined .v-field__input) {
-  font-weight: 900 !important;
-  font-size: 1.1rem !important;
+  font-weight: 800 !important;
+  font-size: 0.95rem !important;
 }
 
 :deep(.v-field--variant-underlined .v-label) {
   font-weight: 800 !important;
-  font-size: 0.7rem !important;
+  font-size: 0.65rem !important;
   text-transform: uppercase !important;
   opacity: 0.8 !important;
 }

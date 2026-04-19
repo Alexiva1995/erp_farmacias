@@ -20,7 +20,8 @@ const headers = [
   { title: 'ID',             key: 'id',            sortable: true,  width: '70px' },
   { title: 'Descripción',     key: 'name',          sortable: true,  width: '250px' },
   { title: 'Categoría',       key: 'category.name', sortable: false, width: '150px' },
-  { title: 'Monto',           key: 'amount',        sortable: true,  align: 'end', width: '150px' },
+  { title: 'Moneda',          key: 'currency',      sortable: false, width: '100px' },
+  { title: 'Monto Total',     key: 'total_usd',     sortable: true,  align: 'end', width: '150px' },
   { title: 'Estado',          key: 'status',        sortable: false, align: 'center', width: '120px' },
   { title: 'Fecha',           key: 'created_at',    sortable: true,  width: '100px' },
   { title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '100px' },
@@ -43,96 +44,83 @@ const headers = [
       @update:options="(options) => emit('update:options', options)"
     >
       <!-- ID -->
-      <template #item.id="{ item }">
+      <template #[`item.id`]="{ item }">
         <span class="font-weight-black text-primary text-sm">{{ item.id }}</span>
       </template>
 
       <!-- Nombre / Descripción -->
-      <template #item.name="{ item }">
-        <div class="d-flex flex-column py-2" style="max-inline-size: 250px;">
-          <span class="text-sm font-weight-black text-high-emphasis text-truncate" :title="item.name">
-            {{ item.name }} {{ item.last_name || '' }}
+      <template #[`item.name`]="{ item }">
+        <div class="d-flex flex-column py-2">
+          <span class="text-sm font-weight-black text-high-emphasis leading-tight mb-1">
+            {{ item.name }}
           </span>
-          <span v-if="item.description" class="text-super-xs font-weight-bold text-disabled text-truncate" :title="item.description">
+          <span v-if="item.description" class="text-xs font-weight-medium text-disabled leading-normal">
             {{ item.description }}
           </span>
           <div class="d-flex align-center gap-1 mt-1">
             <VIcon icon="tabler-user" size="12" class="text-disabled" />
             <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.user?.username || 'S/U' }}</span>
-            <span class="text-disabled">•</span>
-            <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.count || 'N/A' }}</span>
           </div>
         </div>
       </template>
 
       <!-- Categoría -->
-      <template #item.category.name="{ item }">
+      <template #[`item.category.name`]="{ item }">
         <VChip size="x-small" color="primary" variant="tonal" class="rounded-lg font-weight-black px-2">
           <VIcon icon="tabler-tag" size="12" start />
           {{ item.category?.name || 'S/C' }}
         </VChip>
       </template>
 
+      <!-- Moneda -->
+      <template #[`item.currency`]="{ item }">
+        <VChip size="x-small" variant="tonal" class="font-weight-black">
+          {{ item.currency }}
+        </VChip>
+      </template>
+
       <!-- Monto -->
-      <template #item.amount="{ item }">
+      <template #[`item.total_usd`]="{ item }">
         <div class="d-flex flex-column align-end py-2">
           <span class="text-sm font-weight-black text-error">
-            {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP$' }}
-            {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+            ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
           </span>
-          <span v-if="item.currency !== 'USD'" class="text-super-xs font-weight-black text-disabled">
-            ≈ ${{ Number(item.total_usd || 0).toFixed(2) }}
+          <span v-if="item.currency !== 'USD'" class="text-super-xs font-weight-black text-disabled mt-1">
+            Orig: {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}
           </span>
         </div>
       </template>
 
       <!-- Estado -->
-      <template #item.status="{ item }">
+      <template #[`item.status`]="{ item }">
         <VChip
-          size="x-small"
+          size="small"
           :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
-          variant="flat"
-          class="font-weight-black uppercase px-2 rounded-lg"
+          variant="tonal"
+          class="font-weight-black uppercase px-2"
         >
           {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
         </VChip>
       </template>
 
       <!-- Fecha -->
-      <template #item.created_at="{ item }">
-        <span class="text-sm font-weight-black text-medium-emphasis">
-          {{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
-        </span>
+      <template #[`item.created_at`]="{ item }">
+        <span class="text-xs font-weight-bold text-disabled">{{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}</span>
       </template>
 
       <!-- Acciones -->
-      <template #item.acciones="{ item }">
-        <div class="d-flex align-center justify-center gap-2">
-          <VBtn
-            icon
-            size="32"
-            variant="tonal"
-            color="info"
-            class="rounded-circle shadow-sm"
-            :disabled="!item.url_file"
-            @click="() => verImagne(item)"
-          >
-            <VIcon icon="tabler-eye" size="18" />
-            <VTooltip activator="parent" location="top">Ver Recibo</VTooltip>
-          </VBtn>
-          
+      <template #[`item.acciones`]="{ item }">
+        <div class="d-flex justify-center gap-2">
           <VBtn
             v-if="item.status === 'Pending' || item.status === 'Pendiente'"
-            icon
-            size="32"
-            variant="tonal"
+            variant="text"
             color="success"
-            class="rounded-circle shadow-sm"
-            :disabled="statuModule.loadingItems.has(item.id)"
+            size="small"
+            class="rounded-lg"
+            :loading="statuModule.loadingItems.has(item.id)"
             @click="() => emit('approve', item.id)"
           >
-            <VProgressCircular v-if="statuModule.loadingItems.has(item.id)" indeterminate size="18" width="2" />
-            <VIcon v-else icon="tabler-circle-check" size="18" />
+            <VIcon icon="tabler-circle-check" size="22" />
             <VTooltip activator="parent" location="top">Aprobar Gasto</VTooltip>
           </VBtn>
         </div>
@@ -146,12 +134,12 @@ const headers = [
       </div>
       
       <template v-else-if="props.items.length > 0">
-        <div class="d-flex flex-column gap-4">
+        <div class="d-flex flex-column gap-3">
           <VCard
             v-for="item in props.items"
             :key="item.id"
             variant="flat"
-            class="rounded-lg border shadow-sm pa-4 bg-white position-relative overflow-hidden"
+            class="rounded-lg border shadow-soft pa-4 bg-white position-relative overflow-hidden"
           >
             <!-- Línea de Estado lateral -->
             <div 
@@ -159,62 +147,72 @@ const headers = [
               :class="item.status === 'Approved' ? 'bg-success' : item.status === 'Cancelled' ? 'bg-error' : 'bg-warning'"
             ></div>
 
-            <div class="d-flex justify-space-between align-start mb-3 ml-2">
+            <div class="d-flex justify-space-between align-center mb-2 ml-2">
               <div class="d-flex align-center gap-2">
-                <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+                <VChip
+                  size="x-small"
+                  variant="flat"
+                  class="rounded-lg font-weight-black bg-primary-opacity-1 text-primary"
+                >
+                  #{{ item.id }}
+                </VChip>
                 <VChip
                   size="x-small"
                   :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
                   variant="tonal"
-                  class="font-weight-black"
+                  class="font-weight-black uppercase px-2"
                 >
                   {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
                 </VChip>
               </div>
               <div class="text-right">
+                <span class="text-super-xs font-weight-black text-disabled uppercase d-block">Monto en USD</span>
                 <span class="text-sm font-weight-black text-error">
-                  {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP$' }}
-                  {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
-                </span>
-                <span v-if="item.currency !== 'USD'" class="text-super-xs font-weight-black text-disabled d-block">
-                  ≈ ${{ Number(item.total_usd || 0).toFixed(2) }}
+                  ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </span>
               </div>
             </div>
 
-            <div class="text-sm font-weight-black mb-1 ml-2">{{ item.name }}</div>
-            <div v-if="item.description" class="text-xs text-disabled mb-3 ml-2 line-clamp-2">{{ item.description }}</div>
+            <div class="ml-2 mb-1">
+              <div class="text-sm font-weight-black text-high-emphasis">{{ item.name }}</div>
+              <div v-if="item.description" class="text-xs text-disabled mt-1">{{ item.description }}</div>
+            </div>
 
-            <div class="d-flex justify-space-between align-center pt-3 border-t border-dashed ml-2">
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-tag" size="14" class="text-primary" />
-                <span class="text-super-xs font-weight-black uppercase">{{ item.category?.name || 'S/C' }}</span>
+            <!-- Datos adicionales móvil -->
+            <div class="ml-2 mb-3 mt-1 d-flex flex-wrap gap-2">
+               <span class="text-super-xs font-weight-black text-disabled uppercase">
+                 {{ item.count }}
+               </span>
+               <span class="text-disabled text-super-xs">•</span>
+               <span class="text-super-xs font-weight-black text-disabled uppercase">
+                 {{ item.currency }}
+               </span>
+               <span v-if="item.currency !== 'USD'" class="text-super-xs font-weight-medium text-disabled">
+                 ({{ Number(item.amount).toLocaleString('es-VE') }} original)
+               </span>
+            </div>
+
+            <div class="d-flex justify-space-between align-center mt-3 pt-3 border-t ml-2">
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-tag" size="14" class="text-disabled" />
+                <span class="text-super-xs font-weight-black uppercase text-disabled">{{ item.category?.name || 'S/C' }}</span>
               </div>
-              <span class="text-super-xs font-weight-black text-disabled">{{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}</span>
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
+                <span class="text-super-xs font-weight-black text-disabled">{{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}</span>
+              </div>
             </div>
 
             <div class="d-flex justify-end gap-2 mt-4 ml-2">
               <VBtn
-                v-if="item.url_file"
-                variant="tonal"
-                color="info"
-                size="small"
-                class="rounded-lg font-weight-bold"
-                prepend-icon="tabler-eye"
-                @click="verImagne(item)"
-              >
-                Recibo
-              </VBtn>
-              <VBtn
                 v-if="item.status === 'Pending' || item.status === 'Pendiente'"
                 color="success"
                 size="small"
-                class="rounded-lg font-weight-black"
-                prepend-icon="tabler-circle-check"
+                class="rounded-lg font-weight-black flex-grow-1"
                 :loading="statuModule.loadingItems.has(item.id)"
                 @click="() => emit('approve', item.id)"
               >
-                Aprobar
+                Aprobar Gasto
               </VBtn>
             </div>
           </VCard>
@@ -233,7 +231,7 @@ const headers = [
         </div>
       </template>
 
-      <div v-else class="text-center py-12 text-disabled uppercase font-weight-bold border-2 border-dashed rounded-lg">
+      <div v-else class="text-center py-12 text-disabled uppercase font-weight-bold border rounded-lg">
         No se encontraron gastos
       </div>
     </div>
@@ -254,7 +252,15 @@ const headers = [
 
 .premium-table :deep(td) {
   padding-block: 12px !important;
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+}
+
+.bg-surface-variant-light {
+  background-color: rgba(var(--v-theme-surface-variant), 5%);
+}
+
+.bg-primary-opacity-1 {
+  background: rgba(var(--v-theme-primary), 0.08);
 }
 
 .bg-surface-variant-light {
@@ -262,13 +268,6 @@ const headers = [
 }
 
 .text-super-xs { font-size: 0.65rem !important; }
-.line-clamp-2 {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
 
 .w-1 { width: 4px !important; }
 </style>

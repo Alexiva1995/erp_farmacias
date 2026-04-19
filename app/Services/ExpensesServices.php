@@ -6,6 +6,7 @@ use App\Contracts\Expenses;
 use App\Data\CreateExpenseData;
 use App\Data\CreateExpenseRecurrenceData;
 use App\Data\EditExpenseRecurrenceData;
+use App\Enums\ExpenseStatus;
 use App\Exports\ExpenseExport;
 use App\Models\Expense;
 use App\Repository\ExpensesRepository;
@@ -230,5 +231,10 @@ class ExpensesServices implements Expenses
             Log::info("actualización del gastos recurrente");
             Log::info($expenseRecurrenteEdit);
         }
+    }
+
+    public function getGlobalStats(array $filters): array
+    {
+        return $this->expensesRepository->getGlobalStats($filters);
     }
 }

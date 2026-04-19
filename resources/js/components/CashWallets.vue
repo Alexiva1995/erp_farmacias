@@ -211,6 +211,7 @@ const isCollapsed = ref(false);
         </VCol>
       </VRow>
     </div>
+  </div>
     </VExpandTransition>
   </div>
 </template>

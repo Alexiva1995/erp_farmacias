@@ -177,7 +177,7 @@ class ExpensesRepository
             $consulta->where("count", "=", $filtros["count"]);
         }
 
-        if (array_key_exists("currency", $filtros)) {
+        if (!empty($filtros["currency"])) {
             $consulta->where("currency", "=", $filtros["currency"]);
         }
 
@@ -187,14 +187,15 @@ class ExpensesRepository
             }
         }
 
-        if (array_key_exists("category_id_filtro", $filtros)) {
+        if (!empty($filtros["category_id_filtro"])) {
             $consulta->where("category_id", "=", $filtros["category_id_filtro"]);
         }
 
-        if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
-            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
-                $consulta->whereBetween("expense_date", [$filtros["fechaDesde_filtro"] . " 00:00:00", $filtros["fechaHasta_filtro"] . " 23:59:59"]);
-            }
+        if (!empty($filtros["fechaDesde_filtro"]) && !empty($filtros["fechaHasta_filtro"])) {
+            $consulta->whereBetween("expense_date", [
+                $filtros["fechaDesde_filtro"] . " 00:00:00",
+                $filtros["fechaHasta_filtro"] . " 23:59:59"
+            ]);
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
@@ -262,6 +263,27 @@ class ExpensesRepository
             ->get();
 
         return $consulta;
+    }
+
+    public function getGlobalStats(array $filters): array
+    {
+        $baseQuery = $this->buildFilter($filters);
+        
+        // Limpiamos la consulta de órdenes y selecciones previas para agrupar limpiamente
+        $stats = $baseQuery->selectRaw('status, COUNT(*) as total, SUM(total_usd) as amount')
+            ->setEagerLoads([]) // Quitamos el 'with' que trae buildFilter
+            ->reorder()       // Quitamos el 'orderBy' que trae buildFilter
+            ->groupBy('status')
+            ->get();
+
+        return [
+            'totalApproved' => (int) ($stats->where('status', 'Approved')->first()?->total ?? 0),
+            'amountApproved' => (float) ($stats->where('status', 'Approved')->first()?->amount ?? 0),
+            'totalPending' => (int) ($stats->where('status', 'Pending')->first()?->total ?? 0),
+            'amountPending' => (float) ($stats->where('status', 'Pending')->first()?->amount ?? 0),
+            'totalCancelled' => (int) ($stats->where('status', 'Cancelled')->first()?->total ?? 0),
+            'amountCancelled' => (float) ($stats->where('status', 'Cancelled')->first()?->amount ?? 0),
+        ];
     }
 
     private function convertAmountToBs($amount, $conversion_rate, $rate)

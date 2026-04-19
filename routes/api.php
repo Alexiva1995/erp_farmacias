@@ -677,6 +677,7 @@ Route::middleware("auth:sanctum")->group(function () {
             //Route::post("/create-recurrence", [ExpensesController::class, "createExpenseRecurrente"]);
             Route::post("/edit/{id}", [ExpensesController::class, "editExpense"]);
             Route::post("/filter-paginate", [ExpensesController::class, "filterWithPaginate"]);
+            Route::post("/stats", [ExpensesController::class, "getStats"]);
             Route::post("/exportar/excel", [ExpensesController::class, "exportExcel"]);
             Route::post("/change-status", [ExpensesController::class, "changeStatus"]);
             Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);

@@ -73,6 +73,7 @@ const kpis = [
   {
     title: "Aprobados",
     key: "totalApproved",
+    amountKey: "amountApproved",
     color: "success",
     icon: "tabler-circle-check",
     gradient: "bg-gradient-success",
@@ -80,6 +81,7 @@ const kpis = [
   {
     title: "Pendientes",
     key: "totalPending",
+    amountKey: "amountPending",
     color: "warning",
     icon: "tabler-clock",
     gradient: "bg-gradient-warning",
@@ -87,6 +89,7 @@ const kpis = [
   {
     title: "Cancelados",
     key: "totalCancelled",
+    amountKey: "amountCancelled",
     color: "error",
     icon: "tabler-circle-x",
     gradient: "bg-gradient-error",
@@ -146,18 +149,22 @@ const kpis = [
                 </span>
               </div>
               <div class="mt-auto">
-                <span
+                <div
                   :class="[
-                    'text-h4 font-weight-black leading-none',
+                    'text-h5 font-weight-black leading-none mb-1',
                     `text-${kpi.color}`,
                   ]"
                 >
-                  {{ stats[kpi.key] || 0 }}
-                </span>
-                <span
-                  class="text-xs text-disabled ml-1 font-weight-black uppercase"
-                  >Items</span
-                >
+                  ${{ (stats[kpi.amountKey] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </div>
+                <div class="d-flex align-center gap-1">
+                  <span class="text-xs font-weight-black text-high-emphasis">
+                    {{ stats[kpi.key] || 0 }}
+                  </span>
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">
+                    Gastos
+                  </span>
+                </div>
               </div>
             </VCardText>
             <div class="accent-border" :class="`bg-${kpi.color}`"></div>
@@ -187,7 +194,7 @@ const kpis = [
             <VIcon :icon="tab.icon" size="18" class="me-2" />
             {{ tab.label }}
             <VChip
-              v-if="stats[tab.totalKey] > 0 || tab.value === null"
+              v-if="stats[tab.totalKey] >= 0"
               size="x-small"
               variant="tonal"
               :color="tab.color"
@@ -195,10 +202,10 @@ const kpis = [
             >
               {{
                 tab.value === null
-                  ? stats.totalApproved +
-                    stats.totalPending +
-                    stats.totalCancelled
-                  : stats[tab.totalKey]
+                  ? (Number(stats.totalApproved) || 0) +
+                    (Number(stats.totalPending) || 0) +
+                    (Number(stats.totalCancelled) || 0)
+                  : (stats[tab.totalKey] || 0)
               }}
             </VChip>
           </VTab>

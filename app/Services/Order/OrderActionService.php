@@ -536,6 +536,7 @@ class OrderActionService
         $rateOfOrder = $resourceService->getExchangeRate($currencyOfOrder) ?: 1;
 
         if (!$fiscalexist) {
+            $detailsForHash = [];
             foreach ($order->details as $detail) {
                 $product = $detail->product;
                 $quantity = $detail->quantity;
@@ -559,6 +560,9 @@ class OrderActionService
                 } else {
                     $exemptAmount += $itemSubtotal;
                 }
+
+                // Colectar detalles para el hash: product_id:qty:price_bs_unit
+                $detailsForHash[] = "{$product->id}:{$quantity}:" . number_format($priceBs, 4, '.', '');
             }
 
             // --- CÁLCULOS FISCALES (Uniformidad total BS/COP/USD) ---
@@ -577,7 +581,8 @@ class OrderActionService
                 number_format($taxableAmount, 2, '.', ''),
                 number_format($totalIva, 2, '.', ''),
                 number_format($totalAmountBs, 2, '.', ''),
-                $order->id
+                $order->id,
+                implode('|', $detailsForHash)
             ]);
             $auditHash = hash('sha256', $auditString);
 

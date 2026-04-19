@@ -167,4 +167,15 @@ class ExpensesController extends Controller
 
         return ApiResponse::success(null, "Factura cargada", 200);
     }
+
+    public function getStats(Request $request): JsonResponse
+    {
+        $filters = $request->only([
+            'buscardor_filtro', 'category_id_filtro', 'currency', 'fechaDesde_filtro', 'fechaHasta_filtro'
+        ]);
+
+        $stats = $this->expenses->getGlobalStats($filters);
+
+        return ApiResponse::success($stats, "ok", 200);
+    }
 }

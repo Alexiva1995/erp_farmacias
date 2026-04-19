@@ -16,6 +16,9 @@ const Toast = Swal.mixin({
 })
 
 export const toast = {
+  fire(options) {
+    return Swal.fire(options);
+  },
   success(title = 'Acción realizada con éxito') {
     Toast.fire({
       icon: 'success',

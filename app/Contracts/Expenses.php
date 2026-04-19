@@ -35,4 +35,6 @@ interface Expenses
     public function exportToExcel(array $filters): ExpenseExport;
 
     public function executeRecurringExpensesOfToday(): void;
+
+    public function getGlobalStats(array $filters): array;
 }

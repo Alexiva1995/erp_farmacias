@@ -10,8 +10,11 @@ export function useExpenses() {
 
   const stats = reactive({
     totalApproved: 0,
+    amountApproved: 0,
     totalPending: 0,
+    amountPending: 0,
     totalCancelled: 0,
+    amountCancelled: 0,
     topCategory: null,
     loading: false,
   });
@@ -291,8 +294,8 @@ export function useExpenses() {
     }
   }
 
-  async function actualizarTabla() {
-    loading.value = true;
+  async function actualizarTabla(isSilent = false) {
+    if (!isSilent) loading.value = true;
     try {
       let gastosPaginate = await consultarGastos();
       statuModule.items = gastosPaginate.data;
@@ -308,20 +311,26 @@ export function useExpenses() {
   async function consultarStats() {
     stats.loading = true;
     try {
-      const [approved, pending, cancelled] = await Promise.all([
-        axios.post(`/finances/expenses/filter-paginate?page=1`, {
-          status: ["Approved"], type_of_expense: ["Normal"], itemsPerPage: 1,
-        }),
-        axios.post(`/finances/expenses/filter-paginate?page=1`, {
-          status: ["Pending"], type_of_expense: ["Normal"], itemsPerPage: 1,
-        }),
-        axios.post(`/finances/expenses/filter-paginate?page=1`, {
-          status: ["Cancelled"], type_of_expense: ["Normal"], itemsPerPage: 1,
-        }),
-      ]);
-      stats.totalApproved = approved.data?.data?.meta?.total || approved.data?.data?.total || 0;
-      stats.totalPending = pending.data?.data?.meta?.total || pending.data?.data?.total || 0;
-      stats.totalCancelled = cancelled.data?.data?.meta?.total || cancelled.data?.data?.total || 0;
+      const DATA = {
+        buscardor_filtro: buscardor_filtro.value,
+        category_id_filtro: category_id_filtro.value,
+        currency: currency.value,
+        fechaDesde_filtro: fechaDesde_filtro.value,
+        fechaHasta_filtro: fechaHasta_filtro.value,
+      };
+
+      Object.keys(DATA).forEach((key) => {
+        if (DATA[key] === null || DATA[key] === "" || DATA[key] === false) {
+          delete DATA[key];
+        }
+      });
+      
+      const response = await axios.post(`/finances/expenses/stats`, DATA);
+      if (response.status === 200) {
+        const s = response.data.data;
+        console.log("Stats received:", s);
+        Object.assign(stats, s);
+      }
     } catch (e) {
       console.error("Error cargando stats:", e);
     } finally {
@@ -532,7 +541,7 @@ export function useExpenses() {
       });
       if (response.status === 200) {
         toast.success("Estado actualizado con éxito");
-        await actualizarTabla();
+        await actualizarTabla(true);
         await consultarStats();
       }
     } catch (error) {
