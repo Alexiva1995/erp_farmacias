@@ -203,6 +203,7 @@ const isCollapsed = ref(false);
             </VCard>
           </VCol>
         </VRow>
+        </div>
       </div>
       <!-- Skeleton loader -->
       <VRow v-else>
@@ -211,9 +212,8 @@ const isCollapsed = ref(false);
         </VCol>
       </VRow>
     </div>
-  </div>
-    </VExpandTransition>
-  </div>
+  </VExpandTransition>
+</div>
 </template>
 
 <style scoped>
