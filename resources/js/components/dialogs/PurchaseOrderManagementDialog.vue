@@ -289,7 +289,7 @@ watch(
           <template #item.quantity="{ item }">
             <div class="d-flex align-center gap-2" :class="mobile ? 'py-2' : ''">
               <AppTextField
-                v-if="!purchaseOrder.sent_at"
+                v-if="purchaseOrder.status === 0"
                 v-model.number="item.quantity"
                 type="number"
                 density="compact"
@@ -335,7 +335,7 @@ watch(
                   <VTooltip activator="parent" location="top">Rechazar</VTooltip>
                 </VBtn>
                 <VBtn
-                  v-if="!purchaseOrder.sent_at"
+                  v-if="purchaseOrder.status === 0"
                   icon
                   size="32"
                   variant="text"

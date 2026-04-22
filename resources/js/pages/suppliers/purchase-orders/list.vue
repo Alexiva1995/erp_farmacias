@@ -218,8 +218,7 @@ const handleClearFilters = () => {
             },
           ]"
           :key="index"
-          cols="12"
-          sm="6"
+          cols="6"
           md="3"
           class="pa-1"
         >
@@ -234,16 +233,16 @@ const handleClearFilters = () => {
               }"
             ></div>
 
-            <VCardText class="pa-5 relative-content">
+            <VCardText :class="mobile ? 'pa-3' : 'pa-5'" class="relative-content">
               <div class="d-flex align-center justify-space-between mb-4">
                 <VAvatar
                   :color="kpi.color"
                   variant="tonal"
-                  size="48"
+                  :size="mobile ? 32 : 48"
                   rounded="lg"
                   class="elevation-1"
                 >
-                  <VIcon :icon="kpi.icon" size="26" />
+                  <VIcon :icon="kpi.icon" :size="mobile ? 18 : 26" />
                 </VAvatar>
 
                 <div class="text-right">
@@ -252,7 +251,7 @@ const handleClearFilters = () => {
                     style="letter-spacing: 1px !important"
                     >{{ kpi.title }}</span
                   >
-                  <h4 class="text-h4 font-weight-black mt-1">
+                  <h4 class="font-weight-black mt-1" :class="mobile ? 'text-sm' : 'text-h4'">
                     {{ kpi.value }}
                   </h4>
                 </div>
