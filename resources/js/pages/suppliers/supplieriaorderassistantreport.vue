@@ -336,7 +336,6 @@ onMounted(async () => {
         id: p.id,
       }));
     }),
-    }),
     consultarLaboratorios(),
     consultarProveedores()
   ]);

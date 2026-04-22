@@ -1,7 +1,9 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useDisplay } from 'vuetify';
-import { ref, computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   products: { type: Array, required: true },

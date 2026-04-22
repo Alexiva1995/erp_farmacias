@@ -215,6 +215,14 @@ const lapsoDeTiempoOpciones = [
               />
             </VCol>
 
+            <VCol cols="12" sm="6" md="3" lg="2" class="d-flex align-center">
+              <VCheckbox
+                :model-value="props.checkColombia"
+                label="Origen Colombia"
+                color="primary"
+                density="compact"
+                hide-details
+                class="mt-0"
                 @update:model-value="emit('update:checkColombia', $event)"
               />
             </VCol>
