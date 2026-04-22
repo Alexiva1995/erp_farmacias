@@ -216,23 +216,23 @@ const formatTime = (dateString) => {
           <div class="premium-card-header pa-4 bg-var-theme-background border-b position-relative">
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="d-flex align-center gap-2">
-                <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
-                <div class="d-flex flex-column">
-                  <span class="text-xs text-disabled text-uppercase font-weight-black">ID Orden</span>
-                  <span class="text-xs font-weight-black text-primary uppercase">{{ formatDate(item.order_date) }}</span>
+                <span class="text-sm font-weight-black text-primary">#{{ item.id }}</span>
+                <div class="d-flex flex-column ms-1">
+                  <span class="text-xxs text-disabled text-uppercase font-weight-black leading-none mb-1">Fecha Solicitud</span>
+                  <span class="text-xs font-weight-black text-high-emphasis uppercase">{{ formatDate(item.order_date) }}</span>
                 </div>
               </div>
               <VChip
                 :color="getStatusColor(item.status)"
                 size="x-small"
                 label
-                variant="tonal"
+                variant="flat"
                 class="font-weight-black rounded"
               >
                 {{ getStatusLabel(item.status) }}
               </VChip>
             </div>
-            <div class="text-sm font-weight-black text-high-emphasis mt-2 uppercase truncate">
+            <div class="text-sm font-weight-black text-high-emphasis mt-3 uppercase truncate-2-lines leading-tight">
               {{ item.supplier_name }}
             </div>
             <div class="premium-card-decoration" :class="`bg-${getStatusColor(item.status)}-opacity`"></div>

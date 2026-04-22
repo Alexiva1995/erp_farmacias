@@ -267,8 +267,9 @@ watch(
           </VRow>
         </div>
 
-        <!-- Tabla de Productos Premium -->
+        <!-- Vista Escritorio -->
         <VDataTableServer
+          v-if="!mobile"
           v-model:items-per-page="itemsPerPage"
           v-model:page="page"
           :headers="headers"
@@ -285,7 +286,7 @@ watch(
               <span class="font-weight-black text-sm text-high-emphasis">{{ item.product_name }}</span>
             </div>
           </template>
-
+ 
           <template #item.quantity="{ item }">
             <div class="d-flex align-center gap-2" :class="mobile ? 'py-2' : ''">
               <AppTextField
@@ -300,15 +301,15 @@ watch(
               <span v-else class="text-sm font-weight-black">{{ item.quantity }} u.</span>
             </div>
           </template>
-
+ 
           <template #item.unit_cost="{ item }">
             <span class="text-sm font-weight-bold text-disabled">$ {{ Number(item.unit_cost).toFixed(2) }}</span>
           </template>
-
+ 
           <template #item.subtotal="{ item }">
             <span class="font-weight-black text-sm text-primary">$ {{ (item.quantity * item.unit_cost).toFixed(2) }}</span>
           </template>
-
+ 
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-center gap-2">
               <template v-if="item.received === null">
@@ -359,6 +360,111 @@ watch(
             </div>
           </template>
         </VDataTableServer>
+ 
+        <!-- Vista Móvil (Cards) -->
+        <div v-else class="mobile-products-view pa-4 d-flex flex-column gap-4 bg-var-theme-background">
+          <template v-if="details.length > 0">
+            <VCard
+              v-for="item in details"
+              :key="item.id"
+              variant="flat"
+              border
+              class="rounded-lg premium-card overflow-hidden"
+            >
+              <div class="pa-4 bg-white border-b position-relative">
+                <div class="text-sm font-weight-black text-high-emphasis mb-2 uppercase leading-tight">
+                  {{ item.product_name }}
+                </div>
+                <div class="d-flex justify-space-between align-center">
+                  <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black">
+                    $ {{ Number(item.unit_cost).toFixed(2) }} /u
+                  </VChip>
+                  <div class="text-xs font-weight-black text-primary">
+                    SUBTOTAL: $ {{ (item.quantity * item.unit_cost).toFixed(2) }}
+                  </div>
+                </div>
+              </div>
+ 
+              <VCardText class="pa-4 bg-var-theme-background-light">
+                <div class="d-flex align-center justify-space-between gap-4">
+                  <!-- Control de Cantidad -->
+                  <div class="d-flex flex-column flex-grow-1">
+                    <span class="text-xxs text-disabled font-weight-black uppercase mb-1">Cantidad</span>
+                    <AppTextField
+                      v-if="purchaseOrder.status === 0"
+                      v-model.number="item.quantity"
+                      type="number"
+                      density="compact"
+                      hide-details
+                      class="max-inline-size-100 font-weight-black"
+                      @input="item.quantity = Math.max(0, item.quantity)"
+                    />
+                    <span v-else class="text-sm font-weight-black text-primary">{{ item.quantity }} u.</span>
+                  </div>
+ 
+                  <!-- Acciones de Estado -->
+                  <div class="d-flex align-center gap-2">
+                    <template v-if="item.received === null">
+                      <VBtn
+                        icon
+                        size="36"
+                        variant="elevated"
+                        color="success"
+                        class="rounded-lg shadow-sm"
+                        @click="updateStatus(item.id, true)"
+                      >
+                        <VIcon icon="tabler-check" size="20" />
+                      </VBtn>
+                      <VBtn
+                        icon
+                        size="36"
+                        variant="elevated"
+                        color="error"
+                        class="rounded-lg shadow-sm"
+                        @click="updateStatus(item.id, false)"
+                      >
+                        <VIcon icon="tabler-x" size="20" />
+                      </VBtn>
+                    </template>
+                    <VChip
+                      v-else
+                      :color="item.received ? 'success' : 'error'"
+                      size="small"
+                      label
+                      class="font-weight-black rounded px-4"
+                    >
+                      {{ item.received ? 'RECIVIDO' : 'RECHAZADO' }}
+                    </VChip>
+                  </div>
+                </div>
+ 
+                <div v-if="purchaseOrder.status === 0 && item.received === null" class="mt-4 pt-4 border-t d-flex justify-end">
+                   <VBtn
+                    variant="text"
+                    color="error"
+                    size="small"
+                    class="font-weight-black"
+                    prepend-icon="tabler-trash"
+                    @click="deleteDetail(item.id)"
+                  >
+                    ELIMINAR PRODUCTO
+                  </VBtn>
+                </div>
+              </VCardText>
+            </VCard>
+          </template>
+ 
+          <!-- Paginación Móvil -->
+          <div class="d-flex justify-center mt-4" v-if="totalDetails > itemsPerPage">
+            <VPagination
+              v-model="page"
+              :length="Math.ceil(totalDetails / itemsPerPage)"
+              total-visible="3"
+              size="small"
+              @update:model-value="fetchDetails"
+            />
+          </div>
+        </div>
       </VCardText>
 
       <VDivider />
