@@ -22,7 +22,7 @@ const baseForm = {
   payment_due_type: "invoice_date",
   invoice_date_reference: "issue_date",
   custom_due_days: null,
-  payment_due_reference: null,
+  payment_due_reference: "issue_date",
   payment_method: "Bs",
   dispatch_days: [],
   order_days: {},

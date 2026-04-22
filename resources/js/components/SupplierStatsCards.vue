@@ -52,7 +52,13 @@ const statistics = computed(() => [
 
 <template>
   <VRow>
-    <VCol v-for="item in statistics" :key="item.title" cols="6" sm="6" md="4">
+    <VCol
+      v-for="(item, index) in statistics"
+      :key="item.title"
+      :cols="index === 0 ? 12 : 6"
+      sm="6"
+      md="4"
+    >
       <VCard class="stats-card border-0 overflow-hidden mb-6">
         <!-- Decoración de fondo -->
         <div
@@ -62,25 +68,25 @@ const statistics = computed(() => [
           }"
         ></div>
 
-        <VCardText class="pa-5 relative-content">
+        <VCardText class="pa-4 pa-sm-5 relative-content">
           <div class="d-flex align-center justify-space-between mb-4">
             <VAvatar
               :color="item.color"
               variant="tonal"
-              size="48"
+              :size="$vuetify.display.xs ? 40 : 48"
               rounded="lg"
               class="elevation-1"
             >
-              <VIcon :icon="item.icon" size="26" />
+              <VIcon :icon="item.icon" :size="$vuetify.display.xs ? 22 : 26" />
             </VAvatar>
 
             <div class="text-right">
               <span
                 class="text-overline font-weight-bold text-disabled"
-                style="letter-spacing: 1px !important;"
+                style="letter-spacing: 1px !important; font-size: 0.65rem !important;"
                 >{{ item.title }}</span
               >
-              <h4 class="text-h4 font-weight-black mt-1">
+              <h4 class="text-h5 text-md-h4 font-weight-black mt-1">
                 <template v-if="loading">
                   <VProgressCircular
                     indeterminate
