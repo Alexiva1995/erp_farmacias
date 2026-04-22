@@ -10,6 +10,9 @@ const props = defineProps({
   products: { type: Array, default: () => [] },
   selectProducts: { type: Array, default: () => [] },
   showIgnored: { type: Boolean, default: false },
+  suppliers: { type: Array, default: () => [] },
+  selectedSupplierId: [Number, String],
+  globalDiscountPercent: [Number, String],
 });
 
 const emit = defineEmits([
@@ -23,6 +26,8 @@ const emit = defineEmits([
   "export-excel",
   "export-pdf",
   "update:showIgnored",
+  "update:selectedSupplierId",
+  "update:globalDiscountPercent",
 ]);
 
 const isAdvancedFiltersVisible = ref(false);
@@ -210,15 +215,37 @@ const lapsoDeTiempoOpciones = [
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="3" lg="2" class="d-flex align-center">
-              <VCheckbox
-                :model-value="props.checkColombia"
-                label="Origen Colombia"
-                color="primary"
-                density="compact"
-                hide-details
-                class="mt-0"
                 @update:model-value="emit('update:checkColombia', $event)"
+              />
+            </VCol>
+
+            <!-- Selector de Proveedor -->
+            <VCol cols="12" md="6" lg="3">
+              <VAutocomplete
+                :model-value="props.selectedSupplierId"
+                :items="props.suppliers"
+                placeholder="Comparar con Proveedor"
+                item-title="name"
+                item-value="id"
+                clearable
+                hide-details
+                density="compact"
+                prepend-inner-icon="tabler-truck-delivery"
+                @update:model-value="emit('update:selectedSupplierId', $event)"
+              />
+            </VCol>
+
+            <!-- Descuento Global -->
+            <VCol cols="12" sm="6" md="3" lg="2">
+              <VTextField
+                :model-value="props.globalDiscountPercent"
+                type="number"
+                placeholder="% Descuento"
+                hide-details
+                density="compact"
+                prepend-inner-icon="tabler-percentage"
+                suffix="%"
+                @update:model-value="emit('update:globalDiscountPercent', $event)"
               />
             </VCol>
           </VRow>

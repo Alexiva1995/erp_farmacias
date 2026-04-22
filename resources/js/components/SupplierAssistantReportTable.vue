@@ -10,7 +10,12 @@ const props = defineProps({
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  selectedSupplierId: [Number, String],
+  globalDiscountPercent: [Number, String, Object],
 });
+
+const manualQuantities = reactive({});
+const orderingIds = ref({}); // Para indicar que se está procesando un pedido
 
 const emit = defineEmits(["update:options"]);
 const { mobile } = useDisplay();
@@ -23,8 +28,15 @@ const headers = computed(() => {
   ];
 
   baseData.push(
-    { title: "Costo Actual", key: "unit_cost", sortable: false, align: 'center' },
+    { title: "Costo Actual", key: "unit_cost", sortable: true, align: 'center' },
     { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
+  ];
+
+  if (props.selectedSupplierId) {
+    baseData.push({ title: "Precio Seleccionado", key: "selected_supplier_price", sortable: false, align: 'center' });
+  }
+
+  baseData.push(
     { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
     { title: "Stock", key: "lote_quantity", sortable: true, align: 'end' },
     {
@@ -46,7 +58,8 @@ const headers = computed(() => {
         item.solicitar != "" && item.solicitar != null
           ? roundIaAnalysis(item.solicitar)
           : 0,
-    }
+    },
+    { title: "Pedido Manual", key: "manual_order", sortable: false, align: 'center', width: '150px' }
   );
 
   return baseData;
@@ -65,6 +78,67 @@ const rowClass = (item) => {
 const getPriceDiff = (current, offer) => {
   if (!current || !offer || current <= 0) return 0;
   return ((current - offer) / current) * 100;
+};
+
+const getSelectedSupplierPrice = (item) => {
+  if (!props.selectedSupplierId || !item.product_suppliers) return null;
+  const supplier = item.product_suppliers.find(ps => ps.supplier_id == props.selectedSupplierId);
+  if (!supplier) return null;
+  
+  const originalPrice = parseFloat(supplier.unit_cost_usd || 0);
+  const discount = parseFloat(props.globalDiscountPercent || 0);
+  
+  if (discount > 0) {
+    return originalPrice * (1 - discount / 100);
+  }
+  return originalPrice;
+};
+
+const handleManualOrder = async (item) => {
+  const quantity = manualQuantities[item.id];
+  if (!quantity || quantity <= 0) {
+    toast.info("Por favor ingrese una cantidad válida");
+    return;
+  }
+
+  let productSupplierId = null;
+  let supplierName = "";
+
+  if (props.selectedSupplierId) {
+    const ps = item.product_suppliers?.find(p => p.supplier_id == props.selectedSupplierId);
+    if (!ps) {
+      toast.error("El proveedor seleccionado no ofrece este producto");
+      return;
+    }
+    productSupplierId = ps.id;
+    supplierName = ps.supplier?.name || "Proveedor Seleccionado";
+  } else if (item.product_suppliers?.length > 0) {
+    productSupplierId = item.product_suppliers[0].id; // La mejor oferta está ordenada por ASC unit_cost_usd
+    supplierName = item.product_suppliers[0].supplier?.name || "Mejor Oferta";
+  }
+
+  if (!productSupplierId) {
+    toast.error("No se encontró un proveedor para este producto");
+    return;
+  }
+
+  orderingIds.value[item.id] = true;
+  try {
+    const data = {
+      productId: productSupplierId,
+      quantity: quantity,
+      discount: false,
+    };
+    
+    await axios.post('/suppliers-ia-assistant-report/add-product-to-order', data);
+    toast.success(`Pedido de ${quantity} unidades añadido a ${supplierName}`);
+    manualQuantities[item.id] = null; // Limpiar input
+  } catch (error) {
+    console.error("Error al pedir:", error);
+    toast.error("Hubo un error al procesar el pedido manual");
+  } finally {
+    orderingIds.value[item.id] = false;
+  }
 };
 </script>
 
@@ -117,16 +191,25 @@ const getPriceDiff = (current, offer) => {
             </div>
           </template>
 
-          <!-- Mejor Oferta -->
-          <template #item.product_suppliers="{ item }">
-            <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center">
-              <div class="d-flex align-center gap-1">
-                <span class="font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}</span>
-                <VIcon icon="tabler-trending-down" size="14" color="success" class="opacity-70" />
-              </div>
-              <span class="text-xxs text-disabled text-truncate" style="max-inline-size: 100px;">{{ item.product_suppliers[0].supplier.name }}</span>
-            </div>
             <span v-else class="text-xxs text-disabled italic">Sin ofertas</span>
+          </template>
+
+          <!-- Precio Seleccionado -->
+          <template #item.selected_supplier_price="{ item }">
+            <div v-if="getSelectedSupplierPrice(item)" class="d-flex flex-column align-center">
+              <span class="font-weight-black text-primary">$ {{ getSelectedSupplierPrice(item).toFixed(2) }}</span>
+              <VChip 
+                v-if="props.globalDiscountPercent > 0" 
+                size="x-small" 
+                color="info" 
+                variant="tonal" 
+                class="mt-1 font-weight-black"
+                style="font-size: 0.6rem;"
+              >
+                DESC {{ props.globalDiscountPercent }}%
+              </VChip>
+            </div>
+            <span v-else class="text-xxs text-disabled">---</span>
           </template>
 
           <!-- Ventas y Stock -->
@@ -140,23 +223,32 @@ const getPriceDiff = (current, offer) => {
             </VChip>
           </template>
 
-          <!-- Análisis IA -->
-          <template #item.solicitar="{ item }">
-            <div class="d-flex align-center justify-end gap-2">
-              <VAvatar 
-                :color="roundIaAnalysis(item.solicitar) > 0 ? 'success' : roundIaAnalysis(item.solicitar) < 0 ? 'error' : 'secondary'" 
-                variant="tonal" 
-                size="32" 
-                class="rounded-lg"
+            </div>
+          </template>
+
+          <!-- Pedido Manual -->
+          <template #item.manual_order="{ item }">
+            <div class="d-flex align-center gap-1">
+              <VTextField
+                v-model.number="manualQuantities[item.id]"
+                type="number"
+                density="compact"
+                hide-details
+                style="max-inline-size: 80px;"
+                class="manual-qty-input"
+                placeholder="Cant."
+              />
+              <VBtn
+                icon
+                size="30"
+                color="primary"
+                variant="tonal"
+                :loading="orderingIds[item.id]"
+                @click="handleManualOrder(item)"
               >
-                <VIcon :icon="roundIaAnalysis(item.solicitar) > 0 ? 'tabler-plus' : roundIaAnalysis(item.solicitar) < 0 ? 'tabler-minus' : 'tabler-check'" size="16" />
-              </VAvatar>
-              <span 
-                class="text-h6 font-weight-black"
-                :class="roundIaAnalysis(item.solicitar) > 0 ? 'text-success' : roundIaAnalysis(item.solicitar) < 0 ? 'text-error' : 'text-disabled'"
-              >
-                {{ Math.abs(roundIaAnalysis(item.solicitar)) }}
-              </span>
+                <VIcon icon="tabler-shopping-cart-plus" size="16" />
+                <VTooltip activator="parent" location="top">Añadir al pedido</VTooltip>
+              </VBtn>
             </div>
           </template>
         </VDataTableServer>
@@ -222,7 +314,7 @@ const getPriceDiff = (current, offer) => {
                     <VIcon icon="tabler-tag" size="14" color="success" />
                     <span class="text-super-xs font-weight-black text-success text-truncate" style="max-inline-size: 100px;">{{ item.product_suppliers[0].supplier.name }}</span>
                   </div>
-                  <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd_with_discount || 0).toFixed(2) }}</span>
+                  <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}</span>
                 </div>
               </div>
             </VCard>

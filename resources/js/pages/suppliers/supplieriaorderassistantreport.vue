@@ -36,6 +36,10 @@ const stock= ref("all");// Fallas , Execeso o All
 const showIgnored = ref(false);
 const showGraphs = ref(false);
 
+const suppliers = ref([]);
+const selectedSupplierId = ref(null);
+const globalDiscountPercent = ref(0);
+
 // KPIs globales
 const loadingStats = ref(false);
 const kpiGlobal = reactive({ necesitan: 0, exceso: 0, ok: 0 });
@@ -104,6 +108,15 @@ async function consultarProductos(){
 async function consultarLaboratorios(){
   let respuesta=await axios.get("/laboratories")
   laboratories.value = respuesta.data;
+}
+
+async function consultarProveedores() {
+  try {
+    const respuesta = await axios.get("/suppliers?itemsPerPage=-1");
+    suppliers.value = respuesta.data.data || [];
+  } catch (error) {
+    console.error("Error al cargar proveedores:", error);
+  }
 }
 
 const handleClearFilters = () => {
@@ -323,7 +336,9 @@ onMounted(async () => {
         id: p.id,
       }));
     }),
-    consultarLaboratorios()
+    }),
+    consultarLaboratorios(),
+    consultarProveedores()
   ]);
 
   loading.value = false;
@@ -349,6 +364,9 @@ onMounted(async () => {
       @clear-ignore="handleClearIgnore"
       @export-pdf="generarPdf"
       @export-excel="exportarExcel"
+      v-model:selectedSupplierId="selectedSupplierId"
+      v-model:globalDiscountPercent="globalDiscountPercent"
+      :suppliers="suppliers"
     />
 
     <!-- Tabla -->
@@ -360,6 +378,8 @@ onMounted(async () => {
       :page="page"
       :showGraphs="showGraphs"
       :sort-by="[{ key: sortBy, order: orderBy }]"
+      :selectedSupplierId="selectedSupplierId"
+      :globalDiscountPercent="globalDiscountPercent"
       @update:options="updateTableOptionsTable"
     />
   </div>
