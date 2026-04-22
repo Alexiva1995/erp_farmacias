@@ -32,7 +32,7 @@ const headers = computed(() => {
   baseData.push(
     { title: "Costo Actual", key: "unit_cost", sortable: true, align: 'center' },
     { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
-  ];
+  );
 
   if (props.selectedSupplierId) {
     baseData.push({ title: "Precio Seleccionado", key: "selected_supplier_price", sortable: false, align: 'center' });
@@ -186,6 +186,7 @@ const handleManualOrder = async (item) => {
           </template>
 
           <!-- Costo Actual -->
+          <template #item.unit_cost="{ item }">
             <div class="d-flex flex-column align-center">
               <span class="text-primary font-weight-black">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
               <span class="text-xxs text-disabled mt-n1">Costo Ficha</span>
