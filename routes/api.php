@@ -621,6 +621,8 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/upload-receipt", [PendingPaymentsController::class, "uploadReceipt"]);
             Route::post("/get-paid-amount", [PendingPaymentsController::class, "getPaidAmount"]);
             Route::get('expenses-history', [PendingPaymentsController::class, 'getExpensesHistory']);
+            Route::patch('/invoices/{invoiceId}/update-date', [PendingPaymentsController::class, 'updatePaymentDate']);
+            Route::patch('/invoices/{invoiceId}/mark-as-paid', [PendingPaymentsController::class, 'markAsPaidDirectly']);
         });
 
         // ISSUE #3: Rutas para facturas indexadas
@@ -702,6 +704,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/balance', 'getBalance')->name('balance');
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
+        Route::post('/{loan}/payments', 'addPayment')->name('addPayment');
         Route::put('/{loan}', 'update')->name('update');
         Route::delete('/{loan}', 'destroy')->name('delete');
     });

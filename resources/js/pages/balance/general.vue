@@ -1,11 +1,12 @@
 <script setup>
 import { useBalance } from "@/composables/useBalance";
 import { hexToRgb } from "@layouts/utils";
-import { computed, onMounted, ref } from "vue";
-import { useTheme } from "vuetify";
+import { useDisplay, useTheme } from "vuetify";
 
 const vuetifyTheme = useTheme();
+const display = useDisplay();
 const { balance, loading, fetchBalance, formatCurrency } = useBalance();
+import VueApexCharts from "vue3-apexcharts";
 
 const chartOptions = computed(() => {
   const currentTheme = vuetifyTheme.current.value.colors;
@@ -14,21 +15,7 @@ const chartOptions = computed(() => {
 
   return {
     donut: {
-      labels: {
-        show: true,
-        name: { fontSize: "1rem" },
-        value: {
-          fontSize: "1.2rem",
-          color: currentTheme.primary,
-          formatter: (val) => formatCurrency(val),
-        },
-        total: {
-          show: true,
-          label: "Total Activos",
-          fontSize: "1rem",
-          formatter: () => formatCurrency(balance.assets.total_bruto),
-        },
-      },
+      labels: ["Efectivo", "Inventario", "Mobiliario"],
       legend: { show: false },
       dataLabels: { enabled: false },
       stroke: { width: 0 },
@@ -43,10 +30,19 @@ const chartOptions = computed(() => {
             size: "70%",
             labels: {
               show: true,
+              name: { fontSize: "0.9rem", show: true, offsetY: -5 },
+              value: {
+                fontSize: "1.1rem",
+                color: currentTheme.primary,
+                fontWeight: 700,
+                offsetY: 5,
+                formatter: (val) => formatCurrency(val),
+              },
               total: {
                 show: true,
-                fontSize: "13px",
+                fontSize: "0.8rem",
                 label: "Total Activos",
+                fontWeight: 600,
                 formatter: () => formatCurrency(balance.assets.total_bruto),
               },
             },
@@ -69,19 +65,23 @@ const chartOptions = computed(() => {
   };
 });
 
+const donutHeight = computed(() => {
+  return display.xs.value ? 200 : 250;
+});
+
 const donutSeries = computed(() => [
-  balance.assets.details.cash,
-  balance.assets.details.inventory,
-  balance.assets.details.furniture_bruto,
+  Number(balance.assets.details.cash || 0),
+  Number(balance.assets.details.inventory || 0),
+  Number(balance.assets.details.furniture_bruto || 0),
 ]);
 
 const barSeries = computed(() => [
   {
     name: "Monto",
     data: [
-      balance.assets.total_neto,
-      balance.liabilities.total,
-      balance.equity,
+      Number(balance.assets.total_neto || 0),
+      Number(balance.liabilities.total || 0),
+      Number(balance.equity || 0),
     ],
   },
 ]);
@@ -99,12 +99,12 @@ onMounted(() => {
     <div class="d-flex flex-column gap-1 mt-1">
       <!-- CARDS DE RATIOS -->
       <VRow class="ma-0 mx-n1 mb-5" dense>
-        <VCol cols="12" md="4" class="pa-1">
+        <VCol cols="12" sm="4" class="pa-1">
           <VHover v-slot="{ isHovering, props }">
             <VCard
               v-bind="props"
-              :elevation="isHovering ? 5 : 1"
-              class="h-100 rounded-lg border bg-surface transition-swing"
+              :elevation="isHovering ? 6 : 2"
+              class="h-100 rounded-xl border-t-0 bg-surface transition-swing shadow-premium"
             >
               <VCardText class="pa-4 d-flex flex-column h-100">
                 <div class="d-flex align-center gap-3 mb-3">
@@ -128,12 +128,12 @@ onMounted(() => {
           </VHover>
         </VCol>
         
-        <VCol cols="12" md="4" class="pa-1">
+        <VCol cols="12" sm="4" class="pa-1">
           <VHover v-slot="{ isHovering, props }">
             <VCard
               v-bind="props"
-              :elevation="isHovering ? 5 : 1"
-              class="h-100 rounded-lg border bg-surface transition-swing"
+              :elevation="isHovering ? 6 : 2"
+              class="h-100 rounded-xl border-t-0 bg-surface transition-swing shadow-premium"
             >
               <VCardText class="pa-4 d-flex flex-column h-100">
                 <div class="d-flex align-center gap-3 mb-3">
@@ -155,12 +155,12 @@ onMounted(() => {
           </VHover>
         </VCol>
         
-        <VCol cols="12" md="4" class="pa-1">
+        <VCol cols="12" sm="4" class="pa-1">
           <VHover v-slot="{ isHovering, props }">
             <VCard
               v-bind="props"
-              :elevation="isHovering ? 5 : 1"
-              class="h-100 rounded-lg border bg-surface transition-swing"
+              :elevation="isHovering ? 6 : 2"
+              class="h-100 rounded-xl border-t-0 bg-surface transition-swing shadow-premium"
             >
               <VCardText class="pa-4 d-flex flex-column h-100">
                 <div class="d-flex align-center gap-3 mb-3">
@@ -199,18 +199,18 @@ onMounted(() => {
               <VCol
                 cols="12"
                 sm="5"
-                class="pa-4 d-flex align-center justify-center"
+                class="pa-2 pa-sm-4 d-flex align-center justify-center"
               >
                 <VueApexCharts
                   v-if="isMounted"
                   type="donut"
-                  height="250"
+                  :height="donutHeight"
                   :options="chartOptions.donut"
                   :series="donutSeries"
                 />
               </VCol>
               <VCol cols="12" sm="7" class="d-flex flex-column">
-                <VList density="comfortable" class="pa-4 flex-grow-1">
+                <VList density="comfortable" class="pa-2 pa-sm-4 flex-grow-1">
                   <VListItem>
                     <template #prepend>
                       <VAvatar
@@ -287,11 +287,11 @@ onMounted(() => {
                     </template>
                   </VListItem>
                 </VList>
-                <div class="px-6 pb-6 pt-2 mt-auto">
+                <div class="px-3 px-sm-6 pb-6 pt-2 mt-auto">
                   <VAlert
                     color="success"
                     variant="tonal"
-                    class="rounded-lg"
+                    class="rounded-lg border-opacity-25"
                     density="compact"
                   >
                     <div class="d-flex justify-space-between align-center">
@@ -390,7 +390,10 @@ onMounted(() => {
 .balance-premium {
   background-color: #f8fafc;
   .v-card {
-    border-radius: 8px !important;
+    border-radius: 12px !important;
+    &.shadow-premium {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+    }
   }
 }
 .shadow-soft {

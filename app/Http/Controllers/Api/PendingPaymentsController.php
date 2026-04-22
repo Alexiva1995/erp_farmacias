@@ -1459,6 +1459,45 @@ class PendingPaymentsController extends Controller
     }
 
     /**
+     * Actualizar la fecha de pago de una factura
+     */
+    public function updatePaymentDate(Request $request, int $invoiceId): JsonResponse
+    {
+        try {
+            $request->validate([
+                'payment_date' => 'required|date'
+            ]);
+
+            $invoice = Invoice::findOrFail($invoiceId);
+            $invoice->update([
+                'payment_date' => $request->payment_date
+            ]);
+
+            return ApiResponse::success($invoice, 'Fecha de pago actualizada exitosamente');
+        } catch (\Exception $e) {
+            return ApiResponse::error('Error al actualizar la fecha: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Marcar una factura como pagada directamente (sin generar gastos)
+     */
+    public function markAsPaidDirectly(int $invoiceId): JsonResponse
+    {
+        try {
+            $invoice = Invoice::findOrFail($invoiceId);
+            $invoice->update([
+                'status_payment' => 1,
+                'status' => 'ordered'
+            ]);
+
+            return ApiResponse::success($invoice, 'Factura marcada como pagada (sin registro de gasto)');
+        } catch (\Exception $e) {
+            return ApiResponse::error('Error al marcar factura como pagada: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Calcular monto restante para una factura individual considerando pagos parciales
      */
     private function calculateRemainingAmountForInvoice(Invoice $invoice): float

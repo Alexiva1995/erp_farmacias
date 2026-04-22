@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SupplierType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -45,12 +46,14 @@ class Supplier extends Model
         'invoice_date_reference',
         'address',
         'public_token',
-        'is_indexed'
+        'is_indexed',
+        'type'
     ];
 
     protected $casts = [
         'dispatch_days' => 'array',
         'order_days' => 'array',
+        'type' => SupplierType::class,
     ];
 
     /**

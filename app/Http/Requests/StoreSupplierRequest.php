@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\SupplierType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,12 +24,13 @@ class StoreSupplierRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'type' => ['sometimes', 'string', Rule::enum(SupplierType::class)],
             'name' => ['required', 'string', 'max:255'],
-            'social_reason' => ['string', 'max:255'],
+            'social_reason' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'string', 'max:255'],
             'rif' => ['required', 'string', 'max:20'],
-            'address' => ['nullable', 'string'],
-            'sales_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
-            'collections_phone' => ['string', 'max:50', 'regex:/^\+?\d{7,15}$/'],
+            'address' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'nullable', 'string'],
+            'sales_phone' => ['nullable', 'string', 'max:50'],
+            'collections_phone' => ['nullable', 'string', 'max:50'],
             'credit_days' => ['sometimes', 'nullable', 'numeric'],
             'is_indexed' => ['sometimes', 'boolean'],
             'dispatch_days' => ['sometimes', 'nullable', 'array'],
@@ -36,12 +38,12 @@ class StoreSupplierRequest extends FormRequest
             'order_days' => ['sometimes', 'nullable', 'array'],
             'order_days.*' => ['nullable', 'array'],
             'order_days.*.*' => ['in:monday,tuesday,wednesday,thursday,friday,saturday'],
-            'payment_method' => ['in:Bs,Divisas'],
+            'payment_method' => ['nullable', 'in:Bs,Divisas'],
             'cash_payment' => ['boolean'],
             'charges_igtf' => ['boolean'],
             //'supplier_payment_method' => 'required|string',
             //'supplier_payment_days' => 'sometimes|numeric|min:0',
-            'payment_due_type' => 'sometimes|nullable|in:invoice_date,early_payment,custom',
+            'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
             'custom_due_days' => 'nullable|required_if:payment_due_type,custom|integer|min:1',
             'payment_due_reference' => 'nullable|required_if:payment_due_type,early_payment|in:issue_date,receipt_date',
             'invoice_date_reference' => 'nullable|required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date,issue_date',
@@ -62,6 +64,9 @@ class StoreSupplierRequest extends FormRequest
 
             'social_reason.string' => 'La razón social debe ser texto.',
             'social_reason.max' => 'La razón social no puede exceder los 255 caracteres.',
+            'social_reason.required' => 'La razón social es obligatoria para proveedores externos.',
+
+            'address.required' => 'La dirección es obligatoria para proveedores externos.',
 
             'sales_phone.string' => 'El teléfono de ventas debe ser texto.',
             'sales_phone.max' => 'El teléfono de ventas no puede exceder los 50 caracteres.',

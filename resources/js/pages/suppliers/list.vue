@@ -23,6 +23,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
+const typeFilter = ref(null);
 
 const stats = ref({
   total_debt: 0,
@@ -84,6 +85,7 @@ const fetchSuppliers = async () => {
     q: searchQuery.value,
     debtStatus: debtFilter.value,
     minScore: minScore.value,
+    type: typeFilter.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
@@ -169,6 +171,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   debtFilter.value = null;
   minScore.value = null;
+  typeFilter.value = null;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
@@ -178,8 +181,8 @@ const handleSort = (sortOptions) => {
   orderBy.value = sortOptions.order;
 };
 
-const handleAddSupplier = () => {
-  currentSupplier.value = {};
+const handleAddSupplier = (type = "drogueria") => {
+  currentSupplier.value = { type };
   supplierFormErrors.value = {};
   isEditDialogVisible.value = true;
 };
@@ -346,7 +349,7 @@ const clearFormErrors = () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery, debtFilter, minScore],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, debtFilter, minScore, typeFilter],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
@@ -354,7 +357,7 @@ watch(
   { deep: true },
 );
 
-watch([searchQuery, debtFilter, minScore], () => {
+watch([searchQuery, debtFilter, minScore, typeFilter], () => {
   page.value = 1;
 });
 
@@ -376,6 +379,7 @@ const updateTableOptions = (options) => {
         v-model:searchQuery="searchQuery"
         v-model:debtFilter="debtFilter"
         v-model:minScore="minScore"
+        v-model:type="typeFilter"
         @clear="handleClearFilters"
         @sort="handleSort"
         @add-supplier="handleAddSupplier"

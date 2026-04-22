@@ -48,6 +48,7 @@ class Expense extends Model
         'extension_file',
         'url_file',
         'date_upload',
+        'loan_id',
     ];
 
     protected $casts = [
@@ -55,6 +56,11 @@ class Expense extends Model
         'has_invoice' => 'boolean',
         'expense_date' => 'date',
     ];
+
+    public function loan(): BelongsTo
+    {
+        return $this->belongsTo(Loan::class);
+    }
 
     public function category(): BelongsTo
     {

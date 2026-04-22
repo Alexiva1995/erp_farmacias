@@ -159,18 +159,6 @@ class AppServiceProvider extends ServiceProvider
             ->needs(ProductSupplier::class)
             ->give(ProductSupplierServices::class);
 
-        $this->app->when(ExpensesController::class)
-            ->needs(Expenses::class)
-            ->give(ExpensesServices::class);
-
-        $this->app->when(ExpensesController::class)
-            ->needs(Transaction::class)
-            ->give(TransactionServices::class);
-
-        $this->app->when(ExpenseCategoryController::class)
-            ->needs(ExpenseCategory::class)
-            ->give(ExpenseCategoryServices::class);
-
         $this->app->when(UserController::class)
             ->needs(User::class)
             ->give(UserServices::class);
@@ -227,6 +215,9 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(LocationContract::class, LocationRepository::class);
+
+        $this->app->bind(Expenses::class, ExpensesServices::class);
+        $this->app->bind(ExpenseCategory::class, ExpenseCategoryServices::class);
 
         $this->app->bind(
             \App\Contracts\Fiscal\FiscalCommandRepositoryInterface::class,

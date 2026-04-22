@@ -86,13 +86,13 @@ const headers = [
                 />
               </template>
             </VTooltip>
-            <VTooltip text="Contactar Cobranza">
+            <VTooltip text="Contactar Cobranza (WhatsApp)">
               <template #activator="{ props }">
                 <VBtn
-                  icon="tabler-phone-call"
+                  icon="tabler-brand-whatsapp"
                   size="small"
                   :disabled="!item.collections_phone"
-                  :href="item.collections_phone ? `tel:${item.collections_phone}` : undefined"
+                  :href="item.collections_phone ? `https://wa.me/${item.collections_phone.replace(/\D/g, '')}` : undefined"
                   target="_blank"
                   variant="text"
                   color="info"
@@ -260,42 +260,65 @@ const headers = [
                     />
                   </template>
                 </VTooltip>
-                <VTooltip text="Llamar Cobranza" location="top">
+                <VTooltip text="WhatsApp Cobranza" location="top">
                   <template #activator="{ props }">
                     <VBtn
                       v-bind="props"
-                      icon="tabler-phone"
+                      icon="tabler-brand-whatsapp"
                       variant="tonal"
                       color="info"
                       size="32"
                       :disabled="!item.collections_phone"
-                      :href="item.collections_phone ? `tel:${item.collections_phone}` : undefined"
+                      :href="item.collections_phone ? `https://wa.me/${item.collections_phone.replace(/\D/g, '')}` : undefined"
+                      target="_blank"
                     />
                   </template>
                 </VTooltip>
               </div>
 
-              <div class="d-flex gap-1">
+              <div class="d-flex gap-1 flex-wrap">
                 <VBtn
                   icon="tabler-edit"
-                  variant="text"
+                  variant="tonal"
                   color="primary"
                   size="32"
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
-                  icon="tabler-settings-dollar"
-                  variant="text"
+                  icon="tabler-plug-connected"
+                  variant="tonal"
                   color="warning"
                   size="32"
-                  @click="emit('commercial-panel', item)"
+                  @click="emit('config-connection', item)"
+                />
+                <VBtn
+                  icon="tabler-api"
+                  variant="tonal"
+                  :color="checkingApiId === item.id ? 'warning' : 'success'"
+                  size="32"
+                  :disabled="checkingApiId === item.id"
+                  @click="emit('check-supplier-api', item)"
+                />
+                <VBtn
+                    icon="tabler-settings-dollar"
+                    variant="tonal"
+                    color="primary"
+                    size="32"
+                    @click="emit('commercial-panel', item)"
                 />
                 <VBtn
                   icon="tabler-credit-card-pay"
-                  variant="text"
+                  variant="tonal"
                   color="secondary"
                   size="32"
                   @click="emit('supplier-pending-invoices', item)"
+                />
+                <VBtn
+                  icon="tabler-trash"
+                  variant="tonal"
+                  color="error"
+                  size="32"
+                  @click="emit('delete-supplier', item.id)"
                 />
               </div>
             </div>

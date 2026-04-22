@@ -52,7 +52,7 @@ const statistics = computed(() => [
 
 <template>
   <VRow>
-    <VCol v-for="item in statistics" :key="item.title" cols="12" sm="6" md="4">
+    <VCol v-for="item in statistics" :key="item.title" cols="6" sm="6" md="4">
       <VCard class="stats-card border-0 overflow-hidden mb-6">
         <!-- Decoración de fondo -->
         <div

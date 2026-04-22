@@ -7,6 +7,7 @@ const props = defineProps({
   searchQuery: String,
   debtFilter: [String, null],
   minScore: [Number, String, null],
+  type: [String, null],
   loading: { type: Boolean, default: false },
 });
 
@@ -14,6 +15,7 @@ const emit = defineEmits([
   "update:searchQuery",
   "update:debtFilter",
   "update:minScore",
+  "update:type",
   "clear",
   "sort",
   "add-supplier",
@@ -54,8 +56,14 @@ const scoreOptions = [
   { title: "2.0+ Estrellas", value: 40 },
 ];
 
+const typeOptions = [
+  { title: "Todos", value: null },
+  { title: "Droguería", value: "drogueria" },
+  { title: "Proveedor Externo", value: "externo" },
+];
+
 const hasAdvancedFilters = computed(
-  () => !!(props.debtFilter || props.minScore),
+  () => !!(props.debtFilter || props.minScore || props.type),
 );
 </script>
 
@@ -71,9 +79,24 @@ const hasAdvancedFilters = computed(
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
-    @add="emit('add-supplier')"
+    @add="emit('add-supplier', 'drogueria')"
     class="py-1"
   >
+    <template #actions-extra>
+      <!-- Botón para añadir proveedor externo -->
+      <VBtn
+        icon
+        color="info"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm"
+        @click="emit('add-supplier', 'externo')"
+      >
+        <VIcon icon="tabler-building-store" />
+        <VTooltip activator="parent" location="top">Añadir Proveedor Externo</VTooltip>
+      </VBtn>
+    </template>
+
     <template #advanced-filters>
       <!-- Filtro de Deuda -->
       <VCol cols="12" sm="6" md="3">
@@ -100,6 +123,20 @@ const hasAdvancedFilters = computed(
           clearable
           prepend-inner-icon="tabler-star"
           @update:model-value="emit('update:minScore', $event)"
+        />
+      </VCol>
+
+      <!-- Filtro de Tipo -->
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.type"
+          :items="typeOptions"
+          placeholder="Tipo de Proveedor"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-tags"
+          @update:model-value="emit('update:type', $event)"
         />
       </VCol>
     </template>

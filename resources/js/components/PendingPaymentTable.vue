@@ -18,6 +18,8 @@ const emit = defineEmits([
   "toggle-selection",
   "select-all",
   "deselect-all",
+  "update-date",
+  "mark-as-paid",
 ]);
 
 const { mobile } = useDisplay();
@@ -30,7 +32,6 @@ const headers = [
   { title: "Monto USD", key: "original_amount", sortable: false, align: "end" },
   { title: "Monto BS", key: "remaining_amount", sortable: false, align: "end" },
   { title: "Indexada", key: "is_indexed", sortable: false, width: "80px", align: "center" },
-  { title: "Total Prov", key: "total_supplier_currency", sortable: false, align: "end" },
   { title: "Estado", key: "status", sortable: false, align: "center" },
   { title: "", key: "actions", sortable: false, align: "center" },
 ];
@@ -205,12 +206,7 @@ const getInitials = (name) => {
           />
         </template>
 
-        <template #item.total_supplier_currency="{ item }">
-          <div class="d-flex flex-column align-end">
-            <span class="text-xs font-weight-black text-primary">{{ formatCurrency(item.supplier_total_bs || 0, item.currency || "Bs") }}</span>
-            <span class="text-super-xs text-disabled">{{ formatCurrency(item.supplier_total_usd || 0, "USD") }}</span>
-          </div>
-        </template>
+        <!-- Columna Total Prov Eliminada por solicitud de usuario -->
 
         <template #item.status="{ item }">
           <VChip :color="getStatusColor(item.status)" variant="tonal" size="x-small" class="font-weight-black rounded">
@@ -219,17 +215,61 @@ const getInitials = (name) => {
         </template>
 
         <template #item.actions="{ item }">
-          <VBtn
-            icon
-            variant="tonal"
-            size="32"
-            color="success"
-            class="rounded-circle shadow-sm"
-            @click="emit('process-payment', item)"
-          >
-            <VIcon icon="tabler-credit-card" size="18" />
-            <VTooltip activator="parent" location="top">Procesar Pago</VTooltip>
-          </VBtn>
+          <div class="d-flex align-center gap-1">
+            <!-- Editar Fecha -->
+            <VMenu :close-on-content-click="false" location="start">
+              <template #activator="{ props: menuProps }">
+                <VBtn
+                  v-bind="menuProps"
+                  icon
+                  variant="tonal"
+                  size="32"
+                  color="info"
+                  class="rounded-circle shadow-sm"
+                >
+                  <VIcon icon="tabler-calendar-edit" size="18" />
+                  <VTooltip activator="parent" location="top">Cambiar Fecha Vencimiento</VTooltip>
+                </VBtn>
+              </template>
+              <VCard min-width="250" class="pa-4 rounded-lg shadow-lg">
+                <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
+                <AppDateTimePicker
+                  :model-value="item.payment_date"
+                  placeholder="Seleccionar Fecha"
+                  variant="outlined"
+                  density="compact"
+                  :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
+                  @update:model-value="(val) => emit('update-date', item, val)"
+                />
+              </VCard>
+            </VMenu>
+
+            <!-- Marcar como Pagado Directamente -->
+            <VBtn
+              icon
+              variant="tonal"
+              size="32"
+              color="primary"
+              class="rounded-circle shadow-sm"
+              @click="emit('mark-as-paid', item)"
+            >
+              <VIcon icon="tabler-square-check" size="18" />
+              <VTooltip activator="parent" location="top">Marcar Pagada (Sin Gasto)</VTooltip>
+            </VBtn>
+
+            <!-- Procesar Pago (Original) -->
+            <VBtn
+              icon
+              variant="tonal"
+              size="32"
+              color="success"
+              class="rounded-circle shadow-sm"
+              @click="emit('process-payment', item)"
+            >
+              <VIcon icon="tabler-credit-card" size="18" />
+              <VTooltip activator="parent" location="top">Procesar Pago</VTooltip>
+            </VBtn>
+          </div>
         </template>
 
         <template #no-data>
@@ -304,7 +344,7 @@ const getInitials = (name) => {
             </div>
 
             <!-- Botones de Acción Móvil -->
-            <div class="d-flex align-center gap-3">
+            <div class="d-flex align-center gap-2 mt-2">
               <div class="d-flex align-center gap-2 flex-grow-1">
                 <span class="text-super-xs font-weight-black text-disabled uppercase">Indexada</span>
                 <VSwitch
@@ -315,15 +355,58 @@ const getInitials = (name) => {
                   @click.stop="emit('toggle-indexed', item)"
                 />
               </div>
-              <VBtn
-                color="success"
-                variant="flat"
-                size="small"
-                class="rounded-lg text-super-xs font-weight-black shadow-sm"
-                @click.stop="emit('process-payment', item)"
-              >
-                PAGAR
-              </VBtn>
+              <div class="d-flex gap-1">
+                <!-- Editar Fecha (Móvil) -->
+                <VMenu :close-on-content-click="false" location="top">
+                  <template #activator="{ props: menuProps }">
+                    <VBtn
+                      v-bind="menuProps"
+                      icon
+                      variant="tonal"
+                      size="32"
+                      color="info"
+                      class="rounded-lg shadow-sm"
+                      @click.stop
+                    >
+                      <VIcon icon="tabler-calendar-edit" size="18" />
+                    </VBtn>
+                  </template>
+                  <VCard min-width="250" class="pa-4 rounded-lg shadow-lg">
+                    <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
+                    <AppDateTimePicker
+                      :model-value="item.payment_date"
+                      placeholder="Seleccionar Fecha"
+                      variant="outlined"
+                      density="compact"
+                      :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
+                      @update:model-value="(val) => emit('update-date', item, val)"
+                    />
+                  </VCard>
+                </VMenu>
+
+                <!-- Marcar Pagada (Móvil) -->
+                <VBtn
+                  icon
+                  variant="tonal"
+                  size="32"
+                  color="primary"
+                  class="rounded-lg shadow-sm"
+                  @click.stop="emit('mark-as-paid', item)"
+                >
+                  <VIcon icon="tabler-square-check" size="18" />
+                </VBtn>
+
+                <!-- Pagar (Original) -->
+                <VBtn
+                  color="success"
+                  variant="flat"
+                  size="small"
+                  class="rounded-lg text-super-xs font-weight-black shadow-sm px-4"
+                  @click.stop="emit('process-payment', item)"
+                >
+                  PAGAR
+                </VBtn>
+              </div>
             </div>
           </VCardText>
         </VCard>

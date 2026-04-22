@@ -19,14 +19,15 @@ const baseForm = {
   address: "",
   sales_phone: "",
   collections_phone: "",
-  payment_due_type: null,
-  invoice_date_reference: null,
+  payment_due_type: "invoice_date",
+  invoice_date_reference: "issue_date",
   custom_due_days: null,
   payment_due_reference: null,
-  payment_method: null,
+  payment_method: "Bs",
   dispatch_days: [],
   order_days: {},
   is_indexed: false,
+  type: "drogueria",
 };
 const formData = ref({ ...baseForm });
 const formErrors = ref({});
@@ -193,10 +194,10 @@ watch(
             </VAvatar>
             <div>
               <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
-                {{ isNewSupplier ? "Nuevo Proveedor" : "Editar Proveedor" }}
+                {{ isNewSupplier ? (formData.type === 'externo' ? 'Nuevo Proveedor Externo' : 'Nueva Droguería') : "Editar Proveedor" }}
               </h2>
               <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
-                {{ isNewSupplier ? "Registro de aliado comercial" : formData.name }}
+                {{ isNewSupplier ? "Registro de aliado comercial" : (formData.type === 'externo' ? 'Proveedor Externo' : 'Droguería') + ' | ' + formData.name }}
               </span>
             </div>
           </div>
@@ -230,7 +231,7 @@ watch(
             <VIcon icon="tabler-info-circle" size="18" class="me-2" />
             Información General
           </VTab>
-          <VTab :value="1" class="text-xs font-weight-black uppercase letter-spacing-1">
+          <VTab v-if="formData.type !== 'externo'" :value="1" class="text-xs font-weight-black uppercase letter-spacing-1">
             <VIcon icon="tabler-truck" size="18" class="me-2" />
             Logística y Despacho
           </VTab>
@@ -263,7 +264,7 @@ watch(
                       <VCol cols="12" md="6">
                         <AppTextField
                           v-model="formData.social_reason"
-                          label="Razón Social"
+                          :label="'Razón Social' + (formData.type === 'externo' ? ' *' : '')"
                           placeholder="Ej: Inversiones Nena C.A."
                           prepend-inner-icon="tabler-building"
                           :error-messages="formErrors.social_reason"
@@ -283,7 +284,7 @@ watch(
                       <VCol cols="12" md="7">
                         <AppTextField
                           v-model="formData.address"
-                          label="Dirección Fiscal"
+                          :label="'Dirección Fiscal' + (formData.type === 'externo' ? ' *' : '')"
                           placeholder="Ubicación completa"
                           prepend-inner-icon="tabler-map-pin"
                           :error-messages="formErrors.address"
@@ -294,7 +295,7 @@ watch(
                   </VCard>
 
                   <!-- Contacto y Pagos -->
-                  <VCard variant="flat" class="border pa-4 bg-white rounded-lg">
+                  <VCard v-if="formData.type !== 'externo'" variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">
                       <div class="header-indicator secondary"></div>
                       <span class="text-xs font-weight-black text-secondary uppercase letter-spacing-1">Contacto y Condiciones</span>

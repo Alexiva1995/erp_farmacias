@@ -32,6 +32,7 @@ class CreateExpenseData extends Data
         public ?float $exchange_rate = null,
         public ?float $total_usd = null,
         public float $total_amount,
+        public ?int $loan_id = null,
     ) {
     }
 }

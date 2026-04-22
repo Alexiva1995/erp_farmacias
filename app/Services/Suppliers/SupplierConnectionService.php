@@ -401,7 +401,7 @@ class SupplierConnectionService
         // Helper para obtener el índice de la columna basado en el mapeo y los encabezados
         $getIdx = function ($meta, $originalKey) use ($headerMap) {
             // Prioridad 1: Coincidencia por nombre de encabezado si está disponible
-            if (!empty($headerMap) && isset($meta['file_field']) && isset($headerMap[trim($meta['file_field'])])) {
+            if (!empty($headerMap) && isset($meta['file_field']) && is_string($meta['file_field']) && isset($headerMap[trim($meta['file_field'])])) {
                 return $headerMap[trim($meta['file_field'])];
             }
             // Prioridad 2: Si file_field es una letra (estilo Excel), convertir a índice

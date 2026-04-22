@@ -129,6 +129,38 @@ class LoanController extends Controller
     }
 
     /**
+     * Registra un abono (pago) para un préstamo
+     */
+    public function addPayment(Request $request, Loan $loan)
+    {
+        $rules = [
+            'amount' => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date|before_or_equal:today',
+            'account' => 'required|string',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        try {
+            $expense = $this->loanActionService->registerPayment($loan, $validator->validated());
+
+            return response()->json([
+                'message' => 'Abono registrado con éxito.',
+                'expense' => $expense,
+                'loan_remaining_balance' => $loan->fresh()->getRemainingBalance()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al registrar el abono: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Obtiene el saldo total pendiente de todos los préstamos
      */
     public function getBalance(Request $request)

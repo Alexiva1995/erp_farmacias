@@ -52,6 +52,10 @@ class SupplierQueryService
             });
         }
 
+        if (!empty($filters["type"])) {
+            $query->where("suppliers.type", $filters["type"]);
+        }
+
         return $query;
     }
 
@@ -108,6 +112,7 @@ class SupplierQueryService
 
         $filters = [
             "q" => $request->q,
+            "type" => $request->type,
         ];
 
         $this->applyFilters($query, $filters);

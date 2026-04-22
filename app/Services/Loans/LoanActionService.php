@@ -3,10 +3,19 @@
 namespace App\Services\Loans;
 
 use App\Models\Loan;
+use App\Contracts\Expenses;
+use App\Models\ExpenseCategory;
+use App\Data\CreateExpenseData;
+use App\Models\Expense;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 
 class LoanActionService
 {
+    public function __construct(
+        protected Expenses $expensesService
+    ) {}
+
     /**
      * Crea un nuevo préstamo
      * 
@@ -100,5 +109,39 @@ class LoanActionService
         }
 
         return $validated;
+    }
+
+    /**
+     * Registra un pago (abono) para un préstamo
+     */
+    public function registerPayment(Loan $loan, array $data): Expense
+    {
+        // 1. Buscar la categoría "Pagos de Préstamos"
+        $category = ExpenseCategory::where('name', 'Pagos de Préstamos')->first();
+        if (!$category) {
+            $category = ExpenseCategory::create(['name' => 'Pagos de Préstamos']);
+        }
+
+        // 2. Preparar el objeto de datos para el gasto
+        $expenseData = CreateExpenseData::from([
+            'name' => "Abono Préstamo #{$loan->id}",
+            'category_id' => $category->id,
+            'amount' => (float) $data['amount'],
+            'amount_usd' => (float) $data['amount'],
+            'currency' => 'USD',
+            'has_invoice' => false,
+            'is_deductible' => false,
+            'iva' => false,
+            'expense_date' => new \DateTime($data['payment_date']),
+            'user_id' => Auth::id() ?? 1, // Usuario actual o fallback al ID 1
+            'account' => $data['account'], // El método de pago/cuenta
+            'status' => 'Pending',
+            'type_of_expense' => 'Normal',
+            'total_amount' => (float) $data['amount'],
+            'loan_id' => $loan->id,
+        ]);
+
+        // 3. Crear el gasto usando el servicio existente
+        return $this->expensesService->create($expenseData);
     }
 }

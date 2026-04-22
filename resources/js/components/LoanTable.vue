@@ -9,7 +9,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-loan", "delete-loan"]);
+const emit = defineEmits(["update:options", "edit-loan", "delete-loan", "add-payment"]);
 
 const { mobile } = useDisplay();
 
@@ -48,23 +48,11 @@ const formatDate = (dateString) => {
 };
 
 const calculateTotalAmount = (item) => {
-  return item.monthly_payment * item.total_installments;
+  return item.total_amount || (item.monthly_payment * item.total_installments);
 };
 
 const calculateRemainingBalance = (item) => {
-  const currentDate = new Date();
-  const loanDate = new Date(item.loan_date);
-  const monthsPassed = Math.max(
-    0,
-    Math.floor((currentDate - loanDate) / (1000 * 60 * 60 * 24 * 30.44)),
-  );
-  const installmentsPaid = Math.min(monthsPassed, item.total_installments);
-  const remainingInstallments = Math.max(
-    0,
-    item.total_installments - installmentsPaid,
-  );
-
-  return item.monthly_payment * remainingInstallments;
+  return item.remaining_balance !== undefined ? item.remaining_balance : (item.monthly_payment * item.total_installments);
 };
 
 const getLoanStatus = (item) => {
@@ -242,6 +230,18 @@ const getRemainingMonths = (item) => {
             icon
             size="32"
             variant="tonal"
+            color="success"
+            class="rounded-circle shadow-sm"
+            @click="emit('add-payment', item)"
+          >
+            <VIcon icon="tabler-currency-dollar" size="18" />
+            <VTooltip activator="parent" location="top">Añadir Abono</VTooltip>
+          </VBtn>
+
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
             color="error"
             class="rounded-circle shadow-sm"
             @click="emit('delete-loan', item.id)"
@@ -293,14 +293,22 @@ const getRemainingMonths = (item) => {
                   </div>
                 </div>
                 <div class="d-flex gap-2">
-                  <VBtn
-                    icon="tabler-edit"
-                    variant="tonal"
-                    color="warning"
-                    size="36"
-                    class="rounded-lg"
-                    @click="emit('edit-loan', item)"
-                  />
+                    <VBtn
+                      icon="tabler-edit"
+                      variant="tonal"
+                      color="warning"
+                      size="36"
+                      class="rounded-lg"
+                      @click="emit('edit-loan', item)"
+                    />
+                    <VBtn
+                      icon="tabler-currency-dollar"
+                      variant="tonal"
+                      color="success"
+                      size="36"
+                      class="rounded-lg"
+                      @click="emit('add-payment', item)"
+                    />
                   <VBtn
                     icon="tabler-trash"
                     variant="tonal"

@@ -155,6 +155,37 @@ const handlePaymentProcessed = () => {
   fetchPendingPayments();
 };
 
+const handleUpdateDate = async (item, newDate) => {
+  try {
+    await axios.patch(`/finances/pending-payments/invoices/${item.id}/update-date`, {
+      payment_date: newDate,
+    });
+    toast.success("Fecha de pago actualizada correctamente");
+    fetchPendingPayments();
+  } catch (error) {
+    console.error("Error al actualizar fecha:", error);
+    toast.error("Error al actualizar la fecha de pago");
+  }
+};
+
+const handleMarkAsPaid = async (item) => {
+  toast.confirm(
+    `¿Marcar Factura #${item.invoice_number} como Pagada?`,
+    async () => {
+      try {
+        await axios.patch(
+          `/finances/pending-payments/invoices/${item.id}/mark-as-paid`,
+        );
+        toast.success("Factura marcada como pagada directamente");
+        fetchPendingPayments();
+      } catch (error) {
+        console.error("Error al marcar como pagada:", error);
+        toast.error("No se pudo marcar la factura como pagada");
+      }
+    },
+  );
+};
+
 const clearFilters = () => {
   searchQuery.value = "";
   selectedSupplier.value = null;
@@ -250,6 +281,8 @@ watch(
         @toggle-indexed="toggleIndexedStatus"
         @process-payment="processPayment"
         @process-multiple="processMultiplePayments"
+        @update-date="handleUpdateDate"
+        @mark-as-paid="handleMarkAsPaid"
         @toggle-selection="toggleSelection"
         @select-all="selectedTableInvoices = [...pendingPayments]"
         @deselect-all="selectedTableInvoices = []"

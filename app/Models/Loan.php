@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
 class Loan extends Model
@@ -16,11 +17,24 @@ class Loan extends Model
         'total_installments',
     ];
 
+    protected $appends = [
+        'remaining_balance',
+        'total_amount',
+    ];
+
     protected $casts = [
         'loan_date' => 'date',
         'monthly_payment' => 'decimal:2',
         'total_installments' => 'integer',
     ];
+
+    /**
+     * Pagos realizados al préstamo (gastos vinculados)
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
 
     /**
      * Calcula el saldo pendiente del préstamo basado en las cuotas transcurridas
@@ -29,11 +43,14 @@ class Loan extends Model
      */
     public function getRemainingBalance(): float
     {
-        $monthsPassed = floor(Carbon::parse($this->loan_date)->diffInMonths(Carbon::now()));
-        $installmentsPaid = min($monthsPassed, $this->total_installments);
-        $remainingInstallments = max(0, $this->total_installments - $installmentsPaid);
+        $totalAmount = $this->getTotalAmount();
+        
+        // El saldo es el monto total menos los gastos APROBADOS vinculados al préstamo
+        $totalPaid = $this->payments()
+            ->where('status', Expense::STATUS_APPROVED)
+            ->sum('amount');
 
-        return $this->monthly_payment * $remainingInstallments;
+        return (float) max(0, $totalAmount - $totalPaid);
     }
 
     /**
@@ -44,6 +61,22 @@ class Loan extends Model
     public function getTotalAmount(): float
     {
         return $this->monthly_payment * $this->total_installments;
+    }
+
+    /**
+     * Accessor para el saldo pendiente
+     */
+    public function getRemainingBalanceAttribute(): float
+    {
+        return $this->getRemainingBalance();
+    }
+
+    /**
+     * Accessor para el monto total
+     */
+    public function getTotalAmountAttribute(): float
+    {
+        return $this->getTotalAmount();
     }
 
     /**
