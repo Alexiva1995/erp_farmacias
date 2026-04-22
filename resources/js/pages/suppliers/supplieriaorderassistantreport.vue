@@ -112,8 +112,8 @@ async function consultarLaboratorios(){
 
 async function consultarProveedores() {
   try {
-    const respuesta = await axios.get("/suppliers?itemsPerPage=-1");
-    suppliers.value = respuesta.data.data || [];
+    const respuesta = await axios.get("/suppliers");
+    suppliers.value = respuesta.data.data || respuesta.data || [];
   } catch (error) {
     console.error("Error al cargar proveedores:", error);
   }

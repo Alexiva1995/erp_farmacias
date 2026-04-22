@@ -173,7 +173,7 @@ const lapsoDeTiempoOpciones = [
           <VDivider class="my-3 border-opacity-10" />
           
           <VRow dense>
-            <VCol cols="12" md="6" lg="3">
+            <VCol cols="12" sm="6" md="4" lg="2">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
@@ -215,24 +215,27 @@ const lapsoDeTiempoOpciones = [
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="3" lg="2" class="d-flex align-center">
-              <VCheckbox
-                :model-value="props.checkColombia"
-                label="Origen Colombia"
-                color="primary"
-                density="compact"
-                hide-details
-                class="mt-0"
-                @update:model-value="emit('update:checkColombia', $event)"
-              />
+            <VCol cols="12" sm="6" md="2" class="d-flex align-center">
+              <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+                <VSwitch
+                  :model-value="props.checkColombia"
+                  label="Colombia"
+                  color="info"
+                  hide-details
+                  density="compact"
+                  class="ms-1 font-weight-bold text-xs"
+                  @update:model-value="emit('update:checkColombia', $event)"
+                />
+                <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
+              </div>
             </VCol>
 
             <!-- Selector de Proveedor -->
-            <VCol cols="12" md="6" lg="3">
+            <VCol cols="12" md="6" lg="2">
               <VAutocomplete
                 :model-value="props.selectedSupplierId"
                 :items="props.suppliers"
-                placeholder="Comparar con Proveedor"
+                placeholder="Proveedor"
                 item-title="name"
                 item-value="id"
                 clearable
@@ -248,7 +251,7 @@ const lapsoDeTiempoOpciones = [
               <VTextField
                 :model-value="props.globalDiscountPercent"
                 type="number"
-                placeholder="% Descuento"
+                placeholder="Desc."
                 hide-details
                 density="compact"
                 prepend-inner-icon="tabler-percentage"
