@@ -186,13 +186,25 @@ const handleManualOrder = async (item) => {
           </template>
 
           <!-- Costo Actual -->
-          <template #item.unit_cost="{ item }">
             <div class="d-flex flex-column align-center">
               <span class="text-primary font-weight-black">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
               <span class="text-xxs text-disabled mt-n1">Costo Ficha</span>
             </div>
           </template>
 
+          <!-- Mejor Oferta -->
+          <template #item.product_suppliers="{ item }">
+            <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center">
+              <div class="d-flex align-center gap-1">
+                <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}</span>
+                <VChip variant="tonal" color="success" size="x-small" class="px-1 font-weight-bold" style="font-size: 0.6rem;">
+                  -{{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd).toFixed(0) }}%
+                </VChip>
+              </div>
+              <span class="text-super-xs text-disabled text-uppercase truncate" style="max-inline-size: 100px;">
+                {{ item.product_suppliers[0].supplier.name }}
+              </span>
+            </div>
             <span v-else class="text-xxs text-disabled italic">Sin ofertas</span>
           </template>
 
@@ -225,6 +237,9 @@ const handleManualOrder = async (item) => {
             </VChip>
           </template>
 
+          <template #item.promedio_calculado="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span class="font-weight-bold">{{ item.promedio_calculado || 0 }}</span>
             </div>
           </template>
 
