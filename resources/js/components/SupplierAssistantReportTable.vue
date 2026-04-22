@@ -35,7 +35,7 @@ const headers = computed(() => {
   );
 
   if (props.selectedSupplierId) {
-    baseData.push({ title: "Precio Seleccionado", key: "selected_supplier_price", sortable: false, align: 'center' });
+    baseData.push({ title: "PrecioP", key: "selected_supplier_price", sortable: false, align: 'center', width: '100px' });
   }
 
   baseData.push(
@@ -61,7 +61,7 @@ const headers = computed(() => {
           ? roundIaAnalysis(item.solicitar)
           : 0,
     },
-    { title: "Pedido Manual", key: "manual_order", sortable: false, align: 'center', width: '150px' }
+    { title: "Pedido M.", key: "manual_order", sortable: false, align: 'center', width: '130px' }
   );
 
   return baseData;
