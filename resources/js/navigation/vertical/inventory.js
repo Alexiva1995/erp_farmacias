@@ -64,6 +64,10 @@ export default [
         title: 'Ubicaciones',
         to: 'inventory-locations',
       },
+      {
+        title: 'Laboratorios',
+        to: 'inventory-laboratories',
+      },
     ],
   }, 
 ]
