@@ -528,5 +528,19 @@ class InvoiceActionService
             ]);
             return ['status' => false, 'message' => null];
         }
+    public function uploadInvoicePhoto(Invoice $invoice, $file): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $file) {
+            // Eliminar foto anterior si existe
+            if ($invoice->invoice_photo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($invoice->invoice_photo);
+            }
+
+            $path = $file->store('invoice_photos', 'public');
+
+            $invoice->update(['invoice_photo' => $path]);
+
+            return $invoice->fresh();
+        });
     }
 }

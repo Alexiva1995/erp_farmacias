@@ -36,6 +36,14 @@ class MarketOpportunityRequest extends FormRequest
             'q' => ['nullable', 'string'],
             'laboratoryId' => ['nullable'],
             'productId' => ['nullable'],
+            'excludeSupplierIds' => ['nullable'],
+            'hideRedundant' => ['nullable'],
+            'hideDuplicates' => ['nullable'],
+            'withDiscount' => ['nullable'],
+            'lapso_de_tiempo' => ['nullable', 'string'],
+            'tipo_filtracion' => ['nullable', 'string', 'in:average,sales,combinado'],
+            'stock' => ['nullable', 'string', 'in:all,fallas,exceso'],
+            'is_colombia' => ['nullable'],
         ];
     }
 }

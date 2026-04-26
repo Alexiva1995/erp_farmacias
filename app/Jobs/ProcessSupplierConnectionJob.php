@@ -199,8 +199,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-            if (!in_array($this->supplier->id, [2]))
-                $queryService->addDiscountsToProducts($this->supplier);
+            $queryService->addDiscountsToProducts($this->supplier);
 
             \Illuminate\Support\Facades\Log::info("🚨 [JOB] Intentando actualizar last_connection", ['supplier_id' => $this->supplier->id, 'has_connection' => !is_null($supplierConnection)]);
             

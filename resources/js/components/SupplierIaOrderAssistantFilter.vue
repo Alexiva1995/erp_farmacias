@@ -138,18 +138,7 @@ const hasAdvancedFilters = computed(() => (
         <VTooltip activator="parent" location="top">Generar Pedido IA</VTooltip>
       </VBtn>
 
-      <!-- Limpiar Filtros -->
-      <VBtn
-        icon
-        variant="text"
-        color="secondary"
-        size="38"
-        class="ml-1 shadow-sm rounded-circle"
-        @click="emit('clear')"
-      >
-        <VIcon icon="tabler-eraser" />
-        <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-      </VBtn>
+
     </template>
 
     <template #advanced-filters>

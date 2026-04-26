@@ -1,6 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useDisplay } from "vuetify";
 import { ref, watch } from "vue";
 
 const props = defineProps({
@@ -8,13 +9,15 @@ const props = defineProps({
   selectedSupplier: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:modalValue"]);
+const emit = defineEmits(["update:modelValue"]);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
 const products = ref([]);
 const totalProducts = ref(0);
 const loading = ref(false);
+
+const { mobile } = useDisplay();
 
 const closeDialog = () => {
   emit("update:modelValue", false);
@@ -176,7 +179,9 @@ const updateTableOptions = (options) => {
         </div>
 
         <VCard variant="flat" class="bg-white rounded-xl border shadow-sm">
+          <!-- Vista Desktop: Tabla -->
           <VDataTableServer
+            v-if="!mobile"
             :headers="productsHeaders"
             :items="products"
             :loading="loading"
@@ -199,12 +204,68 @@ const updateTableOptions = (options) => {
               <span class="text-xs text-medium-emphasis">{{ item.laboratory }}</span>
             </template>
             <template #item.unit_cost="{ item }">
-              <span class="text-xs font-weight-black">{{ formatBs(item.unit_cost) }}</span>
+              <span class="text-sm font-weight-bold text-high-emphasis">{{ formatBs(item.unit_cost) }}</span>
             </template>
             <template #item.unit_cost_usd="{ item }">
-              <span class="text-xs font-weight-black text-success">{{ formatUsd(item.unit_cost_usd) }}</span>
+              <span class="text-sm font-weight-bold text-success">{{ formatUsd(item.unit_cost_usd) }}</span>
             </template>
           </VDataTableServer>
+
+          <!-- Vista Móvil: Tarjetas -->
+          <div v-else class="pa-4 bg-light-surface">
+            <div v-if="loading" class="d-flex justify-center py-8">
+              <VProgressCircular indeterminate color="primary" />
+            </div>
+            <div v-else-if="products.length === 0" class="text-center py-8 text-disabled text-sm">
+              No se encontraron productos
+            </div>
+            <div v-else class="d-flex flex-column gap-3">
+              <VCard
+                v-for="item in products"
+                :key="item.id"
+                class="mobile-product-card border shadow-none rounded-lg"
+              >
+                <VCardText class="pa-3">
+                  <div class="d-flex justify-space-between align-start mb-2">
+                    <div class="d-flex flex-column" style="max-inline-size: 70%">
+                      <span class="text-xs font-weight-bold text-primary mb-1">#{{ item.id }}</span>
+                      <span class="text-sm font-weight-black text-high-emphasis text-uppercase line-clamp-2">
+                        {{ item.name }}
+                      </span>
+                    </div>
+                    <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black">
+                      {{ item.laboratory || 'S/L' }}
+                    </VChip>
+                  </div>
+                  
+                  <VDivider class="my-2 border-dashed" />
+                  
+                  <div class="d-flex justify-space-between align-center">
+                    <div class="d-flex flex-column">
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Precio BS</span>
+                      <span class="text-sm font-weight-bold text-high-emphasis">{{ formatBs(item.unit_cost) }}</span>
+                    </div>
+                    <div class="d-flex flex-column align-end">
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Precio USD</span>
+                      <span class="text-sm font-weight-bold text-success">{{ formatUsd(item.unit_cost_usd) }}</span>
+                    </div>
+                  </div>
+                </VCardText>
+              </VCard>
+
+              <!-- Paginación Móvil -->
+              <div class="mt-4 d-flex justify-center">
+                <VPagination
+                  v-model="page"
+                  :length="Math.ceil(totalProducts / itemsPerPage)"
+                  :total-visible="3"
+                  density="compact"
+                  active-color="primary"
+                  variant="flat"
+                />
+              </div>
+            </div>
+          </div>
         </VCard>
 
       </VCardText>
@@ -297,5 +358,30 @@ const updateTableOptions = (options) => {
 .premium-table :deep(td) {
   block-size: 52px !important;
   border-block-end: 1px solid rgba(var(--v-border-color), 0.06) !important;
+}
+
+.mobile-product-card {
+  background-color: white !important;
+  transition: transform 0.2s ease;
+}
+
+.mobile-product-card:active {
+  transform: scale(0.98);
+}
+
+.bg-light-surface {
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.gap-3 {
+  gap: 12px !important;
 }
 </style>

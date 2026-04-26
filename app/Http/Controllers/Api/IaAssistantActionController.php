@@ -146,6 +146,26 @@ class IaAssistantActionController extends Controller
         return response()->json(['message' => 'Producto ignorado por 7 días.']);
     }
 
+    /**
+     * Actualiza la cantidad manual sugerida para un producto.
+     */
+    public function updateManualQuantity(Request $request, Product $product): JsonResponse
+    {
+        $request->validate([
+            'quantity' => 'nullable|numeric|min:-999999|max:999999',
+        ]);
+
+        $product->update([
+            'manual_solicitar' => $request->quantity,
+        ]);
+
+        return response()->json([
+            'message' => 'Cantidad manual actualizada correctamente.',
+            'product_id' => $product->id,
+            'manual_solicitar' => $product->manual_solicitar,
+        ]);
+    }
+
     private function updateAutoOrderTotals(AutoOrder $order)
     {
         $details = $order->details()->get();

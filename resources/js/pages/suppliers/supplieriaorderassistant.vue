@@ -30,7 +30,7 @@ const tipo_de_vista = ref(false);
 const tipo_de_filtracion = ref("combinado");
 const lapso_de_tiempo = ref("1 month");
 const stock = ref("all");
-const con_descuento = ref(true);
+const con_descuento = ref(false);
 const isColombian = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
@@ -39,7 +39,7 @@ const showGraphs = ref(false);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
-  con_descuento.value = true;
+  con_descuento.value = false;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
   lapso_de_tiempo.value = "1 month";
@@ -373,6 +373,8 @@ onMounted(async () => {
           :show-graphs="showGraphs"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
+          @open-comparator="handleOpenComparator"
+          @remove-item="handleRemoveItem"
         />
         <!-- Vista Individual: tabla estándar paginada -->
         <SupplierIaOrderAssistantIndividualTable

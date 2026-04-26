@@ -374,4 +374,23 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
+
+    public function uploadPhoto(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+        ]);
+
+        try {
+            $updatedInvoice = $this->invoiceActionService->uploadInvoicePhoto($invoice, $request->file('file'));
+
+            return response()->json([
+                'message' => 'Foto de factura cargada con éxito.',
+                'invoice' => $updatedInvoice,
+                'photo_url' => asset('storage/' . $updatedInvoice->invoice_photo)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al cargar la foto: ' . $e->getMessage()], 500);
+        }
+    }
 }

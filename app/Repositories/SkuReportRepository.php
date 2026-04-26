@@ -29,8 +29,17 @@ class SkuReportRepository implements SkuReportRepositoryInterface
                 'products.unit_cost as current_cost', // Corregido
                 'products.sale_price as list_price', // Corregido
                 DB::raw('SUM(order_details.quantity) as total_sold'),
-                DB::raw('SUM(order_details.price * order_details.quantity) as total_revenue'),
-                DB::raw('SUM((order_details.price_before_discount - order_details.price) * order_details.quantity) as total_discount_amount')
+                DB::raw('SUM(order_details.unit_cost * order_details.quantity) as total_historical_cost'),
+                DB::raw('SUM(order_details.quantity * CASE 
+                    WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd 
+                    WHEN orders.currency = \'USD\' THEN order_details.price 
+                    ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) 
+                END) as total_revenue'),
+                DB::raw('SUM(order_details.quantity * CASE
+                    WHEN order_details.price_before_discount IS NOT NULL AND orders.currency = \'USD\' THEN (order_details.price_before_discount - order_details.price)
+                    WHEN order_details.price_before_discount IS NOT NULL AND orders.currency != \'USD\' THEN ((order_details.price_before_discount - order_details.price) / NULLIF(orders.usd_conversion, 0))
+                    ELSE 0
+                END) as total_discount_amount')
             )
             ->where('orders.status', 'completed')
             ->groupBy(
@@ -51,9 +60,20 @@ class SkuReportRepository implements SkuReportRepositoryInterface
             });
         }
 
-        // Filtro de Fechas (usa la tabla orders)
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('orders.created_at', [$filters['start_date'] . ' 00:00:00', $filters['end_date'] . ' 23:59:59']);
+        // Filtro de Fechas (usa la tabla orders) — Se restringe estrictamente a partir de Abril 2026
+        $minDate = '2026-04-01 00:00:00';
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
+        
+        if ($startDate < $minDate) {
+            $startDate = $minDate;
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $endDate = $filters['end_date'] . ' 23:59:59';
+            $query->whereBetween('orders.created_at', [$startDate, $endDate]);
+        } else {
+            // Si no hay end date establecido, tomar desde startDate hasta hoy
+            $query->where('orders.created_at', '>=', $startDate);
         }
 
         // Filtros adicionales si aplica
@@ -64,6 +84,11 @@ class SkuReportRepository implements SkuReportRepositoryInterface
         if (!empty($filters['group_id'])) {
             $query->join('groups_products', 'products.id', '=', 'groups_products.product_id')
                   ->where('groups_products.group_id', $filters['group_id']);
+        }
+
+        // Filtro de estado del producto
+        if (isset($filters['is_active']) && $filters['is_active'] !== null && $filters['is_active'] !== '') {
+            $query->where('products.is_active', $filters['is_active']);
         }
 
         return $query;
@@ -82,8 +107,18 @@ class SkuReportRepository implements SkuReportRepositoryInterface
             )
             ->groupBy('product_id');
 
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $query->whereBetween('created_at', [$filters['start_date'] . ' 00:00:00', $filters['end_date'] . ' 23:59:59']);
+        $minDate = '2026-04-01 00:00:00';
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
+        
+        if ($startDate < $minDate) {
+            $startDate = $minDate;
+        }
+
+        if (!empty($filters['end_date'])) {
+            $endDate = $filters['end_date'] . ' 23:59:59';
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        } else {
+            $query->where('created_at', '>=', $startDate);
         }
 
         return $query->get()->keyBy('product_id');

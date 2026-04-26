@@ -4,8 +4,9 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useDisplay } from 'vuetify';
 import VueApexCharts from 'vue3-apexcharts';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import axios from 'axios';
+import { useDebounceFn } from '@vueuse/core';
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -28,8 +29,21 @@ const getInputValue = (item) => {
 };
 
 const updateInputValue = (item, val) => {
-  editedValues.value[item.id] = val;
+  const numericVal = val === "" ? null : parseFloat(val);
+  editedValues.value[item.id] = numericVal;
+  persistManualQuantity(item.id, numericVal);
 };
+
+// Función para persistir en BD con debounce
+const persistManualQuantity = useDebounceFn(async (productId, quantity) => {
+  try {
+    await axios.post(`/api/suppliers-ia-order-assistant/products/${productId}/update-manual-quantity`, {
+      quantity: quantity
+    });
+  } catch (error) {
+    console.error("Error persisting manual quantity:", error);
+  }
+}, 800);
 
 // Estado para carga diferida de gráficos
 const readyCharts = ref(new Set());

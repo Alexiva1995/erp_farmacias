@@ -214,6 +214,16 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\SkuReportRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Repositories\ProductMasterReportRepositoryInterface::class,
+            \App\Repositories\ProductMasterReportRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\ExpiryReportRepositoryInterface::class,
+            \App\Repositories\ExpiryReportRepository::class
+        );
+
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
         $this->app->bind(Expenses::class, ExpensesServices::class);

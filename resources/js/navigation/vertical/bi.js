@@ -17,6 +17,14 @@ export default [
         title: 'Reporte de Margen SKU',
         to: 'bi-report-sku',
       },
+      {
+        title: 'Dashboard Maestro',
+        to: 'bi-report-products',
+      },
+      {
+        title: 'BI Caducidad',
+        to: 'bi-report-expiry',
+      },
     ],
   }, 
 ]

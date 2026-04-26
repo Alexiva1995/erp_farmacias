@@ -38,11 +38,13 @@ class AbcReportService
         $end = Carbon::parse($filtros['end_date'] ?? now()->endOfDay());
         $daysInPeriod = max(1, $start->diffInDays($end));
 
-        // 1. Preparar campos bases (Márgenes y Variaciones)
+        // 1. Preparar campos bases (Márgenes, Variaciones, GMROI)
         $data->transform(function ($item) use ($daysInPeriod) {
             $item->total_sales = (float) $item->total_sales;
             $item->total_cost = (float) $item->total_cost;
             $item->sold_units = (float) $item->sold_units;
+            $item->current_stock = (float) $item->current_stock;
+            $item->last_cost = (float) $item->last_cost;
             
             // Margen absolutos y relativos
             $item->margin_amount = $item->total_sales - $item->total_cost;
@@ -50,20 +52,33 @@ class AbcReportService
                 ? ($item->margin_amount / $item->total_sales) * 100 
                 : 0;
 
-            // Días de Inventario = Stock actual / Venta diaria promedio total del periodo
-            $avgDailySalesOverPeriod = $item->sold_units / $daysInPeriod;
-            $item->inventory_days = $avgDailySalesOverPeriod > 0 
-                ? (float) $item->current_stock / $avgDailySalesOverPeriod 
-                : 9999; // Representando exceso o falta de venta
+            // Valor de Inventario Actual (Capital Atrapado)
+            $item->inventory_value = $item->current_stock * $item->last_cost;
 
-            // Coeficiente de Variación (CV) = Desviación / Media
-            // NOTA: Media de días con ventas activas. Si no hubo ventas, CV es infinito -> impredecible
+            // GMROI Anualizado (%)
+            // Proyectamos la rentabilidad del periodo a 365 días para una métrica estándar
+            $item->gmroi = $item->inventory_value > 0 
+                ? ($item->margin_amount / $item->inventory_value) * (365 / $daysInPeriod) * 100
+                : ($item->margin_amount > 0 ? 9999 : 0);
+
+            // Días de Inventario usando el promedio mensual precalculado del producto (sales_average / 30)
+            // Este campo es independiente del filtro de fechas y refleja el comportamiento real histórico
+            $monthlyAvg = (float) ($item->sales_average ?? 0);
+            $dailyAvgFromProduct = $monthlyAvg / 30;
+            $item->inventory_days = $dailyAvgFromProduct > 0
+                ? (float) $item->current_stock / $dailyAvgFromProduct
+                : ($item->current_stock > 0 ? 9999 : 0);
+
+            // Coeficiente de Variación (CV)
             $item->cv = $item->avg_daily_sales > 0 
                 ? (float) ($item->std_dev_sales / $item->avg_daily_sales) 
                 : 999; 
 
             // Determinar XYZ
-            if ($item->cv < 0.5) {
+            // Regla de Relevancia: Menos de 3 unidades se considera impredecible (Z) por falta de muestra
+            if ($item->sold_units < 3) {
+                $item->class_rotation = 'Z';
+            } elseif ($item->cv < 0.5) {
                 $item->class_rotation = 'X';
             } elseif ($item->cv <= 1.0) {
                 $item->class_rotation = 'Y';
@@ -92,6 +107,36 @@ class AbcReportService
             $data = $data->filter(function ($item) use ($filterLetter) {
                 return $item->final_classification === $filterLetter;
             });
+        }
+
+        // 5. Aplicar Filtros de Análisis Especializados
+        $analysisType = $filtros['analysis_type'] ?? 'all';
+        if ($analysisType === 'dead_stock') {
+            // Stock Muerto: Tiene stock pero no se vendió nada en el periodo
+            $data = $data->filter(function ($item) {
+                return $item->sold_units <= 0 && $item->current_stock > 0;
+            });
+        } elseif ($analysisType === 'star_products') {
+            // Productos Estrella: Ventas A y Margen A
+            $data = $data->filter(function ($item) {
+                return $item->class_sales === 'A' && $item->class_margin === 'A';
+            });
+        }
+
+        // 6. Aplicar Filtros Ad-hoc (ROI y Stock)
+        if (isset($filtros['min_gmroi'])) {
+            $minRoi = (float) $filtros['min_gmroi'];
+            $data = $data->filter(fn($item) => $item->gmroi >= $minRoi);
+        }
+
+        if (isset($filtros['stock_filter']) && $filtros['stock_filter'] !== 'all') {
+            if ($filtros['stock_filter'] === 'with_stock') {
+                // Solo productos con existencias
+                $data = $data->filter(fn($item) => $item->current_stock > 0);
+            } elseif ($filtros['stock_filter'] === 'out_of_stock') {
+                // Solo productos agotados
+                $data = $data->filter(fn($item) => $item->current_stock <= 0);
+            }
         }
 
         return $data->values();
@@ -124,7 +169,12 @@ class AbcReportService
 
             $runningSum += $item->{$metricField};
             $accumulatedPercentage = ($runningSum / $totalSum) * 100;
+            
+            // Guardar el aporte individual (Ej: "vende el 2% del total de la farmacia")
+            $pctField = $assignField === 'class_sales' ? 'contribution_sales_pct' : 'contribution_margin_pct';
+            $item->{$pctField} = ($item->{$metricField} / $totalSum) * 100;
 
+            // Pareto puro: 80/15/5 sin umbrales mínimos de dinero
             if ($accumulatedPercentage <= 80) {
                 $item->{$assignField} = 'A';
             } elseif ($accumulatedPercentage <= 95) {

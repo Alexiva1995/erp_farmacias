@@ -57,8 +57,16 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('SUM(order_details.quantity * order_details.unit_cost) as total_cost')
             )
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.order_date', [$startDate, $endDate])
+            ->where(function($q) {
+                // Filtro de Coherencia: El costo de la venta no puede ser > 3 veces el costo actual (error de moneda)
+                // Usamos un pequeño margen de COALESCE para productos nuevos sin costo
+                $q->whereRaw('order_details.unit_cost <= (COALESCE(products.unit_cost, 0) * 3)')
+                  ->orWhereRaw('products.unit_cost = 0');
+            })
+            ->where(DB::raw('CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd ELSE order_details.price / NULLIF(orders.usd_conversion, 1) END'), '<', 1000)
             ->groupBy('order_details.product_id');
 
         // Consulta Principal: Obtener el resumen de ventas (Ventas Totales, Costos, Margen) por producto
@@ -68,12 +76,14 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 'products.name as product_name',
                 'laboratories.name as laboratory_name',
                 'products.stock as current_stock',
-                'products.unit_cost as last_cost', // Asumido desde products.unit_cost o product_lots dependiendo del negocio
+                'products.unit_cost as last_cost',
+                // Promedio mensual de ventas precalculado en el producto (para Días de Cobertura)
+                DB::raw('COALESCE(products.sales_average, 0) as sales_average'),
                 // Agregados de Ventas en base Dolarizada usando factor de conversión
                 DB::raw('COALESCE(sales.sold_units, 0) as sold_units'),
                 DB::raw('COALESCE(sales.total_sales, 0) as total_sales'),
                 DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
-                // Variables de cálculo para XYZ
+                // Variables de cálculo para XYZ (del periodo filtrado)
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales')
             )
@@ -96,7 +106,8 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 'sales.total_sales',
                 'sales.total_cost',
                 'variance.std_dev_sales',
-                'variance.avg_daily_sales'
+                'variance.avg_daily_sales',
+                'products.sales_average'
             );
 
         // Aplicar Filtros adicionales

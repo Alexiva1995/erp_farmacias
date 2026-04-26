@@ -226,7 +226,7 @@ const sellerDisplayName = (item) => capitalizeFirstAndLastName(item?.username ??
     <VDivider />
 
     <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
+      <VBtn color="secondary" variant="outlined" class="rounded-pill" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
     </VCardActions>
@@ -324,7 +324,7 @@ const sellerDisplayName = (item) => capitalizeFirstAndLastName(item?.username ??
       </VCol>
     </VRow>
     <div class="d-flex mt-3">
-      <VBtn color="secondary" variant="outlined" size="small" @click="emit('clear')">
+      <VBtn color="secondary" variant="outlined" size="small" class="rounded-pill" @click="emit('clear')">
         Limpiar Filtros
       </VBtn>
     </div>

@@ -5,5 +5,5 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 $repo = new App\Repositories\ProductMasterReportRepository();
-$data = $repo->getPerformanceData(['start_date'=>'2026-04-01']);
-echo json_encode($data->sortByDesc('total_sold')->take(10)->values());
+$data = $repo->getLaboratoryRanking(['start_date'=>'2026-04-01']);
+echo json_encode($data);

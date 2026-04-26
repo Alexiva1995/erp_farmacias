@@ -37,6 +37,7 @@ const categories = ref([]);
 const groups = ref([]);
 
 const isEditDialogVisible = ref(false);
+const currentProduct = ref({});
 const productFormErrors = ref({});
 const isStatsDialogVisible = ref(false);
 const selectedProductForStats = ref(null);

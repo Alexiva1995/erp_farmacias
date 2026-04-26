@@ -132,7 +132,7 @@ const hasActiveAdvancedFilters = computed(() => {
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
             size="38"
-            class="rounded-lg"
+            class="rounded-pill"
             @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
           >
             <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
@@ -155,7 +155,7 @@ const hasActiveAdvancedFilters = computed(() => {
                 variant="tonal"
                 color="secondary"
                 size="38"
-                class="rounded-lg"
+                class="rounded-pill"
               >
                 <VIcon :icon="getSelectedSortIcon()" size="20" />
                 <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
@@ -192,7 +192,7 @@ const hasActiveAdvancedFilters = computed(() => {
             variant="text"
             color="secondary"
             size="38"
-            class="rounded-lg"
+            class="rounded-pill"
             @click="handleClear"
           >
             <VIcon icon="tabler-eraser" size="20" />

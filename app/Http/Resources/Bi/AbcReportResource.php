@@ -35,9 +35,13 @@ class AbcReportResource extends JsonResource
             'class_margin' => $this->class_margin,
             'class_rotation' => $this->class_rotation,
             'final_classification' => $this->final_classification,
+            'contribution_sales_pct' => round($this->contribution_sales_pct ?? 0, 4),
+            'contribution_margin_pct' => round($this->contribution_margin_pct ?? 0, 4),
             // Info adicional
             'current_stock' => round($this->current_stock, 2),
             'last_cost' => round($this->last_cost, 2),
+            'gmroi' => round($this->gmroi, 2),
+            'inventory_value' => round($this->inventory_value, 2),
         ];
     }
 }

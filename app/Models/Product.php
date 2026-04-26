@@ -63,6 +63,7 @@ class Product extends Model
         'is_active',
         'stock',
         'ignore_until',
+        'manual_solicitar',
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];

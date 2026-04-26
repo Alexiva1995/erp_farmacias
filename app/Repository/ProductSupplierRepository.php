@@ -15,9 +15,11 @@ class ProductSupplierRepository
             ->where("product_id", "=", $product_id);
 
         if ($conDescuento == "true") {
-            $consulta->orderBy("unit_cost_usd_with_discount", "ASC");
+            $consulta->where("unit_cost_usd_with_discount", ">", 0)
+                ->orderBy("unit_cost_usd_with_discount", "ASC");
         } else {
-            $consulta->orderBy("unit_cost_usd", "ASC");
+            $consulta->where("unit_cost_usd", ">", 0)
+                ->orderBy("unit_cost_usd", "ASC");
         }
 
         return $consulta->get();
@@ -47,11 +49,13 @@ class ProductSupplierRepository
                     ->orWhere('unit_cost_usd_with_discount', '>', 0);
             });
 
-        // 2. Ordenar por precio según preferencia del usuario
+        // 2. Ordenar por precio según preferencia del usuario (ignorando ceros)
         if ($conDescuento === "true") {
-            $query->orderBy("unit_cost_usd_with_discount", "ASC");
+            $query->where("unit_cost_usd_with_discount", ">", 0)
+                ->orderBy("unit_cost_usd_with_discount", "ASC");
         } else {
-            $query->orderBy("unit_cost_usd", "ASC");
+            $query->where("unit_cost_usd", ">", 0)
+                ->orderBy("unit_cost_usd", "ASC");
         }
 
         $allOffers = $query->get();

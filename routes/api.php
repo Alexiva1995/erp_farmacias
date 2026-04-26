@@ -495,6 +495,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::delete('/{invoice}', 'destroy')->name('destroy');
         Route::put('/{invoice}', 'update')->name('update');
         Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
+        Route::post('/{invoice}/photo', 'uploadPhoto')->name('photo.upload');
     });
 
     // Rutas de Proveedores
@@ -564,11 +565,13 @@ Route::middleware("auth:sanctum")->group(function () {
         // Acciones Asistente IA
         Route::post("/add-to-order", [IaAssistantActionController::class, "addToOrder"]);
         Route::post("/products/{product}/ignore", [IaAssistantActionController::class, "ignore"]);
+        Route::post("/products/{product}/update-manual-quantity", [IaAssistantActionController::class, "updateManualQuantity"]);
     });
 
     Route::prefix("suppliers-ia-assistant-report")->group(function () {
         Route::post('/filtrar-paginate', [SupplierIaAssistantReportController::class, 'filtrarPaginate']);
         Route::post('/filtrar-without-paginate', [SupplierIaAssistantReportController::class, 'filtrarWithoutPaginate']);
+        Route::post('/stats', [SupplierIaAssistantReportController::class, 'stats']);
         Route::post('/exportar/excel', [SupplierIaAssistantReportController::class, 'exportarExcel']);
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
         Route::post('/clear-ignore-until', [SupplierIaAssistantReportController::class, 'clearIgnoreUntil']);
@@ -581,6 +584,14 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::prefix("bi")->group(function () {
         Route::get("/abc", [\App\Http\Controllers\Api\Bi\AbcReportController::class, "generateReport"]);
         Route::get("/sku-margin", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "generateReport"]);
+        Route::get("/sku-margin/export", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "export"]);
+        
+        // Reporte Maestro de Productos (Nuevo)
+        Route::get("/products/dashboard", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getDashboard"]);
+        Route::get("/products/trends", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getTrends"]);
+
+        // Dashboard de Vencimientos
+        Route::get("/expiry", [\App\Http\Controllers\Api\Bi\ExpiryReportController::class, "index"]);
     });
     
     Route::prefix("users")->group(function () {

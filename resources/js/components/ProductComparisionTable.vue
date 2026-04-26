@@ -173,12 +173,12 @@ const headers = [
                 </template>
               </VTooltip>
 
-              <VTooltip text="Actualizar / Cargar" location="top">
+              <VTooltip :text="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? 'Sincronizar' : 'Cargar Archivo'" location="top">
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
                     v-bind="tooltipProps"
                     :icon="
-                      item.type === 'API'
+                      ['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type)
                         ? checkingApiId === item.id
                           ? 'tabler-loader-2'
                           : 'tabler-refresh'
@@ -190,7 +190,7 @@ const headers = [
                     :disabled="checkingApiId === item.id"
                     :class="{ 'spin-icon': checkingApiId === item.id }"
                     @click="
-                      item.type === 'API'
+                      ['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type)
                         ? emit('update-products', item)
                         : emit('load-products', item)
                     "
@@ -315,12 +315,13 @@ const headers = [
 
                 <div class="d-flex ga-1">
                   <VBtn
-                    icon="tabler-refresh"
+                    :icon="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? 'tabler-refresh' : 'tabler-upload'"
                     variant="tonal"
                     color="info"
                     size="small"
                     :disabled="checkingApiId === item.id"
-                    @click="emit('update-products', item)"
+                    :class="{ 'spin-icon': checkingApiId === item.id }"
+                    @click="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? emit('update-products', item) : emit('load-products', item)"
                   />
                   <VBtn
                     icon="tabler-percentage"

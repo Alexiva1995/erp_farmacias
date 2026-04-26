@@ -63,8 +63,26 @@ class AbcReportController extends Controller
             $total = $reportData->count();
         }
 
+        // Calcular Estadísticas Globales (Summary) para KPIs del Dashboard
+        $totalSalesGlobal = $reportData->sum('total_sales');
+        $totalMarginAmtGlobal = $reportData->sum('margin_amount');
+        
+        $summary = [
+            'total_sales' => (float) $totalSalesGlobal,
+            'avg_margin' => $totalSalesGlobal > 0 ? ($totalMarginAmtGlobal / $totalSalesGlobal) * 100 : 0,
+            'aax_products' => $reportData->filter(fn($i) => str_starts_with($i->final_classification, 'AA'))->count(),
+            'frozen_capital' => (float) $reportData->sum('inventory_value'),
+            // Conteo por clasificación de ventas
+            'count_a' => $reportData->filter(fn($i) => $i->class_sales === 'A')->count(),
+            'count_b' => $reportData->filter(fn($i) => $i->class_sales === 'B')->count(),
+            'count_c' => $reportData->filter(fn($i) => $i->class_sales === 'C')->count(),
+            'critical_stockouts' => $reportData->filter(fn($i) => ($i->class_sales === 'A' || $i->class_sales === 'B') && $i->current_stock <= 0)->count(),
+            'total_products' => $reportData->count(),
+        ];
+
         return response()->json([
             'data' => $items,
+            'summary' => $summary,
             'meta' => [
                 'total' => $total,
                 'current_page' => $page,

@@ -30,6 +30,7 @@ class SkuReportController extends Controller
             'laboratory_id',
             'group_id',
             'semaphore', // verde, amarillo, rojo, negro
+            'is_active', // estado del producto
             'sortBy',
             'orderBy'
         ]);
@@ -40,13 +41,9 @@ class SkuReportController extends Controller
 
         // Si hay filtrado por Semáforo después de calculado
         if (!empty($filters['semaphore'])) {
-             // Este filtro se hace en memoria después de calcular
              $filteredItems = collect($paginatedReport->items())
                 ->where('semaphore', $filters['semaphore'])
                 ->values();
-             
-             // Nota: La paginación real se romperá si se filtra POST cálculo intenso, 
-             // pero a nivel MVP es eficaz para no cargar a la BDD.
              $paginatedReport->setCollection($filteredItems);
         }
 
@@ -54,7 +51,76 @@ class SkuReportController extends Controller
             'data' => SkuReportResource::collection($paginatedReport->getCollection())->resolve(),
             'total' => $paginatedReport->total(),
             'current_page' => $paginatedReport->currentPage(),
-            'last_page' => $paginatedReport->lastPage()
+            'last_page' => $paginatedReport->lastPage(),
+            // Delegamos el resumen global al servicio para mantener la consistencia
+            'summary' => $this->skuReportService->getGlobalSummary($filters)
         ]);
+    }
+
+    /**
+     * Exporta el reporte de Margen SKU
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse|\Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function export(Request $request)
+    {
+        $filters = $request->only([
+            'start_date', 'end_date', 'laboratory_id', 'group_id', 'semaphore', 'search', 'is_active'
+        ]);
+
+        // Obtenemos todos los registros sin paginar
+        $allData = $this->skuReportService->generateReport($filters, 999999);
+        
+        $items = collect($allData->items());
+        
+        if (!empty($filters['semaphore'])) {
+            $items = $items->where('semaphore', $filters['semaphore'])->values();
+        }
+
+        // Exportación básica a CSV (Puede ser sustituido por Laravel Excel si está instalado)
+        $fileName = 'margen_sku_' . now()->format('Y_m_d_His') . '.csv';
+        $headers = array(
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        );
+
+        $columns = ['ID/SKU', 'Producto', 'Vendidos', 'Costo Unit.', 'P. Lista', 'M. Bruto %', 'Descuento Prom %', 'M. Neto %', 'Mermas ($)', 'M. Real %', 'Semáforo'];
+
+        $callback = function() use($items, $columns) {
+            $file = fopen('php://output', 'w');
+            
+            // BOM para UTF-8 en Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            fputcsv($file, $columns, ';'); // Exportar con CSV europeo/excel
+
+            foreach ($items as $item) {
+                $row['ID/SKU']  = $item->barcode ?: $item->product_id;
+                $row['Producto']    = $item->product_name;
+                $row['Vendidos']    = $item->total_sold;
+                $row['Costo Unit.']  = round($item->current_cost, 2);
+                $row['P. Lista']  = round($item->list_price, 2);
+                $row['M. Bruto %']  = round($item->gross_margin_percent, 2);
+                $row['Descuento Prom %']  = round($item->discount_avg_percent, 2);
+                $row['M. Neto %']  = round($item->net_margin_percent, 2);
+                $row['Mermas ($)']  = round($item->loss_value, 2);
+                $row['M. Real %']  = round($item->real_margin_percent, 2);
+                $row['Semáforo']  = strtoupper($item->semaphore);
+
+                fputcsv($file, array(
+                    $row['ID/SKU'], $row['Producto'], $row['Vendidos'], $row['Costo Unit.'], 
+                    $row['P. Lista'], $row['M. Bruto %'], $row['Descuento Prom %'], $row['M. Neto %'], 
+                    $row['Mermas ($)'], $row['M. Real %'], $row['Semáforo']
+                ), ';');
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

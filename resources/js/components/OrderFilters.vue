@@ -99,6 +99,7 @@ const handleBack = () => {
         variant="tonal"
         color="primary"
         size="38"
+        class="rounded-pill"
         @click="handleBack"
       >
         <VIcon icon="tabler-arrow-back" />

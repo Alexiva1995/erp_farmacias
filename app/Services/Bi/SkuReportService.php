@@ -61,7 +61,9 @@ class SkuReportService
 
             // --- CAPA 2: MARGEN NETO DE VENTA ---
             $totalRevenue = (float) $item->total_revenue; // Real cobrado
-            $totalCost = $unitCost * $totalSoldQty;
+            // Aquí la magia principal: usamos el costo histórico del momento exacto de la venta (order_details), 
+            // no el current_cost del maestro de productos de hoy.
+            $totalCost = (float) $item->total_historical_cost;
             
             $netMarginTotal = $totalRevenue - $totalCost;
             $netMarginPercent = $totalRevenue > 0 ? ($netMarginTotal / $totalRevenue) * 100 : 0;
@@ -117,5 +119,48 @@ class SkuReportService
         $paginated->setCollection($calculatedItems);
 
         return $paginated;
+    }
+
+    /**
+     * Calcula los resúmenes financieros globales de toda la consulta (sin paginar)
+     */
+    public function getGlobalSummary(array $filters): array
+    {
+        // 1. Obtener la consulta base 
+        // Nota: para un reporte real con muchísimos datos esto podría optimizarse con SUMs en BD, 
+        // pero la complejidad de los % obliga a procesarlos en memoria.
+        $allData = $this->generateReport($filters, 999999);
+        $items = collect($allData->items());
+
+        // Aplicamos el filtro semáforo si está presente (ya que se aplica post-query)
+        if (!empty($filters['semaphore'])) {
+            $items = $items->where('semaphore', $filters['semaphore'])->values();
+        }
+
+        $totalRevenue = $items->sum('total_revenue');
+        $totalHistoricalCost = $items->sum('total_historical_cost');
+        $totalLosses = $items->sum('loss_value');
+        $totalDiscountAmount = $items->sum('total_discount_amount');
+
+        // Productos en alertas rojas / negras (Pérdidas o riesgo)
+        $criticalSkus = $items->filter(function($i) {
+            return in_array($i->semaphore, ['rojo', 'negro']);
+        })->count();
+        
+        $netMarginTotal = $totalRevenue - $totalHistoricalCost;
+        $globalMarginNet = $totalRevenue > 0 ? ($netMarginTotal / $totalRevenue) * 100 : 0;
+        
+        // El Margen Real Global es (Revenue - Costo Histórico - Mermas)
+        $realMarginTotal = $netMarginTotal - $totalLosses;
+        $globalMarginReal = $totalRevenue > 0 ? ($realMarginTotal / $totalRevenue) * 100 : 0;
+
+        return [
+            'total_revenue' => $totalRevenue,
+            'total_loss' => $totalLosses,
+            'total_discounts' => $totalDiscountAmount,
+            'critical_skus' => $criticalSkus,
+            'global_margin_net' => $globalMarginNet,
+            'global_margin_real' => $globalMarginReal
+        ];
     }
 }

@@ -19,6 +19,20 @@ const props = defineProps({
 const manualQuantities = reactive({});
 const orderingIds = ref({}); // Para indicar que se está procesando un pedido
 
+// Obtener valor inicial (Sugerencia de IA si no hay edición manual)
+const getInputValue = (item) => {
+  if (manualQuantities[item.id] !== undefined && manualQuantities[item.id] !== null) {
+    return manualQuantities[item.id];
+  }
+  const sugerido = roundIaAnalysis(item.solicitar);
+  return sugerido > 0 ? sugerido : null;
+};
+
+// Actualizar cantidad manual
+const updateQuantity = (item, val) => {
+  manualQuantities[item.id] = val === "" ? null : Number(val);
+};
+
 const emit = defineEmits(["update:options"]);
 const { mobile } = useDisplay();
 
@@ -33,10 +47,6 @@ const headers = computed(() => {
     { title: "Costo Actual", key: "unit_cost", sortable: true, align: 'center' },
     { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
   );
-
-  if (props.selectedSupplierId) {
-    baseData.push({ title: "PrecioP", key: "selected_supplier_price", sortable: false, align: 'center', width: '100px' });
-  }
 
   baseData.push(
     { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
@@ -79,7 +89,10 @@ const rowClass = (item) => {
 
 const getPriceDiff = (current, offer) => {
   if (!current || !offer || current <= 0) return 0;
-  return ((current - offer) / current) * 100;
+  // Calculamos la diferencia porcentual: ((Oferta - Actual) / Actual) * 100
+  // Resultado positivo = Incremento (Rojo/Error)
+  // Resultado negativo = Ahorro (Verde/Success)
+  return ((offer - current) / current) * 100;
 };
 
 const getSelectedSupplierPrice = (item) => {
@@ -97,7 +110,7 @@ const getSelectedSupplierPrice = (item) => {
 };
 
 const handleManualOrder = async (item) => {
-  const quantity = manualQuantities[item.id];
+  const quantity = getInputValue(item);
   if (!quantity || quantity <= 0) {
     toast.info("Por favor ingrese una cantidad válida");
     return;
@@ -193,39 +206,47 @@ const handleManualOrder = async (item) => {
             </div>
           </template>
 
-          <!-- Mejor Oferta -->
+          <!-- Mejor Oferta (Incluye Precio P si aplica) -->
           <template #item.product_suppliers="{ item }">
-            <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center">
-              <div class="d-flex align-center gap-1">
-                <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}</span>
-                <VChip variant="tonal" color="success" size="x-small" class="px-1 font-weight-bold" style="font-size: 0.6rem;">
-                  -{{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd).toFixed(0) }}%
+            <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center py-1">
+              <!-- Bloque Mejor Oferta (Cheapest) -->
+              <div class="d-flex align-center gap-1 mb-1">
+                <span 
+                  class="text-xs font-weight-black"
+                  :class="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? 'text-error' : 'text-success'"
+                >
+                  $ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}
+                </span>
+                <VChip 
+                  variant="tonal" 
+                  :color="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? 'error' : 'success'" 
+                  size="x-small" 
+                  class="px-1 font-weight-bold" 
+                  style="font-size: 0.6rem;"
+                >
+                  {{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? '+' : '' }}{{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd).toFixed(0) }}%
                 </VChip>
               </div>
-              <span class="text-super-xs text-disabled text-uppercase truncate" style="max-inline-size: 100px;">
+              <span class="text-super-xs text-disabled text-uppercase truncate font-weight-medium mb-1" style="max-inline-size: 110px;">
                 {{ item.product_suppliers[0].supplier.name }}
               </span>
+
+              <!-- Bloque Precio Personalizado (Precio P) -->
+              <div v-if="getSelectedSupplierPrice(item)" class="selected-supplier-box w-100 mt-1 pa-1 rounded border-t border-dashed">
+                <div class="d-flex flex-column align-center">
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-user-check" size="10" color="primary" />
+                    <span class="text-xs font-weight-black text-primary">$ {{ getSelectedSupplierPrice(item).toFixed(2) }}</span>
+                  </div>
+                  <span v-if="props.globalDiscountPercent > 0" class="text-super-xs text-info font-weight-bold">
+                    {{ props.globalDiscountPercent }}% OFF
+                  </span>
+                </div>
+              </div>
             </div>
             <span v-else class="text-xxs text-disabled italic">Sin ofertas</span>
           </template>
 
-          <!-- Precio Seleccionado -->
-          <template #item.selected_supplier_price="{ item }">
-            <div v-if="getSelectedSupplierPrice(item)" class="d-flex flex-column align-center">
-              <span class="font-weight-black text-primary">$ {{ getSelectedSupplierPrice(item).toFixed(2) }}</span>
-              <VChip 
-                v-if="props.globalDiscountPercent > 0" 
-                size="x-small" 
-                color="info" 
-                variant="tonal" 
-                class="mt-1 font-weight-black"
-                style="font-size: 0.6rem;"
-              >
-                DESC {{ props.globalDiscountPercent }}%
-              </VChip>
-            </div>
-            <span v-else class="text-xxs text-disabled">---</span>
-          </template>
 
           <!-- Ventas y Stock -->
           <template #item.total_sold_completed="{ item }">
@@ -248,7 +269,8 @@ const handleManualOrder = async (item) => {
           <template #item.manual_order="{ item }">
             <div class="d-flex align-center gap-1">
               <VTextField
-                v-model.number="manualQuantities[item.id]"
+                :model-value="getInputValue(item)"
+                @update:model-value="(val) => updateQuantity(item, val)"
                 type="number"
                 density="compact"
                 hide-details
@@ -333,6 +355,30 @@ const handleManualOrder = async (item) => {
                     <span class="text-super-xs font-weight-black text-success text-truncate" style="max-inline-size: 100px;">{{ item.product_suppliers[0].supplier.name }}</span>
                   </div>
                   <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}</span>
+                </div>
+
+                <!-- Acción Móvil: Pedido Manual -->
+                <div class="mt-3 d-flex align-center gap-2">
+                  <VTextField
+                    :model-value="getInputValue(item)"
+                    @update:model-value="(val) => updateQuantity(item, val)"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    placeholder="Cantidad"
+                    class="manual-qty-input flex-grow-1"
+                    variant="outlined"
+                  />
+                  <VBtn
+                    color="primary"
+                    variant="elevated"
+                    size="40"
+                    class="rounded-lg"
+                    :loading="orderingIds[item.id]"
+                    @click="handleManualOrder(item)"
+                  >
+                    <VIcon icon="tabler-shopping-cart-plus" size="20" />
+                  </VBtn>
                 </div>
               </div>
             </VCard>

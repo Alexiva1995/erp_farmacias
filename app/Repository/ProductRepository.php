@@ -350,6 +350,7 @@ class ProductRepository
                 LIMIT 1
             ) AS cheapest_barcode'),
             'products.unit_cost as current_unit_cost',
+            'products.manual_solicitar',
             DB::raw('(
                 SELECT ps.unit_cost_usd
                 FROM product_suppliers ps
@@ -415,19 +416,22 @@ class ProductRepository
         if ($tipo_filtracion == "combinado") {
             // Demanda combinada = (promedio + ventas) / 2
             $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
-            // solicitar = demanda - stock - AO
-            $columnas[] = DB::raw('CASE 
+            $iaSolicitar = 'CASE 
                 WHEN ((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
                 ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
-            END AS solicitar');
+            END';
+            
+            $columnas[] = DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         } else {
             // solicitar = promedio - stock - AO
-            $columnas[] = DB::raw('CASE 
+            $iaSolicitar = 'CASE 
                 WHEN ((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
                 ELSE FLOOR((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
-            END AS solicitar');
+            END';
+            
+            $columnas[] = DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         }
@@ -555,6 +559,40 @@ class ProductRepository
         
         ';
 
+        $iaSolicitar = 'CASE 
+                WHEN (' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                )) > 0 THEN CEIL(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                ))
+                ELSE FLOOR(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+                ))
+            END';
 
         $columnas = [
             'products.id',
@@ -622,40 +660,7 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('CASE 
-                WHEN (' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-                )) > 0 THEN CEIL(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-                ))
-                ELSE FLOOR(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-                ))
-            END AS solicitar'),
+            DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar'),
             DB::raw('(
                 SELECT ps.barcode_match
                 FROM product_suppliers ps
@@ -667,16 +672,15 @@ class ProductRepository
                 LIMIT 1
             ) AS cheapest_barcode'),
             'products.unit_cost as current_unit_cost',
+            'products.manual_solicitar',
             DB::raw('(
                 SELECT ps.unit_cost_usd
                 FROM product_suppliers ps
                 WHERE ps.product_id = products.id
-                  AND ps.barcode_match IS NOT NULL
-                  AND ps.barcode_match != \'\'
                   AND ps.unit_cost_usd > 0
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
-            ) AS cheapest_unit_cost'),
+            ) AS best_supplier_price'),
         ];
 
         // calcular promedio en base a los dias => promedio_calculado
@@ -961,6 +965,7 @@ class ProductRepository
                     'product_id',
                     'supplier_id',
                     'laboratory',
+                    'unit_cost_usd',
                     'unit_cost_usd_with_discount'
                 )
                     ->with([
@@ -968,7 +973,7 @@ class ProductRepository
                             $q->select('id', 'name');
                         }
                     ])
-                    ->orderBy('unit_cost_usd_with_discount', 'asc');
+                    ->orderBy('unit_cost_usd', 'asc');
             }
         ]);
 
@@ -1235,6 +1240,7 @@ class ProductRepository
                     'product_id',
                     'supplier_id',
                     'laboratory',
+                    'unit_cost_usd',
                     'unit_cost_usd_with_discount'
                 )
                     ->with([
@@ -1242,7 +1248,7 @@ class ProductRepository
                             $q->select('id', 'name');
                         }
                     ])
-                    ->orderBy('unit_cost_usd_with_discount', 'asc');
+                    ->orderBy('unit_cost_usd', 'asc');
             }
         ]);
 
@@ -1438,7 +1444,6 @@ class ProductRepository
 
         // 2. Construir Query
         $query = Product::query()
-            ->distinct()
             ->where('is_deleted', false)
             ->where('is_scarce', false)
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {

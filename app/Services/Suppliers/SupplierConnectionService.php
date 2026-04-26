@@ -570,9 +570,6 @@ class SupplierConnectionService
                 );
             }
 
-            if ($supplierId === 2)
-                $entry["unit_cost_with_discount"] = floatval($entry["unit_cost"]) * 0.94;
-
             return $entry;
         });
 

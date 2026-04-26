@@ -29,11 +29,16 @@ class MarketOpportunityResource extends JsonResource
             'active_ingredient_inventory' => $this->active_ingredient_inventory ?? 'N/A',
             'laboratory_name' => $this->laboratory_name ?? 'N/A',
             'unit_cost_usd' => (float) $this->unit_cost_usd,
+            'inventory_unit_cost' => (float) $this->inventory_unit_cost,
             'effective_min_cost' => (float) $this->effective_min_cost,
-            'saving_amount' => (float) $this->saving_amount,
             'saving_percentage' => (float) $this->saving_percentage,
-            // Campo auxiliar para el frontend
-            'quantity_to_add' => 1,
+            'supplier_name' => $this->supplier_name,
+            'total_sold_completed' => (float) $this->total_sold_completed,
+            'lote_quantity' => (float) $this->lote_quantity,
+            'promedio_calculado' => (float) $this->promedio_calculado,
+            'solicitar' => (float) $this->solicitar,
+            // Campo auxiliar para el frontend: pre-llenar con la sugerencia de pedido si es positiva
+            'quantity_to_add' => $this->solicitar > 0 ? (int) $this->solicitar : null,
         ];
     }
 }

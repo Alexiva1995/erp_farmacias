@@ -29,6 +29,30 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
     protected function builderMarketOpportunities(array $filtros): Builder
     {
         $doceMesesAtras = now()->subMonths(12)->toDateString();
+        $withDiscount = filter_var($filtros['withDiscount'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $hideRedundant = filter_var($filtros['hideRedundant'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $hideDuplicates = filter_var($filtros['hideDuplicates'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $excludeSupplierIds = !empty($filtros['excludeSupplierIds']) 
+            ? (is_array($filtros['excludeSupplierIds']) ? $filtros['excludeSupplierIds'] : [$filtros['excludeSupplierIds']])
+            : [];
+
+        // Expresión para el precio de oferta efectivo (Full vs Descuento con fallback)
+        $offerPriceExpression = $withDiscount 
+            ? 'COALESCE(NULLIF(product_suppliers.unit_cost_usd_with_discount, 0), product_suppliers.unit_cost_usd)'
+            : 'product_suppliers.unit_cost_usd';
+
+        $lapsoStr = $filtros['lapso_de_tiempo'] ?? '3 month';
+        $tresMesesAtras = now()->modify('-' . $lapsoStr)->toDateTimeString();
+        $hoy = now()->toDateTimeString();
+
+        // Subconsulta para Stock por Lotes (v7 pattern)
+        $subqueryStock = '(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_id = products.id AND quantity > 0 AND (expiration_date IS NULL OR expiration_date >= CURDATE()))';
+
+        // Subconsulta para Auto Pedidos activos
+        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL)';
+
+        // Subconsulta para Ventas Realizadas (3 meses)
+        $subquerySales = "(SELECT COALESCE(SUM(order_details.quantity), 0) FROM order_details JOIN orders ON orders.id = order_details.order_id WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '{$tresMesesAtras}' AND '{$hoy}' AND orders.status = 'Completed')";
 
         // Subconsulta para el costo mínimo histórico por producto en los lotes (últimos 12 meses)
         $minHistoricCostSubquery = DB::table('product_lots')
@@ -36,54 +60,136 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
             ->whereDate('created_at', '>=', $doceMesesAtras)
             ->groupBy('product_id');
 
-        $query = ProductSupplier::query()
+        /**
+         * Subconsulta base para clasificar las ofertas por producto.
+         * Selecciona todas las ofertas que son mejores que nuestro costo de inventario.
+         * La numeración (row_num) se usa para la deduplicación (solo mejor oferta).
+         */
+        $sub = ProductSupplier::query()
             ->select(
-                'product_suppliers.id',
-                'product_suppliers.product_id',
-                'product_suppliers.supplier_id',
-                'product_suppliers.unit_cost_usd',
-                'product_suppliers.name as product_name_supplier',
+                'product_suppliers.*',
                 'products.name as product_name_inventory',
                 'products.active_ingredient as active_ingredient_inventory',
                 'products.unit_cost as inventory_unit_cost',
+                'products.laboratory_id',
                 'laboratories.name as laboratory_name',
-                // El costo de referencia es el menor entre el precio pagado históricamente y el costo actual en inventario
-                DB::raw('LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost) as effective_min_cost'),
-                // Monto de ahorro: Diferencia entre el costo de referencia y el precio del proveedor
-                DB::raw('(LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost) - product_suppliers.unit_cost_usd) as saving_amount'),
-                // Porcentaje de ahorro
-                DB::raw('ROUND(((LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost) - product_suppliers.unit_cost_usd) / LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost)) * 100, 2) as saving_percentage')
+                'suppliers.name as supplier_name',
+                DB::raw($offerPriceExpression . ' as effective_offer_price'),
+                DB::raw($subquerySales . ' as total_sold_completed'),
+                DB::raw($subqueryStock . ' as lote_quantity'),
+                DB::raw("CASE 
+                    WHEN '$lapsoStr' = '7 days' THEN products.sales_average / 4
+                    WHEN '$lapsoStr' = '15 days' THEN products.sales_average / 2
+                    WHEN '$lapsoStr' = '1 month' THEN products.sales_average
+                    WHEN '$lapsoStr' = '3 month' THEN products.sales_average * 3
+                    WHEN '$lapsoStr' = '6 month' THEN products.sales_average * 6
+                    WHEN '$lapsoStr' = '12 month' THEN products.sales_average * 12
+                    WHEN '$lapsoStr' = '1 year' THEN products.sales_average * 12
+                    ELSE products.sales_average * 3
+                END as promedio_calculado"),
+                DB::raw($subqueryAO . ' as totalQuantityInAutoOrder')
             )
-            ->join('products', 'product_suppliers.product_id', '=', 'products.id')
-            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->leftJoinSub($minHistoricCostSubquery, 'historic', function ($join) {
-                $join->on('products.id', '=', 'historic.product_id');
+            ->when($hideDuplicates, function ($q) use ($offerPriceExpression) {
+                $q->addSelect(DB::raw('ROW_NUMBER() OVER(PARTITION BY product_suppliers.product_id ORDER BY ' . $offerPriceExpression . ' ASC) as row_num'));
             })
-            // Filtrar registros con costo mayor a 0 para evitar errores matemáticos
-            ->where('product_suppliers.unit_cost_usd', '>', 0)
-            // Solo productos donde el proveedor es más económico que nuestra mejor referencia de costo
-            ->whereRaw('product_suppliers.unit_cost_usd < LEAST(COALESCE(historic.min_historic_cost, products.unit_cost), products.unit_cost)');
+            ->join('products', 'product_suppliers.product_id', '=', 'products.id')
+            ->join('suppliers', 'product_suppliers.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->whereRaw($offerPriceExpression . ' > 0')
+            ->where('products.unit_cost', '>', 0)
+            ->whereRaw($offerPriceExpression . ' < products.unit_cost')
+            ->when($hideRedundant, function ($q) {
+                // En este sistema, "Redundante" se identifica con la columna 'is_scarce'
+                $q->where('products.is_scarce', 0);
+            })
+            ->when(isset($filtros['is_colombia']), function ($q) use ($filtros) {
+                $isCol = filter_var($filtros['is_colombia'], FILTER_VALIDATE_BOOLEAN);
+                $q->where('products.is_colombian_origin', $isCol ? 1 : 0);
+            })
+            ->when(!empty($excludeSupplierIds), function ($q) use ($excludeSupplierIds) {
+                $q->whereNotIn('product_suppliers.supplier_id', $excludeSupplierIds);
+            });
+
+        // Definición de DEMANDA según tipo de filtración para el SELECT final y filtrado
+        $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'combinado';
+        $demandaSql = match($tipoFiltracion) {
+            'sales'      => 'sub.total_sold_completed',
+            'average'    => 'sub.promedio_calculado',
+            'combinado'  => "(CASE WHEN sub.total_sold_completed > 0 THEN ((sub.promedio_calculado + sub.total_sold_completed) / 2) ELSE sub.promedio_calculado END)",
+            default      => "(CASE WHEN sub.total_sold_completed > 0 THEN ((sub.promedio_calculado + sub.total_sold_completed) / 2) ELSE sub.promedio_calculado END)",
+        };
+
+        $query = ProductSupplier::query()
+            ->fromSub($sub, 'sub')
+            ->select(
+                'sub.id',
+                'sub.product_id',
+                'sub.supplier_id',
+                'sub.effective_offer_price as unit_cost_usd',
+                'sub.name as product_name_supplier',
+                'sub.product_name_inventory',
+                'sub.active_ingredient_inventory',
+                'sub.inventory_unit_cost',
+                'sub.laboratory_name',
+                'sub.supplier_name',
+                'sub.total_sold_completed',
+                'sub.lote_quantity',
+                'sub.promedio_calculado',
+                // Solicitar = Demanda - Stock - AutoOrder
+                DB::raw("CASE 
+                    WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                    THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                    ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                END as solicitar"),
+                // Mínimo histórico con fallback al costo de inventario
+                DB::raw('COALESCE(historic.min_historic_cost, sub.inventory_unit_cost) as effective_min_cost'),
+                // Porcentaje de ahorro real: ((Costo - Oferta) / Costo) * 100
+                DB::raw('FLOOR(((sub.inventory_unit_cost - sub.effective_offer_price) / sub.inventory_unit_cost) * 100) as saving_percentage')
+            )
+            ->leftJoinSub($minHistoricCostSubquery, 'historic', function ($join) {
+                $join->on('sub.product_id', '=', 'historic.product_id');
+            })
+            ->when($hideDuplicates, function ($q) {
+                $q->where('sub.row_num', 1);
+            });
+
+        // Filtro de Stock (Fallas/Exceso)
+        $stockFilter = $filtros['stock'] ?? 'all';
+        if ($stockFilter === 'fallas') {
+            $query->whereRaw("(CASE 
+                WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+            END) > 0");
+        } elseif ($stockFilter === 'exceso') {
+            $query->whereRaw("(CASE 
+                WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+            END) < 0");
+        }
 
         // Aplicación de filtros de búsqueda
         if (!empty($filtros['q'])) {
             $query->where(function ($q) use ($filtros) {
                 $searchTerm = '%' . $filtros['q'] . '%';
-                $q->where('product_suppliers.name', 'like', $searchTerm)
-                  ->orWhere('product_suppliers.barcode_match', 'like', $searchTerm)
-                  ->orWhere('products.name', 'like', $searchTerm);
+                // Usamos los nombres de columna tal cual vienen en la subconsulta 'sub'
+                $q->where('sub.name', 'like', $searchTerm)
+                  ->orWhere('sub.barcode_match', 'like', $searchTerm)
+                  ->orWhere('sub.product_name_inventory', 'like', $searchTerm);
             });
         }
 
         // Filtro por laboratorio
         if (!empty($filtros['laboratoryId'])) {
             $labIds = is_array($filtros['laboratoryId']) ? $filtros['laboratoryId'] : [$filtros['laboratoryId']];
-            $query->whereIn('products.laboratory_id', $labIds);
+            $query->whereIn('sub.laboratory_id', $labIds);
         }
 
         // Filtro por producto específico
         if (!empty($filtros['productId'])) {
             $productIds = is_array($filtros['productId']) ? $filtros['productId'] : [$filtros['productId']];
-            $query->whereIn('products.id', $productIds);
+            $query->whereIn('sub.product_id', $productIds);
         }
 
         // Ordenamiento (Por defecto mayor porcentaje de ahorro)
