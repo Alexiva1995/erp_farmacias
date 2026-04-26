@@ -152,6 +152,7 @@ class LaboratoryMasterReportRepository
             ->select(
                 'products.id',
                 'products.name',
+                'products.group_id',
                 DB::raw('SUM(order_details.quantity) as units'),
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as estimated_margin')
@@ -159,9 +160,26 @@ class LaboratoryMasterReportRepository
             ->where('products.laboratory_id', $labId)
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->groupBy('products.id', 'products.name')
+            ->groupBy('products.id', 'products.name', 'products.group_id')
             ->orderByDesc('revenue')
             ->limit(20)
+            ->get();
+
+        // Ventas por grupo de productos (para benchmarking)
+        $groupPerformance = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
+            ->select(
+                'groups_products.id',
+                'groups_products.name',
+                DB::raw('SUM(order_details.quantity) as units'),
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
+            )
+            ->where('products.laboratory_id', $labId)
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->groupBy('groups_products.id', 'groups_products.name')
             ->get();
 
         // KPIs Generales
@@ -179,6 +197,7 @@ class LaboratoryMasterReportRepository
 
         return [
             'top_products' => $topProducts,
+            'group_performance' => $groupPerformance,
             'stats' => $stats
         ];
     }

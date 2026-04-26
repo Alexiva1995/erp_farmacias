@@ -42,7 +42,29 @@ class LaboratoryMasterReportService
         $dataA = $this->repository->getLaboratoryDetails($labIdA, $filters);
         $dataB = $this->repository->getLaboratoryDetails($labIdB, $filters);
 
-        // Calcular Market Share Relativo entre los dos
+        // Identificar Grupos Compartidos
+        $groupsA = collect($dataA['group_performance']);
+        $groupsB = collect($dataB['group_performance']);
+
+        $sharedGroupIds = $groupsA->pluck('id')->intersect($groupsB->pluck('id'));
+
+        $sharedComparisons = $sharedGroupIds->map(function ($groupId) use ($groupsA, $groupsB) {
+            $gA = $groupsA->firstWhere('id', $groupId);
+            $gB = $groupsB->firstWhere('id', $groupId);
+            
+            $totalRev = $gA->revenue + $gB->revenue;
+
+            return [
+                'group_id' => $groupId,
+                'name' => $gA->name,
+                'revenue_a' => $gA->revenue,
+                'revenue_b' => $gB->revenue,
+                'share_a' => $totalRev > 0 ? round(($gA->revenue / $totalRev) * 100, 1) : 0,
+                'share_b' => $totalRev > 0 ? round(($gB->revenue / $totalRev) * 100, 1) : 0,
+            ];
+        })->values();
+
+        // Calcular Market Share Relativo entre los dos (Total)
         $revA = $dataA['top_products']->sum('revenue');
         $revB = $dataB['top_products']->sum('revenue');
         $total = $revA + $revB;
@@ -53,7 +75,8 @@ class LaboratoryMasterReportService
             ]),
             'lab_b' => array_merge(['details' => $dataB], [
                 'share_relative' => $total > 0 ? round(($revB / $total) * 100, 2) : 0
-            ])
+            ]),
+            'shared_groups' => $sharedComparisons
         ];
     }
 }

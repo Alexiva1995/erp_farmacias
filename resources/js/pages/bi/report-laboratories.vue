@@ -432,7 +432,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                 
                 <div class="d-flex flex-column gap-3">
                   <div class="d-flex justify-space-between align-center p-2 rounded bg-light-primary px-3">
-                    <span class="text-xs font-weight-bold opacity-70">CUOTA DE MERCADO (VS B)</span>
+                    <span class="text-xs font-weight-bold opacity-70">PARTICIPACIÓN (VS B)</span>
                     <span class="text-h5 font-weight-black text-primary">{{ benchmarkingData.lab_a.share_relative }}%</span>
                   </div>
                   <div class="d-flex justify-space-between align-center p-2 border-b px-3">
@@ -460,7 +460,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                 
                 <div class="d-flex flex-column gap-3">
                   <div class="d-flex justify-space-between align-center p-2 rounded bg-light-success px-3">
-                    <span class="text-xs font-weight-bold opacity-70 text-right">CUOTA DE MERCADO (VS A)</span>
+                    <span class="text-xs font-weight-bold opacity-70 text-right">PARTICIPACIÓN (VS A)</span>
                     <span class="text-h5 font-weight-black text-success">{{ benchmarkingData.lab_b.share_relative }}%</span>
                   </div>
                   <div class="d-flex justify-space-between align-center p-2 border-b px-3">
@@ -473,6 +473,39 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                   </div>
                 </div>
               </div>
+            </VCol>
+
+            <!-- CATEGORIAS COMPARTIDAS (HEAD-TO-HEAD) -->
+            <VCol v-if="benchmarkingData.shared_groups.length" cols="12" class="mt-8 pt-4 border-t">
+              <div class="text-subtitle-1 font-weight-black mb-4 d-flex align-center">
+                <VIcon icon="tabler-swords" class="me-2 text-error" />
+                <span>Competencia Directa por Categoría</span>
+              </div>
+              
+              <VRow>
+                <VCol v-for="group in benchmarkingData.shared_groups" :key="group.group_id" cols="12" md="6">
+                  <VCard border flat class="pa-3 bg-light-secondary rounded-lg">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                      <span class="text-xs font-weight-black text-uppercase">{{ group.name }}</span>
+                    </div>
+                    <div class="d-flex align-center gap-2">
+                       <span class="text-xs font-weight-bold text-primary">{{ group.share_a }}%</span>
+                       <VProgressLinear
+                         :model-value="group.share_a"
+                         height="12"
+                         color="primary"
+                         class="flex-grow-1"
+                         rounded
+                       />
+                       <span class="text-xs font-weight-bold text-success">{{ group.share_b }}%</span>
+                    </div>
+                    <div class="d-flex justify-space-between mt-1 opacity-60 text-xs font-weight-bold">
+                      <span class="text-primary">{{ formatCurrency(group.revenue_a) }}</span>
+                      <span class="text-success">{{ formatCurrency(group.revenue_b) }}</span>
+                    </div>
+                  </VCard>
+                </VCol>
+              </VRow>
             </VCol>
           </VRow>
           <div v-else class="pa-10 text-center text-medium-emphasis">Selecciona dos laboratorios para comparar su rendimiento</div>
