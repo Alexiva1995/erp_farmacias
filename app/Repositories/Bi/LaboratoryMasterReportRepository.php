@@ -51,6 +51,32 @@ class LaboratoryMasterReportRepository
     }
 
     /**
+     * Obtener Rentabilidad (Margen %) por Laboratorio
+     */
+    public function getProfitability(array $filters)
+    {
+        $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
+        $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+
+        return DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->select(
+                'laboratories.name',
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as margin_percent'),
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as total_profit')
+            )
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->groupBy('laboratories.id', 'laboratories.name')
+            ->having('margin_percent', '>', 0)
+            ->orderByDesc('margin_percent')
+            ->limit(10)
+            ->get();
+    }
+
+    /**
      * Datos de Tendencia para los Top 5 Laboratorios
      */
     public function getTrendData(array $filters)
@@ -91,7 +117,7 @@ class LaboratoryMasterReportRepository
     }
 
     /**
-     * Stock on Hand por Laboratorio (Treemap)
+     * Stock on Hand por Laboratorio (Treemap) - BASADO EN COSTO
      */
     public function getStockOnHand(array $filters)
     {
@@ -100,7 +126,7 @@ class LaboratoryMasterReportRepository
             ->select(
                 'laboratories.name',
                 DB::raw('SUM(products.stock) as total_stock'),
-                DB::raw('SUM(products.stock * products.sale_price) as inventory_value') // Usamos sale_price que suele ser la base USD
+                DB::raw('SUM(products.stock * products.unit_cost) as inventory_value')
             )
             ->where('products.is_active', 1)
             ->where('products.stock', '>', 0)

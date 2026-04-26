@@ -20,6 +20,7 @@ class LaboratoryMasterReportService
             ],
             'trends' => $this->repository->getTrendData($filters),
             'stock_on_hand' => $this->repository->getStockOnHand($filters),
+            'profitability' => $this->repository->getProfitability($filters),
         ];
     }
 

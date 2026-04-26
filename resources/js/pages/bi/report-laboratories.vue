@@ -15,7 +15,8 @@ const groupByCorporate = ref(false);
 const dashboardData = ref({
   rankings: { by_units: { data: [] }, by_revenue: { data: [] } },
   trends: [],
-  stock_on_hand: []
+  stock_on_hand: [],
+  profitability: []
 });
 
 const startDate = ref('2026-04-01');
@@ -179,6 +180,33 @@ const trendSeries = computed(() => {
   }));
 });
 
+// Gráfico de Ventas (Pie Chart)
+const marketShareChartOptions = computed(() => ({
+  chart: { type: 'donut' },
+  labels: dashboardData.value.rankings.by_revenue.data.map(l => l.name),
+  colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8', '#00bbd4', '#607d8b', '#9c27b0', '#3f51b5', '#e91e63'],
+  legend: { position: 'bottom' },
+  dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
+  plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'TOTAL USD', formatter: () => formatCurrency(dashboardData.value.rankings.by_revenue.data.reduce((a, b) => a + parseFloat(b.total_revenue), 0)) } } } } } }
+}));
+
+const marketShareSeries = computed(() => dashboardData.value.rankings.by_revenue.data.map(l => parseFloat(l.total_revenue)));
+
+// Gráfico de Rentabilidad (Bar Chart)
+const profitabilityChartOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false } },
+  plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%', distributed: true } },
+  dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
+  xaxis: { categories: dashboardData.value.profitability.map(l => l.name) },
+  colors: ['#28c76f'],
+  legend: { show: false }
+}));
+
+const profitabilitySeries = computed(() => [{
+  name: 'Margen %',
+  data: dashboardData.value.profitability.map(l => parseFloat(l.margin_percent))
+}]);
+
 const stockTreemapOptions = computed(() => ({
   legend: { show: false },
   chart: { height: 350, type: 'treemap', toolbar: { show: false } },
@@ -189,6 +217,9 @@ const stockTreemapOptions = computed(() => ({
       shadeIntensity: 0.5,
       distributed: true
     }
+  },
+  tooltip: {
+    y: { formatter: (val) => formatCurrency(val) }
   }
 }));
 
@@ -322,21 +353,47 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
         </VCol>
       </VRow>
 
-      <!-- TENDENCIAS Y STOCK -->
+      <!-- TENDENCIAS Y CUOTA DE MERCADO -->
       <VRow>
         <VCol cols="12" md="8">
-          <VCard border class="rounded-lg shadow-sm">
+          <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b">Tendencia de Venta Bruta (Top 5)</VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="trendChartOptions" :series="trendSeries" />
+              <VueApexCharts height="320" :options="trendChartOptions" :series="trendSeries" />
             </VCardText>
           </VCard>
         </VCol>
         <VCol cols="12" md="4">
-          <VCard border class="rounded-lg shadow-sm">
-            <VCardTitle class="pa-4 border-b">Valor de Inventario por Marca</VCardTitle>
+          <VCard border class="rounded-lg shadow-sm h-100">
+            <VCardTitle class="pa-4 border-b">Cuota de Mercado (% Ventas)</VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="stockTreemapOptions" :series="stockSeries" />
+              <VueApexCharts height="320" :options="marketShareChartOptions" :series="marketShareSeries" />
+            </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
+
+      <!-- RENTABILIDAD Y STOCK -->
+      <VRow>
+        <VCol cols="12" md="6">
+          <VCard border class="rounded-lg shadow-sm h-100">
+            <VCardTitle class="pa-4 border-b d-flex align-center">
+              <VIcon icon="tabler-trending-up" class="me-2 text-success" />
+              <span>Laboratorios Más Rentables (% Margen)</span>
+            </VCardTitle>
+            <VCardText class="pa-4">
+              <VueApexCharts height="350" :options="profitabilityChartOptions" :series="profitabilitySeries" />
+            </VCardText>
+          </VCard>
+        </VCol>
+        <VCol cols="12" md="6">
+          <VCard border class="rounded-lg shadow-sm h-100">
+            <VCardTitle class="pa-4 border-b d-flex align-center">
+              <VIcon icon="tabler-building-warehouse" class="me-2 text-primary" />
+              <span>Valor de Inventario al Costo (Stock Actual)</span>
+            </VCardTitle>
+            <VCardText class="pa-4">
+              <VueApexCharts height="350" :options="stockTreemapOptions" :series="stockSeries" />
             </VCardText>
           </VCard>
         </VCol>
