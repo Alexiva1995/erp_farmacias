@@ -9,4 +9,5 @@ interface ExpiryReportRepositoryInterface
     public function getRealLossAnalysis(array $filters): array;
     public function getRiskInventory(array $filters): array;
     public function getOverstockWarning(array $filters): array;
+    public function getCurrentExpiredStock(array $filters): array;
 }

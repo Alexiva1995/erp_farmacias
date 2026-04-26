@@ -18,7 +18,7 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             ->select(
                 DB::raw("DATE_FORMAT(product_lots.expiration_date, '%Y-%m') as month"),
                 'categories.name as category_name',
-                DB::raw('SUM(product_lots.quantity * product_lots.unit_cost) as total_value'),
+                DB::raw('SUM(product_lots.quantity * products.unit_cost) as total_value'),
                 DB::raw('SUM(product_lots.quantity) as total_units')
             )
             ->where('product_lots.quantity', '>', 0)
@@ -38,7 +38,7 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             ->join('products', 'product_lots.product_id', '=', 'products.id')
             ->select(
                 DB::raw("DATE_FORMAT(product_lots.expiration_date, '%Y') as year"),
-                DB::raw('SUM(product_lots.quantity * product_lots.unit_cost) as total_value'),
+                DB::raw('SUM(product_lots.quantity * products.unit_cost) as total_value'),
                 DB::raw('SUM(product_lots.quantity) as total_units')
             )
             ->where('product_lots.quantity', '>', 0)
@@ -54,10 +54,11 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
     public function getRealLossAnalysis(array $filters): array
     {
         $query = ExpiredLog::query()
+            ->join('products', 'expired_logs.product_id', '=', 'products.id')
             ->select(
-                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
-                DB::raw('SUM(expired_quantity) as total_units'),
-                DB::raw('SUM(total_lost_value) as total_cost')
+                DB::raw("DATE_FORMAT(expired_logs.created_at, '%Y-%m') as month"),
+                DB::raw('SUM(expired_logs.expired_quantity) as total_units'),
+                DB::raw('SUM(expired_logs.expired_quantity * products.unit_cost) as total_cost')
             )
             ->groupBy('month')
             ->orderBy('month', 'desc')
@@ -110,7 +111,7 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 'product_lots.quantity as stock_actual',
                 'product_lots.expiration_date',
                 'products.sales_average as venta_mensual_promedio',
-                'product_lots.unit_cost',
+                'products.unit_cost',
                 DB::raw('TIMESTAMPDIFF(MONTH, NOW(), product_lots.expiration_date) as meses_restantes')
             )
             ->where('product_lots.quantity', '>', 0)
@@ -123,8 +124,31 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
         return $query->get()->toArray();
     }
 
+    public function getCurrentExpiredStock(array $filters): array
+    {
+        $endOfMonth = now()->endOfMonth();
+
+        $query = ProductLot::query()
+            ->join('products', 'product_lots.product_id', '=', 'products.id')
+            ->select(
+                DB::raw('COALESCE(SUM(product_lots.quantity), 0) as total_units'),
+                DB::raw('COALESCE(SUM(product_lots.quantity * products.unit_cost), 0) as total_value')
+            )
+            ->where('product_lots.quantity', '>', 0)
+            ->where('product_lots.expiration_date', '<=', $endOfMonth);
+            
+        $this->applyFilters($query, $filters);
+        
+        $result = $query->first();
+        return $result ? $result->toArray() : ['total_units' => 0, 'total_value' => 0];
+    }
+
     private function applyFilters($query, array $filters)
     {
+        // Excluir productos eliminados (SoftDeletes e is_deleted)
+        $query->whereNull('products.deleted_at')
+              ->where('products.is_deleted', false);
+
         if (!empty($filters['search'])) {
             $query->where(function($q) use ($filters) {
                 $q->where('products.name', 'like', '%' . $filters['search'] . '%')
@@ -149,17 +173,6 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             // Add location filtering logic if you have multiple branches/locations
         }
 
-        if (!empty($filters['semaphore'])) {
-            $query->where(function($q) use ($filters) {
-                if ($filters['semaphore'] === 'critico') {
-                    $q->where('product_lots.expiration_date', '<=', now()->addDays(90));
-                } elseif ($filters['semaphore'] === 'moderado') {
-                    $q->where('product_lots.expiration_date', '>', now()->addDays(90))
-                      ->where('product_lots.expiration_date', '<=', now()->addDays(180));
-                } elseif ($filters['semaphore'] === 'estable') {
-                    $q->where('product_lots.expiration_date', '>', now()->addDays(180));
-                }
-            });
-        }
+
     }
 }

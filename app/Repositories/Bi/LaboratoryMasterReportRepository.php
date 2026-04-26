@@ -28,7 +28,7 @@ class LaboratoryMasterReportRepository
                     ? DB::raw('(SELECT name FROM laboratories as l2 WHERE l2.id = COALESCE(laboratories.parent_id, laboratories.id)) as name')
                     : 'laboratories.name',
                 DB::raw('SUM(order_details.quantity) as total_units'),
-                DB::raw('SUM(order_details.quantity * order_details.price) as total_revenue'),
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_revenue'),
                 DB::raw('COUNT(DISTINCT orders.id) as ticket_count')
             )
             ->where('orders.status', 'Completed')
@@ -66,7 +66,7 @@ class LaboratoryMasterReportRepository
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->groupBy('products.laboratory_id')
-            ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.price)'))
+            ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
             ->limit(5)
             ->pluck('products.laboratory_id');
 
@@ -80,7 +80,7 @@ class LaboratoryMasterReportRepository
             ->select(
                 'laboratories.name as lab_name',
                 DB::raw("DATE_FORMAT(orders.created_at, '%Y-%m') as month"),
-                DB::raw('SUM(order_details.quantity * order_details.price) as revenue')
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
             )
             ->whereIn('products.laboratory_id', $top5Ids)
             ->where('orders.status', 'Completed')
@@ -100,7 +100,7 @@ class LaboratoryMasterReportRepository
             ->select(
                 'laboratories.name',
                 DB::raw('SUM(products.stock) as total_stock'),
-                DB::raw('SUM(products.stock * products.unit_cost) as inventory_value')
+                DB::raw('SUM(products.stock * products.sale_price) as inventory_value') // Usamos sale_price que suele ser la base USD
             )
             ->where('products.is_active', 1)
             ->where('products.stock', '>', 0)
@@ -126,8 +126,8 @@ class LaboratoryMasterReportRepository
                 'products.id',
                 'products.name',
                 DB::raw('SUM(order_details.quantity) as units'),
-                DB::raw('SUM(order_details.quantity * order_details.price) as revenue'),
-                DB::raw('SUM(order_details.quantity * (order_details.price - order_details.unit_cost)) as estimated_margin')
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue'),
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as estimated_margin')
             )
             ->where('products.laboratory_id', $labId)
             ->where('orders.status', 'Completed')
@@ -142,8 +142,8 @@ class LaboratoryMasterReportRepository
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->select(
-                DB::raw('SUM(order_details.quantity * order_details.price) / COUNT(DISTINCT orders.id) as avg_ticket'),
-                DB::raw('SUM(order_details.quantity * (order_details.price - order_details.unit_cost)) / SUM(order_details.quantity * order_details.price) * 100 as avg_margin_percent')
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) / COUNT(DISTINCT orders.id) as avg_ticket'),
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as avg_margin_percent')
             )
             ->where('products.laboratory_id', $labId)
             ->where('orders.status', 'Completed')

@@ -64,13 +64,18 @@ class ExpiryReportService
     {
         $lossData = $this->repository->getRealLossAnalysis($filters);
         $currentMonth = Carbon::now()->format('Y-m');
+        $historicalLoss = collect($lossData)->firstWhere('month', $currentMonth);
         
-        $currentMonthLoss = collect($lossData)->firstWhere('month', $currentMonth);
+        $currentExpired = $this->repository->getCurrentExpiredStock($filters);
 
         return [
-            'total_units_expired_month' => $currentMonthLoss['total_units'] ?? 0,
-            'total_cost_merma_month' => $currentMonthLoss['total_cost'] ?? 0,
-            // Agregaremos más KPIs según sea necesario
+            // El usuario quiere ver lo que sigue en inventario que ya venció este mes
+            'total_units_expired_month' => $currentExpired['total_units'] + ($historicalLoss['total_units'] ?? 0),
+            'total_cost_merma_month' => $currentExpired['total_value'] + ($historicalLoss['total_cost'] ?? 0),
+            'hist_units' => $historicalLoss['total_units'] ?? 0,
+            'hist_cost' => $historicalLoss['total_cost'] ?? 0,
+            'current_inv_expired_units' => $currentExpired['total_units'],
+            'current_inv_expired_value' => $currentExpired['total_value'],
         ];
     }
 }

@@ -96,7 +96,7 @@ const sixMonthTrendConfig = computed(() => {
   
   const categories = months.map(m => m.monthName)
   const data = months.map(m => {
-    const items = dashboardData.value.horizon.filter(i => i.sort_key === m.sort_key)
+    const items = dashboardData.value.horizon.filter(i => i.month === m.sortKey)
     return items.reduce((acc, curr) => acc + (metricType.value === 'value' ? parseFloat(curr.total_value) : parseFloat(curr.total_units)), 0)
   })
 
@@ -138,50 +138,162 @@ const sixMonthTrendConfig = computed(() => {
     }
   }
 })
-
 // 4. Risk Ranking (Horizontal Bar) - Más entendible
 const riskBarChartConfig = computed(() => {
-  // Tomar los top 10 productos con mayor costo excedente de la data de overstock
-  const topRisks = [...dashboardData.value.overstock]
+  // Agrupar riesgo por producto (sumando sus lotes en sobrestock)
+  const aggregatedRisks = dashboardData.value.overstock.reduce((acc, curr) => {
+    const key = curr.product_id
+    if (!acc[key]) {
+      acc[key] = { 
+        name: curr.name, 
+        lab: curr.laboratory_name || 'N/A',
+        id: curr.product_id,
+        costo_excedente: 0 
+      }
+    }
+    acc[key].costo_excedente += parseFloat(curr.costo_excedente)
+    return acc
+  }, {})
+
+  const topRisks = Object.values(aggregatedRisks)
     .sort((a, b) => b.costo_excedente - a.costo_excedente)
     .slice(0, 10)
 
-  const categories = topRisks.map(i => i.name.substring(0, 20) + '...')
+  const categories = topRisks.map(i => `#${i.id} | ${i.name} [${i.lab}]`)
   const values = topRisks.map(i => i.costo_excedente)
 
   return {
     series: [{ name: 'Costo en Riesgo', data: values }],
     options: {
-      chart: { type: 'bar', toolbar: { show: false } },
+      chart: { 
+        type: 'bar', 
+        toolbar: { show: false },
+        offsetX: -10
+      },
       plotOptions: { 
         bar: { 
           horizontal: true, 
           borderRadius: 4,
-          distributed: true // Colores diferentes por barra
-        } 
+          distributed: true,
+          barHeight: '70%'
+        }
       },
       colors: ['#ea5455', '#ff9f43', '#ffc107', '#28c76f', '#00cfe8', '#7367f0', '#4b4b4b', '#82868b', '#212121', '#a8aaae'],
-      xaxis: { 
+      xaxis: {
         categories: categories,
-        labels: { formatter: (val) => `$${val.toFixed(0)}`, style: { colors: '#a3a3a3' } }
+        labels: {
+          formatter: (val) => formatMoney(val),
+          style: { colors: '#a3a3a3' }
+        }
       },
-      yaxis: { labels: { style: { colors: '#a3a3a3' } } },
-      dataLabels: { enabled: true, formatter: (val) => `$${val.toFixed(0)}`, style: { fontSize: '10px' } },
+      yaxis: {
+        labels: {
+          style: { fontSize: '10px', fontWeight: 600, colors: '#a3a3a3' },
+          maxWidth: 350
+        }
+      },
+      grid: {
+        padding: { left: 20 },
+        borderColor: 'rgba(144, 164, 174, 0.1)'
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => formatMoney(val),
+        style: { fontSize: '10px', colors: ['#fff'] }
+      },
       legend: { show: false },
-      grid: { borderColor: 'rgba(144, 164, 174, 0.1)' }
+      tooltip: { theme: 'dark' }
+    }
+  }
+})
+
+// 5. Historical Loss (Bar Chart) - Pérdida real mes a mes
+const lossHistoryChartConfig = computed(() => {
+  const categories = [...dashboardData.value.loss_analysis]
+    .reverse()
+    .map(i => {
+      const [year, month] = i.month.split('-')
+      const d = new Date(year, month - 1, 1)
+      return d.toLocaleString('es-ES', { month: 'short' }).toUpperCase()
+    })
+
+  const values = [...dashboardData.value.loss_analysis]
+    .reverse()
+    .map(i => metricType.value === 'value' ? parseFloat(i.total_cost) : parseFloat(i.total_units))
+
+  return {
+    series: [{ 
+      name: metricType.value === 'value' ? 'Pérdida ($)' : 'Pérdida (U)', 
+      data: values 
+    }],
+    options: {
+      chart: { type: 'bar', toolbar: { show: false } },
+      plotOptions: { 
+        bar: { 
+          borderRadius: 4,
+          dataLabels: { position: 'top' }
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => metricType.value === 'value' ? formatMoney(val) : formatNumber(val),
+        offsetY: -20,
+        style: { fontSize: '9px', colors: ['#a3a3a3'] }
+      },
+      colors: ['#ea5455'],
+      xaxis: {
+        categories: categories,
+        labels: { style: { colors: '#a3a3a3', fontSize: '10px' } }
+      },
+      yaxis: {
+        labels: {
+          formatter: (val) => metricType.value === 'value' ? `$${val}` : val,
+          style: { colors: '#a3a3a3' }
+        }
+      },
+      grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
+      tooltip: { theme: 'dark' }
     }
   }
 })
 
 const overstockHeaders = [
-  { title: 'Producto', key: 'name' },
-  { title: 'Laboratorio', key: 'laboratory_name' },
-  { title: 'Stock', key: 'stock_actual' },
-  { title: 'Venta Prom.', key: 'venta_mensual_promedio' },
-  { title: 'Vence', key: 'expiration_date' },
-  { title: 'Excedente (U)', key: 'excedente_proyectado' },
-  { title: 'Impacto ($)', key: 'costo_excedente' },
+  { title: 'PRODUCTO', key: 'name', align: 'start', sortable: true },
+  { title: 'STOCK ACTUAL', key: 'stock_actual', align: 'end', sortable: true },
+  { title: 'VTA. PROM', key: 'venta_mensual_promedio', align: 'end', sortable: true },
+  { title: 'EXCEDENTE (U)', key: 'excedente_proyectado', align: 'end', sortable: true },
+  { title: 'COSTO RIESGO', key: 'costo_excedente', align: 'end', sortable: true },
 ]
+
+// Computado para agrupar sobrestock por producto (SKU)
+const aggregatedOverstock = computed(() => {
+  if (!dashboardData.value.overstock) return []
+  
+  const aggregated = dashboardData.value.overstock.reduce((acc, curr) => {
+    const key = curr.product_id
+    if (!acc[key]) {
+      acc[key] = {
+        product_id: curr.product_id,
+        name: curr.name,
+        laboratory_name: curr.laboratory_name,
+        stock_actual: 0,
+        venta_mensual_promedio: parseFloat(curr.venta_mensual_promedio || 0),
+        excedente_proyectado: 0,
+        costo_excedente: 0
+      }
+    }
+    
+    acc[key].stock_actual += parseFloat(curr.stock_actual || 0)
+    acc[key].excedente_proyectado += parseFloat(curr.excedente_proyectado || 0)
+    acc[key].costo_excedente += parseFloat(curr.costo_excedente || 0)
+    
+    return acc
+  }, {})
+
+  return Object.values(aggregated).sort((a, b) => b.costo_excedente - a.costo_excedente)
+})
+
+const itemsPerPage = ref(10)
 
 const handleExport = () => {
   // Aquí iría la lógica de exportación (CSV o Excel)
@@ -211,22 +323,7 @@ const handleExport = () => {
             />
           </VCol>
 
-          <VCol cols="12" md="3">
-            <AppSelect
-              v-model="filters.semaphore"
-              :items="[
-                {title: '🚨 Crítico (<90 días)', value: 'critico'},
-                {title: '⚠️ Moderado (<180 días)', value: 'moderado'},
-                {title: '✅ Estable (>180 días)', value: 'estable'}
-              ]"
-              placeholder="Estado de Riesgo"
-              density="compact"
-              hide-details
-              clearable
-              class="premium-select-compact"
-              prepend-inner-icon="tabler-traffic-lights"
-            />
-          </VCol>
+
 
           <VSpacer />
 
@@ -240,13 +337,11 @@ const handleExport = () => {
               color="primary"
               class="premium-toggle"
             >
-              <VBtn value="value" size="small" class="px-4">
-                <VIcon icon="tabler-currency-dollar" size="18" class="me-1" />
-                USD
+              <VBtn value="value" size="small" class="px-2">
+                <VIcon icon="tabler-currency-dollar" size="20" />
               </VBtn>
-              <VBtn value="units" size="small" class="px-4">
-                <VIcon icon="tabler-package" size="18" class="me-1" />
-                UNI
+              <VBtn value="units" size="small" class="px-2">
+                <VIcon icon="tabler-package" size="20" />
               </VBtn>
             </VBtnToggle>
 
@@ -492,44 +587,36 @@ const handleExport = () => {
         </VCard>
       </VCol>
 
-      <VCol cols="12" md="12">
-        <VCard class="rounded-lg border shadow-sm">
+      <VCol cols="12" md="8">
+        <VCard class="rounded-lg border shadow-sm h-full">
           <VCardItem>
             <VCardTitle class="d-flex align-center justify-space-between">
               <div class="d-flex align-center">
                 <VIcon icon="tabler-alert-square" class="me-2 text-warning" />
                 Alerta de Sobrestock Proyectado
               </div>
-              <VChip color="error" variant="tonal" size="x-small" class="font-weight-black">ORDENADO POR IMPACTO CRÍTICO</VChip>
             </VCardTitle>
           </VCardItem>
           <VDivider class="opacity-10" />
           <VCardText class="pa-0">
              <VDataTable
               :headers="overstockHeaders"
-              :items="dashboardData.overstock"
+              :items="aggregatedOverstock"
               :loading="loading"
               class="premium-table density-compact"
-              hide-default-footer
+              :items-per-page="itemsPerPage"
               no-data-text="No se detectaron riesgos de sobrestock"
             >
               <template #item.name="{ item }">
                 <div class="d-flex flex-column py-2">
-                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 250px;">
+                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 350px;">
                     {{ item.name }}
                   </span>
-                  <span class="text-super-xs text-disabled">{{ item.barcode }} | Lote: {{ item.lot_number }}</span>
+                  <span class="text-super-xs text-disabled">ID: {{ item.product_id }} | {{ item.laboratory_name }}</span>
                 </div>
               </template>
-              <template #item.expiration_date="{ item }">
-                <VChip 
-                  :color="item.color" 
-                  size="x-small" 
-                  class="font-weight-bold"
-                  label
-                >
-                  {{ new Date(item.expiration_date).toLocaleDateString() }}
-                </VChip>
+              <template #item.venta_mensual_promedio="{ item }">
+                <span class="text-xs">{{ formatNumber(item.venta_mensual_promedio) }}</span>
               </template>
               <template #item.stock_actual="{ item }">
                 <span class="font-weight-black">{{ formatNumber(item.stock_actual) }}</span>
@@ -543,6 +630,29 @@ const handleExport = () => {
                 <span class="font-weight-black">{{ formatMoney(item.costo_excedente) }}</span>
               </template>
             </VDataTable>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" md="4">
+        <VCard class="rounded-lg border shadow-sm h-full">
+          <VCardItem>
+            <VCardTitle class="d-flex align-center">
+              <VIcon icon="tabler-history" class="me-2 text-error" />
+              Historial de Mermas (6m)
+            </VCardTitle>
+          </VCardItem>
+          <VCardText>
+            <div v-if="loading" class="d-flex justify-center align-center h-full min-h-[300px]">
+              <VProgressCircular indeterminate color="primary" />
+            </div>
+            <VueApexCharts
+              v-else
+              :key="`history-${metricType}`"
+              height="500"
+              :options="lossHistoryChartConfig.options"
+              :series="lossHistoryChartConfig.series"
+            />
           </VCardText>
         </VCard>
       </VCol>
