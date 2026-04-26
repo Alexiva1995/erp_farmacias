@@ -36,6 +36,7 @@ class LaboratoryMasterReportRepository
 
         if ($groupByCorporate) {
             $query->groupBy(DB::raw('COALESCE(laboratories.parent_id, laboratories.id)'));
+            $query->having(DB::raw('COUNT(DISTINCT laboratories.id)'), '>', 1);
         } else {
             $query->groupBy('laboratories.id', 'laboratories.name');
             // Si no estamos agrupando por corporativo, pero el usuario filtró por un padre específico

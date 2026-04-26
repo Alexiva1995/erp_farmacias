@@ -187,7 +187,7 @@ const marketShareChartOptions = computed(() => ({
   colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8', '#00bbd4', '#607d8b', '#9c27b0', '#3f51b5', '#e91e63'],
   legend: { position: 'bottom' },
   dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
-  plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'TOTAL USD', formatter: () => formatCurrency(dashboardData.value.rankings.by_revenue.data.reduce((a, b) => a + parseFloat(b.total_revenue), 0)) } } } } } }
+  plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'TOTAL USD', formatter: () => formatCurrency(dashboardData.value.rankings.by_revenue.data.reduce((a, b) => a + parseFloat(b.total_revenue), 0)) } } } } }
 }));
 
 const marketShareSeries = computed(() => dashboardData.value.rankings.by_revenue.data.map(l => parseFloat(l.total_revenue)));
