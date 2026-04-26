@@ -137,23 +137,32 @@ const fetchDeepDive = async (id) => {
 // --- CONFIGURACIÓN DE GRÁFICOS ---
 const trendChartOptions = computed(() => {
   const months = [...new Set(dashboardData.value.trends.map(t => t.month))].sort();
-  const seriesNames = [...new Set(dashboardData.value.trends.map(t => t.lab_name))];
-
-  const series = seriesNames.map(name => ({
-    name,
-    data: months.map(m => {
-      const match = dashboardData.value.trends.find(t => t.lab_name === name && t.month === m);
-      return match ? parseFloat(match.revenue) : 0;
-    })
-  }));
-
+  
   return {
-    chart: { type: 'area', stacked: false, toolbar: { show: false } },
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 2 },
-    xaxis: { categories: months },
+    chart: { 
+      type: 'line', 
+      toolbar: { show: false },
+      dropShadow: { enabled: true, top: 3, left: 2, blur: 4, opacity: 0.1 }
+    },
+    stroke: { curve: 'smooth', width: 3 },
+    markers: { size: 4, hover: { size: 7 } },
+    grid: { borderColor: '#f1f1f1', strokeDashArray: 5 },
+    xaxis: { 
+      categories: months,
+      labels: { style: { colors: '#616161', fontSize: '11px', fontWeight: 600 } }
+    },
+    yaxis: {
+      labels: {
+        formatter: (val) => formatCurrency(val),
+        style: { colors: '#616161', fontWeight: 600 }
+      }
+    },
     colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8'],
-    tooltip: { theme: 'dark' }
+    legend: { position: 'top', horizontalAlign: 'right', fontWeight: 600 },
+    tooltip: {
+      theme: 'dark',
+      y: { formatter: (val) => formatCurrency(val) }
+    }
   };
 });
 
