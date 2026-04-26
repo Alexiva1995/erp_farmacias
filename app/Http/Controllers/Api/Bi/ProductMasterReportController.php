@@ -31,4 +31,19 @@ class ProductMasterReportController extends Controller
         
         return response()->json($data);
     }
+    public function getCrossSelling(Request $request): JsonResponse
+    {
+        $filters = $request->only(['start_date', 'end_date', 'laboratory_id', 'group_id', 'page']);
+        $data = $this->service->getCrossSellingData($filters);
+        
+        return response()->json($data);
+    }
+
+    public function getRankings(Request $request): JsonResponse
+    {
+        $filters = $request->only(['start_date', 'end_date', 'laboratory_id', 'group_id', 'sort_by', 'page', 'search']);
+        $data = $this->service->getRankingsData($filters);
+        
+        return response()->json($data);
+    }
 }

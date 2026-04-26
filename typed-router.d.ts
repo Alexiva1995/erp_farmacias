@@ -24,6 +24,7 @@ declare module 'vue-router/auto-routes' {
     'balance-general': RouteRecordInfo<'balance-general', '/balance/general', Record<never, never>, Record<never, never>>,
     'bi-report-abc': RouteRecordInfo<'bi-report-abc', '/bi/report-abc', Record<never, never>, Record<never, never>>,
     'bi-report-expiry': RouteRecordInfo<'bi-report-expiry', '/bi/report-expiry', Record<never, never>, Record<never, never>>,
+    'bi-report-laboratories': RouteRecordInfo<'bi-report-laboratories', '/bi/report-laboratories', Record<never, never>, Record<never, never>>,
     'bi-report-products': RouteRecordInfo<'bi-report-products', '/bi/report-products', Record<never, never>, Record<never, never>>,
     'bi-report-sku': RouteRecordInfo<'bi-report-sku', '/bi/report-sku', Record<never, never>, Record<never, never>>,
     'configuration': RouteRecordInfo<'configuration', '/configuration', Record<never, never>, Record<never, never>>,

@@ -587,8 +587,19 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/sku-margin/export", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "export"]);
         
         // Reporte Maestro de Productos (Nuevo)
+        // BI: Reportes de Productos
         Route::get("/products/dashboard", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getDashboard"]);
         Route::get("/products/trends", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getTrends"]);
+        Route::get("/products/cross-selling", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getCrossSelling"]);
+        Route::get("/products/rankings", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getRankings"]);
+
+        // BI: Reportes de Laboratorios
+        Route::prefix('laboratories')->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\Api\Bi\LaboratoryMasterReportController::class, 'index']);
+            Route::get('/rankings', [\App\Http\Controllers\Api\Bi\LaboratoryMasterReportController::class, 'getRankings']);
+            Route::get('/{id}/deep-dive', [\App\Http\Controllers\Api\Bi\LaboratoryMasterReportController::class, 'getDeepDive']);
+            Route::get('/benchmarking', [\App\Http\Controllers\Api\Bi\LaboratoryMasterReportController::class, 'getBenchmarking']);
+        });
 
         // Dashboard de Vencimientos
         Route::get("/expiry", [\App\Http\Controllers\Api\Bi\ExpiryReportController::class, "index"]);

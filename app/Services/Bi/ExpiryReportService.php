@@ -28,7 +28,7 @@ class ExpiryReportService
 
     private function processOverstockData(array $data): array
     {
-        return array_map(function ($item) {
+        $processed = array_map(function ($item) {
             $mesesRestantes = max(0, $item['meses_restantes']);
             $ventaProyectada = $item['venta_mensual_promedio'] * $mesesRestantes;
             $excedente = max(0, $item['stock_actual'] - $ventaProyectada);
@@ -54,6 +54,10 @@ class ExpiryReportService
 
             return $item;
         }, $data);
+
+        usort($processed, fn($a, $b) => $b['costo_excedente'] <=> $a['costo_excedente']);
+
+        return $processed;
     }
 
     private function calculateKpis(array $filters): array

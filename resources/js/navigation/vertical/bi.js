@@ -25,6 +25,10 @@ export default [
         title: 'BI Caducidad',
         to: 'bi-report-expiry',
       },
+      {
+        title: 'Laboratorios',
+        to: 'bi-report-laboratories',
+      },
     ],
   }, 
 ]

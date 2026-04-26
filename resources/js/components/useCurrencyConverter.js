@@ -32,7 +32,7 @@ export function useCurrencyConverter(exchangeRates) {
     return amountUSD;
   };
 
-  const formatCurrency = (amount, currency) => {
+  const formatCurrency = (amount, currency = 'USD') => {
     const currencyConfig = {
       'USD': { currency: 'USD', locale: 'en-US' },
       'Bs': { currency: 'VED', locale: 'es-VE' },
@@ -40,7 +40,7 @@ export function useCurrencyConverter(exchangeRates) {
       'COP': { currency: 'COP', locale: 'es-CO' }
     };
 
-    const config = currencyConfig[currency.toUpperCase()] || currencyConfig['USD'];
+    const config = currencyConfig[(currency || 'USD').toUpperCase()] || currencyConfig['USD'];
     
     return new Intl.NumberFormat(config.locale, {
       style: 'currency',

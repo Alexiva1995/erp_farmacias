@@ -36,8 +36,7 @@ class ProductMasterReportService
 
         // Cuadrante 2: Riesgo
         $abcSummary = $this->repository->getAbcSummary($filters);
-        $expirations = $this->repository->getExpirationsData();
-        $inventoryLoss = $this->repository->getInventoryDiscrepancies($filters);
+        $crossSelling = $this->repository->getCrossSellingData($filters);
 
         // Cuadrante 4: Abastecimiento
         $supply = $this->repository->getSupplyIntelligence($filters);
@@ -57,8 +56,7 @@ class ProductMasterReportService
             ],
             'quadrant2' => [
                 'abc' => $abcSummary,
-                'expirations' => $expirations,
-                'inventory_loss' => $inventoryLoss
+                'cross_selling' => $crossSelling,
             ],
             'quadrant4' => [
                 'out_of_stock' => $outOfStockCount,
@@ -71,5 +69,15 @@ class ProductMasterReportService
     public function getTrendData(array $filters): Collection
     {
         return $this->repository->getTrendComparison($filters);
+    }
+
+    public function getCrossSellingData(array $filters)
+    {
+        return $this->repository->getCrossSellingData($filters);
+    }
+
+    public function getRankingsData(array $filters)
+    {
+        return $this->repository->getRankingsData($filters);
     }
 }

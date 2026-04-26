@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
-import axios from '@axios'
+import axios from '@/plugins/axios'
 
 export const useExpiryStore = defineStore('ExpiryStore', {
   state: () => ({
-    loading: false,
+    loading: true,
     dashboardData: {
       horizon: [],
       annual_trend: [],
@@ -16,6 +16,8 @@ export const useExpiryStore = defineStore('ExpiryStore', {
       }
     },
     filters: {
+      search: '',
+      semaphore: null,
       laboratory_id: null,
       category_id: null,
       group_id: null,
@@ -43,6 +45,8 @@ export const useExpiryStore = defineStore('ExpiryStore', {
 
     resetFilters() {
       this.filters = {
+        search: '',
+        semaphore: null,
         laboratory_id: null,
         category_id: null,
         group_id: null,

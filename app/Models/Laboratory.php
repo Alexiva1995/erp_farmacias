@@ -27,7 +27,18 @@ class Laboratory extends Model
     protected $fillable = [
         'name',
         'group_id',
+        'parent_id',
     ];
+
+    public function parent()
+    {
+        return $this->belongsTo(Laboratory::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Laboratory::class, 'parent_id');
+    }
 
     /**
      * =================================================================================================

@@ -22,14 +22,9 @@ interface ProductMasterReportRepositoryInterface
     public function getAbcSummary(array $filters): Collection;
 
     /**
-     * Obtiene los vencimientos en cubetas de tiempo
+     * Obtiene datos de Cross-selling (productos comprados juntos)
      */
-    public function getExpirationsData(): Collection;
-
-    /**
-     * Obtiene discrepancias de inventario histórico
-     */
-    public function getInventoryDiscrepancies(array $filters): Collection;
+    public function getCrossSellingData(array $filters);
 
     /**
      * Obtiene métricas de abastecimiento (Out of stock y Días de inventario)
@@ -40,4 +35,9 @@ interface ProductMasterReportRepositoryInterface
      * Obtiene tendencias de Ventas vs Compras para comparación
      */
     public function getTrendComparison(array $filters): Collection;
+
+    /**
+     * Obtiene rankings de productos paginados
+     */
+    public function getRankingsData(array $filters);
 }

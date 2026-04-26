@@ -18,7 +18,8 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             ->select(
                 DB::raw("DATE_FORMAT(product_lots.expiration_date, '%Y-%m') as month"),
                 'categories.name as category_name',
-                DB::raw('SUM(product_lots.quantity * product_lots.unit_cost) as total_value')
+                DB::raw('SUM(product_lots.quantity * product_lots.unit_cost) as total_value'),
+                DB::raw('SUM(product_lots.quantity) as total_units')
             )
             ->where('product_lots.quantity', '>', 0)
             ->where('product_lots.expiration_date', '>=', now())
@@ -37,7 +38,8 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             ->join('products', 'product_lots.product_id', '=', 'products.id')
             ->select(
                 DB::raw("DATE_FORMAT(product_lots.expiration_date, '%Y') as year"),
-                DB::raw('SUM(product_lots.quantity * product_lots.unit_cost) as total_value')
+                DB::raw('SUM(product_lots.quantity * product_lots.unit_cost) as total_value'),
+                DB::raw('SUM(product_lots.quantity) as total_units')
             )
             ->where('product_lots.quantity', '>', 0)
             ->where('product_lots.expiration_date', '>=', now())
@@ -123,6 +125,13 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
 
     private function applyFilters($query, array $filters)
     {
+        if (!empty($filters['search'])) {
+            $query->where(function($q) use ($filters) {
+                $q->where('products.name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('products.barcode', 'like', '%' . $filters['search'] . '%');
+            });
+        }
+
         if (!empty($filters['laboratory_id'])) {
             $query->where('products.laboratory_id', $filters['laboratory_id']);
         }
@@ -138,6 +147,19 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
         // Location filter if applicable
         if (!empty($filters['location_id'])) {
             // Add location filtering logic if you have multiple branches/locations
+        }
+
+        if (!empty($filters['semaphore'])) {
+            $query->where(function($q) use ($filters) {
+                if ($filters['semaphore'] === 'critico') {
+                    $q->where('product_lots.expiration_date', '<=', now()->addDays(90));
+                } elseif ($filters['semaphore'] === 'moderado') {
+                    $q->where('product_lots.expiration_date', '>', now()->addDays(90))
+                      ->where('product_lots.expiration_date', '<=', now()->addDays(180));
+                } elseif ($filters['semaphore'] === 'estable') {
+                    $q->where('product_lots.expiration_date', '>', now()->addDays(180));
+                }
+            });
         }
     }
 }
