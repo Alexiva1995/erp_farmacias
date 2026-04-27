@@ -7,7 +7,7 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 
 const laboratories = ref([])
-const allLaboratoriesForSelect = ref([]) // Lista completa para el modal
+const allLaboratoriesForSelect = ref([])
 const groups = ref([])
 const loading = ref(false)
 const totalLabs = ref(0)
@@ -17,11 +17,9 @@ const itemsPerPage = ref(10)
 const sortBy = ref('name')
 const orderBy = ref('asc')
 
-// Diálogos
 const isLabDialogOpen = ref(false)
 const isGroupDialogOpen = ref(false)
 
-// Estados de edición
 const labForm = ref({ id: null, name: '', group_id: null })
 const groupForm = ref({ id: null, name: '', laboratory_ids: [] })
 
@@ -36,152 +34,94 @@ const headers = [
 const fetchLabs = async () => {
   loading.value = true
   try {
-    const params = {
-      search: searchQuery.value,
-      page: page.value,
-      itemsPerPage: itemsPerPage.value,
-      sortBy: sortBy.value,
-      orderBy: orderBy.value
-    }
+    const params = { search: searchQuery.value, page: page.value, itemsPerPage: itemsPerPage.value, sortBy: sortBy.value, orderBy: orderBy.value }
     const { data } = await axios.get('/inventory/laboratories-manage', { params })
     laboratories.value = data.data
     totalLabs.value = data.total
-  } catch (error) {
-    console.error('Error al cargar laboratorios:', error)
-  } finally {
-    loading.value = false
-  }
+  } catch (error) { console.error(error) } finally { loading.value = false }
 }
 
-// Función para traer TODOS los laboratorios para el selector del grupo
 const fetchAllLabsForSelect = async () => {
   try {
-    const { data } = await axios.get('/laboratories') // Endpoint que trae todos sin paginar
+    const { data } = await axios.get('/laboratories')
     allLaboratoriesForSelect.value = data
-  } catch (error) {
-    console.error('Error al cargar todos los laboratorios:', error)
-  }
+  } catch (error) { console.error(error) }
 }
 
 const fetchGroups = async () => {
   try {
     const { data } = await axios.get('/inventory/laboratories-manage/groups')
     groups.value = data
-  } catch (error) {
-    console.error('Error al cargar grupos:', error)
-  }
+  } catch (error) { console.error(error) }
 }
 
 const openLabEdit = (lab = null) => {
-  if (lab) {
-    labForm.value = { id: lab.id, name: lab.name, group_id: lab.group_id }
-  } else {
-    labForm.value = { id: null, name: '', group_id: null }
-  }
+  labForm.value = lab ? { id: lab.id, name: lab.name, group_id: lab.group_id } : { id: null, name: '', group_id: null }
   isLabDialogOpen.value = true
 }
 
 const deleteLab = async (id) => {
   const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "El laboratorio será eliminado. Los productos asociados quedarán sin laboratorio asignado.",
+    title: "¿Borrar laboratorio?",
+    text: "Los productos asociados quedarán sin laboratorio.",
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
+    confirmButtonText: "Sí, borrar",
     cancelButtonText: "Cancelar",
     customClass: {
-      confirmButton: 'v-btn v-btn--variant-flat v-theme--default bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase ms-3',
-      cancelButton: 'v-btn v-btn--variant-tonal v-theme--default text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
+      confirmButton: 'v-btn v-btn--variant-flat bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase ms-3',
+      cancelButton: 'v-btn v-btn--variant-tonal text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
     }
   });
-
   if (result.isConfirmed) {
     try {
       await axios.delete(`/inventory/laboratories-manage/${id}`)
-      toast.success("Laboratorio eliminado con éxito")
+      toast.success("Eliminado")
       fetchLabs()
-    } catch (error) {
-       toast.error("Error al eliminar el laboratorio")
-    }
+    } catch (error) { toast.error("Error") }
   }
 }
 
 const openGroupEdit = (group = null) => {
-  if (group) {
-    groupForm.value = { 
-      id: group.id, 
-      name: group.name, 
-      laboratory_ids: group.laboratories?.map(l => l.id) || []
-    }
-  } else {
-    groupForm.value = { id: null, name: '', laboratory_ids: [] }
-  }
+  groupForm.value = group ? { id: group.id, name: group.name, laboratory_ids: group.laboratories?.map(l => l.id) || [] } : { id: null, name: '', laboratory_ids: [] }
   isGroupDialogOpen.value = true
 }
 
 const saveLab = async () => {
   try {
     await axios.post('/inventory/laboratories-manage', labForm.value)
-    toast.success("Laboratorio guardado")
+    toast.success("Guardado")
     isLabDialogOpen.value = false
     fetchLabs()
-  } catch (error) {
-    toast.error('Error al guardar laboratorio')
-  }
+  } catch (error) { toast.error('Error') }
 }
 
 const saveGroup = async () => {
   try {
     await axios.post('/inventory/laboratories-manage/groups', groupForm.value)
-    toast.success("Grupo corporativo actualizado")
+    toast.success("Grupo actualizado")
     isGroupDialogOpen.value = false
-    fetchLabs()
-    fetchGroups()
-  } catch (error) {
-    toast.error('Error al guardar grupo')
-  }
+    fetchLabs(); fetchGroups()
+  } catch (error) { toast.error('Error') }
 }
 
-const updateTableOptions = options => {
-  page.value = options.page
-  itemsPerPage.value = options.itemsPerPage
-  if (options.sortBy?.length) {
-    sortBy.value = options.sortBy[0].key
-    orderBy.value = options.sortBy[0].order
-  }
+const updateTableOptions = o => {
+  page.value = o.page; itemsPerPage.value = o.itemsPerPage
+  if (o.sortBy?.length) { sortBy.value = o.sortBy[0].key; orderBy.value = o.sortBy[0].order }
 }
 
-const handleClearFilters = () => {
-  searchQuery.value = ''
-  page.value = 1
-  fetchLabs()
-}
-
-onMounted(() => {
-  fetchLabs()
-  fetchGroups()
-  fetchAllLabsForSelect()
-})
-
-watch([searchQuery], () => {
-  page.value = 1
-  fetchLabs()
-})
-
-watch([page, itemsPerPage, sortBy, orderBy], () => {
-  fetchLabs()
-})
+onMounted(() => { fetchLabs(); fetchGroups(); fetchAllLabsForSelect() })
+watch([searchQuery], () => { page.value = 1; fetchLabs() })
+watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 </script>
 
 <template>
   <div>
-    <!-- FILTROS ESTILO PRODUCTS -->
     <AppFilterBase
       v-model:search="searchQuery"
       :show-add="true"
       add-button-text="Añadir Laboratorio"
-      search-placeholder="Buscar laboratorio por nombre..."
-      @clear="handleClearFilters"
+      @clear="searchQuery = ''; fetchLabs()"
       @add="openLabEdit()"
     >
       <template #search-extra>
@@ -193,82 +133,43 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
       </template>
     </AppFilterBase>
 
-    <VCard class="rounded-lg border shadow-sm overflow-hidden mt-4">
-      <!-- VISTA ESCRITORIO -->
+    <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
       <div class="d-none d-md-block">
         <VDataTableServer
           :headers="headers"
           :items="laboratories"
           :items-length="totalLabs"
           :loading="loading"
-          :items-per-page="itemsPerPage"
-          density="compact"
-          class="text-no-wrap"
           @update:options="updateTableOptions"
+          density="compact"
         >
           <template #item.group.name="{ item }">
-            <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">
-              {{ item.group.name }}
-            </VChip>
+            <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
             <span v-else class="text-caption opacity-50">Sin grupo</span>
           </template>
-
-          <template #item.products_count="{ item }">
-            <VChip size="x-small" :color="item.products_count > 0 ? 'info' : 'secondary'" variant="flat">
-              {{ item.products_count }} <span class="ms-1 d-none d-lg-inline">PRODUCTOS</span>
-            </VChip>
-          </template>
-
+          <template #item.products_count="{ item }"><VChip size="x-small" color="info" variant="flat">{{ item.products_count }}</VChip></template>
           <template #item.actions="{ item }">
             <div class="d-flex justify-end gap-1 px-2">
-              <IconBtn @click="openLabEdit(item)" color="primary" size="small">
-                <VIcon icon="tabler-edit" size="18" />
-                <VTooltip activator="parent">Editar Laboratorio</VTooltip>
-              </IconBtn>
-              <IconBtn @click="deleteLab(item.id)" color="error" size="small">
-                <VIcon icon="tabler-trash" size="18" />
-                <VTooltip activator="parent">Borrar Laboratorio</VTooltip>
-              </IconBtn>
+              <IconBtn @click="openLabEdit(item)" color="primary"><VIcon icon="tabler-edit" size="18" /></IconBtn>
+              <IconBtn @click="deleteLab(item.id)" color="error"><VIcon icon="tabler-trash" size="18" /></IconBtn>
             </div>
           </template>
         </VDataTableServer>
       </div>
 
-      <!-- VISTA MÓVIL -->
       <div class="d-block d-md-none pa-2">
-        <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-2" />
-        
-        <div v-if="laboratories.length === 0 && !loading" class="text-center py-8 text-disabled">
-          No se encontraron laboratorios.
-        </div>
-
         <div class="d-flex flex-column gap-2">
-          <VCard
-            v-for="item in laboratories"
-            :key="item.id"
-            variant="flat"
-            class="lab-mobile-card border mb-1"
-          >
+          <VCard v-for="item in laboratories" :key="item.id" variant="flat" class="border mb-1 rounded-lg">
             <div class="pa-3">
               <div class="d-flex justify-space-between align-start mb-2">
                 <div>
                   <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                    {{ item.name.toUpperCase() }}
-                  </h3>
+                  <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
                 </div>
-                <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">
-                  {{ item.group.name }}
-                </VChip>
+                <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
               </div>
-
-              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Productos Asociados</span>
-                  <span class="text-base font-weight-black text-info">
-                    {{ item.products_count }} <small class="text-super-xs">SKUS</small>
-                  </span>
-                </div>
+              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
+                <span class="text-base font-weight-black text-info">{{ item.products_count }} <small>SKUS</small></span>
                 <div class="d-flex gap-1">
                   <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openLabEdit(item)" />
                   <VBtn icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteLab(item.id)" />
@@ -277,124 +178,46 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
             </div>
           </VCard>
         </div>
-
-        <div class="mt-4">
-          <AppMobilePagination
-            :page="page"
-            :items-per-page="itemsPerPage"
-            :total-items="totalLabs"
-            :loading="loading"
-            @change="(options) => updateTableOptions(options)"
-          />
-        </div>
+        <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalLabs" @change="updateTableOptions" />
       </div>
     </VCard>
 
-    <!-- DIÁLOGO LABORATORIO PREMIUM -->
+    <!-- MODAL LABORATORIO PREMIUM -->
     <VDialog v-model="isLabDialogOpen" max-width="500">
-      <VCard class="rounded-xl overflow-hidden shadow-xl border-0">
-        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
-          <VAvatar color="primary" variant="tonal" class="me-4" size="48">
-            <VIcon icon="tabler-flask" size="24" />
-          </VAvatar>
-          <div>
-             <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio</div>
-             <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Ficha Técnica</div>
-          </div>
-          <VSpacer />
-          <VBtn icon="tabler-x" variant="text" color="disabled" @click="isLabDialogOpen = false" />
+      <VCard class="rounded-xl shadow-xl border-0">
+        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center font-weight-black text-uppercase">
+          <VAvatar color="primary" variant="tonal" class="me-4"><VIcon icon="tabler-flask" /></VAvatar>
+          {{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio
+          <VSpacer /><VBtn icon="tabler-x" variant="text" @click="isLabDialogOpen = false" />
         </VCardTitle>
-
-        <VCardText class="pa-6 pt-8">
-          <VRow>
-            <VCol cols="12">
-              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Nombre Comercial</p>
-              <AppTextField 
-                v-model="labForm.name" 
-                label="Nombre del Laboratorio" 
-                placeholder="Ej: Bayer" 
-                persistent-placeholder
-              />
-            </VCol>
-            <VCol cols="12" class="mt-2">
-              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Relación Corporativa</p>
-              <AppAutocomplete
-                v-model="labForm.group_id"
-                :items="groups"
-                item-title="name"
-                item-value="id"
-                placeholder="Asignar a un grupo de marcas..."
-                clearable
-                density="comfortable"
-                variant="outlined"
-                persistent-placeholder
-              />
-            </VCol>
-          </VRow>
+        <VCardText class="pa-6">
+          <AppTextField v-model="labForm.name" label="Nombre" class="mb-4" />
+          <AppAutocomplete v-model="labForm.group_id" :items="groups" item-title="name" item-value="id" label="Grupo" clearable />
         </VCardText>
         <VDivider />
         <VCardActions class="pa-6">
-          <VSpacer />
-          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isLabDialogOpen = false">CANCELAR</VBtn>
-          <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveLab">GUARDAR CAMBIOS</VBtn>
+          <VSpacer /><VBtn color="secondary" variant="tonal" @click="isLabDialogOpen = false">CANCELAR</VBtn>
+          <VBtn color="primary" variant="elevated" @click="saveLab">GUARDAR</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
 
-    <!-- DIÁLOGO GRUPOS PREMIUM -->
+    <!-- MODAL GRUPOS PREMIUM -->
     <VDialog v-model="isGroupDialogOpen" max-width="600">
-      <VCard class="rounded-xl overflow-hidden shadow-xl border-0">
-        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
-          <VAvatar color="primary" variant="tonal" class="me-4" size="48">
-            <VIcon icon="tabler-layers-intersect" size="24" />
-          </VAvatar>
-          <div>
-             <div class="text-h6 font-weight-black leading-tight">Configuración de Grupo</div>
-             <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Gestión Corporativa</div>
-          </div>
-          <VSpacer />
-          <VBtn icon="tabler-x" variant="text" color="disabled" @click="isGroupDialogOpen = false" />
+      <VCard class="rounded-xl shadow-xl border-0">
+        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center font-weight-black text-uppercase">
+          <VAvatar color="primary" variant="tonal" class="me-4"><VIcon icon="tabler-layers-intersect" /></VAvatar>
+          Configurar Grupo
+          <VSpacer /><VBtn icon="tabler-x" variant="text" @click="isGroupDialogOpen = false" />
         </VCardTitle>
-
-        <VCardText class="pa-6 pt-8">
-          <VRow>
-            <VCol cols="12">
-              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Identificación</p>
-              <AppTextField 
-                v-model="groupForm.name" 
-                label="Nombre del Grupo Corporativo" 
-                placeholder="Ej: Consorcio Farmacéutico Global" 
-                persistent-placeholder
-              />
-            </VCol>
-            
-            <VCol cols="12" class="mt-2">
-              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación de Marcas/Laboratorios</p>
-              <AppAutocomplete
-                v-model="groupForm.laboratory_ids"
-                :items="allLaboratoriesForSelect"
-                item-title="name"
-                item-value="id"
-                placeholder="Busca y añade los laboratorios que pertenecen a este grupo..."
-                multiple
-                chips
-                closable-chips
-                density="comfortable"
-                variant="outlined"
-                persistent-placeholder
-              />
-              <div class="mt-2 d-flex align-center gap-1 text-super-xs text-disabled opacity-80">
-                <VIcon icon="tabler-info-circle-filled" size="14" />
-                <span>Los laboratorios seleccionados se agruparán bajo este nombre corporativo en los reportes.</span>
-              </div>
-            </VCol>
-          </VRow>
+        <VCardText class="pa-6">
+          <AppTextField v-model="groupForm.name" label="Nombre del Grupo" class="mb-4" />
+          <AppAutocomplete v-model="groupForm.laboratory_ids" :items="allLaboratoriesForSelect" item-title="name" item-value="id" label="Laboratorios" multiple chips closable-chips />
         </VCardText>
         <VDivider />
         <VCardActions class="pa-6">
-          <VSpacer />
-          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isGroupDialogOpen = false">DESCARTAR</VBtn>
-          <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveGroup">GUARDAR CONFIGURACIÓN</VBtn>
+          <VSpacer /><VBtn color="secondary" variant="tonal" @click="isGroupDialogOpen = false">DESCARTAR</VBtn>
+          <VBtn color="primary" variant="elevated" @click="saveGroup">GUARDAR</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -402,34 +225,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
 </template>
 
 <style scoped>
-.lab-mobile-card {
-  overflow: hidden;
-  border-radius: 8px !important;
-  background: rgb(var(--v-theme-surface));
-}
-
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.bg-var-theme-background {
-  background-color: rgba(var(--v-border-color), 0.05);
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: 1;
-}
-
-.text-xs { font-size: 0.75rem !important; }
-.ls-1 { letter-spacing: 1px !important; }
-.gap-1 { gap: 4px !important; }
-.gap-2 { gap: 8px !important; }
-
-:deep(.v-data-table th) {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase;
-}
+.bg-var-theme-background { background-color: rgba(var(--v-border-color), 0.05); }
+.text-super-xs { font-size: 0.65rem !important; }
+:deep(.v-data-table th) { font-size: 0.75rem !important; font-weight: 700 !important; text-transform: uppercase; }
 </style>
