@@ -27,7 +27,7 @@ const fetchDashboard = async () => {
       start_date: startDate.value,
       end_date: endDate.value
     };
-    const { data } = await axios.get('/api/bi/pos/dashboard', { params });
+    const { data } = await axios.get('/bi/pos/dashboard', { params });
     dashboardData.value = data;
   } catch (error) {
     console.error("Error al cargar dashboard de TPV:", error);
@@ -100,7 +100,15 @@ const hourlyChartOptions = computed(() => ({
   yaxis: { show: false },
   colors: ['#7367F0'],
   grid: { borderColor: 'rgba(144, 164, 174, 0.1)', strokeDashArray: 4 },
-  tooltip: { theme: 'dark' }
+  tooltip: { 
+    theme: 'dark',
+    y: {
+      formatter: (val, { series, seriesIndex, dataPointIndex, w }) => {
+        const revenue = w.config.series[seriesIndex].data[dataPointIndex].revenue;
+        return `${val}% (Facturado: $${new Intl.NumberFormat('en-US').format(revenue)})`;
+      }
+    }
+  }
 }));
 
 // 3. Segmentación por Unidades (Dona)
@@ -132,22 +140,28 @@ const unitsDonutOptions = computed(() => ({
 const monetaryChartOptions = computed(() => ({
   chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
   plotOptions: {
-    bar: { borderRadius: 4, horizontal: true, barHeight: '60%' }
+    bar: {
+      borderRadius: 4,
+      horizontal: true,
+      barHeight: '70%',
+      distributed: true
+    }
   },
-  colors: ['#28C76F'],
+  colors: ['#7367f0', '#28c76f', '#ff9f43', '#ea5455', '#00cfe8', '#161616', '#a8aaad', '#7367f0'],
   dataLabels: {
     enabled: true,
-    textAnchor: 'start',
-    formatter: (val, opt) => `${opt.w.globals.labels[opt.dataPointIndex]}: ${val}`,
-    offsetX: 10,
-    style: { fontSize: '10px', fontWeight: 900, colors: ['#fff'] }
+    style: { fontSize: '10px', fontWeight: 900, colors: ['#fff'] },
+    formatter: (val) => val
   },
   xaxis: {
-    categories: dashboardData.value?.segmentation?.monetary?.labels || [],
-    labels: { show: false }
+    categories: dashboardData.value?.segmentation?.monetary?.labels?.map(l => `$ ${l}`) || [],
+    labels: { style: { fontSize: '10px' } }
   },
-  yaxis: { labels: { show: false } },
-  grid: { show: false },
+  yaxis: {
+    labels: { style: { fontSize: '11px', fontWeight: 700 } }
+  },
+  grid: { borderColor: 'rgba(144, 164, 174, 0.05)' },
+  legend: { show: false },
   tooltip: { theme: 'dark' }
 }));
 
@@ -160,34 +174,22 @@ const monetaryChartOptions = computed(() => ({
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
-          <VCol cols="12" md="4">
-            <div class="d-flex align-center py-1">
-              <VAvatar color="primary" variant="tonal" size="32" class="me-3" rounded="lg">
-                <VIcon icon="tabler-chart-pie" size="20" />
-              </VAvatar>
-              <div>
-                <h4 class="text-subtitle-1 font-weight-black mb-0 text-uppercase" style="letter-spacing: 0.5px">Analytics TPV</h4>
-                <p class="text-[10px] text-disabled mb-0 font-weight-bold uppercase">Métricas de Punto de Venta</p>
-              </div>
-            </div>
+          <!-- Filtros de Fecha Directos (Minimalistas) -->
+          <VCol cols="12" md="6">
+             <VRow dense align="center">
+                <VCol cols="4">
+                   <AppTextField v-model="startDate" type="date" density="compact" hide-details prepend-inner-icon="tabler-calendar" class="premium-input-compact" />
+                </VCol>
+                <VCol cols="1" class="text-center text-disabled font-weight-bold">al</VCol>
+                <VCol cols="4">
+                   <AppTextField v-model="endDate" type="date" density="compact" hide-details prepend-inner-icon="tabler-calendar" class="premium-input-compact" />
+                </VCol>
+             </VRow>
           </VCol>
 
           <VSpacer />
 
           <div class="d-flex align-center gap-2">
-            <!-- Toggle Filtros Avanzados -->
-            <VBtn
-              icon
-              variant="tonal"
-              :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="38"
-              class="rounded-circle shadow-sm"
-              @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
-            >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
-              <VTooltip activator="parent" location="top">Filtros de Fecha</VTooltip>
-            </VBtn>
-
             <!-- Sincronizar -->
             <VBtn
               icon
@@ -218,21 +220,6 @@ const monetaryChartOptions = computed(() => ({
             </VBtn>
           </div>
         </VRow>
-
-        <!-- Filtros Avanzados (Fechas) -->
-        <VExpandTransition>
-          <div v-show="isAdvancedFiltersVisible">
-            <VDivider class="my-3 border-opacity-10" />
-            <VRow dense>
-              <VCol cols="12" sm="6" md="3">
-                <AppTextField v-model="startDate" type="date" label="Fecha Inicio" density="compact" hide-details prepend-inner-icon="tabler-calendar-event" class="premium-input-compact" />
-              </VCol>
-              <VCol cols="12" sm="6" md="3">
-                <AppTextField v-model="endDate" type="date" label="Fecha Fin" density="compact" hide-details prepend-inner-icon="tabler-calendar-event" class="premium-input-compact" />
-              </VCol>
-            </VRow>
-          </div>
-        </VExpandTransition>
       </VCardText>
     </VCard>
 
@@ -241,7 +228,7 @@ const monetaryChartOptions = computed(() => ({
     </div>
 
     <div v-else-if="dashboardData" class="px-1">
-      <!-- Row 1: KPI Cards (Estilo report-expiry) -->
+      <!-- Row 1: KPI Cards (Estilo report-expiry con títulos más grandes) -->
       <VRow class="mb-6" dense>
         <VCol cols="12" md="2" sm="6" v-for="(kpi, idx) in [
           { 
@@ -251,10 +238,16 @@ const monetaryChartOptions = computed(() => ({
             icon: 'tabler-shopping-cart-check', color: 'primary', desc: 'Volumen total' 
           },
           { 
-            title: 'Tickets Abandonados', 
+            title: 'Tks. Abandonados', 
             mainValue: formatNumber(dashboardData?.kpis?.abandoned_sales || 0), 
-            subValue: 'Cancelaciones en caja',
+            subValue: 'Bajas en caja',
             icon: 'tabler-shopping-cart-off', color: 'error', desc: 'Pérdida operativa' 
+          },
+          { 
+            title: 'Ventas Cruzadas', 
+            mainValue: (dashboardData?.kpis?.cross_selling_rate || 0) + '%', 
+            subValue: formatNumber(dashboardData?.kpis?.cross_selling_count || 0) + ' tickets',
+            icon: 'tabler-arrows-cross', color: 'info', desc: 'Penetración' 
           },
           { 
             title: 'Cotizaciones', 
@@ -263,44 +256,43 @@ const monetaryChartOptions = computed(() => ({
             icon: 'tabler-file-invoice', color: 'warning', desc: 'Conversión' 
           },
           { 
-            title: 'Ticket Promedio', 
+            title: 'Ticket Medio', 
             mainValue: formatCurrency(dashboardData?.kpis?.avg_ticket || 0), 
             subValue: 'Valor por factura',
             icon: 'tabler-cash', color: 'success', desc: 'Ticket Medio' 
           },
           { 
-            title: 'Venta Diaria Est.', 
+            title: 'Venta Diaria', 
             mainValue: formatCurrency(dashboardData?.kpis?.avg_daily_sales || 0), 
-            subValue: 'Promedio periodo',
+            subValue: 'Ticket estimado',
             icon: 'tabler-calendar-stats', color: 'info', desc: 'Ingreso Diario' 
           }
         ]" :key="idx">
           <VCard border class="rounded-lg shadow-sm h-100 bg-surface">
             <VCardText class="pa-4 d-flex align-center">
-              <VAvatar :color="kpi.color" variant="tonal" size="42" rounded="lg" class="me-3 font-weight-bold">
-                <VIcon :icon="kpi.icon" size="20" />
+              <VAvatar :color="kpi.color" variant="tonal" size="38" rounded="lg" class="me-3 font-weight-bold">
+                <VIcon :icon="kpi.icon" size="18" />
               </VAvatar>
               <div class="overflow-hidden">
-                <p class="text-[10px] text-disabled mb-0 font-weight-bold truncate text-uppercase">{{ kpi.title }}</p>
-                <h3 class="text-h5 font-weight-black">{{ kpi.mainValue }}</h3>
-                <p class="text-xs font-weight-bold text-medium-emphasis mb-0 truncate">
+                <p class="text-[12px] text-disabled mb-0 font-weight-bold truncate">{{ kpi.title }}</p>
+                <h3 class="text-h6 font-weight-black leading-tight">{{ kpi.mainValue }}</h3>
+                <p class="text-[10px] text-medium-emphasis mb-0 truncate opacity-70">
                   {{ kpi.subValue }}
                 </p>
-                <p class="text-super-xs text-disabled mb-0 uppercase">{{ kpi.desc }}</p>
               </div>
             </VCardText>
           </VCard>
         </VCol>
       </VRow>
 
-      <!-- Row 2: Distribución Temporal -->
+      <!-- Row 2: Distribución Temporal (50/50) -->
       <VRow class="mb-6" dense>
-        <VCol cols="12" md="7">
+        <VCol cols="12" md="6">
           <VCard class="rounded-lg border shadow-sm h-100">
             <VCardItem class="py-3 border-b bg-light-primary">
               <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
-                <VIcon icon="tabler-chart-bar-stacked" class="me-2 text-primary" size="20" />
-                Foco de Venta por Día (Semanal)
+                <VIcon icon="tabler-coin" class="me-2 text-primary" size="20" />
+                Ventas Totales por Día (Semanal)
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
@@ -309,12 +301,12 @@ const monetaryChartOptions = computed(() => ({
           </VCard>
         </VCol>
         
-        <VCol cols="12" md="5">
+        <VCol cols="12" md="6">
           <VCard class="rounded-lg border shadow-sm h-100">
             <VCardItem class="py-3 border-b">
               <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
                 <VIcon icon="tabler-chart-area" class="me-2 text-success" size="20" />
-                Distribución Horaria (%)
+                Distribución Horaria (% y USD)
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
@@ -324,9 +316,9 @@ const monetaryChartOptions = computed(() => ({
         </VCol>
       </VRow>
 
-      <!-- Row 3: Segmentación -->
-      <VRow dense>
-        <VCol cols="12" md="6">
+      <!-- Row 3: Segmentación (60/40) -->
+      <VRow dense class="mb-6">
+        <VCol cols="12" md="7">
           <VCard class="rounded-lg border shadow-sm h-100">
             <VCardItem class="py-3 border-b">
               <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
@@ -336,9 +328,18 @@ const monetaryChartOptions = computed(() => ({
             </VCardItem>
             <VRow no-gutters class="pa-4 align-center">
               <VCol cols="12" sm="7">
-                <VueApexCharts height="240" :options="unitsDonutOptions" :series="dashboardData?.segmentation?.units?.series || []" type="donut" />
+                <VueApexCharts height="260" :options="unitsDonutOptions" :series="dashboardData?.segmentation?.units?.series || []" type="donut" />
               </VCol>
-              <VCol cols="12" sm="5" class="d-flex flex-column justify-center gap-1 ps-4">
+              <VCol cols="12" sm="5" class="ps-4">
+                <div class="mb-4">
+                   <div class="d-flex align-center mb-1">
+                      <VIcon icon="tabler-arrows-cross" size="14" class="me-1 text-info" />
+                      <span class="text-[11px] font-weight-black uppercase">Penetración V. Cruzada</span>
+                   </div>
+                   <h4 class="text-h6 font-weight-black text-info">{{ dashboardData?.kpis?.cross_selling_rate || 0 }}%</h4>
+                   <VProgressLinear :model-value="dashboardData?.kpis?.cross_selling_rate || 0" color="info" height="6" rounded class="mt-1" />
+                </div>
+
                 <div v-for="(label, idx) in (dashboardData?.segmentation?.units?.labels || [])" :key="label" class="d-flex justify-space-between align-center py-1 border-b">
                    <span class="text-[10px] font-weight-bold uppercase opacity-60">{{ label }}</span>
                    <VChip density="comfortable" size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ dashboardData?.segmentation?.units?.series?.[idx] || 0 }} Tks</VChip>
@@ -348,7 +349,7 @@ const monetaryChartOptions = computed(() => ({
           </VCard>
         </VCol>
 
-        <VCol cols="12" md="6">
+        <VCol cols="12" md="5">
           <VCard class="rounded-lg border shadow-sm h-100">
             <VCardItem class="py-3 border-b">
               <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
@@ -359,19 +360,123 @@ const monetaryChartOptions = computed(() => ({
             <VCardText class="pa-4">
               <VueApexCharts height="220" :options="monetaryChartOptions" :series="[{ data: dashboardData?.segmentation?.monetary?.series || [] }]" />
               
-              <!-- Refactorizado Estilo Expiry Insight -->
-              <div class="mt-4 p-3 bg-light-success rounded-lg border border-success border-opacity-10 d-flex align-top">
-                <VAvatar color="success" variant="tonal" size="32" rounded="lg" class="me-3">
-                    <VIcon icon="tabler-bulb" size="18" />
+              <!-- Refactorizado Estilo Expiry Insight con Venta Cruzada -->
+              <div class="mt-4 p-3 bg-light-info rounded-lg border border-info border-opacity-10 d-flex align-top">
+                <VAvatar color="info" variant="tonal" size="32" rounded="lg" class="me-3">
+                    <VIcon icon="tabler-trending-up" size="18" />
                 </VAvatar>
                 <div>
-                   <div class="text-[11px] font-weight-black text-success uppercase">Recomendación Estratégica</div>
-                   <div class="text-[10px] text-success font-weight-bold opacity-80">
-                     Fomenta el cross-selling en el mostrador para tickets de baja unidad. Un incremento del 5% en el valor medio elevaría el ticket a {{ formatCurrency((dashboardData?.kpis?.avg_ticket || 0) * 1.05) }}.
+                   <div class="text-[11px] font-weight-black text-info uppercase">Oportunidad de Venta Cruzada</div>
+                   <div class="text-[10px] text-info font-weight-bold opacity-80">
+                     Un incremento al 40% en esta métrica generaría un ingreso adicional estimado de {{ formatCurrency((dashboardData?.kpis?.total_revenue || 0) * 0.15) }}.
                    </div>
                 </div>
               </div>
             </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
+
+      <!-- Row 4: Clasificación por Horas (3 Tables) -->
+      <VRow dense>
+        <!-- Tabla 1: Tráfico -->
+        <VCol cols="12" md="4">
+          <VCard class="rounded-lg border shadow-sm overflow-hidden h-100">
+            <VCardItem class="py-3 border-b bg-light-primary">
+              <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
+                <VIcon icon="tabler-clock-up" class="me-2 text-primary" size="20" />
+                Top Tráfico (Frecuencia)
+              </VCardTitle>
+            </VCardItem>
+            <VTable density="compact" class="text-no-wrap analytics-table">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-[10px] font-weight-black">Hora</th>
+                  <th class="text-uppercase text-[10px] font-weight-black text-center">Tks</th>
+                  <th class="text-uppercase text-[10px] font-weight-black text-center">% Part.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="slot in [...(dashboardData?.charts?.hourly_distribution?.series[0]?.data || [])].sort((a, b) => b.y - a.y)" :key="slot.x">
+                  <td class="font-weight-black text-primary">{{ slot.x }}</td>
+                  <td class="text-center font-weight-bold">{{ Math.round((slot.y * (dashboardData?.kpis?.completed_sales || 0)) / 100) }}</td>
+                  <td class="text-center">
+                    <VChip size="x-small" label color="primary" variant="tonal" class="font-weight-black">{{ slot.y }}%</VChip>
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
+          </VCard>
+        </VCol>
+
+        <!-- Tabla 2: Facturación -->
+        <VCol cols="12" md="4">
+          <VCard class="rounded-lg border shadow-sm overflow-hidden h-100">
+            <VCardItem class="py-3 border-b bg-light-success">
+              <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
+                <VIcon icon="tabler-cash-banknote" class="me-2 text-success" size="20" />
+                Mayor Facturación (USD)
+              </VCardTitle>
+            </VCardItem>
+            <VTable density="compact" class="text-no-wrap analytics-table">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-[10px] font-weight-black">Hora</th>
+                  <th class="text-uppercase text-[10px] font-weight-black text-right">Monto</th>
+                  <th class="text-uppercase text-[10px] font-weight-black text-center">% Part.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="slot in [...(dashboardData?.charts?.hourly_distribution?.series[0]?.data || [])].sort((a, b) => b.revenue - a.revenue)" :key="slot.x">
+                  <td class="font-weight-black text-success">{{ slot.x }}</td>
+                  <td class="text-right font-weight-black text-success">{{ formatCurrency(slot.revenue) }}</td>
+                  <td class="text-center">
+                    <VChip size="x-small" label color="success" variant="tonal" class="font-weight-black">
+                      {{ ((slot.revenue / (dashboardData?.kpis?.total_revenue || 1)) * 100).toFixed(1) }}%
+                    </VChip>
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
+          </VCard>
+        </VCol>
+
+        <!-- Tabla 3: Vendedores por Hora -->
+        <VCol cols="12" md="4">
+          <VCard class="rounded-lg border shadow-sm overflow-hidden h-100">
+            <VCardItem class="py-3 border-b bg-light-info">
+              <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
+                <VIcon icon="tabler-users" class="me-2 text-info" size="20" />
+                Vendedor Estrella por Hora
+              </VCardTitle>
+            </VCardItem>
+            <VTable density="compact" class="text-no-wrap analytics-table">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-[10px] font-weight-black">Hora</th>
+                  <th class="text-uppercase text-[10px] font-weight-black">Vendedor</th>
+                  <th class="text-uppercase text-[10px] font-weight-black text-right">Venta USD</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="slot in [...(dashboardData?.charts?.hourly_distribution?.series[0]?.data || [])].sort((a, b) => parseInt(a.x) - parseInt(b.x))" :key="slot.x">
+                  <td class="font-weight-black text-info">{{ slot.x }}</td>
+                  <td>
+                    <div class="d-flex align-center" v-if="slot.top_seller">
+                      <VAvatar size="24" color="info" variant="tonal" class="me-2 text-[10px] font-weight-bold">
+                        {{ slot.top_seller.seller_name.charAt(0).toUpperCase() }}
+                      </VAvatar>
+                      <span class="text-[11px] font-weight-bold truncate">{{ slot.top_seller.seller_name }}</span>
+                    </div>
+                    <span v-else class="text-disabled text-[10px]">Sin ventas</span>
+                  </td>
+                  <td class="text-right font-weight-black text-info" v-if="slot.top_seller">
+                    {{ formatCurrency(slot.top_seller.revenue) }}
+                  </td>
+                  <td v-else class="text-right text-disabled">-</td>
+                </tr>
+              </tbody>
+            </VTable>
           </VCard>
         </VCol>
       </VRow>
@@ -404,6 +509,10 @@ const monetaryChartOptions = computed(() => ({
   background-color: #f0fdf4;
 }
 
+.bg-light-info {
+  background-color: #f0f9ff;
+}
+
 .text-super-xs {
   font-size: 9px;
   line-height: 1;
@@ -434,5 +543,16 @@ const monetaryChartOptions = computed(() => ({
 
 .premium-input-compact :deep(.v-field__input) {
   font-size: 0.85rem !important;
+}
+
+.analytics-table :deep(th) {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.analytics-table :deep(td) {
+  font-size: 0.75rem !important;
+  border-bottom: 1px solid #f1f5f9 !important;
 }
 </style>

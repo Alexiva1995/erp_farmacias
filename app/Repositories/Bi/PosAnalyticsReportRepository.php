@@ -47,6 +47,19 @@ class PosAnalyticsReportRepository
         
         $conversionRate = $quotationsCount > 0 ? ($convertedQuotations / $quotationsCount) * 100 : 0;
 
+        // Venta Cruzada (Tickets con > 1 unidad física total)
+        $crossSellingCount = DB::table('orders')
+            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->select('orders.id', DB::raw('SUM(order_details.quantity) as total_qty'))
+            ->groupBy('orders.id')
+            ->having('total_qty', '>', 1)
+            ->get()
+            ->count();
+
+        $crossSellingRate = $completedSales > 0 ? ($crossSellingCount / $completedSales) * 100 : 0;
+
         return [
             'completed_sales' => $completedSales,
             'abandoned_sales' => $abandonedSales,
@@ -54,7 +67,9 @@ class PosAnalyticsReportRepository
             'conversion_rate' => round($conversionRate, 2),
             'avg_ticket' => round($avgTicket, 2),
             'avg_daily_sales' => round($avgDailySales, 2),
-            'total_revenue' => round($totalRevenue, 2)
+            'total_revenue' => round($totalRevenue, 2),
+            'cross_selling_count' => $crossSellingCount,
+            'cross_selling_rate' => round($crossSellingRate, 2)
         ];
     }
 
@@ -63,14 +78,14 @@ class PosAnalyticsReportRepository
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // foco diario (promedio por día de la semana)
+        // Rendimiento diario (Suma total por día de la semana)
         $dailyFocus = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 DB::raw('DAYNAME(created_at) as day_name'),
                 DB::raw('DAYOFWEEK(created_at) as day_index'),
-                DB::raw('AVG(total_amount_usd) as avg_amount')
+                DB::raw('SUM(total_amount_usd) as total_revenue')
             )
             ->groupBy('day_name', 'day_index')
             ->orderBy('day_index')
@@ -89,9 +104,28 @@ class PosAnalyticsReportRepository
             ->orderBy('hour')
             ->get();
 
+        // Top Vendedores por Hora
+        $topSellersByHour = DB::table('orders')
+            ->leftJoin('users', 'users.id', '=', 'orders.seller_id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->select(
+                DB::raw('HOUR(orders.created_at) as hr'),
+                DB::raw('COALESCE(users.username, "S/V") as seller_name'),
+                DB::raw('SUM(orders.total_amount_usd) as revenue')
+            )
+            ->groupBy('hr', 'seller_name')
+            ->get()
+            ->groupBy('hr')
+            ->mapWithKeys(function ($group, $key) {
+                return [$key => $group->sortByDesc('revenue')->first()];
+            })
+            ->toArray();
+
         return [
             'daily_focus' => $dailyFocus,
-            'hourly_slots' => $hourlySlots
+            'hourly_slots' => $hourlySlots,
+            'top_sellers' => $topSellersByHour
         ];
     }
 
@@ -124,9 +158,11 @@ class PosAnalyticsReportRepository
             ->get();
 
         $valueRanges = [
-            'Venta Menor (<20$)' => $byValue->where('total_amount_usd', '<', 20)->count(),
-            'Venta Media (20-100$)' => $byValue->whereBetween('total_amount_usd', [20, 100])->count(),
-            'Venta Mayor (>100$)' => $byValue->where('total_amount_usd', '>', 100)->count(),
+            '0-2'   => $byValue->where('total_amount_usd', '<=', 2)->count(),
+            '2-5'   => $byValue->whereBetween('total_amount_usd', [2.01, 5])->count(),
+            '5-10'  => $byValue->whereBetween('total_amount_usd', [5.01, 10])->count(),
+            '10-15' => $byValue->whereBetween('total_amount_usd', [10.01, 15])->count(),
+            '+15'   => $byValue->where('total_amount_usd', '>', 15)->count(),
         ];
 
         return [
