@@ -111,7 +111,7 @@ class PosAnalyticsReportRepository
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 DB::raw('HOUR(orders.created_at) as hr'),
-                DB::raw('COALESCE(users.name, "S/V") as seller_name'),
+                DB::raw('COALESCE(users.username, "S/V") as seller_name'),
                 DB::raw('SUM(orders.total_amount_usd) as revenue')
             )
             ->groupBy('hr', 'seller_name')

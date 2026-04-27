@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from '@axios'
 import VueApexCharts from 'vue3-apexcharts'
-import { formatCurrency } from '@core/utils/formatters'
+import { formatCurrency } from '@/utils/currencyFormatter'
 import AppTextField from '@core/components/app-form-elements/AppTextField.vue'
 
 const dashboardData = ref(null)
