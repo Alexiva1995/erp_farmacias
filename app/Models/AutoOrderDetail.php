@@ -17,6 +17,11 @@ class AutoOrderDetail extends Model
         return $this->belongsTo(AutoOrder::class, "order_id");
     }
 
+    public function autoOrder()
+    {
+        return $this->belongsTo(AutoOrder::class, "order_id");
+    }
+
     public function productSupplier()
     {
         return $this->belongsTo(ProductSupplier::class, "product_suppliers_id");
