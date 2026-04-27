@@ -33,6 +33,10 @@ export default [
         title: 'Analíticas TPV',
         to: 'bi-analytics-pos',
       },
+      {
+        title: 'Análisis Cíclico',
+        to: 'bi-inventory-cyclic',
+      },
     ],
   }, 
 ];

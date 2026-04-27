@@ -32,13 +32,19 @@ class PosAnalyticsReportService
             'series' => [
                 [
                     'name' => 'Distribución',
-                    'data' => collect($temporal['hourly_slots'])->map(function($slot) use ($totalHourlyCount) {
+                    'data' => collect($temporal['hourly_slots'])->map(function($slot) use ($totalHourlyCount, $temporal) {
                         $h = (int)$slot->hour;
                         return [
                             'x' => str_pad($h, 2, '0', STR_PAD_LEFT) . ':00',
                             'y' => $totalHourlyCount > 0 ? round(($slot->count / $totalHourlyCount) * 100, 1) : 0,
                             'revenue' => round($slot->revenue, 2),
-                            'top_seller' => $temporal['top_sellers'][$h] ?? $temporal['top_sellers']["$h"] ?? null
+                            'top_seller' => isset($temporal['top_sellers'][$h]) ? [
+                                'seller_name' => collect(explode(' ', $temporal['top_sellers'][$h]->seller_name))->take(2)->implode(' '),
+                                'revenue' => round($temporal['top_sellers'][$h]->revenue, 2)
+                            ] : (isset($temporal['top_sellers']["$h"]) ? [
+                                'seller_name' => collect(explode(' ', $temporal['top_sellers']["$h"]->seller_name))->take(2)->implode(' '),
+                                'revenue' => round($temporal['top_sellers']["$h"]->revenue, 2)
+                            ] : null)
                         ];
                     })->toArray()
                 ]

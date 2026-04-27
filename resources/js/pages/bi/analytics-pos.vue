@@ -463,9 +463,6 @@ const monetaryChartOptions = computed(() => ({
                   <td class="font-weight-black text-info">{{ slot.x }}</td>
                   <td>
                     <div class="d-flex align-center" v-if="slot.top_seller">
-                      <VAvatar size="24" color="info" variant="tonal" class="me-2 text-[10px] font-weight-bold">
-                        {{ slot.top_seller.seller_name.charAt(0).toUpperCase() }}
-                      </VAvatar>
                       <span class="text-[11px] font-weight-bold truncate">{{ slot.top_seller.seller_name }}</span>
                     </div>
                     <span v-else class="text-disabled text-[10px]">Sin ventas</span>

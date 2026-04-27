@@ -615,6 +615,9 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Dashboard de Vencimientos
         Route::get("/expiry", [\App\Http\Controllers\Api\Bi\ExpiryReportController::class, "index"]);
+
+        // Dashboard de Inventarios Cíclicos
+        Route::get("/inventory-cyclic", [\App\Http\Controllers\Api\Bi\InventoryCyclicReportController::class, "index"]);
     });
     
     Route::prefix("users")->group(function () {

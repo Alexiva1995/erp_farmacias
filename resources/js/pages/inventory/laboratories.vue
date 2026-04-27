@@ -182,22 +182,56 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
       </div>
     </VCard>
 
-    <!-- MODAL LABORATORIO PREMIUM -->
+    <!-- DIÁLOGO LABORATORIO PREMIUM -->
     <VDialog v-model="isLabDialogOpen" max-width="500">
       <VCard class="rounded-xl shadow-xl border-0">
-        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center font-weight-black text-uppercase">
-          <VAvatar color="primary" variant="tonal" class="me-4"><VIcon icon="tabler-flask" /></VAvatar>
-          {{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio
-          <VSpacer /><VBtn icon="tabler-x" variant="text" @click="isLabDialogOpen = false" />
+        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
+          <VAvatar color="primary" variant="tonal" class="me-4" size="48">
+            <VIcon icon="tabler-flask" size="24" />
+          </VAvatar>
+          <div>
+             <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio</div>
+             <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Información del fabricante</div>
+          </div>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="text" color="disabled" @click="isLabDialogOpen = false" />
         </VCardTitle>
-        <VCardText class="pa-6">
-          <AppTextField v-model="labForm.name" label="Nombre" class="mb-4" />
-          <AppAutocomplete v-model="labForm.group_id" :items="groups" item-title="name" item-value="id" label="Grupo" clearable />
+
+        <VCardText class="pa-6 pt-6">
+          <VRow>
+            <VCol cols="12">
+              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Datos Generales</p>
+              <AppTextField 
+                v-model="labForm.name" 
+                label="Nombre del Laboratorio" 
+                placeholder="Ej: Bayer" 
+                persistent-placeholder
+                class="mb-4"
+              />
+              
+              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación Corporativa</p>
+              <AppAutocomplete 
+                v-model="labForm.group_id" 
+                :items="groups" 
+                item-title="name" 
+                item-value="id" 
+                label="Grupo de Laboratorio" 
+                placeholder="Seleccionar grupo..."
+                clearable 
+                persistent-placeholder
+              />
+            </VCol>
+          </VRow>
         </VCardText>
         <VDivider />
         <VCardActions class="pa-6">
-          <VSpacer /><VBtn color="secondary" variant="tonal" @click="isLabDialogOpen = false">CANCELAR</VBtn>
-          <VBtn color="primary" variant="elevated" @click="saveLab">GUARDAR</VBtn>
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isLabDialogOpen = false">
+            CANCELAR
+          </VBtn>
+          <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveLab">
+            GUARDAR {{ labForm.id ? 'CAMBIOS' : 'LABORATORIO' }}
+          </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
