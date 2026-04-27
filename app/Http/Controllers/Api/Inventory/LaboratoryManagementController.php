@@ -91,9 +91,12 @@ class LaboratoryManagementController extends Controller
      */
     public function destroy(Laboratory $laboratory): JsonResponse
     {
-        // Al borrar el laboratorio, los productos quedan sin laboratorio asociado (null).
+        // Desvincular todos los productos asociados antes de borrar
+        // para que queden en el sistema pero sin laboratorio asignado.
+        $laboratory->products()->update(['laboratory_id' => null]);
+
         $laboratory->delete();
 
-        return response()->json(['message' => 'Laboratorio eliminado']);
+        return response()->json(['message' => 'Laboratorio eliminado y productos desvinculados.']);
     }
 }
