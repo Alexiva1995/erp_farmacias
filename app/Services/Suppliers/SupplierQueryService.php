@@ -169,7 +169,7 @@ class SupplierQueryService
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 storeSupplierConnectionData INICIADO - Supplier ID: {$supplier->id}, Name: {$supplier->name}, Products: " . count($data["products"] ?? []) . ", Invoices: " . count($data["invoices"] ?? []) . "\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         error_log($logMessage);
-        \Log::error("🚨 [FORZADO] storeSupplierConnectionData INICIADO", [
+        \Log::info("🚀 [SINC] storeSupplierConnectionData INICIADO", [
             'supplier_id' => $supplier->id,
             'supplier_name' => $supplier->name,
             'products_count' => count($data["products"] ?? []),
@@ -204,10 +204,9 @@ class SupplierQueryService
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             error_log($logMessage);
 
-            \Log::error("🚨 [FORZADO] Productos después de asignación", [
+            \Log::info("📦 [SINC] Productos recibidos para procesar", [
                 'supplier_id' => $supplier->id,
-                'total_productos' => count($uniqueProducts),
-                'primeros_3_productos' => array_slice($uniqueProducts, 0, 3),
+                'total_productos' => count($uniqueProducts)
             ]);
 
             $invoiceNumbersToFilter = collect($invoices)->pluck('header.invoice_number')->filter()->unique()->toArray();
@@ -287,7 +286,7 @@ class SupplierQueryService
                 error_log($logMessage);
             }
 
-            \Log::error("🚨 [FORZADO] Iniciando inserción de productos", [
+            \Log::info("💾 [SINC] Iniciando inserción de productos", [
                 'supplier_id' => $supplier->id,
                 'total_productos' => $totalProductos
             ]);
@@ -299,11 +298,14 @@ class SupplierQueryService
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Procesando producto #{$index} - product_id: {$productId}, name: {$productName}\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-                \Log::error("🚨 [FORZADO] Procesando producto #{$index}", [
+                // Log por producto eliminado por ser demasiado ruidoso
+                /*
+                \Log::info("🚨 [FORZADO] Procesando producto #{$index}", [
                     'supplier_id' => $supplier->id,
                     'product_id' => $productData['product_id'] ?? 'NULL',
                     'name' => $productData['name'] ?? 'NULL',
                 ]);
+                */
 
                 try {
                     // Asegurar campos obligatorios
@@ -334,10 +336,13 @@ class SupplierQueryService
                     file_put_contents($logFile, $logMessage, FILE_APPEND);
                     error_log($logMessage);
 
-                    \Log::error("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
+                    // Log por producto eliminado por ser demasiado ruidoso
+                /*
+                    \Log::info("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
                         'supplier_id' => $supplier->id,
                         'product_id' => $productData['product_id'] ?? 'NULL',
                     ]);
+                */
 
                     $insertados++;
                 } catch (\Throwable $e) {
@@ -406,7 +411,7 @@ class SupplierQueryService
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             error_log($logMessage);
 
-            \Illuminate\Support\Facades\Log::error("🚨 [FORZADO] Finalizada inserción de productos", [
+            \Log::info("✅ [SINC] Finalizada inserción de productos", [
                 'supplier_id' => $supplier->id,
                 'total_productos' => $totalProductos,
                 'insertados' => $insertados,

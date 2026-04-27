@@ -291,7 +291,7 @@ class InventoryCycleQueryService
 
             case 'user.name':
                 return $query->join('users', "{$tableName}.user_id", '=', 'users.id')
-                    ->orderBy('users.name', $orderBy);
+                    ->orderBy('users.username', $orderBy);
 
             case 'counted_quantity':
             case 'system_quantity':
