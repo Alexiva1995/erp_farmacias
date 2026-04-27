@@ -355,7 +355,10 @@ class SupplierConnectionService
                 'file_field' => $meta,
                 'type' => in_array($key, ['unit_cost', 'unit_cost_usd']) ? 'decimal' : (in_array($key, ['quantity']) ? 'integer' : 'string')
             ];
-        })->filter(fn($f) => ($f["target"] ?? null));
+        })->filter(function($f, $k) {
+            $target = $f["target"] ?? null;
+            return $target && !is_numeric($target);
+        });
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
 

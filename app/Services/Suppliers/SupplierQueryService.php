@@ -334,8 +334,17 @@ class SupplierQueryService
                         $productData['quantity'] = 1000;
                     }
 
+                    // Filtrar solo columnas existentes en la tabla para evitar errores de SQL (Capa de seguridad extra)
+                    $allowedColumns = [
+                        'product_id', 'supplier_id', 'barcode_match', 'name', 'laboratory', 
+                        'expiration', 'unit_cost', 'unit_cost_usd', 'connection_date', 
+                        'quantity', 'unit_cost_with_discount', 'unit_cost_usd_with_discount', 
+                        'cod_supplier', 'active_ingredient', 'created_at', 'updated_at'
+                    ];
+                    
+                    $productData = array_intersect_key($productData, array_flip($allowedColumns));
+
                     // Insertar directamente SIN transacción anidada
-                    // Como no hay restricción única, debería funcionar sin problemas
                     DB::table('product_suppliers')->insert($productData);
 
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Insertado producto #{$index} exitosamente - product_id: " . ($productData['product_id'] ?? 'NULL') . ", name: " . substr($productData['name'] ?? 'NULL', 0, 50) . "\n";
