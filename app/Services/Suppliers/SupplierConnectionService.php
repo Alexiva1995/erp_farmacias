@@ -949,8 +949,8 @@ class SupplierConnectionService
             $method === 'post' ? json_encode($data) : null
         )->then(function (ResponseInterface $response) use (&$productResponse) {
             $productResponse = json_decode((string) $response->getBody(), true);
-        }, function (\Exception $e) {
-            Log::error('API Error: ' . $e->getMessage());
+        }, function (\Exception $e) use ($path) {
+            Log::error('API Error: ' . $e->getMessage(), ['url' => $path]);
         });
 
         Loop::run();
