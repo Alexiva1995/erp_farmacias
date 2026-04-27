@@ -407,29 +407,26 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
       </VRow>
 
       <!-- RENTABILIDAD Y STOCK -->
-      <VRow>
-        <VCol cols="12" md="12">
+      <VRow class="match-height">
+        <VCol cols="12" md="6">
           <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b d-flex align-center">
               <VIcon icon="tabler-trending-up" class="me-2 text-success" />
-              <span>Eficiencia vs Volumen (Top 10 Laboratorios que más dinero generan)</span>
+              <span>Eficiencia vs Volumen (Profit)</span>
             </VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="450" :options="profitabilityChartOptions" :series="profitabilitySeries" />
+              <VueApexCharts height="380" :options="profitabilityChartOptions" :series="profitabilitySeries" />
             </VCardText>
           </VCard>
         </VCol>
-      </VRow>
-
-      <VRow>
-        <VCol cols="12" md="12">
+        <VCol cols="12" md="6">
           <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b d-flex align-center">
               <VIcon icon="tabler-building-warehouse" class="me-2 text-primary" />
-              <span>Valor de Inventario al Costo (Stock Actual)</span>
+              <span>Inversión en Stock (Por Lab)</span>
             </VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="350" :options="stockTreemapOptions" :series="stockSeries" />
+              <VueApexCharts height="380" :options="stockTreemapOptions" :series="stockSeries" />
             </VCardText>
           </VCard>
         </VCol>
@@ -520,24 +517,47 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               
               <VRow>
                 <VCol v-for="group in benchmarkingData.shared_groups" :key="group.group_id" cols="12" md="6">
-                  <VCard border flat class="pa-3 bg-light-secondary rounded-lg">
-                    <div class="d-flex justify-space-between align-center mb-1">
+                  <VCard border flat class="pa-4 bg-light-secondary rounded-lg h-100">
+                    <div class="d-flex justify-space-between align-center mb-3">
                       <span class="text-xs font-weight-black text-uppercase">{{ group.name }}</span>
                     </div>
-                    <div class="d-flex align-center gap-2">
-                       <span class="text-xs font-weight-bold text-primary">{{ group.share_a }}%</span>
-                       <VProgressLinear
-                         :model-value="group.share_a"
-                         height="12"
-                         color="primary"
-                         class="flex-grow-1"
-                         rounded
-                       />
-                       <span class="text-xs font-weight-bold text-success">{{ group.share_b }}%</span>
+
+                    <!-- Barra Bicolor de Distribución -->
+                    <div class="d-flex w-100 rounded-pill overflow-hidden bg-white border" style="height: 14px">
+                      <div 
+                        class="d-flex align-center justify-center text-white font-weight-black" 
+                        :style="{ width: group.share_a + '%', backgroundColor: 'rgb(5, 77, 149)', fontSize: '8px' }"
+                      >
+                        <span v-if="group.share_a > 10">{{ group.share_a }}%</span>
+                      </div>
+                      <div 
+                        class="d-flex align-center justify-center text-white font-weight-black" 
+                        :style="{ width: group.share_b + '%', backgroundColor: '#28c76f', fontSize: '8px' }"
+                      >
+                        <span v-if="group.share_b > 10">{{ group.share_b }}%</span>
+                      </div>
                     </div>
+
+                    <!-- Detalles de Ingresos -->
                     <div class="d-flex justify-space-between mt-1 opacity-60 text-xs font-weight-bold">
                       <span class="text-primary">{{ formatCurrency(group.revenue_a) }}</span>
                       <span class="text-success">{{ formatCurrency(group.revenue_b) }}</span>
+                    </div>
+
+                    <!-- Listado de Productos Competidores -->
+                    <div class="d-flex justify-space-between mt-4 gap-0">
+                      <!-- Lab A Products -->
+                      <div class="flex-1 border-e pe-3 overflow-hidden" style="width: 50%;">
+                         <div v-for="p in group.products_a" :key="p.id" class="text-[9px] font-weight-bold text-uppercase text-truncate mb-1" style="color: rgb(5, 77, 149);">
+                            {{ p.name }}
+                         </div>
+                      </div>
+                      <!-- Lab B Products -->
+                      <div class="flex-1 text-right ps-3 overflow-hidden" style="width: 50%;">
+                         <div v-for="p in group.products_b" :key="p.id" class="text-[9px] font-weight-bold text-uppercase text-truncate text-success mb-1">
+                            {{ p.name }}
+                         </div>
+                      </div>
                     </div>
                   </VCard>
                 </VCol>

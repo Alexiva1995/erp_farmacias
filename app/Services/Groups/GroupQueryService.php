@@ -74,7 +74,11 @@ class GroupQueryService
      */
     public function getPaginatedGroups(Request $request): LengthAwarePaginator
     {
-        $query = GroupsProduct::query()->with(['products']);
+        $query = GroupsProduct::query()->with(['products' => function ($q) {
+            $q->select('products.*', \Illuminate\Support\Facades\DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) as stock_calculado'))
+              ->with('laboratory');
+        }]);
+        
         $this->applyFilters($query, $request);
         $this->applySorting($query, $request);
 

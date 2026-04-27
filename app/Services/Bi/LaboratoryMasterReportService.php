@@ -48,10 +48,13 @@ class LaboratoryMasterReportService
 
         $sharedGroupIds = $groupsA->pluck('id')->intersect($groupsB->pluck('id'));
 
-        $sharedComparisons = $sharedGroupIds->map(function ($groupId) use ($groupsA, $groupsB) {
+        $sharedComparisons = $sharedGroupIds->map(function ($groupId) use ($groupsA, $groupsB, $dataA, $dataB) {
             $gA = $groupsA->firstWhere('id', $groupId);
             $gB = $groupsB->firstWhere('id', $groupId);
             
+            $productsA = collect($dataA['top_products'])->where('group_id', $groupId)->values();
+            $productsB = collect($dataB['top_products'])->where('group_id', $groupId)->values();
+
             $totalRev = $gA->revenue + $gB->revenue;
 
             return [
@@ -61,6 +64,8 @@ class LaboratoryMasterReportService
                 'revenue_b' => $gB->revenue,
                 'share_a' => $totalRev > 0 ? round(($gA->revenue / $totalRev) * 100, 1) : 0,
                 'share_b' => $totalRev > 0 ? round(($gB->revenue / $totalRev) * 100, 1) : 0,
+                'products_a' => $productsA,
+                'products_b' => $productsB
             ];
         })->values();
 
