@@ -330,6 +330,40 @@ const headers = [
                     size="small"
                     @click="emit('open-discount-dialog', item)"
                   />
+
+                  <VMenu location="bottom end" transition="slide-y-transition">
+                    <template #activator="{ props: menuProps }">
+                      <VBtn
+                        v-bind="menuProps"
+                        icon="tabler-dots-vertical"
+                        variant="tonal"
+                        color="secondary"
+                        size="small"
+                      />
+                    </template>
+                    <VList density="compact" class="py-2 rounded-lg">
+                      <VListItem
+                        @click="copyPublicLink(item)"
+                        prepend-icon="tabler-copy"
+                      >
+                        <VListItemTitle>Copiar Link</VListItemTitle>
+                      </VListItem>
+                      <VListItem
+                        @click="emit('open-public-link', item)"
+                        prepend-icon="tabler-link"
+                      >
+                        <VListItemTitle>Configurar Link</VListItemTitle>
+                      </VListItem>
+                      <VDivider class="my-2" />
+                      <VListItem
+                        @click="emit('delete-products', item)"
+                        prepend-icon="tabler-trash"
+                        color="error"
+                      >
+                        <VListItemTitle>Borrar Productos</VListItemTitle>
+                      </VListItem>
+                    </VList>
+                  </VMenu>
                 </div>
               </div>
             </VCardText>

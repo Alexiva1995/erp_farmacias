@@ -12,6 +12,7 @@ use App\Models\InvoiceDetail;
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use App\Models\SupplierConnection;
 use App\Models\SupplierConnectionStatus;
+use App\Enums\AutoOrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -326,6 +327,11 @@ class SupplierQueryService
                     }
                     if (!isset($productData['updated_at'])) {
                         $productData['updated_at'] = now();
+                    }
+
+                    // Si la cantidad es 0 o nula, asignar 1000 por defecto (Solicitud Usuario)
+                    if (!isset($productData['quantity']) || empty($productData['quantity']) || $productData['quantity'] <= 0) {
+                        $productData['quantity'] = 1000;
                     }
 
                     // Insertar directamente SIN transacción anidada
@@ -823,9 +829,14 @@ class SupplierQueryService
 
     public function deleteProducts(Supplier $supplier)
     {
-        // Solo eliminamos productos que NO tengan detalles de órdenes vinculados
+        // Solo eliminamos productos que NO tengan detalles de órdenes pendientes/enviadas
+        // Si el producto está en una orden COMPLETADA (finalizada), permitimos el borrado del producto del catálogo
         $supplier->productSuppliers()
-            ->whereDoesntHave('autoOrderDetails')
+            ->whereDoesntHave('autoOrderDetails', function ($query) {
+                $query->whereHas('autoOrder', function ($q) {
+                    $q->where('status', '!=', AutoOrderStatus::COMPLETED->value);
+                });
+            })
             ->delete();
 
         return response()->json(["status" => "ok"]);
