@@ -21,7 +21,11 @@ class LaboratoryManagementController extends Controller
             $query->where('name', 'like', "%{$request->search}%");
         }
 
-        return response()->json($query->orderBy('name')->paginate(20));
+        $sortBy = $request->get('sortBy', 'name');
+        $orderBy = $request->get('orderBy', 'asc');
+        $itemsPerPage = $request->get('itemsPerPage', 10);
+
+        return response()->json($query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage));
     }
 
     /**

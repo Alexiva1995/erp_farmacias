@@ -192,20 +192,53 @@ const marketShareChartOptions = computed(() => ({
 
 const marketShareSeries = computed(() => dashboardData.value.rankings.by_revenue.data.map(l => parseFloat(l.total_revenue)));
 
-// Gráfico de Rentabilidad (Bar Chart)
+// Gráfico de Rentabilidad (Mixed Chart: Bar Revenue + Line Margin %)
 const profitabilityChartOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false } },
-  plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%', distributed: true } },
-  dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
+  chart: { type: 'line', toolbar: { show: false }, stacked: false },
+  stroke: { width: [0, 4], curve: 'smooth' },
+  plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
+  colors: ['#7367f0', '#28c76f'],
+  dataLabels: { 
+    enabled: true, 
+    enabledOnSeries: [0, 1],
+    formatter: (val, opts) => opts.seriesIndex === 0 ? formatCurrency(val) : `${val.toFixed(1)}%`,
+    style: { fontSize: '10px' }
+  },
+  labels: dashboardData.value.profitability.map(l => l.name),
   xaxis: { categories: dashboardData.value.profitability.map(l => l.name) },
-  colors: ['#28c76f'],
-  legend: { show: false }
+  yaxis: [
+    {
+      title: { text: 'Venta Bruta', style: { color: '#7367f0' } },
+      labels: { formatter: (val) => formatCurrency(val), style: { colors: '#7367f0' } }
+    },
+    {
+      opposite: true,
+      title: { text: 'Margen %', style: { color: '#28c76f' } },
+      labels: { formatter: (val) => `${val.toFixed(0)}%`, style: { colors: '#28c76f' } }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    intersect: false,
+    y: {
+      formatter: (val, opts) => opts.seriesIndex === 0 ? formatCurrency(val) : `${val.toFixed(2)}%`
+    }
+  },
+  legend: { position: 'top', horizontalAlign: 'center' }
 }));
 
-const profitabilitySeries = computed(() => [{
-  name: 'Margen %',
-  data: dashboardData.value.profitability.map(l => parseFloat(l.margin_percent))
-}]);
+const profitabilitySeries = computed(() => [
+  {
+    name: 'Venta Bruta',
+    type: 'column',
+    data: dashboardData.value.profitability.map(l => parseFloat(l.total_revenue))
+  },
+  {
+    name: 'Margen %',
+    type: 'line',
+    data: dashboardData.value.profitability.map(l => parseFloat(l.margin_percent))
+  }
+]);
 
 const stockTreemapOptions = computed(() => ({
   legend: { show: false },
@@ -375,18 +408,21 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
 
       <!-- RENTABILIDAD Y STOCK -->
       <VRow>
-        <VCol cols="12" md="6">
+        <VCol cols="12" md="12">
           <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b d-flex align-center">
               <VIcon icon="tabler-trending-up" class="me-2 text-success" />
-              <span>Laboratorios Más Rentables (% Margen)</span>
+              <span>Eficiencia vs Volumen (Top 10 Laboratorios que más dinero generan)</span>
             </VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="350" :options="profitabilityChartOptions" :series="profitabilitySeries" />
+              <VueApexCharts height="450" :options="profitabilityChartOptions" :series="profitabilitySeries" />
             </VCardText>
           </VCard>
         </VCol>
-        <VCol cols="12" md="6">
+      </VRow>
+
+      <VRow>
+        <VCol cols="12" md="12">
           <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b d-flex align-center">
               <VIcon icon="tabler-building-warehouse" class="me-2 text-primary" />

@@ -65,6 +65,7 @@ class LaboratoryMasterReportRepository
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->select(
                 'laboratories.name',
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_revenue'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as margin_percent'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as total_profit')
             )
@@ -72,7 +73,7 @@ class LaboratoryMasterReportRepository
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->groupBy('laboratories.id', 'laboratories.name')
             ->having('margin_percent', '>', 0)
-            ->orderByDesc('margin_percent')
+            ->orderByDesc('total_profit')
             ->limit(10)
             ->get();
     }
