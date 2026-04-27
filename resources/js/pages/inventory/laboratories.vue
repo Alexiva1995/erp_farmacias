@@ -5,6 +5,7 @@ import AppFilterBase from "@/components/AppFilterBase.vue"
 import AppMobilePagination from "@/components/AppMobilePagination.vue"
 
 const laboratories = ref([])
+const allLaboratoriesForSelect = ref([]) // Lista completa para el modal
 const groups = ref([])
 const loading = ref(false)
 const totalLabs = ref(0)
@@ -47,6 +48,16 @@ const fetchLabs = async () => {
     console.error('Error al cargar laboratorios:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// Función para traer TODOS los laboratorios para el selector del grupo
+const fetchAllLabsForSelect = async () => {
+  try {
+    const { data } = await axios.get('/laboratories') // Endpoint que trae todos sin paginar
+    allLaboratoriesForSelect.value = data
+  } catch (error) {
+    console.error('Error al cargar todos los laboratorios:', error)
   }
 }
 
@@ -120,6 +131,7 @@ const handleClearFilters = () => {
 onMounted(() => {
   fetchLabs()
   fetchGroups()
+  fetchAllLabsForSelect()
 })
 
 watch([searchQuery], () => {
@@ -274,52 +286,65 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
     </VDialog>
 
     <!-- DIÁLOGO GRUPOS -->
-    <VDialog v-model="isGroupDialogOpen" max-width="700">
-      <VCard>
-        <VCardTitle class="pa-4 border-b d-flex align-center">
-          <VIcon icon="tabler-layers-intersect" class="me-2" />
-          <span>Gestión de Grupos Corporativos</span>
+    <VDialog v-model="isGroupDialogOpen" max-width="600">
+      <VCard class="rounded-xl overflow-hidden shadow-xl border-0">
+        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
+          <VAvatar color="primary" variant="tonal" class="me-4" size="48">
+            <VIcon icon="tabler-layers-intersect" size="24" />
+          </VAvatar>
+          <div>
+             <div class="text-h6 font-weight-black leading-tight">Configuración de Grupo</div>
+             <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Gestión Corporativa</div>
+          </div>
+          <VSpacer />
+          <VBtn icon="tabler-x" variant="text" color="disabled" @click="isGroupDialogOpen = false" />
         </VCardTitle>
-        <VCardText class="pa-4">
+
+        <VCardText class="pa-6 pt-8">
           <VRow>
-            <VCol cols="12" md="6">
-              <AppTextField v-model="groupForm.name" label="Nombre del Grupo" placeholder="Ej: Corporación FARMA" />
-            </VCol>
             <VCol cols="12">
-              <p class="text-xs font-weight-bold text-disabled text-uppercase mb-2">Asignación de Laboratorios</p>
+              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Identificación</p>
+              <AppTextField 
+                v-model="groupForm.name" 
+                label="Nombre del Grupo Corporativo" 
+                placeholder="Ej: Consorcio Farmacéutico Global" 
+                persistent-placeholder
+              />
+            </VCol>
+            
+            <VCol cols="12" class="mt-2">
+              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación de Marcas/Laboratorios</p>
               <AppAutocomplete
                 v-model="groupForm.laboratory_ids"
-                :items="laboratories"
+                :items="allLaboratoriesForSelect"
                 item-title="name"
                 item-value="id"
-                label="Seleccionar laboratorios para este grupo"
+                placeholder="Busca y añade los laboratorios que pertenecen a este grupo..."
                 multiple
                 chips
                 closable-chips
-                density="compact"
+                density="comfortable"
+                variant="outlined"
+                persistent-placeholder
               />
+              <div class="mt-2 d-flex align-center gap-1 text-super-xs text-disabled opacity-80">
+                <VIcon icon="tabler-info-circle-filled" size="14" />
+                <span>Los laboratorios seleccionados se agruparán bajo este nombre corporativo en los reportes.</span>
+              </div>
             </VCol>
           </VRow>
-          
-          <VDivider class="my-4" />
-          <p class="text-xs font-weight-bold text-disabled text-uppercase mb-3">Grupos Existentes (Click para editar):</p>
-          <div class="d-flex flex-wrap gap-2">
-            <VChip 
-              v-for="g in groups" 
-              :key="g.id" 
-              link 
-              @click="openGroupEdit(g)"
-              :color="groupForm.id === g.id ? 'primary' : 'secondary'"
-              variant="elevated"
-            >
-              {{ g.name }}
-            </VChip>
-          </div>
         </VCardText>
-        <VCardActions class="pa-4">
+
+        <VDivider />
+
+        <VCardActions class="pa-6">
           <VSpacer />
-          <VBtn color="secondary" variant="tonal" @click="isGroupDialogOpen = false">Cerrar</VBtn>
-          <VBtn color="primary" @click="saveGroup">Guardar Grupo</VBtn>
+          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isGroupDialogOpen = false">
+            DESCARTAR
+          </VBtn>
+          <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveGroup">
+            GUARDAR CONFIGURACIÓN
+          </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
