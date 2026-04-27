@@ -17,9 +17,10 @@ class LaboratoryMasterReportService
             'rankings' => [
                 'by_units' => $this->repository->getRankings('total_units', 1, $filters),
                 'by_revenue' => $this->repository->getRankings('total_revenue', 1, $filters),
+                'by_stock' => $this->repository->getRankings('total_stock', 1, $filters),
             ],
             'trends' => $this->repository->getTrendData($filters),
-            'stock_on_hand' => $this->repository->getStockOnHand($filters),
+            'stock_on_hand' => $this->repository->getStockOnHand(array_merge($filters, ['metric' => 'inventory_value'])),
             'profitability' => $this->repository->getProfitability($filters),
         ];
     }
@@ -62,6 +63,8 @@ class LaboratoryMasterReportService
                 'name' => $gA->name,
                 'revenue_a' => $gA->revenue,
                 'revenue_b' => $gB->revenue,
+                'units_a' => $gA->units,
+                'units_b' => $gB->units,
                 'share_a' => $totalRev > 0 ? round(($gA->revenue / $totalRev) * 100, 1) : 0,
                 'share_b' => $totalRev > 0 ? round(($gB->revenue / $totalRev) * 100, 1) : 0,
                 'products_a' => $productsA,

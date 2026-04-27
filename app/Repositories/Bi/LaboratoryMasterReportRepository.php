@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 class LaboratoryMasterReportRepository
 {
     /**
-     * Obtener Ranking de Laboratorios por Unidades o Valor (Venta Bruta)
+     * Obtener Ranking de Laboratorios por Unidades, Valor (Venta Bruta) o Stock
      */
     public function getRankings(string $metric, int $page, array $filters)
     {
@@ -16,38 +16,36 @@ class LaboratoryMasterReportRepository
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
         $groupByCorporate = filter_var($filters['group_by_corporate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $query = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->select(
-                $groupByCorporate 
-                    ? DB::raw('COALESCE(laboratories.parent_id, laboratories.id) as aggregation_id')
-                    : 'laboratories.id as aggregation_id',
-                $groupByCorporate
-                    ? DB::raw('(SELECT name FROM laboratories as l2 WHERE l2.id = COALESCE(laboratories.parent_id, laboratories.id)) as name')
-                    : 'laboratories.name',
-                DB::raw('SUM(order_details.quantity) as total_units'),
-                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_revenue'),
-                DB::raw('COUNT(DISTINCT orders.id) as ticket_count')
-            )
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        $baseQuery = $metric === 'total_stock' || $metric === 'inventory_value'
+            ? DB::table('products')->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            : DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                ->where('orders.status', 'Completed')
+                ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        $baseQuery->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id');
 
         if ($groupByCorporate) {
-            $query->groupBy(DB::raw('COALESCE(laboratories.parent_id, laboratories.id)'));
-            $query->having(DB::raw('COUNT(DISTINCT laboratories.id)'), '>', 1);
+            $baseQuery->select(
+                DB::raw('COALESCE(groups_laboratories.id, laboratories.id) as aggregation_id'),
+                DB::raw('COALESCE(groups_laboratories.name, laboratories.name) as name'),
+                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock)' : 'SUM(order_details.quantity)') . ' as total_units'),
+                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock * products.unit_cost)' : 'SUM(order_details.quantity * order_details.unit_price_usd)') . ' as total_revenue'))
+            ->groupBy(DB::raw('COALESCE(groups_laboratories.id, laboratories.id)'), DB::raw('COALESCE(groups_laboratories.name, laboratories.name)'));
         } else {
-            $query->groupBy('laboratories.id', 'laboratories.name');
-            // Si no estamos agrupando por corporativo, pero el usuario filtró por un padre específico
-            if (!empty($filters['parent_id'])) {
-                $query->where('laboratories.parent_id', $filters['parent_id']);
-            }
+            $baseQuery->select(
+                'laboratories.id as aggregation_id',
+                'laboratories.name',
+                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock)' : 'SUM(order_details.quantity)') . ' as total_units'),
+                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock * products.unit_cost)' : 'SUM(order_details.quantity * order_details.unit_price_usd)') . ' as total_revenue'))
+            ->groupBy('laboratories.id', 'laboratories.name');
         }
 
-        $orderBy = $metric === 'total_revenue' ? 'total_revenue' : 'total_units';
+        $orderBy = ($metric === 'total_revenue' || $metric === 'inventory_value') ? 'total_revenue' : 'total_units';
 
-        return $query->orderByDesc($orderBy)
+        return $baseQuery->orderByDesc($orderBy)
             ->paginate(10, ['*'], 'page', $page);
     }
 
@@ -58,21 +56,35 @@ class LaboratoryMasterReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $groupByCorporate = filter_var($filters['group_by_corporate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        return DB::table('order_details')
+        $query = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->select(
+            ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if ($groupByCorporate) {
+            $query->select(
+                DB::raw('COALESCE(groups_laboratories.name, laboratories.name) as name'),
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_revenue'),
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as margin_percent'),
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as total_profit')
+            )
+            ->groupBy(DB::raw('COALESCE(groups_laboratories.id, laboratories.id)'), DB::raw('COALESCE(groups_laboratories.name, laboratories.name)'));
+        } else {
+            $query->select(
                 'laboratories.name',
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_revenue'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as margin_percent'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as total_profit')
             )
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->groupBy('laboratories.id', 'laboratories.name')
-            ->having('margin_percent', '>', 0)
+            ->groupBy('laboratories.id', 'laboratories.name');
+        }
+
+        return $query->having('margin_percent', '>', 0)
             ->orderByDesc('total_profit')
             ->limit(10)
             ->get();
@@ -85,71 +97,128 @@ class LaboratoryMasterReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->subMonths(6)->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $groupByCorporate = filter_var($filters['group_by_corporate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // 1. Identificar los Top 5 laboratorios del periodo
-        $top5Ids = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->select('products.laboratory_id')
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->groupBy('products.laboratory_id')
-            ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
-            ->limit(5)
-            ->pluck('products.laboratory_id');
-
-        if ($top5Ids->isEmpty()) return collect([]);
-
-        // 2. Obtener tendencia mensual para esos 5
-        return DB::table('order_details')
+        // 1. Identificar los Top 5
+        $top5Query = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->select(
+            ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if ($groupByCorporate) {
+            $top5Query->select(DB::raw('COALESCE(groups_laboratories.id, laboratories.id) as master_id'))
+                ->groupBy('master_id');
+        } else {
+            $top5Query->select('products.laboratory_id as master_id')
+                ->groupBy('master_id');
+        }
+
+        $top5Ids = $top5Query->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
+            ->limit(5)
+            ->pluck('master_id');
+
+        if ($top5Ids->isEmpty()) return collect([]);
+
+        // 2. Tendencia
+        $query = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if ($groupByCorporate) {
+            $query->select(
+                DB::raw('COALESCE(groups_laboratories.name, laboratories.name) as lab_name'),
+                DB::raw("DATE_FORMAT(orders.created_at, '%Y-%m') as month"),
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
+            )
+            ->whereIn(DB::raw('COALESCE(groups_laboratories.id, laboratories.id)'), $top5Ids)
+            ->groupBy('lab_name', 'month');
+        } else {
+            $query->select(
                 'laboratories.name as lab_name',
                 DB::raw("DATE_FORMAT(orders.created_at, '%Y-%m') as month"),
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
             )
             ->whereIn('products.laboratory_id', $top5Ids)
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->groupBy('lab_name', 'month')
-            ->orderBy('month')
-            ->get();
+            ->groupBy('lab_name', 'month');
+        }
+
+        return $query->orderBy('month')->get();
     }
 
     /**
-     * Stock on Hand por Laboratorio (Treemap) - BASADO EN COSTO
+     * Stock on Hand por Laboratorio
      */
     public function getStockOnHand(array $filters)
     {
-        return DB::table('products')
+        $metric = $filters['metric'] ?? 'inventory_value';
+        $orderBy = $metric === 'total_stock' ? 'total_stock' : 'inventory_value';
+        $groupByCorporate = filter_var($filters['group_by_corporate'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $query = DB::table('products')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->select(
+            ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
+            ->where('products.is_active', 1)
+            ->where('products.stock', '>', 0);
+
+        if ($groupByCorporate) {
+            $query->select(
+                DB::raw('COALESCE(groups_laboratories.id, laboratories.id) as aggregation_id'),
+                DB::raw('COALESCE(groups_laboratories.name, laboratories.name) as name'),
+                DB::raw('SUM(products.stock) as total_stock'),
+                DB::raw('SUM(products.stock * products.unit_cost) as inventory_value')
+            )
+            ->groupBy(DB::raw('COALESCE(groups_laboratories.id, laboratories.id)'), DB::raw('COALESCE(groups_laboratories.name, laboratories.name)'));
+        } else {
+            $query->select(
+                'laboratories.id as aggregation_id',
                 'laboratories.name',
                 DB::raw('SUM(products.stock) as total_stock'),
                 DB::raw('SUM(products.stock * products.unit_cost) as inventory_value')
             )
-            ->where('products.is_active', 1)
-            ->where('products.stock', '>', 0)
-            ->groupBy('laboratories.id', 'laboratories.name')
-            ->orderByDesc('inventory_value')
-            ->limit(20)
-            ->get();
+            ->groupBy('laboratories.id', 'laboratories.name');
+        }
+
+        return $query->orderByDesc($orderBy)->limit(10)->get();
     }
 
     /**
      * Deep Dive de un Laboratorio específico
      */
-    public function getLaboratoryDetails(int $labId, array $filters)
+    public function getLaboratoryDetails(int $id, array $filters)
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $groupByCorporate = filter_var($filters['group_by_corporate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // Top 20 productos
-        $topProducts = DB::table('order_details')
+        // Si es corporativo, el ID recibido es el group_id (o lab_id si no tiene grupo)
+        // Necesitamos filtrar productos que pertenezcan a ese grupo o a ese laboratorio individual
+        $queryBase = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if ($groupByCorporate) {
+            $queryBase->where(function($q) use ($id) {
+                $q->where('laboratories.group_id', $id)
+                  ->orWhere(function($sq) use ($id) {
+                      $sq->whereNull('laboratories.group_id')->where('laboratories.id', $id);
+                  });
+            });
+        } else {
+            $queryBase->where('products.laboratory_id', $id);
+        }
+
+        // Todos los productos con ventas en el periodo (para benchmarking completo)
+        $topProducts = (clone $queryBase)
             ->select(
                 'products.id',
                 'products.name',
@@ -158,18 +227,12 @@ class LaboratoryMasterReportRepository
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as estimated_margin')
             )
-            ->where('products.laboratory_id', $labId)
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->groupBy('products.id', 'products.name', 'products.group_id')
             ->orderByDesc('revenue')
-            ->limit(20)
             ->get();
 
-        // Ventas por grupo de productos (para benchmarking)
-        $groupPerformance = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
+        // Ventas por grupo de productos
+        $groupPerformance = (clone $queryBase)
             ->join('groups_products', 'products.group_id', '=', 'groups_products.id')
             ->select(
                 'groups_products.id',
@@ -177,23 +240,15 @@ class LaboratoryMasterReportRepository
                 DB::raw('SUM(order_details.quantity) as units'),
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
             )
-            ->where('products.laboratory_id', $labId)
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->groupBy('groups_products.id', 'groups_products.name')
             ->get();
 
         // KPIs Generales
-        $stats = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
+        $stats = (clone $queryBase)
             ->select(
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) / COUNT(DISTINCT orders.id) as avg_ticket'),
                 DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as avg_margin_percent')
             )
-            ->where('products.laboratory_id', $labId)
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->first();
 
         return [

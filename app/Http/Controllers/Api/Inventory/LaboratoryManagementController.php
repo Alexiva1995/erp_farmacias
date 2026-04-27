@@ -87,15 +87,13 @@ class LaboratoryManagementController extends Controller
     }
 
     /**
-     * Eliminar laboratorio (solo si no tiene productos)
+     * Eliminar laboratorio.
      */
     public function destroy(Laboratory $laboratory): JsonResponse
     {
-        if ($laboratory->products()->exists()) {
-            return response()->json(['message' => 'No se puede eliminar un laboratorio con productos asociados'], 422);
-        }
+        // Al borrar el laboratorio, los productos quedan sin laboratorio asociado (null).
+        $laboratory->delete();
 
-        $laboratory.delete();
         return response()->json(['message' => 'Laboratorio eliminado']);
     }
 }

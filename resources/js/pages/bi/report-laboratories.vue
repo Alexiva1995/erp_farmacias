@@ -13,7 +13,7 @@ const loading = ref(false);
 const groupByCorporate = ref(false);
 
 const dashboardData = ref({
-  rankings: { by_units: { data: [] }, by_revenue: { data: [] } },
+  rankings: { by_units: { data: [] }, by_revenue: { data: [] }, by_stock: { data: [] } },
   trends: [],
   stock_on_hand: [],
   profitability: []
@@ -28,8 +28,10 @@ const laboratories = ref([]);
 // Paginación Rankings
 const pageUnits = ref(1);
 const pageRevenue = ref(1);
+const pageStock = ref(1);
 const loadingUnits = ref(false);
 const loadingRevenue = ref(false);
+const loadingStock = ref(false);
 
 // Benchmarking (Lab A vs Lab B)
 const labA = ref(null);
@@ -45,7 +47,9 @@ const loadingDeepDive = ref(false);
 // --- CARGA DE DATOS ---
 const fetchCatalogs = async () => {
   try {
-    const { data } = await axios.get('/laboratories');
+    const { data } = await axios.get('/bi/laboratories/catalogs', {
+      params: { group_by_corporate: groupByCorporate.value }
+    });
     laboratories.value = Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Error cargando catálogos:", error);
@@ -54,6 +58,7 @@ const fetchCatalogs = async () => {
 
 const fetchDashboard = async () => {
   loading.value = true;
+  fetchCatalogs(); // Refresh catalogs when toggle changes
   try {
     const params = {
       start_date: startDate.value,
@@ -70,8 +75,21 @@ const fetchDashboard = async () => {
 };
 
 const fetchRankings = async (metric = 'total_units', page = 1) => {
-  const isLoading = metric === 'total_units' ? loadingUnits : loadingRevenue;
-  const pageRef = metric === 'total_units' ? pageUnits : pageRevenue;
+  let isLoading, pageRef, dataKey;
+  
+  if (metric === 'total_units') {
+    isLoading = loadingUnits;
+    pageRef = pageUnits;
+    dataKey = 'by_units';
+  } else if (metric === 'total_revenue') {
+    isLoading = loadingRevenue;
+    pageRef = pageRevenue;
+    dataKey = 'by_revenue';
+  } else {
+    isLoading = loadingStock;
+    pageRef = pageStock;
+    dataKey = 'by_stock';
+  }
   
   isLoading.value = true;
   try {
@@ -83,13 +101,8 @@ const fetchRankings = async (metric = 'total_units', page = 1) => {
       group_by_corporate: groupByCorporate.value
     };
     const { data } = await axios.get('/bi/laboratories/rankings', { params });
-    if (metric === 'total_units') {
-      dashboardData.value.rankings.by_units = data;
-      pageUnits.value = page;
-    } else {
-      dashboardData.value.rankings.by_revenue = data;
-      pageRevenue.value = page;
-    }
+    dashboardData.value.rankings[dataKey] = data;
+    pageRef.value = page;
   } catch (error) {
     console.error(`Error cargando ranking ${metric}:`, error);
   } finally {
@@ -106,7 +119,8 @@ const fetchBenchmarking = async () => {
       lab_a: labA.value,
       lab_b: labB.value,
       start_date: startDate.value,
-      end_date: endDate.value
+      end_date: endDate.value,
+      group_by_corporate: groupByCorporate.value
     };
     const { data } = await axios.get('/bi/laboratories/benchmarking', { params });
     benchmarkingData.value = data;
@@ -317,68 +331,102 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
 
       <!-- RANKINGS -->
       <VRow class="match-height">
-        <VCol cols="12" md="6">
-          <VCard border class="rounded-lg overflow-hidden shadow-sm">
+        <!-- TOP UNIDADES VENDIDAS -->
+        <VCol cols="12" md="4">
+          <VCard border class="rounded-lg overflow-hidden shadow-sm h-100">
             <VCardTitle class="pa-4 border-b bg-light-primary d-flex align-center">
-              <VIcon icon="tabler-box" class="me-2 text-primary" />
-              <span class="font-weight-bold">Top Laboratorios (Unidades)</span>
+              <VIcon icon="tabler-shopping-cart" class="me-2 text-primary" />
+              <span class="text-subtitle-2 font-weight-black">Top Ventas (Units)</span>
             </VCardTitle>
             <VCardText class="pa-0">
               <VList lines="one" v-if="dashboardData.rankings.by_units?.data?.length" :class="{ 'opacity-50': loadingUnits }">
-                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_units.data" :key="idx" class="border-b px-2 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
+                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_units.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
                   <template #prepend>
-                    <VAvatar color="primary" variant="tonal" size="30" class="font-weight-black text-xs">{{ idx + 1 }}</VAvatar>
+                    <VAvatar color="primary" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageUnits - 1) * 10) + idx + 1 }}</VAvatar>
                   </template>
-                  <VListItemTitle class="font-weight-bold text-sm uppercase">{{ lab.name }}</VListItemTitle>
+                  <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
                   <template #append>
                     <div class="text-right">
-                      <div class="text-sm font-weight-black">{{ lab.total_units }} Unds</div>
-                      <div class="text-caption opacity-60">{{ lab.ticket_count }} Ventas</div>
+                      <div class="text-[11px] font-weight-black text-primary">{{ lab.total_units }} Unds</div>
                     </div>
                   </template>
                 </VListItem>
               </VList>
-              <div v-else class="pa-10 text-center opacity-50">No hay datos de unidades</div>
-              
-              <div class="pa-2 d-flex justify-space-between align-center bg-light-primary">
-                <span class="text-xs opacity-60">Página {{ pageUnits }}</span>
+              <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+
+              <div class="pa-2 d-flex justify-space-between align-center bg-light-primary border-t">
+                <span class="text-[10px] font-weight-black opacity-60">PÁG {{ pageUnits }}</span>
                 <div class="d-flex gap-1">
-                  <VBtn icon="tabler-chevron-left" variant="text" size="small" :disabled="pageUnits <= 1" @click="fetchRankings('total_units', pageUnits - 1)" />
-                  <VBtn icon="tabler-chevron-right" variant="text" size="small" :disabled="dashboardData.rankings.by_units?.data?.length < 10" @click="fetchRankings('total_units', pageUnits + 1)" />
+                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageUnits <= 1 || loadingUnits" @click="fetchRankings('total_units', pageUnits - 1)" />
+                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="dashboardData.rankings.by_units?.data?.length < 10 || loadingUnits" @click="fetchRankings('total_units', pageUnits + 1)" />
                 </div>
               </div>
             </VCardText>
           </VCard>
         </VCol>
 
-        <VCol cols="12" md="6">
-          <VCard border class="rounded-lg overflow-hidden shadow-sm">
+        <!-- TOP VENTA BRUTA -->
+        <VCol cols="12" md="4">
+          <VCard border class="rounded-lg overflow-hidden shadow-sm h-100">
             <VCardTitle class="pa-4 border-b bg-light-success d-flex align-center">
-              <VIcon icon="tabler-coins" class="me-2 text-success" />
-              <span class="font-weight-bold">Top Laboratorios (Venta Bruta)</span>
+              <VIcon icon="tabler-currency-dollar" class="me-2 text-success" />
+              <span class="text-subtitle-2 font-weight-black">Top Ventas (USD)</span>
             </VCardTitle>
             <VCardText class="pa-0">
               <VList lines="one" v-if="dashboardData.rankings.by_revenue?.data?.length" :class="{ 'opacity-50': loadingRevenue }">
-                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_revenue.data" :key="idx" class="border-b px-2 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
+                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_revenue.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
                   <template #prepend>
-                    <VAvatar color="success" variant="tonal" size="30" class="font-weight-black text-xs">{{ idx + 1 }}</VAvatar>
+                    <VAvatar color="success" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageRevenue - 1) * 10) + idx + 1 }}</VAvatar>
                   </template>
-                  <VListItemTitle class="font-weight-bold text-sm uppercase">{{ lab.name }}</VListItemTitle>
+                  <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
                   <template #append>
                     <div class="text-right">
-                      <div class="text-sm font-weight-black text-success">{{ formatCurrency(lab.total_revenue) }}</div>
-                      <div class="text-caption opacity-60">{{ lab.ticket_count }} Ventas</div>
+                      <div class="text-[11px] font-weight-black text-success">{{ formatCurrency(lab.total_revenue) }}</div>
                     </div>
                   </template>
                 </VListItem>
               </VList>
-              <div v-else class="pa-10 text-center opacity-50">No hay datos de ingresos</div>
+              <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
 
-              <div class="pa-2 d-flex justify-space-between align-center bg-light-success">
-                <span class="text-xs opacity-60">Página {{ pageRevenue }}</span>
+              <div class="pa-2 d-flex justify-space-between align-center bg-light-success border-t">
+                <span class="text-[10px] font-weight-black opacity-60">PÁG {{ pageRevenue }}</span>
                 <div class="d-flex gap-1">
-                  <VBtn icon="tabler-chevron-left" variant="text" size="small" :disabled="pageRevenue <= 1" @click="fetchRankings('total_revenue', pageRevenue - 1)" />
-                  <VBtn icon="tabler-chevron-right" variant="text" size="small" :disabled="dashboardData.rankings.by_revenue?.data?.length < 10" @click="fetchRankings('total_revenue', pageRevenue + 1)" />
+                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageRevenue <= 1 || loadingRevenue" @click="fetchRankings('total_revenue', pageRevenue - 1)" />
+                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="dashboardData.rankings.by_revenue?.data?.length < 10 || loadingRevenue" @click="fetchRankings('total_revenue', pageRevenue + 1)" />
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+
+        <!-- TOP UNIDADES EN STOCK -->
+        <VCol cols="12" md="4">
+          <VCard border class="rounded-lg overflow-hidden shadow-sm h-100">
+            <VCardTitle class="pa-4 border-b bg-light-warning d-flex align-center">
+              <VIcon icon="tabler-package" class="me-2 text-warning" />
+              <span class="text-subtitle-2 font-weight-black">Top Unidades en Stock</span>
+            </VCardTitle>
+            <VCardText class="pa-0">
+              <VList lines="one" v-if="dashboardData.rankings.by_stock?.data?.length" :class="{ 'opacity-50': loadingStock }">
+                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_stock.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
+                  <template #prepend>
+                    <VAvatar color="warning" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageStock - 1) * 10) + idx + 1 }}</VAvatar>
+                  </template>
+                  <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
+                  <template #append>
+                    <div class="text-right">
+                      <div class="text-[11px] font-weight-black text-warning">{{ lab.total_units }} Unds</div>
+                    </div>
+                  </template>
+                </VListItem>
+              </VList>
+              <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+
+              <div class="pa-2 d-flex justify-space-between align-center bg-light-warning border-t">
+                <span class="text-[10px] font-weight-black opacity-60">PÁG {{ pageStock }}</span>
+                <div class="d-flex gap-1">
+                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageStock <= 1 || loadingStock" @click="fetchRankings('total_stock', pageStock - 1)" />
+                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="dashboardData.rankings.by_stock?.data?.length < 10 || loadingStock" @click="fetchRankings('total_stock', pageStock + 1)" />
                 </div>
               </div>
             </VCardText>
@@ -538,24 +586,32 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                       </div>
                     </div>
 
-                    <!-- Detalles de Ingresos -->
-                    <div class="d-flex justify-space-between mt-1 opacity-60 text-xs font-weight-bold">
-                      <span class="text-primary">{{ formatCurrency(group.revenue_a) }}</span>
-                      <span class="text-success">{{ formatCurrency(group.revenue_b) }}</span>
+                    <!-- Detalles de Ingresos y Unidades -->
+                    <div class="d-flex justify-space-between mt-1 opacity-60 text-[9px] font-weight-black">
+                      <div class="d-flex flex-column">
+                        <span class="text-primary">{{ formatCurrency(group.revenue_a) }}</span>
+                        <span class="text-primary opacity-70">{{ group.units_a }} Unds</span>
+                      </div>
+                      <div class="d-flex flex-column text-right">
+                        <span class="text-success">{{ formatCurrency(group.revenue_b) }}</span>
+                        <span class="text-success opacity-70">{{ group.units_b }} Unds</span>
+                      </div>
                     </div>
 
                     <!-- Listado de Productos Competidores -->
                     <div class="d-flex justify-space-between mt-4 gap-0">
                       <!-- Lab A Products -->
-                      <div class="flex-1 border-e pe-3 overflow-hidden" style="width: 50%;">
-                         <div v-for="p in group.products_a" :key="p.id" class="text-[9px] font-weight-bold text-uppercase text-truncate mb-1" style="color: rgb(5, 77, 149);">
-                            {{ p.name }}
+                      <div class="flex-1 border-e pe-2 overflow-hidden" style="width: 50%;">
+                         <div v-for="p in group.products_a" :key="p.id" class="text-[8px] font-weight-bold text-uppercase text-truncate mb-1 d-flex justify-space-between gap-1" style="color: rgb(5, 77, 149); line-height: 1;">
+                            <span class="text-truncate flex-grow-1">{{ p.name }}</span>
+                            <span class="font-weight-black opacity-80 me-1">{{ p.units }}U</span>
                          </div>
                       </div>
                       <!-- Lab B Products -->
-                      <div class="flex-1 text-right ps-3 overflow-hidden" style="width: 50%;">
-                         <div v-for="p in group.products_b" :key="p.id" class="text-[9px] font-weight-bold text-uppercase text-truncate text-success mb-1">
-                            {{ p.name }}
+                      <div class="flex-1 text-right ps-2 overflow-hidden" style="width: 50%;">
+                         <div v-for="p in group.products_b" :key="p.id" class="text-[8px] font-weight-bold text-uppercase text-truncate text-success mb-1 d-flex justify-space-between gap-1" style="line-height:1;">
+                            <span class="font-weight-black opacity-80 ms-1">{{ p.units }}U</span>
+                            <span class="text-truncate flex-grow-1">{{ p.name }}</span>
                          </div>
                       </div>
                     </div>
@@ -572,7 +628,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
       <VCard v-if="deepDiveData" border class="mt-4 rounded-lg shadow-sm">
         <VCardTitle class="pa-4 border-b d-flex align-center bg-light-warning">
           <VIcon icon="tabler-zoom-in" class="me-2 text-warning" />
-          <span class="font-weight-bold text-uppercase">Top 20 Productos de {{ laboratories.find(l => l.id === selectedLabId)?.name }}</span>
+          <span class="font-weight-bold text-uppercase">Productos Vendidos de {{ laboratories.find(l => l.id === selectedLabId)?.name }}</span>
         </VCardTitle>
         <VCardText class="pa-0">
           <VTable density="compact">

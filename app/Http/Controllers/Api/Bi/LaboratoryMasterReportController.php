@@ -56,4 +56,23 @@ class LaboratoryMasterReportController extends Controller
         
         return response()->json($data);
     }
+
+    public function getFilterCatalogs(Request $request): JsonResponse
+    {
+        $groupByCorporate = filter_var($request->get('group_by_corporate', false), FILTER_VALIDATE_BOOLEAN);
+        
+        if ($groupByCorporate) {
+            $data = \Illuminate\Support\Facades\DB::table('groups_laboratories')
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        } else {
+            $data = \Illuminate\Support\Facades\DB::table('laboratories')
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+        
+        return response()->json($data);
+    }
 }

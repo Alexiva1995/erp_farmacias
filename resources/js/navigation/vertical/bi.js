@@ -29,6 +29,10 @@ export default [
         title: 'Laboratorios',
         to: 'bi-report-laboratories',
       },
+      {
+        title: 'Analíticas TPV',
+        to: 'bi-analytics-pos',
+      },
     ],
   }, 
-]
+];
