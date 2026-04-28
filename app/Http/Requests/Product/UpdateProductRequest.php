@@ -26,6 +26,8 @@ class UpdateProductRequest extends FormRequest
         if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
             $this->request->remove('photo_url');
         }
+
+        $this->merge([
             'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
             'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
