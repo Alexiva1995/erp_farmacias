@@ -528,6 +528,8 @@ class InvoiceActionService
             ]);
             return ['status' => false, 'message' => null];
         }
+    }
+
     public function uploadInvoicePhoto(Invoice $invoice, $file): Invoice
     {
         return DB::transaction(function () use ($invoice, $file) {
