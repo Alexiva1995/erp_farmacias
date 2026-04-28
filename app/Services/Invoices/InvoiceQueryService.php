@@ -16,7 +16,7 @@ class InvoiceQueryService
     {
         // IMPORTANTE: Las facturas se muestran a TODOS los usuarios sin filtrar por usuario
         // No se aplica ningún filtro por uploaded_by, registered_by, ordered_by, etc.
-        $query = Invoice::query()->with('supplier');
+        $query = Invoice::query()->with(['supplier', 'payments']);
 
         if ($request->filled('status')) {
             $statuses = is_array($request->status) ? $request->status : [$request->status];

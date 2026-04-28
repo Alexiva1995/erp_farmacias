@@ -89,7 +89,7 @@ class SupplierQueryService
                     AND i.status IN ("loaded", "ordered")
                 )');*/
                 $subDebt = DB::raw('(
-                    SELECT SUM(COALESCE(i.Total_usd, 0)) 
+                    SELECT SUM(COALESCE(i.total_usd, 0)) 
                     FROM invoices i
                     WHERE i.supplier_id = suppliers.id
                     AND i.status_payment = 0  

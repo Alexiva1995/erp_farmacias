@@ -150,7 +150,7 @@ class Supplier extends Model
         //return $this->invoices->sum->outstanding_debt;
         return $this->invoices()
             ->where('status_payment', 0)
-            ->sum(DB::raw('COALESCE(Total_usd, 0)'));
+            ->sum(DB::raw('COALESCE(total_usd, 0)'));
     }
 
     public function discounts()

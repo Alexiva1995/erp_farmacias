@@ -22,6 +22,10 @@ class InvoiceResource extends JsonResource
             'taxable_base' => (float)$this->taxable_base,
             'tax_amount' => (float)$this->tax_amount,
             'total_amount' => (float)$this->total_amount,
+            'total_usd' => (float)$this->total_usd,
+            'outstanding_debt' => (float)$this->outstanding_debt,
+            'status' => $this->status,
+            'payment_date' => $this->payment_date,
             'retention_generated' => (bool)$this->retention_generated,
             'supplier' => [
                 'id' => $this->supplier?->id,
