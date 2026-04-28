@@ -578,6 +578,14 @@ class SupplierConnectionService
                 }
             }
 
+            // Fallback automático para Dronena (ID 2 o 27) si no hay mapeo explícito
+            if (!isset($entry['discount_percentage']) && in_array($supplierId, [2, 27])) {
+                $cols = explode(";", $line); // Asegurar que tenemos las columnas originales
+                if (isset($cols[6]) && is_numeric(trim($cols[6]))) {
+                    $entry['discount_percentage'] = trim($cols[6]);
+                }
+            }
+
             if (($key === 0) && in_array($supplierId, [2, 27])) {
                 $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
                 $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Structure mapping: " . json_encode($normalizedStructure) . "\n";
