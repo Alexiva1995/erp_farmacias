@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Http\Resources\InvoiceResource;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
@@ -22,18 +24,30 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
-        if (!$request->has('status')) {
-            $request->merge(['status' => ['pending']]);
+        try {
+            if (!$request->has('status')) {
+                $request->merge(['status' => ['pending']]);
+            }
+            $query = $this->invoiceQueryService->getInvoicesQuery($request);
+
+            $perPage = $request->input('itemsPerPage', 10);
+            $paginatedResult = $query->paginate($perPage);
+
+            return response()->json([
+                'data' => InvoiceResource::collection($paginatedResult->items()),
+                'total' => $paginatedResult->total(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@index: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'message' => 'Error interno del servidor al cargar facturas.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-        $query = $this->invoiceQueryService->getInvoicesQuery($request);
-
-        $perPage = $request->input('itemsPerPage', 10);
-        $paginatedResult = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total(),
-        ]);
     }
 
     public function getDetails(Invoice $invoice)
