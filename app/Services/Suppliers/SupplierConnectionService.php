@@ -210,6 +210,12 @@ class SupplierConnectionService
                 
                 while ($currentUrl) {
                     $productResponse = $this->fetchFromAPI($token, $requestData, $client, $currentUrl, $payloadDef['method'] ?? 'post');
+                    Log::info("DEBUG: API Response for supplier {$connection->supplier_id}", [
+                        'url' => $currentUrl,
+                        'response_keys' => is_array($productResponse) ? array_keys($productResponse) : 'not_array',
+                        'response_type' => gettype($productResponse),
+                        'response_count' => is_array($productResponse) ? count($productResponse) : 0
+                    ]);
                     
                     // Detectar si los productos vienen en una clave específica
                     $pageData = $productResponse;
@@ -947,8 +953,15 @@ class SupplierConnectionService
             $path,
             $headers,
             $method === 'post' ? json_encode($data) : null
-        )->then(function (ResponseInterface $response) use (&$productResponse) {
-            $productResponse = json_decode((string) $response->getBody(), true);
+        )->then(function (ResponseInterface $response) use (&$productResponse, $path) {
+            $body = (string) $response->getBody();
+            $productResponse = json_decode($body, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("API JSON Decode Error for {$path}", [
+                    'error' => json_last_error_msg(),
+                    'body_preview' => substr($body, 0, 500)
+                ]);
+            }
         }, function (\Exception $e) use ($path) {
             Log::error('API Error: ' . $e->getMessage(), ['url' => $path]);
         });
