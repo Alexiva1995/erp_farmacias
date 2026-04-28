@@ -566,6 +566,17 @@ class SupplierConnectionService
                     }
                 }
             }
+            
+            // Aplicar descuento si existe
+            $discount = isset($entry['discount_percentage']) ? (float)$entry['discount_percentage'] : 0;
+            if ($discount > 0) {
+                if (isset($entry['unit_cost']) && is_numeric($entry['unit_cost'])) {
+                    $entry['unit_cost'] = (float)$entry['unit_cost'] * (1 - ($discount / 100));
+                }
+                if (isset($entry['unit_cost_usd']) && is_numeric($entry['unit_cost_usd'])) {
+                    $entry['unit_cost_usd'] = (float)$entry['unit_cost_usd'] * (1 - ($discount / 100));
+                }
+            }
 
             if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;
@@ -577,6 +588,15 @@ class SupplierConnectionService
                     ".",
                     ""
                 );
+                $entry["unit_cost_usd"] = number_format((float)$entry["unit_cost_usd"], 2, ".", "");
+            } elseif (isset($entry["unit_cost"]) && is_numeric($entry["unit_cost"])) {
+                $entry["unit_cost_usd"] = number_format(
+                    (float) ($entry["unit_cost"] / $usdCurrency->rate),
+                    2,
+                    ".",
+                    ""
+                );
+                $entry["unit_cost"] = number_format((float)$entry["unit_cost"], 2, ".", "");
             }
 
             return $entry;
