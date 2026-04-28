@@ -354,6 +354,7 @@ onMounted(async () => {
       v-model:checkColombia="checkColombia"
       v-model:showIgnored="showIgnored"
       v-model:showGraphs="showGraphs"
+      v-model:stock="stock"
       :checkColombia="checkColombia"
       :products="productosSelect"
       :laboratories="laboratories"

@@ -347,6 +347,7 @@ onMounted(async () => {
         v-model:tipo_de_vista="tipo_de_vista"
         v-model:tipo_de_filtracion="tipo_de_filtracion"
         v-model:lapso_de_tiempo="lapso_de_tiempo"
+        v-model:stock="stock"
         v-model:searchQuery="searchQuery"
         v-model:showIgnored="showIgnored"
         v-model:showGraphs="showGraphs"

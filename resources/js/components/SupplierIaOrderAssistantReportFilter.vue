@@ -13,6 +13,7 @@ const props = defineProps({
   suppliers: { type: Array, default: () => [] },
   selectedSupplierId: [Number, String],
   globalDiscountPercent: [Number, String],
+  stock: { type: String, default: "all" },
 });
 
 const emit = defineEmits([
@@ -41,7 +42,8 @@ const hasActiveAdvancedFilters = computed(() => {
     props.selectedLaboratory?.length > 0 ||
     props.checkColombia ||
     props.lapso_de_tiempo !== '1 month' ||
-    props.tipo_de_filtracion !== 'combinado'
+    props.tipo_de_filtracion !== 'combinado' ||
+    props.stock !== 'all'
   );
 });
 
@@ -59,6 +61,12 @@ const lapsoDeTiempoOpciones = [
   { title: "12 Meses", value: "12 month" },
   { title: "18 Meses", value: "18 month" },
   { title: "24 Meses", value: "24 month" },
+];
+
+const stockOpciones = [
+  { title: "Exceso", value: "exceso" },
+  { title: "Fallas", value: "fallas" },
+  { title: "Todos",  value: "all"    },
 ];
 </script>
 
@@ -257,6 +265,19 @@ const lapsoDeTiempoOpciones = [
                 prepend-inner-icon="tabler-percentage"
                 suffix="%"
                 @update:model-value="emit('update:globalDiscountPercent', $event)"
+              />
+            </VCol>
+
+            <!-- Stock (Nuevo) -->
+            <VCol cols="12" sm="6" md="3" lg="2">
+              <VSelect
+                :model-value="props.stock"
+                :items="stockOpciones"
+                placeholder="Stock"
+                hide-details
+                density="compact"
+                prepend-inner-icon="tabler-box"
+                @update:model-value="emit('update:stock', $event)"
               />
             </VCol>
           </VRow>
