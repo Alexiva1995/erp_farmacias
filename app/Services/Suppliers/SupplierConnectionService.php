@@ -220,12 +220,6 @@ class SupplierConnectionService
                 
                 while ($currentUrl) {
                     $productResponse = $this->fetchFromAPI($token, $requestData, $client, $currentUrl, $payloadDef['method'] ?? 'post');
-                    Log::info("DEBUG: API Response for supplier {$connection->supplier_id}", [
-                        'url' => $currentUrl,
-                        'response_keys' => is_array($productResponse) ? array_keys($productResponse) : 'not_array',
-                        'response_type' => gettype($productResponse),
-                        'response_count' => is_array($productResponse) ? count($productResponse) : 0
-                    ]);
                     
                     // Detectar si los productos vienen en una clave específica
                     $pageData = $productResponse;
@@ -354,7 +348,6 @@ class SupplierConnectionService
 
     public function parseDynamicContent(string $content, SupplierConnection $connection)
     {
-        Log::error("DEBUG: parseDynamicContent INICIADO para proveedor {$connection->supplier_id}");
         $now = now();
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
@@ -578,40 +571,16 @@ class SupplierConnectionService
                 }
             }
 
-            // Fallback automático para Dronena (ID 2 o 27) si no hay mapeo explícito
-            if (!isset($entry['discount_percentage']) && in_array($supplierId, [2, 27])) {
-                $cols = explode(";", $line); // Asegurar que tenemos las columnas originales
-                if (isset($cols[6]) && is_numeric(trim($cols[6]))) {
-                    $entry['discount_percentage'] = trim($cols[6]);
-                }
-            }
-
-            if (($key === 0) && in_array($supplierId, [2, 27])) {
-                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Structure mapping: " . json_encode($normalizedStructure) . "\n";
-                file_put_contents($logFile, $logMsg, FILE_APPEND);
-            }
-
-            if (($key < 5) && in_array($supplierId, [2, 27])) {
-                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Dronena row sample - Row: {$key} - Data: " . json_encode($entry) . "\n";
-                file_put_contents($logFile, $logMsg, FILE_APPEND);
-            }
             
             // Aplicar descuento si existe
             $discount = isset($entry['discount_percentage']) ? (float)$entry['discount_percentage'] : 0;
             if ($discount > 0) {
-                $oldCost = $entry['unit_cost'] ?? 'N/A';
                 if (isset($entry['unit_cost']) && is_numeric($entry['unit_cost'])) {
                     $entry['unit_cost'] = (float)$entry['unit_cost'] * (1 - ($discount / 100));
                 }
                 if (isset($entry['unit_cost_usd']) && is_numeric($entry['unit_cost_usd'])) {
                     $entry['unit_cost_usd'] = (float)$entry['unit_cost_usd'] * (1 - ($discount / 100));
                 }
-                
-                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Discount applied for supplier {$supplierId} - Discount: {$discount}, Old: {$oldCost}, New: " . ($entry['unit_cost'] ?? 'N/A') . "\n";
-                file_put_contents($logFile, $logMsg, FILE_APPEND);
             }
 
             if (!isset($entry["quantity"]))
