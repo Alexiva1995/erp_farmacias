@@ -576,6 +576,18 @@ class SupplierConnectionService
                     }
                 }
             }
+
+            if (($key === 0) && in_array($supplierId, [2, 27])) {
+                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Structure mapping: " . json_encode($normalizedStructure) . "\n";
+                file_put_contents($logFile, $logMsg, FILE_APPEND);
+            }
+
+            if (($key < 5) && in_array($supplierId, [2, 27])) {
+                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Dronena row sample - Row: {$key} - Data: " . json_encode($entry) . "\n";
+                file_put_contents($logFile, $logMsg, FILE_APPEND);
+            }
             
             // Aplicar descuento si existe
             $discount = isset($entry['discount_percentage']) ? (float)$entry['discount_percentage'] : 0;
@@ -587,11 +599,10 @@ class SupplierConnectionService
                 if (isset($entry['unit_cost_usd']) && is_numeric($entry['unit_cost_usd'])) {
                     $entry['unit_cost_usd'] = (float)$entry['unit_cost_usd'] * (1 - ($discount / 100));
                 }
-                Log::info("DEBUG: Discount applied for supplier {$supplierId}", [
-                    'discount' => $discount,
-                    'old_unit_cost' => $oldCost,
-                    'new_unit_cost' => $entry['unit_cost'] ?? 'N/A'
-                ]);
+                
+                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] DEBUG: Discount applied for supplier {$supplierId} - Discount: {$discount}, Old: {$oldCost}, New: " . ($entry['unit_cost'] ?? 'N/A') . "\n";
+                file_put_contents($logFile, $logMsg, FILE_APPEND);
             }
 
             if (!isset($entry["quantity"]))
