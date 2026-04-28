@@ -108,28 +108,25 @@ class SupplierConnectionService
                 throw new Exception("No se encontró archivo de inventario en la raíz");
             }
 
-        $success = @ftp_get($ftp, $tempFile, $latestFile ?? $connection->path, FTP_BINARY);
-        
-        if (!$success) {
-            Log::warning("Primer intento de ftp_get fallido. Reintentando con modo PASV invertido...", [
-                'path' => $latestFile ?? $connection->path,
-                'new_pasv' => !$connection->pasv
-            ]);
-            ftp_pasv($ftp, !$connection->pasv);
-            $success = @ftp_get($ftp, $tempFile, $latestFile ?? $connection->path, FTP_BINARY);
-        }
-
-        if ($success) {
-            $content = file_get_contents($tempFile);
-            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1");
-            $productData = $this->parseDynamicContent($content_encoded, $connection);
+            if (@ftp_get($ftp, $tempFile, $latestFile, FTP_BINARY)) {
+                $content = file_get_contents($tempFile);
+                $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+                $productData = $this->parseDynamicContent($content_encoded, $connection);
+            } else {
+                $lastError = error_get_last();
+                Log::error("Fallo ftp_get para archivo: {$latestFile}", ['error' => $lastError['message'] ?? 'Unknown error']);
+                throw new Exception("No se pudo guardar los productos");
+            }
         } else {
-            $lastError = error_get_last();
-            Log::error("Fallo definitivo de ftp_get", [
-                'path' => $latestFile ?? $connection->path,
-                'error' => $lastError['message'] ?? 'Unknown error'
-            ]);
-            throw new Exception("No se pudo guardar los productos");
+            if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+                $content = file_get_contents($tempFile);
+                $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
+                $productData = $this->parseDynamicContent($content_encoded, $connection);
+            } else {
+                $lastError = error_get_last();
+                Log::error("Fallo ftp_get para ruta: {$connection->path}", ['error' => $lastError['message'] ?? 'Unknown error']);
+                throw new Exception("No se pudo guardar los productos");
+            }
         }
 
         // Facturas (si tiene ruta definida)
@@ -165,14 +162,7 @@ class SupplierConnectionService
 
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
-                $successGet = @ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY);
-                
-                if (!$successGet) {
-                    ftp_pasv($ftp, !$connection->pasv);
-                    $successGet = @ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY);
-                }
-
-                if ($successGet) {
+                if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $filename = pathinfo($filePath, PATHINFO_FILENAME);
                     $invoiceContent = file_get_contents($tempInvoice);
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $connection->supplier_id === 2 ? $filename : null);
@@ -590,12 +580,18 @@ class SupplierConnectionService
             // Aplicar descuento si existe
             $discount = isset($entry['discount_percentage']) ? (float)$entry['discount_percentage'] : 0;
             if ($discount > 0) {
+                $oldCost = $entry['unit_cost'] ?? 'N/A';
                 if (isset($entry['unit_cost']) && is_numeric($entry['unit_cost'])) {
                     $entry['unit_cost'] = (float)$entry['unit_cost'] * (1 - ($discount / 100));
                 }
                 if (isset($entry['unit_cost_usd']) && is_numeric($entry['unit_cost_usd'])) {
                     $entry['unit_cost_usd'] = (float)$entry['unit_cost_usd'] * (1 - ($discount / 100));
                 }
+                Log::info("DEBUG: Discount applied for supplier {$supplierId}", [
+                    'discount' => $discount,
+                    'old_unit_cost' => $oldCost,
+                    'new_unit_cost' => $entry['unit_cost'] ?? 'N/A'
+                ]);
             }
 
             if (!isset($entry["quantity"]))
