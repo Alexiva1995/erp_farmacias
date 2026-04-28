@@ -354,6 +354,7 @@ class SupplierConnectionService
 
     public function parseDynamicContent(string $content, SupplierConnection $connection)
     {
+        Log::error("DEBUG: parseDynamicContent INICIADO para proveedor {$connection->supplier_id}");
         $now = now();
         $supplierId = $connection->supplier_id;
         $structure = $connection->structure;
