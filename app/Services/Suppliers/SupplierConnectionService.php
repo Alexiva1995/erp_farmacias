@@ -46,25 +46,31 @@ class SupplierConnectionService
         $pass = FtpCrypt::decrypt($connection->password);
 
         // Valida la conexión en texto plano
+        Log::info("Intentando conexión FTP", ['host' => $host, 'port' => $port, 'user' => $user]);
         $ftp = @ftp_connect($host, $port, 10);
         if ($ftp === false) {
+            Log::error("Fallo ftp_connect", ['host' => $host]);
             throw new Exception('No se pudo conectar al servidor FTP');
         }
 
         $login = @ftp_login($ftp, $user, $pass);
         if ($login === false) {
+            Log::warning("Fallo ftp_login inicial, intentando SSL", ['host' => $host]);
             @ftp_close($ftp);
 
             // Si el inicio fallo usa ssl para intentar conectarse de nuevo
             $ftp = @ftp_ssl_connect($host, $port, 90);
             if ($ftp === false) {
+                Log::error("Fallo ftp_ssl_connect", ['host' => $host]);
                 throw new Exception('No se pudo conectar al servidor FTP');
             }
             $login = ftp_login($ftp, $user, $pass);
             if ($login === false) {
+                Log::error("Fallo ftp_login SSL", ['host' => $host]);
                 throw new Exception('Credenciales inválidas');
             }
         }
+        Log::info("Conexión FTP exitosa", ['host' => $host]);
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
@@ -107,6 +113,8 @@ class SupplierConnectionService
                 $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
                 $productData = $this->parseDynamicContent($content_encoded, $connection);
             } else {
+                $lastError = error_get_last();
+                Log::error("Fallo ftp_get para archivo: {$latestFile}", ['error' => $lastError['message'] ?? 'Unknown error']);
                 throw new Exception("No se pudo guardar los productos");
             }
         } else {
@@ -115,6 +123,8 @@ class SupplierConnectionService
                 $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
                 $productData = $this->parseDynamicContent($content_encoded, $connection);
             } else {
+                $lastError = error_get_last();
+                Log::error("Fallo ftp_get para ruta: {$connection->path}", ['error' => $lastError['message'] ?? 'Unknown error']);
                 throw new Exception("No se pudo guardar los productos");
             }
         }
