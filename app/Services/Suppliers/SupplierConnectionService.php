@@ -108,25 +108,28 @@ class SupplierConnectionService
                 throw new Exception("No se encontró archivo de inventario en la raíz");
             }
 
-            if (@ftp_get($ftp, $tempFile, $latestFile, FTP_BINARY)) {
-                $content = file_get_contents($tempFile);
-                $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
-                $productData = $this->parseDynamicContent($content_encoded, $connection);
-            } else {
-                $lastError = error_get_last();
-                Log::error("Fallo ftp_get para archivo: {$latestFile}", ['error' => $lastError['message'] ?? 'Unknown error']);
-                throw new Exception("No se pudo guardar los productos");
-            }
+        $success = @ftp_get($ftp, $tempFile, $latestFile ?? $connection->path, FTP_BINARY);
+        
+        if (!$success) {
+            Log::warning("Primer intento de ftp_get fallido. Reintentando con modo PASV invertido...", [
+                'path' => $latestFile ?? $connection->path,
+                'new_pasv' => !$connection->pasv
+            ]);
+            ftp_pasv($ftp, !$connection->pasv);
+            $success = @ftp_get($ftp, $tempFile, $latestFile ?? $connection->path, FTP_BINARY);
+        }
+
+        if ($success) {
+            $content = file_get_contents($tempFile);
+            $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1");
+            $productData = $this->parseDynamicContent($content_encoded, $connection);
         } else {
-            if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
-                $content = file_get_contents($tempFile);
-                $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
-                $productData = $this->parseDynamicContent($content_encoded, $connection);
-            } else {
-                $lastError = error_get_last();
-                Log::error("Fallo ftp_get para ruta: {$connection->path}", ['error' => $lastError['message'] ?? 'Unknown error']);
-                throw new Exception("No se pudo guardar los productos");
-            }
+            $lastError = error_get_last();
+            Log::error("Fallo definitivo de ftp_get", [
+                'path' => $latestFile ?? $connection->path,
+                'error' => $lastError['message'] ?? 'Unknown error'
+            ]);
+            throw new Exception("No se pudo guardar los productos");
         }
 
         // Facturas (si tiene ruta definida)
@@ -162,7 +165,14 @@ class SupplierConnectionService
 
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
-                if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+                $successGet = @ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY);
+                
+                if (!$successGet) {
+                    ftp_pasv($ftp, !$connection->pasv);
+                    $successGet = @ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY);
+                }
+
+                if ($successGet) {
                     $filename = pathinfo($filePath, PATHINFO_FILENAME);
                     $invoiceContent = file_get_contents($tempInvoice);
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $connection->supplier_id === 2 ? $filename : null);
