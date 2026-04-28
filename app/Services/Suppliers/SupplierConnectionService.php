@@ -570,39 +570,32 @@ class SupplierConnectionService
                     }
                 }
             }
-
             
-            // Aplicar descuento si existe
+            // Aplicar descuento si existe (mapeado en DB o Config)
             $discount = isset($entry['discount_percentage']) ? (float)$entry['discount_percentage'] : 0;
             if ($discount > 0) {
+                $isLacrifort = (isset($entry['name']) && str_contains(strtoupper($entry['name']), 'LACRIFORT'));
+                $oldBs = $entry['unit_cost'] ?? 0;
+
                 if (isset($entry['unit_cost']) && is_numeric($entry['unit_cost'])) {
                     $entry['unit_cost'] = (float)$entry['unit_cost'] * (1 - ($discount / 100));
                 }
-                if (isset($entry['unit_cost_usd']) && is_numeric($entry['unit_cost_usd'])) {
-                    $entry['unit_cost_usd'] = (float)$entry['unit_cost_usd'] * (1 - ($discount / 100));
+                
+                // Recalcular USD basado en el nuevo BS para mantener consistencia absoluta
+                $entry['unit_cost_usd'] = number_format(
+                    (float) ($entry['unit_cost'] / ($usdCurrency->rate ?? 1)),
+                    2, ".", ""
+                );
+
+                if ($isLacrifort) {
+                    $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                    $logMsg = "[" . date('Y-m-d H:i:s') . "] 🎯 LACRIFORT DETECTED: Original BS: {$oldBs}, Discount: {$discount}%, Final BS: {$entry['unit_cost']}, Final USD: {$entry['unit_cost_usd']}, Rate: {$usdCurrency->rate}\n";
+                    file_put_contents($logFile, $logMsg, FILE_APPEND);
                 }
             }
 
             if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;
-
-            if (isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"])) {
-                $entry["unit_cost"] = number_format(
-                    (float) ($entry["unit_cost_usd"] * $usdCurrency->rate),
-                    2,
-                    ".",
-                    ""
-                );
-                $entry["unit_cost_usd"] = number_format((float)$entry["unit_cost_usd"], 2, ".", "");
-            } elseif (isset($entry["unit_cost"]) && is_numeric($entry["unit_cost"])) {
-                $entry["unit_cost_usd"] = number_format(
-                    (float) ($entry["unit_cost"] / $usdCurrency->rate),
-                    2,
-                    ".",
-                    ""
-                );
-                $entry["unit_cost"] = number_format((float)$entry["unit_cost"], 2, ".", "");
-            }
 
             return $entry;
         });
