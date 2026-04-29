@@ -152,6 +152,8 @@ class IaAssistantReportService
                 $this->hydrateSalesTrend($procesado);
             }
 
+            // Hidratar proveedores si se solicita
+            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 $this->hydrateSuppliers($procesado, $filtros);
             }
 
