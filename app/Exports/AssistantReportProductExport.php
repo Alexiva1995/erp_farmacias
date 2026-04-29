@@ -37,9 +37,8 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
             $product['cost_min'] ? number_format($product['cost_min'], 2) : '0.00',
             $product['cost_max'] ? number_format($product['cost_max'], 2) : '0.00',
             $product['unit_cost'] ? number_format($product['unit_cost'], 2) : '0.00',
-            isset($product['product_suppliers'][0]) 
-                ? number_format($product['product_suppliers'][0]['unit_cost_usd_with_discount'], 2) . ' (' . $product['product_suppliers'][0]['supplier']['name'] . ')'
-                : '---',
+            $product['best_supplier']['name'] ?? '---',
+            $product['best_supplier_price'] ? number_format($product['best_supplier_price'], 2) : '---',
             $product['total_sold_completed'] ?? 0,
             $product['lote_quantity'] ?? 0,
             $product['promedio_calculado'] ? number_format($product['promedio_calculado'], 1) : '0.0',
@@ -58,7 +57,8 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
             'Costo Min',
             'Costo Max',
             'Costo Actual',
-            'Mejor Oferta',
+            'Proveedor Sugerido',
+            'Precio Oferta',
             'Ventas',
             'Stock',
             'Promedio',
@@ -90,7 +90,12 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
                 ]
             ],
-            'E:M' => [
+            'E:G' => [
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                ]
+            ],
+            'I:N' => [
                 'alignment' => [
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
                 ]
@@ -101,8 +106,13 @@ class AssistantReportProductExport implements FromCollection, WithHeadings, With
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 ]
             ],
+            'H' => [
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                ]
+            ],
             // Ajustar texto en todas las celdas
-            'A:M' => [
+            'A:N' => [
                 'alignment' => [
                     'wrapText' => true,
                     'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP

@@ -82,30 +82,7 @@ class IaAssistantReportService
 
         // 5.1 Hidratar proveedores si se solicita
         if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
-            
-            // Asegurar que los índices sean secuenciales para el mapeo
-            $procesado = $procesado->values();
-            
-            // Reutilizamos la lógica masiva existente
-            $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
-            $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
-            $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
-            
-            // Mapear de vuelta a los productos (O(N) ya que las listas están sincronizadas por orden)
-            foreach ($procesado as $index => $producto) {
-                $supplierData = $itemsWithSuppliers[$index] ?? null;
-                if ($supplierData) {
-                    $bestSupplier = $supplierData['supplier'] ?? null;
-                    if ($bestSupplier && isset($supplierData['productSupplier'])) {
-                        // Usar setAttribute para asegurar que se incluya en el JSON
-                        $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
-                    }
-                    $producto->setAttribute('best_supplier', $bestSupplier);
-                    $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
-                    $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
-                }
-            }
+            $this->hydrateSuppliers($procesado, $filtros);
         }
 
         // 6. Devolver paginador manual
@@ -175,30 +152,7 @@ class IaAssistantReportService
                 $this->hydrateSalesTrend($procesado);
             }
 
-            // Hidratar proveedores si se solicita
-            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
-                
-                // Asegurar que los índices sean secuenciales para el mapeo
-                $procesado = $procesado->values();
-                
-                $eloquentGroupCollection = new \Illuminate\Database\Eloquent\Collection($procesado);
-                $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentGroupCollection, $conDescuento);
-                $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
-                
-                foreach ($procesado as $index => $producto) {
-                    $supplierData = $itemsWithSuppliers[$index] ?? null;
-                    if ($supplierData) {
-                        $bestSupplier = $supplierData['supplier'] ?? null;
-                        if ($bestSupplier && isset($supplierData['productSupplier'])) {
-                            // Usar setAttribute para asegurar que se incluya en el JSON
-                            $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
-                        }
-                        $producto->setAttribute('best_supplier', $bestSupplier);
-                        $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
-                        $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
-                    }
-                }
+                $this->hydrateSuppliers($procesado, $filtros);
             }
 
             // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
@@ -290,6 +244,14 @@ class IaAssistantReportService
         }
 
         $this->hydrateSalesTrend($procesado);
+        
+        // Siempre hidratar proveedores para exportación y ordenar por ellos
+        $this->hydrateSuppliers($procesado, $filtros);
+
+        $procesado = $procesado->sortBy(function($p) {
+            return $p->best_supplier->name ?? 'ZZZ'; // Los sin proveedor al final
+        })->values();
+
         return $procesado;
     }
 
@@ -371,6 +333,37 @@ class IaAssistantReportService
             
             return $product;
         });
+    }
+
+    /**
+     * Hidrata los productos con la mejor oferta de proveedor disponible.
+     */
+    private function hydrateSuppliers($products, array $filtros): void
+    {
+        $conDescuento = filter_var($filtros['con_descuento'] ?? true, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+        
+        $items = ($products instanceof \Illuminate\Support\Collection) ? $products : collect($products);
+        if ($items->isEmpty()) return;
+
+        $items = $items->values();
+        $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($items);
+        
+        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
+        $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
+        
+        foreach ($items as $index => $producto) {
+            $supplierData = $itemsWithSuppliers[$index] ?? null;
+            if ($supplierData) {
+                $bestSupplier = $supplierData['supplier'] ?? null;
+                if ($bestSupplier && isset($supplierData['productSupplier'])) {
+                    $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
+                    $bestSupplier->setAttribute('unit_cost_usd_with_discount', $supplierData['productSupplier']->unit_cost_usd_with_discount ?? 0);
+                }
+                $producto->setAttribute('best_supplier', $bestSupplier);
+                $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
+                $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
+            }
+        }
     }
 
     private function getMonthName(int $month): string
