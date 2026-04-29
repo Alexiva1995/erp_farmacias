@@ -390,6 +390,7 @@
     "applyFooter": true,
     "applyPremiumHeader": true,
     "useCheckout": true,
-    "formatDateSimple": true
+    "formatDateSimple": true,
+    "pdfSupplierOrderReportGenerator": true
   }
 }

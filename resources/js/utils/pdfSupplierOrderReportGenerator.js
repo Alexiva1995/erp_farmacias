@@ -39,8 +39,14 @@ export default function pdfSupplierOrderReportGenerator(data) {
     doc.setLineWidth(0.5);
     doc.line(10, 30, pageWidth - 10, 30);
 
-    // --- 2. AGRUPAMIENTO POR PROVEEDOR ---
-    const groupedData = data.reduce((acc, product) => {
+    // --- 2. FILTRADO Y AGRUPAMIENTO POR PROVEEDOR ---
+    // Solo incluir productos que se necesitan pedir (análisis positivo)
+    const filteredData = data.filter(p => {
+        const qty = roundIaAnalysis(p.solicitar || 0);
+        return qty > 0;
+    });
+
+    const groupedData = filteredData.reduce((acc, product) => {
         const supplierName = product.best_supplier?.name || 'PRODUCTOS SIN PROVEEDOR SUGERIDO';
         if (!acc[supplierName]) acc[supplierName] = [];
         acc[supplierName].push(product);
