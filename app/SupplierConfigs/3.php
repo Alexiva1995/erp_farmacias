@@ -4,14 +4,14 @@ return [
     'productos' => function ($connection) {
         $co_cli = !empty($connection->username) ? $connection->username : 'FAR00818';
         return [
-            'url' => 'https://apienterprise.cristmedicals.com/api/articulos?co_cli=' . urlencode($co_cli) . '&page=1&perPage=1000',
+            'url' => 'https://apienterprise.cristmedicals.com/api/v1/articulos?co_cli=' . urlencode($co_cli),
             'method' => 'get',
         ];
     },
     'facturas' => function ($connection) {
         $co_cli = !empty($connection->username) ? $connection->username : 'FAR00818';
         return [
-            'url' => 'https://apienterprise.cristmedicals.com/api/factura/FAR?co_cli=' . urlencode($co_cli),
+            'url' => 'https://apienterprise.cristmedicals.com/api/v1/facturas?co_cli=' . urlencode($co_cli),
             'method' => 'get',
         ];
     },

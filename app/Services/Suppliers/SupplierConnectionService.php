@@ -409,6 +409,7 @@ class SupplierConnectionService
             $headerLine = preg_replace('/^\xEF\xBB\xBF/', '', $headerLine);
             $headers = explode(';', $headerLine);
             $headerMap = array_flip(array_map('trim', $headers));
+            Log::info("Header Map for supplier $supplierId", $headerMap);
         }
 
         // Helper para obtener el índice de la columna basado en el mapeo y los encabezados
@@ -447,7 +448,9 @@ class SupplierConnectionService
         }
 
         $barcodes = array_unique(array_filter($barcodes));
+        Log::info("Found " . count($barcodes) . " barcodes for supplier $supplierId");
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
+        Log::info("Found " . $products->count() . " matching products in DB for supplier $supplierId");
 
         $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx) {
             if (!empty($structure_for_parsing)) {
@@ -601,6 +604,7 @@ class SupplierConnectionService
         });
 
 
+        Log::info("Total results parsed for supplier $supplierId: " . $result->count());
         return $result->toArray();
     }
 
@@ -962,6 +966,7 @@ class SupplierConnectionService
         ];
 
         if ($token) {
+            $headers['Authorization'] = str_starts_with(strtolower($token), 'bearer ') ? $token : "Bearer $token";
             $headers['autorizacion'] = $token;
         }
 
