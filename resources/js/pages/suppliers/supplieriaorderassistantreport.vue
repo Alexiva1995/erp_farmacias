@@ -1,6 +1,8 @@
 <script setup lang="js">
 import SupplierAssistantReportTable from '@/components/SupplierAssistantReportTable.vue';
 import SupplierIaOrderAssistantReportFilter from '@/components/SupplierIaOrderAssistantReportFilter.vue';
+import pdfProductsAssistantReportGenerator from '@/utils/pdfProductsAssistantReportGenerator';
+import pdfSupplierOrderReportGenerator from '@/utils/pdfSupplierOrderReportGenerator';
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from 'sweetalert2';
@@ -263,7 +265,9 @@ async function generarPdf(){
 
   console.log("data pdf => ",respuestaApi)
 
+  // Generar ambos PDFs
   pdfProductsAssistantReportGenerator(respuestaApi)
+  pdfSupplierOrderReportGenerator(respuestaApi)
 }
 
 async function exportarExcel(formato){
