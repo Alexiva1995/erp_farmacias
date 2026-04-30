@@ -27,7 +27,7 @@ class LaboratoryManagementController extends Controller
 
         // Si es -1 (opción "All" de Vuetify), paginamos con el total de registros
         if ($itemsPerPage === -1) {
-            $itemsPerPage = $query->count() ?: 10;
+            $itemsPerPage = Laboratory::count() ?: 10;
         }
 
         return response()->json($query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage));
