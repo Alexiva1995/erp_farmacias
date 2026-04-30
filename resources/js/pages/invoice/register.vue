@@ -90,8 +90,6 @@ const validateExpDate = (date) => {
 };
 
 const calculatePaymentDate = () => {
-  if (props.isEditMode) return;
-
   if (!selectedSupplier.value) return;
 
   // Verificar configuración
@@ -268,7 +266,7 @@ watch(
 watch(
   () => selectedSupplier.value,
   async (newSupplier) => {
-    if (!props.isEditMode && newSupplier) {
+    if (newSupplier) {
       await nextTick();
       calculatePaymentDate();
     }
@@ -349,7 +347,8 @@ const fetchInvoiceData = async () => {
   loadingInvoice.value = true;
   try {
     const response = await axios.get(`/invoices/${props.invoiceId}`);
-    const invoice = response.data.data;
+    // InvoiceResource devuelve los datos directamente en response.data
+    const invoice = response.data.data ?? response.data;
 
     formData.value = {
       supplier_id: invoice.supplier_id,
