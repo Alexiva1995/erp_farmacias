@@ -8,8 +8,10 @@ import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 const authStore = useAuthStore();
+const route = useRoute();
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -135,6 +137,10 @@ watch(
 );
 
 onMounted(async () => {
+  // Leer filtro de laboratorio desde query param (ej: navegando desde /inventory/laboratories)
+  if (route.query.laboratoryId) {
+    selectedLaboratory.value = Number(route.query.laboratoryId);
+  }
   fetchSelectOptions();
   fetchProducts();
 });

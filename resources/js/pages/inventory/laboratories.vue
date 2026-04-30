@@ -1,11 +1,18 @@
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import AppFilterBase from "@/components/AppFilterBase.vue"
 import AppMobilePagination from "@/components/AppMobilePagination.vue"
-import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
+import { toast } from "@/plugins/sweetalert"
+import Swal from "sweetalert2"
 
+const router = useRouter()
+
+// --- Estado global ---
+const activeTab = ref('laboratories')
+
+// --- Laboratorios ---
 const laboratories = ref([])
 const allLaboratoriesForSelect = ref([])
 const groups = ref([])
@@ -16,6 +23,9 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref('name')
 const orderBy = ref('asc')
+
+// --- Grupos tab ---
+const groupSearch = ref('')
 
 const isLabDialogOpen = ref(false)
 const isGroupDialogOpen = ref(false)
@@ -30,6 +40,20 @@ const headers = [
   { title: "Productos", key: "products_count", sortable: true, align: 'center' },
   { title: "Acciones", key: "actions", sortable: false, align: 'right' },
 ]
+
+const groupHeaders = [
+  { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
+  { title: "Grupo", key: "name", sortable: true },
+  { title: "Laboratorios", key: "labs_count", sortable: false, align: 'center' },
+  { title: "Acciones", key: "actions", sortable: false, align: 'right' },
+]
+
+// --- Filtro de grupos en la pestaña ---
+const filteredGroups = ref([])
+watch(groupSearch, (q) => {
+  const lower = q.toLowerCase()
+  filteredGroups.value = groups.value.filter(g => g.name.toLowerCase().includes(lower))
+})
 
 const fetchLabs = async () => {
   loading.value = true
@@ -52,6 +76,7 @@ const fetchGroups = async () => {
   try {
     const { data } = await axios.get('/inventory/laboratories-manage/groups')
     groups.value = data
+    filteredGroups.value = data
   } catch (error) { console.error(error) }
 }
 
@@ -60,10 +85,15 @@ const openLabEdit = (lab = null) => {
   isLabDialogOpen.value = true
 }
 
+// Navegar a productos filtrados por laboratorio
+const goToProducts = (lab) => {
+  router.push({ path: '/inventory/products', query: { laboratoryId: lab.id } })
+}
+
 const deleteLab = async (id) => {
   const result = await Swal.fire({
     title: "¿Borrar laboratorio?",
-    text: "Los productos asociados quedarán sin laboratorio.",
+    text: "Los productos asociados quedarán sin laboratorio asignado.",
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, borrar",
@@ -72,18 +102,20 @@ const deleteLab = async (id) => {
       confirmButton: 'v-btn v-btn--variant-flat bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase ms-3',
       cancelButton: 'v-btn v-btn--variant-tonal text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
     }
-  });
+  })
   if (result.isConfirmed) {
     try {
       await axios.delete(`/inventory/laboratories-manage/${id}`)
-      toast.success("Eliminado")
+      toast.success("Laboratorio eliminado. Productos desvinculados.")
       fetchLabs()
-    } catch (error) { toast.error("Error") }
+    } catch (error) { toast.error("Error al eliminar") }
   }
 }
 
 const openGroupEdit = (group = null) => {
-  groupForm.value = group ? { id: group.id, name: group.name, laboratory_ids: group.laboratories?.map(l => l.id) || [] } : { id: null, name: '', laboratory_ids: [] }
+  groupForm.value = group
+    ? { id: group.id, name: group.name, laboratory_ids: group.laboratories?.map(l => l.id) || [] }
+    : { id: null, name: '', laboratory_ids: [] }
   isGroupDialogOpen.value = true
 }
 
@@ -117,72 +149,167 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 
 <template>
   <div>
-    <AppFilterBase
-      v-model:search="searchQuery"
-      :show-add="true"
-      add-button-text="Añadir Laboratorio"
-      @clear="searchQuery = ''; fetchLabs()"
-      @add="openLabEdit()"
-    >
-      <template #search-extra>
-        <VCol cols="auto">
-          <VBtn color="secondary" variant="tonal" prepend-icon="tabler-layers-intersect" @click="isGroupDialogOpen = true">
-            Gestionar Grupos
-          </VBtn>
-        </VCol>
-      </template>
-    </AppFilterBase>
+    <!-- Tabs principales -->
+    <VTabs v-model="activeTab" class="mb-4" color="primary">
+      <VTab value="laboratories">
+        <VIcon icon="tabler-flask" class="me-2" size="18" />
+        Laboratorios
+      </VTab>
+      <VTab value="groups">
+        <VIcon icon="tabler-layers-intersect" class="me-2" size="18" />
+        Grupos Corporativos
+        <VChip class="ms-2" size="x-small" color="primary" variant="tonal">{{ groups.length }}</VChip>
+      </VTab>
+    </VTabs>
 
-    <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
-      <div class="d-none d-md-block">
-        <VDataTableServer
-          :headers="headers"
-          :items="laboratories"
-          :items-length="totalLabs"
-          :loading="loading"
-          @update:options="updateTableOptions"
-          density="compact"
-        >
-          <template #item.group.name="{ item }">
-            <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
-            <span v-else class="text-caption opacity-50">Sin grupo</span>
-          </template>
-          <template #item.products_count="{ item }"><VChip size="x-small" color="info" variant="flat">{{ item.products_count }}</VChip></template>
-          <template #item.actions="{ item }">
-            <div class="d-flex justify-end gap-1 px-2">
-              <IconBtn @click="openLabEdit(item)" color="primary"><VIcon icon="tabler-edit" size="18" /></IconBtn>
-              <IconBtn @click="deleteLab(item.id)" color="error"><VIcon icon="tabler-trash" size="18" /></IconBtn>
-            </div>
-          </template>
-        </VDataTableServer>
-      </div>
+    <!-- ===================== TAB LABORATORIOS ===================== -->
+    <VWindow v-model="activeTab">
+      <VWindowItem value="laboratories">
+        <AppFilterBase
+          v-model:search="searchQuery"
+          :show-add="true"
+          add-button-text="Añadir Laboratorio"
+          @clear="searchQuery = ''; fetchLabs()"
+          @add="openLabEdit()"
+        />
 
-      <div class="d-block d-md-none pa-2">
-        <div class="d-flex flex-column gap-2">
-          <VCard v-for="item in laboratories" :key="item.id" variant="flat" class="border mb-1 rounded-lg">
-            <div class="pa-3">
-              <div class="d-flex justify-space-between align-start mb-2">
-                <div>
-                  <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
-                  <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
-                </div>
+        <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
+          <!-- Desktop -->
+          <div class="d-none d-md-block">
+            <VDataTableServer
+              :headers="headers"
+              :items="laboratories"
+              :items-length="totalLabs"
+              :loading="loading"
+              @update:options="updateTableOptions"
+              density="compact"
+            >
+              <template #item.group.name="{ item }">
                 <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
-              </div>
-              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
-                <span class="text-base font-weight-black text-info">{{ item.products_count }} <small>SKUS</small></span>
-                <div class="d-flex gap-1">
-                  <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openLabEdit(item)" />
-                  <VBtn icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteLab(item.id)" />
-                </div>
-              </div>
-            </div>
-          </VCard>
-        </div>
-        <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalLabs" @change="updateTableOptions" />
-      </div>
-    </VCard>
+                <span v-else class="text-caption opacity-50">Sin grupo</span>
+              </template>
 
-    <!-- DIÁLOGO LABORATORIO PREMIUM -->
+              <template #item.products_count="{ item }">
+                <VChip size="x-small" color="info" variant="flat">{{ item.products_count }}</VChip>
+              </template>
+
+              <template #item.actions="{ item }">
+                <div class="d-flex justify-end gap-1 px-2">
+                  <!-- Ver productos filtrados por este laboratorio -->
+                  <IconBtn @click="goToProducts(item)" color="info" v-tooltip="'Ver productos'">
+                    <VIcon icon="tabler-eye" size="18" />
+                  </IconBtn>
+                  <IconBtn @click="openLabEdit(item)" color="primary" v-tooltip="'Editar'">
+                    <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                  <IconBtn @click="deleteLab(item.id)" color="error" v-tooltip="'Eliminar'">
+                    <VIcon icon="tabler-trash" size="18" />
+                  </IconBtn>
+                </div>
+              </template>
+            </VDataTableServer>
+          </div>
+
+          <!-- Mobile -->
+          <div class="d-block d-md-none pa-2">
+            <div class="d-flex flex-column gap-2">
+              <VCard v-for="item in laboratories" :key="item.id" variant="flat" class="border mb-1 rounded-lg">
+                <div class="pa-3">
+                  <div class="d-flex justify-space-between align-start mb-2">
+                    <div>
+                      <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
+                      <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
+                    </div>
+                    <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
+                  </div>
+                  <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
+                    <span class="text-base font-weight-black text-info">{{ item.products_count }} <small>SKUS</small></span>
+                    <div class="d-flex gap-1">
+                      <VBtn icon="tabler-eye" color="info" variant="tonal" size="small" @click="goToProducts(item)" />
+                      <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openLabEdit(item)" />
+                      <VBtn icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteLab(item.id)" />
+                    </div>
+                  </div>
+                </div>
+              </VCard>
+            </div>
+            <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalLabs" @change="updateTableOptions" />
+          </div>
+        </VCard>
+      </VWindowItem>
+
+      <!-- ===================== TAB GRUPOS ===================== -->
+      <VWindowItem value="groups">
+        <!-- Toolbar de grupos -->
+        <div class="d-flex align-center gap-3 mb-4">
+          <VTextField
+            v-model="groupSearch"
+            placeholder="Buscar grupo..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            hide-details
+            variant="solo-filled"
+            flat
+            style="max-width: 320px;"
+          />
+          <VSpacer />
+          <VBtn color="primary" variant="elevated" prepend-icon="tabler-plus" @click="openGroupEdit()">
+            Nuevo Grupo
+          </VBtn>
+        </div>
+
+        <VCard class="rounded-lg border shadow-sm overflow-hidden">
+          <!-- Desktop -->
+          <div class="d-none d-md-block">
+            <VDataTable
+              :headers="groupHeaders"
+              :items="filteredGroups"
+              density="compact"
+              :loading="loading"
+            >
+              <template #item.labs_count="{ item }">
+                <VChip size="x-small" color="primary" variant="tonal">
+                  {{ item.laboratories?.length ?? 0 }}
+                </VChip>
+              </template>
+              <template #item.actions="{ item }">
+                <div class="d-flex justify-end gap-1 px-2">
+                  <IconBtn @click="openGroupEdit(item)" color="primary" v-tooltip="'Editar grupo'">
+                    <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                </div>
+              </template>
+            </VDataTable>
+          </div>
+
+          <!-- Mobile grupos -->
+          <div class="d-block d-md-none pa-2">
+            <VCard
+              v-for="group in filteredGroups"
+              :key="group.id"
+              variant="flat"
+              class="border mb-2 rounded-lg"
+            >
+              <div class="pa-3 d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-xs font-weight-black text-primary mb-1">ID: {{ group.id }}</div>
+                  <div class="font-weight-black text-sm text-uppercase">{{ group.name }}</div>
+                  <VChip size="x-small" color="primary" variant="tonal" class="mt-1">
+                    {{ group.laboratories?.length ?? 0 }} labs
+                  </VChip>
+                </div>
+                <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openGroupEdit(group)" />
+              </div>
+            </VCard>
+            <div v-if="!filteredGroups.length" class="text-center pa-6 text-disabled">
+              Sin grupos registrados
+            </div>
+          </div>
+        </VCard>
+      </VWindowItem>
+    </VWindow>
+
+    <!-- DIÁLOGO LABORATORIO -->
     <VDialog v-model="isLabDialogOpen" max-width="500">
       <VCard class="rounded-xl shadow-xl border-0">
         <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
@@ -190,34 +317,32 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
             <VIcon icon="tabler-flask" size="24" />
           </VAvatar>
           <div>
-             <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio</div>
-             <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Información del fabricante</div>
+            <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio</div>
+            <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Información del fabricante</div>
           </div>
           <VSpacer />
           <VBtn icon="tabler-x" variant="text" color="disabled" @click="isLabDialogOpen = false" />
         </VCardTitle>
-
         <VCardText class="pa-6 pt-6">
           <VRow>
             <VCol cols="12">
               <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Datos Generales</p>
-              <AppTextField 
-                v-model="labForm.name" 
-                label="Nombre del Laboratorio" 
-                placeholder="Ej: Bayer" 
+              <AppTextField
+                v-model="labForm.name"
+                label="Nombre del Laboratorio"
+                placeholder="Ej: Bayer"
                 persistent-placeholder
                 class="mb-4"
               />
-              
               <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación Corporativa</p>
-              <AppAutocomplete 
-                v-model="labForm.group_id" 
-                :items="groups" 
-                item-title="name" 
-                item-value="id" 
-                label="Grupo de Laboratorio" 
+              <AppAutocomplete
+                v-model="labForm.group_id"
+                :items="groups"
+                item-title="name"
+                item-value="id"
+                label="Grupo de Laboratorio"
                 placeholder="Seleccionar grupo..."
-                clearable 
+                clearable
                 persistent-placeholder
               />
             </VCol>
@@ -226,9 +351,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
         <VDivider />
         <VCardActions class="pa-6">
           <VSpacer />
-          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isLabDialogOpen = false">
-            CANCELAR
-          </VBtn>
+          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isLabDialogOpen = false">CANCELAR</VBtn>
           <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveLab">
             GUARDAR {{ labForm.id ? 'CAMBIOS' : 'LABORATORIO' }}
           </VBtn>
@@ -236,7 +359,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
       </VCard>
     </VDialog>
 
-    <!-- MODAL GRUPOS PREMIUM -->
+    <!-- MODAL GRUPOS -->
     <VDialog v-model="isGroupDialogOpen" max-width="600">
       <VCard class="rounded-xl shadow-xl border-0">
         <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center font-weight-black text-uppercase">
@@ -246,11 +369,19 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
         </VCardTitle>
         <VCardText class="pa-6">
           <AppTextField v-model="groupForm.name" label="Nombre del Grupo" class="mb-4" />
-          <AppAutocomplete v-model="groupForm.laboratory_ids" :items="allLaboratoriesForSelect" item-title="name" item-value="id" label="Laboratorios" multiple chips closable-chips />
+          <AppAutocomplete
+            v-model="groupForm.laboratory_ids"
+            :items="allLaboratoriesForSelect"
+            item-title="name"
+            item-value="id"
+            label="Laboratorios"
+            multiple chips closable-chips
+          />
         </VCardText>
         <VDivider />
         <VCardActions class="pa-6">
-          <VSpacer /><VBtn color="secondary" variant="tonal" @click="isGroupDialogOpen = false">DESCARTAR</VBtn>
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" @click="isGroupDialogOpen = false">DESCARTAR</VBtn>
           <VBtn color="primary" variant="elevated" @click="saveGroup">GUARDAR</VBtn>
         </VCardActions>
       </VCard>
