@@ -98,8 +98,18 @@ class LaboratoryManagementController extends Controller
         $laboratory->products()->withoutGlobalScopes()->update(['laboratory_id' => null]);
 
         // Limpiar relaciones pivot con empleados y proveedores
-        $laboratory->employees()->detach();
-        $laboratory->suppliers()->detach();
+        // Se protegen con try-catch por si las tablas pivot no existen en el entorno actual
+        try {
+            $laboratory->employees()->detach();
+        } catch (\Throwable $e) {
+            \Log::warning("No se pudo desvincular empleados del laboratorio {$laboratory->id}: " . $e->getMessage());
+        }
+
+        try {
+            $laboratory->suppliers()->detach();
+        } catch (\Throwable $e) {
+            \Log::warning("No se pudo desvincular proveedores del laboratorio {$laboratory->id}: " . $e->getMessage());
+        }
 
         $laboratory->delete();
 
