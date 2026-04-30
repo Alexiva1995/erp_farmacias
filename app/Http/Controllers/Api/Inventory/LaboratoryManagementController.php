@@ -57,6 +57,9 @@ class LaboratoryManagementController extends Controller
             $request->only(['name', 'group_id', 'parent_id'])
         );
 
+        // Limpiar la caché de laboratorios para que se actualice la lista en los selects
+        \Cache::forget('resources.laboratories');
+
         return response()->json(['message' => 'Laboratorio guardado correctamente', 'laboratory' => $lab]);
     }
 
@@ -117,6 +120,9 @@ class LaboratoryManagementController extends Controller
         }
 
         $laboratory->delete();
+
+        // Limpiar la caché de laboratorios para que desaparezca de los selects
+        \Cache::forget('resources.laboratories');
 
         return response()->json(['message' => 'Laboratorio eliminado y productos desvinculados']);
     }
