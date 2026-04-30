@@ -23,7 +23,12 @@ class LaboratoryManagementController extends Controller
 
         $sortBy = $request->get('sortBy', 'name');
         $orderBy = $request->get('orderBy', 'asc');
-        $itemsPerPage = $request->get('itemsPerPage', 10);
+        $itemsPerPage = (int) $request->get('itemsPerPage', 10);
+
+        // Si es -1 (opción "All" de Vuetify), paginamos con el total de registros
+        if ($itemsPerPage === -1) {
+            $itemsPerPage = $query->count() ?: 10;
+        }
 
         return response()->json($query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage));
     }
