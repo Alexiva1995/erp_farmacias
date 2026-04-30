@@ -131,6 +131,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/products/{product}/stats', [ProductController::class, 'getStats']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+    Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
     Route::get('/products/export', [ProductController::class, 'export']);
     Route::post('/products/{product}/toggle-scarce', [ProductController::class, 'toggleScarce']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);

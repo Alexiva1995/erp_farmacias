@@ -182,6 +182,10 @@ class ProductQueryService
             $query->where('is_scarce', true);
         }
 
+        if (!empty($filters['onlyDeleted'])) {
+            $query->withoutGlobalScope('not_deleted')->where('is_deleted', true);
+        }
+
         return $query;
     }
 
@@ -270,6 +274,7 @@ class ProductQueryService
             'is_psychotropic' => $request->is_psychotropic,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'isScarce'       => filter_var($request->get('isScarce'), FILTER_VALIDATE_BOOLEAN),
+            'onlyDeleted'    => filter_var($request->get('onlyDeleted'), FILTER_VALIDATE_BOOLEAN),
         ];
 
         $this->applyFilters($query, $filters);

@@ -126,6 +126,15 @@ class ProductController extends Controller
         return response()->noContent();
     }
 
+    public function restore(int $id)
+    {
+        $product = $this->productActionService->restoreProduct($id);
+        return response()->json([
+            'message' => 'Producto restaurado con éxito.',
+            'product' => $product
+        ]);
+    }
+
     public function toggleScarce(Product $product): JsonResponse
     {
         $updatedProduct = $this->productActionService->toggleScarceProduct($product);

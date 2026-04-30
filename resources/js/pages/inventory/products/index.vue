@@ -29,6 +29,7 @@ const startDate = ref(null);
 const endDate = ref(null);
 const isStrictSearch = ref(false);
 const isScarce = ref(false);
+const onlyDeleted = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
@@ -83,6 +84,7 @@ const fetchProducts = async () => {
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
     ...(isScarce.value && { isScarce: true }),
+    ...(onlyDeleted.value && { onlyDeleted: true }),
   };
   Object.keys(params).forEach(
     key => (params[key] === null || params[key] === "") && delete params[key],
@@ -116,6 +118,7 @@ watch(
     endDate,
     isStrictSearch,
     isScarce,
+    onlyDeleted,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -201,6 +204,29 @@ const handleDeleteProduct = async id => {
   }
 };
 
+const handleRestoreProduct = async id => {
+  const result = await Swal.fire({
+    title: "¿Restaurar producto?",
+    text: "Este producto volverá a estar activo en el inventario.",
+    icon: "info",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Restaurar",
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.post(`/products/${id}/restore`);
+      toast.success("Producto restaurado con éxito.");
+      fetchProducts();
+    } catch (error) {
+      console.error(`Error al restaurar el producto ${id}:`, error);
+      toast.error("No se pudo restaurar el producto.");
+    }
+  }
+};
+
 const handleSaveProduct = async productFormData => {
   const isNewProduct = !currentProduct.value.id;
   const url = isNewProduct ? "/products" : `/products/${currentProduct.value.id}`;
@@ -249,6 +275,7 @@ const handleClearFilters = () => {
   endDate.value = null;
   isStrictSearch.value = false;
   isScarce.value = false;
+  onlyDeleted.value = false;
 };
 
 const handleAddProduct = () => {
@@ -332,6 +359,7 @@ const handleSort = sortOptions => {
       v-model:endDate="endDate"
       v-model:isStrictSearch="isStrictSearch"
       v-model:isScarce="isScarce"
+      v-model:onlyDeleted="onlyDeleted"
       :laboratories="laboratories"
       :origins="origins"
       :groups="groups"
@@ -351,9 +379,11 @@ const handleSort = sortOptions => {
       :page="page"
       :sort-by="sortBy"
       :order-by="orderBy"
+      :only-deleted="onlyDeleted"
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"
+      @restore-product="handleRestoreProduct"
       @product-merged="fetchProducts"
       @view-stats="handleViewStats"
     />

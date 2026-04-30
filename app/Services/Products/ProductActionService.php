@@ -185,6 +185,24 @@ class ProductActionService
     }
 
     /**
+     * Restaura un producto eliminado lógicamente.
+     *
+     * @param int $productId
+     * @return Product
+     */
+    public function restoreProduct(int $productId): Product
+    {
+        $product = Product::withTrashed()
+            ->withoutGlobalScope('not_deleted')
+            ->findOrFail($productId);
+
+        $product->update(['is_deleted' => false]);
+        $product->restore();
+
+        return $product;
+    }
+
+    /**
      * Alterna el estado de producto escaso (is_scarce).
      *
      * @param Product $product

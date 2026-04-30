@@ -17,6 +17,7 @@ const props = defineProps({
   orderBy: { type: String, default: "asc" },
   mode: { type: String, default: "products" },
   title: { type: String, default: "" },
+  onlyDeleted: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -27,6 +28,7 @@ const emit = defineEmits([
   "add-product-to-invoice",
   "product-merged",
   "view-stats",
+  "restore-product",
 ]);
 
 const headers = ref([
@@ -240,6 +242,15 @@ const handleMobilePageChange = (newPage) => {
                 <VTooltip activator="parent">Editar</VTooltip>
               </IconBtn>
               <IconBtn
+                v-if="props.onlyDeleted"
+                @click="emit('restore-product', item.id)"
+                color="success"
+                size="small"
+              >
+                <VIcon icon="tabler-rotate-clockwise" size="18" />
+                <VTooltip activator="parent">Restaurar</VTooltip>
+              </IconBtn>
+              <IconBtn
                 v-if="authStore.isAdmin"
                 color="info"
                 size="small"
@@ -365,6 +376,16 @@ const handleMobilePageChange = (newPage) => {
                 height="40"
                 icon="tabler-edit" 
                 @click="emit('edit-product', item)"
+              />
+              <VDivider v-if="props.onlyDeleted" vertical class="border-opacity-10" />
+              <VBtn 
+                v-if="props.onlyDeleted"
+                color="success" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-rotate-clockwise" 
+                @click="emit('restore-product', item.id)"
               />
               <VDivider vertical class="border-opacity-10" />
               <VBtn 

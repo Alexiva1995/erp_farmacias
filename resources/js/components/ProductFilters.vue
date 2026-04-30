@@ -21,6 +21,7 @@ const props = defineProps({
   addButtonText:      { type: String,  default: "Añadir Producto" },
   isStrictSearch:     Boolean,
   isScarce:           Boolean,
+  onlyDeleted:        Boolean,
   flat:               { type: Boolean, default: false },
 });
 
@@ -34,6 +35,7 @@ const emit = defineEmits([
   "update:endDate",
   "update:isStrictSearch",
   "update:isScarce",
+  "update:onlyDeleted",
   "clear",
   "export",
   "add-product",
@@ -155,6 +157,17 @@ const showExport = computed(() => props.mode === 'products');
           density="compact"
           hide-details
           @update:model-value="emit('update:isScarce', $event)"
+        />
+      </VCol>
+      <!-- Eliminados (is_deleted = true) -->
+      <VCol cols="auto" class="d-none d-sm-flex">
+        <VCheckbox
+          :model-value="props.onlyDeleted"
+          label="Eliminados"
+          color="error"
+          density="compact"
+          hide-details
+          @update:model-value="emit('update:onlyDeleted', $event)"
         />
       </VCol>
     </template>
