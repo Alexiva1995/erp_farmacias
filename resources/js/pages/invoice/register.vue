@@ -254,11 +254,9 @@ watch(
     discountRules.value = [];
     if (newSupplierId) {
       await fetchDiscountRules(newSupplierId);
-      if (!props.isEditMode) {
-        // Esperar a que selectedSupplier se actualice
-        await nextTick();
-        calculatePaymentDate();
-      }
+      // Esperar a que selectedSupplier se actualice
+      await nextTick();
+      calculatePaymentDate();
     } else {
       // Limpiar fecha de pago si no hay proveedor
       formData.value.payment_date = null;
@@ -282,28 +280,22 @@ watch(
   () => formData.value.exp_date,
   async (newDate) => {
     validateExpDate(newDate);
-    if (!props.isEditMode) {
-      await nextTick();
-      calculatePaymentDate();
-    }
+    await nextTick();
+    calculatePaymentDate();
   },
 );
 watch(
   () => formData.value.received_date,
   async () => {
-    if (!props.isEditMode) {
-      await nextTick();
-      calculatePaymentDate();
-    }
+    await nextTick();
+    calculatePaymentDate();
   },
 );
 watch(
   () => formData.value.created_invoice_date,
   async () => {
-    if (!props.isEditMode) {
-      await nextTick();
-      calculatePaymentDate();
-    }
+    await nextTick();
+    calculatePaymentDate();
   },
 );
 

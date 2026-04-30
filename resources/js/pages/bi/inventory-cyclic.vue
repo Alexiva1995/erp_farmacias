@@ -3,22 +3,25 @@ import { ref, onMounted, computed, watch } from 'vue'
 import axios from '@axios'
 import VueApexCharts from 'vue3-apexcharts'
 import { formatCurrency } from '@/utils/currencyFormatter'
-import AppTextField from '@core/components/app-form-elements/AppTextField.vue'
 
 const dashboardData = ref(null)
 const loading = ref(false)
-const filterDate = ref(new Date().toISOString().substr(0, 7)) // Mes actual
+
+const filters = ref({
+  startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10),
+  endDate: new Date().toISOString().substr(0, 10),
+  search: ''
+})
 
 const fetchDashboardData = async () => {
   loading.value = true
   try {
-    const year = filterDate.value.split('-')[0]
-    const month = filterDate.value.split('-')[1]
-    const startDate = `${year}-${month}-01`
-    const endDate = new Date(year, month, 0).toISOString().split('T')[0]
-
     const response = await axios.get('/bi/inventory-cyclic', {
-      params: { start_date: startDate, end_date: endDate }
+      params: { 
+        start_date: filters.value.startDate, 
+        end_date: filters.value.endDate,
+        search: filters.value.search
+      }
     })
     dashboardData.value = response.data
   } catch (error) {
@@ -28,11 +31,14 @@ const fetchDashboardData = async () => {
   }
 }
 
-onMounted(() => {
+const handleClearFilters = () => {
+  filters.value.startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10)
+  filters.value.endDate = new Date().toISOString().substr(0, 10)
+  filters.value.search = ''
   fetchDashboardData()
-})
+}
 
-watch(filterDate, () => {
+onMounted(() => {
   fetchDashboardData()
 })
 
@@ -40,29 +46,45 @@ watch(filterDate, () => {
 
 // 1. Tendencia Histórica (Líneas Faltantes vs Sobrantes)
 const trendOptions = computed(() => ({
-  chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false } },
+  chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, fontFamily: 'Inter, sans-serif' },
   colors: ['#EA5455', '#28C76F'],
   stroke: { curve: 'smooth', width: 3 },
   markers: { size: 4 },
-  xaxis: { categories: dashboardData.value?.trends?.categories || [] },
-  yaxis: { title: { text: 'Unidades' } },
-  legend: { position: 'top', horizontalAlign: 'right' },
+  xaxis: { 
+    categories: dashboardData.value?.trends?.categories || [],
+    labels: { style: { colors: '#a3a3a3', fontSize: '10px' } }
+  },
+  yaxis: { 
+    labels: { style: { colors: '#a3a3a3' } }
+  },
+  legend: { position: 'top', horizontalAlign: 'right', labels: { colors: '#a3a3a3' } },
+  grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
   tooltip: { theme: 'dark' }
 }))
 
 // 2. Impacto Financiero (Barras)
 const impactOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false } },
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
   plotOptions: {
     bar: {
       colors: {
         ranges: [{ from: -9999999, to: 0, color: '#EA5455' }, { from: 0.1, to: 9999999, color: '#28C76F' }]
       },
       columnWidth: '50%',
+      borderRadius: 4
     }
   },
-  xaxis: { categories: dashboardData.value?.trends?.categories || [] },
-  yaxis: { title: { text: 'USD ($)' }, labels: { formatter: (v) => formatCurrency(v) } },
+  xaxis: { 
+    categories: dashboardData.value?.trends?.categories || [],
+    labels: { style: { colors: '#a3a3a3', fontSize: '10px' } }
+  },
+  yaxis: { 
+    labels: { 
+      formatter: (v) => formatCurrency(v),
+      style: { colors: '#a3a3a3' }
+    } 
+  },
+  grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
   tooltip: { theme: 'dark' }
 }))
 
@@ -70,120 +92,167 @@ const impactOptions = computed(() => ({
 const categoryOptions = computed(() => ({
   labels: dashboardData.value?.deviations?.categories?.labels || [],
   colors: ['#7367F0', '#28C76F', '#FF9F43', '#EA5455', '#00CFE8'],
-  legend: { position: 'bottom' },
+  legend: { position: 'bottom', labels: { colors: '#a3a3a3' } },
   dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
+  stroke: { show: false },
   tooltip: { theme: 'dark' }
 }))
 
 // 4. Top 10 Faltantes (Barras Horizontales)
 const topMissingOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false } },
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
   plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%' } },
   colors: ['#EA5455'],
-  xaxis: { categories: dashboardData.value?.deviations?.top_missing?.categories || [] },
+  xaxis: { 
+    categories: dashboardData.value?.deviations?.top_missing?.categories || [],
+    labels: { style: { colors: '#a3a3a3' } }
+  },
+  yaxis: { labels: { style: { colors: '#a3a3a3', fontSize: '10px' } } },
+  grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
   tooltip: { theme: 'dark' }
 }))
 
 // 5. Top 10 Sobrantes (Barras Horizontales)
 const topSurplusOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false } },
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
   plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%' } },
   colors: ['#28C76F'],
-  xaxis: { categories: dashboardData.value?.deviations?.top_surplus?.categories || [] },
+  xaxis: { 
+    categories: dashboardData.value?.deviations?.top_surplus?.categories || [],
+    labels: { style: { colors: '#a3a3a3' } }
+  },
+  yaxis: { labels: { style: { colors: '#a3a3a3', fontSize: '10px' } } },
+  grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
   tooltip: { theme: 'dark' }
 }))
 </script>
 
 <template>
-  <VContainer fluid class="analytics-inventory">
-    <!-- Header / Filtros -->
-    <VRow align="center" class="mb-6">
-      <VCol>
-        <h2 class="text-h4 font-weight-black mb-1">Análisis de Inventario Cíclico</h2>
-        <p class="text-body-2 text-muted">Auditoría de Precisión Física vs Stock Teórico</p>
-      </VCol>
-      <VCol cols="auto">
-        <div style="width: 200px;">
-          <AppTextField
-            v-model="filterDate"
-            type="month"
-            label="Mes de Análisis"
-            density="compact"
-            hide-details
-          />
-        </div>
-      </VCol>
-    </VRow>
+  <VContainer fluid class="analytics-inventory pa-0">
+    <!-- Filtros Estandarizados Estilo Premium -->
+    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
+      <VCardText class="pa-4">
+        <VRow align="center" no-gutters class="gap-2">
+          <VCol cols="12" md="4">
+            <AppTextField
+              v-model="filters.search"
+              placeholder="Buscar producto..."
+              prepend-inner-icon="tabler-search"
+              clearable
+              density="compact"
+              hide-details
+              class="premium-input-compact"
+            />
+          </VCol>
+
+          <VCol cols="12" md="2.5">
+            <AppDateTimePicker
+              v-model="filters.startDate"
+              placeholder="Fecha Inicio"
+              density="compact"
+              hide-details
+              class="premium-input-compact"
+              prepend-inner-icon="tabler-calendar"
+            />
+          </VCol>
+
+          <VCol cols="12" md="2.5">
+            <AppDateTimePicker
+              v-model="filters.endDate"
+              placeholder="Fecha Fin"
+              density="compact"
+              hide-details
+              class="premium-input-compact"
+              prepend-inner-icon="tabler-calendar-check"
+            />
+          </VCol>
+
+          <VSpacer />
+
+          <div class="d-flex align-center gap-2">
+            <VBtn
+              icon
+              variant="flat"
+              color="primary"
+              size="38"
+              class="rounded-circle shadow-sm"
+              :loading="loading"
+              @click="fetchDashboardData"
+            >
+              <VIcon icon="tabler-player-play" size="20" />
+              <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
+            </VBtn>
+
+            <VBtn
+              icon
+              variant="text"
+              color="secondary"
+              size="38"
+              class="rounded-circle shadow-sm"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" size="20" />
+              <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+            </VBtn>
+          </div>
+        </VRow>
+      </VCardText>
+    </VCard>
 
     <div v-if="loading" class="d-flex justify-center align-center" style="height: 400px;">
       <VProgressCircular indeterminate color="primary" size="64" />
     </div>
 
     <div v-else-if="dashboardData">
-      <!-- Row 1: KPIs -->
+      <!-- Row 1: KPI Cards Diseño Horizontal -->
       <VRow class="mb-6">
-        <VCol cols="12" sm="6" md="2.4">
-          <VCard class="rounded-xl border shadow-sm h-100">
-            <VCardText class="text-center py-6">
-              <div class="text-caption font-weight-bold text-uppercase text-muted mb-2">ERI (Precisión)</div>
-              <div class="text-h3 font-weight-black" :class="dashboardData.kpis.eri > 95 ? 'text-success' : 'text-warning'">
-                {{ dashboardData.kpis.eri }}%
+        <VCol cols="12" sm="6" md="2.4" v-for="(kpi, idx) in [
+          { 
+            title: 'ERI (Precisión)', 
+            value: (dashboardData.kpis.eri || 0) + '%', 
+            icon: 'tabler-target', 
+            color: (dashboardData.kpis.eri || 0) > 95 ? 'success' : 'warning',
+            desc: 'Precisión física'
+          },
+          { 
+            title: 'Pérdida Neta', 
+            value: formatCurrency(dashboardData.kpis.net_loss || 0), 
+            icon: 'tabler-currency-dollar', 
+            color: (dashboardData.kpis.net_loss || 0) > 0 ? 'error' : 'success',
+            desc: 'Ajuste de valor'
+          },
+          { 
+            title: 'Tasa de Error', 
+            value: (dashboardData.kpis.error_rate || 0) + '%', 
+            icon: 'tabler-alert-circle', 
+            color: 'warning',
+            desc: 'SKUs discrepantes'
+          },
+          { 
+            title: 'Unid. Faltantes', 
+            value: dashboardData.kpis.total_missing_units || 0, 
+            icon: 'tabler-trending-down', 
+            color: 'error',
+            desc: 'Stock no hallado'
+          },
+          { 
+            title: 'Unid. Sobrantes', 
+            value: dashboardData.kpis.total_surplus_units || 0, 
+            icon: 'tabler-trending-up', 
+            color: 'success',
+            desc: 'Exceso físico'
+          }
+        ]" :key="idx">
+          <VCard class="rounded-lg border shadow-sm h-100">
+            <VCardText class="pa-4 d-flex align-center">
+              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="me-4">
+                <VIcon :icon="kpi.icon" size="24" />
+              </VAvatar>
+              <div>
+                <p class="text-caption text-disabled mb-0 font-weight-bold">{{ kpi.title }}</p>
+                <h3 class="text-h5 font-weight-black">{{ kpi.value }}</h3>
+                <p class="text-super-xs text-disabled mb-0">{{ kpi.desc }}</p>
               </div>
-              <VProgressLinear
-                :model-value="dashboardData.kpis.eri"
-                :color="dashboardData.kpis.eri > 95 ? 'success' : 'warning'"
-                rounded
-                height="6"
-                class="mt-4"
-              />
-            </VCardText>
-          </VCard>
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2.4">
-          <VCard class="rounded-xl border shadow-sm h-100">
-            <VCardText class="text-center py-6">
-              <div class="text-caption font-weight-bold text-uppercase text-muted mb-2">Pérdida Neta ($)</div>
-              <div class="text-h3 font-weight-black" :class="dashboardData.kpis.net_loss > 0 ? 'text-error' : 'text-success'">
-                {{ formatCurrency(dashboardData.kpis.net_loss) }}
-              </div>
-              <div class="text-caption mt-2 italic text-muted">Ajuste de valorización</div>
-            </VCardText>
-          </VCard>
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2.4">
-          <VCard class="rounded-xl border shadow-sm h-100">
-            <VCardText class="text-center py-6">
-              <div class="text-caption font-weight-bold text-uppercase text-muted mb-2">Tasa de Error</div>
-              <div class="text-h3 font-weight-black text-warning">
-                {{ dashboardData.kpis.error_rate }}%
-              </div>
-              <div class="text-caption mt-2 text-muted">SKUs con discrepancia</div>
-            </VCardText>
-          </VCard>
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2.4">
-          <VCard class="rounded-xl border shadow-sm h-100 bg-light-error">
-            <VCardText class="text-center py-6">
-              <div class="text-caption font-weight-bold text-uppercase text-error mb-2">Unid. Faltantes</div>
-              <div class="text-h3 font-weight-black text-error">
-                {{ dashboardData.kpis.total_missing_units }}
-              </div>
-              <VIcon icon="tabler-trending-down" color="error" class="mt-2" />
-            </VCardText>
-          </VCard>
-        </VCol>
-
-        <VCol cols="12" sm="6" md="2.4">
-          <VCard class="rounded-xl border shadow-sm h-100 bg-light-success">
-            <VCardText class="text-center py-6">
-              <div class="text-caption font-weight-bold text-uppercase text-success mb-2">Unid. Sobrantes</div>
-              <div class="text-h3 font-weight-black text-success">
-                {{ dashboardData.kpis.total_surplus_units }}
-              </div>
-              <VIcon icon="tabler-trending-up" color="success" class="mt-2" />
             </VCardText>
           </VCard>
         </VCol>
@@ -193,8 +262,11 @@ const topSurplusOptions = computed(() => ({
       <VRow class="mb-6">
         <VCol cols="12" md="7">
           <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="pb-0">
-              <VCardTitle class="text-subtitle-1 font-weight-black">Variación Histórica de Inventario</VCardTitle>
+            <VCardItem>
+              <VCardTitle class="d-flex align-center">
+                <VIcon icon="tabler-chart-line" class="me-2 text-primary" />
+                Variación Histórica de Inventario
+              </VCardTitle>
             </VCardItem>
             <VCardText>
               <VueApexCharts
@@ -207,8 +279,11 @@ const topSurplusOptions = computed(() => ({
         </VCol>
         <VCol cols="12" md="5">
           <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="pb-0">
-              <VCardTitle class="text-subtitle-1 font-weight-black">Impacto Financiero ($)</VCardTitle>
+            <VCardItem>
+              <VCardTitle class="d-flex align-center">
+                <VIcon icon="tabler-chart-bar" class="me-2 text-success" />
+                Impacto Financiero ($)
+              </VCardTitle>
             </VCardItem>
             <VCardText>
               <VueApexCharts
@@ -225,8 +300,11 @@ const topSurplusOptions = computed(() => ({
       <VRow class="mb-6">
         <VCol cols="12" md="4">
           <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="pb-0">
-              <VCardTitle class="text-subtitle-1 font-weight-black text-error">Mayores Faltantes (Top 10)</VCardTitle>
+            <VCardItem>
+              <VCardTitle class="d-flex align-center text-error">
+                <VIcon icon="tabler-arrow-down-circle" class="me-2" />
+                Mayores Faltantes (Top 10)
+              </VCardTitle>
             </VCardItem>
             <VCardText>
               <VueApexCharts
@@ -239,8 +317,11 @@ const topSurplusOptions = computed(() => ({
         </VCol>
         <VCol cols="12" md="4">
           <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="pb-0">
-              <VCardTitle class="text-subtitle-1 font-weight-black text-success">Mayores Sobrantes (Top 10)</VCardTitle>
+            <VCardItem>
+              <VCardTitle class="d-flex align-center text-success">
+                <VIcon icon="tabler-arrow-up-circle" class="me-2" />
+                Mayores Sobrantes (Top 10)
+              </VCardTitle>
             </VCardItem>
             <VCardText>
               <VueApexCharts
@@ -253,8 +334,11 @@ const topSurplusOptions = computed(() => ({
         </VCol>
         <VCol cols="12" md="4">
           <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="pb-0">
-              <VCardTitle class="text-subtitle-1 font-weight-black text-primary">Desviación por Categoría</VCardTitle>
+            <VCardItem>
+              <VCardTitle class="d-flex align-center text-primary">
+                <VIcon icon="tabler-category" class="me-2" />
+                Desviación por Categoría
+              </VCardTitle>
             </VCardItem>
             <VCardText class="d-flex justify-center align-center" style="height: 350px;">
               <VueApexCharts
@@ -271,7 +355,7 @@ const topSurplusOptions = computed(() => ({
       <!-- Row 4: Cuadrante de Cruce de Códigos -->
       <VRow>
         <VCol cols="12">
-          <VCard class="rounded-lg border shadow-sm">
+          <VCard class="rounded-lg border shadow-sm overflow-hidden">
             <VCardItem class="py-4 border-b bg-light-primary">
               <VCardTitle class="d-flex align-center text-subtitle-1 font-weight-black text-uppercase">
                 <VIcon icon="tabler-arrows-left-right" class="me-2 text-primary" size="24" />
@@ -279,16 +363,16 @@ const topSurplusOptions = computed(() => ({
               </VCardTitle>
               <VCardSubtitle>Detección automática de errores de despacho vs pérdidas reales</VCardSubtitle>
             </VCardItem>
-            <VTable class="text-no-wrap">
+            <VTable class="premium-table density-compact">
               <thead>
                 <tr>
-                  <th class="text-uppercase text-[11px] font-weight-black">Categoría</th>
-                  <th class="text-uppercase text-[11px] font-weight-black">Producto A (Faltante)</th>
-                  <th class="text-uppercase text-[11px] font-weight-black text-center">Cant. A</th>
-                  <th class="text-icon text-center">-</th>
-                  <th class="text-uppercase text-[11px] font-weight-black">Producto B (Sobrante)</th>
-                  <th class="text-uppercase text-[11px] font-weight-black text-center">Cant. B</th>
-                  <th class="text-uppercase text-[11px] font-weight-black text-right">Confianza</th>
+                  <th class="text-uppercase">Categoría</th>
+                  <th class="text-uppercase">Producto A (Faltante)</th>
+                  <th class="text-uppercase text-center">Cant. A</th>
+                  <th class="text-center">-</th>
+                  <th class="text-uppercase">Producto B (Sobrante)</th>
+                  <th class="text-uppercase text-center">Cant. B</th>
+                  <th class="text-uppercase text-right">Confianza</th>
                 </tr>
               </thead>
               <tbody>
@@ -324,11 +408,30 @@ const topSurplusOptions = computed(() => ({
 .bg-light-success { background-color: rgba(40, 199, 111, 0.05) !important; }
 .bg-light-primary { background-color: rgba(115, 103, 240, 0.05) !important; }
 
-.analytics-inventory h2 {
-  letter-spacing: -1px;
+.premium-table :deep(th) {
+  background-color: #fff !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
 }
 
-.analytics-table th {
-  background-color: #f8f9fa !important;
+.premium-table :deep(td) {
+  font-size: 0.7rem !important;
+  height: 48px !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1.2;
+}
+
+.gap-2 { gap: 8px !important; }
+
+/* Efecto de cristal para fondo dark */
+.v-theme--dark .bg-surface {
+  background-color: rgba(47, 51, 73, 0.7) !important;
+  backdrop-filter: blur(10px);
 }
 </style>

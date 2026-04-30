@@ -98,7 +98,7 @@ class InvoiceController extends Controller
 
         return response()->json([
             'message' => 'Factura registrada con éxito.',
-            'invoice' => $invoice
+            'invoice' => new InvoiceResource($invoice)
         ], 201);
     }
 
@@ -167,8 +167,7 @@ class InvoiceController extends Controller
     public function show(Invoice $invoice)
     {
         $invoiceData = $this->invoiceQueryService->getInvoiceById($invoice);
-
-        return response()->json(['data' => $invoiceData]);
+        return new InvoiceResource($invoiceData);
     }
 
     public function getSuggestedDetails(Invoice $invoice)
@@ -225,7 +224,7 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'message' => 'Datos de la factura actualizados con éxito.',
-                'invoice' => $updatedInvoice
+                'invoice' => new InvoiceResource($updatedInvoice)
             ]);
 
         } catch (\Exception $e) {
@@ -283,7 +282,7 @@ class InvoiceController extends Controller
             $updatedInvoice = $this->invoiceActionService->saveInvoiceDetails($invoice, $validator->validated());
             return response()->json([
                 'message' => 'Progreso de la factura guardado con éxito.',
-                'invoice' => $updatedInvoice
+                'invoice' => new InvoiceResource($updatedInvoice)
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
