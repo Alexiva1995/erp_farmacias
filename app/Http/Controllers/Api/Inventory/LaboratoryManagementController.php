@@ -38,7 +38,7 @@ class LaboratoryManagementController extends Controller
      */
     public function groups(): JsonResponse
     {
-        return response()->json(GroupsLaboratory::orderBy('name')->get());
+        return response()->json(GroupsLaboratory::with('laboratories')->orderBy('name')->get());
     }
 
     /**
