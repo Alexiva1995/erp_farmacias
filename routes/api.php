@@ -162,7 +162,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/origins", [ResourceController::class, "getOrigins"]);
     Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);
-    Route::get("/locations", [LocationController::class, "index"]);
+    Route::apiResource("locations", LocationController::class);
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);

@@ -35,6 +35,17 @@ class LocationServices
     }
 
     /**
+     * Get a location by ID.
+     * 
+     * @param int $id
+     * @return \App\Models\Location|null
+     */
+    public function getLocationById(int $id): ?\App\Models\Location
+    {
+        return $this->locationRepository->find($id);
+    }
+
+    /**
      * Create a new location.
      * 
      * @param array $data

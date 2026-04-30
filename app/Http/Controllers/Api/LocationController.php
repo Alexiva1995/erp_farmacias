@@ -64,6 +64,19 @@ class LocationController extends Controller
     }
 
     /**
+     * Display the specified resource.
+     *
+     * @param int $id
+     * @return \App\Http\Resources\LocationResource
+     */
+    public function show(int $id): LocationResource
+    {
+        $location = $this->locationServices->getLocationById($id);
+
+        return new LocationResource($location);
+    }
+
+    /**
      * Remove the specified resource from storage.
      *
      * @param int $id
