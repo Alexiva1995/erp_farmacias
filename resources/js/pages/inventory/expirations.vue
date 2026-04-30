@@ -68,8 +68,8 @@ const fetchLots = async () => {
     sortBy: sortByLots.value,
     orderBy: orderByLots.value,
     laboratory_id: selectedLaboratoryLots.value,
-    start_date: startDateLots.value,
-    end_date: endDateLots.value,
+    startDate: startDateLots.value,
+    endDate: endDateLots.value,
     isStrictSearch: isStrictSearchLots.value,
   };
   Object.keys(params).forEach(

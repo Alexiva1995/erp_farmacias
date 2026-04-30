@@ -43,11 +43,17 @@ class ExpirationQueryService
         }
 
         // Filtro por rango de fechas
-        if ($request->has('startDate') && $request->has('endDate')) {
-            $query->whereBetween('expiration_date', [
-                $request->input('startDate'),
-                $request->input('endDate'),
-            ]);
+        $startDate = $request->input('startDate') ?? $request->input('start_date');
+        $endDate = $request->input('endDate') ?? $request->input('end_date');
+
+        if ($startDate || $endDate) {
+            if ($startDate && $endDate) {
+                $query->whereBetween('expiration_date', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $query->where('expiration_date', '>=', $startDate);
+            } else {
+                $query->where('expiration_date', '<=', $endDate);
+            }
         } else {
             // Por defecto: próximos 6 meses
             $query->whereBetween('expiration_date', [

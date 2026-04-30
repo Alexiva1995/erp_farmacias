@@ -1,6 +1,7 @@
 <script setup>
 // Filtros para fechas de vencimiento de inventario con acciones por lotes
 import AppFilterBase from "@/components/AppFilterBase.vue";
+import dayjs from "dayjs";
 import { computed, ref } from "vue";
 
 const props = defineProps({
@@ -67,46 +68,43 @@ const quickFilters = [
 ];
 
 const isFilterActive = (filter) => {
-  const today = new Date().toISOString().split("T")[0];
-  const targetDate = new Date();
+  const today = dayjs().format("YYYY-MM-DD");
 
   if (filter.range === -1) {
-    targetDate.setDate(targetDate.getDate() - 1);
-    const yesterdayStr = targetDate.toISOString().split("T")[0];
-    return props.startDate === null && props.endDate === yesterdayStr;
+    const yesterday = dayjs().subtract(1, 'day').format("YYYY-MM-DD");
+    return props.startDate === null && props.endDate === yesterday;
   }
 
+  let targetDate;
   if (filter.range === 0) {
-    targetDate.setMonth(targetDate.getMonth() + 1);
-    targetDate.setDate(0); // Último día del mes
+    targetDate = dayjs().endOf('month');
   } else {
-    targetDate.setDate(targetDate.getDate() + filter.range);
+    targetDate = dayjs().add(filter.range, 'day');
   }
-  const targetStr = targetDate.toISOString().split("T")[0];
+  
+  const targetStr = targetDate.format("YYYY-MM-DD");
 
   return props.startDate === today && props.endDate === targetStr;
 };
 
 const applyQuickFilter = (filter) => {
-  const today = new Date().toISOString().split("T")[0];
-  const targetDate = new Date();
+  const today = dayjs().format("YYYY-MM-DD");
 
   if (filter.range === -1) {
-    targetDate.setDate(targetDate.getDate() - 1);
-    const yesterdayStr = targetDate.toISOString().split("T")[0];
+    const yesterday = dayjs().subtract(1, 'day').format("YYYY-MM-DD");
     emit("update:startDate", null);
-    emit("update:endDate", yesterdayStr);
+    emit("update:endDate", yesterday);
     return;
   }
 
+  let targetDate;
   if (filter.range === 0) {
-    targetDate.setMonth(targetDate.getMonth() + 1);
-    targetDate.setDate(0);
+    targetDate = dayjs().endOf('month');
   } else {
-    targetDate.setDate(targetDate.getDate() + filter.range);
+    targetDate = dayjs().add(filter.range, 'day');
   }
 
-  const targetStr = targetDate.toISOString().split("T")[0];
+  const targetStr = targetDate.format("YYYY-MM-DD");
   emit("update:startDate", today);
   emit("update:endDate", targetStr);
 };
