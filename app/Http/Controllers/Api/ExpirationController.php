@@ -38,8 +38,11 @@ class ExpirationController extends Controller
         }
 
         $paginatedResult = $query->paginate($perPage);
-
-        return ExpirationResource::collection($paginatedResult);
+        
+        return response()->json([
+            'data' => ExpirationResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total(),
+        ]);
     }
 
     /**
@@ -161,7 +164,11 @@ class ExpirationController extends Controller
         }
 
         $paginatedResult = $query->paginate($perPage);
-        return ExpiredLogResource::collection($paginatedResult);
+
+        return response()->json([
+            'data' => ExpiredLogResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total(),
+        ]);
     }
 
     /**
