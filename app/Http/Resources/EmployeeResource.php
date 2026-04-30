@@ -24,6 +24,7 @@ class EmployeeResource extends JsonResource
             'saldo_deuda' => (float)($this->saldo_deuda ?? 0),
             'email' => $this->user?->email,
             'role' => $this->user?->role,
+            'role_id' => $this->user?->role_id,
             'user_id' => $this->user_id,
             'photo' => $this->photo,
             'photo_url' => $this->photo_url,

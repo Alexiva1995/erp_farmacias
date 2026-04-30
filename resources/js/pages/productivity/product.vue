@@ -19,7 +19,6 @@ const orderBy = ref();
 
 const searchQuery = ref("");
 const selectedProduct = ref(null);
-const products = ref([]);
 const employees = ref([]);
 
 const isViewDialogVisible = ref(false);
@@ -65,7 +64,7 @@ const fetchEmployees = async () => {
     });
 
     employees.value = response.data.data
-      .filter((emp) => emp.role_id === 3)
+      .filter((emp) => emp.role_id === 3 || emp.role?.id === 3)
       .map((emp) => ({
         title: `${emp.name} ${emp.last_name}`,
         value: emp.id,
@@ -213,7 +212,6 @@ const clearDialogErrors = () => {
     <EmployeeProductsFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedProduct="selectedProduct"
-      :products="products"
       :loading="loading"
       @clear="handleClearFilters"
       @add-assignment="handleAddAssignment"
@@ -241,7 +239,6 @@ const clearDialogErrors = () => {
       v-model="isDialogVisible"
       :employee="currentEmployee"
       :employees="employees"
-      :products="products"
       :errors="dialogErrors"
       @save="handleSaveAssignment"
       @clear-errors="clearDialogErrors"

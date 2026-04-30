@@ -68,6 +68,13 @@ watch(searchProduct, (val) => {
   }, 400);
 });
 
+// Añadir automáticamente al seleccionar
+watch(() => formData.value.new_product_id, (newId) => {
+  if (newId) {
+    handleAddProduct();
+  }
+});
+
 watch(
   [() => props.modelValue, () => props.employee],
   ([newVisible], [oldVisible]) => {
@@ -136,8 +143,10 @@ const handleAddProduct = () => {
         id: product.id,
         name: product.name,
       });
-      formData.value.new_product_id = null;
     }
+    // Siempre limpiar después de intentar añadir (sea éxito o duplicado)
+    formData.value.new_product_id = null;
+    searchProduct.value = "";
   }
 };
 
