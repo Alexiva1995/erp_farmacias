@@ -58,7 +58,8 @@ class Laboratory extends Model
 
     public function suppliers(): BelongsToMany
     {
-        return $this->belongsToMany(Supplier::class, 'suppliers_laboratories');
+        // Tabla pivot correcta según migración: supplier_laboratories (sin 's' al inicio)
+        return $this->belongsToMany(Supplier::class, 'supplier_laboratories');
     }
 
     public function supplierLinks(): HasMany

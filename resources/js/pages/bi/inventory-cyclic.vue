@@ -9,8 +9,7 @@ const loading = ref(false)
 
 const filters = ref({
   startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10),
-  endDate: new Date().toISOString().substr(0, 10),
-  search: ''
+  endDate: new Date().toISOString().substr(0, 10)
 })
 
 const fetchDashboardData = async () => {
@@ -19,8 +18,7 @@ const fetchDashboardData = async () => {
     const response = await axios.get('/bi/inventory-cyclic', {
       params: { 
         start_date: filters.value.startDate, 
-        end_date: filters.value.endDate,
-        search: filters.value.search
+        end_date: filters.value.endDate
       }
     })
     dashboardData.value = response.data
@@ -34,7 +32,6 @@ const fetchDashboardData = async () => {
 const handleClearFilters = () => {
   filters.value.startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10)
   filters.value.endDate = new Date().toISOString().substr(0, 10)
-  filters.value.search = ''
   fetchDashboardData()
 }
 
@@ -129,23 +126,11 @@ const topSurplusOptions = computed(() => ({
 
 <template>
   <VContainer fluid class="analytics-inventory pa-0">
-    <!-- Filtros Estandarizados Estilo Premium -->
+    <!-- Filtros Estandarizados Estilo Premium (Una sola línea) -->
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
-          <VCol cols="12" md="4">
-            <AppTextField
-              v-model="filters.search"
-              placeholder="Buscar producto..."
-              prepend-inner-icon="tabler-search"
-              clearable
-              density="compact"
-              hide-details
-              class="premium-input-compact"
-            />
-          </VCol>
-
-          <VCol cols="12" md="2.5">
+          <VCol cols="12" sm="5" md="3">
             <AppDateTimePicker
               v-model="filters.startDate"
               placeholder="Fecha Inicio"
@@ -156,7 +141,7 @@ const topSurplusOptions = computed(() => ({
             />
           </VCol>
 
-          <VCol cols="12" md="2.5">
+          <VCol cols="12" sm="5" md="3">
             <AppDateTimePicker
               v-model="filters.endDate"
               placeholder="Fecha Fin"
@@ -204,9 +189,9 @@ const topSurplusOptions = computed(() => ({
     </div>
 
     <div v-else-if="dashboardData">
-      <!-- Row 1: KPI Cards Diseño Horizontal -->
-      <VRow class="mb-6">
-        <VCol cols="12" sm="6" md="2.4" v-for="(kpi, idx) in [
+      <!-- Row 1: KPI Cards (5 en línea en desktop, 2 en móvil) -->
+      <VRow class="mb-6" dense>
+        <VCol cols="6" md="2.4" v-for="(kpi, idx) in [
           { 
             title: 'ERI (Precisión)', 
             value: (dashboardData.kpis.eri || 0) + '%', 
@@ -242,16 +227,16 @@ const topSurplusOptions = computed(() => ({
             color: 'success',
             desc: 'Exceso físico'
           }
-        ]" :key="idx">
+        ]" :key="idx" class="pa-1">
           <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardText class="pa-4 d-flex align-center">
-              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="me-4">
-                <VIcon :icon="kpi.icon" size="24" />
+            <VCardText class="pa-3 d-flex align-center">
+              <VAvatar :color="kpi.color" variant="tonal" size="40" rounded="lg" class="me-2">
+                <VIcon :icon="kpi.icon" size="20" />
               </VAvatar>
-              <div>
-                <p class="text-caption text-disabled mb-0 font-weight-bold">{{ kpi.title }}</p>
-                <h3 class="text-h5 font-weight-black">{{ kpi.value }}</h3>
-                <p class="text-super-xs text-disabled mb-0">{{ kpi.desc }}</p>
+              <div class="min-width-0">
+                <p class="text-super-xs text-disabled mb-0 font-weight-bold truncate">{{ kpi.title }}</p>
+                <h3 class="text-h6 font-weight-black leading-tight">{{ kpi.value }}</h3>
+                <p class="text-super-xs text-disabled mb-0 opacity-70 truncate">{{ kpi.desc }}</p>
               </div>
             </VCardText>
           </VCard>
@@ -433,5 +418,15 @@ const topSurplusOptions = computed(() => ({
 .v-theme--dark .bg-surface {
   background-color: rgba(47, 51, 73, 0.7) !important;
   backdrop-filter: blur(10px);
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
 }
 </style>
