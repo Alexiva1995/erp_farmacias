@@ -92,9 +92,10 @@ class LaboratoryManagementController extends Controller
     public function destroy(Laboratory $laboratory): JsonResponse
     {
         // Desvincular productos antes de borrar (dejar laboratory_id en NULL)
-        // Se usa withTrashed() para asegurar que incluso productos borrados suavemente se desvinculen
+        // Se usa withoutGlobalScopes() para asegurar que incluso productos borrados suavemente 
+        // o filtrados por scopes personalizados (como not_deleted) se desvinculen
         // y no causen errores de integridad referencial.
-        $laboratory->products()->withTrashed()->update(['laboratory_id' => null]);
+        $laboratory->products()->withoutGlobalScopes()->update(['laboratory_id' => null]);
 
         // Limpiar relaciones pivot con empleados y proveedores
         $laboratory->employees()->detach();
