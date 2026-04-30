@@ -150,12 +150,7 @@ class OrderActionService
             $unitPriceAtOrder = $validatedData['price_at_product'];
 
             if ($order->currency === 'COP') {
-                $roundedBefore = $unitPriceAtOrder;
-                $unitPriceAtOrder = ceil($unitPriceAtOrder / 100) * 100;
-                Log::info('COP Rounding Applied:', [
-                    'original' => $roundedBefore,
-                    'rounded' => $unitPriceAtOrder
-                ]);
+                $unitPriceAtOrder = $unitPriceAtOrder; // Ya no redondeamos por unidad
             }
 
             $price_usd = $validatedData['price_usd_unit'];
@@ -343,9 +338,6 @@ class OrderActionService
                 // Apply logic
                 if ($discountPct > 0) {
                     $finalUnitPrice = $unitPriceAtOrder * (1 - ($discountPct / 100));
-                    if ($order->currency === 'COP') {
-                        $finalUnitPrice = ceil($finalUnitPrice / 100) * 100;
-                    }
                 }
 
                 // Compute Unit Price Explicitly
@@ -654,7 +646,7 @@ class OrderActionService
         $resourceService = app(ResourceService::class);
         $orderCurrency = strtoupper($order->currency ?? 'USD');
         $orderTotal = (float) $order->total_amount;
-        $tolerance = 0.5; // Tolerancia permitida para discrepancias menores (centavos o redondeos COP)
+        $tolerance = ($orderCurrency === 'COP') ? 100.0 : 0.5; // Tolerancia permitida para discrepancias menores (centavos o redondeos COP)
 
         $rates = [
             'USD' => $resourceService->getExchangeRate('USD') ?: 1,
@@ -736,8 +728,8 @@ class OrderActionService
                         $detail->quantity = $itemData['quantity'];
                     }
                     if ($orderId->currency === 'COP') {
-                        $detail->price = ceil(($itemData['price'] ?? 0) / 100) * 100;
-                        $detail->price_before_discount = ceil(($itemData['price_before_discount'] ?? 0) / 100) * 100;
+                        $detail->price = ($itemData['price'] ?? 0);
+                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
                     } else {
                         $detail->price = ($itemData['price'] ?? 0);
                         $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);

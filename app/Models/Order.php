@@ -117,6 +117,11 @@ class Order extends Model
         $newTotal = $this->details()->select(DB::raw('SUM(price * quantity) as total'))->value('total') ?? 0;
         $totalCost = $this->details()->select(DB::raw('SUM(unit_cost * quantity) as total'))->value('total') ?? 0;
 
+        // Redondeo específico para COP al total (no por unidad) para evitar discrepancias
+        if (strtoupper($this->currency) === 'COP') {
+            $newTotal = ceil($newTotal / 100) * 100;
+        }
+
         $totalUsd = 0;
         if (strtoupper($this->currency) === 'USD') {
             $totalUsd = $newTotal;
