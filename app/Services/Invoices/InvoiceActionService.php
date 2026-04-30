@@ -85,7 +85,7 @@ class InvoiceActionService
                 'exempt_amount' => $data['exempt_amount'] ?? 0,
                 'taxable_base' => $data['taxable_base'] ?? 0,
                 'tax_amount' => $data['tax_amount'] ?? 0,
-                'exchange_rate' => $data['exchange_rate'],
+                'exchange_rate' => $data['currency'] === 'USD' ? 1 : $data['exchange_rate'],
                 'total_amount' => $data['total_amount'],
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],

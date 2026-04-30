@@ -51,7 +51,7 @@ const selectedSupplier = computed(() => {
 
 const translatePaymentMethodType = (type) => {
   const translations = {
-    invoice_date: "Fecha de vencimiento",
+    invoice_date: "Fecha de factura",
     early_payment: "Pronto Pago",
     custom: "Personalizado",
   };
@@ -179,6 +179,7 @@ const calculatePaymentDate = () => {
   if (calculatedDate) {
     formData.value.payment_date = calculatedDate;
   } else {
+    formData.value.payment_date = null;
   }
 };
 
