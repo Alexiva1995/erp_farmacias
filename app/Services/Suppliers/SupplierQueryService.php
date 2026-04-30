@@ -34,7 +34,7 @@ class SupplierQueryService
      */
     private function getBaseQuery(): Builder
     {
-        return $this->supplierRepository->getQuery();
+        return $this->supplierRepository->getQuery()->with('paymentRules');
     }
 
     /**

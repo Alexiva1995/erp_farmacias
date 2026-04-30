@@ -371,6 +371,10 @@ const fetchInvoiceData = async () => {
     if (invoice.supplier_id) {
       await fetchDiscountRules(invoice.supplier_id);
     }
+
+    // Forzar el cálculo de la fecha de pago una vez que todo está cargado
+    await nextTick();
+    calculatePaymentDate();
   } catch (error) {
     console.error("Error al cargar la factura:", error);
     toast.error("No se pudo cargar la información de la factura.");
