@@ -126,4 +126,17 @@ class LaboratoryManagementController extends Controller
 
         return response()->json(['message' => 'Laboratorio eliminado y productos desvinculados']);
     }
+
+    /**
+     * Eliminar grupo de laboratorios.
+     */
+    public function destroyGroup(GroupsLaboratory $group): JsonResponse
+    {
+        // Al borrar el grupo, los laboratorios asociados deben quedar con group_id = null
+        Laboratory::where('group_id', $group->id)->update(['group_id' => null]);
+        
+        $group->delete();
+        
+        return response()->json(['message' => 'Grupo eliminado correctamente']);
+    }
 }

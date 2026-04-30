@@ -112,6 +112,28 @@ const deleteLab = async (id) => {
   }
 }
 
+const deleteGroup = async (id) => {
+  const result = await Swal.fire({
+    title: "¿Eliminar grupo?",
+    text: "Los laboratorios asociados quedarán sin grupo asignado.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'v-btn v-btn--variant-flat bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase ms-3',
+      cancelButton: 'v-btn v-btn--variant-tonal text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
+    }
+  })
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/inventory/laboratories-manage/groups/${id}`)
+      toast.success("Grupo eliminado")
+      fetchGroups(); fetchLabs()
+    } catch (error) { toast.error("Error al eliminar") }
+  }
+}
+
 const openGroupEdit = (group = null) => {
   groupForm.value = group
     ? { id: group.id, name: group.name, laboratory_ids: group.laboratories?.map(l => l.id) || [] }
@@ -195,7 +217,6 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 
               <template #item.actions="{ item }">
                 <div class="d-flex justify-end gap-1 px-2">
-                  <!-- Ver productos filtrados por este laboratorio -->
                   <IconBtn @click="goToProducts(item)" color="info" v-tooltip="'Ver productos'">
                     <VIcon icon="tabler-eye" size="18" />
                   </IconBtn>
@@ -240,25 +261,15 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 
       <!-- ===================== TAB GRUPOS ===================== -->
       <VWindowItem value="groups">
-        <!-- Toolbar de grupos -->
-        <div class="d-flex align-center gap-3 mb-4">
-          <VTextField
-            v-model="groupSearch"
-            placeholder="Buscar grupo..."
-            prepend-inner-icon="tabler-search"
-            density="compact"
-            hide-details
-            variant="solo-filled"
-            flat
-            style="max-width: 320px;"
-          />
-          <VSpacer />
-          <VBtn color="primary" variant="elevated" prepend-icon="tabler-plus" @click="openGroupEdit()">
-            Nuevo Grupo
-          </VBtn>
-        </div>
+        <AppFilterBase
+          v-model:search="groupSearch"
+          :show-add="true"
+          add-button-text="Añadir Grupo"
+          @clear="groupSearch = ''"
+          @add="openGroupEdit()"
+        />
 
-        <VCard class="rounded-lg border shadow-sm overflow-hidden">
+        <VCard class="rounded-lg border shadow-sm overflow-hidden mt-4">
           <!-- Desktop -->
           <div class="d-none d-md-block">
             <VDataTable
@@ -276,6 +287,9 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                 <div class="d-flex justify-end gap-1 px-2">
                   <IconBtn @click="openGroupEdit(item)" color="primary" v-tooltip="'Editar grupo'">
                     <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                  <IconBtn @click="deleteGroup(item.id)" color="error" v-tooltip="'Eliminar grupo'">
+                    <VIcon icon="tabler-trash" size="18" />
                   </IconBtn>
                 </div>
               </template>
@@ -298,7 +312,10 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                     {{ group.laboratories?.length ?? 0 }} labs
                   </VChip>
                 </div>
-                <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openGroupEdit(group)" />
+                <div class="d-flex gap-1">
+                  <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openGroupEdit(group)" />
+                  <VBtn icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteGroup(group.id)" />
+                </div>
               </div>
             </VCard>
             <div v-if="!filteredGroups.length" class="text-center pa-6 text-disabled">

@@ -158,6 +158,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/groups', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'groups']);
         Route::post('/', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'store']);
         Route::post('/groups', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'storeGroup']);
+        Route::delete('/groups/{group}', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'destroyGroup']);
         Route::delete('/{laboratory}', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'destroy']);
     });
     Route::get("/origins", [ResourceController::class, "getOrigins"]);
