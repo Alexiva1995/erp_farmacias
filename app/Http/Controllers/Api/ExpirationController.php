@@ -34,7 +34,11 @@ class ExpirationController extends Controller
         $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
-            return ExpirationResource::collection($query->get());
+            $results = $query->get();
+            return response()->json([
+                'data' => ExpirationResource::collection($results),
+                'total' => $results->count(),
+            ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
@@ -160,7 +164,11 @@ class ExpirationController extends Controller
         $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
-            return ExpiredLogResource::collection($query->get());
+            $results = $query->get();
+            return response()->json([
+                'data' => ExpiredLogResource::collection($results),
+                'total' => $results->count(),
+            ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
