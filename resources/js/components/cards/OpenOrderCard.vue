@@ -117,6 +117,7 @@ const emit = defineEmits([
   "prescription-file-selected",
   "company-discount-selected",
   "add-pack",
+  "edit-cliente",
 ]);
 
 const discountOptions = computed(() => {
@@ -691,6 +692,19 @@ const getIva = (product, currency) => {
             </h2>
             <div class="d-flex align-center gap-2">
               <span class="text-caption font-weight-bold text-primary truncate">{{ clientName }}</span>
+              <VBtn
+                v-if="props.cliente"
+                icon="tabler-edit"
+                variant="text"
+                color="primary"
+                size="x-small"
+                class="ms-1"
+                density="compact"
+                @click="emit('edit-cliente', props.cliente)"
+              >
+                <VIcon size="14">tabler-edit</VIcon>
+                <VTooltip activator="parent" location="top">Editar datos de cliente</VTooltip>
+              </VBtn>
               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">{{ Identidad }}</span>
             </div>
           </div>
@@ -906,12 +920,17 @@ const getIva = (product, currency) => {
                   <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
                     {{ (product.title || '').toUpperCase() }}
                   </h3>
-                  <div class="d-flex align-center gap-1 text-super-xs mt-1">
-                    <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ product.active_ingredient || '—' }}</span>
-                    <span class="text-disabled mx-1">|</span>
-                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                      {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
-                    </span>
+                  <div 
+                    class="d-flex flex-column text-super-xs mt-1"
+                    style="white-space: pre-wrap;"
+                  >
+                    <span class="text-disabled">{{ product.active_ingredient || '—' }}</span>
+                    <template v-if="!product.pack_id">
+                      <span class="text-disabled mx-1">|</span>
+                      <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                        {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
+                      </span>
+                    </template>
                   </div>
 
                   <!-- Desglose de Precios Inline (Inmediatamente después del título) -->
@@ -977,7 +996,7 @@ const getIva = (product, currency) => {
     <VCardText class="pa-3 bg-grey-lighten-5 border-t mt-4">
        <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-2">
           <!-- Desglose Horizontal de Totales -->
-          <div class="d-flex align-center gap-4 flex-grow-1 overflow-x-auto py-1">
+          <div class="d-flex align-center gap-4 flex-grow-1 flex-wrap py-1">
              <!-- Subtotal -->
              <div class="d-flex flex-column">
                 <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">Subtotal</span>

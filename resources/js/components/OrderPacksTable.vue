@@ -109,7 +109,7 @@ watch(
       :items="props.packs"
       :items-length="props.totalPacks"
       :loading="props.loading"
-      class="text-no-wrap"
+      class="premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
      <!-- <template #item.products_count="{ item }">

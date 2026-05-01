@@ -6,6 +6,7 @@ import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
 import { themeConfig } from "@themeConfig";
 
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import axios from "@/plugins/axios";
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 

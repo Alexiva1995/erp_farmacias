@@ -195,7 +195,7 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
-      class="text-no-wrap premium-table d-none d-md-block"
+      class="premium-table d-none d-md-block"
       :row-props="(data) => ({ class: getRowClass(data.item) })"
       @update:options="handleUpdateOptions"
       hover
@@ -240,12 +240,27 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
             >
               Expira (-{{ item.discount_percentage }}%)
             </VChip>
+            <VChip
+              v-if="item.discount_type && ['individual', 'category'].includes(item.discount_type) && item.discount_percentage > 0"
+              color="success"
+              size="x-small"
+              class="ms-1 font-weight-black uppercase"
+              label
+            >
+              Oferta (-{{ item.discount_percentage }}%)
+            </VChip>
           </span>
-          <span class="text-super-xs mt-1">
+          <div
+            class="text-super-xs mt-1"
+            :class="item.item_type === 'pack' ? 'd-flex flex-column' : 'd-flex align-center'"
+            style="white-space: pre-wrap;"
+          >
             <span class="text-disabled font-weight-medium text-uppercase">{{ item.active_ingredient || '—' }}</span>
-            <span class="text-disabled mx-1">|</span>
-            <span class="text-primary font-weight-black text-uppercase">{{ item.laboratory_name || 'Genérico' }}</span>
-          </span>
+            <template v-if="item.item_type !== 'pack'">
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase">{{ item.laboratory_name || 'Genérico' }}</span>
+            </template>
+          </div>
         </div>
       </template>
 
@@ -384,12 +399,18 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
               {{ item.name }}
             </h3>
             
-            <div class="d-flex align-center gap-1 text-super-xs mt-1">
-              <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '—' }}</span>
-              <span class="text-disabled mx-1">|</span>
-              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                {{ item.laboratory_name || 'Genérico' }}
-              </span>
+            <div 
+              class="text-super-xs mt-1" 
+              :class="item.item_type === 'pack' ? 'd-flex flex-column gap-1' : 'd-flex align-center'"
+              style="white-space: pre-wrap;"
+            >
+              <span class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
+              <template v-if="item.item_type !== 'pack'">
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.laboratory_name || 'Genérico' }}
+                </span>
+              </template>
             </div>
             
             <div class="d-flex gap-1 mb-3">
@@ -403,6 +424,15 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
                 class="font-weight-black"
               >
                 EXPIRA (-{{ item.discount_percentage }}%)
+              </VChip>
+              <VChip
+                v-if="item.discount_type && ['individual', 'category'].includes(item.discount_type) && item.discount_percentage > 0"
+                color="success"
+                size="x-small"
+                variant="flat"
+                class="font-weight-black"
+              >
+                OFERTA (-{{ item.discount_percentage }}%)
               </VChip>
             </div>
 

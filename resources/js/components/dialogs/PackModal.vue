@@ -41,6 +41,7 @@ const formData = ref({
 
 const formErrors = ref({});
 const isSaving = ref(false);
+const isLoadingData = ref(false);
 const availableProducts = ref([]);
 const loadingProducts = ref(false);
 const productSearchQuery = ref("");
@@ -416,6 +417,44 @@ const loadPackData = async (packId) => {
   } catch (error) {
     console.error("Error loading pack data:", error);
     toast.error("Error al cargar los datos del pack");
+  } finally {
+    isLoadingData.value = false;
+  }
+};
+
+// Carga rápida desde props para evitar modal vacío
+const quickLoadFromProps = () => {
+  if (!props.packData) return;
+  const pack = props.packData;
+  
+  formData.value = {
+    id: pack.id,
+    name: pack.name,
+    products_count: pack.products_count || (pack.pack_config ? Object.keys(pack.pack_config).length : 0),
+    max_quantity: pack.max_quantity,
+    max_sale_date: formatDateForInput(pack.max_sale_date),
+    is_active: pack.is_active,
+    pack_products: [],
+    total_price: pack.total_price,
+  };
+
+  if (pack.products_info && pack.pack_config) {
+    const configEntries = Object.entries(pack.pack_config);
+    formData.value.pack_products = configEntries.map(([productId, config]) => {
+      const info = pack.products_info.find(i => i.product_id == productId);
+      return {
+        product: info ? {
+          id: info.product_id,
+          name: info.product_name,
+          sale_price: info.sale_price_original || info.sale_price,
+          stock: info.product_info?.stock || 0,
+          barcode: info.product_info?.barcode || ""
+        } : null,
+        quantity: config.quantity || 1,
+        discount_percentage: config.discount_percentage || 0,
+        calculated_price: (config.sale_price || 0) * (config.quantity || 1),
+      };
+    });
   }
 };
 
@@ -424,14 +463,27 @@ watch(
   () => props.isDialogVisible,
   async (newVal) => {
     if (newVal) {
-      resetForm(); // Limpiar siempre antes de abrir
-      await loadAvailableProducts();
+      resetForm(); 
+      isLoadingData.value = true;
+      
+      const promises = [];
+      
+      // Si no tenemos productos cargados o es una búsqueda nueva, cargamos
+      promises.push(loadAvailableProducts());
+
       if (props.packData && props.packData.id) {
-        await loadPackData(props.packData.id);
+        quickLoadFromProps();
+        promises.push(loadPackData(props.packData.id));
       } else {
-        await nextTick();
         initializePackProducts();
+        isLoadingData.value = false;
       }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+      
+      isLoadingData.value = false;
     }
   }
 );
@@ -477,8 +529,28 @@ watch(
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-3 pa-sm-4">
+      <VCardText class="pa-0 bg-light position-relative">
+        <!-- Overlay de Carga -->
+        <VOverlay
+          :model-value="isLoadingData"
+          contained
+          persistent
+          class="align-center justify-center"
+          scrim="white"
+          opacity="0.7"
+        >
+          <div class="d-flex flex-column align-center">
+            <VProgressCircular
+              indeterminate
+              color="primary"
+              size="64"
+              width="6"
+            />
+            <span class="mt-4 font-weight-black text-primary uppercase letter-spacing-1">Cargando detalles del pack...</span>
+          </div>
+        </VOverlay>
+
+        <div class="pa-3 pa-sm-4" :style="{ opacity: isLoadingData ? 0.3 : 1, pointerEvents: isLoadingData ? 'none' : 'auto' }">
           <!-- Información del Pack -->
           <div class="d-flex align-center gap-2 mb-4">
             <div class="header-indicator primary shadow-sm"></div>

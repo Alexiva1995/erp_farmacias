@@ -220,7 +220,7 @@ class OrderQueryService
                 DB::raw("(
                 SELECT GROUP_CONCAT(
                     CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') 
-                    SEPARATOR ' | '
+                    SEPARATOR '\n'
                 )
                 FROM products p
                 LEFT JOIN laboratories l ON p.laboratory_id = l.id
@@ -244,6 +244,7 @@ class OrderQueryService
                 DB::raw('NULL as discount_percentage'),
                 DB::raw('NULL as discount_type'),
             ])->where('product_packs.is_active', true)
+            ->whereNull('product_packs.deleted_at')
             ->where(function ($q) {
                 $q->whereNull('product_packs.max_sale_date')
                     ->orWhere('product_packs.max_sale_date', '>=', now()->toDateString());
@@ -502,11 +503,14 @@ class OrderQueryService
 
     private function applySortingProduct($query, ?string $sortBy, string $orderBy)
     {
-        // Siempre ordenar primero por item_type para que los packs aparezcan primero
-        // Usamos CASE para que 'pack' = 0 y 'product' = 1, así los packs van primero
-        $query->orderByRaw("CASE WHEN item_type = 'pack' THEN 0 ELSE 1 END ASC");
+        // Prioridad de visualización: Packs > Productos con Oferta > Resto
+        $query->orderByRaw("CASE 
+            WHEN item_type = 'pack' THEN 0 
+            WHEN discount_percentage > 0 THEN 1 
+            ELSE 2 
+        END ASC");
 
-        // Priorizar SIEMPRE los productos que tienen mayor descuento (petición del TPV)
+        // Dentro de cada grupo, priorizar el porcentaje de descuento más alto
         $query->orderBy('discount_percentage', 'desc');
 
         // Si no hay orden especificado, ordenamos por el nombre normalizado

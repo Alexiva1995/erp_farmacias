@@ -246,14 +246,6 @@ class ProductPackController extends Controller
                 ], 404);
             }
 
-            // Verificar si el pack tiene órdenes asociadas
-            if ($pack->orderDetails()->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede eliminar el pack porque tiene órdenes asociadas'
-                ], 422);
-            }
-
             $pack->delete();
 
             DB::commit();

@@ -40,7 +40,7 @@ const totalProduct = ref(0);
 const loading = ref(false);
 
 const page = ref(1);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(25);
 const sortBy = ref();
 const orderBy = ref();
 
@@ -1232,9 +1232,13 @@ const verifyClient = async (identification) => {
     } else {
       const clientData = responseData.client;
 
-      // NUEVO: Si no tiene teléfono, abrir modal para completar datos
-      if (!clientData.phone) {
-        toast.warning("El cliente no tiene teléfono registrado. Por favor, complételo.");
+      // NUEVO: Si no tiene teléfono o es inválido (solo ceros o longitud insuficiente), abrir modal
+      const isInvalidPhone = !clientData.phone || 
+                            clientData.phone.trim().length < 10 || 
+                            /^0+$/.test(clientData.phone.trim());
+
+      if (isInvalidPhone) {
+        toast.warning("El cliente no tiene un teléfono válido. Por favor, complételo.");
         newClientFormData.value = {
           ...newClientFormData.value,
           ...clientData,
@@ -1398,6 +1402,16 @@ const handleSaveNewClient = async (formData) => {
     let errores = { ...error.response.data.data.errors };
     cargarErrores(errores);
   }
+};
+
+const handleEditCliente = (client) => {
+  newClientFormData.value = {
+    ...newClientFormData.value,
+    ...client,
+    identification: client.identification,
+    identification_type: client.identification_type
+  };
+  showRegisterClientModal.value = true;
 };
 
 const handleCloseRegisterModal = () => {
@@ -3085,6 +3099,7 @@ onUnmounted(() => {
         @company-discount-selected="handleCompanyDiscountSelected"
         :global-discount="currentGlobalDiscountDetails || null"
         @add-pack="handleAddPackToOrder"
+        @edit-cliente="handleEditCliente"
         :is-special-taxpayer="isSpecialTaxpayer || false"
       />
     </div>
