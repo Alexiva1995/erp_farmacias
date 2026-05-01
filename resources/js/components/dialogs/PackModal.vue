@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   isDialogVisible: {
@@ -293,6 +294,9 @@ const savePack = async () => {
 
     emit("pack-saved", packData);
     
+    // Resetear isSaving para permitir re-intentos si el padre no cierra el modal
+    isSaving.value = false;
+    
   } catch (error) {
     console.error("Error saving pack:", error);
     const errorMessage = error.response?.data?.message || error.message || "Error al guardar el pack";
@@ -310,8 +314,8 @@ const savePack = async () => {
 };
 
 const closeModal = () => {
-  if (isSaving.value || props.loading) {
-    return; // No cerrar si está guardando
+  if (props.loading) {
+    return; // Solo bloquear si hay una carga activa del servidor
   }
   emit("update:isDialogVisible", false);
   emit("modal-closed");

@@ -58,11 +58,11 @@ const fetchPacks = async () => {
       totalPacks.value = response.data.total;
     } else {
       console.error("Error obteniendo los packs:", response.data.message);
-      toast.error("Error al cargar los packs", "error");
+      toast.error("Error al cargar los packs");
     }
   } catch (error) {
     console.error("Error obteniendo los packs:", error);
-    toast.error("Error al cargar los packs", "error");
+    toast.error("Error al cargar los packs");
   } finally {
     loadingPack.value = false;
   }
@@ -193,10 +193,10 @@ const handleDeletePack = async (pack) => {
         toast.success("Pack eliminado exitosamente");
         fetchPacks();
       } else {
-        toast.error(response.message, "error");
+        toast.error(response.message);
       }
     } catch (error) {
-      toast.error("Error al eliminar el pack", "error");
+      toast.error("Error al eliminar el pack");
     }
   }
 };
