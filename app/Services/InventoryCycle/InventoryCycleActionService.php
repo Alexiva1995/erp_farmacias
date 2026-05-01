@@ -195,9 +195,17 @@ class InventoryCycleActionService
     {
         $isCorrection = isset($data['corrected_quantity']);
         $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $productCount->counted_quantity;
-        $finalDiscrepancy = $finalQuantity - $productCount->system_quantity;
 
         $product = $productCount->product;
+        
+        // Recalcular stock actual para que la discrepancia final refleje la realidad
+        // al momento de la verificación, no el stock viejo del conteo inicial.
+        $realCurrentStock = (int) $product->lots()->sum('quantity');
+        $finalDiscrepancy = $finalQuantity - $realCurrentStock;
+        
+        // Sincronizar system_quantity
+        $productCount->system_quantity = $realCurrentStock;
+
         $distributionsCreated = false;
 
         if (!empty($data['updated_lots'])) {
@@ -491,8 +499,16 @@ class InventoryCycleActionService
     {
         $isCorrection = isset($data['corrected_quantity']);
         $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $invoiceCount->counted_quantity;
-        $finalDiscrepancy = $finalQuantity - $invoiceCount->system_quantity;
+        
         $product = $invoiceCount->product;
+
+        // Recalcular stock actual al momento de la verificación
+        $realCurrentStock = (int) $product->lots()->sum('quantity');
+        $finalDiscrepancy = $finalQuantity - $realCurrentStock;
+        
+        // Sincronizar system_quantity
+        $invoiceCount->system_quantity = $realCurrentStock;
+
         $distributionsCreated = false;
 
         if (!empty($data['updated_lots'])) {
@@ -685,12 +701,20 @@ class InventoryCycleActionService
         });
     }
 
-        private function approveOrCorrectSaleCount(SaleCount $saleCount, array $data): array
+    private function approveOrCorrectSaleCount(SaleCount $saleCount, array $data): array
     {
         $isCorrection = isset($data['corrected_quantity']);
         $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $saleCount->counted_quantity;
-        $finalDiscrepancy = $finalQuantity - $saleCount->system_quantity;
+        
         $product = $saleCount->product;
+
+        // Recalcular stock actual al momento de la verificación
+        $realCurrentStock = (int) $product->lots()->sum('quantity');
+        $finalDiscrepancy = $finalQuantity - $realCurrentStock;
+        
+        // Sincronizar system_quantity
+        $saleCount->system_quantity = $realCurrentStock;
+
         $distributionsCreated = false;
 
         if (!empty($data['updated_lots'])) {

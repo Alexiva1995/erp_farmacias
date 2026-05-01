@@ -23,6 +23,7 @@ const addPackModal = ref(false);
 const viewPackModal = ref(false);
 const packData = ref(null);
 const selectedPack = ref(null);
+const savingPack = ref(false);
 
 // Funciones API
 const fetchPacks = async () => {
@@ -202,6 +203,7 @@ const handleDeletePack = async (pack) => {
 
 // Guardar un pack
 const handlePackSaved = async (packData) => {
+  savingPack.value = true;
   try {
     console.log("Guardando pack con datos:", packData);
     
@@ -257,6 +259,8 @@ const handlePackSaved = async (packData) => {
     } else {
       toast.error(errorMessage);
     }
+  } finally {
+    savingPack.value = false;
   }
 };
 
@@ -308,6 +312,7 @@ onMounted(() => {
       <PackModal
         v-model:is-dialog-visible="addPackModal"
         :pack-data="packData"
+        :loading="savingPack"
         @modal-closed="closePackModal"
         @pack-saved="handlePackSaved"
       />

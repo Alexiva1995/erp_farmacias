@@ -224,6 +224,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\ExpiryReportRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Repositories\GeneralSettingRepositoryInterface::class,
+            \App\Repositories\Eloquent\GeneralSettingRepository::class
+        );
+
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
         $this->app->bind(Expenses::class, ExpensesServices::class);

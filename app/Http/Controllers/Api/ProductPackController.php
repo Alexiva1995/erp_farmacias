@@ -76,7 +76,7 @@ class ProductPackController extends Controller
                 'pack_config' => 'required|array',
                 'total_price' => 'required|numeric|min:0',
                 'max_quantity' => 'nullable|integer|min:1',
-                'max_sale_date' => 'nullable|date|after:today',
+                'max_sale_date' => 'nullable|date|after_or_equal:today',
                 'is_active' => 'boolean',
             ], [
                 'name.required' => 'El nombre del pack es obligatorio.',
@@ -84,7 +84,7 @@ class ProductPackController extends Controller
                 'total_price.required' => 'El precio total es obligatorio.',
                 'total_price.min' => 'El precio total no puede ser negativo.',
                 'max_quantity.min' => 'La cantidad máxima debe ser al menos 1.',
-                'max_sale_date.after' => 'La fecha máxima de venta debe ser posterior a hoy.',
+                'max_sale_date.after_or_equal' => 'La fecha máxima de venta debe ser hoy o una fecha posterior.',
             ]);
 
             if ($validator->fails()) {
@@ -180,7 +180,7 @@ class ProductPackController extends Controller
                 'pack_config' => 'sometimes|required|array',
                 'total_price' => 'sometimes|required|numeric|min:0',
                 'max_quantity' => 'nullable|integer|min:1',
-                'max_sale_date' => 'nullable|date|after:today',
+                'max_sale_date' => 'nullable|date|after_or_equal:today',
                 'is_active' => 'boolean',
             ]);
 

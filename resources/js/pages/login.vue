@@ -5,15 +5,21 @@ import authV1TopShape from "@images/svg/auth-v1-top-shape.svg?raw";
 import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
 import { themeConfig } from "@themeConfig";
 
-import axios from "@/plugins/axios";
-import { ref } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+
+const brandingStore = useBrandingStore();
 
 definePage({
   meta: {
     layout: "blank",
     public: true,
   },
+});
+
+onMounted(async () => {
+  await brandingStore.fetchSettings();
 });
 
 const form = ref({
@@ -114,7 +120,16 @@ const on2FAVerified = () => {
           <VCardTitle>
             <RouterLink to="/">
               <div class="app-logo">
-                <VNodeRenderer :nodes="themeConfig.app.logo" />
+                <img
+                  v-if="brandingStore.settings.app_logo"
+                  :src="brandingStore.settings.app_logo"
+                  alt="logo"
+                  style="max-height: 100px; max-width: 100%;"
+                >
+                <VNodeRenderer
+                  v-else
+                  :nodes="themeConfig.app.logo"
+                />
               </div>
             </RouterLink>
           </VCardTitle>

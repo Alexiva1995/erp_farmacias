@@ -215,12 +215,12 @@ initializeCurrentMonth()
   white-space: nowrap;
 }
 
-/* Vuexy elevation styles */
+/* Branding elevation styles */
 .elevation-2 {
   box-shadow: 0 3px 6px rgba(0, 0, 0, 10%), 0 3px 6px rgba(0, 0, 0, 5%) !important;
 }
 
-/* Vuexy background utility classes */
+/* Branding background utility classes */
 .bg-light-primary {
   background-color: rgba(var(--v-theme-primary), 0.12) !important;
 }

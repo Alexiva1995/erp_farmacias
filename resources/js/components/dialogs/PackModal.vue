@@ -13,6 +13,10 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -35,7 +39,7 @@ const formData = ref({
 });
 
 const formErrors = ref({});
-const loading = ref(false);
+const isSaving = ref(false);
 const availableProducts = ref([]);
 const loadingProducts = ref(false);
 const productSearchQuery = ref("");
@@ -266,7 +270,7 @@ const savePack = async () => {
     return;
   }
 
-  loading.value = true;
+  isSaving.value = true;
   try {
     // Calcular precio total antes de preparar datos
     calculateTotalPrice();
@@ -301,12 +305,12 @@ const savePack = async () => {
         formErrors.value[key] = Array.isArray(errors[key]) ? errors[key][0] : errors[key];
       });
     }
-    loading.value = false;
+    isSaving.value = false;
   }
 };
 
 const closeModal = () => {
-  if (loading.value) {
+  if (isSaving.value || props.loading) {
     return; // No cerrar si está guardando
   }
   emit("update:isDialogVisible", false);
@@ -327,6 +331,7 @@ const resetForm = () => {
   };
   formErrors.value = {};
   productSearchQuery.value = "";
+  isSaving.value = false;
 };
 
 // Cargar datos del pack para edición
@@ -352,7 +357,22 @@ const loadPackData = async (packId) => {
         const configEntries = Object.entries(pack.pack_config);
         
         formData.value.pack_products = configEntries.map(([productId, config]) => {
-          const product = availableProducts.value.find(p => p.id == productId);
+          // Primero buscar en availableProducts
+          let product = availableProducts.value.find(p => p.id == productId);
+          
+          // Si no está, buscar en products_info del pack
+          if (!product && pack.products_info) {
+            const info = pack.products_info.find(i => i.product_id == productId);
+            if (info) {
+              product = {
+                id: info.product_id,
+                name: info.product_name,
+                sale_price: info.sale_price_original || info.sale_price, // El original si existiera, sino el del pack
+                stock: info.product_info?.stock || 0,
+                barcode: info.product_info?.barcode || ""
+              };
+            }
+          }
           
           return {
             product: product || null,
@@ -362,7 +382,7 @@ const loadPackData = async (packId) => {
           };
         });
 
-        // Si algún producto no se encontró, intentar recargar la lista
+        // Intentar recargar la lista de todos modos para tener la info completa si faltaba
         if (formData.value.pack_products.some(p => !p.product)) {
           loadAvailableProducts().then(() => {
             configEntries.forEach(([productId, config], index) => {
@@ -616,7 +636,7 @@ watch(
             <VBtn color="secondary" variant="tonal" class="rounded-lg font-weight-black px-6" @click="closeModal">
               CANCELAR
             </VBtn>
-            <VBtn color="primary" variant="flat" class="rounded-lg font-weight-950 shadow-primary px-8" @click="savePack" :loading="loading">
+            <VBtn color="primary" variant="flat" class="rounded-lg font-weight-950 shadow-primary px-8" @click="savePack" :loading="isSaving || props.loading">
               <VIcon start>tabler-device-floppy</VIcon>
               {{ isEditing ? "ACTUALIZAR" : "CREAR PACK" }}
             </VBtn>

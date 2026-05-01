@@ -3,38 +3,51 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\GeneralSetting;
-use Illuminate\Http\Request;
+use App\Http\Requests\Configuration\UpdateGeneralSettingRequest;
+use App\Http\Resources\Configuration\GeneralSettingResource;
+use App\Services\Configuration\GeneralSettingService;
+use Illuminate\Http\JsonResponse;
 
 class GeneralSettingController extends Controller
 {
-    public function index()
+    /**
+     * @var GeneralSettingService
+     */
+    protected $service;
+
+    /**
+     * Constructor del controlador.
+     *
+     * @param GeneralSettingService $service
+     */
+    public function __construct(GeneralSettingService $service)
     {
-        return GeneralSetting::firstOrCreate([], [
-            'fiscal_mode' => 'demo',
-            'special_taxpayer_status' => 'desactivada',
-            'all_foreign_sales_spe' => false
-        ]);
+        $this->service = $service;
     }
 
-    public function store(Request $request)
+    /**
+     * Obtener la configuración general.
+     *
+     * @return GeneralSettingResource
+     */
+    public function index(): GeneralSettingResource
     {
-        $request->validate([
-            'fiscal_mode' => 'required|string|in:demo,activa',
-            'special_taxpayer_status' => 'required|string|in:activa,desactivada',
-            'all_foreign_sales_spe' => 'nullable|boolean',
-        ]);
-        $setting = GeneralSetting::first();
-        if ($setting) {
-            $setting->update($request->all());
-        } else {
-            $setting = GeneralSetting::create($request->all());
-        }
+        return new GeneralSettingResource($this->service->getSettings());
+    }
+
+    /**
+     * Guardar o actualizar la configuración general.
+     *
+     * @param UpdateGeneralSettingRequest $request
+     * @return JsonResponse
+     */
+    public function store(UpdateGeneralSettingRequest $request): JsonResponse
+    {
+        $setting = $this->service->updateSettings($request->validated());
 
         return response()->json([
             'message' => 'Configuración guardada correctamente',
-            'data' => $setting
+            'data' => new GeneralSettingResource($setting)
         ]);
     }
-
 }

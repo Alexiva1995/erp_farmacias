@@ -13,6 +13,10 @@ export default [
         title: 'General',
         to: 'configuration',
       },
+      {
+        title: 'Personalización',
+        to: 'configuration-branding',
+      },
     ],
   }, 
 ]

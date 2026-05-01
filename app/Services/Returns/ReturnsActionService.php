@@ -27,43 +27,38 @@ class ReturnsActionService
     public function searchOrdersReturns(string $searchTerm, array $options): Builder
     {
         try {
-            $searchTerm = trim($searchTerm);
-            if ($searchTerm === '') {
-                return Order::query()->whereRaw('1 = 0');
-            }
+            // Normalizar el término de búsqueda para identificación (quitar guiones y puntos)
+            \Log::info('Buscando devoluciones para:', ['term' => $searchTerm]);
+            $normalizedSearch = preg_replace('/[^A-Za-z0-9]/', '', $searchTerm);
 
             // Órdenes de las últimas 48 horas para devoluciones
-            $query = Order::where('order_date', '>=', Carbon::now()->subHours(48))
+            // Usamos NOW() de MySQL para evitar discrepancias de zona horaria entre PHP y DB
+            $query = Order::whereRaw('order_date >= (NOW() - INTERVAL 48 HOUR)')
                 ->where('status', Order::COMPLETED)
-                ->with('client', 'details.product.laboratory')
-                ->where(function ($q) use ($searchTerm) {
-                    // Búsqueda por ID de orden (si es numérico o contiene el número)
-                    if (is_numeric($searchTerm)) {
+                ->with(['client', 'details.product.laboratory', 'returns'])
+                ->where(function ($q) use ($searchTerm, $normalizedSearch) {
+                    // 1. Búsqueda por ID de orden exacto
+                    if (is_numeric($searchTerm) && strlen($searchTerm) < 10) {
                         $q->where('id', $searchTerm);
                     }
 
-                    // Búsqueda por cédula/identificación del cliente
-                    $q->orWhereHas('client', function ($sub) use ($searchTerm) {
+                    // 2. Búsqueda por identificación del cliente (Normalizada)
+                    $q->orWhereHas('client', function ($sub) use ($searchTerm, $normalizedSearch) {
                         $sub->where('identification', 'like', "%{$searchTerm}%")
-                            ->orWhereRaw('CONCAT(COALESCE(identification_type,""), COALESCE(identification,"")) LIKE ?', ["%{$searchTerm}%"]);
+                            ->orWhere('identification', 'like', "%{$normalizedSearch}%")
+                            // Comparar contra identificación normalizada en BD (quitando guiones/puntos)
+                            ->orWhereRaw("REPLACE(REPLACE(identification, '.', ''), '-', '') LIKE ?", ["%{$normalizedSearch}%"])
+                            // Comparar contra concatenación completa normalizada
+                            ->orWhereRaw("REPLACE(REPLACE(CONCAT(COALESCE(identification_type,''), COALESCE(identification,'')), '-', ''), '.', '') LIKE ?", ["%{$normalizedSearch}%"]);
                     });
 
-                    // Búsqueda por nombre del cliente
+                    // 3. Búsqueda por nombre del cliente
                     $q->orWhereHas('client', function ($sub) use ($searchTerm) {
                         $sub->where('name', 'like', "%{$searchTerm}%")
                             ->orWhere('last_name', 'like', "%{$searchTerm}%")
                             ->orWhereRaw('CONCAT(COALESCE(name,""), " ", COALESCE(last_name,"")) LIKE ?', ["%{$searchTerm}%"]);
                     });
                 });
-
-            $hasReturn = (clone $query);
-            if ($hasReturn->count() == 1) {
-                if ($hasReturn->whereHas('returns')->exists()) {
-                    throw new Exception('Esta orden ya tiene una devolución registrada y no puede ser modificada.');
-                }
-            }
-
-            $query->whereDoesntHave('returns');
 
             if (isset($options['sortBy']) && !empty($options['sortBy'])) {
                 $sortBy = $options['sortBy'];
@@ -72,6 +67,13 @@ class ReturnsActionService
             } else {
                 $query->orderBy('order_date', 'desc');
             }
+
+            \Log::info('SQL de búsqueda devoluciones:', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings(),
+                'now' => \Carbon\Carbon::now()->toDateTimeString(),
+                'sub48' => \Carbon\Carbon::now()->subHours(48)->toDateTimeString()
+            ]);
 
             return $query;
         } catch (\Exception $e) {

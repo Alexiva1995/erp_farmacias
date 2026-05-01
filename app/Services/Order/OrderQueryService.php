@@ -506,6 +506,9 @@ class OrderQueryService
         // Usamos CASE para que 'pack' = 0 y 'product' = 1, así los packs van primero
         $query->orderByRaw("CASE WHEN item_type = 'pack' THEN 0 ELSE 1 END ASC");
 
+        // Priorizar SIEMPRE los productos que tienen mayor descuento (petición del TPV)
+        $query->orderBy('discount_percentage', 'desc');
+
         // Si no hay orden especificado, ordenamos por el nombre normalizado
         if (empty($sortBy)) {
             return $query->orderBy('name', 'asc');

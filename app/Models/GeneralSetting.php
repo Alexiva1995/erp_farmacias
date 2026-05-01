@@ -14,6 +14,13 @@ class GeneralSetting extends Model
         'rif',
         'address',
         'income_statement_reset_date',
+        'app_name',
+        'app_rif',
+        'app_logo',
+        'app_favicon',
+        'primary_color',
+        'secondary_color',
+        'footer_text',
     ];
 
     protected $casts = [

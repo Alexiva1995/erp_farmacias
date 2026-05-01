@@ -1,8 +1,10 @@
 <script setup>
 import navItems from "@/navigation/vertical";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { themeConfig } from "@themeConfig";
 import { computed } from "vue";
+import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
 
 // Components
 import Footer from "@/layouts/components/Footer.vue";
@@ -14,6 +16,7 @@ import NavBarI18n from "@core/components/I18n.vue";
 import { VerticalNavLayout } from "@layouts";
 
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
 
 // Procesar el menú dinámicamente según el rol del usuario
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
@@ -68,6 +71,35 @@ const processedNavItems = computed(() => {
 <template>
   <template v-if="authStore.isLoaded">
     <VerticalNavLayout :nav-items="processedNavItems">
+      <!-- 👉 vertical-nav-header -->
+      <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
+        <RouterLink
+          to="/"
+          class="app-logo d-flex align-center gap-x-3"
+        >
+          <img
+            v-if="brandingStore.settings.app_logo"
+            :src="brandingStore.settings.app_logo"
+            alt="logo"
+            height="30"
+          >
+          <VNodeRenderer
+            v-else
+            :nodes="themeConfig.app.logo"
+          />
+
+          <h1 class="app-title font-weight-bold leading-normal text-xl text-capitalize">
+            {{ brandingStore.settings.app_name || themeConfig.app.title }}
+          </h1>
+        </RouterLink>
+
+        <IconBtn
+          class="d-block d-lg-none"
+          @click="toggleIsOverlayNavActive(false)"
+        >
+          <VIcon icon="tabler-x" />
+        </IconBtn>
+      </template>
       <!-- 👉 navbar -->
       <template #navbar="{ toggleVerticalOverlayNavActive }">
         <div class="d-flex h-100 align-center">

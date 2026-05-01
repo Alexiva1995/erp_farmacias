@@ -182,7 +182,7 @@ const paymentMethodsByCurrency = {
 
 const exchangeRates = ref({});
 
-const isCredit = (value) => value === "credit" || value === "credit_card";
+const isCredit = (value) => value === "credit";
 
 const continueButtonText = computed(() => {
   return currentProgress.value === 100 ? "Finalizar" : "Continuar";
@@ -1634,6 +1634,10 @@ const getAvailableMethodsForCurrency = (currency) => {
     // El método 'credit' está disponible en USD
     if (m.value === "balance") {
       return currency === "USD" && props.orderData?.client?.balance > 0;
+    }
+    if (m.value === "credit") {
+      // Solo permitir crédito si es el primer y único pago
+      return payments.value.length === 1 && !payments.value[0].method;
     }
     return true;
   });

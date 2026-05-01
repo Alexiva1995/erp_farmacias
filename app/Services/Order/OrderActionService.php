@@ -875,14 +875,19 @@ class OrderActionService
             }
 
             if ($request->credit) {
-                Credit::create([
-                    'client_id' => $request->client_id,
-                    'order_id' => $orderId->id,
-                    'credit_amount' => $orderId->total_amount,
-                    'pending_amount' => $orderId->total_amount,
-                    'credit_date' => Carbon::now(),
-                    'status' => 'Active'
-                ]);
+                // El crédito siempre es por el total de la orden (solo completo)
+                $creditAmount = (float) $orderId->total_amount;
+
+                if ($creditAmount > 0) {
+                    Credit::create([
+                        'client_id' => $request->client_id,
+                        'order_id' => $orderId->id,
+                        'credit_amount' => $creditAmount,
+                        'pending_amount' => $creditAmount,
+                        'credit_date' => Carbon::now(),
+                        'status' => 'Active'
+                    ]);
+                }
             }
 
 

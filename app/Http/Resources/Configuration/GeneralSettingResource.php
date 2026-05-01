@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Http\Resources\Configuration;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class GeneralSettingResource extends JsonResource
+{
+    /**
+     * Transformar el recurso en un array.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'fiscal_mode' => $this->fiscal_mode,
+            'special_taxpayer_status' => $this->special_taxpayer_status,
+            'all_foreign_sales_spe' => (bool) $this->all_foreign_sales_spe,
+            'app_name' => $this->app_name ?? 'ERP Farmacia',
+            'app_rif' => $this->app_rif,
+            'app_logo' => $this->app_logo,
+            'app_favicon' => $this->app_favicon,
+            'primary_color' => $this->primary_color ?? '#7367F0',
+            'secondary_color' => $this->secondary_color ?? '#82868B',
+            'footer_text' => $this->footer_text ?? 'Todos los derechos reservados de Tova',
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+        ];
+    }
+}

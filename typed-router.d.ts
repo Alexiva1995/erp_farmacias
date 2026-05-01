@@ -30,6 +30,7 @@ declare module 'vue-router/auto-routes' {
     'bi-report-products': RouteRecordInfo<'bi-report-products', '/bi/report-products', Record<never, never>, Record<never, never>>,
     'bi-report-sku': RouteRecordInfo<'bi-report-sku', '/bi/report-sku', Record<never, never>, Record<never, never>>,
     'configuration': RouteRecordInfo<'configuration', '/configuration', Record<never, never>, Record<never, never>>,
+    'configuration-branding': RouteRecordInfo<'configuration-branding', '/configuration/branding', Record<never, never>, Record<never, never>>,
     'crm-clients': RouteRecordInfo<'crm-clients', '/crm/clients', Record<never, never>, Record<never, never>>,
     'crm-companies': RouteRecordInfo<'crm-companies', '/crm/companies', Record<never, never>, Record<never, never>>,
     'crm-companies-id': RouteRecordInfo<'crm-companies-id', '/crm/companies/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,

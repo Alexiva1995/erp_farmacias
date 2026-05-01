@@ -21,6 +21,7 @@ const fetchOrders = async () => {
     return;
   }
 
+  console.log("Iniciando búsqueda para:", clientIdentification.value);
   loading.value = true;
   try {
     const response = await axios.post("/tpv/returns/search-orders", {
@@ -31,6 +32,7 @@ const fetchOrders = async () => {
       orderBy: options.value.sortBy[0]?.order,
     });
 
+    console.log("Respuesta recibida:", response.data);
     orders.value = response.data.data;
     totalOrder.value = response.data.total;
   } catch (error) {
@@ -110,8 +112,8 @@ const handleClearSearch = () => {
     closable
     class="mb-6"
   >
-    No hay órdenes disponibles en las últimas 48 horas para la búsqueda realizada.
-    Verifique la identificación o el N° de orden ingresado.
+    No se encontraron órdenes completadas en las últimas 48 horas para "{{ clientIdentification }}". 
+    Por favor, verifique la identificación (V/J/E), el N° de orden o si el pedido fue realizado hace más de 2 días.
   </VAlert>
   <ReturnsOrderTable
     :orders="orders"
