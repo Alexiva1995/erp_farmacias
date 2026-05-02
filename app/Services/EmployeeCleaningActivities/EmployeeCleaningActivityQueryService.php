@@ -18,7 +18,7 @@ class EmployeeCleaningActivityQueryService
         $query = Employee::where('is_active', true)
             ->with([
                 'cleaningActivities' => function ($query) {
-                    $query->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
+                    $query->withPivot(['status', 'assigned_date', 'completed_date', 'notes', 'day_of_week'])
                         ->orderBy('activity', 'asc');
                 }
             ])
@@ -120,7 +120,7 @@ class EmployeeCleaningActivityQueryService
     {
         $employee = Employee::with([
             'cleaningActivities' => function ($query) {
-                $query->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
+                $query->withPivot(['status', 'assigned_date', 'completed_date', 'notes', 'day_of_week'])
                     ->orderBy('activity', 'asc');
             }
         ])
@@ -211,7 +211,7 @@ class EmployeeCleaningActivityQueryService
 
         // Obtener actividades del empleado
         $query = $employee->cleaningActivities()
-            ->withPivot(['status', 'assigned_date', 'completed_date', 'notes']);
+            ->withPivot(['status', 'assigned_date', 'completed_date', 'notes', 'day_of_week']);
 
         // Búsqueda por nombre de actividad
         if (!empty($data['q'])) {
@@ -262,6 +262,7 @@ class EmployeeCleaningActivityQueryService
                 'assigned_date' => $activity->pivot->assigned_date,
                 'completed_date' => $activity->pivot->completed_date,
                 'notes' => $activity->pivot->notes,
+                'day_of_week' => $activity->pivot->day_of_week,
             ];
         });
 
