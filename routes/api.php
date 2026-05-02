@@ -107,10 +107,19 @@ Route::prefix("finances")->group(function () {
     Route::post("/income-statement/reset", [FinancialStatementController::class, "reset"]);
 });
 
+
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
+    Route::get("/my-assigned-labs", function (Request $request) {
+        return response()->json(
+            \App\Models\Laboratory::whereHas('employees', function($q) use ($request) {
+                $q->where('user_id', $request->user()->id);
+            })->select('id', 'name')->get()
+        );
+    });
     Route::get("/user", function (Request $request) {
-        return $request->user()->load('employee');
+        // Query fresca con eager loading garantizado
+        return \App\Models\User::with('employee.laboratories')->find($request->user()->id);
     });
     Route::get('/user/config', function (Request $request) {
         return $request->user()->load('config');
@@ -620,6 +629,13 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // Dashboard de Inventarios Cíclicos
         Route::get("/inventory-cyclic", [\App\Http\Controllers\Api\Bi\InventoryCyclicReportController::class, "index"]);
+
+        // BI: Reportes de Descuentos y Promociones
+        Route::get("/discounts/dashboard", [\App\Http\Controllers\Api\Bi\DiscountReportController::class, "dashboard"]);
+        Route::get("/discounts/audit", [\App\Http\Controllers\Api\Bi\DiscountReportController::class, "audit"]);
+
+        // BI: Analítica de Clientes (Lifecycle & RFM)
+        Route::get("/customers/dashboard", [\App\Http\Controllers\Api\Bi\CustomerAnalyticsController::class, "index"]);
     });
     
     Route::prefix("users")->group(function () {

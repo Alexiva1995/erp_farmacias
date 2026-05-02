@@ -235,6 +235,11 @@ const fetchGeneralSettings = async () => {
   }
 };
 
+onMounted(async () => {
+  await authStore.fetchUser();
+  await fetchProducts();
+});
+
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
@@ -968,6 +973,7 @@ const fetchOpenOrder = async () => {
 
 onMounted(async () => {
   console.log("[ORDER_USER] onMounted iniciado");
+
   try {
     // Primero cargar la configuración del usuario
     console.log("[ORDER_USER] Cargando configuración del usuario...");

@@ -2,7 +2,7 @@
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import axios from "@/plugins/axios";
-import { computed, ref, watch, onMounted, defineProps } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -16,6 +16,22 @@ const props = defineProps({
   orderItems: { type: Array, default: () => [] },
   exchangeRates: { type: Object, default: () => ({}) },
   currency: { type: String, default: "USD" },
+});
+
+const internalAssignedLaboratoryIds = ref([]);
+
+onMounted(async () => {
+  options.value.page = props.page;
+  options.value.itemsPerPage = props.itemsPerPage;
+  
+  try {
+    const response = await axios.get('/my-assigned-labs');
+    if (response.data && Array.isArray(response.data)) {
+      internalAssignedLaboratoryIds.value = response.data.map(lab => Number(lab.id));
+    }
+  } catch (error) {
+    console.error("Error fetching assigned labs:", error);
+  }
 });
 
 const inputQuantities = ref(new Map());
@@ -181,7 +197,14 @@ const getPriceClass = (item) => {
   return 'precio-oferta';
 };
 
-const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock' : '';
+const getRowClass = (item) => {
+  let classes = [];
+  if ((item.valid_stock_sum ?? 0) <= 0) classes.push('row-zero-stock');
+  
+  const labId = Number(item.laboratory_id);
+  if (labId && internalAssignedLaboratoryIds.value.includes(labId)) classes.push('row-assigned-lab');
+  return classes.join(' ');
+};
 </script>
 
 <template>
@@ -189,8 +212,6 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
     <!-- Vista Escritorio -->
     <VDataTableServer
       v-model:options="options"
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
       :headers="headers"
       :items="props.products"
       :items-length="props.totalProduct"
@@ -200,6 +221,11 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
       @update:options="handleUpdateOptions"
       hover
     >
+      <template #top>
+        <div v-if="internalAssignedLaboratoryIds.length > 0" class="pa-2 bg-purple-lighten-5 text-caption font-weight-bold border-b text-purple-darken-3">
+          🔬 Mostrando {{ internalAssignedLaboratoryIds.length }} laboratorio(s) asignado(s)
+        </div>
+      </template>
       <template #item.id="{ item }">
         <a
           :href="'/inventory/traceability?q=' + item.id"
@@ -258,7 +284,12 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
             <span class="text-disabled font-weight-medium text-uppercase">{{ item.active_ingredient || '—' }}</span>
             <template v-if="item.item_type !== 'pack'">
               <span class="text-disabled mx-1">|</span>
-              <span class="text-primary font-weight-black text-uppercase">{{ item.laboratory_name || 'Genérico' }}</span>
+              <span 
+                class="text-primary font-weight-black text-uppercase"
+                :class="{ 'bg-purple-lighten-4 pa-1 rounded text-purple-darken-3': internalAssignedLaboratoryIds.some(id => Number(id) === Number(item.laboratory_id)) }"
+              >
+                {{ item.laboratory_name || 'Genérico' }}
+              </span>
             </template>
           </div>
         </div>
@@ -374,7 +405,10 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
           :key="item.id"
           variant="flat"
           class="border mb-2 overflow-hidden premium-mobile-card elevation-1"
-          :class="{ 'border-error border-opacity-50': (item.valid_stock_sum ?? 0) <= 0 }"
+          :class="{ 
+            'border-error border-opacity-50': (item.valid_stock_sum ?? 0) <= 0,
+            'row-assigned-lab': internalAssignedLaboratoryIds.includes(Number(item.laboratory_id))
+          }"
         >
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-2">
@@ -560,6 +594,16 @@ const getRowClass = (item) => (item.valid_stock_sum ?? 0) <= 0 ? 'row-zero-stock
 
 .row-zero-stock {
   background-color: rgba(var(--v-theme-error), 0.05) !important;
+}
+
+/* Forzar estilos en las filas de Vuetify */
+.premium-table :deep(.row-assigned-lab),
+.premium-table :deep(.row-assigned-lab td) {
+  background-color: #f3e5f5 !important; /* Purple 50 */
+}
+
+.premium-table :deep(.row-assigned-lab td:first-child) {
+  border-left: 6px solid #9c27b0 !important;
 }
 
 .precio-normal {

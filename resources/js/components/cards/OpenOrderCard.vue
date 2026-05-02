@@ -100,6 +100,7 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+
 });
 
 const emit = defineEmits([

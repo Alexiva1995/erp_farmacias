@@ -37,6 +37,14 @@ export default [
         title: 'Análisis Cíclico',
         to: 'bi-inventory-cyclic',
       },
+      {
+        title: 'Promociones y Descuentos',
+        to: 'bi-discounts',
+      },
+      {
+        title: 'Analítica de Clientes',
+        to: 'bi-customer-analytics',
+      },
     ],
   }, 
 ];
