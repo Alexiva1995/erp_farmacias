@@ -562,8 +562,7 @@
             :src="receiptUrl"
             alt="Comprobante de Pago"
             class="rounded-lg border shadow-lg mx-auto"
-            max-height="600"
-            cover
+            contain
           >
             <template #placeholder>
               <div
