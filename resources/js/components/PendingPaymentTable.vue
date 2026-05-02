@@ -178,11 +178,18 @@ const getInitials = (name) => {
         </template>
 
         <template #item.payment_date="{ item }">
-          <div class="d-flex flex-column">
-            <span class="text-xs font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-disabled'">
-              {{ formatDueDate(item.payment_date) }}
-            </span>
-            <span class="text-super-xs text-disabled">Pago: {{ formatDate(item.payment_date) }}</span>
+          <div class="d-flex align-center gap-2">
+            <VIcon 
+              :icon="isOverdue(item.payment_date) ? 'tabler-calendar-cancel' : 'tabler-calendar-time'" 
+              size="18" 
+              :color="isOverdue(item.payment_date) ? 'error' : 'disabled'" 
+            />
+            <div class="d-flex flex-column">
+              <span class="text-xs font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
+                {{ formatDueDate(item.payment_date) }}
+              </span>
+              <span class="text-super-xs text-disabled">Pago: {{ formatDate(item.payment_date) }}</span>
+            </div>
           </div>
         </template>
 
@@ -227,7 +234,7 @@ const getInitials = (name) => {
                   color="info"
                   class="rounded-circle shadow-sm"
                 >
-                  <VIcon icon="tabler-calendar-edit" size="18" />
+                  <VIcon icon="tabler-calendar" size="18" />
                   <VTooltip activator="parent" location="top">Cambiar Fecha Vencimiento</VTooltip>
                 </VBtn>
               </template>
@@ -311,7 +318,14 @@ const getInitials = (name) => {
                 </div>
               </div>
               <div class="d-flex flex-column align-end">
-                <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Vence</span>
+                <div class="d-flex align-center gap-1">
+                   <VIcon 
+                    :icon="isOverdue(item.payment_date) ? 'tabler-calendar-cancel' : 'tabler-calendar-time'" 
+                    size="14" 
+                    :color="isOverdue(item.payment_date) ? 'error' : 'disabled'" 
+                  />
+                  <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Vence</span>
+                </div>
                 <span class="text-xs font-weight-black leading-tight" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
                   {{ formatDueDate(item.payment_date) }}
                 </span>
