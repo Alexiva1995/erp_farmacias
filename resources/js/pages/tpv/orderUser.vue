@@ -691,22 +691,20 @@ const applyDiscount = (percentage, source) => {
     if (item.discount_type === "expiration" || item.pack_id) {
       return item;
     }
-    const origUsd = item.originalPrice ?? item.original_price_usd ?? item.price;
-    const origBs =
-      item.originalPriceBs ?? item.original_price_bs ?? item.price_bs;
-    const origCop =
-      item.originalPriceCop ?? item.original_price_cop ?? item.price_cop;
+
+    const rawUsd = item.original_price_usd;
+    const rawBs = item.original_price_bs;
+    const rawCop = item.original_price_cop;
+
     const productPct = parseFloat(item.discount_percentage || 0);
     const bestPct = Math.max(percentage, productPct);
     const discountFactor = bestPct > 0 ? 1 - bestPct / 100 : 1;
+
     return {
       ...item,
-      originalPrice: origUsd,
-      originalPriceBs: origBs,
-      originalPriceCop: origCop,
-      price: origUsd * discountFactor,
-      price_bs: origBs * discountFactor,
-      price_cop: origCop * discountFactor,
+      price: rawUsd * discountFactor,
+      price_bs: rawBs * discountFactor,
+      price_cop: rawCop * discountFactor,
       discountApplied: true,
       discountSource:
         bestPct === productPct
@@ -726,21 +724,12 @@ const removeDiscount = () => {
       return item;
     }
 
-    // Restaurar al precio del backend (con descuento individual/categoría si aplica)
-    // Misma lógica que Médico: no perder el descuento base del producto
-    const origUsd = item.original_price_usd ?? item.originalPrice ?? item.price;
-    const origBs =
-      item.original_price_bs ?? item.originalPriceBs ?? item.price_bs;
-    const origCop =
-      item.original_price_cop ?? item.originalPriceCop ?? item.price_cop;
-    const productPct = parseFloat(item.discount_percentage || 0);
-    const factor = productPct > 0 ? 1 - productPct / 100 : 1;
-
+    // Restaurar al precio base (con descuento individual/categoría si aplica)
     return {
       ...item,
-      price: origUsd * factor,
-      price_bs: origBs * factor,
-      price_cop: origCop * factor,
+      price: item.base_price,
+      price_bs: item.base_price_bs,
+      price_cop: item.base_price_cop,
       discountApplied: false,
       discountSource: null,
       discountSourceId: null,
@@ -753,21 +742,27 @@ const removeDiscount = () => {
 // Leaving it separate for now as it was already implemented, but could reuse applyDiscount
 
 watch(selectedDiscountType, (newValue) => {
+  // Limpiar estados de otros tipos pero NO llamar a removeDiscount aún
   if (newValue !== "Medico") {
     selectedDoctorOffer.value = null;
-    removeDiscount();
   }
   if (newValue !== "Recipe") {
     prescriptionFile.value = null;
-    removeDiscount();
   }
   if (newValue !== "Empresa") {
     selectedCompanyId.value = null;
-    removeDiscount();
   }
 
-  if (!newValue) {
-    removeDiscount();
+  // Siempre remover descuento previo para limpiar el estado de los ítems
+  removeDiscount();
+
+  // Si hay un nuevo tipo, intentar aplicarlo
+  if (newValue === "Medico" && selectedDoctorOffer.value) {
+    validateAndApplyDoctorDiscount();
+  } else if (newValue === "Recipe" && prescriptionFile.value) {
+    validateAndApplyPrescriptionDiscount();
+  } else if (newValue === "Empresa" && selectedCompanyId.value) {
+    validateAndApplyCompanyDiscount();
   }
 });
 
@@ -896,6 +891,9 @@ const formatOrderItemForFrontend = (backendItem) => {
     price_before_discount: hasPackDiscount ? originalPrice : discountedPrice,
     price_bs: discountedPriceBs,
     price_cop: discountedPriceCop,
+    base_price: discountedPrice,
+    base_price_bs: discountedPriceBs,
+    base_price_cop: discountedPriceCop,
     unitCost: parseFloat(product.unit_cost) || 0,
     basePrice: originalPrice, // Store original base price
     original_price_usd: originalPrice,
@@ -1513,7 +1511,8 @@ const totalEligibleAmount = computed(() => {
     if (item.discount_type === "expiration") {
       return;
     }
-    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+    // Usamos el precio base (sin descuento global) para calcular el monto elegible
+    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value, true);
     const quantity = item.selectedQuantity || 0;
     total += price * quantity;
   });
@@ -1605,7 +1604,24 @@ const totalOrderAmountWithspecialTaxAmount = computed(() => {
 // Monto Total = suma de totales de cada fila (Precio con Descuento + IVA)
 // El descuento ya está aplicado en el Precio Base de cada producto
 const totalOrderAmount = computed(() => {
-  return totalProductsAmount.value + totalIVAAmount.value;
+  const base = totalProductsAmount.value + totalIVAAmount.value;
+  let globalDiscount = 0;
+
+  if (selectedDiscountType.value === "Empresa") {
+    globalDiscount = totalCompanyDiscountAmount.value;
+  } else if (selectedDiscountType.value === "Medico") {
+    globalDiscount = totalDoctorDiscountAmount.value;
+  } else if (selectedDiscountType.value === "Recipe") {
+    globalDiscount = totalRecipeDiscountAmount.value;
+  }
+
+  let total = base - globalDiscount;
+
+  if (selectedDisplayCurrency.value === "COP") {
+    total = roundUpToNearestHundred(total);
+  }
+
+  return total;
 });
 
 const totalOrderAmountSinDiscount = computed(() => {
@@ -1654,7 +1670,8 @@ const totalIVAAmount = computed(() => {
 const totalProductsAmount = computed(() => {
   let total = 0;
   orderItems.value.forEach((item) => {
-    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
+    // Usamos el precio base para el subtotal de productos
+    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value, true);
     const quantity = item.selectedQuantity || 0;
     total += price * quantity;
   });
@@ -2084,13 +2101,15 @@ watch(
   { deep: false },
 );
 
-const getItemPriceByCurrency = (item, currency) => {
+const getItemPriceByCurrency = (item, currency, useBase = false) => {
   if (currency === "BS") {
-    return item.price_bs || 0;
+    return useBase ? item.base_price_bs || 0 : item.price_bs || 0;
   } else if (currency === "COP") {
-    return item.price_cop || 0;
+    return useBase ? item.base_price_cop || 0 : item.price_cop || 0;
   } else {
-    return item.price || item.sale_price || 0;
+    return useBase
+      ? item.base_price || item.original_price_usd || 0
+      : item.price || item.sale_price || 0;
   }
 };
 

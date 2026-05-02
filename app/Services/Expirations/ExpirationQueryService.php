@@ -16,6 +16,7 @@ class ExpirationQueryService
     public function getExpiringLotsQuery(Request $request)
     {
         $query = ProductLot::with(['product.laboratory', 'product.origin', 'product.category'])
+            ->whereHas('product')
             ->where('quantity', '>', 0);
 
         // Filtro por búsqueda de texto
