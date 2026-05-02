@@ -45,6 +45,10 @@ export default [
         title: 'Analítica de Clientes',
         to: 'bi-customer-analytics',
       },
+      {
+        title: 'Rendimiento RRHH',
+        to: 'bi-employee-performance',
+      },
     ],
   }, 
 ];
