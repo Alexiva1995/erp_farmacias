@@ -32,6 +32,7 @@ class EmployeeCleaningActivityActionService
                     'assigned_date' => $activity['assigned_date'] ?? now(),
                     'completed_date' => null,
                     'notes' => $activity['notes'] ?? null,
+                    'day_of_week' => $activity['day_of_week'] ?? null,
                 ];
             }
 
@@ -155,6 +156,7 @@ class EmployeeCleaningActivityActionService
                     'assigned_date' => $activity['assigned_date'] ?? now(),
                     'completed_date' => $activity['completed_date'] ?? null,
                     'notes' => $activity['notes'] ?? null,
+                    'day_of_week' => $activity['day_of_week'] ?? null,
                 ];
             }
 

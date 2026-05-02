@@ -29,6 +29,7 @@ class StoreEmployeeCleaningActivityRequest extends FormRequest
             'activities.*.assigned_date' => 'nullable|date',
             'activities.*.completed_date' => 'nullable|date|after_or_equal:activities.*.assigned_date',
             'activities.*.notes' => 'nullable|string|max:500',
+            'activities.*.day_of_week' => 'nullable|string|in:Lunes,Martes,Miércoles,Jueves,Viernes,Sábado,Domingo',
         ];
     }
 

@@ -157,19 +157,29 @@ const initials = computed(() => {
                       <span class="text-sm font-weight-bold text-capitalize">
                         {{ activity.name }}
                       </span>
-                      <VChip
-                        :color="getStatusColor(activity.status)"
-                        size="x-small"
-                        variant="tonal"
-                        class="font-weight-black rounded"
-                      >
-                        <VIcon
-                          :icon="getStatusIcon(activity.status)"
-                          size="12"
-                          class="me-1"
-                        />
-                        {{ activity.status }}
-                      </VChip>
+                      <div class="d-flex align-center gap-1">
+                        <VChip color="secondary" size="x-small" variant="flat" label class="rounded font-weight-black">
+                          <VIcon icon="tabler-repeat" size="12" class="me-1" />
+                          {{ activity.frequency ? activity.frequency.toUpperCase() : 'N/A' }}
+                        </VChip>
+                        <VChip v-if="activity.day_of_week" color="info" size="x-small" variant="flat" label class="rounded font-weight-black">
+                          <VIcon icon="tabler-calendar" size="12" class="me-1" />
+                          {{ activity.day_of_week.toUpperCase() }}
+                        </VChip>
+                        <VChip
+                          :color="getStatusColor(activity.status)"
+                          size="x-small"
+                          variant="tonal"
+                          class="font-weight-black rounded"
+                        >
+                          <VIcon
+                            :icon="getStatusIcon(activity.status)"
+                            size="12"
+                            class="me-1"
+                          />
+                          {{ activity.status }}
+                        </VChip>
+                      </div>
                     </div>
                   </VListItemTitle>
                 </VListItem>

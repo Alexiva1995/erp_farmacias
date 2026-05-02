@@ -71,6 +71,7 @@ const fetchCleaningActivities = async () => {
     cleaningActivities.value = response.data.data.map((activity) => ({
       title: activity.activity,
       value: activity.id,
+      frequency: activity.frequency,
     }));
   } catch (error) {
     console.error("Error al obtener actividades:", error);

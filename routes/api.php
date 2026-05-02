@@ -117,6 +117,12 @@ Route::middleware("auth:sanctum")->group(function () {
             })->select('id', 'name')->get()
         );
     });
+    Route::get("/my-assigned-products", function (Request $request) {
+        $userId = $request->user()->id;
+        $employee = \App\Models\Employee::where('user_id', $userId)->first();
+        if (!$employee) return response()->json([]);
+        return response()->json($employee->products()->pluck('products.id'));
+    });
     Route::get("/user", function (Request $request) {
         // Query fresca con eager loading garantizado
         return \App\Models\User::with('employee.laboratories')->find($request->user()->id);

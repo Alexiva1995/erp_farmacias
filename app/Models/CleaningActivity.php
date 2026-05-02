@@ -34,7 +34,7 @@ class CleaningActivity extends Model
     public function employees(): BelongsToMany
     {
         return $this->belongsToMany(Employee::class, 'employee_cleaning_activity')
-            ->withPivot(['status', 'assigned_date', 'completed_date', 'notes'])
+            ->withPivot(['status', 'assigned_date', 'completed_date', 'notes', 'day_of_week'])
             ->withTimestamps();
     }
 

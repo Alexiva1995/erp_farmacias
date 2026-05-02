@@ -102,6 +102,8 @@ class EmployeeCleaningActivityQueryService
                     'assigned_date' => $activity->pivot->assigned_date,
                     'completed_date' => $activity->pivot->completed_date,
                     'notes' => $activity->pivot->notes,
+                    'day_of_week' => $activity->pivot->day_of_week,
+                    'frequency' => $activity->frequency,
                 ];
             }),
             'activities_count' => $employee->cleaning_activities_count,

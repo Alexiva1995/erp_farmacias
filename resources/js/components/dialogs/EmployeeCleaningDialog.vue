@@ -23,10 +23,22 @@ const formData = ref({
   activities: [],
   new_activity_id: null,
   new_activity_status: "Pendiente",
+  new_activity_day: null,
 });
+
+const daysOfWeek = [
+  { title: "Lunes", value: "Lunes" },
+  { title: "Martes", value: "Martes" },
+  { title: "Miércoles", value: "Miércoles" },
+  { title: "Jueves", value: "Jueves" },
+  { title: "Viernes", value: "Viernes" },
+  { title: "Sábado", value: "Sábado" },
+  { title: "Domingo", value: "Domingo" },
+];
 
 const editingActivity = ref(null);
 const tempActivityId = ref(null);
+const tempActivityDay = ref(null);
 
 watch(
   [() => props.modelValue, () => props.employee],
@@ -41,6 +53,7 @@ watch(
             : [],
           new_activity_id: null,
           new_activity_status: "Pendiente",
+          new_activity_day: null,
         };
       } else {
         formData.value = {
@@ -48,10 +61,12 @@ watch(
           activities: [],
           new_activity_id: null,
           new_activity_status: "Pendiente",
+          new_activity_day: null,
         };
       }
       editingActivity.value = null;
       tempActivityId.value = null;
+      tempActivityDay.value = null;
     }
   },
   { deep: true },
@@ -78,6 +93,7 @@ const closeDialog = () => {
   emit("clear-errors");
   editingActivity.value = null;
   tempActivityId.value = null;
+  tempActivityDay.value = null;
 };
 
 const handleAddActivity = () => {
@@ -97,8 +113,11 @@ const handleAddActivity = () => {
         id: activity.value,
         name: activity.title,
         status: "Pendiente",
+        day_of_week: formData.value.new_activity_day,
+        frequency: activity.frequency,
       });
       formData.value.new_activity_id = null;
+      formData.value.new_activity_day = null;
     }
   }
 };
@@ -112,6 +131,7 @@ const handleRemoveActivity = (activityId) => {
 const handleEditActivity = (activity) => {
   editingActivity.value = activity.id;
   tempActivityId.value = activity.id;
+  tempActivityDay.value = activity.day_of_week || null;
 };
 
 const handleSaveEdit = (oldActivityId) => {
@@ -132,6 +152,8 @@ const handleSaveEdit = (oldActivityId) => {
         id: newAct.value,
         name: newAct.title,
         status: "Pendiente",
+        day_of_week: tempActivityDay.value,
+        frequency: newAct.frequency,
       };
       formData.value.activities = updatedActivities;
     }
@@ -139,11 +161,13 @@ const handleSaveEdit = (oldActivityId) => {
 
   editingActivity.value = null;
   tempActivityId.value = null;
+  tempActivityDay.value = null;
 };
 
 const handleCancelEdit = () => {
   editingActivity.value = null;
   tempActivityId.value = null;
+  tempActivityDay.value = null;
 };
 
 const handleSubmit = () => {
@@ -154,6 +178,7 @@ const handleSubmit = () => {
     activities: formData.value.activities.map((act) => ({
       activity_id: act.id,
       status: act.status,
+      day_of_week: act.day_of_week,
     })),
   };
 
@@ -291,6 +316,18 @@ const getStatusIcon = (status) => {
                       class="flex-grow-1 shadow-sm"
                       prepend-inner-icon="tabler-list-check"
                     />
+                    <AppSelect
+                      v-model="formData.new_activity_day"
+                      :items="daysOfWeek"
+                      label="Día sugerido"
+                      placeholder="Cualquier día"
+                      :disabled="!formData.employee_id"
+                      variant="outlined"
+                      density="comfortable"
+                      hide-details
+                      class="flex-grow-1 shadow-sm"
+                      prepend-inner-icon="tabler-calendar-event"
+                    />
                     <VBtn
                       color="primary"
                       variant="flat"
@@ -326,20 +363,40 @@ const getStatusIcon = (status) => {
                     <VListItemTitle>
                       <div v-if="editingActivity !== activity.id" class="d-flex align-center justify-space-between gap-2">
                         <span class="text-sm font-weight-black uppercase text-high-emphasis">{{ activity.name }}</span>
-                        <VChip :color="getStatusColor(activity.status)" size="x-small" variant="tonal" label class="rounded font-weight-black">
-                          <VIcon :icon="getStatusIcon(activity.status)" size="12" class="me-1" />
-                          {{ activity.status.toUpperCase() }}
-                        </VChip>
+                        <div class="d-flex align-center gap-1">
+                          <VChip color="secondary" size="x-small" variant="flat" label class="rounded font-weight-black">
+                            <VIcon icon="tabler-repeat" size="12" class="me-1" />
+                            {{ activity.frequency ? activity.frequency.toUpperCase() : 'N/A' }}
+                          </VChip>
+                          <VChip v-if="activity.day_of_week" color="info" size="x-small" variant="flat" label class="rounded font-weight-black">
+                            <VIcon icon="tabler-calendar" size="12" class="me-1" />
+                            {{ activity.day_of_week.toUpperCase() }}
+                          </VChip>
+                          <VChip :color="getStatusColor(activity.status)" size="x-small" variant="tonal" label class="rounded font-weight-black">
+                            <VIcon :icon="getStatusIcon(activity.status)" size="12" class="me-1" />
+                            {{ activity.status.toUpperCase() }}
+                          </VChip>
+                        </div>
                       </div>
-                      <AppSelect
-                        v-else
-                        v-model="tempActivityId"
-                        :items="props.cleaningActivities"
-                        density="compact"
-                        variant="outlined"
-                        hide-details
-                        class="shadow-sm"
-                      />
+                      <div v-else class="d-flex flex-column gap-2">
+                        <AppSelect
+                          v-model="tempActivityId"
+                          :items="props.cleaningActivities"
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          class="shadow-sm mb-1"
+                        />
+                        <AppSelect
+                          v-model="tempActivityDay"
+                          :items="daysOfWeek"
+                          label="Día de la semana"
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          class="shadow-sm"
+                        />
+                      </div>
                     </VListItemTitle>
 
                     <template #append>

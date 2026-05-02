@@ -19,6 +19,7 @@ const props = defineProps({
 });
 
 const internalAssignedLaboratoryIds = ref([]);
+const internalAssignedProductIds = ref([]);
 
 onMounted(async () => {
   options.value.page = props.page;
@@ -31,6 +32,15 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error("Error fetching assigned labs:", error);
+  }
+
+  try {
+    const response = await axios.get('/my-assigned-products');
+    if (response.data && Array.isArray(response.data)) {
+      internalAssignedProductIds.value = response.data.map(id => Number(id));
+    }
+  } catch (error) {
+    console.error("Error fetching assigned products:", error);
   }
 });
 
@@ -202,7 +212,12 @@ const getRowClass = (item) => {
   if ((item.valid_stock_sum ?? 0) <= 0) classes.push('row-zero-stock');
   
   const labId = Number(item.laboratory_id);
-  if (labId && internalAssignedLaboratoryIds.value.includes(labId)) classes.push('row-assigned-lab');
+  const productId = Number(item.id);
+  
+  if ((labId && internalAssignedLaboratoryIds.value.includes(labId)) || 
+      (productId && internalAssignedProductIds.value.includes(productId))) {
+    classes.push('row-assigned-lab');
+  }
   return classes.join(' ');
 };
 </script>
