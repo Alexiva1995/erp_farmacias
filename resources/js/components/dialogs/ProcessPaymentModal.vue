@@ -70,10 +70,15 @@ const validatePaymentAmount = (value) => {
 };
 
 const isFormValid = computed(() => {
-  return props.invoices.length > 0 && 
+  const basicValidation = props.invoices.length > 0 && 
          validatePaymentAmount(form.value.payment_amount).length === 0 && 
          form.value.payment_date && 
          form.value.payment_method;
+
+  // Si hay referencia, DEBE haber foto (comprobante)
+  const referenceValidation = !form.value.reference || (form.value.reference && form.value.photo_url);
+
+  return basicValidation && referenceValidation && !uploading.value;
 });
 
 const totalInUSD = computed(() => {
@@ -424,7 +429,9 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                     class="premium-input"
                     prepend-icon="tabler-camera"
                     placeholder="Adjuntar recibo..."
-                    hide-details
+                    :error="form.reference && !form.photo_url"
+                    :error-messages="form.reference && !form.photo_url ? ['Si hay referencia, el comprobante es obligatorio'] : []"
+                    hide-details="auto"
                     :loading="uploading"
                     @update:model-value="handleFileUpload"
                   />
@@ -468,17 +475,17 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
               height="44"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :loading="loading"
+              :loading="loading || uploading"
               :disabled="!isFormValid"
               @click="processPayment"
             >
               <VIcon
                 start
-                icon="tabler-device-floppy"
+                :icon="uploading ? 'tabler-loader' : 'tabler-device-floppy'"
                 size="18"
                 class="me-2"
               />
-              Confirmar Pago
+              {{ uploading ? 'Subiendo Imagen...' : 'Confirmar Pago' }}
             </VBtn>
           </VCol>
         </VRow>
