@@ -602,6 +602,7 @@ class OrderQueryService
             $query = DB::table('fiscal_history')
                 ->whereNotNull('iva_amount')
                 ->where('iva_amount', '>', 0)
+                ->where('invoice_date', '>=', '2026-01-01')
                 ->whereBetween('invoice_date', [$startDate, $endDate]);
 
             $fiscalRecords = $query->get();
@@ -616,6 +617,7 @@ class OrderQueryService
             // IGTF: ventas marcadas como SPE — el 3% se aplica sobre el total_amount de la venta
             $speRecords = DB::table('fiscal_history')
                 ->where('spe', 1)
+                ->where('invoice_date', '>=', '2026-01-01')
                 ->whereBetween('invoice_date', [$startDate, $endDate])
                 ->get();
             $totalSpeSalesAmount = $speRecords->sum('total_amount');
@@ -647,10 +649,11 @@ class OrderQueryService
     public function getFiscalHistoryRecords(string $startDate, string $endDate, int $page = 1, int $itemsPerPage = 10, string $sortBy = 'invoice_date', string $orderBy = 'desc'): array
     {
         try {
-            // Query base para fiscal_history con IVA
+            // Query base para fiscal_history con IVA - Solo desde 2026 en adelante
             $query = DB::table('fiscal_history')
                 ->whereNotNull('iva_amount')
                 ->where('iva_amount', '>', 0)
+                ->where('invoice_date', '>=', '2026-01-01')
                 ->whereBetween('invoice_date', [$startDate, $endDate]);
 
             // Aplicar ordenamiento dinámico

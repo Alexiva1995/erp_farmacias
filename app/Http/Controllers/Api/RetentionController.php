@@ -21,7 +21,7 @@ class RetentionController extends Controller
      */
     public function index(Request $request)
     {
-        $filters = $request->only(['start_date', 'end_date', 'supplier_id', 'search', 'is_generated']);
+        $filters = $request->only(['start_date', 'end_date', 'supplier_id', 'search', 'is_generated', 'sortBy', 'orderBy']);
         $isGenerated = filter_var($request->input('is_generated', false), FILTER_VALIDATE_BOOLEAN);
         $perPage = $request->input('itemsPerPage', 10);
 

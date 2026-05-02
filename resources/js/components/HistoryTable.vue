@@ -63,6 +63,7 @@ const headers = [
     value: item => formatCurrency(item.total_amount),
     cellProps: { class: 'text-sm font-weight-black text-high-emphasis' }
   },
+  { title: "AUDIT", key: "is_audit_valid", sortable: false, align: "center" },
   { title: "ACCIÓN", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -89,6 +90,20 @@ const formatCurrency = (value) => {
           class="text-no-wrap premium-table"
           @update:options="(options) => emit('update:options', options)"
         >
+          <template #item.is_audit_valid="{ item }">
+            <VTooltip location="top" :text="item.is_audit_valid === null ? 'Sin datos de auditoría (Venta antigua)' : (item.is_audit_valid ? 'Integridad Verificada' : 'Hash no coincide o datos alterados')">
+              <template #activator="{ props }">
+                <div v-bind="props" class="d-flex justify-center">
+                  <VIcon 
+                    :icon="item.is_audit_valid === null ? 'tabler-shield-off' : (item.is_audit_valid ? 'tabler-shield-check' : 'tabler-shield-x')" 
+                    :color="item.is_audit_valid === null ? 'disabled' : (item.is_audit_valid ? 'success' : 'error')" 
+                    size="22"
+                  />
+                </div>
+              </template>
+            </VTooltip>
+          </template>
+
           <template #item.actions="{ item }">
             <div class="d-flex justify-center">
               <VBtn
@@ -131,7 +146,21 @@ const formatCurrency = (value) => {
                    <VIcon icon="tabler-receipt-2" size="20" color="primary" />
                 </div>
                 <div class="d-flex flex-column">
-                  <span class="text-primary font-weight-black text-xs uppercase mb-1">Documento</span>
+                  <div class="d-flex align-center gap-2 mb-1">
+                    <span class="text-primary font-weight-black text-xs uppercase">Documento</span>
+                    <VIcon 
+                      v-if="item.is_audit_valid !== null"
+                      :icon="item.is_audit_valid ? 'tabler-shield-check' : 'tabler-shield-x'" 
+                      :color="item.is_audit_valid ? 'success' : 'error'" 
+                      size="14"
+                    />
+                    <VIcon 
+                      v-else
+                      icon="tabler-shield-off" 
+                      color="disabled" 
+                      size="14"
+                    />
+                  </div>
                   <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
                     #{{ item.invoice_number }}
                   </h3>

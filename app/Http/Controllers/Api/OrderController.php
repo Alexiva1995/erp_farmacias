@@ -348,6 +348,11 @@ class OrderController extends Controller
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
+            // Asegurar que la fecha inicial no sea menor a 2026
+            if ($startDate < '2026-01-01') {
+                $startDate = '2026-01-01';
+            }
+
             $debitoFiscalData = $this->orderQueryService->getDebitoFiscal($startDate, $endDate);
 
             return ApiResponse::success([
@@ -384,6 +389,11 @@ class OrderController extends Controller
 
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+
+            // Asegurar que la fecha inicial no sea menor a 2026
+            if ($startDate < '2026-01-01') {
+                $startDate = '2026-01-01';
+            }
             $page = $request->page ?? 1;
             $itemsPerPage = $request->itemsPerPage ?? 10;
             if ($itemsPerPage == -1) {

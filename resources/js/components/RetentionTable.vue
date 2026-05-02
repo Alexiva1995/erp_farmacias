@@ -174,7 +174,20 @@ const toggleSelection = (id) => {
         <template #bottom>
           <VDivider class="opacity-10" />
           <div class="d-flex align-center justify-space-between pa-4">
-            <span class="text-super-xs text-disabled font-weight-bold uppercase">Total: {{ props.totalRecords }} registros</span>
+            <div class="d-flex align-center gap-4">
+              <span class="text-super-xs text-disabled font-weight-bold uppercase">Mostrar</span>
+              <VSelect
+                :model-value="props.itemsPerPage"
+                :items="[10, 25, 50, 100]"
+                variant="outlined"
+                density="compact"
+                hide-details
+                style="max-width: 80px;"
+                class="text-xs font-weight-black"
+                @update:model-value="(val) => emit('update:options', { ...props, itemsPerPage: val, page: 1 })"
+              />
+              <span class="text-super-xs text-disabled font-weight-bold uppercase">de {{ props.totalRecords }} registros</span>
+            </div>
             <VPagination
                :model-value="props.page"
                :length="Math.ceil(props.totalRecords / props.itemsPerPage)"

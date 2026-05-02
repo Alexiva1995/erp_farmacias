@@ -28,7 +28,17 @@ class FiscalController extends Controller
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+
+        // Verificar hash de auditoría para cada registro
+        $paginatedResult->getCollection()->transform(function ($history) {
+            $history->is_audit_valid = $this->HistoryQueryService->verifyAuditHash($history);
+            return $history;
+        });
+
+        return response()->json([
+            'data' => $paginatedResult->items(),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function export(Request $request)

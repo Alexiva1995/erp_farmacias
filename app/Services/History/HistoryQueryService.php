@@ -31,7 +31,9 @@ class HistoryQueryService
             });
         }
 
-        // Filtro por fecha de factura
+        // Filtro por fecha de factura - Solo desde 2026 en adelante
+        $query->where('invoice_date', '>=', '2026-01-01');
+
         if (!empty($filters['startDate'])) {
             $query->whereDate('invoice_date', '>=', $filters['startDate']);
         }
@@ -51,7 +53,9 @@ class HistoryQueryService
         // Columnas válidas para ordenar
         $validSortColumns = [
             'id',
+            'fiscal_id',
             'invoice_number',
+            'identification',
             'business_name',
             'invoice_date',
             'exempt_amount',
@@ -84,5 +88,47 @@ class HistoryQueryService
         $this->applySorting($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
+    }
+
+    /**
+     * Verifica la integridad de un registro comparando su hash almacenado
+     * con uno generado a partir de los datos actuales.
+     */
+    public function verifyAuditHash($history): ?bool
+    {
+        if (!$history->audit_hash) {
+            return null;
+        }
+
+        $detailsForHash = [];
+        foreach ($history->details as $detail) {
+            // Reconstruir el priceBs neto usado en el hash original
+            // En gravados (vat_status=1), el hash usó priceBs = total_unitario / 1.16
+            // En exentos, usó el precio directamente
+            $priceBs = $detail->vat_status == 1 
+                ? ($detail->total_amount / 1.16) 
+                : $detail->exempt_amount;
+
+            $detailsForHash[] = "{$detail->product_id}:{$detail->quantity}:" . number_format($priceBs, 4, '.', '');
+        }
+
+        // Reconstruir el auditString original
+        // Importante: El hash original usaba la identificación del cliente (solo número)
+        // mientras que en fiscal_history guardamos Tipo+Número. Intentamos extraer solo el número.
+        $identOnly = preg_replace('/[^0-9]/', '', $history->identification);
+
+        $auditString = implode('|', [
+            $identOnly,
+            number_format($history->exempt_amount, 2, '.', ''),
+            number_format($history->taxable_amount, 2, '.', ''),
+            number_format($history->iva_amount, 2, '.', ''),
+            number_format($history->total_amount, 2, '.', ''),
+            $history->order_id,
+            implode('|', $detailsForHash)
+        ]);
+
+        $calculatedHash = hash('sha256', $auditString);
+
+        return hash_equals($history->audit_hash, $calculatedHash);
     }
 }
