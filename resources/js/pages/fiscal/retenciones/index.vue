@@ -159,9 +159,19 @@ const clearFilters = () => {
   fetchRetentions();
 };
 
-watch(currentTab, () => {
+watch(currentTab, (newTab) => {
   page.value = 1;
   selected.value = [];
+  
+  // Ajustar el ordenamiento según la pestaña
+  if (newTab === "generated") {
+    sortBy.value = "date";
+    orderBy.value = "desc";
+  } else {
+    sortBy.value = "created_invoice_date";
+    orderBy.value = "desc";
+  }
+  
   fetchRetentions();
 });
 
