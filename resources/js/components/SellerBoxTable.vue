@@ -21,7 +21,7 @@ const headers = [
   { title: "COP", key: "total_cop", sortable: true, align: "end" },
   { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
   { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
-  { title: "Bs Tarjeta", key: "bs_card", sortable: false, align: "end" },
+  { title: "Banco", key: "bs_card", sortable: false, align: "end" },
   { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
   { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
   { title: "Estado", key: "status", sortable: true, align: "center" },
@@ -172,7 +172,7 @@ const getAvatarColor = (id) => {
         </template>
         <template #item.bs_card="{ item }">
           <span class="text-xs font-weight-medium text-info">{{
-            fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0))
+            fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_transfer || 0))
           }}</span>
         </template>
         <template #item.total_sales="{ item }">
@@ -350,10 +350,10 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Tarjeta Bs.</span
+                >Banco Bs.</span
               >
               <span class="text-xs font-weight-black text-info">{{
-                fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0))
+                fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_transfer || 0))
               }}</span>
             </div>
           </div>

@@ -47,6 +47,16 @@ const currencies = computed(() => {
       icon: 'tabler-coin',
       barColor: '#00CFE8',
     },
+    {
+      label: 'Cuentas por Cobrar',
+      amount: data.total_global_debt || "0.00",
+      amountUSD: 0, // No lo sumamos al total de venta de la sesión
+      approxUSD: null,
+      currency: 'USD',
+      color: 'error',
+      icon: 'tabler-credit-card',
+      barColor: '#EA5455',
+    },
   ];
 });
 

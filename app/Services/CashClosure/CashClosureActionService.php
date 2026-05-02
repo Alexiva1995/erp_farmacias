@@ -100,6 +100,11 @@ class CashClosureActionService
             ->where('status', CashClosing::OPEN)
             ->first();
 
+        if ($cashClosing) {
+            // Calculamos la deuda global total de todos los clientes (Cuentas por Cobrar)
+            $cashClosing->total_global_debt = \App\Models\Credit::where('status', '!=', 'Paid')->sum('pending_amount');
+        }
+
         return $cashClosing;
     }
     public function closeCashClosing(CloseCashClosureRequest $request): JsonResponse
