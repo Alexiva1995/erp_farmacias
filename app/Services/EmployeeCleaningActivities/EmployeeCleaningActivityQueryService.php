@@ -81,6 +81,54 @@ class EmployeeCleaningActivityQueryService
     }
 
     /**
+     * Obtiene una lista plana de todas las asignaciones
+     * 
+     * @param array $data
+     * @return LengthAwarePaginator
+     */
+    public function getAllAssignments(array $data): LengthAwarePaginator
+    {
+        $query = \Illuminate\Support\Facades\DB::table('employee_cleaning_activity')
+            ->join('employees', 'employee_cleaning_activity.employee_id', '=', 'employees.id')
+            ->join('cleaning_activities', 'employee_cleaning_activity.cleaning_activity_id', '=', 'cleaning_activities.id')
+            ->select(
+                'employee_cleaning_activity.*',
+                'employees.name as employee_name',
+                'employees.last_name as employee_last_name',
+                'cleaning_activities.activity as activity_name',
+                'cleaning_activities.frequency as frequency'
+            )
+            ->where('employees.is_active', true);
+
+        // Búsqueda
+        if (!empty($data['q'])) {
+            $search = $data['q'];
+            $query->where(function ($q) use ($search) {
+                $q->where('employees.name', 'LIKE', "%{$search}%")
+                    ->orWhere('employees.last_name', 'LIKE', "%{$search}%")
+                    ->orWhere('cleaning_activities.activity', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Filtro Frecuencia
+        if (!empty($data['frequency'])) {
+            $query->where('cleaning_activities.frequency', $data['frequency']);
+        }
+        
+        // Filtro Ocultar Diarias
+        if (isset($data['hide_daily']) && ($data['hide_daily'] === 'true' || $data['hide_daily'] === true)) {
+            $query->where('cleaning_activities.frequency', '!=', 'Diaria');
+        }
+
+        // Ordenamiento
+        $query->orderBy('cleaning_activities.activity', 'asc');
+
+        // Paginación
+        $itemsPerPage = $data['itemsPerPage'] ?? 10;
+        return $query->paginate($itemsPerPage);
+    }
+
+    /**
      * Formatea los datos del empleado para la respuesta
      * 
      * @param Employee $employee

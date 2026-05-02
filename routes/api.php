@@ -642,6 +642,13 @@ Route::middleware("auth:sanctum")->group(function () {
 
         // BI: Analítica de Clientes (Lifecycle & RFM)
         Route::get("/customers/dashboard", [\App\Http\Controllers\Api\Bi\CustomerAnalyticsController::class, "index"]);
+
+        // BI: Balanced Scorecard de Empleados (Talento & Productividad)
+        Route::prefix('employees')->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\Api\Bi\EmployeeAnalyticsController::class, 'index']);
+            Route::get('/compare', [\App\Http\Controllers\Api\Bi\EmployeeAnalyticsController::class, 'compare']);
+            Route::get('/{id}/detail', [\App\Http\Controllers\Api\Bi\EmployeeAnalyticsController::class, 'detail']);
+        });
     });
     
     Route::prefix("users")->group(function () {
@@ -809,6 +816,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
     Route::prefix('employee-cleaning-activities')->group(function () {
         Route::get('/', [EmployeeCleaningActivityController::class, 'index']);
+        Route::get('/assignments', [EmployeeCleaningActivityController::class, 'assignments']);
         Route::post('/', [EmployeeCleaningActivityController::class, 'store']);
         Route::delete('/{employee}/{activityId}', [EmployeeCleaningActivityController::class, 'destroy']);
         Route::patch('/{employee}/{activityId}/status', [EmployeeCleaningActivityController::class, 'updateStatus']);

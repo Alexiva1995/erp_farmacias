@@ -36,6 +36,27 @@ class EmployeeCleaningActivityController extends Controller
     }
 
     /**
+     * Obtener una lista plana de todas las asignaciones
+     */
+    public function assignments(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $result = $this->queryService->getAllAssignments($data);
+
+            return ApiResponse::success([
+                'data' => $result->items(),
+                'total' => $result->total(),
+                'current_page' => $result->currentPage(),
+                'per_page' => $result->perPage(),
+                'last_page' => $result->lastPage(),
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
      * Asignar o actualizar actividades de limpieza a un empleado
      */
     public function store(StoreEmployeeCleaningActivityRequest $request)

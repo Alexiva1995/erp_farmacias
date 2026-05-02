@@ -123,6 +123,7 @@ declare module 'vue' {
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
     EcommerceRevenueReport: typeof import('./resources/js/components/EcommerceRevenueReport.vue')['default']
     EditUTDialog: typeof import('./resources/js/components/dialogs/EditUTDialog.vue')['default']
+    EmployeeAssignmentsTable: typeof import('./resources/js/components/EmployeeAssignmentsTable.vue')['default']
     EmployeeCleaningDialog: typeof import('./resources/js/components/dialogs/EmployeeCleaningDialog.vue')['default']
     EmployeeCleaningFilters: typeof import('./resources/js/components/EmployeeCleaningFilters.vue')['default']
     EmployeeCleaningTable: typeof import('./resources/js/components/EmployeeCleaningTable.vue')['default']

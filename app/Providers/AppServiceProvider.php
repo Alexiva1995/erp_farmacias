@@ -236,6 +236,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\Bi\CustomerAnalyticsRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\EmployeeAnalytics::class,
+            \App\Repositories\Bi\EmployeeAnalyticsRepository::class
+        );
+
         $this->app->bind(Expenses::class, ExpensesServices::class);
         $this->app->bind(ExpenseCategory::class, ExpenseCategoryServices::class);
 
