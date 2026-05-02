@@ -30,9 +30,9 @@ const tempLaboratoryId = ref(null);
 
 watch(
   [() => props.modelValue, () => props.employee],
-  ([newVisible], [oldVisible]) => {
+  ([newVisible, newEmployee], [oldVisible, oldEmployee]) => {
     if (!newVisible) return;
-    if (newVisible && (oldVisible === undefined || oldVisible === false)) {
+    if (newVisible && !oldVisible) {
       if (isEditMode.value && props.employee?.employee_id) {
         formData.value = {
           employee_id: props.employee.employee_id,
@@ -143,6 +143,11 @@ const handleCancelEdit = () => {
 };
 
 const handleSubmit = () => {
+  // Mejora UX: Si hay un laboratorio seleccionado en el combo pero no se pulsó el botón +, añadirlo automáticamente
+  if (formData.value.new_laboratory_id) {
+    handleAddLaboratory();
+  }
+
   const payload = {
     employee_id: formData.value.employee_id,
     laboratory_ids: formData.value.laboratories.map((lab) => lab.id),
@@ -334,6 +339,9 @@ const getLaboratoryColor = (index) => {
                   <VDivider v-if="index < formData.laboratories.length - 1" class="border-opacity-10" />
                 </template>
               </VList>
+              <div v-if="props.errors.laboratory_ids" class="pa-3 text-center">
+                <span class="text-xs text-error font-weight-black uppercase">{{ Array.isArray(props.errors.laboratory_ids) ? props.errors.laboratory_ids[0] : props.errors.laboratory_ids }}</span>
+              </div>
             </VCard>
           </section>
 
@@ -363,7 +371,7 @@ const getLaboratoryColor = (index) => {
               block
               height="50"
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :disabled="!formData.employee_id || formData.laboratories.length === 0"
+              :disabled="!formData.employee_id || (formData.laboratories.length === 0 && !formData.new_laboratory_id)"
               @click="handleSubmit"
             >
               <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />
