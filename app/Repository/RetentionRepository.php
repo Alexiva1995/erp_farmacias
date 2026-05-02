@@ -14,6 +14,12 @@ class RetentionRepository
         $sortBy = $filters['sortBy'] ?? 'created_invoice_date';
         $orderBy = $filters['orderBy'] ?? 'desc';
 
+        // Validar columnas para evitar SQL error 500
+        $validInvoiceColumns = ['id', 'invoice_number', 'control_number', 'total_amount', 'taxable_base', 'tax_amount', 'created_invoice_date'];
+        if (!str_contains($sortBy, '.') && !in_array($sortBy, $validInvoiceColumns)) {
+            $sortBy = 'created_invoice_date';
+        }
+
         $query = Invoice::with('supplier')
             ->where('tax_amount', '>', 0)
             ->where('retention_generated', $isGenerated);
@@ -177,6 +183,12 @@ class RetentionRepository
     {
         $sortBy = $filters['sortBy'] ?? 'date';
         $orderBy = $filters['orderBy'] ?? 'desc';
+
+        // Validar columnas para evitar SQL error 500
+        $validRetentionColumns = ['id', 'number', 'date', 'total_taxable_base', 'total_tax_amount', 'total_withheld_amount'];
+        if (!str_contains($sortBy, '.') && !in_array($sortBy, $validRetentionColumns)) {
+            $sortBy = 'date';
+        }
 
         $query = Retention::with(['supplier', 'invoices']);
 
