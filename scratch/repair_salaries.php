@@ -24,8 +24,8 @@ try {
         echo "Actualizados " . $updated . " registros de " . $concept->name . " en la configuración general.\n";
     }
 
-    // 2. Corregir las nóminas recientes (de mayo)
-    $recentPayslips = Payslip::whereMonth('payslip_date', 5)->whereYear('payslip_date', 2026)->get();
+    // 2. Corregir las nóminas recientes (de abril y mayo)
+    $recentPayslips = Payslip::whereIn(DB::raw('MONTH(payslip_date)'), [4, 5])->whereYear('payslip_date', 2026)->get();
     foreach ($recentPayslips as $payslip) {
         echo "Corrigiendo nómina ID: " . $payslip->id . " (" . $payslip->name . ")\n";
         
