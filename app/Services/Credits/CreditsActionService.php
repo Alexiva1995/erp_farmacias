@@ -177,7 +177,7 @@ class CreditsActionService
                 $current_cash->usd_cash_payment_credit -= $request->changeAmountUSD;
                 
                 // Convertir el monto de USD a COP para restar correctamente del fondo en pesos
-                $copRate = (float) ($ratesArray['COP'] ?? 1);
+                                $copRate = (float) ($ratesArray['COPC'] ?? 1);
                 $copChangeAmount = $request->changeAmountUSD * $copRate;
                 
                 $current_cash->cop_conversion_payment_credit += $copChangeAmount;

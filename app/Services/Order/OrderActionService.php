@@ -989,7 +989,7 @@ class OrderActionService
                 if (isset($request->changeAmount) && $request->changeAmount > 0) {
                     // El vuelto se dio físicamente en Pesos (COP)
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
-                    $copRate = $resourceService->getExchangeRate('COP') ?: 1;
+                                        $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
                     
                     // Convertir el monto de USD a COP para restar correctamente del fondo en pesos
                     $copChangeAmount = $request->changeAmountUSD * $copRate;
