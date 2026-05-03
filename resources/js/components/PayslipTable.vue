@@ -197,7 +197,7 @@ const getAvatarColor = (id) => {
               <template #activator="{ props }">
                 <VBtn
                   v-bind="props"
-                  :href="'/finances/payslips/' + item.id + '?tab=eye'"
+                  :href="'/finances/payslips/' + item.id + '?tab=full'"
                   icon="tabler-eye"
                   variant="text"
                   color="warning"

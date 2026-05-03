@@ -52,7 +52,7 @@ class PayslipServices implements Payslip
 
   public function getData(MPayslip $payslip, string $type): array
   {
-    $type = in_array($type, ['full', 'legal']) ? $type : 'legal';
+    $type = ($type === 'full' || $type === 'eye') ? 'full' : 'legal';
     $query = $this->payslipRepository->getData($payslip, $type);
     return $query;
   }

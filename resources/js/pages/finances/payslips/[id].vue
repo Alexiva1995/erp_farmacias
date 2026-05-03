@@ -8,7 +8,8 @@ import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
 const route = useRoute();
-const tab = ref(route.query.tab || "legal");
+const initialTab = route.query.tab === 'eye' ? 'full' : (route.query.tab || "legal");
+const tab = ref(initialTab);
 const loading = ref(false);
 const showDialog = ref(false);
 const payrollId = route.params.id;
@@ -91,7 +92,7 @@ const formatCurrency = (amount) => {
   const isFullMode = tab.value === 'full';
   const currencyCode = selectedPayslip.value?.currency_code;
   const isCop = isFullMode || currencyCode === 'COP';
-  const symbol = isCop ? 'COP' : (currencyCode || (tab.value === 'legal' ? 'Bs.' : 'USD'));
+  const symbol = isCop ? 'COP' : (currencyCode || (tab.value === 'legal' ? 'Bs.' : 'COP'));
 
   if (isCop) {
     return Math.round(newAmount)

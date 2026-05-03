@@ -100,8 +100,11 @@ class PayslipRepository
       if (!$employee->user) continue;
 
       $salaries     = $employee->user->salaries;
-      $baseSalary   = (float)($salaries->where('concept.name', 'Salario Básico Mensual')->first()?->amount ?? 40.00);
-      $foodVoucher  = (float)($salaries->where('concept.name', 'Bono de Alimentación')->first()?->amount ?? 40.00);
+      $baseSalaryRecord = $salaries->where('concept.name', 'Salario Básico Mensual')->first();
+      $baseSalary = ($baseSalaryRecord && (float)$baseSalaryRecord->amount > 0) ? (float)$baseSalaryRecord->amount : 40.00;
+
+      $foodVoucherRecord = $salaries->where('concept.name', 'Bono de Alimentación')->first();
+      $foodVoucher = ($foodVoucherRecord && (float)$foodVoucherRecord->amount > 0) ? (float)$foodVoucherRecord->amount : 40.00;
       $package      = (float)($employee->total_package_usd ?? 0);
 
       // ── 1. Salario Base (50% por quincena) ──────────────────────────────────
@@ -185,9 +188,11 @@ class PayslipRepository
         throw new \Exception("Concepto de nómina no encontrado: {$conceptName}");
     }
 
+    $initialAmount = in_array($conceptName, ['Salario Básico Mensual', 'Bono de Alimentación']) ? 40.00 : 0;
+    
     $salaryDetail = $employee->user->salaries()->firstOrCreate(
       ['salary_concept_id' => $concept->id],
-      ['amount' => 0]
+      ['amount' => $initialAmount]
     );
 
     return (object)[
