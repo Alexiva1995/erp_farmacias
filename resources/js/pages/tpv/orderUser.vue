@@ -2348,7 +2348,6 @@ const handleBuysCompletion = async (
     formData.append("credit", credit ? 1 : 0);
     formData.append("changeAmount", safeChangeAmount);
     formData.append("changeAmountUSD", safeChangeAmountUSD);
-    formData.append("changeAmountCOP", changeAmountOrigin);
     formData.append("spe", switchStates.spe ? 1 : 0);
     formData.append("payments", JSON.stringify(paymentsData));
     formData.append("taxable_base", taxable_base);

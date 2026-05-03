@@ -24,7 +24,6 @@ class Order extends Model
         'cash_closing_id',
         'total_amount',
         'money_returns',
-        'money_returns_cop',
         'currency',
         'total_cost',
         'taxable_base',

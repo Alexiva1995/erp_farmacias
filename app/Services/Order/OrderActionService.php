@@ -754,10 +754,6 @@ class OrderActionService
                 $orderId->money_returns = $request->changeAmount;
             }
 
-            if (isset($request->changeAmountCOP)) {
-                $orderId->money_returns_cop = $request->changeAmountCOP;
-            }
-
             if (isset($request->changeAmountUSD)) {
                 $orderId->usd_conversion = $request->changeAmountUSD;
             }
@@ -992,20 +988,14 @@ class OrderActionService
                 // Caso cambio moneda cruzada
                 if (isset($request->changeAmount) && $request->changeAmount > 0) {
                     // El vuelto se dio físicamente en Pesos (COP)
-                    // Priorizamos el monto COP enviado por el frontend si existe
-                    $amountToSubtractCOP = $request->changeAmountCOP ?? null;
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $copRate = $resourceService->getExchangeRate('COP') ?: 1;
                     
-                    if (is_null($amountToSubtractCOP) && $orderId->currency === 'USD') {
-                        // Si no viene y la orden es USD, convertimos el vuelto USD a COP
-                        $resourceService = app(\App\Services\Resources\ResourceService::class);
-                        $rate = $resourceService->getExchangeRate('COP') ?: 4000;
-                        $amountToSubtractCOP = $request->changeAmount * $rate;
-                    } else {
-                        $amountToSubtractCOP = $amountToSubtractCOP ?? $request->changeAmount;
-                    }
-
-                    $current_cash->cop_cash -= $amountToSubtractCOP;
-                    $current_cash->cop_conversion += $amountToSubtractCOP;
+                    // Convertir el monto de USD a COP para restar correctamente del fondo en pesos
+                    $copChangeAmount = $request->changeAmountUSD * $copRate;
+                    
+                    $current_cash->cop_cash -= $copChangeAmount;
+                    $current_cash->cop_conversion += $copChangeAmount;
                 } else {
                     // El vuelto se dio físicamente en Dólares (USD)
                     $current_cash->usd_cash -= $request->changeAmountUSD;
@@ -1206,10 +1196,7 @@ class OrderActionService
                                 $montoDesc = $amount - $order->usd_conversion;
                                 $cashClosing->usd_cash -= $montoDesc;
                                 $cashClosing->usd_conversion -= $order->usd_conversion ?? null;
-                                
-                                // Usamos el valor real en COP que se guardó al completar
-                                $copReturn = $order->money_returns_cop ?? $order->money_returns;
-                                $cashClosing->cop_conversion -= $copReturn;
+                                $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
                                 $cashClosing->usd_cash -= $amount;
                             }
@@ -1239,8 +1226,14 @@ class OrderActionService
                             $cashClosing->bs_card_credit -= $amount;
                             break;
                         case 'cash_cop':
-                            $montoDescCOP = $amount - ($order->money_returns_cop ?? $order->money_returns);
+                            /*if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
+                                Log::info("dentro de conversion.", $order->usd_conversion);
+                                $cashClosing->cop_conversion -= $order->money_returns ?? null;
+                            } else {
+                                Log::info("dentro del else conversion.", $order->money_returns);*/
+                            $montoDescCOP = $amount - $order->money_returns;
                             $cashClosing->cop_cash -= $montoDescCOP;
+                            // }
                             break;
                         case 'bank_transfer':
                             $cashClosing->cop_transfer -= $amount;
