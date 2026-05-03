@@ -169,7 +169,7 @@ const getValueDelivery = (key1, key2) => {
 const delivery = computed(() => [
   {
     label: "Efectivo (USD)",
-    amount: getValueDelivery("usd_delivered", "usd_cash_payment_credit"),
+    amount: getValue("usd_delivered"),
     currency: "USD",
   },
   {
@@ -184,22 +184,22 @@ const delivery = computed(() => [
   },
   {
     label: "Efectivo (Bs)",
-    amount: getValueDelivery("bs_cash", "bs_cash_payment_credit"),
+    amount: getValue("bs_delivered"),
     currency: "BS",
   },
   {
     label: "Tarjeta Débito(Bs)",
-    amount: getValueDelivery("bs_card_debito"),
+    amount: getValue("bs_card_debito"),
     currency: "BS",
   },
   {
     label: "Tarjeta Crédito(Bs)",
-    amount: getValueDelivery("bs_card_credit"),
+    amount: getValue("bs_card_credit"),
     currency: "BS",
   },
   {
     label: "Tarjeta (Bs)",
-    amount: getValueDelivery("bs_card_payment_credit"),
+    amount: getValue("bs_card_payment_credit"),
     currency: "BS",
   },
   {
@@ -214,7 +214,7 @@ const delivery = computed(() => [
   },
   {
     label: "Efectivo (COP)",
-    amount: getValueDelivery("cop_delivered", "cop_cash_payment_credit"),
+    amount: getValue("cop_delivered"),
     currency: "COP",
   },
   {
@@ -232,9 +232,9 @@ const totalDelivery = computed(() => {
   return delivery.value.reduce((sum, item) => sum + item.amount, 0);
 });
 
-const totalEfectivoUsd = computed(() => getValueDelivery("usd_delivered", "usd_cash_payment_credit"));
-const totalEfectivoBs = computed(() => getValueDelivery("bs_cash", "bs_cash_payment_credit"));
-const totalEfectivoCop = computed(() => getValueDelivery("cop_delivered", "cop_cash_payment_credit"));
+const totalEfectivoUsd = computed(() => getValue("usd_delivered"));
+const totalEfectivoBs = computed(() => getValue("bs_delivered"));
+const totalEfectivoCop = computed(() => getValue("cop_delivered"));
 
 
 const hasAnyReference = computed(() => {
