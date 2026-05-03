@@ -172,21 +172,16 @@ class CreditsActionService
             }
 
 
-            if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
-                // Caso moneda cruzada: registramos el vuelto en la cuenta de conversión para que reste del total COP
-                $current_cash->usd_cash_payment_credit -= $request->changeAmountUSD;
-                
-                // Convertir el monto de USD a COP para restar correctamente del fondo en pesos
-                                $copRate = (float) ($ratesArray['COPC'] ?? 1);
+                        if (isset($request->changeAmount) && $request->changeAmount > 0) {
+                // El vuelto se dio físicamente en Pesos (COP)
+                $copRate = (float) ($ratesArray['COPC'] ?? 1);
                 $copChangeAmount = $request->changeAmountUSD * $copRate;
                 
                 $current_cash->cop_conversion_payment_credit += $copChangeAmount;
                 $current_cash->cop_cash_payment_credit -= $copChangeAmount;
-            } else {
-                // Caso misma moneda: restamos el vuelto del ya recibido (Neto)
-                if (isset($request->changeAmount)) {
-                    $current_cash->cop_cash_payment_credit -= $request->changeAmount;
-                }
+            } else if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
+                // El vuelto se dio físicamente en Dólares (USD)
+                $current_cash->usd_cash_payment_credit -= $request->changeAmountUSD;
             }
 
             // Recalcular todos los totales usando la lógica unificada en el modelo
