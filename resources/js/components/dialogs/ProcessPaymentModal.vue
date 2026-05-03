@@ -47,7 +47,7 @@ const availablePaymentMethods = computed(() => {
   const currency = form.value.payment_currency;
   const methodMap = {
     CASH: { value: "cash", label: "Efectivo", icon: "tabler-cash" },
-    BANK: { value: "bank", label: "Banco", icon: "tabler-building-bank" },
+    BANK: { value: "transfer", label: "Banco", icon: "tabler-building-bank" },
     MOBILE: { value: "mobile", label: "Pago móvil", icon: "tabler-device-mobile" },
     BINANCE: { value: "binance", label: "Binance", icon: "tabler-brand-binance" },
     PAYPAL: { value: "paypal", label: "PayPal", icon: "tabler-brand-paypal" },
@@ -136,7 +136,7 @@ const processPayment = async () => {
   loading.value = true;
   try {
     const frontendToEnumMap = {
-      cash: "CASH", bank: "BANK", mobile: "MOBILE",
+      cash: "CASH", card: "CARD", mobile: "MOBILE", transfer: "TRANSFER",
       binance: "BINANCE", paypal: "PAYPAL", credit: "CREDIT"
     };
 

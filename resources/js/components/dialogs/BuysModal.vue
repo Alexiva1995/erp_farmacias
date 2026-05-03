@@ -167,7 +167,9 @@ const paymentMethodsByCurrency = {
   BS: [
     { label: "Efectivo", value: "cash_bs" },
     { label: "Pago Móvil", value: "mobile_payment" },
-    { label: "Banco", value: "bank" },
+    { label: "Transferencia", value: "bank_transfer_bs" },
+    { label: "T. Debito", value: "debit_card" },
+    { label: "T. Crédito", value: "credit_card" },
   ],
   USD: [
     { label: "Efectivo", value: "cash_usd" },

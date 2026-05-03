@@ -59,17 +59,13 @@ const usdFields = computed(() => [
   { label: 'Saldo del cliente',  val: props.cashClosureData?.usd_balance },
 ].filter(f => show(f.val)));
 
-const bsFields = computed(() => {
-  const bankAmount = (parseFloat(props.cashClosureData?.bs_transfer) || 0) +
-                     (parseFloat(props.cashClosureData?.bs_card_debito) || 0) +
-                     (parseFloat(props.cashClosureData?.bs_card_credit) || 0);
-  
-  return [
-    { label: 'Efectivo',   val: props.cashClosureData?.bs_cash },
-    { label: 'Pago Móvil', val: props.cashClosureData?.bs_mobile },
-    { label: 'Banco',      val: bankAmount },
-  ].filter(f => show(f.val));
-});
+const bsFields = computed(() => [
+  { label: 'Efectivo',       val: props.cashClosureData?.bs_cash },
+  { label: 'Pago Móvil',    val: props.cashClosureData?.bs_mobile },
+  { label: 'Transferencia', val: props.cashClosureData?.bs_transfer },
+  { label: 'T. Débito',     val: props.cashClosureData?.bs_card_debito },
+  { label: 'T. Crédito',    val: props.cashClosureData?.bs_card_credit },
+].filter(f => show(f.val)));
 
 const copFields = computed(() => [
   { label: 'Efectivo COP',       val: props.cashClosureData?.cop_cash },
@@ -77,22 +73,18 @@ const copFields = computed(() => [
   { label: 'Diferencia cambio', val: props.cashClosureData?.cop_conversion },
 ].filter(f => show(f.val)));
 
-const creditFields = computed(() => {
-  const bankBsAmount = (parseFloat(props.cashClosureData?.bs_transfer_payment_credit) || 0) +
-                       (parseFloat(props.cashClosureData?.bs_card_payment_credit) || 0);
-
-  return [
-    { label: 'Deuda Generada',     val: props.cashClosureData?.usd_credit },
-    { label: 'Efectivo USD (Abono)', val: props.cashClosureData?.usd_cash_payment_credit },
-    { label: 'Binance (Abono)',    val: props.cashClosureData?.usd_binance_payment_credit },
-    { label: 'Paypal (Abono)',     val: props.cashClosureData?.usd_paypal_payment_credit },
-    { label: 'Efectivo BS (Abono)', val: props.cashClosureData?.bs_cash_payment_credit },
-    { label: 'Pago Móvil BS',     val: props.cashClosureData?.bs_mobile_payment_credit },
-    { label: 'Banco BS',          val: bankBsAmount },
-    { label: 'Efectivo COP (Abono)', val: props.cashClosureData?.cop_cash_payment_credit },
-    { label: 'Transferencia COP', val: props.cashClosureData?.cop_transfer_payment_credit },
-  ].filter(f => show(f.val));
-});
+const creditFields = computed(() => [
+  { label: 'Deuda Generada',     val: props.cashClosureData?.usd_credit },
+  { label: 'Efectivo USD (Abono)', val: props.cashClosureData?.usd_cash_payment_credit },
+  { label: 'Binance (Abono)',    val: props.cashClosureData?.usd_binance_payment_credit },
+  { label: 'Paypal (Abono)',     val: props.cashClosureData?.usd_paypal_payment_credit },
+  { label: 'Efectivo BS (Abono)', val: props.cashClosureData?.bs_cash_payment_credit },
+  { label: 'Pago Móvil BS',     val: props.cashClosureData?.bs_mobile_payment_credit },
+  { label: 'Transferencia BS',  val: props.cashClosureData?.bs_transfer_payment_credit },
+  { label: 'Tarjetas BS',       val: props.cashClosureData?.bs_card_payment_credit },
+  { label: 'Efectivo COP (Abono)', val: props.cashClosureData?.cop_cash_payment_credit },
+  { label: 'Transferencia COP', val: props.cashClosureData?.cop_transfer_payment_credit },
+].filter(f => show(f.val)));
 
 const closeModal = () => emit("update:isDialogVisible", false);
 

@@ -24,7 +24,9 @@ const usdPayments = computed(() => [
 
 const bsPayments = computed(() => [
   { label: "Efectivo", amount: getValue("bs_cash"), currency: "BS" },
-  { label: "Banco", amount: getValue("bs_transfer") + getValue("bs_card_debito") + getValue("bs_card_credit"), currency: "BS" },
+  { label: "T. Débito", amount: getValue("bs_card_debito"), currency: "BS" },
+  { label: "T. Crédito", amount: getValue("bs_card_credit"), currency: "BS" },
+  { label: "Transferencia", amount: getValue("bs_transfer"), currency: "BS" },
   { label: "Pago Móvil", amount: getValue("bs_mobile"), currency: "BS" },
 ]);
 
@@ -65,8 +67,13 @@ const creditPayments = computed(() => [
     currency: "BS",
   },
   {
-    label: "Banco (Bs)",
-    amount: getValue("bs_card_payment_credit") + getValue("bs_transfer_payment_credit"),
+    label: "Tarjeta (Bs)",
+    amount: getValue("bs_card_payment_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Transferencia (Bs)",
+    amount: getValue("bs_transfer_payment_credit"),
     currency: "BS",
   },
   {
@@ -112,12 +119,19 @@ const allReferences = computed(() => {
               monto: parseFloat(payment.amount),
               currency: currency,
             };
+              console.log(method);
             if (method === "BINANCE" && currency === "USD") {
               references.BINANCE.push(referenceData);
             } else if (method === "PAYPAL" && currency === "USD") {
               references.PAYPAL.push(referenceData);
-            } else if ((method === "BANK" || method === "CARD" || method === "DEBIT_CARD" || method === "CREDIT_CARD" || method === "BANK_TRANSFER") && currency === "BS") {
+            } else if (method === "CARD" && currency === "BS") {
               references.TARJETA.push(referenceData);
+            }  else if (method === "DEBIT_CARD" && currency === "BS") {
+              references["TARJETA DEBITO"].push(referenceData);
+            } else if (method === "CREDIT_CARD" && currency === "BS") {
+              references["TARJETA CREDITO"].push(referenceData);
+            } else if (method === "BANK_TRANSFER" && currency === "BS") {
+              references.TRANSFERENCIA.push(referenceData);
             } else if (method === "MOBILE_PAYMENT" && currency === "BS") {
               references["PAGO MOVIL"].push(referenceData);
             } else if (method === "ZELLE" && currency === "USD") {
@@ -135,12 +149,12 @@ const allReferences = computed(() => {
 
 const binanceReferences = computed(() => allReferences.value.BINANCE);
 const paypalReferences = computed(() => allReferences.value.PAYPAL);
-const bancoReferencesBs = computed(() => [
-  ...allReferences.value.TARJETA,
-  ...allReferences.value["TARJETA DEBITO"],
-  ...allReferences.value["TARJETA CREDITO"],
-  ...allReferences.value.TRANSFERENCIA
-]);
+const tarjetaReferencesBs = computed(() => allReferences.value.TARJETA);
+const tarjetaDebitoReferencesBs = computed(() => allReferences.value["TARJETA DEBITO"]);
+const tarjetaCreditoReferencesBs = computed(() => allReferences.value["TARJETA CREDITO"]);
+const transferenciaReferencesBs = computed(
+  () => allReferences.value.TRANSFERENCIA
+);
 const pagoMovilReferencesBs = computed(() => allReferences.value["PAGO MOVIL"]);
 const tarjetaReferencesCop = computed(
   () => allReferences.value["TRANSFERENCIACOP"]
@@ -174,8 +188,23 @@ const delivery = computed(() => [
     currency: "BS",
   },
   {
-    label: "Banco (Bs)",
-    amount: getValue("bs_card_debito") + getValue("bs_card_credit") + getValue("bs_transfer") + getValue("bs_card_payment_credit") + getValue("bs_transfer_payment_credit"),
+    label: "Tarjeta Débito(Bs)",
+    amount: getValueDelivery("bs_card_debito"),
+    currency: "BS",
+  },
+  {
+    label: "Tarjeta Crédito(Bs)",
+    amount: getValueDelivery("bs_card_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Tarjeta (Bs)",
+    amount: getValueDelivery("bs_card_payment_credit"),
+    currency: "BS",
+  },
+  {
+    label: "Transferencia (Bs)",
+    amount: getValueDelivery("bs_transfer", "bs_transfer_payment_credit"),
     currency: "BS",
   },
   {
@@ -212,7 +241,10 @@ const hasAnyReference = computed(() => {
   return (
     binanceReferences.value.length > 0 ||
     paypalReferences.value.length > 0 ||
-    bancoReferencesBs.value.length > 0 ||
+    tarjetaReferencesBs.value.length > 0 ||
+    tarjetaDebitoReferencesBs.value.length > 0 ||
+    tarjetaCreditoReferencesBs.value.length > 0 ||
+    transferenciaReferencesBs.value.length > 0 ||
     pagoMovilReferencesBs.value.length > 0 ||
     tarjetaReferencesCop.value.length > 0
   );
@@ -302,7 +334,13 @@ const hasAnyReference = computed(() => {
         <SectionDivider :isPdf="props.isPdf" text="REFERENCIAS MÓVILES" width="85%" />
         <ReferenceTable title="BINANCE (USD)" :references="binanceReferences" />
         <ReferenceTable title="PAYPAL (USD)" :references="paypalReferences" />
-        <ReferenceTable title="BANCO (Bs)" :references="bancoReferencesBs" />
+        <ReferenceTable title="TARJETA (Bs)" :references="tarjetaReferencesBs" />
+        <ReferenceTable title="TARJETA DEBITO (Bs)" :references="tarjetaDebitoReferencesBs" />
+        <ReferenceTable title="TARJETA CREDITO (Bs)" :references="tarjetaCreditoReferencesBs" />
+        <ReferenceTable
+          title="TRANSFERENCIA (Bs)"
+          :references="transferenciaReferencesBs"
+        />
         <ReferenceTable
           title="PAGO MOVIL (Bs)"
           :references="pagoMovilReferencesBs"

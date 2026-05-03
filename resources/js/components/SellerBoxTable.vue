@@ -21,7 +21,7 @@ const headers = [
   { title: "COP", key: "total_cop", sortable: true, align: "end" },
   { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
   { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
-  { title: "Banco", key: "bs_card", sortable: false, align: "end" },
+  { title: "Banco Bs", key: "bs_card", sortable: false, align: "end" },
   { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
   { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
   { title: "Estado", key: "status", sortable: true, align: "center" },

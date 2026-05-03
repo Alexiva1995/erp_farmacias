@@ -374,8 +374,8 @@ class PendingPaymentsController extends Controller
         try {
             $allowedMethods = match ($request->payment_currency) {
                 'USD' => ['CASH', 'BINANCE', 'PAYPAL', 'CREDIT'],
-                'VES', 'BS' => ['CASH', 'BANK', 'MOBILE'],
-                'COP' => ['CASH', 'BANK'],
+                'VES', 'BS' => ['CASH', 'CARD', 'MOBILE', 'TRANSFER'],
+                'COP' => ['CASH', 'TRANSFER'],
                 default => [],
             };
 

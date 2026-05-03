@@ -961,7 +961,6 @@ class OrderActionService
                         case 'mobile_payment':
                             $current_cash->bs_mobile += $amount;
                             break;
-                        case 'bank':
                         case 'bank_transfer_bs':
                             $current_cash->bs_transfer += $amount;
                             break;

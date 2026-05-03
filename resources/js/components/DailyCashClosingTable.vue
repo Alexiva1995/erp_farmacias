@@ -27,7 +27,7 @@ const headers = [
   { title: "COP", key: "total_cop", sortable: true, align: "end" },
   { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
   { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
-  { title: "Bs Tarjeta", key: "bs_card", sortable: true, align: "end" },
+  { title: "Banco Bs", key: "bs_card", sortable: true, align: "end" },
   { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
   { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
   {
@@ -319,7 +319,7 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Tarjeta Bs.</span
+                >Banco Bs.</span
               >
               <span class="text-xs font-weight-black text-info">{{
                 fmtBs(item.bs_card)
