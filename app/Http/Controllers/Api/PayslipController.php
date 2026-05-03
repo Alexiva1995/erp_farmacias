@@ -80,13 +80,18 @@ class PayslipController extends Controller
 
     public function store(Request $request)
     {
-        $date = $request->input('date', now()->toDateString());
-        
-        Artisan::call('app:generate-payslip', [
-            '--date' => $date
-        ]);
+        try {
+            $date = $request->input('date', now()->toDateString());
+            
+            Artisan::call('app:generate-payslip', [
+                '--date' => $date
+            ]);
 
-        return ApiResponse::success(['message' => 'Nómina generada exitosamente']);
+            return ApiResponse::success(['message' => 'Nómina generada exitosamente']);
+        } catch (\Exception $e) {
+            \Log::error("Error al generar nómina: " . $e->getMessage());
+            return ApiResponse::error('Error al generar la nómina: ' . $e->getMessage(), 500);
+        }
     }
 
     public function downloadPdf(Payslip $payslip, Request $request)

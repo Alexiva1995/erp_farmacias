@@ -84,6 +84,8 @@ class PayslipRepository
 
   public function getEligibleSalaryDetails(Carbon $date): Collection
   {
+    $this->ensureSalaryConceptsExist();
+
     $startOfMonth = $date->copy()->startOfMonth()->format('Y-m-d');
     $endOfMonth   = $date->copy()->endOfMonth()->format('Y-m-d');
 
@@ -406,6 +408,7 @@ class PayslipRepository
 
   public function getEmployeeVouchers(Payslip $payslip, Employee $employee): array
   {
+    $this->ensureSalaryConceptsExist();
     $currency = $this->todayUsdRate();
 
     $query = Payslip::query()
@@ -442,7 +445,7 @@ class PayslipRepository
 
   private function todayUsdRate(): float
   {
-    $rate = ExchangeRate::where('currency_code', 'USD')
+    $rate = ExchangeRate::where('currency_code', 'BS')
       ->whereDate('created_at', now()->today())
       ->value('rate');
 
@@ -466,5 +469,25 @@ class PayslipRepository
     }
 
     return (float) $rate;
+  }
+
+  /**
+   * Garantiza que los conceptos básicos de nómina existan en la base de datos.
+   */
+  private function ensureSalaryConceptsExist(): void
+  {
+    $concepts = [
+      'Salario Básico Mensual' => ['type' => 'salary', 'frequency' => 'fortnight'],
+      'Bono de Alimentación' => ['type' => 'salary', 'frequency' => 'monthly'],
+      'Asistencia Social de Salud (Art. 105 LOTTT)' => ['type' => 'salary', 'frequency' => 'monthly'],
+      'Bono Extraordinario de Rendimiento' => ['type' => 'salary', 'frequency' => 'monthly'],
+      'IVSS (4%)' => ['type' => 'deduction', 'frequency' => 'fortnight'],
+      'RPE - Paro Forzoso (0.5%)' => ['type' => 'deduction', 'frequency' => 'fortnight'],
+      'FAOV (1%)' => ['type' => 'deduction', 'frequency' => 'fortnight']
+    ];
+
+    foreach ($concepts as $name => $data) {
+      \App\Models\SalaryConcept::updateOrCreate(['name' => $name], $data);
+    }
   }
 }
