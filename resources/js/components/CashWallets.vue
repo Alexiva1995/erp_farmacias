@@ -174,7 +174,7 @@ const isCollapsed = ref(false);
 
                 <div class="d-flex flex-column mb-3">
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">
-                    {{ methodConfig[wallet.method]?.label || wallet.method }}
+                    {{ (wallet.currency === 'BS' && wallet.method === 'TRANSFER') ? 'Banco' : (methodConfig[wallet.method]?.label || wallet.method) }}
                   </span>
                   <div class="d-flex align-baseline gap-1">
                     <span class="text-xs font-weight-black text-medium-emphasis">

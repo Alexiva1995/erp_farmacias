@@ -26,9 +26,8 @@ const emit = defineEmits([
 const options = {
   BS: [
     { title: "Efectivo", value: "CASH_BS" },
-    { title: "Tarjeta", value: "CARD_BS" },
+    { title: "Banco", value: "TRANSFER_BS" },
     { title: "Pago móvil", value: "MOBILE_BS" },
-    { title: "Transferencia", value: "TRANSFER_BS" },
   ],
   COP: [
     { title: "Efectivo", value: "CASH_COP" },

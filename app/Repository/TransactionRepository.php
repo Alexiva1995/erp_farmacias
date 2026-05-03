@@ -26,7 +26,9 @@ class TransactionRepository
             ->when($currency, fn($q, $cur) => $q->where('transactions.currency', $cur))
             ->when(
                 $detailed && $option,
-                fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
+                fn($q) => ($currency === 'BS' && $option === 'TRANSFER')
+                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER'])
+                    : $q->where('transactions.type', TransactionType::tryFrom($option)->value)
             )
             ->when(
                 $startDate && $endDate,
@@ -66,7 +68,9 @@ class TransactionRepository
             ->when($currency, fn($q, $cur) => $q->where('transactions.currency', $cur))
             ->when(
                 $detailed && $option,
-                fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
+                fn($q) => ($currency === 'BS' && $option === 'TRANSFER')
+                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER'])
+                    : $q->where('transactions.type', TransactionType::tryFrom($option)->value)
             )
             ->select([
                 'transactions.*',
@@ -235,7 +239,7 @@ class TransactionRepository
         $rows = Transaction::query()
             ->selectRaw("
                 currency,
-                type,
+                CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER') THEN 'TRANSFER' ELSE type END as type,
                 SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE 0 END) as total_in,
                 SUM(CASE WHEN movement_type = 'OUT' THEN amount ELSE 0 END) as total_out,
                 SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE -amount END) as balance,
@@ -243,7 +247,7 @@ class TransactionRepository
                 AVG(COALESCE(exchange_rate,1)) as avg_rate
             ")
             ->when($startDate && $endDate, fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
-            ->groupBy('currency', 'type')
+            ->groupBy('currency', DB::raw("CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER') THEN 'TRANSFER' ELSE type END"))
             ->orderBy('currency')
             ->orderBy('type')
             ->get();
@@ -256,6 +260,12 @@ class TransactionRepository
             $currency   = $row->currency;
             $method     = strtoupper($row->type);
             $balance    = (float) $row->balance;
+
+            // Si el método es crédito en USD, mostramos la deuda global pendiente (Cuentas por Cobrar)
+            if ($currency === 'USD' && $method === 'CREDIT') {
+                $balance = (float) \App\Models\Credit::where('status', '!=', 'Paid')->sum('pending_amount');
+            }
+
             $avgRate    = (float) ($row->avg_rate ?: 1);
             $balanceUsd = $currency === 'USD' ? $balance : round($balance / $avgRate, 2);
 
