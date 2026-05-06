@@ -47,7 +47,11 @@ class TransactionRepository
         if ($detailed && $option && $currency) {
             $openingBalance = Transaction::query()
                 ->where('transactions.currency', $currency)
-                ->where('transactions.type', TransactionType::tryFrom($option)->value)
+                ->when(
+                    $currency === 'BS' && $option === 'TRANSFER',
+                    fn($q) => $q->whereIn('transactions.type', ['CARD', 'TRANSFER']),
+                    fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)->value)
+                )
                 ->where('transactions.transaction_date', '<', $startDate ?: now()->format('Y-m-d'))
                 ->selectRaw("SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as net")
                 ->value('net') ?? 0;
@@ -59,6 +63,11 @@ class TransactionRepository
                 'opening_balance' => $openingBalance,
                 'previous_total_usd' => 0
             ];
+        }
+
+        $typesCondition = "t2.type = transactions.type";
+        if ($currency === 'BS' && $option === 'TRANSFER') {
+            $typesCondition = "t2.type IN ('CARD', 'TRANSFER')";
         }
 
         $results = Transaction::query()
@@ -80,7 +89,7 @@ class TransactionRepository
                     SELECT SUM(CASE WHEN t2.movement_type = 'IN' THEN t2.amount ELSE -t2.amount END)
                     FROM transactions t2
                     WHERE t2.currency = transactions.currency
-                      AND t2.type = transactions.type
+                      AND {$typesCondition}
                       AND (t2.transaction_date < transactions.transaction_date 
                            OR (t2.transaction_date = transactions.transaction_date AND t2.id <= transactions.id))
                 ) as balance")
