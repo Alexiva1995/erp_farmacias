@@ -823,7 +823,10 @@ class SupplierQueryService
           }*/
 
         if ($mainProduct) {
-            $mainProduct->update(['is_ordered' => false]);
+            $mainProduct->update([
+                'is_ordered' => false,
+                'ignore_until' => now()->addDays(7)
+            ]);
         }
         $product->decrement("quantity", $quantity);
 

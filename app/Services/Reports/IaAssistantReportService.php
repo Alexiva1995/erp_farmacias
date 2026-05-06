@@ -179,32 +179,12 @@ class IaAssistantReportService
         ];
     }
 
-    /**
-     * Obtiene y cachea los IDs (de productos o grupos) que coinciden con los filtros
-     */
     public function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
-        $cacheKey = 'ia_report_ids_v4_' . ($porGrupo ? 'grp_' : 'prd_') . md5(json_encode([
-            'lapso' => $filtros['lapso_de_tiempo'] ?? '',
-            'lab' => $filtros['laboratoryId'] ?? [],
-            'groups' => $filtros['groups'] ?? [],
-            'is_col' => $filtros['isColombian'] ?? null,
-            'q' => $filtros['q'] ?? '',
-            'stock' => $filtros['stock'] ?? 'fallas',
-            'tipo' => $filtros['tipo_filtracion'] ?? 'average',
-            'ws' => $filtros['without_supplier'] ?? false,
-            'sb' => $filtros['sortBy'] ?? '',
-            'ob' => $filtros['orderBy'] ?? '',
-        ]));
-
-        return Cache::remember($cacheKey, 600, function () use ($filtros, $porGrupo) {
-            $filtrosLigero = $filtros;
-            unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
-            
-            $tipo = $filtros['tipo_filtracion'] ?? 'average';
-            
-            return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
-        });
+        $filtrosLigero = $filtros;
+        unset($filtrosLigero['page'], $filtrosLigero['itemsPerPage']);
+        
+        return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
     }
 
     /**
