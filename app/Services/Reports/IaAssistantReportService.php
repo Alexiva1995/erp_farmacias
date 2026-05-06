@@ -655,9 +655,14 @@ class IaAssistantReportService
 
         // Una sola consulta SQL para obtener todos los totales de AO
         $aoData = \Illuminate\Support\Facades\DB::table('auto_order_details')
+            ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
             ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
             ->select('product_suppliers.product_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total'))
             ->whereIn('product_suppliers.product_id', $productIds)
+            ->whereIn('auto_orders.status', [0, 1]) // PENDING, SENT (No Completados/Recibidos)
+            ->where('auto_order_details.status', 0)
+            ->whereNull('auto_orders.deleted_at')
+            ->whereNull('auto_order_details.deleted_at')
             ->groupBy('product_suppliers.product_id')
             ->get()
             ->keyBy('product_id');

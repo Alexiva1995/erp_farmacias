@@ -774,8 +774,7 @@ class ProductRepository
             }
             if ($filtros["stock"] == "fallas") {
                 // Ahora unificado: demanda - stock - AO > 0 = falla puramente matemático
-                // Y excepcion: solicitar es 0, y el stock físico también es 0
-                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
+                $consulta->having("solicitar", ">", 0);
             }
         }
 
@@ -1049,7 +1048,7 @@ class ProductRepository
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
+                $consulta->having("solicitar", ">", 0);
             }
         }
 
@@ -1333,7 +1332,7 @@ class ProductRepository
                 $consulta->having("solicitar", "<", 0);
             }
             if ($filtros["stock"] == "fallas") {
-                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
+                $consulta->having("solicitar", ">", 0);
             }
         }
 
@@ -1487,7 +1486,7 @@ class ProductRepository
             if ($filtros["stock"] == "exceso") {
                 $query->having("solicitar", "<", 0);
             } elseif ($filtros["stock"] == "fallas") {
-                $query->havingRaw("solicitar > 0 OR (solicitar = 0 AND ($subqueryStock) <= 0)");
+                $query->having("solicitar", ">", 0);
             }
         }
 
