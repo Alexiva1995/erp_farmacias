@@ -166,6 +166,26 @@ class IaAssistantActionController extends Controller
         ]);
     }
 
+    /**
+     * Actualiza el código de barras de un producto.
+     */
+    public function updateBarcode(Request $request, Product $product): JsonResponse
+    {
+        $request->validate([
+            'barcode' => 'required|string|max:255',
+        ]);
+
+        $product->update([
+            'barcode' => $request->barcode,
+        ]);
+
+        return response()->json([
+            'message' => 'Código de barras actualizado con éxito.',
+            'product_id' => $product->id,
+            'barcode' => $product->barcode,
+        ]);
+    }
+
     private function updateAutoOrderTotals(AutoOrder $order)
     {
         $details = $order->details()->get();

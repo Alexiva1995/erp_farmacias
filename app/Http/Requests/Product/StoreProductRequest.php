@@ -44,6 +44,7 @@ class StoreProductRequest extends FormRequest
             'iva' => ['required', 'boolean'],
             'psychotropic' => ['required', 'boolean'],
             'is_colombian_origin' => ['required', 'boolean'],
+            'is_novaventa' => ['sometimes', 'boolean'],
 
             'photo_url' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'group_id' => 'nullable|integer|exists:groups_products,id',
@@ -59,6 +60,7 @@ class StoreProductRequest extends FormRequest
     {
         $this->merge([
             'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
+            'is_novaventa' => filter_var($this->input('is_novaventa'), FILTER_VALIDATE_BOOLEAN),
             'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
             'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),

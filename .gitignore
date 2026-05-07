@@ -89,3 +89,6 @@ typed-router.d.ts
 # SQL dumps
 famco.sql
 *.sql
+
+# Scratch/Temporary AI scripts
+/scratch

@@ -218,6 +218,17 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("isNovaventa", $filtros)) {
+            if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
+                $consulta->where("products.is_novaventa", "=", 1);
+            } else {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_novaventa", "=", 0)
+                      ->orWhereNull("products.is_novaventa");
+                });
+            }
+        }
+
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $sortCol = $filtros["sortBy"];
             $sortDir = strtolower($filtros["orderBy"]) === 'desc' ? 'desc' : 'asc';
@@ -524,6 +535,17 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("isNovaventa", $filtros)) {
+            if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
+                $consulta->where("is_novaventa", "=", 1);
+            } else {
+                $consulta->where(function ($q) {
+                    $q->where("is_novaventa", "=", 0)
+                      ->orWhereNull("is_novaventa");
+                });
+            }
+        }
+
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
@@ -801,6 +823,17 @@ class ProductRepository
                 $consulta->where(function ($q) {
                     $q->where("is_colombian_origin", "=", 0)
                       ->orWhereNull("is_colombian_origin");
+                });
+            }
+        }
+
+        if (array_key_exists("isNovaventa", $filtros)) {
+            if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
+                $consulta->where("is_novaventa", "=", 1);
+            } else {
+                $consulta->where(function ($q) {
+                    $q->where("is_novaventa", "=", 0)
+                      ->orWhereNull("is_novaventa");
                 });
             }
         }
@@ -1579,6 +1612,9 @@ class ProductRepository
         $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
 
         // Filtros base
+        if (!empty($filtros["ids_in"])) {
+            $query->whereIn("products.id", $filtros["ids_in"]);
+        }
         if (empty($filtros["ids_in"]) && array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
             $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
@@ -1592,6 +1628,17 @@ class ProductRepository
                 $query->where(function ($q) {
                     $q->where("is_colombian_origin", "=", 0)
                       ->orWhereNull("is_colombian_origin");
+                });
+            }
+        }
+
+        if (array_key_exists("isNovaventa", $filtros)) {
+            if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
+                $query->where("is_novaventa", "=", 1);
+            } else {
+                $query->where(function ($q) {
+                    $q->where("is_novaventa", "=", 0)
+                      ->orWhereNull("is_novaventa");
                 });
             }
         }

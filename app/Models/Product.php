@@ -65,6 +65,7 @@ class Product extends Model
         'ignore_until',
         'manual_solicitar',
         'is_unified_group',
+        'is_novaventa',
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -76,6 +77,7 @@ class Product extends Model
      */
     protected $casts = [
         'is_colombian_origin' => 'boolean',
+        'is_novaventa' => 'boolean',
         'psychotropic' => 'boolean',
         'is_deleted' => 'boolean',
         'sale_price' => 'float',

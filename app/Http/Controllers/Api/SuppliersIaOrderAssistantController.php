@@ -118,6 +118,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
         }
 
+        if ($request->has("isNovaventa")) {
+            $filtros["isNovaventa"] = filter_var($request->isNovaventa, FILTER_VALIDATE_BOOLEAN);
+        }
+
         if ($request->filled("lapso_de_tiempo")) {
             $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);

@@ -592,6 +592,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("/add-to-order", [IaAssistantActionController::class, "addToOrder"]);
         Route::post("/products/{product}/ignore", [IaAssistantActionController::class, "ignore"]);
         Route::post("/products/{product}/update-manual-quantity", [IaAssistantActionController::class, "updateManualQuantity"]);
+        Route::post("/products/{product}/update-barcode", [IaAssistantActionController::class, "updateBarcode"]);
     });
 
     Route::prefix("suppliers-ia-assistant-report")->group(function () {

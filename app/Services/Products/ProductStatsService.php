@@ -29,16 +29,15 @@ class ProductStatsService
             ->orderBy('orders.order_date', 'desc')
             ->first();
 
-        // 3. Promedio mensual (Últimos 12 meses)
-        $monthlyAverage = DB::table('order_details')
+        // 3. Promedio mensual lineal (Últimos 12 meses fijos)
+        $totalSoldLastYear = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->where('order_details.product_id', $product->id)
             ->where('orders.status', 'Completed')
             ->where('orders.order_date', '>=', now()->subYear())
-            ->select(DB::raw('SUM(order_details.quantity) as total_quantity'))
-            ->groupBy(DB::raw('MONTH(orders.order_date)'))
-            ->get()
-            ->avg('total_quantity') ?: 0;
+            ->sum('order_details.quantity') ?: 0;
+
+        $monthlyAverage = $totalSoldLastYear / 12;
 
         // 4. Datos del Grupo y Market Share
         $marketShare = 0;

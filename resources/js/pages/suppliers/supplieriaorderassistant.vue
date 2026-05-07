@@ -32,6 +32,7 @@ const lapso_de_tiempo = ref("1 month");
 const stock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
+const isNovaventa = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
 const showIgnored = ref(false);
@@ -45,6 +46,7 @@ const handleClearFilters = () => {
   lapso_de_tiempo.value = "1 month";
   stock.value = "all";
   isColombian.value = false;
+  isNovaventa.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
   searchQuery.value = "";
@@ -75,6 +77,7 @@ async function consultarProductosConPaginacion() {
     lapso_de_tiempo: lapso_de_tiempo.value,
     stock: stock.value,
     isColombian: isColombian.value,
+    isNovaventa: isNovaventa.value,
     q: searchQuery.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
@@ -213,6 +216,7 @@ watch(
     lapso_de_tiempo,
     stock,
     isColombian,
+    isNovaventa,
     searchQuery,
     con_descuento,
     showIgnored,
@@ -308,8 +312,37 @@ watch([isComparatorModalVisible, comparatorSearchQuery, comparatorPage, comparat
   }
 });
 
-const handleSendToAutoOrder = async ({ id, quantity }) => {
+const handleSendToAutoOrder = async ({ id, quantity, item }) => {
   try {
+    // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
+    const nuestroBarcode = comparatorProduct.value?.barcode;
+    const listadoBarcode = item?.barcode_match;
+
+    if (listadoBarcode && nuestroBarcode !== listadoBarcode) {
+      const { isConfirmed } = await Swal.fire({
+        title: "¿Reemplazar código de barras?",
+        html: `Nuestro producto actual tiene el código: <strong>${nuestroBarcode || 'vacío'}</strong>.<br>El del listado del proveedor es: <strong>${listadoBarcode}</strong>.<br><br>¿Desea actualizar nuestro código de barras por el del listado?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, reemplazar",
+        cancelButtonText: "No, mantener actual",
+      });
+
+      if (isConfirmed) {
+        try {
+          await axios.post(`/api/suppliers-ia-order-assistant/products/${comparatorProduct.value.id}/update-barcode`, {
+            barcode: listadoBarcode
+          });
+          toast.success("Código de barras actualizado correctamente.");
+          // Actualizamos la propiedad barcode del producto local en memoria para que coincida
+          comparatorProduct.value.barcode = listadoBarcode;
+        } catch (updateError) {
+          console.error("Error updating barcode:", updateError);
+          toast.error("No se pudo actualizar el código de barras, pero se procederá con el pedido.");
+        }
+      }
+    }
+
     const form = new FormData();
     form.append("productId", id);
     form.append("main_product_id", comparatorProduct.value.id);
@@ -352,6 +385,7 @@ onMounted(async () => {
         v-model:showIgnored="showIgnored"
         v-model:showGraphs="showGraphs"
         v-model:isColombian="isColombian"
+        v-model:isNovaventa="isNovaventa"
         :groups="groups"
         :laboratories="laboratories"
         @clear="handleClearFilters"
@@ -429,6 +463,7 @@ onMounted(async () => {
               :selected-product="comparatorProduct"
               enable-usd-amount-col
               enable-discount-col
+              :enable-discounts="con_descuento"
               v-model:sort-by="comparatorSortBy"
               @update:searchQuery="comparatorSearchQuery = $event"
               @update:options="(options) => { 

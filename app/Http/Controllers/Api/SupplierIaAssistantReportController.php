@@ -109,6 +109,10 @@ class SupplierIaAssistantReportController extends Controller
             $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
         }
 
+        if ($request->filled("isNovaventa")) {
+            $filtros["isNovaventa"] = filter_var($request->isNovaventa, FILTER_VALIDATE_BOOLEAN);
+        }
+
         return $filtros;
     }
 

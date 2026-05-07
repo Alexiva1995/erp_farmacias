@@ -15,6 +15,7 @@ const props = defineProps({
   laboratories:       { type: Array,   default: () => [] },
   groups:             { type: Array,   default: () => [] },
   isColombian:        Boolean,
+  isNovaventa:        Boolean,
   showIgnored:        { type: Boolean, default: false },
   showGraphs:         { type: Boolean, default: false },
 });
@@ -29,6 +30,7 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedGroup",
   "update:isColombian",
+  "update:isNovaventa",
   "update:showIgnored",
   "update:showGraphs",
   "clear",
@@ -69,7 +71,7 @@ const stockOpciones = [
 ];
 
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'all')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'all')
 ));
 </script>
 
@@ -257,6 +259,21 @@ const hasAdvancedFilters = computed(() => (
             @update:model-value="emit('update:isColombian', $event)"
           />
           <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
+        </div>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="2">
+        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+          <VSwitch
+            :model-value="props.isNovaventa"
+            label="Novaventa"
+            color="secondary"
+            hide-details
+            density="compact"
+            class="ms-1 font-weight-bold text-xs"
+            @update:model-value="emit('update:isNovaventa', $event)"
+          />
+          <VTooltip activator="parent" location="top">Filtrar solo productos Novaventa</VTooltip>
         </div>
       </VCol>
     </template>

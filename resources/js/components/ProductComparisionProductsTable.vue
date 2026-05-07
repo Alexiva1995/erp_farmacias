@@ -105,7 +105,7 @@ const getPriceDiff = (item) => {
   if (!currentCost || currentCost === 0) return null;
 
   const supplierCost = parseFloat(
-    (props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0) 
+    (props.enableDiscounts && parseFloat(item.final_cost_usd) > 0) 
       ? item.final_cost_usd 
       : item.unit_cost_usd
   );
@@ -127,7 +127,7 @@ const isProcessing = ref({});
 const onActionClick = (item) => {
   const qty = getQty(item.id);
   isProcessing.value[item.id] = true;
-  emit('send-product', { id: item.id, quantity: qty });
+  emit('send-product', { id: item.id, quantity: qty, item: item });
 };
 
 const allHeaders = [
@@ -422,12 +422,16 @@ const headers = computed(() =>
 
           <template #item.unit_cost_usd="{ item }">
             <div class="d-flex flex-column align-end">
-              <span class="text-sm font-weight-bold" :class="(props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0) ? 'text-disabled text-xs' : 'text-high-emphasis'">
-                ${{ formatUsd(item.unit_cost_usd) }}
-              </span>
-              <div v-if="props.enableDiscountCol && parseFloat(item.final_cost_usd) > 0 && parseFloat(item.final_cost_usd) !== parseFloat(item.unit_cost_usd)" class="text-xs font-weight-black text-primary">
-                ${{ formatUsd(item.final_cost_usd) }}
-              </div>
+              <template v-if="props.enableDiscounts && parseFloat(item.final_cost_usd) > 0">
+                <span class="text-sm font-weight-black text-primary">
+                  ${{ formatUsd(item.final_cost_usd) }}
+                </span>
+              </template>
+              <template v-else>
+                <span class="text-sm font-weight-bold text-high-emphasis">
+                  ${{ formatUsd(item.unit_cost_usd) }}
+                </span>
+              </template>
             </div>
           </template>
 
@@ -494,12 +498,10 @@ const headers = computed(() =>
 
               <div class="d-flex justify-space-between align-center mb-3">
                 <div class="d-flex flex-column">
-                  <span class="text-xs text-disabled uppercase font-weight-bold">Costo</span>
-                  <span class="text-sm font-weight-bold">${{ formatUsd(item.unit_cost_usd) }}</span>
-                </div>
-                <div v-if="enableDiscountCol" class="d-flex flex-column text-right">
-                  <span class="text-xs text-disabled uppercase font-weight-bold">Final</span>
-                  <span class="text-sm font-weight-black text-primary">${{ formatUsd(item.final_cost_usd) }}</span>
+                  <span class="text-xs text-disabled uppercase font-weight-bold">COTP</span>
+                  <span class="text-sm font-weight-bold" :class="(props.enableDiscounts && parseFloat(item.final_cost_usd) > 0) ? 'text-primary font-weight-black' : ''">
+                    ${{ formatUsd(props.enableDiscounts && parseFloat(item.final_cost_usd) > 0 ? item.final_cost_usd : item.unit_cost_usd) }}
+                  </span>
                 </div>
               </div>
 
@@ -532,7 +534,7 @@ const headers = computed(() =>
                   color="primary"
                   icon="tabler-shopping-cart-plus"
                   size="small"
-                  @click="emit('send-product', { id: item.id, quantity: getQty(item.id) })"
+                  @click="emit('send-product', { id: item.id, quantity: getQty(item.id), item: item })"
                 />
               </div>
             </VCardText>

@@ -149,6 +149,7 @@ watch(
       clonedProduct.is_colombian_origin = clonedProduct.is_colombian_origin
         ? 1
         : 0;
+      clonedProduct.is_novaventa = clonedProduct.is_novaventa ? 1 : 0;
       clonedProduct.is_scarce = clonedProduct.is_scarce ? 1 : 0;
       clonedProduct.is_unified_group = clonedProduct.is_unified_group ? 1 : 0;
       formData.value = clonedProduct;
@@ -167,6 +168,7 @@ watch(
         iva: 0,
         psychotropic: 0,
         is_colombian_origin: 0,
+        is_novaventa: 0,
         is_scarce: 0,
         is_unified_group: 0,
         lots: [],
@@ -553,14 +555,14 @@ const submitForm = () => {
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
-                    <VCol cols="12" sm="6" md="2">
+                    <VCol cols="12" sm="4" md="2">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
                       >
                         <VSwitch
                           v-model="formData.iva"
-                          label="Aplica IVA (G)"
+                          label="IVA"
                           :true-value="1"
                           :false-value="0"
                           color="success"
@@ -570,7 +572,24 @@ const submitForm = () => {
                         />
                       </VCard>
                     </VCol>
-                    <VCol cols="12" sm="6" md="2">
+                    <VCol cols="12" sm="4" md="2">
+                      <VCard
+                        variant="flat"
+                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
+                      >
+                        <VSwitch
+                          v-model="formData.is_novaventa"
+                          label="Novaventa"
+                          :true-value="1"
+                          :false-value="0"
+                          color="secondary"
+                          density="compact"
+                          hide-details
+                          class="font-weight-black scale-90"
+                        />
+                      </VCard>
+                    </VCol>
+                    <VCol cols="12" sm="4" md="2">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
@@ -587,7 +606,7 @@ const submitForm = () => {
                         />
                       </VCard>
                     </VCol>
-                    <VCol cols="12" sm="6" md="2">
+                    <VCol cols="12" sm="4" md="2">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
@@ -604,7 +623,7 @@ const submitForm = () => {
                         />
                       </VCard>
                     </VCol>
-                    <VCol cols="12" sm="6" md="3">
+                    <VCol cols="12" sm="4" md="2">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
@@ -621,7 +640,7 @@ const submitForm = () => {
                         />
                       </VCard>
                     </VCol>
-                    <VCol cols="12" sm="6" md="3">
+                    <VCol cols="12" sm="4" md="2">
                       <VCard
                         variant="flat"
                         class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
