@@ -208,8 +208,13 @@ class ProductRepository
         }
 
         if (array_key_exists("isColombian", $filtros)) {
-            if ($filtros["isColombian"] == true) {
+            if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("products.is_colombian_origin", "=", 1);
+            } else {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_colombian_origin", "=", 0)
+                      ->orWhereNull("products.is_colombian_origin");
+                });
             }
         }
 
@@ -511,6 +516,11 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("is_colombian_origin", "=", 1);
+            } else {
+                $consulta->where(function ($q) {
+                    $q->where("is_colombian_origin", "=", 0)
+                      ->orWhereNull("is_colombian_origin");
+                });
             }
         }
 
@@ -787,6 +797,11 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("is_colombian_origin", "=", 1);
+            } else {
+                $consulta->where(function ($q) {
+                    $q->where("is_colombian_origin", "=", 0)
+                      ->orWhereNull("is_colombian_origin");
+                });
             }
         }
 
@@ -1471,8 +1486,15 @@ class ProductRepository
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
             $query->whereIn("group_id", $filtros["groups"]);
         }
-        if (array_key_exists("isColombian", $filtros) && $filtros["isColombian"] == true) {
-            $query->where("is_colombian_origin", "=", 1);
+        if (array_key_exists("isColombian", $filtros)) {
+            if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
+                $query->where("is_colombian_origin", "=", 1);
+            } else {
+                $query->where(function ($q) {
+                    $q->where("is_colombian_origin", "=", 0)
+                      ->orWhereNull("is_colombian_origin");
+                });
+            }
         }
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
              $query->where(function($q) use ($filtros) {

@@ -281,9 +281,9 @@ function rowClass(item) {
               </template>
 
               <template #item.name="{ item }">
-                <div class="d-flex flex-column py-1" style="max-inline-size: 350px;">
+                <div class="d-flex flex-column py-1">
                   <span
-                    class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate cursor-pointer hover-opacity"
+                    class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
                     :class="{ 'text-primary': item.psychotropic == 1, 'opacity-50': togglingScarce === item.id }"
                     @click="handleToggleScarce(item)"
                   >
