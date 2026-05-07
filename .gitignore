@@ -85,3 +85,7 @@ components.d.ts
 retencion.xls
 components.d.ts
 typed-router.d.ts
+
+# SQL dumps
+famco.sql
+*.sql

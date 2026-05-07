@@ -29,7 +29,7 @@ class ProductPack extends Model
     /**
      * @property-read array $products_with_quantity
      */
-    protected $appends = ['products_with_quantity', 'is_available', 'products_count'];
+    protected $appends = ['products_with_quantity', 'is_available', 'products_count', 'sales_count'];
 
     /**
      * Relación con los productos del pack
@@ -63,6 +63,19 @@ class ProductPack extends Model
     public function getProductsCountAttribute()
     {
         return count($this->pack_config ?? []);
+    }
+
+    /**
+     * Accesor para obtener la cantidad de veces que se ha vendido el pack
+     */
+    public function getSalesCountAttribute()
+    {
+        return \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->where('order_details.pack_id', $this->id)
+            ->where('orders.status', 'Completed')
+            ->distinct('order_details.order_id')
+            ->count();
     }
 
     /**

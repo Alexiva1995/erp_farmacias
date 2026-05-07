@@ -17,6 +17,15 @@ class ProductPackController extends Controller
         try {
             $query = ProductPack::query();
 
+            $query->select('product_packs.*');
+            $query->selectSub(function($q) {
+                $q->selectRaw('count(distinct order_details.order_id)')
+                  ->from('order_details')
+                  ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                  ->whereColumn('order_details.pack_id', 'product_packs.id')
+                  ->where('orders.status', 'Completed');
+            }, 'sales_count');
+
             // Búsqueda por ID
             if ($request->has('search_id') && !empty($request->search_id)) {
                 $query->where('id', $request->search_id);
@@ -36,7 +45,7 @@ class ProductPackController extends Controller
             $sortBy = $request->get('sort_by', 'id');
             $order = $request->get('order', 'desc');
 
-            $allowedSorts = ['id', 'name', 'total_price', 'max_quantity', 'max_sale_date', 'is_active', 'created_at'];
+            $allowedSorts = ['id', 'name', 'total_price', 'max_quantity', 'max_sale_date', 'is_active', 'created_at', 'sales_count'];
             if (in_array($sortBy, $allowedSorts)) {
                 $query->orderBy($sortBy, $order);
             }

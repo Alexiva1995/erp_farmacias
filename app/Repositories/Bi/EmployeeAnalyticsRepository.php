@@ -132,7 +132,7 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
             ->first();
 
         // 6. Conversión (Cotizaciones -> Facturas)
-        $quotations = Quotation::where('user_id', $userId)
+        $quotations = Quotation::where('created_by', $userId)
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->count();
 

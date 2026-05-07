@@ -184,6 +184,10 @@ class RetentionRepository
         $sortBy = $filters['sortBy'] ?? 'date';
         $orderBy = $filters['orderBy'] ?? 'desc';
 
+        if ($sortBy === 'created_invoice_date') {
+            $sortBy = 'date';
+        }
+
         // Validar columnas para evitar SQL error 500
         $validRetentionColumns = ['id', 'number', 'date', 'total_taxable_base', 'total_tax_amount', 'total_withheld_amount'];
         if (!str_contains($sortBy, '.') && !in_array($sortBy, $validRetentionColumns)) {

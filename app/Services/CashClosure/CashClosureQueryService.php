@@ -115,7 +115,7 @@ class CashClosureQueryService
             throw new ModelNotFoundException('No hay un cierre de caja abierto para este vendedor.');
         }
         $ordersQuery = $cashClosing->orders()->with('client');
-        $ordersQuery->where('status', Order::COMPLETED);
+        $ordersQuery->where('orders.status', Order::COMPLETED);
         $ordersQuery = $this->applyOrderSorting(
             $ordersQuery,
             $request->input('sortBy'),

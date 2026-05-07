@@ -27,6 +27,6 @@ class ExecuteRecurringExpensesCommand extends Command
     public function handle(ExpensesServices $expenses)
     {
         //
-        $expenses->ejecutarGastosRecurrentesDeHoy();
+        $expenses->executeRecurringExpensesOfToday();
     }
 }

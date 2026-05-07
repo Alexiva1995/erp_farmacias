@@ -15,15 +15,15 @@ class OrderQueryService
 {
     public function getForeignOrdersCount(): int
     {
-        return Order::where('status', Order::COMPLETED)
-            ->where('currency', '!=', 'BS')
+        return Order::where('orders.status', Order::COMPLETED)
+            ->where('orders.currency', '!=', 'BS')
             ->count();
     }
 
     private function getBaseQuery($valor, ?string $startDate = null, ?string $endDate = null): Builder
     {
         if ($valor == 'Completed') {
-            $query = Order::query()->where('status', $valor)->with('client', 'seller');
+            $query = Order::query()->where('orders.status', $valor)->with('client', 'seller');
             // Si no hay rango de fechas, usar solo el día actual (comportamiento por defecto)
             if (empty($startDate) && empty($endDate)) {
                 $start = now()->startOfDay();
@@ -35,14 +35,14 @@ class OrderQueryService
             return Order::query()->with('client', 'seller');
         }
 
-        return Order::query()->where('status', $valor)->with('client', 'seller');
+        return Order::query()->where('orders.status', $valor)->with('client', 'seller');
     }
 
 
     private function applyFilters(Builder $query, array $filters): Builder
     {
         if (!empty($filters['id'])) {
-            $query->where('id', $filters['id']);
+            $query->where('orders.id', $filters['id']);
         }
 
         if (!empty($filters['q'])) {
@@ -62,11 +62,11 @@ class OrderQueryService
         }
 
         if (!empty($filters['currency'])) {
-            $query->where('currency', $filters['currency']);
+            $query->where('orders.currency', $filters['currency']);
         }
 
         if (!empty($filters['state'])) {
-            $query->where('status', $filters['state']);
+            $query->where('orders.status', $filters['state']);
         }
 
         if (!empty($filters['seller_id'])) {

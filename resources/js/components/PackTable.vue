@@ -20,6 +20,7 @@ const headers = [
   { title: "PRECIO TOTAL", key: "total_price", sortable: true, width: "140px" },
   { title: "CANT. MÁX", key: "max_quantity", sortable: true, width: "120px" },
   { title: "FECHA LÍMITE", key: "max_sale_date", sortable: true, width: "140px" },
+  { title: "VENTAS", key: "sales_count", sortable: true, width: "100px" },
   { title: "ESTADO", key: "is_active", sortable: true, width: "100px" },
   { title: "ACCIONES", key: "actions", sortable: false, align: "center", width: "160px" },
 ];
@@ -90,6 +91,10 @@ const handleToggleStatus = (pack) => {
               <div class="d-flex flex-wrap gap-2 mb-3">
                 <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
                   {{ Object.keys(item.raw.pack_config || {}).length }} Prods
+                </VChip>
+                <VChip size="x-small" color="success" variant="tonal" class="font-weight-bold">
+                  <VIcon start size="12">tabler-shopping-cart</VIcon>
+                  {{ item.raw.sales_count ?? 0 }} Ventas
                 </VChip>
                 <VChip v-if="item.raw.max_sale_date" size="x-small" color="info" variant="tonal" class="font-weight-bold">
                   <VIcon start size="12">tabler-calendar-event</VIcon>
@@ -179,6 +184,13 @@ const handleToggleStatus = (pack) => {
             <VIcon icon="tabler-calendar" size="16" />
             <span class="font-weight-medium">{{ formatDate(item.max_sale_date) }}</span>
           </div>
+        </template>
+
+        <template #item.sales_count="{ item }">
+          <VChip variant="tonal" color="success" size="small" class="font-weight-black">
+            <VIcon start size="14">tabler-shopping-cart</VIcon>
+            {{ item.sales_count ?? 0 }}
+          </VChip>
         </template>
 
         <template #item.is_active="{ item }">

@@ -689,8 +689,6 @@ class IaAssistantReportService
         });
     }
 
-    }
-
     private function consolidateCollection($products, array $filtros)
     {
         $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);

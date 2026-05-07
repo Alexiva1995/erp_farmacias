@@ -108,6 +108,7 @@ function removeGroup() {
   formData.value.group_id = null;
   formData.value.group = null;
   groupInput.value = null;
+  selectedGroup.value = null;
   toast.success("Producto removido del grupo.");
 }
 
@@ -177,6 +178,40 @@ watch(
   },
   { deep: true, immediate: true },
 );
+
+const groups = ref([]);
+const loadingGroups = ref(false);
+const selectedGroup = ref(null);
+
+const fetchAllGroups = async () => {
+  loadingGroups.value = true;
+  try {
+    const response = await axios.get("/groups/consult-all");
+    groups.value = response.data.data || [];
+  } catch (error) {
+    console.error("Error al cargar grupos:", error);
+  } finally {
+    loadingGroups.value = false;
+  }
+};
+
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal) {
+      fetchAllGroups();
+    }
+  },
+  { immediate: true }
+);
+
+function onGroupSelect(group) {
+  if (!group) return;
+  formData.value.group_id = group.id;
+  formData.value.group = group;
+  selectedGroup.value = null;
+  toast.success(`Producto asignado al grupo "${group.name}".`);
+}
 
 const lotHeaders = [
   { title: "Nombre", key: "lot_number", sortable: false },
@@ -748,26 +783,34 @@ const submitForm = () => {
                     </div>
                     <div 
                       v-if="!assignedGroupName"
-                      class="d-flex gap-2 align-center"
+                      class="d-flex gap-2 align-center w-100"
                     >
-                      <AppTextField
-                        v-model="groupInput"
-                        placeholder="BUSCAR GRUPO (ID O NOMBRE)..."
+                      <VAutocomplete
+                        v-model="selectedGroup"
+                        :items="groups"
+                        item-title="name"
+                        item-value="id"
+                        placeholder="BUSCAR GRUPO POR NOMBRE..."
                         variant="outlined"
                         density="comfortable"
                         hide-details
                         class="bg-surface rounded-lg font-weight-black flex-grow-1"
-                        @keydown.enter.prevent="assignGroup"
-                      />
-                      <VBtn
-                        color="primary"
-                        @click="assignGroup"
-                        variant="flat"
-                        height="44"
-                        class="font-weight-black px-6 shadow-primary rounded-lg text-button uppercase"
+                        :loading="loadingGroups"
+                        return-object
+                        @update:model-value="onGroupSelect"
                       >
-                        Asignar
-                      </VBtn>
+                        <template #item="{ props, item }">
+                          <VListItem v-bind="props">
+                            <template #title>
+                              <div class="font-weight-black text-uppercase text-xs d-flex align-center gap-1">
+                                <span class="text-primary">#{{ item.raw.id }}</span>
+                                <span class="text-disabled">|</span>
+                                <span>{{ item.raw.name }}</span>
+                              </div>
+                            </template>
+                          </VListItem>
+                        </template>
+                      </VAutocomplete>
                     </div>
 
                     <div
