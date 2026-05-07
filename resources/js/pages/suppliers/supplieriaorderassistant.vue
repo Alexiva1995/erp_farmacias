@@ -351,6 +351,7 @@ onMounted(async () => {
         v-model:searchQuery="searchQuery"
         v-model:showIgnored="showIgnored"
         v-model:showGraphs="showGraphs"
+        v-model:isColombian="isColombian"
         :groups="groups"
         :laboratories="laboratories"
         @clear="handleClearFilters"

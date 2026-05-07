@@ -339,6 +339,7 @@ class ProductPackController extends Controller
             'max_sale_date' => $pack->max_sale_date,
             'is_active' => $pack->is_active,
             'is_available' => $pack->is_available,
+            'sales_count' => (int) ($pack->sales_count ?? 0),
             'created_at' => $pack->created_at,
             'updated_at' => $pack->updated_at,
         ];
