@@ -1431,8 +1431,41 @@ class ProductRepository
     public function getUniqueIdsForIaReport($filtros, $porGrupo = false): array
     {
         // 1. Definir subconsultas y variables base
-        $subqueryStock = $this->subConsultaParaCalcularStockPorLotes;
-        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
+        $subqueryStock = 'CASE 
+            WHEN products.is_unified_group = 1 AND products.group_id IS NOT NULL THEN (
+                SELECT COALESCE(SUM(quantity), 0) 
+                FROM product_lots 
+                JOIN products as u_p ON u_p.id = product_lots.product_id
+                WHERE u_p.group_id = products.group_id 
+                AND u_p.is_deleted = 0 
+                AND u_p.is_scarce = 0
+                AND (expiration_date >= CURDATE() OR expiration_date IS NULL)
+            )
+            ELSE (
+                SELECT COALESCE (SUM(quantity), 0) 
+                FROM product_lots 
+                WHERE product_id = products.id 
+                AND (expiration_date >= CURDATE() OR expiration_date IS NULL)
+            )
+        END';
+
+        $subqueryAO = 'CASE 
+            WHEN products.is_unified_group = 1 AND products.group_id IS NOT NULL THEN (
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                JOIN products as u_p ON u_p.id = ps.product_id
+                WHERE u_p.group_id = products.group_id
+                AND u_p.is_deleted = 0 
+                AND u_p.is_scarce = 0
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+            )
+            ELSE (
+                SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
@@ -1440,25 +1473,53 @@ class ProductRepository
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
                 AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL)';
+                AND aod.deleted_at IS NULL
+            )
+        END';
 
-        $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
+        $subqueryTotalSold = 'CASE 
+            WHEN products.is_unified_group = 1 AND products.group_id IS NOT NULL THEN (
+                SELECT COALESCE(SUM(order_details.quantity), 0)
+                FROM order_details
+                JOIN orders ON orders.id = order_details.order_id
+                JOIN products as u_p ON u_p.id = order_details.product_id
+                WHERE u_p.group_id = products.group_id
+                AND u_p.is_deleted = 0 
+                AND u_p.is_scarce = 0
+                AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
+                AND orders.status = "Completed"
+            )
+            ELSE (
+                SELECT COALESCE(SUM(order_details.quantity), 0)
                 FROM order_details
                 JOIN orders ON orders.id = order_details.order_id
                 WHERE order_details.product_id = products.id
                 AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
-                AND orders.status = "Completed")';
+                AND orders.status = "Completed"
+            )
+        END';
 
         // Promedio calculado según lapso
         $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
+        $sumSalesAverage = 'CASE 
+            WHEN products.is_unified_group = 1 AND products.group_id IS NOT NULL THEN (
+                SELECT COALESCE(SUM(sales_average), 0)
+                FROM products as u_p
+                WHERE u_p.group_id = products.group_id
+                AND u_p.is_deleted = 0 
+                AND u_p.is_scarce = 0
+            )
+            ELSE products.sales_average
+        END';
+
         $promedio_calculado = match($lapso) {
-            "7 days"  => 'sales_average / 4',
-            "15 days" => 'sales_average / 2',
-            "1 month" => 'sales_average',
-            "3 month" => 'sales_average * 3',
-            "6 month" => 'sales_average * 6',
-            "1 year"  => 'sales_average * 12',
-            default    => 'sales_average',
+            "7 days"  => "($sumSalesAverage) / 4",
+            "15 days" => "($sumSalesAverage) / 2",
+            "1 month" => "($sumSalesAverage)",
+            "3 month" => "($sumSalesAverage) * 3",
+            "6 month" => "($sumSalesAverage) * 6",
+            "1 year"  => "($sumSalesAverage) * 12",
+            default    => "($sumSalesAverage)",
         };
 
         // Solicitar según tipo de filtración

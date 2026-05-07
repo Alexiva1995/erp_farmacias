@@ -779,7 +779,9 @@ class IaAssistantReportService
                     ->filter()
                     ->toArray();
                 $concatenatedLabNames = implode(' / ', $labNames);
-                $p->setRelation('laboratory', (object) ['name' => $concatenatedLabNames ?: 'S/L']);
+                $labModel = new \App\Models\Laboratory();
+                $labModel->name = $concatenatedLabNames ?: 'S/L';
+                $p->setRelation('laboratory', $labModel);
 
                 // 8. Buscar mejor oferta para el grupo de productos
                 $groupProductsCollection = new \Illuminate\Database\Eloquent\Collection($groupProducts);
@@ -909,7 +911,9 @@ class IaAssistantReportService
                     ->filter()
                     ->toArray();
                 $concatenatedLabNames = implode(' / ', $labNames);
-                $p->setRelation('laboratory', (object) ['name' => $concatenatedLabNames ?: 'S/L']);
+                $labModel = new \App\Models\Laboratory();
+                $labModel->name = $concatenatedLabNames ?: 'S/L';
+                $p->setRelation('laboratory', $labModel);
 
                 // 4. Obtener ofertas para todo el grupo para elegir la mejor (más barata)
                 $groupProductsCollection = new \Illuminate\Database\Eloquent\Collection($groupProducts);
