@@ -48,6 +48,7 @@ class StoreProductRequest extends FormRequest
             'photo_url' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'group_id' => 'nullable|integer|exists:groups_products,id',
             'is_scarce' => ['sometimes', 'boolean'],
+            'is_unified_group' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -61,6 +62,7 @@ class StoreProductRequest extends FormRequest
             'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
             'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
+            'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
 

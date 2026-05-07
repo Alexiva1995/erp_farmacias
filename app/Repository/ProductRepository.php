@@ -969,6 +969,18 @@ class ProductRepository
 
         $consulta = Product::select($columnas);
         $consulta->where('is_deleted', false)->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('products.group_id')
+                  ->orWhere('products.is_unified_group', '=', 1)
+                  ->orWhereNotExists(function ($sq) {
+                      $sq->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('products as u')
+                          ->whereColumn('u.group_id', 'products.group_id')
+                          ->where('u.is_unified_group', '=', 1)
+                          ->where('u.is_deleted', false)
+                          ->where('u.is_scarce', false);
+                  });
+            })
             ->with([
             "laboratory",
             "lots",
@@ -1244,6 +1256,18 @@ class ProductRepository
 
         $consulta = Product::select($columnas);
         $consulta->where('is_deleted', false)->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('products.group_id')
+                  ->orWhere('products.is_unified_group', '=', 1)
+                  ->orWhereNotExists(function ($sq) {
+                      $sq->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('products as u')
+                          ->whereColumn('u.group_id', 'products.group_id')
+                          ->where('u.is_unified_group', '=', 1)
+                          ->where('u.is_deleted', false)
+                          ->where('u.is_scarce', false);
+                  });
+            })
             ->with([
             "laboratory",
             "lots",
@@ -1460,6 +1484,18 @@ class ProductRepository
         $query = Product::query()
             ->where('is_deleted', false)
             ->where('is_scarce', false)
+            ->where(function ($q) {
+                $q->whereNull('products.group_id')
+                  ->orWhere('products.is_unified_group', '=', 1)
+                  ->orWhereNotExists(function ($sq) {
+                      $sq->select(\Illuminate\Support\Facades\DB::raw(1))
+                          ->from('products as u')
+                          ->whereColumn('u.group_id', 'products.group_id')
+                          ->where('u.is_unified_group', '=', 1)
+                          ->where('u.is_deleted', false)
+                          ->where('u.is_scarce', false);
+                  });
+            })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
                 $q->where(function ($sq) {
                     $sq->whereNull('ignore_until')

@@ -64,6 +64,7 @@ class Product extends Model
         'stock',
         'ignore_until',
         'manual_solicitar',
+        'is_unified_group',
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -81,6 +82,7 @@ class Product extends Model
         'is_ordered' => 'boolean',
         'is_scarce' => 'boolean',
         'ignore_until' => 'datetime',
+        'is_unified_group' => 'boolean',
     ];
 
 

@@ -32,6 +32,7 @@ class UpdateProductRequest extends FormRequest
             'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
             'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
+            'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
 
@@ -57,6 +58,7 @@ class UpdateProductRequest extends FormRequest
             'iva' => 'sometimes|boolean',
             'is_colombian_origin' => 'sometimes|boolean',
             'is_scarce' => 'sometimes|boolean',
+            'is_unified_group' => 'sometimes|boolean',
             'group_id' => 'nullable|integer|exists:groups_products,id',
             'photo_url' => [
                 'sometimes',

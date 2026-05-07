@@ -85,6 +85,9 @@ class IaAssistantReportService
             $this->hydrateSuppliers($procesado, $filtros);
         }
 
+        // Consolidar productos unificados
+        $procesado = $this->consolidateCollection($procesado, $filtros);
+
         // 6. Devolver paginador manual
         return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
             'path' => request()->url(),
@@ -156,6 +159,9 @@ class IaAssistantReportService
             if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 $this->hydrateSuppliers($procesado, $filtros);
             }
+
+            // Consolidar productos unificados
+            $procesado = $this->consolidateCollection($procesado, $filtros);
 
             // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
             $productosArray = json_decode(json_encode($procesado), true);
@@ -229,6 +235,9 @@ class IaAssistantReportService
         
         // Siempre hidratar proveedores para exportación y ordenar por ellos
         $this->hydrateSuppliers($procesado, $filtros);
+
+        // Consolidar productos unificados
+        $procesado = $this->consolidateCollection($procesado, $filtros);
 
         $procesado = $procesado->sortBy(function($p) {
             return $p->best_supplier->name ?? 'ZZZ'; // Los sin proveedor al final
@@ -523,6 +532,9 @@ class IaAssistantReportService
         $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
         $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
 
+        // Consolidar productos unificados para reponer
+        $itemsReponer = $this->consolidateReplenishCollection($itemsReponer, $filtros);
+
         // 4. Clasificar y ordenar
         $coleccion = collect($itemsReponer);
         
@@ -599,6 +611,9 @@ class IaAssistantReportService
         $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
         $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
 
+        // Consolidar productos unificados para reponer
+        $itemsReponer = $this->consolidateReplenishCollection($itemsReponer, $filtros);
+
         $coleccionFinal = collect($itemsReponer);
 
         if ($tipoAnalisis !== 'all') {
@@ -672,6 +687,286 @@ class IaAssistantReportService
             if ($precioBase <= 0) return -9999;
             return (($precioBase - $precioOferta) / $precioBase) * 100;
         });
+    }
+
+    }
+
+    private function consolidateCollection($products, array $filtros)
+    {
+        $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
+        if ($items->isEmpty()) return $products;
+
+        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+        $conDescuentoStr = filter_var($filtros['con_descuento'] ?? true, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+
+        $items->each(function ($p) use ($filtros, $tipo, $conDescuentoStr) {
+            if ($p->is_unified_group && $p->group_id) {
+                // 1. Obtener todos los productos del grupo activos
+                $groupProducts = \App\Models\Product::where('group_id', $p->group_id)
+                    ->where('is_deleted', false)
+                    ->where('is_scarce', false)
+                    ->get();
+
+                if ($groupProducts->isEmpty()) return;
+
+                $groupProductIds = $groupProducts->pluck('id')->toArray();
+
+                // 2. Sumar stock
+                $totalStock = \Illuminate\Support\Facades\DB::table('product_lots')
+                    ->whereIn('product_id', $groupProductIds)
+                    ->where(function($q) {
+                        $q->where('expiration_date', '>=', now()->toDateString())
+                          ->orWhereNull('expiration_date');
+                    })
+                    ->sum('quantity');
+
+                // 3. Sumar ventas
+                $totalSales = \Illuminate\Support\Facades\DB::table('order_details')
+                    ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                    ->whereIn('order_details.product_id', $groupProductIds)
+                    ->where('orders.status', 'Completed')
+                    ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
+                    ->sum('order_details.quantity');
+
+                // 4. Sumar promedios
+                $sumSalesAverage = $groupProducts->sum('sales_average');
+                $lapso = $filtros['lapso_de_tiempo'] ?? "1 month";
+                $totalPromedio = match($lapso) {
+                    "7 days"  => $sumSalesAverage / 4,
+                    "15 days" => $sumSalesAverage / 2,
+                    "1 month" => $sumSalesAverage,
+                    "3 month" => $sumSalesAverage * 3,
+                    "6 month" => $sumSalesAverage * 6,
+                    "1 year"  => $sumSalesAverage * 12,
+                    default    => $sumSalesAverage,
+                };
+
+                // 5. Sumar Auto Order (AO)
+                $totalAO = \Illuminate\Support\Facades\DB::table('auto_order_details')
+                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+                    ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+                    ->whereIn('product_suppliers.product_id', $groupProductIds)
+                    ->whereIn('auto_orders.status', [0, 1])
+                    ->where('auto_order_details.status', 0)
+                    ->whereNull('auto_orders.deleted_at')
+                    ->whereNull('auto_order_details.deleted_at')
+                    ->sum('auto_order_details.quantity');
+
+                // 6. Calcular solicitar y demanda ponderada
+                if ($tipo === 'sales') {
+                    $p->demanda_ponderada = $totalSales;
+                    $resultado = $totalSales - $totalStock - $totalAO;
+                } elseif ($tipo === 'combinado') {
+                    $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
+                    $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
+                } else {
+                    $p->demanda_ponderada = $totalPromedio;
+                    $resultado = $totalPromedio - $totalStock - $totalAO;
+                }
+
+                $p->lote_quantity = $totalStock;
+                $p->total_sold_completed = $totalSales;
+                $p->promedio_calculado = $totalPromedio;
+                $p->totalQuantityInAutoOrder = $totalAO;
+                $p->solicitar = $resultado > 0 ? ceil($resultado) : floor($resultado);
+
+                // 7. Concatenar laboratorios
+                $labNames = \Illuminate\Support\Facades\DB::table('products')
+                    ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+                    ->whereIn('products.id', $groupProductIds)
+                    ->where('products.is_deleted', 0)
+                    ->where('products.is_scarce', 0)
+                    ->distinct()
+                    ->pluck('laboratories.name')
+                    ->filter()
+                    ->toArray();
+                $concatenatedLabNames = implode(' / ', $labNames);
+                $p->setRelation('laboratory', (object) ['name' => $concatenatedLabNames ?: 'S/L']);
+
+                // 8. Buscar mejor oferta para el grupo de productos
+                $groupProductsCollection = new \Illuminate\Database\Eloquent\Collection($groupProducts);
+                $groupSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($groupProductsCollection, $conDescuentoStr);
+                $groupSuppliers = $this->productSupplierRepository->checkTolerance($groupSuppliers, $conDescuentoStr);
+
+                $bestOption = null;
+                foreach ($groupSuppliers as $supplierData) {
+                    if ($supplierData && isset($supplierData['supplier'])) {
+                        $price = $supplierData['precio_final_supplier'] ?? 0;
+                        if ($price > 0 && ($bestOption === null || $price < $bestOption['precio_final_supplier'])) {
+                            $bestOption = $supplierData;
+                        }
+                    }
+                }
+
+                if ($bestOption) {
+                    $bestSupplier = $bestOption['supplier'];
+                    if (isset($bestOption['productSupplier'])) {
+                        $bestSupplier->setAttribute('product_suppliers_id', $bestOption['productSupplier']->id ?? null);
+                        $bestSupplier->setAttribute('unit_cost_usd_with_discount', $bestOption['productSupplier']->unit_cost_usd_with_discount ?? 0);
+                    }
+                    $p->setAttribute('cheapest_barcode', $bestOption['productSupplier']->barcode_match ?? $p->cheapest_barcode);
+                    $p->setAttribute('cheapest_unit_cost', $bestOption['precio_final_supplier'] ?? 0);
+                    $p->setAttribute('best_supplier', $bestSupplier);
+                    $p->setAttribute('best_supplier_price', $bestOption['precio_final_supplier'] ?? 0);
+                    $p->setAttribute('best_supplier_percentage', $bestOption['percentageIncrease'] ?? 0);
+                } else {
+                    $p->setAttribute('best_supplier', null);
+                    $p->setAttribute('best_supplier_price', 0);
+                    $p->setAttribute('best_supplier_percentage', 0);
+                }
+            }
+        });
+
+        return $products;
+    }
+
+    private function consolidateReplenishCollection(array $itemsReponer, array $filtros)
+    {
+        $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
+        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+
+        $items = collect($itemsReponer);
+        if ($items->isEmpty()) return $itemsReponer;
+
+        $processedItems = $items->map(function ($item) use ($filtros, $tipo, $conDescuento) {
+            $p = $item['product'] ?? null;
+            if ($p && $p->is_unified_group && $p->group_id) {
+                // 1. Obtener todos los productos del grupo activos
+                $groupProducts = \App\Models\Product::where('group_id', $p->group_id)
+                    ->where('is_deleted', false)
+                    ->where('is_scarce', false)
+                    ->get();
+
+                if ($groupProducts->isEmpty()) return $item;
+
+                $groupProductIds = $groupProducts->pluck('id')->toArray();
+
+                // 2. Sumar stock, ventas, promedio, AO de todo el grupo
+                $totalStock = \Illuminate\Support\Facades\DB::table('product_lots')
+                    ->whereIn('product_id', $groupProductIds)
+                    ->where(function($q) {
+                        $q->where('expiration_date', '>=', now()->toDateString())
+                          ->orWhereNull('expiration_date');
+                    })
+                    ->sum('quantity');
+
+                $totalSales = \Illuminate\Support\Facades\DB::table('order_details')
+                    ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                    ->whereIn('order_details.product_id', $groupProductIds)
+                    ->where('orders.status', 'Completed')
+                    ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
+                    ->sum('order_details.quantity');
+
+                $sumSalesAverage = $groupProducts->sum('sales_average');
+                $lapso = $filtros['lapso_de_tiempo'] ?? "1 month";
+                $totalPromedio = match($lapso) {
+                    "7 days"  => $sumSalesAverage / 4,
+                    "15 days" => $sumSalesAverage / 2,
+                    "1 month" => $sumSalesAverage,
+                    "3 month" => $sumSalesAverage * 3,
+                    "6 month" => $sumSalesAverage * 6,
+                    "1 year"  => $sumSalesAverage * 12,
+                    default    => $sumSalesAverage,
+                };
+
+                $totalAO = \Illuminate\Support\Facades\DB::table('auto_order_details')
+                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+                    ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+                    ->whereIn('product_suppliers.product_id', $groupProductIds)
+                    ->whereIn('auto_orders.status', [0, 1])
+                    ->where('auto_order_details.status', 0)
+                    ->whereNull('auto_orders.deleted_at')
+                    ->whereNull('auto_order_details.deleted_at')
+                    ->sum('auto_order_details.quantity');
+
+                // 3. Calcular solicitar consolidado (demanda - stock - AO)
+                if ($tipo === 'sales') {
+                    $p->demanda_ponderada = $totalSales;
+                    $resultado = $totalSales - $totalStock - $totalAO;
+                } elseif ($tipo === 'combinado') {
+                    $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
+                    $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
+                } else {
+                    $p->demanda_ponderada = $totalPromedio;
+                    $resultado = $totalPromedio - $totalStock - $totalAO;
+                }
+
+                $solicitarConsolidado = $resultado > 0 ? ceil($resultado) : floor($resultado);
+
+                // Actualizar los atributos en el modelo de producto unificado
+                $p->lote_quantity = $totalStock;
+                $p->total_sold_completed = $totalSales;
+                $p->promedio_calculado = $totalPromedio;
+                $p->totalQuantityInAutoOrder = $totalAO;
+                $p->solicitar = $solicitarConsolidado;
+
+                // Concatenar laboratorios del grupo
+                $labNames = \Illuminate\Support\Facades\DB::table('products')
+                    ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+                    ->whereIn('products.id', $groupProductIds)
+                    ->where('products.is_deleted', 0)
+                    ->where('products.is_scarce', 0)
+                    ->distinct()
+                    ->pluck('laboratories.name')
+                    ->filter()
+                    ->toArray();
+                $concatenatedLabNames = implode(' / ', $labNames);
+                $p->setRelation('laboratory', (object) ['name' => $concatenatedLabNames ?: 'S/L']);
+
+                // 4. Obtener ofertas para todo el grupo para elegir la mejor (más barata)
+                $groupProductsCollection = new \Illuminate\Database\Eloquent\Collection($groupProducts);
+                
+                // Temporalmente ponemos el solicitar consolidado invertido en todos los productos para que getSupplierToReplenishTheProducts use la demanda correcta
+                $groupProductsCollection->each(function($gp) use ($solicitarConsolidado) {
+                    $gp->solicitar = -$solicitarConsolidado;
+                });
+
+                $groupReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($groupProductsCollection, $conDescuento);
+                $groupReponer = $this->productSupplierRepository->checkTolerance($groupReponer, $conDescuento);
+
+                $bestReponerItem = null;
+                foreach ($groupReponer as $gItem) {
+                    if ($gItem && isset($gItem['supplier'])) {
+                        $price = $gItem['precio_final_supplier'] ?? 0;
+                        if ($price > 0 && ($bestReponerItem === null || $price < $bestReponerItem['precio_final_supplier'])) {
+                            $bestReponerItem = $gItem;
+                        }
+                    }
+                }
+
+                if ($bestReponerItem) {
+                    // Usamos el mejor item del grupo pero le ponemos el producto unificado con sus datos consolidados
+                    $bestReponerItem['product'] = $p;
+                    $bestReponerItem['solicitar'] = -$solicitarConsolidado;
+                    
+                    // Sincronizar atributos de mejor proveedor en el producto
+                    $bestSupplier = $bestReponerItem['supplier'];
+                    if (isset($bestReponerItem['productSupplier'])) {
+                        $bestSupplier->setAttribute('product_suppliers_id', $bestReponerItem['productSupplier']->id ?? null);
+                        $bestSupplier->setAttribute('unit_cost_usd_with_discount', $bestReponerItem['productSupplier']->unit_cost_usd_with_discount ?? 0);
+                    }
+                    $p->setAttribute('cheapest_barcode', $bestReponerItem['productSupplier']->barcode_match ?? $p->cheapest_barcode);
+                    $p->setAttribute('cheapest_unit_cost', $bestReponerItem['precio_final_supplier'] ?? 0);
+                    $p->setAttribute('best_supplier', $bestSupplier);
+                    $p->setAttribute('best_supplier_price', $bestReponerItem['precio_final_supplier'] ?? 0);
+                    $p->setAttribute('best_supplier_percentage', $bestReponerItem['percentageIncrease'] ?? 0);
+
+                    return $bestReponerItem;
+                } else {
+                    // No hay proveedores disponibles para ningún producto del grupo
+                    $item['product'] = $p;
+                    $item['solicitar'] = -$solicitarConsolidado;
+                    $p->setAttribute('best_supplier', null);
+                    $p->setAttribute('best_supplier_price', 0);
+                    $p->setAttribute('best_supplier_percentage', 0);
+                    return $item;
+                }
+            }
+
+            return $item;
+        });
+
+        return $processedItems->toArray();
     }
 
 }
