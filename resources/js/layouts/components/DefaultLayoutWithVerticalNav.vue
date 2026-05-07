@@ -14,9 +14,11 @@ import NavBarI18n from "@core/components/I18n.vue";
 
 // @layouts plugin
 import { VerticalNavLayout } from "@layouts";
+import { useLayoutConfigStore } from "@layouts/stores/config";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
+const configStore = useLayoutConfigStore();
 
 // Procesar el menú dinámicamente según el rol del usuario
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
@@ -99,6 +101,14 @@ const processedNavItems = computed(() => {
         >
           <VIcon icon="tabler-x" />
         </IconBtn>
+
+        <div class="header-action d-none d-lg-block">
+          <IconBtn
+            @click="configStore.isVerticalNavCollapsed = !configStore.isVerticalNavCollapsed"
+          >
+            <VIcon :icon="configStore.isVerticalNavCollapsed ? 'tabler-circle' : 'tabler-circle-dot'" />
+          </IconBtn>
+        </div>
       </template>
       <!-- 👉 navbar -->
       <template #navbar="{ toggleVerticalOverlayNavActive }">
@@ -142,3 +152,9 @@ const processedNavItems = computed(() => {
     Cargando aplicación...
   </div>
 </template>
+
+<style lang="scss">
+.layout-vertical-nav-collapsed .layout-vertical-nav:not(.hovered) .app-title {
+  display: none !important;
+}
+</style>
