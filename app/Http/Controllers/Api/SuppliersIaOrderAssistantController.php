@@ -114,7 +114,7 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
-        if ($request->filled("isColombian")) {
+        if ($request->has("isColombian")) {
             $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
         }
 

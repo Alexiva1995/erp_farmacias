@@ -96,13 +96,13 @@ const processedNavItems = computed(() => {
         </RouterLink>
 
         <IconBtn
-          class="d-block d-lg-none"
+          class="d-block d-md-none"
           @click="toggleIsOverlayNavActive(false)"
         >
           <VIcon icon="tabler-x" />
         </IconBtn>
 
-        <div class="header-action d-none d-lg-block">
+        <div class="header-action d-none d-md-block">
           <IconBtn
             @click="configStore.isVerticalNavCollapsed = !configStore.isVerticalNavCollapsed"
           >

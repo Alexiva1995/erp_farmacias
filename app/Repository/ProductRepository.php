@@ -857,6 +857,7 @@ class ProductRepository
             "products.unit_cost",
             "products.psychotropic",
             "products.is_colombian_origin",
+            "products.is_unified_group",
             "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
@@ -1124,6 +1125,7 @@ class ProductRepository
             "products.unit_cost",
             "products.psychotropic",
             "products.is_colombian_origin",
+            "products.is_unified_group",
             "products.active_ingredient",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 

@@ -166,7 +166,7 @@ const { mdAndUp } = useDisplay();
 const innerHeaders = computed(() => {
   const base = [
     { title: "ID", key: "id", sortable: true, width: '50px' },
-    { title: "Producto", key: "name", sortable: true },
+    { title: "Producto", key: "name", sortable: true, minWidth: '260px' },
   ];
 
   if (props.showGraphs) {
@@ -291,9 +291,9 @@ function rowClass(item) {
                     {{ item.name }}
                   </span>
                   <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
-                    <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
+                    <span class="text-disabled">{{ item.active_ingredient }}</span>
                     <span class="text-disabled mx-1">|</span>
-                    <span class="text-primary font-weight-black text-uppercase truncate">
+                    <span class="text-primary font-weight-black text-uppercase">
                       {{ item.laboratory?.name || 'S/L' }}
                       <span v-if="item.best_supplier && props.withSuppliers" class="text-warning ml-1">- {{ item.best_supplier?.name }}</span>
                     </span>
