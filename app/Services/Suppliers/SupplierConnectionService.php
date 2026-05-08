@@ -880,7 +880,7 @@ class SupplierConnectionService
                 'group_id' => null,
                 'unit_cost' => floatval($lineData['unit_cost'] ?? 0),
                 'sale_price' => floatval($lineData['unit_cost'] ?? 0),
-                'iva' => 0,
+                'iva' => isset($lineData['tax_enabled']) && $lineData['tax_enabled'] == 1 ? 1 : 0,
                 'is_colombian_origin' => false,
                 'psychotropic' => false,
                 'stock' => 0,

@@ -173,6 +173,14 @@ class InvoiceActionService
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
                 $displayOrder = isset($detail['display_order']) ? (int) $detail['display_order'] : $index;
 
+                // Si se marca que tiene IVA en la factura, asegurar que se guarde como IVA en la ficha del producto
+                if ($taxEnabled) {
+                    $productModel = \App\Models\Product::withoutGlobalScopes()->find($productId);
+                    if ($productModel && !$productModel->iva) {
+                        $productModel->update(['iva' => 1]);
+                    }
+                }
+
                 $autoOrderDetail = $autoOrderDetailMapping[$productId] ?? null;
                 $autoOrderDetailId = $autoOrderDetail ? $autoOrderDetail->id : null;
 

@@ -27,6 +27,7 @@ const emit = defineEmits([
 const { mobile } = useDisplay();
 
 const invoice = ref(null);
+const showAuditModal = ref(false);
 const invoiceDetails = ref([]);
 const formData = ref({});
 const loading = ref(true);
@@ -1389,10 +1390,19 @@ const detailsHeaders = computed(() => {
               <VCol cols="12" md="6">
                 <div>
                   <h1
-                    class="font-weight-bold text-primary text-h4 mb-2"
+                    class="font-weight-bold text-primary text-h4 mb-2 d-inline-flex align-center gap-2"
                     style="text-transform: uppercase !important"
                   >
-                    {{ invoice.supplier.name }}
+                    <span>{{ invoice.supplier.name }}</span>
+                    <VBtn
+                      icon="tabler-eye"
+                      size="x-small"
+                      color="secondary"
+                      variant="tonal"
+                      class="ms-2"
+                      title="Ver historial de auditoría de la factura"
+                      @click="showAuditModal = true"
+                    />
                   </h1>
                   <div class="d-flex flex-wrap gap-2 align-center">
                     <VChip size="small" color="error" variant="flat" class="font-weight-bold">
@@ -2321,6 +2331,106 @@ const detailsHeaders = computed(() => {
           @laboratory-created="fetchProductSelectOptions"
         />
       </template>
+
+      <!-- Modal de Historial de Auditoría / Operadores -->
+      <VDialog v-model="showAuditModal" max-width="550">
+        <VCard class="overflow-hidden">
+          <VCardTitle class="bg-primary text-white d-flex align-center justify-space-between pa-4">
+            <span class="text-h6 font-weight-bold text-white">Historial de Auditoría - Factura #{{ invoice.invoice_number }}</span>
+            <VBtn icon="tabler-x" variant="text" color="white" @click="showAuditModal = false" />
+          </VCardTitle>
+
+          <VCardText class="pa-6">
+            <p class="text-subtitle-2 text-disabled mb-6 uppercase letter-spacing-1 font-weight-black">
+              Ciclo de Vida de la Factura y Operadores Responsables
+            </p>
+
+            <div class="d-flex flex-column gap-6">
+              <!-- Subido por -->
+              <div class="d-flex align-start gap-4">
+                <VAvatar size="36" color="success" variant="tonal" class="flex-shrink-0">
+                  <VIcon icon="tabler-cloud-upload" size="18" class="text-success" />
+                </VAvatar>
+                <div class="flex-grow-1">
+                  <div class="d-flex align-center justify-space-between">
+                    <span class="font-weight-bold text-high-emphasis text-body-1">1. Subida / Registro Inicial</span>
+                    <VChip size="x-small" color="success" class="font-weight-bold">Completado</VChip>
+                  </div>
+                  <p class="text-body-2 text-medium-emphasis mt-1">
+                    Operador: <strong class="text-high-emphasis">{{ invoice.uploaded_by_user?.name || 'Sistema / N/A' }}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <VDivider />
+
+              <!-- Registrado por -->
+              <div class="d-flex align-start gap-4">
+                <VAvatar size="36" :color="invoice.registered_by_user ? 'info' : 'secondary'" variant="tonal" class="flex-shrink-0">
+                  <VIcon icon="tabler-list-check" size="18" :class="invoice.registered_by_user ? 'text-info' : 'text-secondary'" />
+                </VAvatar>
+                <div class="flex-grow-1">
+                  <div class="d-flex align-center justify-space-between">
+                    <span class="font-weight-bold text-high-emphasis text-body-1">2. Carga / Registro de Productos</span>
+                    <VChip size="x-small" :color="invoice.registered_by_user ? 'success' : 'warning'" class="font-weight-bold">
+                      {{ invoice.registered_by_user ? 'Completado' : 'Pendiente' }}
+                    </VChip>
+                  </div>
+                  <p class="text-body-2 text-medium-emphasis mt-1">
+                    Operador: <strong class="text-high-emphasis">{{ invoice.registered_by_user?.name || 'No asignado' }}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <VDivider />
+
+              <!-- Cargado por (Ubicación de Lotes) -->
+              <div class="d-flex align-start gap-4">
+                <VAvatar size="36" :color="invoice.loaded_by_user ? 'warning' : 'secondary'" variant="tonal" class="flex-shrink-0">
+                  <VIcon icon="tabler-box-margin" size="18" :class="invoice.loaded_by_user ? 'text-warning' : 'text-secondary'" />
+                </VAvatar>
+                <div class="flex-grow-1">
+                  <div class="d-flex align-center justify-space-between">
+                    <span class="font-weight-bold text-high-emphasis text-body-1">3. Verificación y Ubicación Física</span>
+                    <VChip size="x-small" :color="invoice.loaded_by_user ? 'success' : 'warning'" class="font-weight-bold">
+                      {{ invoice.loaded_by_user ? 'Completado' : 'Pendiente' }}
+                    </VChip>
+                  </div>
+                  <p class="text-body-2 text-medium-emphasis mt-1">
+                    Operador: <strong class="text-high-emphasis">{{ invoice.loaded_by_user?.name || 'No asignado' }}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <VDivider />
+
+              <!-- Ordenado por -->
+              <div class="d-flex align-start gap-4">
+                <VAvatar size="36" :color="invoice.ordered_by_user ? 'primary' : 'secondary'" variant="tonal" class="flex-shrink-0">
+                  <VIcon icon="tabler-circle-check" size="18" :class="invoice.ordered_by_user ? 'text-primary' : 'text-secondary'" />
+                </VAvatar>
+                <div class="flex-grow-1">
+                  <div class="d-flex align-center justify-space-between">
+                    <span class="font-weight-bold text-high-emphasis text-body-1">4. Aprobación y Orden de Compra</span>
+                    <VChip size="x-small" :color="invoice.ordered_by_user ? 'success' : 'warning'" class="font-weight-bold">
+                      {{ invoice.ordered_by_user ? 'Completado' : 'Pendiente' }}
+                    </VChip>
+                  </div>
+                  <p class="text-body-2 text-medium-emphasis mt-1">
+                    Operador: <strong class="text-high-emphasis">{{ invoice.ordered_by_user?.name || 'No asignado' }}</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </VCardText>
+
+          <VCardActions class="pa-4 bg-light d-flex justify-end border-t">
+            <VBtn color="secondary" variant="flat" @click="showAuditModal = false">
+              Cerrar Ventana
+            </VBtn>
+          </VCardActions>
+        </VCard>
+      </VDialog>
     </div>
   </div>
 </template>

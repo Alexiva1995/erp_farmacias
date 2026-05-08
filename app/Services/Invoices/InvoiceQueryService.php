@@ -190,7 +190,7 @@ class InvoiceQueryService
 
     public function getInvoiceById(Invoice $invoice): Invoice
     {
-        $invoice->load(['supplier', 'discountRule']);
+        $invoice->load(['supplier', 'discountRule', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
 
         return $invoice;
     }

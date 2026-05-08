@@ -40,6 +40,22 @@ class InvoiceResource extends JsonResource
                 'social_reason' => $this->supplier?->social_reason,
                 'rif' => $this->supplier?->rif,
             ],
+            'uploaded_by_user' => $this->uploadedBy ? [
+                'id' => $this->uploadedBy->id,
+                'name' => $this->uploadedBy->name,
+            ] : null,
+            'registered_by_user' => $this->registeredBy ? [
+                'id' => $this->registeredBy->id,
+                'name' => $this->registeredBy->name,
+            ] : null,
+            'loaded_by_user' => $this->loadedBy ? [
+                'id' => $this->loadedBy->id,
+                'name' => $this->loadedBy->name,
+            ] : null,
+            'ordered_by_user' => $this->orderedBy ? [
+                'id' => $this->orderedBy->id,
+                'name' => $this->orderedBy->name,
+            ] : null,
         ];
     }
 }
