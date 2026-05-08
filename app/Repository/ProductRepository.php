@@ -439,7 +439,7 @@ class ProductRepository
                 ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
             END';
             
-            $columnas[] = DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar');
+            $columnas[] = DB::raw('(' . $iaSolicitar . ') AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw($demandaCombinada . ' AS demanda_ponderada');
         } else {
@@ -449,7 +449,7 @@ class ProductRepository
                 ELSE FLOOR((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
             END';
             
-            $columnas[] = DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar');
+            $columnas[] = DB::raw('(' . $iaSolicitar . ') AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
             $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
         }
@@ -694,7 +694,7 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
-            DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar'),
+            DB::raw('(' . $iaSolicitar . ') AS solicitar'),
             DB::raw('(
                 SELECT ps.barcode_match
                 FROM product_suppliers ps
@@ -999,7 +999,6 @@ class ProductRepository
         // calcular solicitar: demanda - stock - AO
         $calcSolicitar = '((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')';
         $columnas[] = DB::raw('CASE 
-            WHEN products.manual_solicitar IS NOT NULL THEN products.manual_solicitar
             WHEN ' . $calcSolicitar . ' > 0 THEN CEIL(' . $calcSolicitar . ')
             ELSE FLOOR(' . $calcSolicitar . ')
         END AS solicitar');
@@ -1218,7 +1217,6 @@ class ProductRepository
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
             DB::raw('CASE 
-                WHEN products.manual_solicitar IS NOT NULL THEN products.manual_solicitar
                 WHEN ((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                     SELECT COALESCE(SUM(aod.quantity), 0)
                     FROM auto_order_details aod
@@ -1576,7 +1574,6 @@ class ProductRepository
         }
 
         $solicitarCol = "CASE 
-                WHEN products.manual_solicitar IS NOT NULL THEN products.manual_solicitar
                 WHEN ($solicitarRaw) > 0 THEN CEIL($solicitarRaw) 
                 ELSE FLOOR($solicitarRaw) 
             END";

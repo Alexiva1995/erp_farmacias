@@ -403,15 +403,6 @@ class IaAssistantReportService
         $this->hydrateAutoOrderBulk($items);
 
         $items->transform(function ($item) use ($tipo) {
-            // Si tiene cantidad manual guardada, la respetamos como solicitar absoluto
-            if ($item->manual_solicitar !== null) {
-                $item->solicitar = (float)$item->manual_solicitar;
-                $item->demanda_ponderada = ($tipo === 'sales') 
-                    ? ($item->total_sold_completed ?? 0) 
-                    : ($item->promedio_calculado ?? 0);
-                return $item;
-            }
-
             // La demanda ponderada en reportes simples es el valor base (ventas o promedio)
             $item->demanda_ponderada = ($tipo === 'sales') 
                 ? ($item->total_sold_completed ?? 0) 
@@ -461,13 +452,6 @@ class IaAssistantReportService
         $this->hydrateAutoOrderBulk($items);
 
         $items->transform(function ($item) use ($ventasMap) {
-            // Si tiene cantidad manual guardada, la respetamos como solicitar absoluto
-            if ($item->manual_solicitar !== null) {
-                $item->solicitar = (float)$item->manual_solicitar;
-                $item->demanda_ponderada = $item->promedio_calculado ?? 0;
-                return $item;
-            }
-
             // Buscar si tiene datos de venta en el mapa
             $itemVentas = $ventasMap->get($item->id);
 
