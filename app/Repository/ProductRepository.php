@@ -894,6 +894,7 @@ class ProductRepository
             "products.is_colombian_origin",
             "products.is_unified_group",
             "products.active_ingredient",
+            'products.manual_solicitar',
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -998,6 +999,7 @@ class ProductRepository
         // calcular solicitar: demanda - stock - AO
         $calcSolicitar = '((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')';
         $columnas[] = DB::raw('CASE 
+            WHEN products.manual_solicitar IS NOT NULL THEN products.manual_solicitar
             WHEN ' . $calcSolicitar . ' > 0 THEN CEIL(' . $calcSolicitar . ')
             ELSE FLOOR(' . $calcSolicitar . ')
         END AS solicitar');
@@ -1162,6 +1164,7 @@ class ProductRepository
             "products.is_colombian_origin",
             "products.is_unified_group",
             "products.active_ingredient",
+            'products.manual_solicitar',
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
@@ -1215,6 +1218,7 @@ class ProductRepository
                 AND aod.deleted_at IS NULL
             ) AS totalQuantityInAutoOrder'),
             DB::raw('CASE 
+                WHEN products.manual_solicitar IS NOT NULL THEN products.manual_solicitar
                 WHEN ((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                     SELECT COALESCE(SUM(aod.quantity), 0)
                     FROM auto_order_details aod
@@ -1572,6 +1576,7 @@ class ProductRepository
         }
 
         $solicitarCol = "CASE 
+                WHEN products.manual_solicitar IS NOT NULL THEN products.manual_solicitar
                 WHEN ($solicitarRaw) > 0 THEN CEIL($solicitarRaw) 
                 ELSE FLOOR($solicitarRaw) 
             END";
