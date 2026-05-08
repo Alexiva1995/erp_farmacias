@@ -14,8 +14,7 @@ class ProductRepository
 
     private $subConsultaParaCalcularStockPorLotes = '(SELECT COALESCE (SUM(quantity), 0) 
                 FROM product_lots 
-                WHERE product_id = products.id 
-                AND (expiration_date >= CURDATE() OR expiration_date IS NULL))';
+                WHERE product_id = products.id)';
 
     public function consultProductById(int $id): ?Product
     {
@@ -430,8 +429,11 @@ class ProductRepository
         // Redondear hacia arriba si falta, hacia abajo si sobra (CEIL/FLOOR)
         $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo_filtracion == "combinado") {
-            // Demanda combinada = (promedio + ventas) / 2
-            $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
+            // Demanda combinada: Si hay ventas se pondera (promedio + ventas)/2, si ventas es 0 se usa el promedio directo (igual que la query de IDs)
+            $demandaCombinada = 'CASE 
+                WHEN ' . $subqueryTotalSold . ' > 0 THEN ((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)
+                ELSE ' . $promedio_calculado . '
+            END';
             $iaSolicitar = 'CASE 
                 WHEN ((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
                 ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
@@ -439,7 +441,7 @@ class ProductRepository
             
             $columnas[] = DB::raw('COALESCE(products.manual_solicitar, ' . $iaSolicitar . ') AS solicitar');
             // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
-            $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
+            $columnas[] = DB::raw($demandaCombinada . ' AS demanda_ponderada');
         } else {
             // solicitar = promedio - stock - AO
             $iaSolicitar = 'CASE 
@@ -1472,13 +1474,11 @@ class ProductRepository
                 WHERE u_p.group_id = products.group_id 
                 AND u_p.is_deleted = 0 
                 AND u_p.is_scarce = 0
-                AND (expiration_date >= CURDATE() OR expiration_date IS NULL)
             )
             ELSE (
                 SELECT COALESCE (SUM(quantity), 0) 
                 FROM product_lots 
                 WHERE product_id = products.id 
-                AND (expiration_date >= CURDATE() OR expiration_date IS NULL)
             )
         END';
 

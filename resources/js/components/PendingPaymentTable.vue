@@ -245,7 +245,7 @@ const getInitials = (name) => {
                   placeholder="Seleccionar Fecha"
                   variant="outlined"
                   density="compact"
-                  :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
+                  :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d', static: true }"
                   @update:model-value="(val) => emit('update-date', item, val)"
                 />
               </VCard>
@@ -392,7 +392,7 @@ const getInitials = (name) => {
                       placeholder="Seleccionar Fecha"
                       variant="outlined"
                       density="compact"
-                      :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
+                      :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d', static: true }"
                       @update:model-value="(val) => emit('update-date', item, val)"
                     />
                   </VCard>

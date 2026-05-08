@@ -7,6 +7,7 @@ import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import { useDebounceFn } from '@vueuse/core';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -16,6 +17,8 @@ const props = defineProps({
   page: { type: Number, required: true },
   withSuppliers: { type: Boolean, default: false },
   showGraphs: { type: Boolean, default: false },
+  sortBy: { type: String, default: "solicitar" },
+  orderBy: { type: String, default: "desc" },
 });
 
 const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item"]);
@@ -87,6 +90,33 @@ const onActionClick = async (item, action) => {
       return;
     }
     
+    // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
+    const nuestroBarcode = item.barcode ? String(item.barcode).trim() : '';
+    const cheapestBarcode = item.cheapest_barcode ? String(item.cheapest_barcode).trim() : '';
+
+    if (cheapestBarcode && nuestroBarcode !== cheapestBarcode) {
+      const { isConfirmed } = await Swal.fire({
+        title: "¿Reemplazar código de barras?",
+        html: `Nuestro producto actual tiene el código: <strong>${nuestroBarcode || 'vacío'}</strong>.<br>El del listado del proveedor es: <strong>${cheapestBarcode}</strong>.<br><br>¿Desea actualizar nuestro código de barras por el del listado?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, reemplazar",
+        cancelButtonText: "No, mantener actual",
+      });
+
+      if (isConfirmed) {
+        try {
+          await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+            barcode: cheapestBarcode
+          });
+          // Actualizamos la propiedad barcode localmente
+          item.barcode = cheapestBarcode;
+        } catch (updateError) {
+          console.error("Error updating barcode:", updateError);
+        }
+      }
+    }
+
     isProcessing.value[item.id] = 'adding';
     try {
       await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {
@@ -210,6 +240,7 @@ function rowClass(item) {
           :items-length="props.totalProduct"
           :loading="props.loading"
           :row-props="({ item }) => ({ class: rowClass(item) })"
+          :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy }] : []"
           class="text-no-wrap assistant-data-table"
           @update:options="(options) => emit('update:options', options)"
         >

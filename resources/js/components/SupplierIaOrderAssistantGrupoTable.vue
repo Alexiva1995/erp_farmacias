@@ -4,6 +4,7 @@ import { useDisplay } from 'vuetify';
 import { useDebounceFn } from '@vueuse/core';
 import { ref, computed, watch } from 'vue';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
   grupos: { type: Array, required: true },         // Array de { group_id, group_name, productos }
@@ -82,6 +83,33 @@ const onActionClick = async (item, action) => {
       return;
     }
     
+    // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
+    const nuestroBarcode = item.barcode ? String(item.barcode).trim() : '';
+    const cheapestBarcode = item.cheapest_barcode ? String(item.cheapest_barcode).trim() : '';
+
+    if (cheapestBarcode && nuestroBarcode !== cheapestBarcode) {
+      const { isConfirmed } = await Swal.fire({
+        title: "¿Reemplazar código de barras?",
+        html: `Nuestro producto actual tiene el código: <strong>${nuestroBarcode || 'vacío'}</strong>.<br>El del listado del proveedor es: <strong>${cheapestBarcode}</strong>.<br><br>¿Desea actualizar nuestro código de barras por el del listado?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, reemplazar",
+        cancelButtonText: "No, mantener actual",
+      });
+
+      if (isConfirmed) {
+        try {
+          await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+            barcode: cheapestBarcode
+          });
+          // Actualizamos la propiedad barcode localmente
+          item.barcode = cheapestBarcode;
+        } catch (updateError) {
+          console.error("Error updating barcode:", updateError);
+        }
+      }
+    }
+
     isProcessing.value[item.id] = 'adding';
     try {
       await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {

@@ -20,8 +20,8 @@ const loading = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(25);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref("solicitar");
+const orderBy = ref("desc");
 
 const selectedLaboratory = ref([]);
 const selectedGroup = ref([]);
@@ -29,7 +29,7 @@ const selectedGroup = ref([]);
 const tipo_de_vista = ref(false);
 const tipo_de_filtracion = ref("combinado");
 const lapso_de_tiempo = ref("1 month");
-const stock = ref("all");
+const stock = ref("fallas");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
@@ -44,7 +44,7 @@ const handleClearFilters = () => {
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
   lapso_de_tiempo.value = "1 month";
-  stock.value = "all";
+  stock.value = "fallas";
   isColombian.value = false;
   isNovaventa.value = false;
   selectedLaboratory.value = [];
@@ -52,6 +52,8 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   showIgnored.value = false;
   showGraphs.value = false;
+  sortBy.value = "solicitar";
+  orderBy.value = "desc";
 };
 
 async function consultarLaboratorios() {
@@ -315,8 +317,8 @@ watch([isComparatorModalVisible, comparatorSearchQuery, comparatorPage, comparat
 const handleSendToAutoOrder = async ({ id, quantity, item }) => {
   try {
     // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
-    const nuestroBarcode = comparatorProduct.value?.barcode;
-    const listadoBarcode = item?.barcode_match;
+    const nuestroBarcode = comparatorProduct.value?.barcode ? String(comparatorProduct.value.barcode).trim() : '';
+    const listadoBarcode = item?.barcode_match ? String(item.barcode_match).trim() : '';
 
     if (listadoBarcode && nuestroBarcode !== listadoBarcode) {
       const { isConfirmed } = await Swal.fire({
@@ -422,6 +424,8 @@ onMounted(async () => {
           :page="page"
           :with-suppliers="withSuppliers"
           :show-graphs="showGraphs"
+          :sort-by="sortBy"
+          :order-by="orderBy"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"
@@ -516,4 +520,3 @@ onMounted(async () => {
   }
 }
 </style>
-鼓

@@ -71,7 +71,7 @@ const stockOpciones = [
 ];
 
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'all')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas')
 ));
 </script>
 
