@@ -754,7 +754,11 @@ class IaAssistantReportService
                     $p->demanda_ponderada = $totalSales;
                     $resultado = $totalSales - $totalStock - $totalAO;
                 } elseif ($tipo === 'combinado') {
-                    $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
+                    if ($totalSales > 0) {
+                        $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
+                    } else {
+                        $p->demanda_ponderada = $totalPromedio;
+                    }
                     $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
