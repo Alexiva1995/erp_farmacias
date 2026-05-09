@@ -430,10 +430,7 @@ class ProductRepository
         $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo_filtracion == "combinado") {
             // Demanda combinada: Si hay ventas se pondera (promedio + ventas)/2, si ventas es 0 se usa el promedio directo (igual que la query de IDs)
-            $demandaCombinada = 'CASE 
-                WHEN ' . $subqueryTotalSold . ' > 0 THEN ((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)
-                ELSE ' . $promedio_calculado . '
-            END';
+            $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             $iaSolicitar = 'CASE 
                 WHEN ((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
                 ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
@@ -1562,10 +1559,7 @@ class ProductRepository
         if ($tipo === "combinado") {
             // Demanda ponderada combinada: Si hay ventas usamos (ventas + promedio)/2. 
             // Si subqueryTotalSold es 0, usamos el promedio directamente (igual que PHP).
-            $demanda = 'CASE 
-                WHEN ' . $subqueryTotalSold . ' > 0 THEN ((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)
-                ELSE ' . $promedio_calculado . '
-            END';
+            $demanda = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         } elseif ($tipo === "sales") {
             $solicitarRaw = '(' . $subqueryTotalSold . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';

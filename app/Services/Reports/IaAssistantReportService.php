@@ -466,17 +466,11 @@ class IaAssistantReportService
                 $ventasTotales = 0;
             }
 
-            if ($ventasTotales > 0) {
-                // Demanda ponderada combinada: Solo si hay ventas mayores a 0
-                $item->demanda_ponderada = ($ventasTotales + $promedio) / 2;
+            // Demanda ponderada combinada pura: siempre pondera (ventas + promedio) / 2
+            $item->demanda_ponderada = ($ventasTotales + $promedio) / 2;
 
-                // Fórmula combinada: ((ventas + promedio) / 2) - stock - AO
-                $resultado = $item->demanda_ponderada - $stockActual - $autoOrder;
-            } else {
-                // Fórmula base si no hay ventas recientes: promedio - stock - AO
-                $item->demanda_ponderada = $promedio;
-                $resultado = $promedio - $stockActual - $autoOrder;
-            }
+            // Fórmula combinada pura: ((ventas + promedio) / 2) - stock - AO
+            $resultado = $item->demanda_ponderada - $stockActual - $autoOrder;
 
             // Invertir el signo para el análisis visual (faltante => positivo)
             // Sincronizar redondeo con SQL: ceil si > 0, floor si < 0
@@ -754,11 +748,7 @@ class IaAssistantReportService
                     $p->demanda_ponderada = $totalSales;
                     $resultado = $totalSales - $totalStock - $totalAO;
                 } elseif ($tipo === 'combinado') {
-                    if ($totalSales > 0) {
-                        $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
-                    } else {
-                        $p->demanda_ponderada = $totalPromedio;
-                    }
+                    $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
                     $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
