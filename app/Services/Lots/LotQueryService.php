@@ -232,6 +232,7 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
+            ->whereHas('product')
             ->with(['product.laboratory', 'product.origin', 'supplier'])
             ->where(function ($q) {
                 $q->whereNull('product_lots.location')

@@ -346,16 +346,6 @@ const handlePriceAdjustmentExpired = async (month) => {
   try {
     loadingAdjustmentForMonth.value = month;
 
-    const { data: statusData } = await axios.get(
-      `/expirations/month/${month}/adjustment-status`
-    );
-
-    if (statusData.has_adjustment) {
-      toast.warning("Ya se ha realizado un reajuste de precios para este mes.");
-      loadingAdjustmentForMonth.value = null;
-      return;
-    }
-
     await fetchAllProducts();
 
     selectedMonthForAdjustment.value = month;
