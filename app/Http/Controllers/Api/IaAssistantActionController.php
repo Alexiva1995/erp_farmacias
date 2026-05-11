@@ -175,10 +175,36 @@ class IaAssistantActionController extends Controller
     {
         $request->validate([
             'barcode' => 'required|string|max:255',
+            'force' => 'nullable|boolean',
         ]);
 
+        $barcode = $request->barcode;
+        $force = filter_var($request->input('force'), FILTER_VALIDATE_BOOLEAN);
+
+        // Buscar si otro producto ya tiene este código de barras (excluyendo eliminados)
+        $existingProduct = Product::where('barcode', $barcode)
+            ->where('id', '!=', $product->id)
+            ->first();
+
+        if ($existingProduct) {
+            if ($force) {
+                // Si viene forzado, le quitamos el código de barras al otro producto (ponerlo en null)
+                $existingProduct->update(['barcode' => null]);
+            } else {
+                // Si no viene forzado, retornamos conflicto para confirmar en el frontend
+                return response()->json([
+                    'conflict' => true,
+                    'message' => "El código de barras ya pertenece al producto: \"{$existingProduct->name}\" (ID: {$existingProduct->id}). ¿Desea desvincularlo de ese producto y asignarlo a este?",
+                    'existing_product' => [
+                        'id' => $existingProduct->id,
+                        'name' => $existingProduct->name,
+                    ]
+                ], 409);
+            }
+        }
+
         $product->update([
-            'barcode' => $request->barcode,
+            'barcode' => $barcode,
         ]);
 
         return response()->json([

@@ -106,6 +106,37 @@ const onActionClick = async (item, action) => {
           item.barcode = cheapestBarcode;
         } catch (updateError) {
           console.error("Error updating barcode:", updateError);
+          if (updateError.response?.status === 409 && updateError.response?.data?.conflict) {
+            const { isConfirmed: confirmForce } = await Swal.fire({
+              title: "Código duplicado",
+              text: updateError.response.data.message,
+              icon: "warning",
+              showCancelButton: true,
+              confirmButtonText: "Sí, desvincular y asignar",
+              cancelButtonText: "Cancelar",
+            });
+            if (confirmForce) {
+              try {
+                await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+                  barcode: cheapestBarcode,
+                  force: true
+                });
+                item.barcode = cheapestBarcode;
+                Swal.fire({
+                  title: "Éxito",
+                  text: "Código de barras asignado y desvinculado del producto anterior.",
+                  icon: "success",
+                  timer: 2000,
+                  showConfirmButton: false,
+                });
+              } catch (forceError) {
+                console.error("Error forcing barcode update:", forceError);
+                Swal.fire("Error", "No se pudo forzar el reajuste del código de barras.", "error");
+              }
+            }
+          } else {
+            Swal.fire("Error", "No se pudo actualizar el código de barras.", "error");
+          }
         }
       }
     }

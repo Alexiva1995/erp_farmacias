@@ -108,9 +108,8 @@ class ExpirationQueryService
                 ->distinct('donative_logs.donation_id')
                 ->count('donative_logs.donation_id');
 
-            $summary->has_price_adjustment = DB::table('price_adjustment_logs')
-                ->where('month', $summary->month)
-                ->exists();
+            // El usuario solicita poder usar el reajuste las veces que desee, por lo que nunca se considera inhabilitado
+            $summary->has_price_adjustment = false;
         }
 
         return $summaries;

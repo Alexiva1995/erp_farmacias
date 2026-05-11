@@ -243,7 +243,8 @@ class ExpirationActionService
      */
     public function hasMonthPriceAdjustment(string $month): bool
     {
-        return PriceAdjustmentLog::where('month', $month)->exists();
+        // El usuario solicita poder usar el botón de reajustar precio las veces que quiera sin inhabilitarlo
+        return false;
     }
 
     /**

@@ -218,7 +218,7 @@ class ProductQueryService
                 return $query->orderBy($subQuery, $orderBy);
 
             case 'next_expiration':
-                $subQuery = DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())');
+                $subQuery = '(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())';
                 return $query->orderByRaw("($subQuery) IS NULL, ($subQuery) $orderBy");
 
             case 'most_sold':

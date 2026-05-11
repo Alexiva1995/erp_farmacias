@@ -340,7 +340,31 @@ const handleSendToAutoOrder = async ({ id, quantity, item }) => {
           comparatorProduct.value.barcode = listadoBarcode;
         } catch (updateError) {
           console.error("Error updating barcode:", updateError);
-          toast.error("No se pudo actualizar el código de barras, pero se procederá con el pedido.");
+          if (updateError.response?.status === 409 && updateError.response?.data?.conflict) {
+            const { isConfirmed: confirmForce } = await Swal.fire({
+              title: "Código duplicado",
+              text: updateError.response.data.message,
+              icon: "warning",
+              showCancelButton: true,
+              confirmButtonText: "Sí, desvincular y asignar",
+              cancelButtonText: "Cancelar",
+            });
+            if (confirmForce) {
+              try {
+                await axios.post(`/api/suppliers-ia-order-assistant/products/${comparatorProduct.value.id}/update-barcode`, {
+                  barcode: listadoBarcode,
+                  force: true
+                });
+                toast.success("Código de barras actualizado correctamente.");
+                comparatorProduct.value.barcode = listadoBarcode;
+              } catch (forceError) {
+                console.error("Error forcing barcode update:", forceError);
+                toast.error("No se pudo forzar el reajuste del código de barras.");
+              }
+            }
+          } else {
+            toast.error("No se pudo actualizar el código de barras, pero se procederá con el pedido.");
+          }
         }
       }
     }
