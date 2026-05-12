@@ -510,10 +510,9 @@ class OrderActionService
 
     public function invoicing(Order $order, $spe)
     {
-        // Regla de Negocio: Toda venta en COP o USD debe marcarse obligatoriamente como SPE (1)
-        if (in_array(strtoupper($order->currency ?? 'BS'), ['COP', 'USD'])) {
-            $spe = 1;
-        }
+        // Determinar si aplica SPE basándonos en la orden procesada
+        $applySpe = ($order->spe_surcharge_rate > 0);
+        $spe = $applySpe ? 1 : 0;
 
         $fiscalexist = FiscalHistory::where('order_id', $order->id)->first();
         $totalIva = 0;
@@ -560,11 +559,11 @@ class OrderActionService
             // --- CÁLCULOS FISCALES (Uniformidad total BS/COP/USD) ---
             $taxable_base = $exemptAmount + $taxableAmount + $totalIva;
             
-            // Forzamos que no se apliquen recargos SPE en el registro fiscal para mantener paridad
-            $speRate = 0;
-            $speAmountBs = 0;
+            // Si aplica SPE, aplicamos el recargo del 1%
+            $speRate = $applySpe ? 1.00 : 0.00;
+            $speAmountBs = $applySpe ? ($taxable_base * 0.01) : 0.00;
 
-            $totalAmountBs = $taxable_base;
+            $totalAmountBs = $taxable_base + $speAmountBs;
 
             // --- GENERACIÓN DE HASH DE AUDITORÍA ---
             $auditString = implode('|', [
@@ -856,10 +855,29 @@ class OrderActionService
             // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total
             $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
 
-            // Recargo Sujeto Pasivo Especial
-            $orderId->taxable_base = $request->taxable_base ?? 0;
-            $orderId->spe_surcharge_rate = $request->spe_surcharge_rate ?? 0;
-            $orderId->spe_surcharge_amount = $request->spe_surcharge_amount ?? 0;
+            // Determinar si aplica Recargo Sujeto Pasivo Especial (SPE)
+            $currency = strtoupper($orderId->currency);
+            $isForeignCurrency = in_array($currency, ['USD', 'COP']);
+            
+            $hasIvaItems = $orderId->details->contains(function ($detail) {
+                return optional($detail->product)->iva == 1;
+            });
+
+            $applySpe = false;
+            if ($isForeignCurrency) {
+                if ($hasIvaItems || mt_rand(1, 10) === 1) {
+                    $applySpe = true;
+                }
+            }
+
+            if ($applySpe) {
+                $orderId->spe_surcharge_rate = 1.00;
+                $orderId->spe_surcharge_amount = $orderId->total_amount * 0.01;
+            } else {
+                $orderId->spe_surcharge_rate = 0.00;
+                $orderId->spe_surcharge_amount = 0.00;
+            }
+            $orderId->taxable_base = $orderId->total_amount;
             $orderId->order_date = Carbon::now();
 
             // Now save the order - this will trigger OrderObserver which calls handleOrderMovement
@@ -899,15 +917,12 @@ class OrderActionService
                 $ivaEjecuted = true;
             }*/
 
-            // 1. Verificar condiciones globales y de solicitud de fiscal
-            $currency = strtoupper($orderId->currency);
-            $shouldInvoice = $isFiscalActive || $request->generate_invoice || ($currency === 'BS');
-
-            if (!$shouldInvoice) {
-                $shouldInvoice = $orderId->details->contains(function ($detail) {
-                    return optional($detail->product)->iva == 1;
-                });
-            }
+            // Determinar si se genera la factura fiscal
+            // 1. Moneda es Bolívares (BS)
+            // 2. Tiene productos con IVA
+            // 3. El vendedor marcó "generar factura" explícitamente en el request
+            // 4. Se aplicó SPE (ya sea por tener IVA en divisas, o por selección aleatoria 1 de cada 10)
+            $shouldInvoice = ($currency === 'BS') || $hasIvaItems || $request->generate_invoice || $applySpe;
 
             if ($shouldInvoice) {
                 $this->invoicing($orderId, $request->spe);
