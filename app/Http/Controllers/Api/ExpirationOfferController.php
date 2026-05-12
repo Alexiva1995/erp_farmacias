@@ -48,6 +48,18 @@ class ExpirationOfferController extends Controller
             $itemsPerPage = $request->itemsPerPage ?? 10;
             $offers = $query->paginate($itemsPerPage);
 
+            // Calcular las unidades vendidas para cada oferta de vencimiento
+            $offers->getCollection()->transform(function ($offer) {
+                $offer->sales_count = (int) \App\Models\OrderDetail::where('discount_type', 'expiration')
+                    ->where('discount_source_id', $offer->id)
+                    ->whereHas('order', function ($q) {
+                        $q->where('status', \App\Models\Order::COMPLETED);
+                    })
+                    ->sum('quantity');
+
+                return $offer;
+            });
+
             return response()->json([
                 'success' => true,
                 'data' => $offers->items(),

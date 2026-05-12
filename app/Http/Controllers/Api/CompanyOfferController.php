@@ -60,6 +60,25 @@ class CompanyOfferController extends Controller
             $page = $request->get('page', 1);
             $offers = $query->paginate($perPage, ['*'], 'page', $page);
 
+            // Calcular las ventas acumuladas durante la vigencia de la oferta para la empresa
+            $offers->getCollection()->transform(function ($offer) {
+                $clientIds = \App\Models\Client::where('company_id', $offer->company_id)->pluck('id');
+
+                $offer->sales_count = (int) \App\Models\Order::whereIn('client_id', $clientIds)
+                    ->where('status', \App\Models\Order::COMPLETED)
+                    ->where('order_date', '>=', $offer->start_date)
+                    ->where('order_date', '<=', $offer->end_date . ' 23:59:59')
+                    ->count();
+
+                $offer->sales_amount = (float) \App\Models\Order::whereIn('client_id', $clientIds)
+                    ->where('status', \App\Models\Order::COMPLETED)
+                    ->where('order_date', '>=', $offer->start_date)
+                    ->where('order_date', '<=', $offer->end_date . ' 23:59:59')
+                    ->sum('total_amount_usd');
+
+                return $offer;
+            });
+
             return response()->json([
                 'data' => $offers->items(),
                 'total' => $offers->total(),

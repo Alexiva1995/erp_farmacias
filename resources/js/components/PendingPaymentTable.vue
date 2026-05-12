@@ -240,12 +240,13 @@ const getInitials = (name) => {
               </template>
               <VCard min-width="250" class="pa-4 rounded-lg shadow-lg">
                 <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
-                <AppDateTimePicker
+                <VTextField
+                  type="date"
                   :model-value="item.payment_date"
                   placeholder="Seleccionar Fecha"
                   variant="outlined"
                   density="compact"
-                  :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d', static: true }"
+                  prepend-inner-icon="tabler-calendar"
                   @update:model-value="(val) => emit('update-date', item, val)"
                 />
               </VCard>
@@ -387,12 +388,13 @@ const getInitials = (name) => {
                   </template>
                   <VCard min-width="250" class="pa-4 rounded-lg shadow-lg">
                     <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
-                    <AppDateTimePicker
+                    <VTextField
+                      type="date"
                       :model-value="item.payment_date"
                       placeholder="Seleccionar Fecha"
                       variant="outlined"
                       density="compact"
-                      :config="{ altFormat: 'd/m/Y', dateFormat: 'Y-m-d', static: true }"
+                      prepend-inner-icon="tabler-calendar"
                       @update:model-value="(val) => emit('update-date', item, val)"
                     />
                   </VCard>

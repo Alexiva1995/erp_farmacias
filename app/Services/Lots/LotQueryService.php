@@ -351,6 +351,16 @@ class LotQueryService
             $query->where('origin_id', $request->origin_id);
         }
 
+        // Filtro por Estado de Stock (has_stock)
+        if ($request->has('has_stock') && $request->get('has_stock') !== null) {
+            $hasStock = filter_var($request->get('has_stock'), FILTER_VALIDATE_BOOLEAN);
+            if ($hasStock) {
+                $query->whereRaw('COALESCE(lot_sums.total_quantity, 0) > 0');
+            } else {
+                $query->whereRaw('COALESCE(lot_sums.total_quantity, 0) <= 0');
+            }
+        }
+
         // Ordenamiento
         $sortBy = $request->input('sortBy', 'name');
         $orderBy = $request->input('orderBy', 'asc');

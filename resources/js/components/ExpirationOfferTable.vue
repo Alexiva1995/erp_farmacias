@@ -18,6 +18,7 @@ const headers = [
   { title: "MESES PARA EXPIRAR", key: "months_to_expiration", sortable: true, width: "30%" },
   { title: "% DESC.", key: "discount_percentage", sortable: true, align: 'center' },
   { title: "ESTADO", key: "is_active", sortable: true, align: 'center' },
+  { title: "VENTAS", key: "sales_count", sortable: false, align: 'center', width: "120px" },
   { title: "CREADO EL", key: "created_at", sortable: true, width: "20%" },
   { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
 ];
@@ -79,6 +80,20 @@ const handleDelete = (id) => emit("delete-offer", id);
           >
             {{ getStatusText(item.is_active) }}
           </VChip>
+        </template>
+
+        <template #item.sales_count="{ item }">
+          <div class="d-flex justify-center">
+            <VChip
+              size="small"
+              color="info"
+              variant="tonal"
+              class="font-weight-black rounded"
+              prepend-icon="tabler-shopping-cart"
+            >
+              {{ item.sales_count ?? 0 }} uds.
+            </VChip>
+          </div>
         </template>
 
         <template #item.created_at="{ item }">
@@ -149,6 +164,9 @@ const handleDelete = (id) => emit("delete-offer", id);
                   <div class="d-flex align-center gap-2 mb-3">
                     <VChip color="primary" size="x-small" variant="flat" class="font-weight-black rounded">
                       {{ item.raw.discount_percentage }}% DESC.
+                    </VChip>
+                    <VChip color="info" size="x-small" variant="tonal" class="font-weight-black rounded" prepend-icon="tabler-shopping-cart">
+                      {{ item.raw.sales_count ?? 0 }} uds. vendidas
                     </VChip>
                   </div>
 

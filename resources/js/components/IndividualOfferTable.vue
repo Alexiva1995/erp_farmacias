@@ -30,6 +30,7 @@ const headers = [
     sortable: false,
     align: "end",
   },
+  { title: "Ventas", key: "sales_count", sortable: false, align: "center", width: "90px" },
   { title: "Vigencia", key: "validity", sortable: false, align: "center" },
   {
     title: "Acciones",
@@ -141,6 +142,21 @@ const calculateDiscountPrice = (price, discount) => {
           </span>
         </template>
 
+        <!-- Sales Count Column -->
+        <template #item.sales_count="{ item }">
+          <div class="d-flex justify-center">
+            <VChip
+              size="small"
+              color="info"
+              variant="tonal"
+              class="font-weight-black rounded"
+              prepend-icon="tabler-shopping-cart"
+            >
+              {{ item.sales_count ?? 0 }}
+            </VChip>
+          </div>
+        </template>
+
         <!-- Validity Column -->
         <template #item.validity="{ item }">
           <div class="d-flex flex-column align-center">
@@ -238,6 +254,16 @@ const calculateDiscountPrice = (price, discount) => {
                 class="font-weight-black rounded-sm flex-shrink-0"
               >
                 {{ item.discount_percent }}% OFF
+              </VChip>
+
+              <VChip
+                size="x-small"
+                color="info"
+                variant="tonal"
+                class="font-weight-black rounded-sm flex-shrink-0"
+                prepend-icon="tabler-shopping-cart"
+              >
+                {{ item.sales_count ?? 0 }} ventas
               </VChip>
             </div>
 

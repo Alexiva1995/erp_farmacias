@@ -51,6 +51,19 @@ class IndividualOfferController extends Controller
         $perPage = $request->get('per_page', 10);
         $indvOffer = $query->paginate($perPage);
 
+        // Calcular las ventas totales durante la vigencia de la oferta
+        $indvOffer->getCollection()->transform(function ($offer) {
+            $offer->sales_count = (int) \App\Models\OrderDetail::where('product_id', $offer->product_id)
+                ->whereHas('order', function ($q) use ($offer) {
+                    $q->where('status', \App\Models\Order::COMPLETED)
+                      ->where('order_date', '>=', $offer->start_date)
+                      ->where('order_date', '<=', $offer->end_date . ' 23:59:59');
+                })
+                ->sum('quantity');
+
+            return $offer;
+        });
+
         return response()->json([
             'status' => true,
             'data' => $indvOffer,

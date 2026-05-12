@@ -19,6 +19,7 @@ const headers = [
   { title: "EMPRESA", key: "company_name", sortable: true, width: "30%" },
   { title: "% DESC.", key: "discount_percentage", sortable: false, align: 'center' },
   { title: "RANGO VOL.", key: "volume_range", sortable: false, align: 'center' },
+  { title: "VENTAS ACUM.", key: "sales_amount", sortable: false, align: 'center' },
   { title: "VIGENCIA", key: "validity", sortable: false, width: "20%" },
   { title: "ESTADO", key: "is_active", sortable: true, align: 'center' },
   { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
@@ -88,6 +89,13 @@ const getVolumeRange = (scales) => {
           <div class="d-flex flex-column align-center py-1">
             <span class="text-xs font-weight-black text-high-emphasis">{{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}</span>
             <span class="text-super-xs font-weight-bold text-disabled uppercase">A {{ formatCurrency(getVolumeRange(item.scales).max, 'USD') }}</span>
+          </div>
+        </template>
+
+        <template #item.sales_amount="{ item }">
+          <div class="d-flex flex-column align-center py-1">
+            <span class="text-xs font-weight-black text-info">{{ formatCurrency(item.sales_amount ?? 0, 'USD') }}</span>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.sales_count ?? 0 }} ORDENES</span>
           </div>
         </template>
 
@@ -208,6 +216,8 @@ const getVolumeRange = (scales) => {
                     <span class="text-super-xs font-weight-bold text-disabled uppercase">ID EMP: {{ item.raw.company_id }}</span>
                     <VDivider vertical length="12" class="mx-1" />
                     <span class="text-super-xs font-weight-black text-primary uppercase">{{ formatCurrency(getVolumeRange(item.raw.scales).min, 'USD') }}+</span>
+                    <VDivider vertical length="12" class="mx-1" />
+                    <span class="text-super-xs font-weight-black text-info uppercase">VENTAS: {{ formatCurrency(item.raw.sales_amount ?? 0, 'USD') }} ({{ item.raw.sales_count ?? 0 }})</span>
                   </div>
 
                   <VDivider class="border-dashed my-3" />
