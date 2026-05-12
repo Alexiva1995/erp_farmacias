@@ -862,9 +862,13 @@ class SupplierConnectionService
             return null;
         }
 
-        // Verificar si ya existe (incluyendo los eliminados para evitar fallos de integridad)
-        if (Product::withoutGlobalScope('not_deleted')->where('barcode', $barcode)->exists()) {
-            return Product::withoutGlobalScope('not_deleted')->where('barcode', $barcode)->first();
+        // Verificar si ya existe (incluyendo los eliminados lógicos y físicos para evitar fallos de integridad)
+        $existingProduct = Product::withoutGlobalScope('not_deleted')->withTrashed()->where('barcode', $barcode)->first();
+        if ($existingProduct) {
+            if ($existingProduct->trashed()) {
+                $existingProduct->restore();
+            }
+            return $existingProduct;
         }
 
         try {

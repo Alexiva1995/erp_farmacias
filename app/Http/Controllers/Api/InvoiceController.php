@@ -30,7 +30,10 @@ class InvoiceController extends Controller
             }
             $query = $this->invoiceQueryService->getInvoicesQuery($request);
 
-            $perPage = $request->input('itemsPerPage', 10);
+            $perPage = (int) $request->input('itemsPerPage', 10);
+            if ($perPage <= 0) {
+                $perPage = $query->count() ?: 1;
+            }
             $paginatedResult = $query->paginate($perPage);
 
             return response()->json([

@@ -32,15 +32,51 @@ class ExchangeRateController extends Controller
             $rate = null;
 
             if ($currency === 'BS') {
-                $response = \Illuminate\Support\Facades\Http::get('https://ve.dolarapi.com/v1/dolares/oficial');
-                $rate = $response->json('promedio');
+                try {
+                    $response = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/dolares/oficial');
+                    $rate = $response->json('promedio');
+                    if (!$rate) {
+                        $responseList = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/dolares');
+                        if ($responseList->successful() && is_array($responseList->json())) {
+                            foreach ($responseList->json() as $item) {
+                                if (isset($item['fuente']) && $item['fuente'] === 'bcv') {
+                                    $rate = $item['promedio'] ?? null;
+                                    break;
+                                }
+                            }
+                            if (!$rate && isset($responseList[0]['promedio'])) {
+                                $rate = $responseList[0]['promedio'];
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Error consultando Dólar BCV en Controller: " . $e->getMessage());
+                }
             } elseif ($currency === 'EUR') {
-                $response = \Illuminate\Support\Facades\Http::get('https://ve.dolarapi.com/v1/euros/oficial');
-                $rate = $response->json('promedio');
+                try {
+                    $response = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/euros/oficial');
+                    $rate = $response->json('promedio');
+                    if (!$rate) {
+                        $responseList = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/euros');
+                        if ($responseList->successful() && is_array($responseList->json())) {
+                            foreach ($responseList->json() as $item) {
+                                if (isset($item['fuente']) && $item['fuente'] === 'bcv') {
+                                    $rate = $item['promedio'] ?? null;
+                                    break;
+                                }
+                            }
+                            if (!$rate && isset($responseList[0]['promedio'])) {
+                                $rate = $responseList[0]['promedio'];
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Error consultando Euro en Controller: " . $e->getMessage());
+                }
             }
 
-            if ($rate) {
-                $data['rate'] = $rate;
+            if ($rate && floatval($rate) > 0) {
+                $data['rate'] = floatval($rate);
             } else {
                 return response()->json("No se pudo obtener la tasa desde el API automáticamente.", 422);
             }

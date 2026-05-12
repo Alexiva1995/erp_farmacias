@@ -33,7 +33,7 @@ class UpdateAllSuppliersJob implements ShouldQueue
         // 1. Log de inicio general del Job
         Log::info("Iniciando Job de Actualización Masiva de Proveedores", ['triggered_by_user_id' => $this->userId]);
 
-        $suppliers = Supplier::whereHas('connections')->cursor();
+        $suppliers = Supplier::whereHas('connections')->get();
 
         foreach ($suppliers as $supplier) {
 

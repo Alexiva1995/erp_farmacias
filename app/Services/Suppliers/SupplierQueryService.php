@@ -456,9 +456,16 @@ class SupplierQueryService
 
                         // 🔍 Vincular producto por barcode si no tiene product_id
                         if (empty($lineData['product_id']) && !empty($line['barcode'])) {
-                            $product = Product::where('barcode', $line['barcode'])->first();
+                            $product = Product::withoutGlobalScope('not_deleted')
+                                ->withTrashed()
+                                ->where('barcode', $line['barcode'])
+                                ->first();
                             
-                            if (!$product && !empty($line['name'])) {
+                            if ($product) {
+                                if ($product->trashed()) {
+                                    $product->restore();
+                                }
+                            } elseif (!empty($line['name'])) {
                                 // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
                                 $product = Product::create([
                                     'name'       => $line['name'],
