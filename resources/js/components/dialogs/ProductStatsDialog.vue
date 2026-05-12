@@ -141,7 +141,10 @@ const fetchStats = async () => {
 watch(
   () => props.modelValue,
   (val) => {
-    if (val) fetchStats();
+    stats.value = null; // Limpiar estadísticas previas para forzar el desmontaje/montaje de los gráficos
+    if (val) {
+      fetchStats();
+    }
   }
 );
 
@@ -194,6 +197,7 @@ const closeDialog = () => {
               <VCard variant="flat" class="pa-4 rounded-lg border shadow-sm bg-surface flex-grow-1 d-flex flex-column align-center justify-center">
                 <div class="text-xs font-weight-black text-disabled uppercase mb-2">Preferencia de Compra</div>
                 <VueApexCharts
+                  :key="props.product?.id"
                   type="radialBar"
                   height="220"
                   :options="marketShareOptions"
@@ -236,6 +240,7 @@ const closeDialog = () => {
                 
                 <div class="mx-n2">
                   <VueApexCharts
+                    :key="props.product?.id"
                     type="area"
                     height="300"
                     :options="chartOptions"

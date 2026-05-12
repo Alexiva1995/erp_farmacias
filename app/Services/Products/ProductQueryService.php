@@ -15,7 +15,8 @@ class ProductQueryService
     private function getBaseQuery(): Builder
     {
         return Product::query()
-            ->select('products.*', DB::raw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado"))
+            ->select('products.*')
+            ->selectRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
             ->with([
             'category',
             'laboratory',
@@ -209,21 +210,18 @@ class ProductQueryService
                     ->orderBy('laboratories.name', $orderBy);
 
             case 'valid_stock':
-                $subQuery = DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0)');
-                return $query->orderBy($subQuery, $orderBy);
+                return $query->orderByRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) $orderBy");
 
             case 'stock_calculado':
                 // Ordenar por stock calculado como número
-                $subQuery = DB::raw('CAST(COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS UNSIGNED)');
-                return $query->orderBy($subQuery, $orderBy);
+                return $query->orderByRaw("CAST(COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS UNSIGNED) $orderBy");
 
             case 'next_expiration':
                 $subQuery = '(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.expiration_date >= CURDATE())';
                 return $query->orderByRaw("($subQuery) IS NULL, ($subQuery) $orderBy");
 
             case 'most_sold':
-                $subQuery = DB::raw('COALESCE((SELECT SUM(order_details.quantity) FROM order_details WHERE order_details.product_id = products.id), 0)');
-                return $query->orderBy($subQuery, $orderBy);
+                return $query->orderByRaw("COALESCE((SELECT SUM(order_details.quantity) FROM order_details WHERE order_details.product_id = products.id), 0) $orderBy");
 
             case 'id':
                 return $query->orderBy('products.id', $orderBy);
@@ -389,19 +387,12 @@ class ProductQueryService
 
     public function subColumn(Builder $query): Builder
     {
-        return $query->addSelect([
-            'stock_calculado' => DB::raw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) as stock_calculado'),
-            'ultima_fecha_vencimiento' => DB::table('product_lots')
-                ->selectRaw('MAX(expiration_date)')
-                ->whereColumn('product_lots.product_id', 'products.id'),
-            // ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()')),
-            // 'fecha_vencimiento_siguiente_lote' => DB::table('product_lots')
-            //     ->whereColumn('product_lots.product_id', 'products.id')
-            //     ->selectRaw('MIN(expiration_date)')
-            //     ->where('product_lots.quantity', '>', 0)
-            //     ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()'))
-            //     ->orderBy('product_lots.expiration_date', 'ASC'),
-        ]);
+        return $query->selectRaw('COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) as stock_calculado')
+            ->addSelect([
+                'ultima_fecha_vencimiento' => DB::table('product_lots')
+                    ->selectRaw('MAX(expiration_date)')
+                    ->whereColumn('product_lots.product_id', 'products.id'),
+            ]);
     }
     public function calculateInventoryValue(): float
     {

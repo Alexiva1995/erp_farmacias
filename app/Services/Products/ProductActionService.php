@@ -70,6 +70,10 @@ class ProductActionService
         // Asegurar que sale_price sea numérico
         $validatedData['sale_price'] = (float)($validatedData['sale_price'] ?? 0);
         
+        if (!empty($validatedData['barcode'])) {
+            $this->resolveBarcodeConflict($validatedData['barcode']);
+        }
+
         $product = Product::create($validatedData);
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
@@ -107,6 +111,10 @@ class ProductActionService
             $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
         }
         
+        if (!empty($validatedData['barcode'])) {
+            $this->resolveBarcodeConflict($validatedData['barcode'], $product->id);
+        }
+
         $product->update($validatedData);
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
@@ -120,6 +128,9 @@ class ProductActionService
         try {
             $updateData = [];
             if (isset($data['barcode'])) {
+                if (!empty($data['barcode'])) {
+                    $this->resolveBarcodeConflict($data['barcode'], $product->id);
+                }
                 $updateData['barcode'] = $data['barcode'];
             }
             if (isset($data['laboratory_id'])) {
@@ -438,6 +449,27 @@ class ProductActionService
             DB::rollBack();
             Log::error('Error al fusionar productos: ' . $e->getMessage());
             throw new \Exception('Error al fusionar productos: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Resuelve conflictos de código de barras duplicado si el producto que lo posee está eliminado.
+     */
+    private function resolveBarcodeConflict(string $barcode, ?int $excludeProductId = null): void
+    {
+        $duplicateProduct = Product::withoutGlobalScope('not_deleted')
+            ->withTrashed()
+            ->where('barcode', $barcode)
+            ->when($excludeProductId, function ($q) use ($excludeProductId) {
+                $q->where('id', '!=', $excludeProductId);
+            })
+            ->first();
+
+        if ($duplicateProduct) {
+            if ($duplicateProduct->is_deleted || $duplicateProduct->trashed()) {
+                $duplicateProduct->barcode = null;
+                $duplicateProduct->save();
+            }
         }
     }
 }
