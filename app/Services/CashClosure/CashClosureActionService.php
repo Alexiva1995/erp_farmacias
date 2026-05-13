@@ -190,7 +190,7 @@ class CashClosureActionService
 
         $cashClosure->update($updateData);
 
-        $cashClosure->refresh()->load('orders');
+        $cashClosure->refresh()->load(['orders', 'seller.employee']);
 
         //pdf cierre
         /*  $htmlContent = mb_convert_encoding($validatedData['ticket_html'], 'UTF-8', 'UTF-8');

@@ -239,7 +239,15 @@ const downloadcash = async (cash) => {
 
 const handleCompleteClosure = async ([closureData, cashClosureData]) => {
   try {
-    const cashToDownload = cashClosureData;
+    const cashToDownload = {
+      ...cashClosureData,
+      is_blind: closureData.is_blind,
+      declared_cop: closureData.declared_cop,
+      declared_usd: closureData.declared_usd,
+      declared_credit: closureData.declared_credit,
+      declared_bs_mobile: closureData.declared_bs_mobile,
+      declared_bs_card: closureData.declared_bs_card,
+    };
     cashData.value = cashToDownload;
     isDownloadingPdf.value = true;
     isPrinting.value = true;
@@ -275,6 +283,12 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
       total_cop: closureData.total_cop,
       sobrante_en_peso: closureData.sobrante_en_peso,
       entregar_efectivo_cop: closureData.entregar_efectivo_cop,
+      is_blind: closureData.is_blind ? 1 : 0,
+      declared_cop: closureData.declared_cop,
+      declared_usd: closureData.declared_usd,
+      declared_credit: closureData.declared_credit,
+      declared_bs_mobile: closureData.declared_bs_mobile,
+      declared_bs_card: closureData.declared_bs_card,
       ticket_html: htmlContent,
       history_html: historyTicketHtml,
     };
