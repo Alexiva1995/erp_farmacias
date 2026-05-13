@@ -103,6 +103,7 @@ class CashClosureActionService
         if ($cashClosing) {
             // Calculamos la deuda global total de todos los clientes (Cuentas por Cobrar)
             $cashClosing->total_global_debt = \App\Models\Credit::where('status', '!=', 'Paid')->sum('pending_amount');
+            $cashClosing->setAttribute('blind_cash_closure', !empty(\App\Models\GeneralSetting::first()?->blind_cash_closure));
         }
 
         return $cashClosing;

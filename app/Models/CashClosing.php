@@ -55,9 +55,16 @@ class CashClosing extends Model
         'usd_paypal_payment_credit',
         'usd_binance_payment_credit',
         'daily_closure_id',
+        'declared_cop',
+        'declared_usd',
+        'declared_credit',
+        'declared_bs_mobile',
+        'declared_bs_card',
+        'blind_mismatches',
+        'blind_note',
     ];
 
-    protected $appends = ['total_bs_in_usd', 'total_cop_in_usd'];
+    protected $appends = ['total_bs_in_usd', 'total_cop_in_usd', 'blind_cash_closure'];
 
     public function seller()
     {
@@ -126,6 +133,16 @@ class CashClosing extends Model
     {
         return Attribute::make(
             get: fn() => round($this->total_cop / $this->getServiceExchangeRate('COP'), 2),
+        );
+    }
+
+    /**
+     * Accesor para saber si está activo el cierre ciego
+     */
+    protected function blindCashClosure(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => !empty(\App\Models\GeneralSetting::first()?->blind_cash_closure),
         );
     }
 }
