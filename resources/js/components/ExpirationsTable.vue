@@ -2,6 +2,9 @@
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   modelValue: {
@@ -101,7 +104,7 @@ const formatDate = (dateString) => {
     <div class="d-none d-md-block">
       <VDataTableServer
         v-model="selected"
-        :show-select="true"
+        :show-select="can('manage', 'admin') || can('manage', 'supervisor')"
         item-value="id"
         :items-per-page="props.itemsPerPage"
         :page="props.page"
@@ -175,7 +178,7 @@ const formatDate = (dateString) => {
         </template>
 
         <template #item.actions="{ item }">
-          <VTooltip location="top" text="Marcar como Caducado">
+          <VTooltip v-if="can('manage', 'admin') || can('manage', 'supervisor')" location="top" text="Marcar como Caducado">
             <template #activator="{ props: tooltipProps }">
               <IconBtn
                 v-bind="tooltipProps"
@@ -264,6 +267,7 @@ const formatDate = (dateString) => {
           </div>
  
           <VBtn 
+            v-if="can('manage', 'admin') || can('manage', 'supervisor')"
             block 
             color="error" 
             variant="flat" 

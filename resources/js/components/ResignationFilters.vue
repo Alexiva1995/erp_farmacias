@@ -16,7 +16,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:search", "update:filters", "clear"]);
+const emit = defineEmits(["update:search", "update:filters", "clear", "add-resignation"]);
 
 const hasActiveAdvancedFilters = computed(() => {
   return (
@@ -36,10 +36,13 @@ const resignationTypes = [
   <AppFilterBase
     :search="props.search"
     :has-advanced-filters="hasActiveAdvancedFilters"
+    :show-add="true"
+    add-button-text="Solicitar Renuncia"
     search-placeholder="Buscar empleado..."
     class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
+    @add="emit('add-resignation')"
   >
     <template #advanced-filters>
       <!-- Tipo de Egreso -->

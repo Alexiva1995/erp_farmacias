@@ -4,6 +4,11 @@ import TransactionsTable from "@/components/TransactionsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+
+const router = useRouter();
+const authStore = useAuthStore();
 
 const transactions = ref([]);
 const transactionsGroupped = ref({});
@@ -186,6 +191,11 @@ const submitAdjustment = async () => {
 
 // ─── Ciclo de vida ────────────────────────────────────────────────────────────
 onMounted(() => {
+  if (authStore.isVendedor) {
+    toast.error("Acceso denegado: No tienes permisos para ver esta sección.");
+    router.push("/invoice/invoices");
+    return;
+  }
   fetchTransactions();
   fetchTransactionsGroupped();
   fetchWallets();

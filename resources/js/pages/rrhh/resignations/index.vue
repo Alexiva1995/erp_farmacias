@@ -259,6 +259,13 @@ const handleResignationGenerated = () => {
   fetchResignations();
 };
 
+const handleGenerateResignation = () => {
+  selectedEmployeeForResignation.value = null;
+  existingResignationData.value = null;
+  isEditingResignation.value = false;
+  showResignationDialog.value = true;
+};
+
 watch([search, filters], () => {
   fetchResignations();
 }, { deep: true });
@@ -276,6 +283,7 @@ onMounted(() => {
         v-model:search="search"
         v-model:filters="filters"
         @clear="handleClearFilters"
+        @add-resignation="handleGenerateResignation"
       />
 
       <!-- Listado: Tabla o Cards -->

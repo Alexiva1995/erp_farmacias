@@ -61,9 +61,18 @@ export default [
       },
       {
         title: 'Devoluciones',
-        to: 'tpv-returns-supervisor',
         action: 'manage',
         subject: 'supervisor',
+        children: [
+          {
+            title: 'Usuario',
+            to: 'tpv-returns-user',
+          },
+          {
+            title: 'Supervisor',
+            to: 'tpv-returns-supervisor',
+          },
+        ],
       },
       {
         title: 'Promociones',

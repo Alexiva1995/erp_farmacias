@@ -2,6 +2,7 @@
 // Filtros de Nómina (Payroll)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed, ref } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   searchQuery: { type: String, default: "" },
@@ -22,6 +23,7 @@ const emit = defineEmits([
   "refresh",
 ]);
 
+const authStore = useAuthStore();
 const isGenerating = ref(false);
 
 const statusOptions = [
@@ -96,6 +98,7 @@ const handleManualPayment = async () => {
 
     <template #actions-extra>
       <VBtn
+        v-if="authStore.isAdmin"
         color="success"
         variant="elevated"
         size="38"
@@ -116,6 +119,7 @@ const handleManualPayment = async () => {
       </VBtn>
 
       <VBtn
+        v-if="authStore.isAdmin"
         color="primary"
         variant="elevated"
         size="38"
@@ -138,6 +142,7 @@ const handleManualPayment = async () => {
       </VBtn>
 
       <VBtn
+        v-if="authStore.isAdmin"
         color="warning"
         variant="elevated"
         size="38"

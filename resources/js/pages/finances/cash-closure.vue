@@ -16,7 +16,9 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { nextTick, onMounted, ref } from "vue";
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
 
+const authStore = useAuthStore();
 const { mobile } = useDisplay();
 
 const sellerCash = ref([]);
@@ -686,6 +688,7 @@ const closingDaily = async (daily) => {
   <div class="cash-closure-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
       <CashAverage
+        v-if="authStore.isAdmin"
         :average-amount="summaryData.current_month_average"
         :last-month-average="summaryData.last_month_average"
         :percentage-change="summaryData.percentage_change"

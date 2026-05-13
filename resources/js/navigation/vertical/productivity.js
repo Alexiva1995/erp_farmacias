@@ -33,6 +33,10 @@ export default [
         action: 'manage',
         subject: 'supervisor',
       },
+      {
+        title: 'Empleado del Mes',
+        to: 'productivity-employee-month',
+      },
     ],
   }, 
 ]

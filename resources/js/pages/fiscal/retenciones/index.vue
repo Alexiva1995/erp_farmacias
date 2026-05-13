@@ -159,6 +159,66 @@ const clearFilters = () => {
   fetchRetentions();
 };
 
+const handleDeleteRetention = async (id) => {
+  const result = await Swal.fire({
+    title: '¿Eliminar retención?',
+    text: 'Esta acción eliminará el comprobante y devolverá las facturas a estado pendiente.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e53935',
+    cancelButtonColor: '#9e9e9e',
+    confirmButtonText: 'SÍ, ELIMINAR',
+    cancelButtonText: 'CANCELAR'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    loading.value = true;
+    const response = await axios.delete(`/retentions/${id}`);
+    toast.success(response.data.message);
+    fetchRetentions();
+  } catch (error) {
+    console.error("Error al eliminar retención:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al eliminar.");
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleEditRetention = async (retention) => {
+  const { value: newNumber } = await Swal.fire({
+    title: 'Editar Número de Retención',
+    input: 'text',
+    inputLabel: 'Número de Comprobante',
+    inputValue: retention.number,
+    showCancelButton: true,
+    confirmButtonColor: '#fb8c00',
+    cancelButtonColor: '#9e9e9e',
+    confirmButtonText: 'GUARDAR',
+    cancelButtonText: 'CANCELAR',
+    inputValidator: (value) => {
+      if (!value) {
+        return '¡Debes ingresar un número!';
+      }
+    }
+  });
+
+  if (!newNumber) return;
+
+  try {
+    loading.value = true;
+    const response = await axios.put(`/retentions/${retention.id}`, { number: newNumber });
+    toast.success(response.data.message);
+    fetchRetentions();
+  } catch (error) {
+    console.error("Error al editar retención:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al actualizar.");
+  } finally {
+    loading.value = false;
+  }
+};
+
 watch(currentTab, (newTab) => {
   page.value = 1;
   selected.value = [];
@@ -260,6 +320,8 @@ onMounted(() => {
             :current-tab="currentTab"
             @update:options="handleTableUpdate"
             @download-pdf="downloadPdf"
+            @delete-retention="handleDeleteRetention"
+            @edit-retention="handleEditRetention"
           />
         </VCardText>
       </VCard>

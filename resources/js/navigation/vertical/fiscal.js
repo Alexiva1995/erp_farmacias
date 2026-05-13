@@ -8,10 +8,14 @@ export default [
         size: 'sm',
       },
     },
+    action: 'manage',
+    subject: 'supervisor-or-admin',
     children: [
       {
         title: 'Facturas',
         to: 'fiscal-history',
+        action: 'manage',
+        subject: 'admin',
       },
       {
         title: 'Máquina Fiscal',
@@ -19,13 +23,13 @@ export default [
         action: 'manage',
         subject: 'admin',
       },
-        {
+      {
         title: 'IVA',
         to: 'iva-general',
         action: 'manage',
         subject: 'admin',
       },
-       {
+      {
         title: 'ISRL',
         to: 'islr-general',
         action: 'manage',
@@ -35,7 +39,7 @@ export default [
         title: 'Retenciones',
         to: 'fiscal-retenciones',
         action: 'manage',
-        subject: 'admin',
+        subject: 'supervisor-or-admin',
       },
     ],
   },

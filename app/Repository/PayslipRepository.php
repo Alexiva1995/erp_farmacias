@@ -38,6 +38,11 @@ class PayslipRepository
       $query->whereDate('payslip_date', '<=', $data['endDate']);
     }
 
+    if (auth()->check() && auth()->user()->role_id === 2) {
+      $latestIds = Payslip::orderByDesc('id')->limit(2)->pluck('id');
+      $query->whereIn('payslips.id', $latestIds);
+    }
+
     return $query->paginate($data['perPage']);
   }
 

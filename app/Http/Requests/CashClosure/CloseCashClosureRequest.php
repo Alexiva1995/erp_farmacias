@@ -28,6 +28,12 @@ class CloseCashClosureRequest extends FormRequest
             'entregar_efectivo_cop' => 'required',
             'ticket_html' => 'required|string',
             'history_html' => 'required|string',
+            'is_blind' => 'nullable|boolean',
+            'declared_cop' => 'nullable|numeric',
+            'declared_usd' => 'nullable|numeric',
+            'declared_credit' => 'nullable|numeric',
+            'declared_bs_mobile' => 'nullable|numeric',
+            'declared_bs_card' => 'nullable|numeric',
         ];
     }
 }

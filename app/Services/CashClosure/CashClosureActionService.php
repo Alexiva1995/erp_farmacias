@@ -125,13 +125,69 @@ class CashClosureActionService
             ], 409);
         }
 
-        $cashClosure->update([
+        $updateData = [
             'status' => CashClosing::CLOSED,
             'total_cop' => $validatedData['total_cop'],
             'cop_spare' => $validatedData['sobrante_en_peso'],
             'cop_delivered' => $validatedData['entregar_efectivo_cop'],
             'closing_date' => Carbon::now(),
-        ]);
+        ];
+
+        if (!empty($validatedData['is_blind'])) {
+            $decCop = (float) ($validatedData['declared_cop'] ?? 0);
+            $decUsd = (float) ($validatedData['declared_usd'] ?? 0);
+            $decCredit = (float) ($validatedData['declared_credit'] ?? 0);
+            $decBsMobile = (float) ($validatedData['declared_bs_mobile'] ?? 0);
+            $decBsCard = (float) ($validatedData['declared_bs_card'] ?? 0);
+
+            $sysCop = (float) $cashClosure->cop_delivered;
+            $sysUsd = (float) $cashClosure->usd_delivered;
+            $sysCredit = (float) $cashClosure->usd_credit;
+            $sysBsMobile = (float) ($cashClosure->bs_transfer + $cashClosure->bs_mobile);
+            $sysBsCard = (float) ($cashClosure->bs_card_debito + $cashClosure->bs_card_credit);
+
+            $sobrante = max(0, $decCop - $sysCop);
+            $updateData['cop_spare'] = $sobrante;
+            $updateData['cop_delivered'] = $sysCop + $sobrante;
+            // total_cop original
+            $origTotalCop = (float) $cashClosure->total_cop;
+            $updateData['total_cop'] = $origTotalCop + $sobrante;
+
+            $updateData['declared_cop'] = $decCop;
+            $updateData['declared_usd'] = $decUsd;
+            $updateData['declared_credit'] = $decCredit;
+            $updateData['declared_bs_mobile'] = $decBsMobile;
+            $updateData['declared_bs_card'] = $decBsCard;
+
+            $mismatches = [];
+            $notes = [];
+
+            if (round($decCop, 2) != round($sysCop, 2)) {
+                $mismatches[] = 'cop';
+                $notes[] = "COP Físico: Declarado " . number_format($decCop, 2) . " / Sistema " . number_format($sysCop, 2);
+            }
+            if (round($decUsd, 2) != round($sysUsd, 2)) {
+                $mismatches[] = 'usd';
+                $notes[] = "USD: Declarado " . number_format($decUsd, 2) . " / Sistema " . number_format($sysUsd, 2);
+            }
+            if (round($decCredit, 2) != round($sysCredit, 2)) {
+                $mismatches[] = 'credit';
+                $notes[] = "Crédito USD: Declarado " . number_format($decCredit, 2) . " / Sistema " . number_format($sysCredit, 2);
+            }
+            if (round($decBsMobile, 2) != round($sysBsMobile, 2)) {
+                $mismatches[] = 'bs_mobile';
+                $notes[] = "Transf/PM BS: Declarado " . number_format($decBsMobile, 2) . " / Sistema " . number_format($sysBsMobile, 2);
+            }
+            if (round($decBsCard, 2) != round($sysBsCard, 2)) {
+                $mismatches[] = 'bs_card';
+                $notes[] = "Tarjetas BS: Declarado " . number_format($decBsCard, 2) . " / Sistema " . number_format($sysBsCard, 2);
+            }
+
+            $updateData['blind_mismatches'] = json_encode($mismatches);
+            $updateData['blind_note'] = implode(' | ', $notes);
+        }
+
+        $cashClosure->update($updateData);
 
         $cashClosure->refresh()->load('orders');
 

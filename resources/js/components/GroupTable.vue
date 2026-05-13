@@ -1,5 +1,8 @@
 <script setup>
 import { ref, computed } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   groups: { type: Array, required: true },
@@ -129,7 +132,7 @@ const handleItemsPerPageChange = (val) => {
               </template>
             </VTooltip>
 
-            <VTooltip text="Eliminar Grupo" location="top">
+            <VTooltip v-if="can('manage', 'admin')" text="Eliminar Grupo" location="top">
               <template #activator="{ props }">
                 <VBtn
                   v-bind="props"

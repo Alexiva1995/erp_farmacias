@@ -118,6 +118,16 @@ class ResignationController extends Controller
             $perPage = $request->get('perPage', 10);
             $filters = $request->only(['search', 'resignation_type', 'date_from', 'date_to']);
 
+            $user = $request->user();
+            if ($user && $user->role_id !== 1) {
+                $employee = Employee::where('user_id', $user->id)->first();
+                if ($employee) {
+                    $filters['employee_id'] = $employee->id;
+                } else {
+                    $filters['employee_id'] = -1;
+                }
+            }
+
             $result = $this->resignationServices->list([
                 'page' => $page,
                 'perPage' => $perPage,

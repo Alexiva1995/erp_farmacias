@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   pendingPayments: { type: Array, required: true },
@@ -23,6 +24,7 @@ const emit = defineEmits([
 ]);
 
 const { mobile } = useDisplay();
+const authStore = useAuthStore();
 
 const headers = [
   { title: "", key: "select", sortable: false, width: "40px" },
@@ -224,7 +226,7 @@ const getInitials = (name) => {
         <template #item.actions="{ item }">
           <div class="d-flex align-center gap-1">
             <!-- Editar Fecha -->
-            <VMenu :close-on-content-click="false" location="start">
+            <VMenu v-if="authStore.isAdmin" :close-on-content-click="false" location="start">
               <template #activator="{ props: menuProps }">
                 <VBtn
                   v-bind="menuProps"
@@ -254,6 +256,7 @@ const getInitials = (name) => {
 
             <!-- Marcar como Pagado Directamente -->
             <VBtn
+              v-if="authStore.isAdmin"
               icon
               variant="tonal"
               size="32"
@@ -372,7 +375,7 @@ const getInitials = (name) => {
               </div>
               <div class="d-flex gap-1">
                 <!-- Editar Fecha (Móvil) -->
-                <VMenu :close-on-content-click="false" location="top">
+                <VMenu v-if="authStore.isAdmin" :close-on-content-click="false" location="top">
                   <template #activator="{ props: menuProps }">
                     <VBtn
                       v-bind="menuProps"
@@ -402,6 +405,7 @@ const getInitials = (name) => {
 
                 <!-- Marcar Pagada (Móvil) -->
                 <VBtn
+                  v-if="authStore.isAdmin"
                   icon
                   variant="tonal"
                   size="32"

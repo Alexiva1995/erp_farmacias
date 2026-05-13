@@ -49,6 +49,13 @@ class PrescriptionOfferController extends Controller
             $offers = $query->paginate($perPage);
 
             $formattedData = $offers->getCollection()->map(function ($offer) {
+                $salesCount = (int) \App\Models\OrderDetail::whereIn('discount_type', ['prescription', 'recipe'])
+                    ->where('discount_source_id', $offer->id)
+                    ->whereHas('order', function ($q) {
+                        $q->where('status', \App\Models\Order::COMPLETED);
+                    })
+                    ->sum('quantity');
+
                 return [
                     'id' => $offer->id,
                     'name' => $offer->name,
@@ -57,6 +64,7 @@ class PrescriptionOfferController extends Controller
                     'end_date' => $offer->end_date,
                     'is_active' => $offer->is_active,
                     'is_currently_active' => $offer->is_currently_active,
+                    'sales_count' => $salesCount,
                     'created_at' => $offer->created_at,
                     'updated_at' => $offer->updated_at,
                 ];
@@ -130,6 +138,13 @@ class PrescriptionOfferController extends Controller
         try {
             $offer = PrescriptionOffer::findOrFail($id);
 
+            $salesCount = (int) \App\Models\OrderDetail::whereIn('discount_type', ['prescription', 'recipe'])
+                ->where('discount_source_id', $offer->id)
+                ->whereHas('order', function ($q) {
+                    $q->where('status', \App\Models\Order::COMPLETED);
+                })
+                ->sum('quantity');
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -140,6 +155,7 @@ class PrescriptionOfferController extends Controller
                     'end_date' => $offer->end_date,
                     'is_active' => $offer->is_active,
                     'is_currently_active' => $offer->is_currently_active,
+                    'sales_count' => $salesCount,
                     'created_at' => $offer->created_at,
                     'updated_at' => $offer->updated_at,
                 ]

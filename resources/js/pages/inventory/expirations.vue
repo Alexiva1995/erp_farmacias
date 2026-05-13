@@ -4,6 +4,9 @@ import { toast } from "@/plugins/sweetalert";
 import { generateDonationPDF } from "@/utils/donationPdfGenerator";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 import PriceAdjustmentDialog from "@/components/dialogs/PriceAdjustmentDialog.vue";
 import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
@@ -589,9 +592,9 @@ onMounted(() => {
       </VCard>
     </div>
 
-    <VDivider class="my-8" />
+    <VDivider v-if="can('manage', 'admin')" class="my-8" />
 
-    <div>
+    <div v-if="can('manage', 'admin')">
       <VCard>
         <VCardTitle class="d-flex align-center justify-space-between pa-4">
           <div class="d-flex align-center gap-x-3">

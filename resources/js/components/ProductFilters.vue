@@ -8,13 +8,14 @@ const props = defineProps({
   searchQuery:        String,
   selectedLaboratory: [Number, String, null],
   selectedOrigin:     [Number, String, null],
-  selectedGroup:     [Number, String, null],
+  selectedGroup:      [Number, String, null],
   stockStatusFilter:  [Boolean, null],
+  productTypeFilter:  [String, null],
   startDate:          [String, null],
   endDate:            [String, null],
   laboratories:       { type: Array,   default: () => [] },
   origins:            { type: Array,   default: () => [] },
-  groups:           { type: Array,   default: () => [] },
+  groups:             { type: Array,   default: () => [] },
   loading:            { type: Boolean, default: false },
   mode:               { type: String,  default: "products" },
   showAddButton:      { type: Boolean, default: true },
@@ -31,6 +32,7 @@ const emit = defineEmits([
   "update:selectedOrigin",
   "update:selectedGroup",
   "update:stockStatusFilter",
+  "update:productTypeFilter",
   "update:startDate",
   "update:endDate",
   "update:isStrictSearch",
@@ -45,6 +47,15 @@ const emit = defineEmits([
 const stockOptions = [
   { title: "Con Stock", value: true  },
   { title: "Sin Stock", value: false },
+];
+
+const typeOptions = [
+  { title: "Redundantes", value: "redundantes" },
+  { title: "COL (Origen Colombia)", value: "col" },
+  { title: "IVA", value: "iva" },
+  { title: "Exento", value: "exento" },
+  { title: "Novaventa", value: "novaventa" },
+  { title: "Eliminados", value: "eliminados" },
 ];
 
 const sortOptions = [
@@ -108,7 +119,9 @@ const hasAdvancedFilters = computed(() => {
   return !!(
     props.selectedLaboratory ||
     props.selectedOrigin ||
+    props.selectedGroup ||
     props.stockStatusFilter !== null ||
+    props.productTypeFilter ||
     props.startDate ||
     props.endDate
   );
@@ -148,31 +161,23 @@ const showExport = computed(() => props.mode === 'products');
           @update:model-value="emit('update:isStrictSearch', $event)"
         />
       </VCol>
-      <!-- Redundantes (is_scarce = true) -->
-      <VCol cols="auto" class="d-none d-sm-flex">
-        <VCheckbox
-          :model-value="props.isScarce"
-          label="Redundantes"
-          color="warning"
-          density="compact"
-          hide-details
-          @update:model-value="emit('update:isScarce', $event)"
-        />
-      </VCol>
-      <!-- Eliminados (is_deleted = true) -->
-      <VCol cols="auto" class="d-none d-sm-flex">
-        <VCheckbox
-          :model-value="props.onlyDeleted"
-          label="Eliminados"
-          color="error"
-          density="compact"
-          hide-details
-          @update:model-value="emit('update:onlyDeleted', $event)"
-        />
-      </VCol>
     </template>
 
     <template #advanced-filters>
+      <!-- Tipo de Producto -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.productTypeFilter"
+          placeholder="Tipo de Producto"
+          :items="typeOptions"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-tags"
+          @update:model-value="emit('update:productTypeFilter', $event)"
+        />
+      </VCol>
+
       <!-- Laboratorio -->
       <VCol cols="12" sm="6" md="2">
         <VAutocomplete

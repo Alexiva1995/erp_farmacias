@@ -23,6 +23,7 @@ const headers = [
   { title: "NOMBRE DE OFERTA", key: "name", sortable: true, width: "30%" },
   { title: "% DESC.", key: "discount_percentage", sortable: true, align: 'center' },
   { title: "VIGENCIA", key: "validity", sortable: false, width: "20%" },
+  { title: "VENTAS", key: "sales_count", sortable: false, align: 'center', width: "120px" },
   { title: "ESTADO", key: "is_active", sortable: true, align: 'center' },
   { title: "VIGENTE", key: "is_currently_active", sortable: true, align: 'center' },
   { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
@@ -56,6 +57,10 @@ const handleView = (prescription) => emit("view-prescription", prescription);
         :items="props.prescriptions"
         :items-length="props.totalPrescriptions"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="premium-table"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -100,6 +105,20 @@ const handleView = (prescription) => emit("view-prescription", prescription);
           >
             {{ getStatusText(item.is_active) }}
           </VChip>
+        </template>
+
+        <template #item.sales_count="{ item }">
+          <div class="d-flex justify-center">
+            <VChip
+              size="small"
+              color="info"
+              variant="tonal"
+              class="font-weight-black rounded"
+              prepend-icon="tabler-shopping-cart"
+            >
+              {{ item.sales_count ?? 0 }} uds.
+            </VChip>
+          </div>
         </template>
 
         <template #item.is_currently_active="{ item }">
@@ -185,6 +204,9 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                   <div class="d-flex align-center gap-2 mb-3">
                     <VChip color="primary" size="x-small" variant="flat" class="font-weight-black rounded">
                       {{ item.raw.discount_percentage }}% DESC.
+                    </VChip>
+                    <VChip color="info" size="x-small" variant="tonal" class="font-weight-black rounded" prepend-icon="tabler-shopping-cart">
+                      {{ item.raw.sales_count ?? 0 }} uds. vendidas
                     </VChip>
                   </div>
 

@@ -8,6 +8,8 @@ export default [
         size: "sm",
       },
     },
+    action: "manage",
+    subject: "cyclic-menu",
     children: [
       {
         title: "Historial",

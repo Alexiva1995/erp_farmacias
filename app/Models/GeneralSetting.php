@@ -21,9 +21,11 @@ class GeneralSetting extends Model
         'primary_color',
         'secondary_color',
         'footer_text',
+        'blind_cash_closure',
     ];
 
     protected $casts = [
         'all_foreign_sales_spe' => 'boolean',
+        'blind_cash_closure' => 'boolean',
     ];
 }

@@ -6,6 +6,9 @@ import AppFilterBase from "@/components/AppFilterBase.vue"
 import AppMobilePagination from "@/components/AppMobilePagination.vue"
 import { toast } from "@/plugins/sweetalert"
 import Swal from "sweetalert2"
+import { useAbility } from "@casl/vue"
+
+const { can } = useAbility()
 
 const router = useRouter()
 
@@ -223,7 +226,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                   <IconBtn @click="openLabEdit(item)" color="primary" v-tooltip="'Editar'">
                     <VIcon icon="tabler-edit" size="18" />
                   </IconBtn>
-                  <IconBtn @click="deleteLab(item.id)" color="error" v-tooltip="'Eliminar'">
+                  <IconBtn v-if="can('manage', 'admin')" @click="deleteLab(item.id)" color="error" v-tooltip="'Eliminar'">
                     <VIcon icon="tabler-trash" size="18" />
                   </IconBtn>
                 </div>
@@ -248,7 +251,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                     <div class="d-flex gap-1">
                       <VBtn icon="tabler-eye" color="info" variant="tonal" size="small" @click="goToProducts(item)" />
                       <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openLabEdit(item)" />
-                      <VBtn icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteLab(item.id)" />
+                      <VBtn v-if="can('manage', 'admin')" icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteLab(item.id)" />
                     </div>
                   </div>
                 </div>
@@ -288,7 +291,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                   <IconBtn @click="openGroupEdit(item)" color="primary" v-tooltip="'Editar grupo'">
                     <VIcon icon="tabler-edit" size="18" />
                   </IconBtn>
-                  <IconBtn @click="deleteGroup(item.id)" color="error" v-tooltip="'Eliminar grupo'">
+                  <IconBtn v-if="can('manage', 'admin')" @click="deleteGroup(item.id)" color="error" v-tooltip="'Eliminar grupo'">
                     <VIcon icon="tabler-trash" size="18" />
                   </IconBtn>
                 </div>
@@ -314,7 +317,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                 </div>
                 <div class="d-flex gap-1">
                   <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openGroupEdit(group)" />
-                  <VBtn icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteGroup(group.id)" />
+                  <VBtn v-if="can('manage', 'admin')" icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteGroup(group.id)" />
                 </div>
               </div>
             </VCard>

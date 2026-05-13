@@ -66,6 +66,10 @@ const calculateDiscountPrice = (price, discount) => {
         :items="props.productsOffer"
         :items-length="props.totalOffer"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap premium-table"
         density="compact"
         fixed-header

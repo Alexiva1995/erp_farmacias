@@ -284,7 +284,9 @@ class OrderActionService
 
                 $matchedRule = null;
                 if ($lot->expiration_date && $expirationOffers->isNotEmpty()) {
-                    $monthsToExpiry = Carbon::now()->floatDiffInMonths($lot->expiration_date, false);
+                    $now = now();
+                    $diffMonths = ($lot->expiration_date->year - $now->year) * 12 + $lot->expiration_date->month - $now->month + 1;
+                    $monthsToExpiry = max(1, $diffMonths);
                     foreach ($expirationOffers as $offer) {
                         if ($monthsToExpiry <= $offer->months_to_expiration) {
                             $matchedRule = $offer;

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   sections: { type: Array, default: () => [] },
@@ -11,6 +12,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['select', 'adjust']);
+const authStore = useAuthStore();
 
 const currencyConfig = {
   USD: {
@@ -142,7 +144,7 @@ const isCollapsed = ref(false);
                 color="medium-emphasis"
                 class="position-absolute wallet-edit-btn"
                 @click.stop="emit('adjust', wallet)"
-                v-if="!dateFiltered"
+                v-if="!dateFiltered && authStore.isAdmin && !authStore.isSupervisor && authStore.user?.role_id === 1"
               />
 
               <div

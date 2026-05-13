@@ -39,26 +39,17 @@ const processedNavItems = computed(() => {
   try {
     return navItems.map((item) => {
       if (
-        item.title === "Inventario" &&
+        item.title === "Inventario Ciclicos" &&
         item.children &&
         Array.isArray(item.children)
       ) {
+        const allowedSubjects = ["pending-cyclics", "cycli-user"];
+        const userCyclicChildren = item.children.filter(
+          (c) => c.subject && allowedSubjects.includes(c.subject)
+        );
         return {
           ...item,
-          children: item.children.map((child) => {
-            if (child.title === "Inventario Ciclicos" && child.children) {
-              // Filtrar solo Pendientes e Inventario de Usuario para usuarios
-              const allowedSubjects = ["pending-cyclics", "cycli-user"];
-              const userCyclicChildren = child.children.filter(
-                (c) => c.subject && allowedSubjects.includes(c.subject)
-              );
-              return {
-                ...child,
-                children: userCyclicChildren,
-              };
-            }
-            return { ...child };
-          }),
+          children: userCyclicChildren,
         };
       }
       return { ...item };

@@ -2,6 +2,7 @@
 import { toast } from "@/plugins/sweetalert";
 import axios from "axios";
 import { ref, watch, computed } from "vue";
+import { useAuthStore } from "@/stores/auth.js";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -16,6 +17,7 @@ const emit = defineEmits([
   "edit-confirmed",
 ]);
 
+const authStore = useAuthStore();
 const errors = ref({});
 const loading = ref(false);
 const resignationType = ref("");
@@ -26,6 +28,67 @@ const hireDate = ref("");
 const showDuplicateConfirm = ref(false);
 const duplicateResignationData = ref(null);
 
+const employees = ref([]);
+const selectedEmployeeId = ref(null);
+
+watch(
+  () => props.modelValue,
+  async (isOpen) => {
+    if (isOpen) {
+      if (!authStore.isAdmin) {
+        resignationType.value = "voluntary";
+        employeePosition.value = "Cajera";
+      }
+
+      if (!props.selectedEmployee && employees.value.length === 0) {
+        try {
+          const { data } = await axios.get("/rrhh/employees", {
+            params: { perPage: 1000, active: true },
+          });
+          employees.value = data.data || [];
+
+          if (!authStore.isAdmin && authStore.user && employees.value.length > 0) {
+            const userEmp = employees.value.find(e => Number(e.user_id) === Number(authStore.user.id) || e.email === authStore.user.email || (e.name && authStore.user.name && e.name.toLowerCase().includes(authStore.user.name.toLowerCase())));
+            if (userEmp) {
+              selectedEmployeeId.value = userEmp.id;
+            } else {
+              selectedEmployeeId.value = employees.value[0].id;
+            }
+          }
+        } catch (error) {
+          toast.error("Error al cargar la lista de empleados");
+        }
+      } else if (!props.selectedEmployee && employees.value.length > 0) {
+        if (!authStore.isAdmin && authStore.user) {
+          const userEmp = employees.value.find(e => Number(e.user_id) === Number(authStore.user.id) || e.email === authStore.user.email || (e.name && authStore.user.name && e.name.toLowerCase().includes(authStore.user.name.toLowerCase())));
+          if (userEmp) {
+            selectedEmployeeId.value = userEmp.id;
+          } else {
+            selectedEmployeeId.value = employees.value[0].id;
+          }
+        }
+      }
+    } else {
+      selectedEmployeeId.value = null;
+    }
+  }
+);
+
+const currentEmployee = computed(() => {
+  if (props.selectedEmployee) return props.selectedEmployee;
+  if (selectedEmployeeId.value && employees.value.length) {
+    return employees.value.find((e) => e.id === selectedEmployeeId.value) || null;
+  }
+  if (!authStore.isAdmin && employees.value.length > 0) {
+    if (authStore.user) {
+      const match = employees.value.find(e => Number(e.user_id) === Number(authStore.user.id) || e.email === authStore.user.email || (e.name && authStore.user.name && e.name.toLowerCase().includes(authStore.user.name.toLowerCase())));
+      if (match) return match;
+    }
+    return employees.value[0];
+  }
+  return null;
+});
+
 const resignationTypes = [
   { title: "Renuncia Justificada", value: "voluntary" },
   { title: "Renuncia Injustificada", value: "unjustified_dismissal" },
@@ -33,10 +96,10 @@ const resignationTypes = [
 
 // Watcher para pre-llenar campos cuando se está editando
 watch(
-  [() => props.isEdit, () => props.existingResignation, () => props.selectedEmployee],
-  ([isEdit, existingResignation, selectedEmployee]) => {
-    if (selectedEmployee) {
-      hireDate.value = selectedEmployee.created_at?.split("T")[0] || ""; // Fallback si no hay hire_date explícito
+  [() => props.isEdit, () => props.existingResignation, currentEmployee],
+  ([isEdit, existingResignation, emp]) => {
+    if (emp) {
+      hireDate.value = emp.created_at?.split("T")[0] || ""; // Fallback si no hay hire_date explícito
     }
     if (isEdit && existingResignation) {
       resignationType.value = existingResignation.resignation_type || "";
@@ -64,11 +127,17 @@ const resetForm = () => {
   effectiveDate.value = "";
   requestDate.value = new Date().toISOString().split("T")[0];
   employeePosition.value = ""; 
+  selectedEmployeeId.value = null;
   loading.value = false;
 };
 
 const validateForm = () => {
   errors.value = {};
+
+  if (!currentEmployee.value) {
+    errors.value.employee = "Debe seleccionar un empleado";
+    toast.error("Debe seleccionar un empleado");
+  }
 
   if (!resignationType.value) {
     errors.value.resignationType = "Debe seleccionar el tipo de renuncia";
@@ -79,7 +148,6 @@ const validateForm = () => {
       "Debe seleccionar la fecha efectiva de renuncia";
   }
 
-  // Se elimina la restricción de fecha mínima pedida por el usuario
   return Object.keys(errors.value).length === 0;
 };
 
@@ -92,11 +160,11 @@ const generateResignation = async () => {
 
   try {
     const resignationData = {
-      employee_id: props.selectedEmployee.id,
-      employee_name: `${props.selectedEmployee.name} ${props.selectedEmployee.last_name}`,
-      employee_identification: props.selectedEmployee.identification,
-      employee_email: props.selectedEmployee.email,
-      employee_status: props.selectedEmployee.is_active ? "Activo" : "Inactivo",
+      employee_id: currentEmployee.value.id,
+      employee_name: `${currentEmployee.value.name} ${currentEmployee.value.last_name}`,
+      employee_identification: currentEmployee.value.identification,
+      employee_email: currentEmployee.value.email,
+      employee_status: currentEmployee.value.is_active ? "Activo" : "Inactivo",
       employee_position: employeePosition.value || "empleado", 
       start_date: hireDate.value, 
       resignation_type: resignationType.value,
@@ -253,7 +321,7 @@ const maxDate = computed(() => {
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-6">
-        <div v-if="props.selectedEmployee" class="d-flex flex-column gap-6">
+        <div class="d-flex flex-column gap-6">
           
           <!-- Seccion: Información del Empleado -->
           <section>
@@ -264,17 +332,35 @@ const maxDate = computed(() => {
 
             <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
               <VRow>
-                <VCol cols="12" sm="6" class="py-1">
+                <VCol v-if="props.selectedEmployee || (!authStore.isAdmin && currentEmployee)" cols="12" sm="6" class="py-1">
                   <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Nombre Completo</div>
                   <div class="text-xs font-weight-black text-high-emphasis tracking-tight">
-                    {{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}
+                    {{ currentEmployee?.name }} {{ currentEmployee?.last_name }}
                   </div>
                 </VCol>
-                <VCol cols="12" sm="6" class="py-1">
+                <VCol v-if="props.selectedEmployee || (!authStore.isAdmin && currentEmployee)" cols="12" sm="6" class="py-1">
                   <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Identificación</div>
                   <div class="text-xs font-weight-black text-high-emphasis tabular-nums">
-                    {{ props.selectedEmployee.identification }}
+                    {{ currentEmployee?.identification }}
                   </div>
+                </VCol>
+                <VCol v-if="!props.selectedEmployee && authStore.isAdmin" cols="12" class="py-1">
+                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Seleccionar Empleado *</div>
+                  <VAutocomplete
+                    v-model="selectedEmployeeId"
+                    :items="employees"
+                    item-title="name"
+                    item-value="id"
+                    :readonly="!authStore.isAdmin"
+                    :custom-filter="(item, queryText, itemText) => (item.raw.name + ' ' + item.raw.last_name + ' ' + item.raw.identification).toLowerCase().includes(queryText.toLowerCase())"
+                    :item-props="item => ({ title: `${item.name} ${item.last_name}`, subtitle: item.identification })"
+                    placeholder="Buscar y seleccionar empleado..."
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    prepend-inner-icon="tabler-user-search"
+                    class="premium-input-compact"
+                  />
                 </VCol>
                 <VCol cols="12" class="py-1 mt-2">
                   <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Fecha de Ingreso</div>
@@ -312,6 +398,7 @@ const maxDate = computed(() => {
                       :items="resignationTypes"
                       :error-messages="errors.resignationType"
                       :disabled="loading"
+                      :readonly="!authStore.isAdmin"
                       required
                       prepend-inner-icon="tabler-category"
                       class="shadow-sm"
@@ -327,6 +414,7 @@ const maxDate = computed(() => {
                       density="comfortable"
                       :error-messages="errors.employeePosition"
                       :disabled="loading"
+                      :readonly="!authStore.isAdmin"
                       placeholder="Ejemplo: vendedora"
                       prepend-inner-icon="tabler-briefcase"
                       class="shadow-sm"
@@ -387,7 +475,7 @@ const maxDate = computed(() => {
 
           <!-- Resumen con Estilo Premium -->
           <VExpandTransition>
-            <div v-if="resignationType && effectiveDate">
+            <div v-if="currentEmployee && resignationType && effectiveDate">
               <VCard variant="flat" border class="resignation-summary rounded-lg overflow-hidden">
                 <div class="pa-4 bg-light d-flex align-center border-b">
                   <VIcon icon="tabler-info-circle" class="me-2" color="warning" />
@@ -395,7 +483,7 @@ const maxDate = computed(() => {
                 </div>
                 <VCardText class="pa-4 bg-white">
                   <p class="text-xs text-high-emphasis leading-relaxed mb-0">
-                    <span class="font-weight-black text-primary">{{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}</span>
+                    <span class="font-weight-black text-primary">{{ currentEmployee.name }} {{ currentEmployee.last_name }}</span>
                     solicita
                     <span class="font-weight-black text-warning">{{ resignationTypes.find((t) => t.value === resignationType)?.title.toLowerCase() }}</span>
                     como
@@ -437,7 +525,7 @@ const maxDate = computed(() => {
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               @click="generateResignation"
               :loading="loading"
-              :disabled="!resignationType || !effectiveDate"
+              :disabled="!currentEmployee || !resignationType || !effectiveDate"
             >
               <VIcon icon="tabler-file-download" :class="mobile ? '' : 'me-2'" />
               <span v-if="!mobile">Generar Carta</span>

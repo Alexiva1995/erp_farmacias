@@ -466,84 +466,86 @@ const isSpecialTaxpayer = computed(() => {
         No hay datos de cierre de caja disponibles.
       </VAlert>
 
-      <!-- Filtros Colapsables -->
-      <div>
-        <UserCashFilters
-          :loading="loadingClosing || loadingOrders"
-          @update:filters="handleFilterUpdate"
-          @refresh="
-            () => {
-              fetchCashClosure();
-              fetchClosingHistory();
-              fetchOrder();
-            }
-          "
-        />
-      </div>
+      <template v-if="!cashClosure?.blind_cash_closure">
+        <!-- Filtros Colapsables -->
+        <div>
+          <UserCashFilters
+            :loading="loadingClosing || loadingOrders"
+            @update:filters="handleFilterUpdate"
+            @refresh="
+              () => {
+                fetchCashClosure();
+                fetchClosingHistory();
+                fetchOrder();
+              }
+            "
+          />
+        </div>
 
-      <!-- Tablas de Historial y Órdenes -->
-      <VRow class="ma-0 mx-n2">
-        <!-- Histórico de Cierre -->
-        <VCol cols="12" md="4" class="pa-2">
-          <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
-            <VCardText class="pa-0">
-              <div class="px-6 py-4 border-b d-flex align-center gap-2">
-                <VAvatar
-                  color="primary"
-                  variant="tonal"
-                  size="32"
-                  class="rounded-lg"
-                >
-                  <VIcon icon="tabler-history" size="18" />
-                </VAvatar>
-                <span class="text-subtitle-1 font-weight-black uppercase"
-                  >Historial</span
-                >
-              </div>
-              <ClosingHistoryTable
-                :closing="closing"
-                :loading="loadingClosing"
-                :total-closing="totalClosing"
-                :items-per-page="itemsPerPage"
-                :page="page"
-                @update:options="updateTableOptions"
-                @print-cash="printCash"
-              />
-            </VCardText>
-          </VCard>
-        </VCol>
+        <!-- Tablas de Historial y Órdenes -->
+        <VRow class="ma-0 mx-n2">
+          <!-- Histórico de Cierre -->
+          <VCol cols="12" md="4" class="pa-2">
+            <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
+              <VCardText class="pa-0">
+                <div class="px-6 py-4 border-b d-flex align-center gap-2">
+                  <VAvatar
+                    color="primary"
+                    variant="tonal"
+                    size="32"
+                    class="rounded-lg"
+                  >
+                    <VIcon icon="tabler-history" size="18" />
+                  </VAvatar>
+                  <span class="text-subtitle-1 font-weight-black uppercase"
+                    >Historial</span
+                  >
+                </div>
+                <ClosingHistoryTable
+                  :closing="closing"
+                  :loading="loadingClosing"
+                  :total-closing="totalClosing"
+                  :items-per-page="itemsPerPage"
+                  :page="page"
+                  @update:options="updateTableOptions"
+                  @print-cash="printCash"
+                />
+              </VCardText>
+            </VCard>
+          </VCol>
 
-        <!-- Lista de Órdenes -->
-        <VCol cols="12" md="8" class="pa-2">
-          <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
-            <VCardText class="pa-0">
-              <div class="px-6 py-4 border-b d-flex align-center gap-2">
-                <VAvatar
-                  color="primary"
-                  variant="tonal"
-                  size="32"
-                  class="rounded-lg"
-                >
-                  <VIcon icon="tabler-list-details" size="18" />
-                </VAvatar>
-                <span class="text-subtitle-1 font-weight-black uppercase"
-                  >Órdenes del Turno</span
-                >
-              </div>
-              <OrderCashCloseTable
-                :orders="orders"
-                :loading="loadingOrders"
-                :total-orders="totalOrders"
-                :items-per-page="itemsPerPageOrders"
-                :page="pageOrders"
-                @update:options="updateTableOptionsOrders"
-                @view-order="handleViewOrder"
-                @cancelar-order="cancelarOrder"
-              />
-            </VCardText>
-          </VCard>
-        </VCol>
-      </VRow>
+          <!-- Lista de Órdenes -->
+          <VCol cols="12" md="8" class="pa-2">
+            <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
+              <VCardText class="pa-0">
+                <div class="px-6 py-4 border-b d-flex align-center gap-2">
+                  <VAvatar
+                    color="primary"
+                    variant="tonal"
+                    size="32"
+                    class="rounded-lg"
+                  >
+                    <VIcon icon="tabler-list-details" size="18" />
+                  </VAvatar>
+                  <span class="text-subtitle-1 font-weight-black uppercase"
+                    >Órdenes del Turno</span
+                  >
+                </div>
+                <OrderCashCloseTable
+                  :orders="orders"
+                  :loading="loadingOrders"
+                  :total-orders="totalOrders"
+                  :items-per-page="itemsPerPageOrders"
+                  :page="pageOrders"
+                  @update:options="updateTableOptionsOrders"
+                  @view-order="handleViewOrder"
+                  @cancelar-order="cancelarOrder"
+                />
+              </VCardText>
+            </VCard>
+          </VCol>
+        </VRow>
+      </template>
     </div>
 
     <!-- Diálogos -->

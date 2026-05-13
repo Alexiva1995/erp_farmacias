@@ -133,6 +133,11 @@ router.beforeEach(async (to, from, next) => {
       return safeNext({ path: '/invoice/invoices' })
     }
     
+    if ((to.path.startsWith('/finances/pending-payments') || to.path.startsWith('/finances/cashout')) && authStore.isVendedor) {
+      console.log('[ROUTER] Empleado intentó acceder a sección financiera restringida, redirigiendo')
+      return safeNext({ path: '/invoice/invoices' })
+    }
+    
     console.log('[ROUTER] Permitiendo navegación')
     return safeNext()
   } catch (error) {

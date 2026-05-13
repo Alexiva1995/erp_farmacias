@@ -44,6 +44,10 @@ class ResignationRepository
         $query = Resignation::with('employee')->whereNull('deleted_at');
 
         // Aplicar filtros
+        if (isset($filters['employee_id'])) {
+            $query->where('employee_id', $filters['employee_id']);
+        }
+
         if (!empty($filters['search'])) {
             $query->search($filters['search']);
         }

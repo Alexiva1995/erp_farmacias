@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   invoices: { type: Array, required: true },
@@ -12,9 +13,10 @@ const props = defineProps({
   selected: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:options", "update:selected", "download-pdf"]);
+const emit = defineEmits(["update:options", "update:selected", "download-pdf", "delete-retention", "edit-retention"]);
 
 const { mobile } = useDisplay();
+const authStore = useAuthStore();
 
 const selectedModel = computed({
   get: () => props.selected,
@@ -158,17 +160,43 @@ const toggleSelection = (id) => {
         </template>
 
         <template #item.actions="{ item }">
-          <VBtn
-            icon
-            variant="text"
-            size="32"
-            color="primary"
-            class="rounded-lg shadow-sm"
-            @click="emit('download-pdf', item.id)"
-          >
-            <VIcon icon="tabler-file-download" size="20" />
-            <VTooltip activator="parent" location="top">Descargar Comprobante</VTooltip>
-          </VBtn>
+          <div class="d-flex align-center justify-center gap-1">
+            <VBtn
+              icon
+              variant="text"
+              size="32"
+              color="primary"
+              class="rounded-lg shadow-sm"
+              @click="emit('download-pdf', item.id)"
+            >
+              <VIcon icon="tabler-file-download" size="20" />
+              <VTooltip activator="parent" location="top">Descargar Comprobante</VTooltip>
+            </VBtn>
+            <template v-if="authStore.isAdmin">
+              <VBtn
+                icon
+                variant="text"
+                size="32"
+                color="warning"
+                class="rounded-lg shadow-sm"
+                @click="emit('edit-retention', item)"
+              >
+                <VIcon icon="tabler-edit" size="20" />
+                <VTooltip activator="parent" location="top">Editar Número</VTooltip>
+              </VBtn>
+              <VBtn
+                icon
+                variant="text"
+                size="32"
+                color="error"
+                class="rounded-lg shadow-sm"
+                @click="emit('delete-retention', item.id)"
+              >
+                <VIcon icon="tabler-trash" size="20" />
+                <VTooltip activator="parent" location="top">Eliminar Retención</VTooltip>
+              </VBtn>
+            </template>
+          </div>
         </template>
 
         <template #bottom>
@@ -296,8 +324,8 @@ const toggleSelection = (id) => {
               </span>
             </div>
 
-            <!-- Botón Descarga (Solo Generados) -->
-            <div v-if="props.currentTab === 'generated'" class="mt-4">
+            <!-- Botones de Acción (Solo Generados) -->
+            <div v-if="props.currentTab === 'generated'" class="d-flex flex-column gap-2 mt-4">
               <VBtn
                 color="primary"
                 variant="flat"
@@ -308,6 +336,26 @@ const toggleSelection = (id) => {
                 <VIcon start icon="tabler-file-download" size="18" />
                 DESCARGAR COMPROBANTE
               </VBtn>
+              <div v-if="authStore.isAdmin" class="d-flex gap-2">
+                <VBtn
+                  color="warning"
+                  variant="tonal"
+                  class="flex-grow-1 rounded-lg text-xs font-weight-black shadow-sm"
+                  @click.stop="emit('edit-retention', item)"
+                >
+                  <VIcon start icon="tabler-edit" size="18" />
+                  EDITAR
+                </VBtn>
+                <VBtn
+                  color="error"
+                  variant="tonal"
+                  class="flex-grow-1 rounded-lg text-xs font-weight-black shadow-sm"
+                  @click.stop="emit('delete-retention', item.id)"
+                >
+                  <VIcon start icon="tabler-trash" size="18" />
+                  ELIMINAR
+                </VBtn>
+              </div>
             </div>
           </VCardText>
         </VCard>

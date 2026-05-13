@@ -234,4 +234,24 @@ class RetentionRepository
 
         return $query->paginate($perPage);
     }
+
+    public function deleteRetention(int $id): bool
+    {
+        $retention = Retention::findOrFail($id);
+
+        Invoice::where('retention_id', $retention->id)
+            ->update([
+                'retention_generated' => false,
+                'retention_id' => null
+            ]);
+
+        return $retention->delete();
+    }
+
+    public function updateRetention(int $id, array $data): Retention
+    {
+        $retention = Retention::findOrFail($id);
+        $retention->update($data);
+        return $retention;
+    }
 }

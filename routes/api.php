@@ -840,6 +840,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
         Route::post('/batch-generate-all', [\App\Http\Controllers\Api\RetentionController::class, 'batchGenerateAll']);
         Route::get('/download', [\App\Http\Controllers\Api\RetentionController::class, 'downloadPdf']);
+        Route::delete('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'destroy']);
+        Route::put('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'update']);
     });
 });
 

@@ -27,6 +27,7 @@ const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const selectedGroup = ref(null);
 const stockStatusFilter = ref(null);
+const productTypeFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 const isStrictSearch = ref(false);
@@ -85,8 +86,7 @@ const fetchProducts = async () => {
     startDate: startDate.value,
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
-    ...(isScarce.value && { isScarce: true }),
-    ...(onlyDeleted.value && { onlyDeleted: true }),
+    ...(productTypeFilter.value && { productType: productTypeFilter.value }),
   };
   Object.keys(params).forEach(
     key => (params[key] === null || params[key] === "") && delete params[key],
@@ -116,11 +116,10 @@ watch(
     selectedOrigin,
     selectedGroup,
     stockStatusFilter,
+    productTypeFilter,
     startDate,
     endDate,
     isStrictSearch,
-    isScarce,
-    onlyDeleted,
   ],
   () => {
     clearTimeout(debounceTimer);
@@ -130,7 +129,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, stockStatusFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, stockStatusFilter, productTypeFilter, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -277,6 +276,7 @@ const handleClearFilters = () => {
   selectedOrigin.value = null;
   selectedGroup.value = null;
   stockStatusFilter.value = null;
+  productTypeFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
@@ -361,11 +361,10 @@ const handleSort = sortOptions => {
       v-model:selectedOrigin="selectedOrigin"
       v-model:selectedGroup="selectedGroup"
       v-model:stockStatusFilter="stockStatusFilter"
+      v-model:productTypeFilter="productTypeFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:isStrictSearch="isStrictSearch"
-      v-model:isScarce="isScarce"
-      v-model:onlyDeleted="onlyDeleted"
       :laboratories="laboratories"
       :origins="origins"
       :groups="groups"
@@ -385,7 +384,7 @@ const handleSort = sortOptions => {
       :page="page"
       :sort-by="sortBy"
       :order-by="orderBy"
-      :only-deleted="onlyDeleted"
+      :only-deleted="productTypeFilter === 'eliminados'"
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"

@@ -6,6 +6,7 @@ import { toast } from "@/plugins/sweetalert";
 const fiscalMode = ref('')
 const specialStatus = ref('')
 const allForeignSalesSpe = ref(false)
+const blindCashClosure = ref(false)
 
 const configFiscal = [
   { label: "Demo", value: "demo" },
@@ -23,6 +24,7 @@ const fetchSettings = async () => {
     fiscalMode.value = response.data.fiscal_mode
     specialStatus.value = response.data.special_taxpayer_status
     allForeignSalesSpe.value = !!response.data.all_foreign_sales_spe
+    blindCashClosure.value = !!response.data.blind_cash_closure
   } catch (error) {
     console.error("Error cargando configuración:", error)
     toast.success("Error al cargar la configuración")
@@ -34,7 +36,8 @@ const updateSettings = async () => {
     await axios.post('/api/general-settings', {
       fiscal_mode: fiscalMode.value,
       special_taxpayer_status: specialStatus.value,
-      all_foreign_sales_spe: allForeignSalesSpe.value
+      all_foreign_sales_spe: allForeignSalesSpe.value,
+      blind_cash_closure: blindCashClosure.value
     })
     toast.success("Configuración actualizada existosamente")
   } catch (error) {
@@ -86,6 +89,15 @@ onMounted(() => {
       <VSwitch
         v-model="allForeignSalesSpe"
         label="Aplicar recargo SPE a TODAS las ventas extranjeras (USD/COP)"
+        class="mt-2"
+        @update:model-value="updateSettings"
+      />
+    </VCardItem>
+    <VCardItem class="py-2">
+      <VCardTitle class="text-h6"> Modalidad de Cierre de Caja </VCardTitle>
+      <VSwitch
+        v-model="blindCashClosure"
+        label="Habilitar Cierre de Caja Ciego (Ocultar tablas de reportes a los usuarios)"
         class="mt-2"
         @update:model-value="updateSettings"
       />

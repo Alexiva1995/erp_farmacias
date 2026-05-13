@@ -91,7 +91,7 @@ const submitForm = async () => {
         form
       );
 
-      if (data.data.status) {
+      if (data.data && (data.data.status || data.data.id)) {
         toast.success("Empleado actualizado exitosamente");
 
         closeDialog();

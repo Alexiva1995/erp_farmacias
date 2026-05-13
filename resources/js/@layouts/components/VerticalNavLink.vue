@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { layoutConfig } from '@layouts'
 import { can } from '@layouts/plugins/casl'
 import { useLayoutConfigStore } from '@layouts/stores/config'
@@ -17,6 +18,22 @@ const props = defineProps({
 
 const configStore = useLayoutConfigStore()
 const hideTitleAndBadge = configStore.isVerticalNavMini()
+
+const iconComponent = computed(() => {
+  const { icon } = props.item
+  if (typeof icon === 'object' && icon.is) {
+    return icon.is
+  }
+  return layoutConfig.app.iconRenderer || 'div'
+})
+
+const iconProps = computed(() => {
+  const { icon } = props.item
+  if (typeof icon === 'object' && icon.is) {
+    return icon.props
+  }
+  return icon
+})
 </script>
 
 <template>
@@ -31,8 +48,8 @@ const hideTitleAndBadge = configStore.isVerticalNavMini()
       :class="{ 'router-link-active router-link-exact-active': isNavLinkActive(item, $router) }"
     >
       <Component
-        :is="layoutConfig.app.iconRenderer || 'div'"
-        v-bind="item.icon || layoutConfig.verticalNav.defaultNavItemIconProps"
+        :is="iconComponent"
+        v-bind="iconProps || layoutConfig.verticalNav.defaultNavItemIconProps"
         class="nav-item-icon"
       />
       <TransitionGroup name="transition-slide-x">

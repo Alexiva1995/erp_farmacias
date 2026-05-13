@@ -116,4 +116,14 @@ class RetentionService implements RetentionContract
     {
         return $this->retentionRepository->generateAllPendingInRange($startDate, $endDate);
     }
+
+    public function deleteRetention(int $id): bool
+    {
+        return $this->retentionRepository->deleteRetention($id);
+    }
+
+    public function updateRetention(int $id, array $data): Retention
+    {
+        return $this->retentionRepository->updateRetention($id, $data);
+    }
 }

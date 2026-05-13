@@ -1,5 +1,8 @@
 <script setup>
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
+
+const authStore = useAuthStore();
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -228,7 +231,7 @@ const getAvatarColor = (id) => {
             </VTooltip>
 
             <VTooltip
-              v-if="item.status === 0"
+              v-if="item.status === 0 && authStore.isAdmin"
               text="Finalizar Nómina"
               location="top"
             >
@@ -352,7 +355,7 @@ const getAvatarColor = (id) => {
                 @click="emit('download-pdf', item.id, 'legal')"
               />
               <VBtn
-                v-if="item.status === 0"
+                v-if="item.status === 0 && authStore.isAdmin"
                 icon="tabler-file-check"
                 color="success"
                 variant="flat"

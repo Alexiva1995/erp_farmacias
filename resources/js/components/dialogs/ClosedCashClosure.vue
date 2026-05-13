@@ -19,6 +19,14 @@ const dialogVisible = computed({
 
 const sobranteCop = ref(0);
 
+const declaredCop = ref("");
+const declaredUsd = ref("");
+const declaredCredit = ref("");
+const declaredBsMobile = ref("");
+const declaredBsCard = ref("");
+
+const isBlind = computed(() => !!props.cashClosureData?.blind_cash_closure);
+
 // Totales calculados
 const totalCopConSobrante = computed(() => {
   const totalOriginal = parseFloat(props.cashClosureData?.total_cop) || 0;
@@ -89,6 +97,29 @@ const creditFields = computed(() => [
 const closeModal = () => emit("update:isDialogVisible", false);
 
 const completeClosure = () => {
+  if (isBlind.value) {
+    const copDelivered = parseFloat(props.cashClosureData?.cop_delivered) || 0;
+    const decCop = parseFloat(declaredCop.value) || 0;
+    const calcSobrante = Math.max(0, decCop - copDelivered);
+    const origTotalCop = parseFloat(props.cashClosureData?.total_cop) || 0;
+
+    const closureData = {
+      cierre_id: props.cashClosureData.id,
+      total_cop: origTotalCop + calcSobrante,
+      sobrante_en_peso: calcSobrante,
+      entregar_efectivo_cop: copDelivered + calcSobrante,
+      is_blind: true,
+      declared_cop: decCop,
+      declared_usd: parseFloat(declaredUsd.value) || 0,
+      declared_credit: parseFloat(declaredCredit.value) || 0,
+      declared_bs_mobile: parseFloat(declaredBsMobile.value) || 0,
+      declared_bs_card: parseFloat(declaredBsCard.value) || 0,
+    };
+    emit("complete-cash-closure", [closureData, props.cashClosureData]);
+    closeModal();
+    return;
+  }
+
   const closureData = {
     cierre_id: props.cashClosureData.id,
     total_cop: totalCopConSobrante.value,
@@ -117,7 +148,9 @@ const completeClosure = () => {
           </VAvatar>
           <div>
             <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">CIERRE DE CAJA</h3>
-            <span class="text-xs text-disabled font-weight-medium uppercase">Revisa los totales antes de finalizar</span>
+            <span class="text-xs text-disabled font-weight-medium uppercase">
+              {{ isBlind ? "Ingresa los valores contados de tu caja" : "Revisa los totales antes de finalizar" }}
+            </span>
           </div>
         </div>
         <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
@@ -125,172 +158,211 @@ const completeClosure = () => {
 
       <VCardText class="pa-6" style="background-color: #f8f9fa;">
 
-        <!-- Sección USD -->
-        <VCard v-if="totalUsd > 0" variant="outlined" class="mb-4 rounded-lg">
-          <VCardItem class="pa-4 pb-2">
-            <template #prepend>
-              <VAvatar color="success" variant="tonal" size="32" rounded>
-                <VIcon icon="tabler-currency-dollar" size="16" />
-              </VAvatar>
-            </template>
-            <VCardTitle class="text-body-1 font-weight-bold">Total USD</VCardTitle>
-            <template #append>
-              <VChip color="success" size="small" variant="flat" class="font-weight-bold">
-                {{ formatCurrency(totalUsd, 'USD') }}
-              </VChip>
-            </template>
-          </VCardItem>
-          <VCardText class="pa-0 px-4 pb-3" v-if="usdFields.length">
-            <VRow dense>
-              <VCol v-for="f in usdFields" :key="f.label" cols="6" sm="4">
-                <div class="d-flex flex-column py-1">
-                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
-                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
-
-        <!-- Sección BS -->
-        <VCard v-if="totalBs > 0" variant="outlined" class="mb-4 rounded-lg">
-          <VCardItem class="pa-4 pb-2">
-            <template #prepend>
-              <VAvatar color="warning" variant="tonal" size="32" rounded>
-                <VIcon icon="tabler-cash" size="16" />
-              </VAvatar>
-            </template>
-            <VCardTitle class="text-body-1 font-weight-bold">Total Bs</VCardTitle>
-            <template #append>
-              <VChip color="warning" size="small" variant="flat" class="font-weight-bold">
-                {{ formatCurrency(totalBs, 'BS') }}
-              </VChip>
-            </template>
-          </VCardItem>
-          <VCardText class="pa-0 px-4 pb-3" v-if="bsFields.length">
-            <VRow dense>
-              <VCol v-for="f in bsFields" :key="f.label" cols="6" sm="4">
-                <div class="d-flex flex-column py-1">
-                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
-                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
-
-        <!-- Sección COP -->
-        <VCard variant="outlined" class="mb-4 rounded-lg">
-          <VCardItem class="pa-4 pb-2">
-            <template #prepend>
-              <VAvatar color="info" variant="tonal" size="32" rounded>
-                <VIcon icon="tabler-coin" size="16" />
-              </VAvatar>
-            </template>
-            <VCardTitle class="text-body-1 font-weight-bold">Total COP</VCardTitle>
-            <template #append>
-              <VChip color="info" size="small" variant="flat" class="font-weight-bold">
-                {{ formatCurrency(totalCopConSobrante, 'COP') }}
-              </VChip>
-            </template>
-          </VCardItem>
-          <VCardText class="pa-0 px-4 pb-3">
-            <VRow dense>
-              <VCol v-for="f in copFields" :key="f.label" cols="6" sm="4">
-                <div class="d-flex flex-column py-1">
-                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
-                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
-                </div>
-              </VCol>
-            </VRow>
-            <!-- Sobrante en Peso -->
-            <VRow dense class="mt-1">
-              <VCol cols="12" sm="6">
-                <VCard variant="tonal" color="warning" class="pa-3 rounded-lg">
-                  <div class="d-flex align-center gap-2 mb-2">
-                    <VIcon icon="tabler-alert-triangle" size="16" color="warning" />
-                    <span class="text-caption font-weight-bold text-warning">Sobrante en Peso (COP)</span>
+        <template v-if="isBlind">
+          <div class="text-subtitle-2 font-weight-bold mb-4 text-primary uppercase">
+            DECLARACIÓN DE VALORES DEL TURNO
+          </div>
+          <VRow dense>
+            <VCol cols="12" sm="6">
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en COP (Efectivo)</div>
+                <VTextField v-model="declaredCop" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en USD (Efectivo/Electrónico)</div>
+                <VTextField v-model="declaredUsd" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en CRÉDITO (USD)</div>
+                <VTextField v-model="declaredCredit" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en BS (Transf. / Pago Móvil)</div>
+                <VTextField v-model="declaredBsMobile" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en BS (Tarjetas TD/TC)</div>
+                <VTextField v-model="declaredBsCard" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
+              </VCard>
+            </VCol>
+          </VRow>
+        </template>
+        <template v-else>
+          <!-- Sección USD -->
+          <VCard v-if="totalUsd > 0" variant="outlined" class="mb-4 rounded-lg">
+            <VCardItem class="pa-4 pb-2">
+              <template #prepend>
+                <VAvatar color="success" variant="tonal" size="32" rounded>
+                  <VIcon icon="tabler-currency-dollar" size="16" />
+                </VAvatar>
+              </template>
+              <VCardTitle class="text-body-1 font-weight-bold">Total USD</VCardTitle>
+              <template #append>
+                <VChip color="success" size="small" variant="flat" class="font-weight-bold">
+                  {{ formatCurrency(totalUsd, 'USD') }}
+                </VChip>
+              </template>
+            </VCardItem>
+            <VCardText class="pa-0 px-4 pb-3" v-if="usdFields.length">
+              <VRow dense>
+                <VCol v-for="f in usdFields" :key="f.label" cols="6" sm="4">
+                  <div class="d-flex flex-column py-1">
+                    <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                    <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
                   </div>
-                  <VTextField
-                    v-model="sobranteCop"
-                    placeholder="0"
-                    type="number"
-                    density="compact"
-                    variant="solo"
-                    bg-color="white"
-                    hide-details
-                    prefix="$"
-                  />
-                </VCard>
-              </VCol>
-              <VCol cols="12" sm="6">
-                <div class="d-flex flex-column pa-3 h-100 justify-center">
-                  <span class="text-caption text-medium-emphasis mb-1">Efectivo Físico (COP)</span>
-                  <span class="text-h6 font-weight-bold text-info">
-                    {{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}
-                  </span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
 
-        <!-- Sección Créditos (solo si hay deuda generada o abonos) -->
-        <VCard v-if="totalCredits > 0 || totalAbonos > 0" variant="outlined" class="mb-4 rounded-lg">
-          <VCardItem class="pa-4 pb-2">
-            <template #prepend>
-              <VAvatar color="secondary" variant="tonal" size="32" rounded>
-                <VIcon icon="tabler-credit-card" size="16" />
-              </VAvatar>
-            </template>
-            <VCardTitle class="text-body-1 font-weight-bold">Créditos y Abonos</VCardTitle>
-            <template #append>
-              <VChip color="secondary" size="small" variant="flat" class="font-weight-bold">
-                {{ formatCurrency(totalCredits, 'USD') }}
-              </VChip>
-            </template>
-          </VCardItem>
-          <VCardText class="pa-0 px-4 pb-3" v-if="creditFields.length">
-            <VRow dense>
-              <VCol v-for="f in creditFields" :key="f.label" cols="6" sm="4">
-                <div class="d-flex flex-column py-1">
-                  <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
-                  <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
+          <!-- Sección BS -->
+          <VCard v-if="totalBs > 0" variant="outlined" class="mb-4 rounded-lg">
+            <VCardItem class="pa-4 pb-2">
+              <template #prepend>
+                <VAvatar color="warning" variant="tonal" size="32" rounded>
+                  <VIcon icon="tabler-cash" size="16" />
+                </VAvatar>
+              </template>
+              <VCardTitle class="text-body-1 font-weight-bold">Total Bs</VCardTitle>
+              <template #append>
+                <VChip color="warning" size="small" variant="flat" class="font-weight-bold">
+                  {{ formatCurrency(totalBs, 'BS') }}
+                </VChip>
+              </template>
+            </VCardItem>
+            <VCardText class="pa-0 px-4 pb-3" v-if="bsFields.length">
+              <VRow dense>
+                <VCol v-for="f in bsFields" :key="f.label" cols="6" sm="4">
+                  <div class="d-flex flex-column py-1">
+                    <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                    <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
 
-        <!-- Resumen final a entregar -->
-        <VCard variant="flat" color="primary" class="rounded-lg">
-          <VCardText class="pa-4">
-            <div class="d-flex align-center gap-2 mb-3">
-              <VIcon icon="tabler-report-money" color="white" size="20" />
-              <span class="text-body-2 font-weight-bold text-white">RESUMEN A ENTREGAR</span>
-            </div>
-            <VRow dense>
-              <VCol cols="12" sm="4" v-if="totalUsd > 0">
-                <div class="d-flex flex-column">
-                  <span class="text-caption text-white opacity-70">Efectivo USD</span>
-                  <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(parseFloat(cashClosureData?.usd_delivered) || 0, 'USD') }}</span>
-                </div>
-              </VCol>
-              <VCol cols="12" sm="4">
-                <div class="d-flex flex-column">
-                  <span class="text-caption text-white opacity-70">Efectivo COP</span>
-                  <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}</span>
-                </div>
-              </VCol>
-              <VCol cols="12" sm="4" v-if="totalCredits > 0">
-                <div class="d-flex flex-column">
-                  <span class="text-caption text-white opacity-70">Créditos</span>
-                  <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(totalCredits, 'USD') }}</span>
-                </div>
-              </VCol>
-            </VRow>
-          </VCardText>
-        </VCard>
+          <!-- Sección COP -->
+          <VCard variant="outlined" class="mb-4 rounded-lg">
+            <VCardItem class="pa-4 pb-2">
+              <template #prepend>
+                <VAvatar color="info" variant="tonal" size="32" rounded>
+                  <VIcon icon="tabler-coin" size="16" />
+                </VAvatar>
+              </template>
+              <VCardTitle class="text-body-1 font-weight-bold">Total COP</VCardTitle>
+              <template #append>
+                <VChip color="info" size="small" variant="flat" class="font-weight-bold">
+                  {{ formatCurrency(totalCopConSobrante, 'COP') }}
+                </VChip>
+              </template>
+            </VCardItem>
+            <VCardText class="pa-0 px-4 pb-3">
+              <VRow dense>
+                <VCol v-for="f in copFields" :key="f.label" cols="6" sm="4">
+                  <div class="d-flex flex-column py-1">
+                    <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                    <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                  </div>
+                </VCol>
+              </VRow>
+              <!-- Sobrante en Peso -->
+              <VRow dense class="mt-1">
+                <VCol cols="12" sm="6">
+                  <VCard variant="tonal" color="warning" class="pa-3 rounded-lg">
+                    <div class="d-flex align-center gap-2 mb-2">
+                      <VIcon icon="tabler-alert-triangle" size="16" color="warning" />
+                      <span class="text-caption font-weight-bold text-warning">Sobrante en Peso (COP)</span>
+                    </div>
+                    <VTextField
+                      v-model="sobranteCop"
+                      placeholder="0"
+                      type="number"
+                      density="compact"
+                      variant="solo"
+                      bg-color="white"
+                      hide-details
+                      prefix="$"
+                    />
+                  </VCard>
+                </VCol>
+                <VCol cols="12" sm="6">
+                  <div class="d-flex flex-column pa-3 h-100 justify-center">
+                    <span class="text-caption text-medium-emphasis mb-1">Efectivo Físico (COP)</span>
+                    <span class="text-h6 font-weight-bold text-info">
+                      {{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}
+                    </span>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
+
+          <!-- Sección Créditos (solo si hay deuda generada o abonos) -->
+          <VCard v-if="totalCredits > 0 || totalAbonos > 0" variant="outlined" class="mb-4 rounded-lg">
+            <VCardItem class="pa-4 pb-2">
+              <template #prepend>
+                <VAvatar color="secondary" variant="tonal" size="32" rounded>
+                  <VIcon icon="tabler-credit-card" size="16" />
+                </VAvatar>
+              </template>
+              <VCardTitle class="text-body-1 font-weight-bold">Créditos y Abonos</VCardTitle>
+              <template #append>
+                <VChip color="secondary" size="small" variant="flat" class="font-weight-bold">
+                  {{ formatCurrency(totalCredits, 'USD') }}
+                </VChip>
+              </template>
+            </VCardItem>
+            <VCardText class="pa-0 px-4 pb-3" v-if="creditFields.length">
+              <VRow dense>
+                <VCol v-for="f in creditFields" :key="f.label" cols="6" sm="4">
+                  <div class="d-flex flex-column py-1">
+                    <span class="text-caption text-medium-emphasis">{{ f.label }}</span>
+                    <span class="text-body-2 font-weight-medium">{{ f.val }}</span>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
+
+          <!-- Resumen final a entregar -->
+          <VCard variant="flat" color="primary" class="rounded-lg">
+            <VCardText class="pa-4">
+              <div class="d-flex align-center gap-2 mb-3">
+                <VIcon icon="tabler-report-money" color="white" size="20" />
+                <span class="text-body-2 font-weight-bold text-white">RESUMEN A ENTREGAR</span>
+              </div>
+              <VRow dense>
+                <VCol cols="12" sm="4" v-if="totalUsd > 0">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption text-white opacity-70">Efectivo USD</span>
+                    <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(parseFloat(cashClosureData?.usd_delivered) || 0, 'USD') }}</span>
+                  </div>
+                </VCol>
+                <VCol cols="12" sm="4">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption text-white opacity-70">Efectivo COP</span>
+                    <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(totalEfectivoCopConSobrante, 'COP') }}</span>
+                  </div>
+                </VCol>
+                <VCol cols="12" sm="4" v-if="totalCredits > 0">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption text-white opacity-70">Créditos</span>
+                    <span class="text-h6 font-weight-bold text-white">{{ formatCurrency(totalCredits, 'USD') }}</span>
+                  </div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
+        </template>
 
       </VCardText>
 

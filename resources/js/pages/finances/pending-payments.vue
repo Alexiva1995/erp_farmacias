@@ -6,11 +6,14 @@ import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
 
 const { mobile } = useDisplay();
 const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 
 const loading = ref(false);
 const pendingPayments = ref([]);
@@ -203,6 +206,11 @@ const toggleSelection = (invoice) => {
 };
 
 onMounted(async () => {
+  if (authStore.isVendedor) {
+    toast.error("Acceso denegado: No tienes permisos para ver esta sección.");
+    router.push("/invoice/invoices");
+    return;
+  }
   await fetchExchangeRates();
   await fetchSuppliers();
   if (route.query.supplierId)

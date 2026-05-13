@@ -71,6 +71,12 @@ const barItems = computed(() => {
   }));
 });
 
+const isBlind = computed(() => {
+  const rawData = props.cashClosureData;
+  const data = (Array.isArray(rawData) ? rawData[0] : rawData) || {};
+  return !!data.blind_cash_closure;
+});
+
 const hasData = computed(() => grandTotal.value > 0);
 </script>
 
@@ -82,8 +88,12 @@ const hasData = computed(() => grandTotal.value > 0);
           <VIcon icon="tabler-report-money" size="24" />
         </VAvatar>
       </template>
-      <VCardTitle class="text-h6 font-weight-black uppercase">Resumen de Caja</VCardTitle>
-      <VCardSubtitle class="text-xs font-weight-medium text-disabled">Acumulado de la jornada actual</VCardSubtitle>
+      <VCardTitle class="text-h6 font-weight-black uppercase">
+        {{ isBlind ? "Cierre de Caja Ciego" : "Resumen de Caja" }}
+      </VCardTitle>
+      <VCardSubtitle class="text-xs font-weight-medium text-disabled">
+        {{ isBlind ? "Turno en curso" : "Acumulado de la jornada actual" }}
+      </VCardSubtitle>
       <template #append>
         <VBtn icon variant="tonal" size="small" color="primary" class="rounded-lg shadow-sm">
           <VIcon size="20" icon="tabler-dots-vertical" />
@@ -102,84 +112,91 @@ const hasData = computed(() => grandTotal.value > 0);
     </VCardItem>
 
     <VCardText class="pa-5">
-      <!-- Barra multimoneda Premium -->
-      <div class="currency-bar-container mb-6">
-        <div class="currency-bar rounded-lg shadow-inner overflow-hidden d-flex">
-          <template v-if="hasData">
-            <div
-              v-for="item in barItems"
-              :key="item.label"
-              :style="{ width: item.pct + '%', backgroundColor: item.barColor }"
-              class="d-flex align-center justify-center transition-all h-100"
-            >
-              <VTooltip location="top" :text="`${item.label}: ${item.pct.toFixed(1)}%`">
-                <template #activator="{ props: tooltip }">
-                  <span v-bind="tooltip" v-if="item.pct > 5" class="text-super-xs font-weight-black text-white px-2">
-                    {{ item.pct.toFixed(0) }}%
-                  </span>
-                </template>
-              </VTooltip>
-            </div>
-          </template>
-          <template v-else>
-            <div class="w-100 d-flex align-center justify-center bg-surface-variant-opacity-2 py-2">
-              <span class="text-super-xs font-weight-black text-disabled uppercase">Sin movimientos</span>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Tarjetas por moneda Premium -->
-      <VRow class="ma-0 mx-n1">
-        <VCol
-          v-for="item in currencies"
-          :key="item.label"
-          cols="12" sm="6" md="4"
-          class="pa-1"
-        >
-          <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative">
-            <div class="card-bg-decoration" :class="`bg-${item.color}-opacity-1`"></div>
-            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <div class="d-flex align-center gap-2">
-                  <VAvatar :color="item.color" variant="tonal" size="32" class="rounded-lg">
-                    <VIcon :icon="item.icon" size="16" />
-                  </VAvatar>
-                  <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.label }}</span>
-                </div>
-                <VChip :color="item.color" size="x-small" variant="flat" class="font-weight-black rounded-lg px-2">
-                  {{ item.currency }}
-                </VChip>
+      <template v-if="isBlind">
+        <VAlert type="info" variant="tonal" class="rounded-lg mb-0 font-weight-medium">
+          La modalidad de cierre de caja ciego está activa. Sus reportes y totales acumulados de la jornada están ocultos. Para finalizar su turno y realizar la declaración de valores, haga clic en el botón de opciones en la esquina superior derecha y seleccione <strong>CERRAR CAJA</strong>.
+        </VAlert>
+      </template>
+      <template v-else>
+        <!-- Barra multimoneda Premium -->
+        <div class="currency-bar-container mb-6">
+          <div class="currency-bar rounded-lg shadow-inner overflow-hidden d-flex">
+            <template v-if="hasData">
+              <div
+                v-for="item in barItems"
+                :key="item.label"
+                :style="{ width: item.pct + '%', backgroundColor: item.barColor }"
+                class="d-flex align-center justify-center transition-all h-100"
+              >
+                <VTooltip location="top" :text="`${item.label}: ${item.pct.toFixed(1)}%`">
+                  <template #activator="{ props: tooltip }">
+                    <span v-bind="tooltip" v-if="item.pct > 5" class="text-super-xs font-weight-black text-white px-2">
+                      {{ item.pct.toFixed(0) }}%
+                    </span>
+                  </template>
+                </VTooltip>
               </div>
-              <div class="text-h6 font-weight-black leading-tight" :class="`text-${item.color}`">
-                {{ formatCurrency(item.amount, item.currency) }}
+            </template>
+            <template v-else>
+              <div class="w-100 d-flex align-center justify-center bg-surface-variant-opacity-2 py-2">
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Sin movimientos</span>
               </div>
-              <div v-if="item.approxUSD !== null" class="text-super-xs font-weight-bold text-disabled mt-auto pt-1">
-                ≈ {{ formatCurrency(item.approxUSD, 'USD') }}
-              </div>
-            </VCardText>
-            <div class="accent-border" :class="`bg-${item.color}`"></div>
-          </VCard>
-        </VCol>
-      </VRow>
-
-      <!-- Total General Master -->
-      <VCard v-if="hasData" class="mt-6 border-0 overflow-hidden shadow-sm position-relative bg-primary-gradient stats-card no-hover">
-        <VCardText class="pa-4 d-flex align-center justify-space-between relative-content">
-          <div class="d-flex align-center gap-3">
-            <VAvatar color="white" variant="tonal" size="38" class="rounded-lg shadow-sm">
-              <VIcon icon="tabler-sum" color="white" size="20" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-black text-white opacity-80 uppercase">Venta Bruta Consolidada</span>
-              <span class="text-caption text-white font-weight-medium uppercase">Total aproximado en dólares</span>
-            </div>
+            </template>
           </div>
-          <span class="text-h4 font-weight-black text-white leading-tight">
-            {{ formatCurrency(grandTotal, 'USD') }}
-          </span>
-        </VCardText>
-      </VCard>
+        </div>
+
+        <!-- Tarjetas por moneda Premium -->
+        <VRow class="ma-0 mx-n1">
+          <VCol
+            v-for="item in currencies"
+            :key="item.label"
+            cols="12" sm="6" md="4"
+            class="pa-1"
+          >
+            <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative">
+              <div class="card-bg-decoration" :class="`bg-${item.color}-opacity-1`"></div>
+              <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+                <div class="d-flex align-center justify-space-between mb-3">
+                  <div class="d-flex align-center gap-2">
+                    <VAvatar :color="item.color" variant="tonal" size="32" class="rounded-lg">
+                      <VIcon :icon="item.icon" size="16" />
+                    </VAvatar>
+                    <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.label }}</span>
+                  </div>
+                  <VChip :color="item.color" size="x-small" variant="flat" class="font-weight-black rounded-lg px-2">
+                    {{ item.currency }}
+                  </VChip>
+                </div>
+                <div class="text-h6 font-weight-black leading-tight" :class="`text-${item.color}`">
+                  {{ formatCurrency(item.amount, item.currency) }}
+                </div>
+                <div v-if="item.approxUSD !== null" class="text-super-xs font-weight-bold text-disabled mt-auto pt-1">
+                  ≈ {{ formatCurrency(item.approxUSD, 'USD') }}
+                </div>
+              </VCardText>
+              <div class="accent-border" :class="`bg-${item.color}`"></div>
+            </VCard>
+          </VCol>
+        </VRow>
+
+        <!-- Total General Master -->
+        <VCard v-if="hasData" class="mt-6 border-0 overflow-hidden shadow-sm position-relative bg-primary-gradient stats-card no-hover">
+          <VCardText class="pa-4 d-flex align-center justify-space-between relative-content">
+            <div class="d-flex align-center gap-3">
+              <VAvatar color="white" variant="tonal" size="38" class="rounded-lg shadow-sm">
+                <VIcon icon="tabler-sum" color="white" size="20" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-white opacity-80 uppercase">Venta Bruta Consolidada</span>
+                <span class="text-caption text-white font-weight-medium uppercase">Total aproximado en dólares</span>
+              </div>
+            </div>
+            <span class="text-h4 font-weight-black text-white leading-tight">
+              {{ formatCurrency(grandTotal, 'USD') }}
+            </span>
+          </VCardText>
+        </VCard>
+      </template>
     </VCardText>
   </VCard>
 </template>

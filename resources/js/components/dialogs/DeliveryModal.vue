@@ -206,6 +206,8 @@ const groupedCardTotals = computed(() => {
          total_bs_cash_paymentCredit: 0,
          total_cop_cash_paymentCredit: 0,
          total_usd_equivalent: 0,
+         blind_mismatches: new Set(),
+         blind_note: "",
       };
     }
      acc[sellerId].total_bs_card_debito += bsCarDebitoAmount;
@@ -230,6 +232,14 @@ const groupedCardTotals = computed(() => {
      acc[sellerId].total_usd_cash_paymentCredit += usdCashAmountCredit;
      acc[sellerId].total_bs_cash_paymentCredit += bsCashAmountCredit;
      acc[sellerId].total_cop_cash_paymentCredit += copCashAmountCredit;
+
+     const mismatches = closing.blind_mismatches ? (typeof closing.blind_mismatches === 'string' ? JSON.parse(closing.blind_mismatches) : closing.blind_mismatches) : [];
+     if (Array.isArray(mismatches)) {
+       mismatches.forEach(m => acc[sellerId].blind_mismatches.add(m));
+     }
+     if (closing.blind_note) {
+       acc[sellerId].blind_note = acc[sellerId].blind_note ? acc[sellerId].blind_note + " | " + closing.blind_note : closing.blind_note;
+     }
 
      acc[sellerId].total_usd_equivalent += total_usd + (total_bs / parseFloat(props.cashData.exchange_rate || 1)) + (total_cop / parseFloat(props.cashData.cop_exchange_rate || 1));
 
@@ -550,12 +560,14 @@ defineExpose({ printReport });
                     <tr v-if="seller.total_bs_card_debito > 0 || seller.total_bs_card_credito > 0">
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2">Tarjetas (BS):</td>
                       <td class="text-right py-2 pr-6 text-warning font-weight-bold">
+                        <span v-if="seller.blind_mismatches?.has('bs_card')" class="text-error font-weight-black mr-1" title="Diferencia en Cierre Ciego">*</span>
                         {{ formatCurrency(seller.total_bs_card_debito + seller.total_bs_card_credito, 'BS') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_bs_transfer > 0 || seller.total_bs_mobile > 0">
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2">Transf./Pago Móvil (BS):</td>
                       <td class="text-right py-2 pr-6 text-warning font-weight-bold">
+                        <span v-if="seller.blind_mismatches?.has('bs_mobile')" class="text-error font-weight-black mr-1" title="Diferencia en Cierre Ciego">*</span>
                         {{ formatCurrency(seller.total_bs_transfer + seller.total_bs_mobile, 'BS') }}
                       </td>
                     </tr>
@@ -574,6 +586,7 @@ defineExpose({ printReport });
                     <tr v-if="seller.total_usd_credit > 0">
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2">Créditos (USD):</td>
                       <td class="text-right py-2 pr-6 font-weight-black italic">
+                        <span v-if="seller.blind_mismatches?.has('credit')" class="text-error font-weight-black mr-1" title="Diferencia en Cierre Ciego">*</span>
                         {{ formatCurrency(seller.total_usd_credit, 'USD') }}
                       </td>
                     </tr>
@@ -586,12 +599,14 @@ defineExpose({ printReport });
                     <tr v-if="seller.total_cop_cash > 0">
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2 font-weight-bold">Efectivo (COP):</td>
                       <td class="text-right font-weight-black py-2 pr-6 text-info">
+                        <span v-if="seller.blind_mismatches?.has('cop')" class="text-error font-weight-black mr-1" title="Diferencia en Cierre Ciego">*</span>
                         {{ formatCurrency(seller.total_cop_cash, 'COP') }}
                       </td>
                     </tr>
                     <tr v-if="seller.total_usd_cash > 0">
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2 font-weight-bold">Efectivo (USD):</td>
                       <td class="text-right font-weight-black py-2 pr-6 text-success">
+                        <span v-if="seller.blind_mismatches?.has('usd')" class="text-error font-weight-black mr-1" title="Diferencia en Cierre Ciego">*</span>
                         {{ formatCurrency(seller.total_usd_cash, 'USD') }}
                       </td>
                     </tr>
@@ -612,6 +627,11 @@ defineExpose({ printReport });
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2 italic font-weight-regular">Abonos (USD):</td>
                       <td class="text-right py-2 pr-6 text-success italic">
                         {{ formatCurrency(seller.total_usd_paypal_paymentCredit + seller.total_usd_binance_paymentCredit + seller.total_usd_cash_paymentCredit, 'USD') }}
+                      </td>
+                    </tr>
+                    <tr v-if="seller.blind_note">
+                      <td colspan="2" class="px-6 py-2 bg-error-opacity-1 text-error text-super-xs italic">
+                        Nota Ciego: {{ seller.blind_note }}
                       </td>
                     </tr>
                   </tbody>

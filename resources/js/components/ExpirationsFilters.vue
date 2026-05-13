@@ -3,6 +3,9 @@
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import dayjs from "dayjs";
 import { computed, ref } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   searchQuery:        { type: String, required: true },
@@ -195,7 +198,7 @@ const applyQuickFilter = (filter) => {
     <template #actions-extra>
       <!-- Botón Compacto de Acción por Lotes (Badge + Icono) -->
       <VFadeTransition>
-        <div v-if="hasSelectedLots" class="d-flex align-center">
+        <div v-if="hasSelectedLots && (can('manage', 'admin') || can('manage', 'supervisor'))" class="d-flex align-center">
           <VBadge
             color="error"
             :content="props.selectedLots.length"

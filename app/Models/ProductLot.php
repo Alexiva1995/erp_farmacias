@@ -96,8 +96,7 @@ class ProductLot extends Model
             return false;
         }
 
-        $monthsToExpire = $this->expiration_date->diffInMonths(now());
-        return $monthsToExpire <= 6; // Considerar próximo a expirar si tiene 6 meses o menos
+        return $this->months_to_expiration <= 6; // Considerar próximo a expirar si tiene 6 meses o menos
     }
 
     /**
@@ -109,7 +108,9 @@ class ProductLot extends Model
             return 999; // Valor alto para lotes sin fecha de expiración
         }
 
-        return max(0, $this->expiration_date->diffInMonths(now()));
+        $now = now();
+        $diffMonths = ($this->expiration_date->year - $now->year) * 12 + $this->expiration_date->month - $now->month + 1;
+        return max(1, $diffMonths);
     }
 
     /**
@@ -117,8 +118,8 @@ class ProductLot extends Model
      */
     public function scopeExpiringInMonths($query, $months)
     {
-        return $query->whereRaw("TIMESTAMPDIFF(MONTH, NOW(), expiration_date) <= ?", [$months])
-                    ->whereRaw("TIMESTAMPDIFF(MONTH, NOW(), expiration_date) >= 0");
+        return $query->whereRaw("((YEAR(expiration_date) - YEAR(NOW())) * 12 + MONTH(expiration_date) - MONTH(NOW()) + 1) <= ?", [$months])
+                    ->whereRaw("((YEAR(expiration_date) - YEAR(NOW())) * 12 + MONTH(expiration_date) - MONTH(NOW()) + 1) >= 1");
     }
 
     /**

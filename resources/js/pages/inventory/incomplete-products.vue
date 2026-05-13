@@ -20,6 +20,7 @@ const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
+const productTypeFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 const isStrictSearch = ref(false);
@@ -105,6 +106,7 @@ const fetchProducts = async () => {
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
     hasStock: stockStatusFilter.value,
+    ...(productTypeFilter.value && { productType: productTypeFilter.value }),
   };
 
   Object.keys(params).forEach(
@@ -134,6 +136,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    productTypeFilter,
     startDate,
     endDate,
     isStrictSearch,
@@ -151,6 +154,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
+    productTypeFilter,
     startDate,
     endDate,
   ],
@@ -182,6 +186,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
+  productTypeFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
@@ -215,6 +220,7 @@ const handleOriginCreated = (newOrigin) => {
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
       v-model:stockStatusFilter="stockStatusFilter"
+      v-model:productTypeFilter="productTypeFilter"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:isStrictSearch="isStrictSearch"

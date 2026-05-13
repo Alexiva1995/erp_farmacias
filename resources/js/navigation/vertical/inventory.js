@@ -63,6 +63,8 @@ export default [
       {
         title: 'Ubicaciones',
         to: 'inventory-locations',
+        action: 'manage',
+        subject: 'admin',
       },
       {
         title: 'Laboratorios',

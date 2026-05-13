@@ -32,6 +32,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'primary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
             'secondary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
             'footer_text' => 'nullable|string|max:500',
+            'blind_cash_closure' => 'nullable|boolean',
         ];
     }
 }

@@ -187,6 +187,31 @@ class ProductQueryService
             $query->withoutGlobalScope('not_deleted')->where('is_deleted', true);
         }
 
+        if (!empty($filters['product_type'])) {
+            switch ($filters['product_type']) {
+                case 'redundantes':
+                    $query->where('is_scarce', true);
+                    break;
+                case 'col':
+                    $query->where('is_colombian_origin', true);
+                    break;
+                case 'iva':
+                    $query->where('iva', 1);
+                    break;
+                case 'exento':
+                    $query->where(function ($q) {
+                        $q->where('iva', 0)->orWhereNull('iva');
+                    });
+                    break;
+                case 'novaventa':
+                    $query->where('is_novaventa', true);
+                    break;
+                case 'eliminados':
+                    $query->withoutGlobalScope('not_deleted')->where('is_deleted', true);
+                    break;
+            }
+        }
+
         return $query;
     }
 
@@ -273,6 +298,7 @@ class ProductQueryService
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'isScarce'       => filter_var($request->get('isScarce'), FILTER_VALIDATE_BOOLEAN),
             'onlyDeleted'    => filter_var($request->get('onlyDeleted'), FILTER_VALIDATE_BOOLEAN),
+            'product_type'   => $request->input('product_type') ?? $request->input('productType'),
         ];
 
         $this->applyFilters($query, $filters);
@@ -304,6 +330,7 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'is_pending' => true,
+            'product_type'   => $request->input('product_type') ?? $request->input('productType'),
         ];
 
         $this->applyFilters($query, $filters);
@@ -328,6 +355,7 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_laboratory' => true,
+            'product_type'   => $request->input('product_type') ?? $request->input('productType'),
         ];
 
         $this->applyFilters($query, $filters);
@@ -352,6 +380,7 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_origin' => true,
+            'product_type'   => $request->input('product_type') ?? $request->input('productType'),
         ];
 
         $this->applyFilters($query, $filters);
@@ -376,6 +405,7 @@ class ProductQueryService
             'endDate' => $request->endDate,
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
             'null_group' => true,
+            'product_type'   => $request->input('product_type') ?? $request->input('productType'),
         ];
 
         $this->applyFilters($query, $filters);

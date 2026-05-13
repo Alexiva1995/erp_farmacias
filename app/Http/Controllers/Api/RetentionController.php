@@ -120,4 +120,50 @@ class RetentionController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
         }
     }
+
+    /**
+     * Eliminar una retención (desvincula facturas y elimina el registro).
+     */
+    public function destroy(int $id)
+    {
+        try {
+            $this->retentionService->deleteRetention($id);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Retención eliminada correctamente y facturas desvinculadas.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Actualizar número de retención.
+     */
+    public function update(Request $request, int $id)
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'number' => 'required|string|max:50|unique:retentions,number,' . $id
+        ], [
+            'number.unique' => 'El número de comprobante ingresado ya se encuentra asignado a otra retención.'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+
+        try {
+            $retention = $this->retentionService->updateRetention($id, ['number' => $request->number]);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Número de retención actualizado correctamente.',
+                'data' => new RetentionResource($retention)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+        }
+    }
 }
