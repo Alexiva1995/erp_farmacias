@@ -249,6 +249,23 @@ const hasAnyReference = computed(() => {
     tarjetaReferencesCop.value.length > 0
   );
 });
+
+const sellerFullName = computed(() => {
+  const seller = props.cashData.seller;
+  if (!seller) return 'N/A';
+  if (seller.employee && seller.employee.name && seller.employee.last_name) {
+    return `${seller.employee.name} ${seller.employee.last_name}`;
+  }
+  return seller.username || 'N/A';
+});
+
+const blindPayments = computed(() => [
+  { label: "Monto COP", amount: getValue("declared_cop"), currency: "COP" },
+  { label: "Monto USD", amount: getValue("declared_usd"), currency: "USD" },
+  { label: "Monto Crédito", amount: getValue("declared_credit"), currency: "USD" },
+  { label: "Monto BS (Transf/PM)", amount: getValue("declared_bs_mobile"), currency: "BS" },
+  { label: "Monto BS (Tarjetas)", amount: getValue("declared_bs_card"), currency: "BS" },
+]);
 </script>
 <template>
   <div style=" color: #000; font-family: monospace; font-size: 13px;inline-size: 100%; line-height: 1.3;">
@@ -272,84 +289,93 @@ const hasAnyReference = computed(() => {
           </tr>
           <tr>
             <td style="text-align: start;" colspan="2">
-              <span style="font-weight: bold;">Cajero: {{ props.cashData.seller?.username }}</span>
+              <span style="font-weight: bold;">Cajero: {{ sellerFullName }}</span>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <!-- DETALLE DE INGRESOS (VENTAS) -->
-      <div v-if="props.cashData.total_usd > 0">
-        <SectionDivider :isPdf="props.isPdf" text="INGRESO USD" width="55%" />
-        <PaymentTable :payments="usdPayments" />
-      </div>
-      <div v-if="props.cashData.total_bs > 0">
-        <SectionDivider :isPdf="props.isPdf" text="INGRESO BS" width="50%" />
-        <PaymentTable :payments="bsPayments" />
-      </div>
-      <div v-if="props.cashData.total_cop > 0">
-        <SectionDivider :isPdf="props.isPdf" text="INGRESO COP" width="55%" />
-        <PaymentTable :payments="copPayments" />
+      <!-- MODALIDAD CIERRE CIEGO -->
+      <div v-if="props.cashData.blind_cash_closure">
+        <SectionDivider :isPdf="props.isPdf" text="VALORES DECLARADOS" width="80%" />
+        <PaymentTable :payments="blindPayments" />
       </div>
 
-      <!-- CRÉDITOS Y PAGOS -->
-      <div v-if="props.cashData.usd_credit > 0">
-        <SectionDivider :isPdf="props.isPdf" text="CRÉDITOS OTORGADOS" width="80%" />
-        <PaymentTable :payments="creditAmount" />
-      </div>
-      <div v-if="totalCreditPayments > 0">
-        <SectionDivider :isPdf="props.isPdf" text="PAGOS DE CRÉDITO" width="75%" />
-        <PaymentTable :payments="creditPayments" />
-      </div>
-
-      <!-- DETALLE ENTREGA (FÍSICO + DIGITAL) -->
-      <div>
-        <SectionDivider :isPdf="props.isPdf" text="DETALLE DE ENTREGA" width="80%" />
-        <PaymentTable :payments="delivery" />
-      </div>
-      
-      <!-- RESUMEN NETO A ENTREGAR (SÓLO EFECTIVO FÍSICO) -->
-      <div style=" padding: 6px; border: 2px dashed #000; margin-block: 15px;">
-        <div style=" font-size: 14px; font-weight: bold; margin-block-end: 2px;text-align: center;">
-          EFECTIVO A ENTREGAR
+      <!-- MODALIDAD ESTÁNDAR -->
+      <template v-else>
+        <!-- DETALLE DE INGRESOS (VENTAS) -->
+        <div v-if="props.cashData.total_usd > 0">
+          <SectionDivider :isPdf="props.isPdf" text="INGRESO USD" width="55%" />
+          <PaymentTable :payments="usdPayments" />
         </div>
-        <hr style="border-block-start: 1px dotted #000; margin-block-end: 4px;"/>
-        <table style=" font-size: 14px; font-weight: bold;inline-size: 100%;">
-          <tr>
-            <td style="text-align: start;">USD:</td>
-            <td style="text-align: end;">{{ formatCurrency(totalEfectivoUsd, 'USD') }}</td>
-          </tr>
-          <tr>
-            <td style="text-align: start;">BS:</td>
-            <td style="text-align: end;">{{ formatCurrency(totalEfectivoBs, 'BS') }}</td>
-          </tr>
-           <tr>
-            <td style="text-align: start;">COP:</td>
-            <td style="text-align: end;">{{ formatCurrency(totalEfectivoCop, 'COP') }}</td>
-          </tr>
-        </table>
-      </div>
+        <div v-if="props.cashData.total_bs > 0">
+          <SectionDivider :isPdf="props.isPdf" text="INGRESO BS" width="50%" />
+          <PaymentTable :payments="bsPayments" />
+        </div>
+        <div v-if="props.cashData.total_cop > 0">
+          <SectionDivider :isPdf="props.isPdf" text="INGRESO COP" width="55%" />
+          <PaymentTable :payments="copPayments" />
+        </div>
 
-      <div v-if="hasAnyReference">
-        <SectionDivider :isPdf="props.isPdf" text="REFERENCIAS MÓVILES" width="85%" />
-        <ReferenceTable title="BINANCE (USD)" :references="binanceReferences" />
-        <ReferenceTable title="PAYPAL (USD)" :references="paypalReferences" />
-        <ReferenceTable title="TARJETA (Bs)" :references="tarjetaReferencesBs" />
-        <ReferenceTable title="TARJETA DEBITO (Bs)" :references="tarjetaDebitoReferencesBs" />
-        <ReferenceTable title="TARJETA CREDITO (Bs)" :references="tarjetaCreditoReferencesBs" />
-        <ReferenceTable
-          title="TRANSFERENCIA (Bs)"
-          :references="transferenciaReferencesBs"
-        />
-        <ReferenceTable
-          title="PAGO MOVIL (Bs)"
-          :references="pagoMovilReferencesBs"
-        />
-        <ReferenceTable
-          title="TRANSFERENCIA (COP)"
-          :references="tarjetaReferencesCop"
-        />
-      </div>
+        <!-- CRÉDITOS Y PAGOS -->
+        <div v-if="props.cashData.usd_credit > 0">
+          <SectionDivider :isPdf="props.isPdf" text="CRÉDITOS OTORGADOS" width="80%" />
+          <PaymentTable :payments="creditAmount" />
+        </div>
+        <div v-if="totalCreditPayments > 0">
+          <SectionDivider :isPdf="props.isPdf" text="PAGOS DE CRÉDITO" width="75%" />
+          <PaymentTable :payments="creditPayments" />
+        </div>
+
+        <!-- DETALLE ENTREGA (FÍSICO + DIGITAL) -->
+        <div>
+          <SectionDivider :isPdf="props.isPdf" text="DETALLE DE ENTREGA" width="80%" />
+          <PaymentTable :payments="delivery" />
+        </div>
+        
+        <!-- RESUMEN NETO A ENTREGAR (SÓLO EFECTIVO FÍSICO) -->
+        <div style=" padding: 6px; border: 2px dashed #000; margin-block: 15px;">
+          <div style=" font-size: 14px; font-weight: bold; margin-block-end: 2px;text-align: center;">
+            EFECTIVO A ENTREGAR
+          </div>
+          <hr style="border-block-start: 1px dotted #000; margin-block-end: 4px;"/>
+          <table style=" font-size: 14px; font-weight: bold;inline-size: 100%;">
+            <tr>
+              <td style="text-align: start;">USD:</td>
+              <td style="text-align: end;">{{ formatCurrency(totalEfectivoUsd, 'USD') }}</td>
+            </tr>
+            <tr>
+              <td style="text-align: start;">BS:</td>
+              <td style="text-align: end;">{{ formatCurrency(totalEfectivoBs, 'BS') }}</td>
+            </tr>
+             <tr>
+              <td style="text-align: start;">COP:</td>
+              <td style="text-align: end;">{{ formatCurrency(totalEfectivoCop, 'COP') }}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div v-if="hasAnyReference">
+          <SectionDivider :isPdf="props.isPdf" text="REFERENCIAS MÓVILES" width="85%" />
+          <ReferenceTable title="BINANCE (USD)" :references="binanceReferences" />
+          <ReferenceTable title="PAYPAL (USD)" :references="paypalReferences" />
+          <ReferenceTable title="TARJETA (Bs)" :references="tarjetaReferencesBs" />
+          <ReferenceTable title="TARJETA DEBITO (Bs)" :references="tarjetaDebitoReferencesBs" />
+          <ReferenceTable title="TARJETA CREDITO (Bs)" :references="tarjetaCreditoReferencesBs" />
+          <ReferenceTable
+            title="TRANSFERENCIA (Bs)"
+            :references="transferenciaReferencesBs"
+          />
+          <ReferenceTable
+            title="PAGO MOVIL (Bs)"
+            :references="pagoMovilReferencesBs"
+          />
+          <ReferenceTable
+            title="TRANSFERENCIA (COP)"
+            :references="tarjetaReferencesCop"
+          />
+        </div>
+      </template>
 
       <!-- SECCIÓN DE FIRMAS -->
       <div style="margin-block-start: 30px; text-align: center;">
