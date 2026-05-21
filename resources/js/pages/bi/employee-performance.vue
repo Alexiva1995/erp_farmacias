@@ -159,23 +159,29 @@ const getStatusColor = (val, target) => {
               <VIcon icon="tabler-chart-bar-popular" size="26" />
             </VAvatar>
             <div>
-              <h2 class="text-h6 font-weight-black mb-0">Balanced Scorecard RRHH</h2>
-              <p class="text-[11px] text-disabled mb-0 uppercase font-weight-bold">People Analytics & Gamificación</p>
+              <h2 class="text-h6 font-weight-black mb-0">Cuadro de Mando Integral RRHH</h2>
+              <p class="text-[11px] text-disabled mb-0 uppercase font-weight-bold">Análisis de Personal y Gamificación</p>
             </div>
           </div>
 
           <VSpacer />
 
           <div class="d-flex align-center gap-2">
-            <VBtnToggle v-model="compareMode" mandatory density="compact" color="primary" variant="tonal" class="me-4 rounded-lg overflow-hidden">
-                <VBtn :value="false">Ranking</VBtn>
-                <VBtn :value="true">Face-Off</VBtn>
+            <VBtnToggle v-model="compareMode" mandatory density="compact" color="primary" variant="tonal" class="me-4 rounded-lg overflow-hidden border">
+                <VBtn :value="false" class="px-3">
+                  <VIcon icon="tabler-trophy" size="22" />
+                  <VTooltip activator="parent">Ranking de Empleados</VTooltip>
+                </VBtn>
+                <VBtn :value="true" class="px-3">
+                  <VIcon icon="tabler-arrows-cross" size="22" />
+                  <VTooltip activator="parent">Cara a Cara (Comparativa)</VTooltip>
+                </VBtn>
             </VBtnToggle>
 
             <AppTextField v-model="startDate" type="date" density="compact" hide-details class="premium-input" />
             <AppTextField v-model="endDate" type="date" density="compact" hide-details class="premium-input" />
             
-            <VBtn icon variant="flat" color="primary" size="38" :loading="loading" @click="fetchDashboard">
+            <VBtn icon variant="tonal" color="primary" size="38" :loading="loading" @click="fetchDashboard">
               <VIcon icon="tabler-refresh" size="20" />
             </VBtn>
           </div>
@@ -187,13 +193,13 @@ const getStatusColor = (val, target) => {
       <VProgressCircular indeterminate color="primary" size="40" />
     </div>
 
-    <!-- VISTA COMPARATIVA (FACE-OFF) -->
+    <!-- VISTA COMPARATIVA (FACE-OFF / CARA A CARA) -->
     <div v-else-if="compareMode" class="px-1">
         <VRow class="mb-6" dense>
             <VCol cols="12" md="6">
                 <VCard class="rounded-lg border shadow-sm h-100">
                     <VCardItem class="py-3 border-b bg-light-primary">
-                        <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Configuración Face-Off</VCardTitle>
+                        <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Configuración Cara a Cara</VCardTitle>
                     </VCardItem>
                     <VCardText class="pa-6">
                         <VRow>
@@ -203,7 +209,7 @@ const getStatusColor = (val, target) => {
                                     :items="dashboardData?.employees || []" 
                                     item-title="name" 
                                     item-value="id" 
-                                    label="Empleado A" 
+                                    label="Vendedor A" 
                                     placeholder="Seleccionar..."
                                 />
                             </VCol>
@@ -213,13 +219,13 @@ const getStatusColor = (val, target) => {
                                     :items="dashboardData?.employees || []" 
                                     item-title="name" 
                                     item-value="id" 
-                                    label="Empleado B" 
+                                    label="Vendedor B" 
                                     placeholder="Seleccionar..."
                                 />
                             </VCol>
                         </VRow>
-                        <VBtn block color="primary" prepend-icon="tabler-arrows-cross" class="mt-4" :disabled="!employeeA || !employeeB" @click="fetchComparison">
-                            Iniciar Comparativa
+                        <VBtn block color="primary" prepend-icon="tabler-swords" class="mt-4 font-weight-black" :disabled="!employeeA || !employeeB" @click="fetchComparison">
+                            Comparar Rendimiento
                         </VBtn>
                     </VCardText>
                 </VCard>
@@ -228,7 +234,7 @@ const getStatusColor = (val, target) => {
             <VCol cols="12" md="6">
                 <VCard class="rounded-lg border shadow-sm h-100" v-if="comparisonData">
                     <VCardItem class="py-3 border-b">
-                        <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Spider Chart de Rendimiento</VCardTitle>
+                        <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Radar de Rendimiento</VCardTitle>
                     </VCardItem>
                     <VCardText class="pa-4 d-flex justify-center">
                         <VueApexCharts height="300" width="100%" type="radar" :options="radarChartOptions" :series="radarChartSeries" />
@@ -247,13 +253,21 @@ const getStatusColor = (val, target) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="key in ['points', 'sales', 'units', 'strategic_units', 'tasks_completed', 'inventory_counted', 'invoices_processed']" :key="key">
-                        <td class="text-center font-weight-black" :class="comparisonData.employee_a[key] > comparisonData.employee_b[key] ? 'text-success' : ''">
-                            {{ key === 'sales' ? formatCurrency(comparisonData.employee_a[key]) : formatNumber(comparisonData.employee_a[key]) }}
+                    <tr v-for="key in [
+                      { k: 'points', l: 'Puntos de Honor' },
+                      { k: 'sales', l: 'Ventas USD' },
+                      { k: 'units', l: 'Unidades Vendidas' },
+                      { k: 'strategic_units', l: 'Ventas Estratégicas' },
+                      { k: 'tasks_completed', l: 'Tareas Completadas' },
+                      { k: 'inventory_counted', l: 'Inventario Contado' },
+                      { k: 'invoices_processed', l: 'Facturas Cargadas' }
+                    ]" :key="key.k">
+                        <td class="text-center font-weight-black" :class="comparisonData.employee_a[key.k] > comparisonData.employee_b[key.k] ? 'text-success' : ''">
+                            {{ key.k === 'sales' ? formatCurrency(comparisonData.employee_a[key.k]) : formatNumber(comparisonData.employee_a[key.k]) }}
                         </td>
-                        <td class="text-center text-[10px] font-weight-bold uppercase opacity-60 bg-light-surface">{{ key.replace('_', ' ') }}</td>
-                        <td class="text-center font-weight-black" :class="comparisonData.employee_b[key] > comparisonData.employee_a[key] ? 'text-success' : ''">
-                            {{ key === 'sales' ? formatCurrency(comparisonData.employee_b[key]) : formatNumber(comparisonData.employee_b[key]) }}
+                        <td class="text-center text-[10px] font-weight-bold uppercase opacity-60 bg-light-surface">{{ key.l }}</td>
+                        <td class="text-center font-weight-black" :class="comparisonData.employee_b[key.k] > comparisonData.employee_a[key.k] ? 'text-success' : ''">
+                            {{ key.k === 'sales' ? formatCurrency(comparisonData.employee_b[key.k]) : formatNumber(comparisonData.employee_b[key.k]) }}
                         </td>
                     </tr>
                 </tbody>
@@ -264,7 +278,7 @@ const getStatusColor = (val, target) => {
     <!-- VISTA PRINCIPAL (RANKING & DRILL-DOWN) -->
     <div v-else-if="dashboardData" class="px-1">
       
-      <!-- Hall of Fame -->
+      <!-- Hall of Fame / Salón de la Fama -->
       <VRow class="mb-6" dense>
         <VCol cols="12" md="3" v-for="(hero, key) in dashboardData.hall_of_fame" :key="key">
           <VCard border class="rounded-lg shadow-sm h-100 bg-surface position-relative overflow-hidden">
@@ -276,7 +290,9 @@ const getStatusColor = (val, target) => {
                 <VImg :src="hero?.photo || 'https://ui-avatars.com/api/?name='+hero?.name" />
               </VAvatar>
               <div>
-                <p class="text-[10px] text-disabled mb-0 font-weight-bold uppercase">{{ key.replace(/_/g, ' ') }}</p>
+                <p class="text-[10px] text-disabled mb-0 font-weight-bold uppercase">
+                  {{ key === 'employee_of_the_month' ? 'Empleado del Mes' : (key === 'top_seller' ? 'Mejor Vendedor' : key.replace(/_/g, ' ')) }}
+                </p>
                 <h4 class="text-subtitle-1 font-weight-black mb-0">{{ hero?.name }} {{ hero?.last_name }}</h4>
                 <VChip size="x-small" color="primary" class="font-weight-black mt-1">{{ formatNumber(hero?.points) }} PTS</VChip>
               </div>
@@ -296,7 +312,7 @@ const getStatusColor = (val, target) => {
               <thead>
                 <tr>
                   <th class="text-center">#</th>
-                  <th>Empleado</th>
+                  <th>Vendedor</th>
                   <th class="text-right">Venta USD</th>
                   <th class="text-center">Pts</th>
                 </tr>
@@ -324,7 +340,7 @@ const getStatusColor = (val, target) => {
         <VCol cols="12" md="7">
             <div v-if="!employeeDetail" class="d-flex flex-column justify-center align-center h-100 border rounded-lg border-dashed opacity-40">
                 <VIcon icon="tabler-click" size="48" class="mb-2" />
-                <p class="font-weight-bold">Selecciona un empleado para ver su ficha detallada</p>
+                <p class="font-weight-bold">Selecciona un vendedor para ver su ficha detallada</p>
             </div>
             
             <div v-else>
@@ -332,8 +348,8 @@ const getStatusColor = (val, target) => {
                 <VRow class="mb-4" dense>
                     <VCol cols="12" sm="4" v-for="(kpi, idx) in [
                         { label: 'Cumplimiento Venta', val: employeeDetail.metrics.sales, target: 5000, icon: 'tabler-trending-up', unit: '$' },
-                        { label: 'Tareas Limpieza', val: employeeDetail.metrics.tasks_completed, target: 20, icon: 'tabler-sparkles', unit: '' },
-                        { label: 'Inventario Exacto', val: employeeDetail.metrics.inventory_counted, target: 100, icon: 'tabler-checkbox', unit: '' }
+                        { label: 'Tareas Realizadas', val: employeeDetail.metrics.tasks_completed, target: 20, icon: 'tabler-sparkles', unit: '' },
+                        { label: 'Inventario Auditado', val: employeeDetail.metrics.inventory_counted, target: 100, icon: 'tabler-checkbox', unit: '' }
                     ]" :key="idx">
                         <VCard border class="rounded-lg shadow-sm bg-surface">
                             <VCardText class="pa-4">
@@ -362,7 +378,7 @@ const getStatusColor = (val, target) => {
                 <VRow dense>
                     <VCol cols="12" sm="6">
                         <VCard class="rounded-lg border shadow-sm h-100">
-                             <VCardItem class="py-2 border-b bg-light"><VCardTitle class="text-super-xs font-weight-black uppercase">Eficacia Comercial</VCardTitle></VCardItem>
+                             <VCardItem class="py-2 border-b bg-light"><VCardTitle class="text-super-xs font-weight-black uppercase">Eficiencia Comercial</VCardTitle></VCardItem>
                              <VList density="compact">
                                 <VListItem>
                                     <template #prepend><VIcon icon="tabler-currency-dollar" color="success" size="18" /></template>
@@ -384,7 +400,7 @@ const getStatusColor = (val, target) => {
                     </VCol>
                     <VCol cols="12" sm="6">
                         <VCard class="rounded-lg border shadow-sm h-100">
-                             <VCardItem class="py-2 border-b bg-light"><VCardTitle class="text-super-xs font-weight-black uppercase">Riesgo & Operaciones</VCardTitle></VCardItem>
+                             <VCardItem class="py-2 border-b bg-light"><VCardTitle class="text-super-xs font-weight-black uppercase">Operaciones & Riesgo</VCardTitle></VCardItem>
                              <VList density="compact">
                                 <VListItem>
                                     <template #prepend><VIcon icon="tabler-alert-triangle" color="error" size="18" /></template>

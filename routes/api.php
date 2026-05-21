@@ -98,18 +98,16 @@ Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRat
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
 
-// TEMPORAL: Estado de Resultados público para debugging
-Route::prefix("finances")->group(function () {
-    // income statement (Estado de Resultados) - TEMPORALMENTE PÚBLICO
-    Route::get("/income-statement", [FinancialStatementController::class, "index"]);
-    Route::get("/income-statement/summary", [FinancialStatementController::class, "getSummary"]);
-    Route::get("/income-statement/details", [FinancialStatementController::class, "getDetails"]);
-    Route::post("/income-statement/reset", [FinancialStatementController::class, "reset"]);
-});
-
-
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
+    // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
+    Route::prefix("finances")->group(function () {
+        Route::get("/income-statement", [FinancialStatementController::class, "index"]);
+        Route::get("/income-statement/summary", [FinancialStatementController::class, "getSummary"]);
+        Route::get("/income-statement/details", [FinancialStatementController::class, "getDetails"]);
+        Route::post("/income-statement/reset", [FinancialStatementController::class, "reset"]);
+    });
+
     Route::get("/my-assigned-labs", function (Request $request) {
         return response()->json(
             \App\Models\Laboratory::whereHas('employees', function($q) use ($request) {
@@ -377,6 +375,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/analytics-data', [DashboardController::class, 'getAnalyticsData']);
         Route::get('/employee-sales-amount', [DashboardController::class, 'getEmployeeSalesByAmount']);
         Route::get('/employee-sales-units', [DashboardController::class, 'getEmployeeSalesByUnits']);
+        Route::get('/expiring-sold-products', [DashboardController::class, 'getSoldExpiringProducts']);
     });
 
     // Rutas de Trazabilidad

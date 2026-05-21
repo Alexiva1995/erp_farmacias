@@ -13,24 +13,27 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // Clientes Totales que han comprado alguna vez
+        // Clientes Totales que han comprado en el rango de fechas
         $totalCustomers = DB::table('orders')
             ->where('status', 'Completed')
+            ->whereBetween('order_date', [$startDate, $endDate])
             ->distinct('client_id')
             ->count('client_id');
 
-        // Clientes con más de una compra (Recompra)
+        // Clientes con más de una compra (Recompra) en el rango de fechas
         $repurchaseCount = DB::table('orders')
             ->where('status', 'Completed')
+            ->whereBetween('order_date', [$startDate, $endDate])
             ->select('client_id')
             ->groupBy('client_id')
             ->having(DB::raw('count(*)'), '>', 1)
             ->get()
             ->count();
 
-        // LTV Promedio
+        // LTV Promedio en el rango de fechas
         $totalRevenue = DB::table('orders')
             ->where('status', 'Completed')
+            ->whereBetween('order_date', [$startDate, $endDate])
             ->sum('total_amount_usd');
         
         $avgLtv = $totalCustomers > 0 ? $totalRevenue / $totalCustomers : 0;
@@ -83,9 +86,13 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
 
     public function getValueSegmentation(array $filters): array
     {
-        // Gasto total por cliente (Lifetime)
+        $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
+        $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+
+        // Gasto total por cliente en el periodo seleccionado
         $customers = DB::table('orders')
             ->where('status', 'Completed')
+            ->whereBetween('order_date', [$startDate, $endDate])
             ->select('client_id', DB::raw('SUM(total_amount_usd) as total_spent'))
             ->groupBy('client_id')
             ->orderByDesc('total_spent')
@@ -160,8 +167,8 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
     public function getRfmData(array $filters): array
     {
         return DB::table('orders')
-            ->where('status', 'Completed')
-            ->leftJoin('clients', 'clients.id', '=', 'orders.client_id')
+            ->where('orders.status', 'Completed')
+            ->join('clients', 'clients.id', '=', 'orders.client_id')
             ->select(
                 'clients.id',
                 'clients.name',

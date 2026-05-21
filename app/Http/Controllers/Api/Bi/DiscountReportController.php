@@ -34,7 +34,7 @@ class DiscountReportController extends Controller
     public function audit(Request $request)
     {
         try {
-            $filters = $request->only(['start_date', 'end_date', 'itemsPerPage', 'page']);
+            $filters = $request->only(['start_date', 'end_date', 'itemsPerPage', 'page', 'discount_type']);
             $data = $this->service->getAuditData($filters);
             
             return response()->json($data);

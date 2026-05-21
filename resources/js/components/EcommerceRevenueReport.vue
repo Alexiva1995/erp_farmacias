@@ -42,13 +42,7 @@ const series = computed(() => {
     ],
     line: [
       {
-        name: "Mes Anterior",
-        data: (monthlyData.length > 0 ? monthlyData.slice(0, -1) : []).map(
-          (item) => Math.round(item.net || 0),
-        ),
-      },
-      {
-        name: "Mes Actual",
+        name: "Ganancia Neta",
         data: monthlyData.map((item) => Math.round(item.net || 0)),
       },
     ],
@@ -56,12 +50,27 @@ const series = computed(() => {
 });
 
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("es-VE", {
+  return new Intl.NumberFormat("es-US", {
     style: "currency",
-    currency: "VES",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
+};
+
+const monthTranslations = {
+  "January": "Enero",
+  "February": "Febrero",
+  "March": "Marzo",
+  "April": "Abril",
+  "May": "Mayo",
+  "June": "Junio",
+  "July": "Julio",
+  "August": "Agosto",
+  "September": "Septiembre",
+  "October": "Octubre",
+  "November": "Noviembre",
+  "December": "Diciembre"
 };
 
 const chartOptions = computed(() => {
@@ -78,7 +87,7 @@ const chartOptions = computed(() => {
   )},${variableTheme["border-opacity"]})`;
 
   const categories = (revenueData.value?.monthly_data || []).map(
-    (item) => item.month_name || "",
+    (item) => monthTranslations[item.month_name] || item.month_name || "",
   );
 
   return {
@@ -92,6 +101,7 @@ const chartOptions = computed(() => {
       tooltip: {
         enabled: true,
         theme: "light",
+        x: { show: true },
         y: {
           formatter: (value) => formatCurrency(Math.abs(value)),
         },
@@ -193,11 +203,11 @@ const chartOptions = computed(() => {
       },
       stroke: {
         curve: "smooth",
-        dashArray: [5, 0],
-        width: [1, 2],
+        dashArray: [0],
+        width: [3],
       },
       legend: { show: false },
-      colors: [borderColor, currentTheme.primary],
+      colors: [currentTheme.primary],
       grid: {
         show: false,
         borderColor,
@@ -209,6 +219,7 @@ const chartOptions = computed(() => {
       },
       markers: { size: 0 },
       xaxis: {
+        categories: categories,
         labels: { show: false },
         axisTicks: { show: false },
         axisBorder: { show: false },
@@ -216,6 +227,7 @@ const chartOptions = computed(() => {
       yaxis: { show: false },
       tooltip: {
         enabled: true,
+        x: { show: true },
         y: {
           formatter: (value) => formatCurrency(value),
         },

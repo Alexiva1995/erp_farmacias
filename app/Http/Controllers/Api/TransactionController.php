@@ -58,6 +58,17 @@ class TransactionController extends Controller
         return ApiResponse::success($results);
     }
 
+    public function getIncomeSummary(Request $request)
+    {
+        $data = [
+            'start_date' => $request->start_date,
+            'end_date'   => $request->end_date,
+        ];
+
+        $results = $this->transaction->getIncomeSummary($data);
+        return ApiResponse::success($results);
+    }
+
     public function adjustBalance(AjusteBalanceRequest $request)
     {
         $this->transaction->adjustBalance($request->validated());

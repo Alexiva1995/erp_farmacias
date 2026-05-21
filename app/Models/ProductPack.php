@@ -32,11 +32,49 @@ class ProductPack extends Model
     protected $appends = ['products_with_quantity', 'is_available', 'products_count', 'sales_count'];
 
     /**
+     * Ciclo de vida del modelo Eloquent
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (ProductPack $productPack) {
+            if ($productPack->pack_config && is_array($productPack->pack_config)) {
+                $syncData = [];
+                foreach ($productPack->pack_config as $productId => $config) {
+                    $quantity = 1;
+                    $discountPercentage = 0.00;
+                    $salePrice = 0.00;
+
+                    if (is_array($config)) {
+                        $quantity = (int)($config['quantity'] ?? 1);
+                        $discountPercentage = (float)($config['discount_percentage'] ?? 0.00);
+                        $salePrice = (float)($config['sale_price'] ?? 0.00);
+                    } else {
+                        $quantity = (int)$config;
+                        $product = Product::find($productId);
+                        if ($product) {
+                            $salePrice = (float)$product->sale_price;
+                        }
+                    }
+
+                    $syncData[$productId] = [
+                        'quantity' => $quantity,
+                        'discount_percentage' => $discountPercentage,
+                        'sale_price' => $salePrice,
+                    ];
+                }
+                $productPack->products()->sync($syncData);
+            } else {
+                $productPack->products()->detach();
+            }
+        });
+    }
+
+    /**
      * Relación con los productos del pack
      */
     public function products(): BelongsToMany
     {
-        return $this->belongsToMany(Product::class, 'product_pack_items')
+        return $this->belongsToMany(Product::class, 'product_pack_items', 'pack_id', 'product_id')
             ->withPivot('quantity', 'discount_percentage', 'sale_price')
             ->withTimestamps();
     }

@@ -35,6 +35,7 @@ const dashboardData = ref(JSON.parse(JSON.stringify(defaultDashboardData)));
 const auditData = ref({ data: [], total: 0 });
 const auditPage = ref(1);
 const auditItemsPerPage = ref(10);
+const selectedDiscountType = ref('Todos');
 
 const startDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
 const endDate = ref(new Date().toISOString().split('T')[0]);
@@ -65,7 +66,8 @@ const fetchAudit = async () => {
       start_date: startDate.value,
       end_date: endDate.value,
       page: auditPage.value,
-      itemsPerPage: auditItemsPerPage.value
+      itemsPerPage: auditItemsPerPage.value,
+      discount_type: selectedDiscountType.value
     };
     const { data } = await axios.get('/bi/discounts/audit', { params });
     if (data) {
@@ -85,6 +87,11 @@ onMounted(() => {
 
 watch([startDate, endDate], () => {
   fetchDashboard();
+  auditPage.value = 1;
+  fetchAudit();
+});
+
+watch(selectedDiscountType, () => {
   auditPage.value = 1;
   fetchAudit();
 });
@@ -241,7 +248,7 @@ const getDiscountTypeColor = (type) => {
                 <VIcon icon="tabler-chart-pie" size="26" />
               </VAvatar>
               <div>
-                <div class="text-h5 font-weight-bold text-primary">{{ dashboardData.kpis.offer_penetration.toFixed(1) }}%</div>
+                <div class="text-h5 font-weight-bold text-primary">{{ Number(dashboardData.kpis.offer_penetration || 0).toFixed(1) }}%</div>
                 <div class="text-caption text-medium-emphasis uppercase font-weight-black">Penetración de Ofertas (%)</div>
               </div>
             </div>
@@ -255,7 +262,7 @@ const getDiscountTypeColor = (type) => {
                 <VIcon icon="tabler-percentage" size="26" />
               </VAvatar>
               <div>
-                <div class="text-h5 font-weight-bold text-info">{{ dashboardData.kpis.avg_global_discount.toFixed(1) }}%</div>
+                <div class="text-h5 font-weight-bold text-info">{{ Number(dashboardData.kpis.avg_global_discount || 0).toFixed(1) }}%</div>
                 <div class="text-caption text-medium-emphasis uppercase font-weight-black">Descuento Promedio (%)</div>
               </div>
             </div>
@@ -319,7 +326,7 @@ const getDiscountTypeColor = (type) => {
                 <VIcon icon="tabler-medical-cross" size="40" />
               </VAvatar>
               <div class="text-h3 font-weight-black text-primary mb-2">
-                {{ dashboardData.highlights.medical_recipe_conversion.toFixed(1) }}%
+                {{ Number(dashboardData.highlights.medical_recipe_conversion || 0).toFixed(1) }}%
               </div>
               <div class="text-h6 font-weight-bold mb-1">Conversión Médico/Récipe</div>
               <p class="text-body-2 text-medium-emphasis">Participación de prescripciones en la venta total con descuento.</p>
@@ -404,8 +411,17 @@ const getDiscountTypeColor = (type) => {
 
       <!-- AUDITORÍA DE TRANSACCIONES -->
       <VCard border class="rounded-lg shadow-sm">
-        <VCardTitle class="pa-4 border-b d-flex align-center">
+        <VCardTitle class="pa-4 border-b d-flex align-center gap-4 flex-wrap">
           <span class="text-h6 font-weight-bold">Auditoría Transaccional de Descuentos</span>
+          <div style="width: 220px;">
+            <AppSelect
+              v-model="selectedDiscountType"
+              :items="['Todos', 'Pack', 'Individual', 'Categoría', 'Empresa', 'Médico', 'Récipe', 'Caducidad']"
+              label="Tipo de Descuento"
+              density="compact"
+              hide-details
+            />
+          </div>
           <VSpacer />
           <VBtn color="primary" variant="flat" size="small" class="rounded-pill">
             <VIcon icon="tabler-file-export" class="me-2" /> Exportar CSV

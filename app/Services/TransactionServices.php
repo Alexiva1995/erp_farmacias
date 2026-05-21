@@ -32,6 +32,11 @@ class TransactionServices implements Transaction
     return $this->transactionRepository->getWallets($data);
   }
 
+  public function getIncomeSummary(array $data): array
+  {
+    return $this->transactionRepository->getIncomeSummaryByMethod($data);
+  }
+
   public function adjustBalance(array $data): void
   {
     $this->transactionRepository->adjustBalance($data);

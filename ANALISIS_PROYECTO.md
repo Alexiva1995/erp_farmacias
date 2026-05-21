@@ -192,7 +192,7 @@ Con 77 servicios y 98 modelos, es probable que haya:
 ### Prioridad ALTA (Crítica) 🔴
 
 1. **SEGURIDAD:**
-   - [ ] Mover rutas financieras a middleware de autenticación
+   - [x] Mover rutas financieras a middleware de autenticación (¡CORREGIDO!)
    - [ ] Revisar todas las rutas públicas
    - [ ] Implementar rate limiting en APIs públicas
    - [ ] Validar permisos/autorizaciones en todas las rutas sensibles

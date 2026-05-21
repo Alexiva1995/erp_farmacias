@@ -119,6 +119,7 @@ const formatDate = (dateString) => {
 };
 
 const processedInvoices = computed(() => {
+  if (!props.invoices) return [];
   return props.invoices.map((invoice) => ({ ...invoice }));
 });
 </script>
@@ -132,7 +133,7 @@ const processedInvoices = computed(() => {
       :page="props.page"
       :headers="headers"
       :items="processedInvoices"
-      :items-length="props.totalInvoices"
+      :items-length="props.totalInvoices || 0"
       :loading="props.loading"
       hover
       density="compact"
@@ -371,7 +372,7 @@ const processedInvoices = computed(() => {
         <div class="mt-2 d-flex justify-center">
           <VPagination
             v-model="props.page"
-            :length="Math.ceil(props.totalInvoices / props.itemsPerPage)"
+            :length="Math.ceil((props.totalInvoices || 0) / props.itemsPerPage)"
             :total-visible="3"
             density="compact"
             @update:model-value="(val) => emit('update:options', { page: val, itemsPerPage: props.itemsPerPage })"

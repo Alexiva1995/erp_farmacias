@@ -18,6 +18,16 @@ const formatNumber = (value) => {
   return new Intl.NumberFormat('en-US').format(value);
 };
 
+const translateSegment = (key) => {
+  const translations = {
+    platinum: 'Platino',
+    gold: 'Oro',
+    silver: 'Plata',
+    bronze: 'Bronce'
+  };
+  return translations[key] || key;
+};
+
 // --- CARGA DE DATOS ---
 const fetchAnalytics = async () => {
   loading.value = true;
@@ -72,7 +82,7 @@ const acquisitionChartOptions = computed(() => ({
 
 // 2. Frecuencia de Compra (Donut)
 const frequencyDonutOptions = computed(() => ({
-  labels: Object.keys(analyticsData.value?.frequency || {}).map(f => `${f} Órdenes`),
+  labels: Object.keys(analyticsData.value?.frequency || {}).map(f => `${f} ${f === '1' ? 'Orden' : 'Órdenes'}`),
   colors: ['#7367F0', '#28C76F', '#FF9F43', '#EA5455', '#00CFE8'],
   plotOptions: {
     pie: {
@@ -104,16 +114,22 @@ const valueTreemapOptions = computed(() => ({
       distributed: true,
       enableShades: false
     }
+  },
+  tooltip: {
+    theme: 'dark',
+    y: {
+      formatter: (value) => formatCurrency(value)
+    }
   }
 }));
 
 const valueTreemapSeries = computed(() => [
   {
     data: [
-      { x: 'Platinum (5%)', y: analyticsData.value?.segmentation?.platinum?.revenue || 0 },
-      { x: 'Gold (15%)', y: analyticsData.value?.segmentation?.gold?.revenue || 0 },
-      { x: 'Silver (30%)', y: analyticsData.value?.segmentation?.silver?.revenue || 0 },
-      { x: 'Bronze (50%)', y: analyticsData.value?.segmentation?.bronze?.revenue || 0 },
+      { x: 'Platino (5%)', y: Number((analyticsData.value?.segmentation?.platinum?.revenue || 0).toFixed(2)) },
+      { x: 'Oro (15%)', y: Number((analyticsData.value?.segmentation?.gold?.revenue || 0).toFixed(2)) },
+      { x: 'Plata (30%)', y: Number((analyticsData.value?.segmentation?.silver?.revenue || 0).toFixed(2)) },
+      { x: 'Bronce (50%)', y: Number((analyticsData.value?.segmentation?.bronze?.revenue || 0).toFixed(2)) },
     ]
   }
 ]);
@@ -143,8 +159,8 @@ const getTextColor = (percentage) => {
               <VIcon icon="tabler-users-group" size="24" />
             </VAvatar>
             <div>
-              <h2 class="text-h6 font-weight-black mb-0">Lifecycle & Portfolio Health</h2>
-              <p class="text-[11px] text-disabled mb-0 uppercase font-weight-bold">Análisis de Cartera de Clientes</p>
+              <h2 class="text-h6 font-weight-black mb-0">Análisis de Cartera de Clientes</h2>
+              <p class="text-[11px] text-disabled mb-0 uppercase font-weight-bold">Inteligencia de Clientes y Recurrencia</p>
             </div>
           </div>
 
@@ -174,8 +190,8 @@ const getTextColor = (percentage) => {
         <VCol cols="12" md="3" sm="6" v-for="(kpi, idx) in [
           { title: 'Tasa de Retención (CRR)', value: analyticsData.kpis.crr + '%', icon: 'tabler-user-check', color: 'primary', desc: 'Fidelidad del periodo' },
           { title: 'Tasa de Recompra', value: analyticsData.kpis.repurchase_rate.toFixed(1) + '%', icon: 'tabler-repeat', color: 'success', desc: 'Clientes recurrentes' },
-          { title: 'Churn Rate (Abandono)', value: analyticsData.kpis.churn_rate.toFixed(1) + '%', icon: 'tabler-user-minus', color: 'error', desc: 'Inactivos > 90 días' },
-          { title: 'Avg Lifetime Value (LTV)', value: formatCurrency(analyticsData.kpis.avg_ltv), icon: 'tabler-coin', color: 'warning', desc: 'Valor vida promedio' }
+          { title: 'Tasa de Abandono (Churn)', value: analyticsData.kpis.churn_rate.toFixed(1) + '%', icon: 'tabler-user-minus', color: 'error', desc: 'Inactivos > 90 días' },
+          { title: 'LTV Promedio (Valor de Vida)', value: formatCurrency(analyticsData.kpis.avg_ltv), icon: 'tabler-coin', color: 'warning', desc: 'Valor de vida promedio del cliente' }
         ]" :key="idx">
           <VCard border class="rounded-lg shadow-sm h-100 kpi-card">
             <VCardText class="pa-4 d-flex align-center">
@@ -239,7 +255,7 @@ const getTextColor = (percentage) => {
                   <tr>
                     <th class="cohort-header">Cohorte (Mes)</th>
                     <th class="cohort-header text-center">N</th>
-                    <th v-for="i in 12" :key="i" class="cohort-header text-center">M{{ i-1 }}</th>
+                    <th v-for="i in 12" :key="i" class="cohort-header text-center">Mes {{ i-1 }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -280,7 +296,7 @@ const getTextColor = (percentage) => {
                     <div class="d-flex align-center mb-2 pa-2 rounded border border-opacity-10">
                       <div class="segment-indicator me-2" :class="key"></div>
                       <div>
-                        <div class="text-[10px] font-weight-black uppercase opacity-60">{{ key }}</div>
+                        <div class="text-[10px] font-weight-black uppercase opacity-60">{{ translateSegment(key) }}</div>
                         <div class="text-subtitle-2 font-weight-black">{{ formatCurrency(val.revenue) }}</div>
                         <div class="text-[9px] text-disabled">{{ val.count }} clientes | Prom: {{ formatCurrency(val.avg_per_client) }}</div>
                       </div>

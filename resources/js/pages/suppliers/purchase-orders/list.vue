@@ -4,8 +4,10 @@ import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
+const authStore = useAuthStore();
 const searchQuery = ref("");
 const startDate = ref("");
 const endDate = ref("");
@@ -56,16 +58,7 @@ const stats = ref({
 });
 
 const isManagementDialogVisible = ref(false);
-const isAdmin = ref(false);
-
-const checkAdmin = async () => {
-  try {
-    const { data } = await axios.get("/auth/user");
-    isAdmin.value = data.role === "admin";
-  } catch (error) {
-    isAdmin.value = false;
-  }
-};
+const isAdmin = computed(() => authStore.isAdmin);
 
 const fetchSuppliers = async () => {
   try {
@@ -139,7 +132,6 @@ const handleDeleteOrder = async (id) => {
 };
 
 onMounted(() => {
-  checkAdmin();
   fetchSuppliers();
   fetchPurchaseOrders();
   fetchStats();
@@ -291,7 +283,7 @@ const handleClearFilters = () => {
         density="comfortable"
       >
         <VTab
-          v-for="tab in (isAdmin ? tabItems : tabItems.filter(t => t.value === 0))"
+          v-for="tab in (isAdmin ? tabItems : tabItems.filter(t => t.value === 0 || t.value === 1))"
           :key="tab.value"
           :value="tab.value"
           class="font-weight-black text-xs py-4"

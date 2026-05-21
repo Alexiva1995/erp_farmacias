@@ -4,6 +4,7 @@ namespace App\Services\Expirations;
 
 use App\Http\Resources\ExpirationResource;
 use App\Models\ProductLot;
+use App\Models\InventoryMovement;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -131,5 +132,28 @@ class ExpirationQueryService
             'total_items' => $logs->count(),
             'total_quantity' => $logs->sum('expired_quantity'),
         ];
+    }
+
+    public function getSoldExpiringLotsThisMonth()
+    {
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+
+        return InventoryMovement::with([
+            'product' => function ($q) {
+                $q->withTrashed()->with('laboratory');
+            },
+            'user'
+        ])
+        ->where('movement_type', 'sale')
+        ->whereBetween('movement_date', [$startOfMonth, $endOfMonth])
+        ->whereExists(function ($query) use ($startOfMonth, $endOfMonth) {
+            $query->select(DB::raw(1))
+                ->from('product_lots')
+                ->whereColumn('product_lots.product_id', 'inventory_movements.product_id')
+                ->whereBetween('product_lots.expiration_date', [$startOfMonth, $endOfMonth]);
+        })
+        ->orderBy('movement_date', 'desc')
+        ->get();
     }
 }

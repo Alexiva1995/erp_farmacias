@@ -6,6 +6,7 @@ import { formatCurrency } from '@/utils/currencyFormatter'
 
 const dashboardData = ref(null)
 const loading = ref(false)
+const chartKey = ref(0)
 
 const filters = ref({
   startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10),
@@ -22,6 +23,7 @@ const fetchDashboardData = async () => {
       }
     })
     dashboardData.value = response.data
+    chartKey.value++
   } catch (error) {
     console.error('Error fetching inventory dashboard:', error)
   } finally {
@@ -37,6 +39,19 @@ const handleClearFilters = () => {
 
 onMounted(() => {
   fetchDashboardData()
+})
+
+const hasMissingData = computed(() => {
+  return (dashboardData.value?.deviations?.top_missing?.categories?.length || 0) > 0
+})
+
+const hasSurplusData = computed(() => {
+  return (dashboardData.value?.deviations?.top_surplus?.categories?.length || 0) > 0
+})
+
+const hasCategoryData = computed(() => {
+  const series = dashboardData.value?.deviations?.categories?.series || []
+  return series.length > 0 && series.reduce((a, b) => a + b, 0) > 0
 })
 
 // --- OPCIONES DE GRÁFICOS ---
@@ -191,7 +206,7 @@ const topSurplusOptions = computed(() => ({
     <div v-else-if="dashboardData">
       <!-- Row 1: KPI Cards (5 en línea en desktop, 2 en móvil) -->
       <VRow class="mb-6" dense>
-        <VCol cols="6" md="2.4" v-for="(kpi, idx) in [
+        <VCol cols="6" sm="4" md v-for="(kpi, idx) in [
           { 
             title: 'ERI (Precisión)', 
             value: (dashboardData.kpis.eri || 0) + '%', 
@@ -255,6 +270,7 @@ const topSurplusOptions = computed(() => ({
             </VCardItem>
             <VCardText>
               <VueApexCharts
+                :key="`trend-${chartKey}`"
                 height="300"
                 :options="trendOptions"
                 :series="dashboardData.trends.series"
@@ -272,6 +288,7 @@ const topSurplusOptions = computed(() => ({
             </VCardItem>
             <VCardText>
               <VueApexCharts
+                :key="`impact-${chartKey}`"
                 height="300"
                 :options="impactOptions"
                 :series="dashboardData.trends.financial_series"
@@ -293,10 +310,16 @@ const topSurplusOptions = computed(() => ({
             </VCardItem>
             <VCardText>
               <VueApexCharts
+                v-if="hasMissingData"
+                :key="`missing-${chartKey}`"
                 height="350"
                 :options="topMissingOptions"
                 :series="dashboardData.deviations.top_missing.series"
               />
+              <div v-else class="d-flex flex-column align-center justify-center py-12 text-center h-100 min-height-300">
+                <VIcon icon="tabler-circle-check" size="48" color="success" class="mb-2 opacity-50" />
+                <span class="text-caption font-weight-medium text-disabled px-4">No hay unidades faltantes en este periodo</span>
+              </div>
             </VCardText>
           </VCard>
         </VCol>
@@ -310,10 +333,16 @@ const topSurplusOptions = computed(() => ({
             </VCardItem>
             <VCardText>
               <VueApexCharts
+                v-if="hasSurplusData"
+                :key="`surplus-${chartKey}`"
                 height="350"
                 :options="topSurplusOptions"
                 :series="dashboardData.deviations.top_surplus.series"
               />
+              <div v-else class="d-flex flex-column align-center justify-center py-12 text-center h-100 min-height-300">
+                <VIcon icon="tabler-circle-check" size="48" color="success" class="mb-2 opacity-50" />
+                <span class="text-caption font-weight-medium text-disabled px-4">No hay unidades sobrantes en este periodo</span>
+              </div>
             </VCardText>
           </VCard>
         </VCol>
@@ -327,11 +356,17 @@ const topSurplusOptions = computed(() => ({
             </VCardItem>
             <VCardText class="d-flex justify-center align-center" style="height: 350px;">
               <VueApexCharts
+                v-if="hasCategoryData"
+                :key="`category-${chartKey}`"
                 width="100%"
                 type="donut"
                 :options="categoryOptions"
                 :series="dashboardData.deviations.categories.series"
               />
+              <div v-else class="d-flex flex-column align-center justify-center text-center w-full">
+                <VIcon icon="tabler-discount-check" size="48" color="primary" class="mb-2 opacity-50" />
+                <span class="text-caption font-weight-medium text-disabled px-4">Sin desviaciones registradas por categoría</span>
+              </div>
             </VCardText>
           </VCard>
         </VCol>

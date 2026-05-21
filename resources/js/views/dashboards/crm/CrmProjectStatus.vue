@@ -112,11 +112,12 @@ onMounted(() => {
 
       <!-- List of Payments -->
       <div v-else>
-        <VList class="card-list mb-4">
+        <VList class="card-list mb-2">
           <VListItem
-            v-for="payment in sortedPendingPayments.slice(0, 10)"
-            :key="payment.supplier_id + '_' + payment.payment_date"
+            v-for="(payment, index) in sortedPendingPayments.slice(0, 9)"
+            :key="`${payment.supplier_id}_${payment.payment_date}_${index}`"
             class="payment-item"
+            :to="'/finances/pending-payments?supplierId=' + payment.supplier_id"
           >
             <template #prepend>
               <VAvatar
@@ -162,20 +163,6 @@ onMounted(() => {
             </template>
           </VListItem>
         </VList>
-
-        <!-- View All link -->
-        <div class="d-flex justify-center pt-2">
-          <VBtn
-            variant="tonal"
-            color="primary"
-            size="small"
-            to="/finances/pending-payments"
-            append-icon="tabler-arrow-right"
-            class="px-4 font-weight-bold"
-          >
-            Ver todos los pagos pendientes
-          </VBtn>
-        </div>
       </div>
     </VCardText>
   </VCard>

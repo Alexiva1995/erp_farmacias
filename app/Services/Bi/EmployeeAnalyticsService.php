@@ -26,7 +26,10 @@ class EmployeeAnalyticsService
         $hallOfFame = [
             'employee_of_the_month' => $processedData->sortByDesc('points')->first(),
             'top_seller' => $processedData->sortByDesc('sales')->first(),
-            'operational_star' => $processedData->sortByDesc('tasks_completed')->first(),
+            'operational_star' => $processedData->sortBy(function($item) {
+                // Prioridad: 1. Tareas completadas, 2. Facturas procesadas
+                return ($item['tasks_completed'] * 1000) + $item['invoices_processed'];
+            }, SORT_REGULAR, true)->first(),
             'inventory_expert' => $processedData->sortByDesc('inventory_counted')->first(),
         ];
 

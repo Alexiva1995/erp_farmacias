@@ -4,16 +4,13 @@ $app = require_once 'bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\User;
+$service = app(\App\Services\Order\OrderQueryService::class);
+$year = now()->year;
 
-$u81 = User::find(81);
-$u93 = User::find(93);
+echo "=== EMPLOYEE SALES BY AMOUNT ===\n";
+print_r($service->getEmployeeSalesByAmount($year)->toArray());
 
-echo "USER 81: " . json_encode($u81 ? $u81->toArray() : 'NOT FOUND') . "\n";
-echo "USER 93: " . json_encode($u93 ? $u93->toArray() : 'NOT FOUND') . "\n";
+echo "\n=== EMPLOYEE SALES BY UNITS ===\n";
+print_r($service->getEmployeeSalesByUnits($year)->toArray());
 
-echo "\nTOTAL USERS COUNT: " . User::count() . "\n";
-echo "FIRST 5 USERS:\n";
-foreach (User::take(5)->get() as $u) {
-    echo "ID: " . $u->id . " | Name: " . $u->name . "\n";
-}
+

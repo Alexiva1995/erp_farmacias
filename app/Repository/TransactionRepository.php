@@ -311,6 +311,82 @@ class TransactionRepository
         ];
     }
 
+    public function getIncomeSummaryByMethod(array $data): array
+    {
+        $startDate = $data['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
+        $endDate   = $data['end_date']   ?? now()->endOfMonth()->format('Y-m-d');
+
+        $currentRates = \App\Models\ExchangeRate::pluck('rate', 'currency_code')->toArray();
+        $bsRate = (float) ($currentRates['BS'] ?? ($currentRates['EUR'] ?? 60.0));
+        $copRate = (float) ($currentRates['COP'] ?? 4000.0);
+
+        $closings = \App\Models\CashClosing::whereBetween('closing_date', [$startDate, $endDate])
+            ->where('status', 'closed')
+            ->get();
+
+        $metrics = [
+            'bs_mobile' => ['currency' => 'BS', 'type' => 'MOBILE'],
+            'bs_transfer' => ['currency' => 'BS', 'type' => 'TRANSFER'],
+            'bs_card_debito' => ['currency' => 'BS', 'type' => 'CARD'],
+            'bs_card_credit' => ['currency' => 'BS', 'type' => 'CARD'],
+            'bs_cash' => ['currency' => 'BS', 'type' => 'CASH'],
+            'cop_cash' => ['currency' => 'COP', 'type' => 'CASH'],
+            'cop_transfer' => ['currency' => 'COP', 'type' => 'TRANSFER'],
+            'cop_spare' => ['currency' => 'COP', 'type' => 'CASH'],
+            'usd_cash' => ['currency' => 'USD', 'type' => 'CASH'],
+            'usd_binance' => ['currency' => 'USD', 'type' => 'BINANCE'],
+            'usd_paypal' => ['currency' => 'USD', 'type' => 'PAYPAL'],
+            'usd_credit' => ['currency' => 'USD', 'type' => 'CREDIT'],
+            'usd_transfer' => ['currency' => 'USD', 'type' => 'TRANSFER'],
+            'bs_cash_payment_credit' => ['currency' => 'BS', 'type' => 'CASH'],
+            'bs_card_payment_credit' => ['currency' => 'BS', 'type' => 'CARD'],
+            'bs_transfer_payment_credit' => ['currency' => 'BS', 'type' => 'TRANSFER'],
+            'bs_mobile_payment_credit' => ['currency' => 'BS', 'type' => 'MOBILE'],
+            'cop_cash_payment_credit' => ['currency' => 'COP', 'type' => 'CASH'],
+            'cop_transfer_payment_credit' => ['currency' => 'COP', 'type' => 'TRANSFER'],
+            'usd_transfer_payment_credit' => ['currency' => 'USD', 'type' => 'TRANSFER'],
+            'usd_cash_payment_credit' => ['currency' => 'USD', 'type' => 'CASH'],
+            'usd_paypal_payment_credit' => ['currency' => 'USD', 'type' => 'PAYPAL'],
+            'usd_binance_payment_credit' => ['currency' => 'USD', 'type' => 'BINANCE'],
+        ];
+
+        $breakdown = [];
+
+        foreach ($closings as $c) {
+            foreach ($metrics as $field => $info) {
+                $amount = (float) $c->$field;
+                if ($amount > 0) {
+                    $key = $info['type'] . '_' . $info['currency'];
+                    if (!isset($breakdown[$key])) {
+                        $enum = TransactionType::tryFrom($info['type']);
+                        $breakdown[$key] = [
+                            'method' => $enum?->label() ?? $info['type'],
+                            'type' => $info['type'],
+                            'currency' => $info['currency'],
+                            'amount' => 0
+                        ];
+                    }
+                    
+                    $rate = 1.0;
+                    if ($info['currency'] === 'BS') $rate = $bsRate;
+                    elseif ($info['currency'] === 'COP') $rate = $copRate;
+                    
+                    if ($rate <= 0) $rate = 1.0;
+                    $breakdown[$key]['amount'] += ($amount / $rate);
+                }
+            }
+        }
+
+        return collect($breakdown)
+            ->map(function($item) {
+                $item['amount'] = round($item['amount'], 2);
+                return $item;
+            })
+            ->sortByDesc('amount')
+            ->values()
+            ->toArray();
+    }
+
     public function create(CreateTransactionData $data): ?Transaction
     {
         $record = new Transaction();

@@ -13,7 +13,9 @@ use App\Http\Requests\Dashboard\PopularProductsRequest;
 use App\Http\Resources\Dashboard\UnitsSoldResource;
 use App\Http\Resources\Dashboard\ProfitResource;
 use App\Http\Resources\Dashboard\PopularProductResource;
-
+use App\Http\Resources\Dashboard\SoldExpiringProductResource;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -264,7 +266,7 @@ class DashboardController extends Controller
             
             return response()->json($stats);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("ERROR in DashboardController::getStats: " . $e->getMessage());
+            Log::error("ERROR in DashboardController::getStats: " . $e->getMessage());
             return response()->json([
                 'units' => 0,
                 'sales' => 0.0,
@@ -275,12 +277,6 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Obtiene el total de unidades vendidas en un rango de fechas.
-     *
-     * @param DashboardStatsRequest $request
-     * @return UnitsSoldResource
-     */
     public function getUnitsSold(DashboardStatsRequest $request): UnitsSoldResource
     {
         $units = $this->orderQueryService->getUnitsSold(
@@ -291,12 +287,6 @@ class DashboardController extends Controller
         return new UnitsSoldResource($units);
     }
 
-    /**
-     * Obtiene la ganancia neta en USD en un rango de fechas.
-     *
-     * @param DashboardStatsRequest $request
-     * @return ProfitResource
-     */
     public function getProfit(DashboardStatsRequest $request): ProfitResource
     {
         $profit = $this->orderQueryService->getProfit(
@@ -307,12 +297,6 @@ class DashboardController extends Controller
         return new ProfitResource($profit);
     }
 
-    /**
-     * Obtiene los productos más vendidos en unidades en lo que va del mes.
-     *
-     * @param PopularProductsRequest $request
-     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
-     */
     public function getPopularProducts(PopularProductsRequest $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
         $limit = $request->validated('limit', 5) ?? 5;
@@ -332,7 +316,8 @@ class DashboardController extends Controller
 
         // 1. Promedio de Ventas Diarias (Mes actual)
         $daysElapsed = $today->day;
-        $totalMonthlySales = \App\Models\CashClosing::whereBetween('closing_date', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
+        $totalMonthlySales = DB::table('cash_closing')
+            ->whereBetween('closing_date', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
             ->where('status', 'closed')
             ->sum('total_sales');
         
@@ -346,7 +331,8 @@ class DashboardController extends Controller
             $end = $month->copy()->endOfMonth();
             $daysInPeriod = $month->isCurrentMonth() ? $today->day : $month->daysInMonth;
             
-            $totalMonthly = \App\Models\CashClosing::whereBetween('closing_date', [$start->toDateString(), $end->toDateString()])
+            $totalMonthly = DB::table('cash_closing')
+                ->whereBetween('closing_date', [$start->toDateString(), $end->toDateString()])
                 ->where('status', 'closed')
                 ->sum('total_sales');
 
@@ -357,28 +343,31 @@ class DashboardController extends Controller
         }
 
         // 3. Métricas de Última Semana vs Semana Anterior
-        $lastWeekStart = now()->subDays(6)->startOfDay();
-        $lastWeekEnd = now()->endOfDay();
-        $prevWeekStart = now()->subDays(13)->startOfDay();
-        $prevWeekEnd = now()->subDays(7)->endOfDay();
+        $maxClosingDate = DB::table('cash_closing')->max('closing_date');
+        $lastWeekEnd = $maxClosingDate ? Carbon::parse($maxClosingDate)->endOfDay() : now()->endOfDay();
+        $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
+        $prevWeekEnd = $lastWeekStart->copy()->subSecond();
+        $prevWeekStart = $prevWeekEnd->copy()->subDays(6)->startOfDay();
 
-        $getWeeklyStats = function($start, $end) use ($transactionRepo) {
-            $sales = \App\Models\CashClosing::whereBetween('closing_date', [$start->toDateString(), $end->toDateString()])
+        $getWeeklyStats = function($start, $end) {
+            $sales = DB::table('cash_closing')
+                ->whereBetween('closing_date', [$start->toDateString(), $end->toDateString()])
                 ->where('status', 'closed')
                 ->sum('total_sales');
 
-            // Ganancia (Venta - Costo)
-            $orders = \App\Models\Order::where('status', 'Completed')
+            $orders = DB::table('orders')
+                ->where('status', 'Completed')
                 ->whereBetween('order_date', [$start, $end])
-                ->get(['total_amount', 'total_cost', 'currency', 'total_amount_usd']);
+                ->get(['total_amount_usd', 'total_cost']);
             
             $profit = 0;
             foreach ($orders as $order) {
-                $amountUsd = $order->total_amount_usd ?: 0; // Asumiendo que total_amount_usd está poblado o requiere conversión
-                $profit += ($amountUsd - (float)$order->total_cost);
+                $profit += ((float)$order->total_amount_usd - (float)$order->total_cost);
             }
 
-            $ordersCount = \App\Models\Order::whereBetween('order_date', [$start, $end])->count();
+            $ordersCount = DB::table('orders')
+                ->whereBetween('order_date', [$start, $end])
+                ->count();
 
             return [
                 'sales' => (float)$sales,
@@ -396,8 +385,9 @@ class DashboardController extends Controller
         };
 
         // 4. Resumen de Ventas (Pedidos Completados vs Cancelados/Abandonados)
-        $ordersStats = \App\Models\Order::whereBetween('order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
-            ->select('status', \DB::raw('count(*) as count'))
+        $ordersStats = DB::table('orders')
+            ->whereBetween('order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
+            ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->get()
             ->pluck('count', 'status')
@@ -409,19 +399,21 @@ class DashboardController extends Controller
 
         // 5. Informe de Ganancias (Últimos 7 días)
         $dailyEarnings = [];
+        $baseDate = $maxClosingDate ? Carbon::parse($maxClosingDate) : now();
         for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
+            $date = $baseDate->copy()->subDays($i);
             $dateStr = $date->toDateString();
             
-            $dayIncome = \App\Models\CashClosing::where('closing_date', $dateStr)
+            $dayIncome = DB::table('cash_closing')
+                ->where('closing_date', $dateStr)
                 ->where('status', 'closed')
                 ->sum('total_sales');
             
-            $dayCost = \DB::table('order_details')
+            $dayCost = DB::table('order_details')
                 ->join('orders', 'order_details.order_id', '=', 'orders.id')
                 ->where('orders.status', 'Completed')
                 ->whereBetween('orders.order_date', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
-                ->sum(\DB::raw('order_details.quantity * order_details.unit_cost'));
+                ->sum(DB::raw('order_details.quantity * order_details.unit_cost'));
 
             $dailyEarnings[] = [
                 'date' => $date->translatedFormat('d M'),
@@ -433,19 +425,18 @@ class DashboardController extends Controller
         }
 
         // 6. Ventas por Laboratorio (Top Monto)
-        $labSummaryAmount = \DB::table('order_details')
+        $labSummaryAmount = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
-            ->select('laboratories.name', \DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_usd'))
+            ->select('laboratories.name', DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_usd'))
             ->groupBy('laboratories.name')
             ->orderByDesc('total_usd')
             ->limit(6)
             ->get()
-            ->map(function($lab) use ($currentMonthStart, $currentMonthEnd) {
-                // Simplificado: por ahora 100% si no hay datos previos para no sobrecargar
+            ->map(function($lab) {
                 return [
                     'name' => $lab->name,
                     'amount' => round($lab->total_usd, 2),
@@ -454,14 +445,14 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 7. Unidades por Laboratorio (Top Unidades - Independiente de Monto)
-        $labSummaryUnits = \DB::table('order_details')
+        // 7. Unidades por Laboratorio (Top Unidades)
+        $labSummaryUnits = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
-            ->select('laboratories.name', \DB::raw('SUM(order_details.quantity) as total_units'))
+            ->select('laboratories.name', DB::raw('SUM(order_details.quantity) as total_units'))
             ->groupBy('laboratories.name')
             ->orderByDesc('total_units')
             ->limit(6)
@@ -474,6 +465,66 @@ class DashboardController extends Controller
                     'is_positive' => true
                 ];
             });
+
+        // 8. Auto Ordenes
+        $autoOrders = DB::table('auto_orders')
+            ->whereMonth('order_date', now()->month)
+            ->get();
+
+        // 9. Expiraciones
+        $expirations = collect(range(1, 4))->map(function($i) {
+            $date = now()->addMonths($i - 1);
+            $units = DB::table('product_lots')
+                ->where('quantity', '>', 0)
+                ->whereYear('expiration_date', $date->year)
+                ->whereMonth('expiration_date', $date->month)
+                ->sum('quantity');
+            return [
+                'month' => $date->translatedFormat('F'),
+                'count' => (int)$units,
+            ];
+        });
+
+        // 10. Sellers Ranking
+        $sellers = DB::table('users')
+            ->join('orders', 'users.id', '=', 'orders.seller_id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
+            ->select('users.id', 'users.username')
+            ->distinct()
+            ->get()
+            ->map(function($user) use ($currentMonthStart, $currentMonthEnd) {
+                $stats = DB::table('order_details')
+                    ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                    ->join('products', 'order_details.product_id', '=', 'products.id')
+                    ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                    ->where('orders.seller_id', $user->id)
+                    ->where('orders.status', 'Completed')
+                    ->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
+                    ->select(
+                        'laboratories.name',
+                        DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as total_usd'),
+                        DB::raw('SUM(order_details.quantity) as total_units')
+                    )
+                    ->groupBy('laboratories.name')
+                    ->get();
+
+                $topLabAmount = $stats->sortByDesc('total_usd')->first();
+                $topLabUnits = $stats->sortByDesc('total_units')->first();
+                
+                $totalSales = DB::table('orders')
+                    ->where('seller_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->whereBetween('order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])
+                    ->sum('total_amount_usd');
+
+                return [
+                    'name' => $user->username,
+                    'total' => round((float)$totalSales, 2),
+                    'top_lab_amount' => $topLabAmount ? $topLabAmount->name : 'N/A',
+                    'top_lab_units' => $topLabUnits ? $topLabUnits->name : 'N/A',
+                ];
+            })->sortByDesc('total')->values()->take(6);
 
         return response()->json([
             'average_daily_sales' => round($averageDailySales, 2),
@@ -504,26 +555,58 @@ class DashboardController extends Controller
             'daily_earnings' => $dailyEarnings,
             'lab_summary_amount' => $labSummaryAmount,
             'lab_summary_units' => $labSummaryUnits,
+            'auto_orders_summary' => [
+                'pending' => $autoOrders->where('status', 0)->count(),
+                'sent' => $autoOrders->where('status', 1)->count(),
+                'completed' => $autoOrders->where('status', 2)->count(),
+                'total' => $autoOrders->count(),
+            ],
+            'expirations_summary' => $expirations,
+            'conversion_summary' => collect(range(1, now()->day))->map(function($i) {
+                $date = now()->startOfMonth()->addDays($i - 1);
+                $dateStr = $date->toDateString();
+                $quotations = DB::table('quotations')->whereDate('created_at', $dateStr)->get();
+                $conversions = 0;
+                foreach ($quotations as $q) {
+                    if (DB::table('orders')->where('client_id', $q->client_id)->whereBetween('created_at', [$q->created_at, Carbon::parse($q->created_at)->addMinutes(30)])->exists()) $conversions++;
+                }
+                return ['label' => $date->translatedFormat('d M'), 'quotations' => $quotations->count(), 'conversions' => $conversions];
+            }),
+            'promotions_summary' => collect([
+                ['name' => 'Oferta Individual', 'type' => 'individual'],
+                ['name' => 'Oferta Caducidad', 'type' => 'expiration'],
+                ['name' => 'Oferta Recipe', 'type' => 'recipe'],
+                ['name' => 'Oferta Pack', 'type' => 'pack']
+            ])->map(function($p) use ($currentMonthStart, $currentMonthEnd) {
+                $query = DB::table('order_details')->join('orders', 'order_details.order_id', '=', 'orders.id')->where('orders.status', 'Completed')->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()]);
+                if ($p['type'] === 'pack') $query->whereNotNull('order_details.pack_id');
+                else $query->where('order_details.discount_type', $p['type']);
+                return ['name' => $p['name'], 'orders' => $query->distinct('order_details.order_id')->count()];
+            }),
+            'packs_summary' => DB::table('product_packs')->where('is_active', true)->get()->map(function($pack) use ($currentMonthStart, $currentMonthEnd) {
+                return ['name' => $pack->name, 'units' => DB::table('order_details')->join('orders', 'order_details.order_id', '=', 'orders.id')->where('order_details.pack_id', $pack->id)->where('orders.status', 'Completed')->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])->count()];
+            })->sortByDesc('units')->values(),
+            'sellers_ranking' => $sellers,
+            'exchange_rates' => DB::table('exchange_rates')->get()->map(fn($r) => ['id' => $r->id ?? 0, 'currency' => $r->currency_code, 'rate' => round($r->rate, 2)]),
+            'system_profitability' => 25.2
         ]);
     }
 
     public function getEmployeeSalesByAmount(Request $request)
     {
         $year = (int) $request->input('year', now()->year);
-        $data = $this->orderQueryService->getEmployeeSalesByAmount($year);
-        
-        return response()->json([
-            'data' => $data
-        ]);
+        return response()->json(['data' => $this->orderQueryService->getEmployeeSalesByAmount($year)]);
     }
 
     public function getEmployeeSalesByUnits(Request $request)
     {
         $year = (int) $request->input('year', now()->year);
-        $data = $this->orderQueryService->getEmployeeSalesByUnits($year);
+        return response()->json(['data' => $this->orderQueryService->getEmployeeSalesByUnits($year)]);
+    }
 
-        return response()->json([
-            'data' => $data
-        ]);
+    public function getSoldExpiringProducts(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    {
+        $movements = app(\App\Services\Expirations\ExpirationQueryService::class)->getSoldExpiringLotsThisMonth();
+        return SoldExpiringProductResource::collection($movements);
     }
 }

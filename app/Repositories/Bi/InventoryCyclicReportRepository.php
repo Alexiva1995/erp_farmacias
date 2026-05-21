@@ -17,7 +17,7 @@ class InventoryCyclicReportRepository
 
         $query = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
-            ->where('product_counts.status', 'approved')
+            ->whereIn('product_counts.status', ['approved', 'pending'])
             ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
         $totalCounted = (clone $query)->count();
@@ -50,7 +50,7 @@ class InventoryCyclicReportRepository
     public function getTrends(array $filters): array
     {
         $results = DB::table('product_counts')
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'pending'])
             ->select(
                 DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
                 DB::raw('SUM(CASE WHEN discrepancy < 0 THEN ABS(discrepancy) ELSE 0 END) as missing'),
@@ -74,7 +74,7 @@ class InventoryCyclicReportRepository
 
         $baseQuery = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
-            ->where('product_counts.status', 'approved')
+            ->whereIn('product_counts.status', ['approved', 'pending'])
             ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 'products.name',
@@ -111,7 +111,7 @@ class InventoryCyclicReportRepository
         return DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
             ->join('categories', 'categories.id', '=', 'products.category_id')
-            ->where('product_counts.status', 'approved')
+            ->whereIn('product_counts.status', ['approved', 'pending'])
             ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 'categories.name',
@@ -139,7 +139,7 @@ class InventoryCyclicReportRepository
         $counts = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
             ->join('categories', 'categories.id', '=', 'products.category_id')
-            ->where('product_counts.status', 'approved')
+            ->whereIn('product_counts.status', ['approved', 'pending'])
             ->where('discrepancy', '!=', 0)
             ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
