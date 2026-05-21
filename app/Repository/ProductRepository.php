@@ -209,11 +209,6 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("products.is_colombian_origin", "=", 1);
-            } else {
-                $consulta->where(function ($q) {
-                    $q->where("products.is_colombian_origin", "=", 0)
-                      ->orWhereNull("products.is_colombian_origin");
-                });
             }
         }
 
@@ -526,11 +521,6 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("is_colombian_origin", "=", 1);
-            } else {
-                $consulta->where(function ($q) {
-                    $q->where("is_colombian_origin", "=", 0)
-                      ->orWhereNull("is_colombian_origin");
-                });
             }
         }
 
@@ -818,11 +808,6 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("is_colombian_origin", "=", 1);
-            } else {
-                $consulta->where(function ($q) {
-                    $q->where("is_colombian_origin", "=", 0)
-                      ->orWhereNull("is_colombian_origin");
-                });
             }
         }
 
@@ -1620,11 +1605,6 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $query->where("is_colombian_origin", "=", 1);
-            } else {
-                $query->where(function ($q) {
-                    $q->where("is_colombian_origin", "=", 0)
-                      ->orWhereNull("is_colombian_origin");
-                });
             }
         }
 
