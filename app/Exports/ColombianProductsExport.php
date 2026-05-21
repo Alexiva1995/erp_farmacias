@@ -16,27 +16,18 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class ColombianProductsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithTitle
 {
-    /**
-     * Colección de productos ya procesados (con solicitar calculado).
-     * Agrupados por laboratorio para el reporte.
-     */
     protected Collection $rows;
 
     public function __construct(Collection $products)
     {
-        // Agrupar por laboratorio y sumar la cantidad a solicitar por laboratorio
-        $grouped = $products
-            ->filter(fn($p) => (float)($p->solicitar ?? 0) > 0) // Solo los que necesitan pedido
-            ->groupBy(fn($p) => $p->laboratory->name ?? 'Sin Laboratorio')
-            ->map(fn($items, $labName) => [
-                'laboratorio'    => $labName,
-                'total_solicitar' => $items->sum(fn($p) => (int) ceil(max(0, (float)($p->solicitar ?? 0)))),
-                'productos'      => $items->count(),
+        // Filtrar solo los que necesitan pedido y ordenar por laboratorio luego por nombre
+        $this->rows = $products
+            ->filter(fn($p) => (float)($p->solicitar ?? 0) > 0)
+            ->sortBy([
+                fn($a, $b) => strcmp($a->laboratory->name ?? '', $b->laboratory->name ?? ''),
+                fn($a, $b) => strcmp($a->name ?? '', $b->name ?? ''),
             ])
-            ->sortBy('laboratorio')
             ->values();
-
-        $this->rows = $grouped;
     }
 
     public function title(): string
@@ -53,28 +44,29 @@ class ColombianProductsExport implements FromCollection, WithHeadings, WithMappi
     {
         return [
             '#',
+            'Producto',
             'Laboratorio',
             'Cantidad a Solicitar',
-            'N° Productos',
         ];
     }
 
-    public function map($row): array
+    public function map($product): array
     {
         static $index = 0;
         $index++;
 
+        $solicitar = (int) ceil(max(0, (float)($product->solicitar ?? 0)));
+
         return [
             $index,
-            $row['laboratorio'],
-            $row['total_solicitar'],
-            $row['productos'],
+            $product->name ?? 'N/A',
+            $product->laboratory->name ?? 'Sin Laboratorio',
+            $solicitar,
         ];
     }
 
     public function styles(Worksheet $sheet): array
     {
-        // Fila de totales al final (después de los datos)
         $lastRow = $this->rows->count() + 1;
 
         return [
@@ -100,24 +92,20 @@ class ColombianProductsExport implements FromCollection, WithHeadings, WithMappi
                     ],
                 ],
             ],
-
             // Columna # centrada
             'A:A' => [
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ],
-
-            // Columna laboratorio
-            'B:B' => [
+            // Producto y Laboratorio alineados a la izquierda
+            'B:C' => [
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
             ],
-
-            // Columnas numéricas alineadas a la derecha
-            'C:D' => [
+            // Cantidad centrada y en negrita
+            'D:D' => [
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                 'font'      => ['bold' => true],
             ],
-
-            // Filas alternas: resaltar filas impares
+            // Alineación vertical para todos los datos
             "A2:D{$lastRow}" => [
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ],
