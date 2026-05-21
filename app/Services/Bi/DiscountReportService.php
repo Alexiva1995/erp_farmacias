@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\BI;
+namespace App\Services\Bi;
 
 use App\Repositories\DiscountReportRepository;
 

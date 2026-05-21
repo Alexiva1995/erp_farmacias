@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Api\BI;
+namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
-use App\Services\BI\DiscountReportService;
+use App\Services\Bi\DiscountReportService;
 use Illuminate\Http\Request;
 use App\Helpers\ApiResponse;
 
