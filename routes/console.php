@@ -27,14 +27,40 @@ Schedule::command('cleaning:generate-executions --days=0')
     });
 
 Schedule::call(function () {
-    $overdueCount = \App\Models\CleaningActivityExecution::where('status', 'Pendiente')
+    $overdueExecutions = \App\Models\CleaningActivityExecution::whereIn('status', ['Pendiente', 'Vencida'])
         ->where('due_date', '<', now()->startOfDay())
-        ->update([
-            'status' => 'Vencida',
+        ->with('cleaningActivity')
+        ->get();
+
+    $renewedCount = 0;
+    foreach ($overdueExecutions as $execution) {
+        $activity = $execution->cleaningActivity;
+        if (!$activity) continue;
+
+        $newScheduled = now()->startOfDay();
+        $dueDate = $newScheduled->copy();
+        
+        switch ($activity->frequency) {
+            case 'Diaria': $dueDate->endOfDay(); break;
+            case 'Semanal': $dueDate->endOfWeek(); break;
+            case 'Bimestral': $dueDate->addMonths(2)->endOfMonth(); break;
+            case 'Mensual': $dueDate->endOfMonth(); break;
+            case 'Trimestral': $dueDate->addMonths(3)->endOfMonth(); break;
+            case 'Semestral': $dueDate->addMonths(6)->endOfMonth(); break;
+            case 'Anual': $dueDate->addYear()->endOfMonth(); break;
+            default: $dueDate->addDays(7)->endOfDay(); break;
+        }
+
+        $execution->update([
+            'scheduled_date' => $newScheduled->format('Y-m-d'),
+            'due_date' => $dueDate->format('Y-m-d'),
+            'status' => 'Pendiente',
             'updated_at' => now()
         ]);
+        $renewedCount++;
+    }
 
-    \Log::info("Ejecuciones vencidas actualizadas: {$overdueCount}");
+    \Log::info("Ejecuciones renovadas automáticamente: {$renewedCount}");
 })
     ->hourly()
     ->name('mark-overdue-executions')

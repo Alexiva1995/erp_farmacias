@@ -2,6 +2,9 @@
 // Filtros para laboratorios asignados a empleados de productividad
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   searchQuery:        String,
@@ -35,7 +38,7 @@ const hasAdvancedFilters = computed(() => !!props.selectedLaboratory);
     :has-advanced-filters="hasAdvancedFilters"
     :show-sort="true"
     :sort-options="sortOptions"
-    :show-add="true"
+    :show-add="can('manage', 'admin')"
     add-button-text="Asignar Laboratorio"
     search-placeholder="Buscar por nombre de empleado..."
     @update:search="emit('update:searchQuery', $event)"

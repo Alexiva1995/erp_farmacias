@@ -35,7 +35,7 @@ class ExpenseResource extends JsonResource
             'user' => $this->whenLoaded('user', function () {
                 return [
                     'id' => $this->user->id,
-                    'name' => $this->user->name,
+                    'username' => $this->user->username,
                 ];
             }),
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),

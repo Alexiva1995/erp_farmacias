@@ -24,6 +24,36 @@ class AutoOrderServices implements AutoOrder
     {
         $today = new DateTime("now");
         $order["order_date"] = $today->format("Y-m-d");
+
+        $existingOrder = ModelsAutoOrder::where('supplier_id', $order['supplier_id'])
+            ->where('status', \App\Enums\AutoOrderStatus::PENDING)
+            ->orderByDesc("created_at")
+            ->first();
+
+        if ($existingOrder) {
+            foreach ($order["details"] as $detail) {
+                $productId = $detail["product_suppliers_id"];
+                $quantity = $detail["quantity"];
+                $subtotal = $detail["subtotal"] ?? ($quantity * $detail["unit_cost"]);
+
+                $existingDetail = $existingOrder->details()->where('product_suppliers_id', $productId)->first();
+                
+                if ($existingDetail) {
+                    $existingDetail->increment('quantity', $quantity);
+                    $existingDetail->increment('subtotal', $subtotal);
+                } else {
+                    $detail["order_id"] = $existingOrder->id;
+                    $this->autoOrderDetailsRepository->create($detail);
+                    $existingOrder->increment("total_items", 1);
+                }
+                
+                $existingOrder->increment("total_quantity", $quantity);
+                $existingOrder->increment("total_amount", $subtotal);
+            }
+            $existingOrder->details;
+            return $existingOrder;
+        }
+
         $autoOrder = $this->autoOrdersRepository->create($order);
         foreach ($order["details"] as $key => $detail) {
             # code...

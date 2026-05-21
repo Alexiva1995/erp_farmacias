@@ -2,6 +2,9 @@
 // Filtros para actividades de limpieza por empleado (supervisor)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   searchQuery:    String,
@@ -39,7 +42,7 @@ const hasAdvancedFilters = computed(() => !!props.selectedStatus);
     :has-advanced-filters="hasAdvancedFilters"
     :show-sort="true"
     :sort-options="sortOptions"
-    :show-add="true"
+    :show-add="can('manage', 'admin')"
     add-button-text="Asignar Actividades"
     search-placeholder="Buscar empleado por nombre o ID..."
     class="py-1"

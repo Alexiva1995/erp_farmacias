@@ -1,5 +1,8 @@
 <script setup>
 import { useDisplay } from "vuetify";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   employeeProducts: { type: Array, required: true },
@@ -46,7 +49,7 @@ const getAvatarColor = (id) => {
       v-if="!mobile"
       :items-per-page="props.itemsPerPage"
       :page="props.page"
-      :headers="headers"
+      :headers="headers.filter(h => h.key !== 'actions' || can('manage', 'admin'))"
       :items="props.employeeProducts"
       :items-length="props.totalRecords"
       :loading="props.loading"
@@ -110,7 +113,7 @@ const getAvatarColor = (id) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex gap-1 justify-center">
+        <div class="d-flex gap-1 justify-center" v-if="can('manage', 'admin')">
           <IconBtn
             size="small"
             color="warning"
@@ -193,7 +196,7 @@ const getAvatarColor = (id) => {
                     </span>
                   </div>
                 </div>
-                <div class="d-flex gap-1">
+                <div class="d-flex gap-1" v-if="can('manage', 'admin')">
                   <IconBtn
                     size="small"
                     color="warning"

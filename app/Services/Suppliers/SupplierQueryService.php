@@ -737,7 +737,7 @@ class SupplierQueryService
         }
 
         $order = AutoOrder::where('supplier_id', $product->supplier_id)
-            ->whereDate("created_at", now()->today())
+            ->where('status', \App\Enums\AutoOrderStatus::PENDING)
             ->orderByDesc("created_at")
             ->first();
 
@@ -754,9 +754,15 @@ class SupplierQueryService
 
 
         if (isset($order)) {
-            $order->details()->create($detailPayload);
+            $existingDetail = $order->details()->where('product_suppliers_id', $productId)->first();
+            if ($existingDetail) {
+                $existingDetail->increment('quantity', $quantity);
+                $existingDetail->increment('subtotal', $subtotal);
+            } else {
+                $order->details()->create($detailPayload);
+                $order->increment("total_items", 1);
+            }
 
-            $order->increment("total_items", 1);
             $order->increment("total_quantity", $quantity);
             $order->increment("total_amount", $subtotal);
         } else {
@@ -830,10 +836,11 @@ class SupplierQueryService
           }*/
 
         if ($mainProduct) {
-            $mainProduct->update([
-                'is_ordered' => false,
-                'ignore_until' => now()->addDays(7)
-            ]);
+            $updateData = ['is_ordered' => false];
+            if (empty($product->barcode_match) || strlen(trim($product->barcode_match)) < 6) {
+                $updateData['ignore_until'] = now()->addDays(7);
+            }
+            $mainProduct->update($updateData);
         }
         $product->decrement("quantity", $quantity);
 

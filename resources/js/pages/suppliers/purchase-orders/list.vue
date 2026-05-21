@@ -185,7 +185,7 @@ const handleClearFilters = () => {
       />
 
       <!-- KPIs Estilo SupplierStatsCards -->
-      <VRow class="mt-1 mb-5 ma-0 mx-n1" dense>
+      <VRow class="mt-1 mb-5 ma-0 mx-n1" dense v-if="isAdmin">
         <VCol
           v-for="(kpi, index) in [
             {
@@ -291,7 +291,7 @@ const handleClearFilters = () => {
         density="comfortable"
       >
         <VTab
-          v-for="tab in tabItems"
+          v-for="tab in (isAdmin ? tabItems : tabItems.filter(t => t.value === 0))"
           :key="tab.value"
           :value="tab.value"
           class="font-weight-black text-xs py-4"

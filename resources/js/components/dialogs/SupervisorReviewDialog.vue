@@ -107,8 +107,7 @@ const getPhotoUrl = (photoPath) => {
   const cleanPath = photoPath.startsWith("/")
     ? photoPath.substring(1)
     : photoPath;
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-  return `${baseUrl}/storage/${cleanPath}`;
+  return `/storage/${cleanPath}`;
 };
 
 const formatDate = (date) => {

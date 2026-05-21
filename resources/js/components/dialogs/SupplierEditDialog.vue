@@ -1,5 +1,8 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useAuthStore } from "@/stores/auth";
+
+const authStore = useAuthStore();
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -259,6 +262,7 @@ watch(
                           prepend-inner-icon="tabler-user"
                           :error-messages="formErrors.name"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                       <VCol cols="12" md="6">
@@ -269,6 +273,7 @@ watch(
                           prepend-inner-icon="tabler-building"
                           :error-messages="formErrors.social_reason"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                       <VCol cols="12" md="5">
@@ -279,6 +284,7 @@ watch(
                           prepend-inner-icon="tabler-id-badge-2"
                           :error-messages="formErrors.rif"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                       <VCol cols="12" md="7">
@@ -289,6 +295,7 @@ watch(
                           prepend-inner-icon="tabler-map-pin"
                           :error-messages="formErrors.address"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                     </VRow>
@@ -311,6 +318,7 @@ watch(
                           prepend-inner-icon="tabler-phone"
                           :error-messages="formErrors.sales_phone"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                       <VCol cols="12" md="6">
@@ -322,6 +330,7 @@ watch(
                           prepend-inner-icon="tabler-phone-incoming"
                           :error-messages="formErrors.collections_phone"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
 
@@ -337,6 +346,7 @@ watch(
                           prepend-inner-icon="tabler-calendar-stats"
                           :error-messages="formErrors.payment_due_type"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                       <VCol cols="12" md="6">
@@ -352,6 +362,7 @@ watch(
                           prepend-inner-icon="tabler-timeline"
                           :error-messages="formErrors.invoice_date_reference"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                         <AppTextField
                           v-else-if="formData.payment_due_type === 'custom'"
@@ -361,6 +372,7 @@ watch(
                           prepend-inner-icon="tabler-numbers"
                           :error-messages="formErrors.custom_due_days"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                         <AppSelect
                           v-else-if="formData.payment_due_type === 'early_payment'"
@@ -373,6 +385,7 @@ watch(
                           prepend-inner-icon="tabler-clock-play"
                           :error-messages="formErrors.payment_due_reference"
                           class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
                         />
                       </VCol>
                     </VRow>

@@ -5,6 +5,9 @@ import FiltrosGastos from "@/components/FiltrosGastos.vue";
 import LoaderComponent from "@/components/LoaderComponent.vue";
 import { useExpenses } from "@/composables/useExpenses";
 import { onMounted } from "vue";
+import { useAuthStore } from "@/stores/auth";
+
+const authStore = useAuthStore();
 
 const {
   isDeductible,
@@ -123,7 +126,7 @@ const kpis = [
       </div>
 
       <!-- === KPIS RÁPIDOS === -->
-      <VRow class="ma-0 mx-n1 mb-5" dense>
+      <VRow v-if="authStore.isAdmin" class="ma-0 mx-n1 mb-5" dense>
         <VCol v-for="kpi in kpis" :key="kpi.key" cols="12" sm="4" class="pa-1">
           <VCard
             class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"

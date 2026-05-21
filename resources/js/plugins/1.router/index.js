@@ -129,8 +129,18 @@ router.beforeEach(async (to, from, next) => {
     }
     
     if (to.path === '/login' && isAuthenticated) {
-      console.log('[ROUTER] Redirigiendo a invoices')
-      return safeNext({ path: '/invoice/invoices' })
+      console.log('[ROUTER] Redirigiendo según rol')
+      if (authStore.isAdmin) {
+        return safeNext({ path: '/' })
+      } else {
+        return safeNext({ path: '/tpv/orderUser' })
+      }
+    }
+    
+    if (to.path === '/' && isAuthenticated) {
+      if (!authStore.isAdmin) {
+        return safeNext({ path: '/tpv/orderUser' })
+      }
     }
     
     if ((to.path.startsWith('/finances/pending-payments') || to.path.startsWith('/finances/cashout')) && authStore.isVendedor) {

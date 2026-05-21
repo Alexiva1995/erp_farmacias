@@ -369,7 +369,16 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
         Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']);
         Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
+        Route::get('/stats', [DashboardController::class, 'getStats']);
+        Route::get('/units-sold', [DashboardController::class, 'getUnitsSold']);
+        Route::get('/profit', [DashboardController::class, 'getProfit']);
+        Route::get('/client-stats', [DashboardController::class, 'getClientStats']);
+        Route::get('/popular-products', [DashboardController::class, 'getPopularProducts']);
+        Route::get('/analytics-data', [DashboardController::class, 'getAnalyticsData']);
+        Route::get('/employee-sales-amount', [DashboardController::class, 'getEmployeeSalesByAmount']);
+        Route::get('/employee-sales-units', [DashboardController::class, 'getEmployeeSalesByUnits']);
     });
+
     // Rutas de Trazabilidad
     Route::prefix("sales/report")->controller(TraceabilityController::class)->group(function () {
         Route::get("/", "index")->name("api.sales.report.index");
@@ -708,6 +717,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('', [TransactionController::class, 'getAll']);
             Route::get('/stats', [TransactionController::class, 'getByType']);
             Route::get('/wallets', [TransactionController::class, 'getWallets']);
+            Route::get('/income-summary', [TransactionController::class, 'getIncomeSummary']);
             Route::post('/adjustment', [TransactionController::class, 'adjustBalance']);
         });
 

@@ -26,6 +26,8 @@ export default [
       {
         title: 'Tareas',
         to: 'productivity-employee-task',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
       },
       {
         title: 'Revision de Actividades de Limpieza',

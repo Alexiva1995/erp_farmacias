@@ -326,9 +326,13 @@ class EmployeeCleaningActivityQueryService
             throw new \Exception('No tienes un perfil de empleado asociado');
         }
 
-        // Obtener ejecuciones del empleado con la actividad relacionada
+        // Obtener solo la ejecución más reciente por actividad
+        $subQuery = \App\Models\CleaningActivityExecution::where('employee_id', $employee->id)
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('cleaning_activity_id');
+
         $query = \App\Models\CleaningActivityExecution::with('cleaningActivity')
-            ->where('employee_id', $employee->id);
+            ->whereIn('id', $subQuery);
 
         // Búsqueda por nombre de actividad
         if (!empty($data['q'])) {
@@ -404,8 +408,7 @@ class EmployeeCleaningActivityQueryService
         $query = \App\Models\CleaningActivityExecution::with(['employee', 'cleaningActivity', 'approvedBy'])
             ->whereHas('employee', function($q) {
                 $q->where('is_active', true);
-            })
-            ->whereIn('status', ['Procesada', 'Completada', 'Vencida', 'Cancelada']); // Mostrar procesadas y completadas
+            });
 
         // Búsqueda por nombre de empleado o actividad
         if (!empty($data['q'])) {
@@ -425,6 +428,8 @@ class EmployeeCleaningActivityQueryService
         // Filtro por estado
         if (!empty($data['status'])) {
             $query->where('status', $data['status']);
+        } else {
+            $query->whereIn('status', ['Procesada', 'Vencida']);
         }
 
         // Filtro por empleado

@@ -742,6 +742,7 @@ const closingDaily = async (daily) => {
       />
 
       <MonthlyCashClosingTable
+        v-if="authStore.isAdmin"
         :monthlyCash="monthlyCash"
         :loading="loadingMonthlyCash"
         :total-monthlyCash="totalMonthlyCash"

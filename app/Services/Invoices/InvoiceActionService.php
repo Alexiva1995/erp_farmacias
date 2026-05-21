@@ -25,7 +25,9 @@ class InvoiceActionService
         return DB::transaction(function () use ($data) {
             $totalUSD = $this->calculateTotalUSD($data);
             $autoOrder = AutoOrder::where('supplier_id', $data['supplier_id'])
-                ->where('status', 0)
+                ->whereIn('status', [0, 1])
+                ->orderBy('status', 'desc') // Priorizar las que ya están ENVIADAS (1) sobre las PENDIENTES (0)
+                ->orderByDesc('created_at')
                 ->select(['id'])
                 ->first();
 

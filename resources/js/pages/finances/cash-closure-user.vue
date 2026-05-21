@@ -484,7 +484,7 @@ const isSpecialTaxpayer = computed(() => {
           No hay datos de cierre de caja disponibles.
         </VAlert>
 
-        <template v-if="cashClosure && !cashClosure.blind_cash_closure && Object.keys(cashClosure).length > 0">
+        <template v-if="cashClosure && Object.keys(cashClosure).length > 0">
           <!-- Filtros Colapsables -->
           <div>
             <UserCashFilters
@@ -503,7 +503,7 @@ const isSpecialTaxpayer = computed(() => {
           <!-- Tablas de Historial y Órdenes -->
           <VRow class="ma-0 mx-n2">
             <!-- Histórico de Cierre -->
-            <VCol cols="12" md="4" class="pa-2">
+            <VCol v-if="!cashClosure.blind_cash_closure" cols="12" md="4" class="pa-2">
               <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
                 <VCardText class="pa-0">
                   <div class="px-6 py-4 border-b d-flex align-center gap-2">
@@ -533,7 +533,7 @@ const isSpecialTaxpayer = computed(() => {
             </VCol>
 
             <!-- Lista de Órdenes -->
-            <VCol cols="12" md="8" class="pa-2">
+            <VCol cols="12" :md="cashClosure.blind_cash_closure ? 12 : 8" class="pa-2">
               <VCard class="rounded-lg border shadow-sm h-100 bg-surface">
                 <VCardText class="pa-0">
                   <div class="px-6 py-4 border-b d-flex align-center gap-2">
@@ -555,6 +555,7 @@ const isSpecialTaxpayer = computed(() => {
                     :total-orders="totalOrders"
                     :items-per-page="itemsPerPageOrders"
                     :page="pageOrders"
+                    :is-blind="cashClosure && cashClosure.blind_cash_closure"
                     @update:options="updateTableOptionsOrders"
                     @view-order="handleViewOrder"
                     @cancelar-order="cancelarOrder"
@@ -588,6 +589,7 @@ const isSpecialTaxpayer = computed(() => {
       :credit="creditForPrint"
       @close="handleCloseViewModal"
       :is-special-taxpayer="isSpecialTaxpayer"
+      :is-blind="cashClosure && cashClosure.blind_cash_closure"
     />
   </div>
 

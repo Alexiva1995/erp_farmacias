@@ -156,7 +156,7 @@ class CreateExpenseRequest extends FormRequest
             "is_deductible" => $this->is_deductible,
             "iva" => $this->iva,
             "expense_date" => $this->expense_date,
-            "user_id" => $this->user_id,
+            "user_id" => auth()->id(),
             "account" => $this->count,
             "type_of_expense" => Expense::TYPE_OF_EXPENSE_NORMAL,
             "amount_bs" => $amountBs,

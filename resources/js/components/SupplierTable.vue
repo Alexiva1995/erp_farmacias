@@ -1,4 +1,7 @@
 <script setup>
+import { useAuthStore } from "@/stores/auth";
+import { computed } from "vue";
+const authStore = useAuthStore();
 const props = defineProps({
   suppliers: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -165,7 +168,7 @@ const headers = [
                   <VListItemTitle>Editar Datos</VListItemTitle>
                 </VListItem>
 
-                <VListItem @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
+                <VListItem v-if="authStore.isAdmin" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
                   <VListItemTitle>Configurar Conexión</VListItemTitle>
                 </VListItem>
 
@@ -173,17 +176,17 @@ const headers = [
                   <VListItemTitle>Sincronizar</VListItemTitle>
                 </VListItem>
 
-                <VListItem @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
+                <VListItem v-if="authStore.isAdmin" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
                   <VListItemTitle>Configuración Comercial</VListItemTitle>
                 </VListItem>
 
-                <VListItem @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
+                <VListItem v-if="authStore.isAdmin" @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
                    <VListItemTitle>Facturas Pendientes</VListItemTitle>
                 </VListItem>
 
-                <VDivider />
+                <VDivider v-if="authStore.isAdmin" />
 
-                <VListItem base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
+                <VListItem v-if="authStore.isAdmin" base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
                   <VListItemTitle>Eliminar</VListItemTitle>
                 </VListItem>
               </VList>
@@ -285,6 +288,7 @@ const headers = [
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
+                  v-if="authStore.isAdmin"
                   icon="tabler-plug-connected"
                   variant="tonal"
                   color="warning"
@@ -300,6 +304,7 @@ const headers = [
                   @click="emit('check-supplier-api', item)"
                 />
                 <VBtn
+                    v-if="authStore.isAdmin"
                     icon="tabler-settings-dollar"
                     variant="tonal"
                     color="primary"
@@ -307,6 +312,7 @@ const headers = [
                     @click="emit('commercial-panel', item)"
                 />
                 <VBtn
+                  v-if="authStore.isAdmin"
                   icon="tabler-credit-card-pay"
                   variant="tonal"
                   color="secondary"
@@ -314,6 +320,7 @@ const headers = [
                   @click="emit('supplier-pending-invoices', item)"
                 />
                 <VBtn
+                  v-if="authStore.isAdmin"
                   icon="tabler-trash"
                   variant="tonal"
                   color="error"

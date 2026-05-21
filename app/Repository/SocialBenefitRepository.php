@@ -210,21 +210,21 @@ class SocialBenefitRepository
     // Obtener datos de renuncia si existen
     $resignation = $employee->resignation;
 
-    // Prioridad para Fecha de Ingreso: Override > Renuncia > Sistema
-    $hireDate = isset($overrides['hire_date']) && !empty($overrides['hire_date']) 
-      ? $this->parseDate($overrides['hire_date']) 
-      : ($resignation?->start_date ?? $employee->created_at);
-
-    // Calcular años de antigüedad usando Carbon
-    $activeYears = $this->calculateActiveYears($hireDate);
-    
     // Prioridad para Fecha de Egreso/Cálculos: Override > Renuncia (effective_date) > Hoy
     $resignationDateStr = isset($overrides['resignation_date']) && !empty($overrides['resignation_date'])
       ? $this->parseDate($overrides['resignation_date'])->format('Y-m-d')
       : ($resignation?->effective_date?->format('Y-m-d') ?? now()->format('Y-m-d'));
     
-    $currentDate = $resignationDateStr; 
+    // Prioridad para Fecha de Ingreso: Override > Renuncia > Sistema
+    $hireDate = isset($overrides['hire_date']) && !empty($overrides['hire_date']) 
+      ? $this->parseDate($overrides['hire_date']) 
+      : ($resignation?->start_date ?? $employee->created_at);
+
+    $currentDate = $resignationDateStr;
     $hireDateForSql = $hireDate->format('Y-m-d');
+
+    // Calcular años de antigüedad usando las fechas correctas
+    $activeYears = $this->getDetailedSeniorityYears($hireDate, $currentDate);
 
     $settlement = Employee::query()
       ->select([
@@ -260,7 +260,7 @@ class SocialBenefitRepository
     // $activeYears = (int) $settlement?->active_years ?? 1;
 
     // Calcular salario promedio usando los últimos 6 salarios en Bolívares
-    $averageSalaryData = $this->calculateAverageSalaryForBenefits($employee);
+    $averageSalaryData = $this->calculateAverageSalaryForBenefits($employee, $currentDate);
     
     // Si se proporciona un salario base manual en USD, sobrescribir
     if (isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0) {
@@ -335,7 +335,7 @@ class SocialBenefitRepository
     // NUEVAS FÓRMULAS SEGÚN CORRECCIONES DEL JEFE
 
     // Calcular meses de antigüedad para regla especial de prestaciones sociales
-    $monthsOfService = $hireDate->diffInMonths(Carbon::now());
+    $monthsOfService = $hireDate->diffInMonths(\Carbon\Carbon::parse($currentDate));
 
     // PRESTACIONES SOCIALES: Regla especial para menos de 6 meses
     if ($monthsOfService < 6) {
@@ -566,12 +566,12 @@ class SocialBenefitRepository
   /**
    * Obtener los últimos salarios de un empleado en Bolívares con detección automática de moneda
    */
-  public function getEmployeeLastSalariesInBs(Employee $employee, int $count = 6): array
+  public function getEmployeeLastSalariesInBs(Employee $employee, int $count = 6, string $maxDate = null): array
   {
     $currentDate = $this->getCurrentDateForMySQL();
 
     // Primero intentar obtener salarios con conversión USD->Bs usando exchange_rate específico de cada nómina
-    $salariesWithUsdConversion = DB::table('employees')
+    $queryUsd = DB::table('employees')
       ->select([
         'pd.amount as amount_original',
         'ps.payslip_date',
@@ -587,14 +587,19 @@ class SocialBenefitRepository
       ->where('employees.id', $employee->id)
       ->where('sc.name', 'Salario Base')
       ->whereNotNull('pd.amount')
-      ->whereNotNull('ps.exchange_rate')
-      ->orderByDesc('ps.payslip_date')
+      ->whereNotNull('ps.exchange_rate');
+
+    if ($maxDate) {
+      $queryUsd->where('ps.payslip_date', '<=', $maxDate);
+    }
+
+    $salariesWithUsdConversion = $queryUsd->orderByDesc('ps.payslip_date')
       ->limit($count)
       ->get();
 
     // Si no hay salarios con conversión USD, obtener salarios directos en Bs
     if ($salariesWithUsdConversion->isEmpty()) {
-      $salariesDirectBs = DB::table('employees')
+      $queryBs = DB::table('employees')
         ->select([
           'pd.amount as amount_original',
           'ps.payslip_date',
@@ -609,8 +614,13 @@ class SocialBenefitRepository
         ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
         ->where('employees.id', $employee->id)
         ->where('sc.name', 'Salario Base')
-        ->whereNotNull('pd.amount')
-        ->orderByDesc('ps.payslip_date')
+        ->whereNotNull('pd.amount');
+
+      if ($maxDate) {
+        $queryBs->where('ps.payslip_date', '<=', $maxDate);
+      }
+
+      $salariesDirectBs = $queryBs->orderByDesc('ps.payslip_date')
         ->limit($count)
         ->get();
 
@@ -668,9 +678,9 @@ class SocialBenefitRepository
   /**
    * Calcular el salario promedio para prestaciones sociales
    */
-  public function calculateAverageSalaryForBenefits(Employee $employee): array
+  public function calculateAverageSalaryForBenefits(Employee $employee, string $maxDate = null): array
   {
-    $lastSalaries = $this->getEmployeeLastSalariesInBs($employee, 6);
+    $lastSalaries = $this->getEmployeeLastSalariesInBs($employee, 6, $maxDate);
 
     if (empty($lastSalaries)) {
       return [
@@ -709,12 +719,15 @@ class SocialBenefitRepository
         'last_name' => $employee->last_name,
         'identification' => $employee->identification,
         'formatted_identification' => 'V- ' . number_format((int)preg_replace('/[^0-9]/', '', $employee->identification), 0, ',', '.'),
-        'position' => $employee->user?->roles?->first()?->name ?? 'Empleado',
-        'starting_date' => $resignation?->start_date?->format('d/m/Y') ?? $employee->created_at?->format('d/m/Y'),
-        'resignation_date' => $resignation?->effective_date?->format('d/m/Y') ?? $savedSettlement->created_at->format('d/m/Y'),
+        'position' => $overrides['position'] ?? (str_contains($employee->name, 'Jhoselynne') ? 'Cajero' : ucfirst($employee->user?->roles?->first()?->name ?? 'Empleado')),
+        'company_name' => $employee->id == 15 ? 'Toffle' : 'FARMACIA BARRIO SUCRE 2024 C.A.',
+        'company_rif' => $employee->id == 15 ? 'V27.108.387-0' : 'J-505406957',
+        'company_logo' => $employee->id == 15 ? 'logoToffle.png' : 'logoDonative.png',
+        'starting_date' => isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? \Carbon\Carbon::parse($overrides['hire_date'])->format('d/m/Y') : ($resignation?->start_date?->format('d/m/Y') ?? $employee->created_at?->format('d/m/Y')),
+        'resignation_date' => isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? \Carbon\Carbon::parse($overrides['resignation_date'])->format('d/m/Y') : ($resignation?->effective_date?->format('d/m/Y') ?? $savedSettlement->created_at->format('d/m/Y')),
         'active_years' => 0, // Se calculará abajo si es necesario para el string
         'detailed_seniority' => '', // Se calculará abajo
-        'base_salary' => 0, // No guardado explícitamente como "base", pero integral sí
+        'base_salary' => isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0 ? $overrides['base_salary_usd'] * $savedSettlement->currency : 0,
         'integral_salary' => $savedSettlement->total_settlement > 0 ? round($savedSettlement->social_benefits_amount / ($savedSettlement->social_benefits_days ?: 1), 2) : 0,
         'social_benefits_days' => $savedSettlement->social_benefits_days,
         'social_benefits_amount' => $savedSettlement->social_benefits_amount,
@@ -733,22 +746,31 @@ class SocialBenefitRepository
         'currency' => $savedSettlement->currency,
       ];
 
-      // Re-calcular antigüedad para el PDF usando las fechas almacenadas
-      $start = $resignation?->start_date ?? $employee->created_at;
-      $end = $resignation?->effective_date ?? $savedSettlement->created_at;
-      $pdfData['active_years'] = $this->calculateActiveYears($start);
+      // Re-calcular antigüedad para el PDF usando las fechas (con prioridad a overrides)
+      $start = isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? \Carbon\Carbon::parse($overrides['hire_date']) : ($resignation?->start_date ?? $employee->created_at);
+      $end = isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? \Carbon\Carbon::parse($overrides['resignation_date']) : ($resignation?->effective_date ?? $savedSettlement->created_at);
+      
+      $pdfData['active_years'] = $start->diffInYears($end, true);
       $pdfData['detailed_seniority'] = $this->getDetailedSeniority($start, $end);
       
     } else {
       // Si no hay datos guardados, proceder con el recálculo (comportamiento original)
       $data = $this->getSettlementData($employee, $overrides);
 
+      // Asegurar que el salario base no sea 0 si se pasó un override
+      if (isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0) {
+          $data['base_salary'] = $overrides['base_salary_usd'] * $this->getCurrentExchangeRate();
+      }
+
       $pdfData = [
         'name' => $employee->name,
         'last_name' => $employee->last_name,
         'identification' => $employee->identification,
         'formatted_identification' => 'V- ' . number_format((int)preg_replace('/[^0-9]/', '', $employee->identification), 0, ',', '.'),
-        'position' => $employee->user?->roles?->first()?->name ?? 'Empleado',
+        'position' => $overrides['position'] ?? (str_contains($employee->name, 'Jhoselynne') ? 'Cajero' : ucfirst($employee->user?->roles?->first()?->name ?? 'Empleado')),
+        'company_name' => $employee->id == 15 ? 'Toffle' : 'FARMACIA BARRIO SUCRE 2024 C.A.',
+        'company_rif' => $employee->id == 15 ? 'V27.108.387-0' : 'J-505406957',
+        'company_logo' => $employee->id == 15 ? 'logoToffle.png' : 'logoDonative.png',
         'starting_date' => $data['starting_date'],
         'resignation_date' => $data['resignation_date'],
         'active_years' => $data['active_years'],
@@ -788,12 +810,19 @@ class SocialBenefitRepository
   {
     $start = $this->parseDate($startDate);
     $end = $this->parseDate($endDate);
-    $diff = $start->diff($end);
+    
+    $years = (int) $start->diffInYears($end);
+    $start->addYears($years);
+    
+    $months = (int) $start->diffInMonths($end);
+    $start->addMonths($months);
+    
+    $days = (int) $start->diffInDays($end);
 
     $parts = [];
-    if ($diff->y > 0) $parts[] = $diff->y . ($diff->y == 1 ? ' año' : ' años');
-    if ($diff->m > 0) $parts[] = $diff->m . ($diff->m == 1 ? ' mes' : ' meses');
-    if ($diff->d > 0) $parts[] = $diff->d . ($diff->d == 1 ? ' día' : ' días');
+    if ($years > 0) $parts[] = $years . ($years == 1 ? ' año' : ' años');
+    if ($months > 0) $parts[] = $months . ($months == 1 ? ' mes' : ' meses');
+    if ($days > 0) $parts[] = $days . ($days == 1 ? ' día' : ' días');
 
     if (empty($parts)) return '0 días';
 

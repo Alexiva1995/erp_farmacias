@@ -134,6 +134,20 @@ const amountToPay = computed(() =>
   settlement.value ? settlement.value.final_usd * (percentage.value / 100) : 0
 );
 
+const displayedSettlement = computed(() => {
+  if (!settlement.value) return null;
+  const factor = percentage.value / 100;
+  return {
+    ...settlement.value,
+    social_benefits_amount: settlement.value.social_benefits_amount * factor,
+    vacation_voucher_amount: settlement.value.vacation_voucher_amount * factor,
+    vacation_bonus_voucher_amount: settlement.value.vacation_bonus_voucher_amount * factor,
+    earnings_voucher_amount: settlement.value.earnings_voucher_amount * factor,
+    total_settlement_amount: settlement.value.total_settlement_amount * factor,
+    total_deductions: settlement.value.total_deductions * factor,
+  };
+});
+
 const submitForm = async () => {
   if (step.value === "employee") {
     step.value = "payment";
@@ -355,27 +369,27 @@ const formatDate = (dateString) => {
                         <tbody>
                           <tr>
                             <td class="text-xs font-weight-bold">Antigüedad/Prestaciones</td>
-                            <td class="text-center font-weight-black">{{ settlement?.social_benefits_days ?? 0 }}</td>
-                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.social_benefits_amount ?? 0) }}</td>
+                            <td class="text-center font-weight-black">{{ displayedSettlement?.social_benefits_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(displayedSettlement?.social_benefits_amount ?? 0) }}</td>
                           </tr>
                           <tr>
                             <td class="text-xs font-weight-bold">Vacaciones Fracc.</td>
-                            <td class="text-center font-weight-black">{{ settlement?.vacation_voucher_days ?? 0 }}</td>
-                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.vacation_voucher_amount ?? 0) }}</td>
+                            <td class="text-center font-weight-black">{{ displayedSettlement?.vacation_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(displayedSettlement?.vacation_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr>
                             <td class="text-xs font-weight-bold">Bono Vacacional</td>
-                            <td class="text-center font-weight-black">{{ settlement?.vacation_bonus_voucher_days ?? 0 }}</td>
-                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
+                            <td class="text-center font-weight-black">{{ displayedSettlement?.vacation_bonus_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(displayedSettlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr>
                             <td class="text-xs font-weight-bold">Utilidades</td>
-                            <td class="text-center font-weight-black">{{ settlement?.earnings_voucher_days ?? 0 }}</td>
-                            <td class="text-right font-weight-black">{{ displayAmount(settlement?.earnings_voucher_amount ?? 0) }}</td>
+                            <td class="text-center font-weight-black">{{ displayedSettlement?.earnings_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-black">{{ displayAmount(displayedSettlement?.earnings_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr class="bg-success-lighten-5">
                             <td colspan="2" class="text-xs font-weight-black text-success uppercase">Subtotal Devengado</td>
-                            <td class="text-right text-success font-weight-black">{{ displayAmount(settlement?.total_settlement_amount ?? 0) }}</td>
+                            <td class="text-right text-success font-weight-black">{{ displayAmount(displayedSettlement?.total_settlement_amount ?? 0) }}</td>
                           </tr>
                         </tbody>
                       </VTable>
@@ -447,7 +461,7 @@ const formatDate = (dateString) => {
                           </tr>
                           <tr class="bg-error-lighten-5">
                             <td class="text-xs font-weight-black text-error uppercase">Subtotal Deducido</td>
-                            <td class="text-right text-error font-weight-black">{{ displayAmount((settlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
+                            <td class="text-right text-error font-weight-black">{{ displayAmount((displayedSettlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
                           </tr>
                         </tbody>
                       </VTable>

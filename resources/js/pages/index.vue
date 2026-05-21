@@ -1,754 +1,371 @@
 <template>
   <div>
-    <!-- Stats Cards Row -->
+    <!-- Fila 1: Felicitaciones y Estadísticas -->
     <VRow class="mb-6 match-height">
-      <!-- Card 1: Utilidad Gravable Estimada -->
+      <!-- Tarjeta de Felicitaciones -->
       <VCol cols="12" md="4">
-        <VCard :loading="loading" class="h-100">
-          <VCardText>
-            <div class="d-flex align-center mb-2">
-              <VAvatar color="purple-lighten-5" size="40" class="mr-3">
-                <VIcon icon="tabler-currency-dollar" color="purple" size="20" />
-              </VAvatar>
-              <span class="text-h5 font-weight-semibold">{{
-                formatCurrency(rentaBruta)
-              }}</span>
-            </div>
-            <div class="text-body-2 text-medium-emphasis mb-1">
-              Utilidad Gravable Estimada
-            </div>
-            <div class="d-flex align-center text-caption">
-              <span class="text-success font-weight-medium mr-1"
-                >Renta Bruta</span
-              >
-              <span class="text-medium-emphasis">año {{ selectedYear }}</span>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Card 2: ISLR a Pagar Estimado -->
-      <VCol cols="12" md="4">
-        <VCard :loading="loading" class="h-100">
-          <VCardText>
-            <div class="d-flex align-center mb-2">
-              <VAvatar color="orange-lighten-5" size="40" class="mr-3">
-                <VIcon icon="tabler-file-invoice" color="orange" size="20" />
-              </VAvatar>
-              <span class="text-h5 font-weight-semibold">{{
-                formatCurrency(impuestoISLR)
-              }}</span>
-            </div>
-            <div class="text-body-2 text-medium-emphasis mb-1">
-              ISLR a Pagar Estimado
-            </div>
-            <div class="d-flex align-center text-caption">
-              <span class="text-warning font-weight-medium mr-1"
-                >{{ tramoISLR.tasa }}%</span
-              >
-              <span class="text-medium-emphasis">{{ tramoISLR.tramo }}</span>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Card 3: Estado Última Declaración -->
-      <VCol cols="12" md="4">
-        <VCard :loading="loadingDeclaration" class="h-100">
-          <VCardText class="d-flex flex-column" style="min-height: 160px">
-            <template v-if="latestDeclaration">
-              <div class="d-flex align-center mb-2">
-                <VAvatar
-                  :color="
-                    latestDeclaration.status === 'paid'
-                      ? 'success-lighten-5'
-                      : 'warning-lighten-5'
-                  "
-                  size="40"
-                  class="mr-3"
-                >
-                  <VIcon
-                    :icon="
-                      latestDeclaration.status === 'paid'
-                        ? 'tabler-circle-check'
-                        : 'tabler-clock'
-                    "
-                    :color="
-                      latestDeclaration.status === 'paid'
-                        ? 'success'
-                        : 'warning'
-                    "
-                    size="20"
-                  />
-                </VAvatar>
-                <span class="text-h5 font-weight-semibold">
-                  {{ latestDeclaration.status_text }}
-                </span>
-              </div>
-              <div class="text-body-2 text-medium-emphasis mb-1">
-                Estado Última Declaración
-              </div>
-              <div class="d-flex align-center text-caption">
-                <span class="text-medium-emphasis mr-1">Declarada el</span>
-                <span class="text-disabled">{{
-                  formatDate(latestDeclaration.declaration_date)
-                }}</span>
-              </div>
-              <div class="d-flex align-center text-caption mt-1">
-                <span class="text-medium-emphasis mr-1">Monto:</span>
-                <span class="font-weight-bold">{{
-                  formatCurrency(latestDeclaration.amount)
-                }}</span>
-              </div>
-            </template>
-
-            <template v-else>
-              <div
-                class="d-flex flex-column align-center justify-center flex-grow-1"
-              >
-                <VIcon
-                  icon="tabler-file-x"
-                  size="40"
-                  color="error"
-                  class="mb-2"
-                />
-                <div class="text-body-2 text-medium-emphasis mb-3 text-center">
-                  No hay declaración para {{ selectedYear }}
+        <VCard class="h-100 bg-light-primary">
+          <VCardText class="d-flex flex-column justify-space-between h-100">
+            <div class="d-flex align-center gap-3 mb-2">
+              <VAvatar size="50" class="leader-avatar border-2 border-white shadow-lg">
+                <VImg v-if="leader?.photo" :src="leader.photo" />
+                <div v-else class="text-h5 font-weight-black text-white bg-primary d-flex align-center justify-center h-100 w-100">
+                  {{ leader?.name?.charAt(0) || 'A' }}
                 </div>
-                <VBtn
-                  color="primary"
-                  size="small"
-                  prepend-icon="tabler-plus"
-                  @click="openCreateDeclarationDialog"
-                >
-                  Crear Declaración
-                </VBtn>
+              </VAvatar>
+              <div>
+                <h6 class="text-h6 text-primary font-weight-semibold mb-0">
+                  ¡Felicitaciones {{ leader?.name || 'Admin' }}! 🎉
+                </h6>
+                <div class="text-caption text-medium-emphasis">
+                  Líder de Ventas
+                </div>
               </div>
-            </template>
+            </div>
+            <div>
+              <div class="text-h5 text-primary font-weight-bold">
+                {{ formatCurrencyUSD(leader?.sales || 0) }}
+              </div>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+
+      <!-- Tarjeta de Estadísticas -->
+      <VCol cols="12" md="8">
+        <VCard class="h-100">
+          <VCardTitle class="pt-4 px-4 d-flex justify-space-between align-center">
+            <span>Estadísticas</span>
+            <span class="text-caption text-medium-emphasis">Actualizado hace 1 mes</span>
+          </VCardTitle>
+          <VCardText class="pa-4 d-flex align-center justify-space-around flex-wrap">
+            <!-- Ventas -->
+            <div class="d-flex align-center mb-4 mr-4">
+              <VAvatar color="primary-lighten-5" size="44" class="mr-3" rounded="lg">
+                <VIcon icon="tabler-chart-bar" color="primary" size="24" />
+              </VAvatar>
+              <div>
+                <div class="text-h6 font-weight-bold">{{ stats.sales }}</div>
+                <div class="text-caption text-medium-emphasis">Ventas</div>
+              </div>
+            </div>
+            <!-- Clientes -->
+            <div class="d-flex align-center mb-4 mr-4">
+              <VAvatar color="info-lighten-5" size="44" class="mr-3" rounded="lg">
+                <VIcon icon="tabler-users" color="info" size="24" />
+              </VAvatar>
+              <div>
+                <div class="text-h6 font-weight-bold">{{ stats.clients }}</div>
+                <div class="text-caption text-medium-emphasis">Clientes Nuevos</div>
+              </div>
+            </div>
+            <!-- Productos -->
+            <div class="d-flex align-center mb-4 mr-4">
+              <VAvatar color="error-lighten-5" size="44" class="mr-3" rounded="lg">
+                <VIcon icon="tabler-box" color="error" size="24" />
+              </VAvatar>
+              <div>
+                <div class="text-h6 font-weight-bold">{{ stats.products }}</div>
+                <div class="text-caption text-medium-emphasis">Productos (Unidades)</div>
+              </div>
+            </div>
+            <!-- Ingresos -->
+            <div class="d-flex align-center mb-4">
+              <VAvatar color="success-lighten-5" size="44" class="mr-3" rounded="lg">
+                <VIcon icon="tabler-currency-dollar" color="success" size="24" />
+              </VAvatar>
+              <div>
+                <div class="text-h6 font-weight-bold">{{ stats.revenue }}</div>
+                <div class="text-caption text-medium-emphasis">Ganancia</div>
+              </div>
+            </div>
           </VCardText>
         </VCard>
       </VCol>
     </VRow>
 
-    <!-- Revenue Report -->
-    <VRow class="mb-6">
-      <VCol cols="12">
-        <EcommerceRevenueReport />
+    <!-- Fila 2: Reportes y Gráficos -->
+    <VRow class="mb-6 match-height">
+      <!-- Columna Izquierda: Profit y Expenses -->
+      <VCol cols="12" md="4">
+        <VRow class="match-height">
+          <!-- Profit -->
+          <VCol cols="12" sm="6" md="12">
+            <VCard class="mb-4">
+              <VCardText>
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-body-2 text-medium-emphasis">Ganancia</span>
+                  <span class="text-success text-caption font-weight-medium">+8.24%</span>
+                </div>
+                <div class="text-h5 font-weight-bold mb-1">624k</div>
+                <div class="text-caption text-medium-emphasis">Mes Pasado</div>
+              </VCardText>
+            </VCard>
+          </VCol>
+          <!-- Expenses -->
+          <VCol cols="12" sm="6" md="12">
+            <VCard>
+              <VCardText class="d-flex flex-column align-center justify-center">
+                <div class="text-h5 font-weight-bold mb-1">82.5K</div>
+                <div class="text-caption text-medium-emphasis mb-2">Gastos</div>
+                <VProgressCircular
+                  :model-value="78"
+                  :size="80"
+                  :width="8"
+                  color="warning"
+                >
+                  <span class="text-caption font-weight-bold">78%</span>
+                </VProgressCircular>
+                <div class="text-caption text-medium-emphasis mt-2">$21k Gastos más que el mes pasado</div>
+              </VCardText>
+            </VCard>
+          </VCol>
+        </VRow>
+      </VCol>
+
+      <!-- Revenue Report (Usando componente existente si es posible) -->
+      <VCol cols="12" md="8">
+        <VCard class="h-100">
+          <VCardText class="pa-0">
+            <!-- Aquí usamos el componente existente del proyecto -->
+            <EcommerceRevenueReport />
+          </VCardText>
+        </VCard>
       </VCol>
     </VRow>
 
-    <!-- Nueva sección: Cálculo de Utilidades -->
+    <!-- Fila 3: Reportes Detallados -->
     <VRow class="mb-6 match-height">
-      <!-- Ingresos Totales -->
-      <VCol cols="12" md="6">
-        <VCard class="h-100" :loading="loading">
-          <VCardText>
-            <div class="d-flex justify-space-between align-center mb-4">
-              <h6 class="text-h6 font-weight-medium">Ingresos Totales</h6>
-              <VIcon icon="tabler-trending-up" color="success" />
-            </div>
-
-            <div class="mb-6">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <span class="text-body-1">Total Acumulado</span>
-                <span class="text-h4 font-weight-bold text-success">
-                  {{ formatCurrency(totalIncomeData?.total_income || 0) }}
-                </span>
-              </div>
-            </div>
-
-            <VDivider class="my-4" />
-
-            <!-- Desglose de Ingresos -->
+      <!-- Earning Reports -->
+      <VCol cols="12" md="4">
+        <VCard class="h-100">
+          <VCardTitle class="pt-4 px-4">Reporte de Ganancias</VCardTitle>
+          <VCardText class="pa-4">
             <div class="mb-4">
-              <div class="d-flex justify-space-between align-center mb-3">
-                <div class="d-flex align-center">
-                  <VIcon
-                    icon="tabler-checkbox-circle"
-                    color="success"
-                    size="20"
-                    class="mr-2"
-                  />
-                  <span class="text-body-2">Ventas Gravadas</span>
-                </div>
-                <span class="text-body-1 font-weight-medium">
-                  {{ formatCurrency(totalIncomeData?.taxable_amount || 0) }}
-                </span>
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-body-2">Ganancia Neta</span>
+                <span class="text-success text-caption font-weight-medium">18.6%</span>
               </div>
-
-              <div class="d-flex justify-space-between align-center">
-                <div class="d-flex align-center">
-                  <VIcon
-                    icon="tabler-circle-check"
-                    color="info"
-                    size="20"
-                    class="mr-2"
-                  />
-                  <span class="text-body-2">Ventas Exentas</span>
-                </div>
-                <span class="text-body-1 font-weight-medium">
-                  {{ formatCurrency(totalIncomeData?.exempt_amount || 0) }}
-                </span>
-              </div>
+              <div class="text-h6 font-weight-bold">$1,619</div>
             </div>
-
-            <VProgressLinear
-              :model-value="totalIncomeData?.taxable_percentage || 0"
-              color="success"
-              height="8"
-              rounded
-              class="mb-2"
-            />
-            <div class="text-caption text-medium-emphasis">
-              {{ (totalIncomeData?.taxable_percentage || 0).toFixed(0) }}%
-              Gravadas |
-              {{ (totalIncomeData?.exempt_percentage || 0).toFixed(0) }}%
-              Exentas
+            <div class="mb-4">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-body-2">Ingresos Totales</span>
+                <span class="text-success text-caption font-weight-medium">39.6%</span>
+              </div>
+              <div class="text-h6 font-weight-bold">$3,571</div>
+            </div>
+            <div>
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-body-2">Gastos Totales</span>
+                <span class="text-danger text-caption font-weight-medium">52.8%</span>
+              </div>
+              <div class="text-h6 font-weight-bold">$430</div>
             </div>
           </VCardText>
         </VCard>
       </VCol>
 
-      <!-- Gastos Deducibles -->
-      <VCol cols="12" md="6">
-        <VCard class="h-100" :loading="loading">
-          <VCardText>
-            <div class="d-flex justify-space-between align-center mb-4">
-              <h6 class="text-h6 font-weight-medium">Gastos Deducibles</h6>
-              <VIcon icon="tabler-receipt" color="warning" />
-            </div>
-
-            <div class="mb-6">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <span class="text-body-1">Total Deducible</span>
-                <span class="text-h4 font-weight-bold text-warning">
-                  {{
-                    formatCurrency(
-                      deductibleExpensesData?.total_deductible || 0,
-                    )
-                  }}
-                </span>
-              </div>
-            </div>
-
-            <VDivider class="my-4" />
-
-            <!-- Lista de Gastos Deducibles -->
-            <VList density="compact" class="pa-0">
-              <VListItem
-                v-for="category in deductibleExpensesData?.categories || []"
-                :key="category.category_id"
-                class="px-0 mb-2"
-              >
-                <VListItemTitle class="text-body-2">
-                  {{ category.category_name }}
-                </VListItemTitle>
+      <!-- Popular Products -->
+      <VCol cols="12" md="4">
+        <VCard class="h-100">
+          <VCardTitle class="pt-4 px-4">Productos Populares</VCardTitle>
+          <VCardText class="pa-0">
+            <VList density="compact">
+              <VListItem v-for="(prod, index) in popularProducts" :key="index" class="px-4 py-2">
+                <template #prepend>
+                  <VAvatar color="primary-lighten-5" size="36" class="mr-3" rounded="lg">
+                    <VIcon icon="tabler-package" color="primary" size="20" />
+                  </VAvatar>
+                </template>
+                <VListItemTitle class="text-body-2 font-weight-medium">{{ prod.name }}</VListItemTitle>
+                <VListItemSubtitle class="text-caption text-medium-emphasis">{{ prod.code }}</VListItemSubtitle>
                 <template #append>
-                  <span class="text-body-1 font-weight-medium">
-                    {{ formatCurrency(category.total_amount) }}
-                  </span>
+                  <span class="text-body-2 font-weight-bold">${{ prod.price }}</span>
                 </template>
               </VListItem>
+            </VList>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-              <VListItem
-                v-if="!deductibleExpensesData?.categories?.length"
-                class="px-0"
-              >
-                <VListItemTitle
-                  class="text-body-2 text-center text-medium-emphasis"
-                >
-                  No hay gastos deducibles para {{ selectedYear }}
-                </VListItemTitle>
+      <!-- Transactions -->
+      <VCol cols="12" md="4">
+        <VCard class="h-100">
+          <VCardTitle class="pt-4 px-4">Transacciones</VCardTitle>
+          <VCardText class="pa-0">
+            <VList density="compact">
+              <VListItem v-for="(tx, index) in transactions" :key="index" class="px-4 py-2">
+                <template #prepend>
+                  <VAvatar :color="tx.color + '-lighten-5'" size="36" class="mr-3" rounded="lg">
+                    <VIcon :icon="tx.icon" :color="tx.color" size="20" />
+                  </VAvatar>
+                </template>
+                <VListItemTitle class="text-body-2 font-weight-medium">{{ tx.title }}</VListItemTitle>
+                <VListItemSubtitle class="text-caption text-medium-emphasis">{{ tx.subtitle }}</VListItemSubtitle>
+                <template #append>
+                  <span :class="`text-body-2 font-weight-bold ${tx.amount > 0 ? 'text-success' : 'text-error'}`">
+                    {{ tx.amount > 0 ? '+' : '' }}{{ tx.amount }}
+                  </span>
+                </template>
               </VListItem>
             </VList>
           </VCardText>
         </VCard>
       </VCol>
     </VRow>
-
-    <!-- Estado de Resultados y Gastos No Deducibles -->
-    <VRow class="mb-6">
-      <!-- Estado de Resultados -->
-      <VCol cols="12" md="8" order="2" order-md="1">
-        <VCard class="h-100" :loading="loading">
-          <VCardText>
-            <div class="d-flex justify-space-between align-center mb-6">
-              <h6 class="text-h6 font-weight-medium">Estado de Resultados</h6>
-              <VChip color="primary" variant="tonal">
-                <VIcon icon="tabler-calculator" size="16" class="mr-1" />
-                Año {{ selectedYear }}
-              </VChip>
-            </div>
-
-            <!-- Cálculo de Ingresos y Gastos -->
-            <VRow>
-              <VCol cols="12" sm="6">
-                <VCard variant="outlined" class="mb-4">
-                  <VCardText>
-                    <div class="text-center">
-                      <div class="text-body-2 text-medium-emphasis mb-2">
-                        Ingresos Totales
-                      </div>
-                      <div class="text-h4 font-weight-bold text-success mb-2">
-                        {{ formatCurrency(revenueStats?.total_income || 0) }}
-                      </div>
-                      <VChip size="small" color="success" variant="tonal">
-                        <VIcon
-                          icon="tabler-trending-up"
-                          size="14"
-                          class="mr-1"
-                        />
-                        Fiscal History
-                      </VChip>
-                    </div>
-                  </VCardText>
-                </VCard>
-              </VCol>
-
-              <VCol cols="12" sm="6">
-                <VCard variant="outlined" class="mb-4">
-                  <VCardText>
-                    <div class="text-center">
-                      <div class="text-body-2 text-medium-emphasis mb-2">
-                        Gastos Totales
-                      </div>
-                      <div class="text-h4 font-weight-bold text-warning mb-2">
-                        {{ formatCurrency(revenueStats?.total_expenses || 0) }}
-                      </div>
-                      <VChip size="small" color="warning" variant="tonal">
-                        <VIcon icon="tabler-receipt" size="14" class="mr-1" />
-                        Expenses
-                      </VChip>
-                    </div>
-                  </VCardText>
-                </VCard>
-              </VCol>
-            </VRow>
-
-            <!-- Acciones -->
-            <div class="d-flex gap-3 mt-4">
-              <VBtn
-                color="primary"
-                variant="tonal"
-                prepend-icon="tabler-file-download"
-              >
-                Descargar Reporte
-              </VBtn>
-              <VBtn
-                color="secondary"
-                variant="outlined"
-                prepend-icon="tabler-printer"
-              >
-                Imprimir
-              </VBtn>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Gastos No Deducibles -->
-      <VCol cols="12" md="4" order="1" order-md="2">
-        <VCard
-          color="error-lighten-5"
-          variant="tonal"
-          class="h-100"
-          :loading="loading"
-        >
-          <VCardText>
-            <div class="d-flex justify-space-between align-center mb-4">
-              <h6 class="text-h6 font-weight-medium">Gastos No Deducibles</h6>
-              <VIcon icon="tabler-alert-circle" color="error" />
-            </div>
-
-            <div class="mb-4">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <span class="text-body-1">Total No Deducible</span>
-                <span class="text-h5 font-weight-bold text-error">
-                  {{
-                    formatCurrency(
-                      nonDeductibleExpensesData?.total_non_deductible || 0,
-                    )
-                  }}
-                </span>
-              </div>
-            </div>
-
-            <VDivider class="my-4" />
-
-            <VList density="compact" class="pa-0 bg-transparent">
-              <VListItem
-                v-for="category in nonDeductibleExpensesData?.categories || []"
-                :key="category.category_id"
-                class="px-0 mb-2"
-              >
-                <VListItemTitle class="text-body-2">
-                  {{ category.category_name }}
-                </VListItemTitle>
-                <template #append>
-                  <span class="text-body-2 font-weight-medium">
-                    {{ formatCurrency(category.total_amount) }}
-                  </span>
-                </template>
-              </VListItem>
-
-              <VListItem
-                v-if="!nonDeductibleExpensesData?.categories?.length"
-                class="px-0"
-              >
-                <VListItemTitle
-                  class="text-body-2 text-center text-medium-emphasis"
-                >
-                  No hay gastos no deducibles para {{ selectedYear }}
-                </VListItemTitle>
-              </VListItem>
-            </VList>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
-
-    <!-- Dialog para crear declaración -->
-    <VDialog v-model="showCreateDialog" max-width="600">
-      <VCard>
-        <VCardTitle class="d-flex align-center bg-primary text-white">
-          <VIcon icon="tabler-file-plus" class="mr-2" />
-          Crear Nueva Declaración ISLR
-        </VCardTitle>
-
-        <VCardText class="pt-6">
-          <VForm ref="formRef" @submit.prevent="createDeclaration">
-            <VRow>
-              <VCol cols="12">
-                <VTextField
-                  v-model="declarationForm.year"
-                  label="Año"
-                  type="number"
-                  variant="outlined"
-                  :rules="[(v) => !!v || 'El año es requerido']"
-                  readonly
-                  disabled
-                />
-              </VCol>
-
-              <VCol cols="12">
-                <VTextField
-                  v-model="declarationForm.amount"
-                  label="Monto a Pagar"
-                  type="number"
-                  variant="outlined"
-                  prefix="Bs."
-                  :rules="[
-                    (v) => !!v || 'El monto es requerido',
-                    (v) => v >= 0 || 'El monto debe ser mayor o igual a 0',
-                  ]"
-                />
-              </VCol>
-
-              <VCol cols="12">
-                <VSelect
-                  v-model="declarationForm.status"
-                  label="Estado"
-                  :items="[
-                    { title: 'Pagado', value: 'paid' },
-                    { title: 'No Pagado', value: 'unpaid' },
-                  ]"
-                  variant="outlined"
-                  :rules="[(v) => !!v || 'El estado es requerido']"
-                />
-              </VCol>
-
-              <VCol cols="12">
-                <VTextField
-                  v-model="declarationForm.declaration_date"
-                  label="Fecha de Declaración"
-                  type="date"
-                  variant="outlined"
-                  :rules="[(v) => !!v || 'La fecha es requerida']"
-                />
-              </VCol>
-            </VRow>
-          </VForm>
-        </VCardText>
-
-        <VCardActions class="px-6 pb-6">
-          <VSpacer />
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            @click="showCreateDialog = false"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            :loading="savingDeclaration"
-            @click="createDeclaration"
-          >
-            Crear Declaración
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
   </div>
 </template>
 
 <script setup>
 import EcommerceRevenueReport from "@/components/EcommerceRevenueReport.vue";
-import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import axios from "axios";
+import { onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
-const loading = ref(false);
-const loadingDeclaration = ref(false);
-const savingDeclaration = ref(false);
-const showCreateDialog = ref(false);
-const formRef = ref(null);
+const authStore = useAuthStore();
+const router = useRouter();
 
-const islrData = ref({
-  gross_income: 0,
-  deductions: 0,
-  net_income: 0,
-  ibg: 0,
-  costs: 0,
-  year: new Date().getFullYear(),
+const leader = ref(null);
+const stats = ref({
+  sales: '$0.00',
+  clients: '0',
+  products: '0',
+  revenue: '$0.00',
 });
 
-const latestDeclaration = ref(null);
-const selectedYear = ref(new Date().getFullYear());
-const unidadesTributarias = ref(0);
-const totalIncomeData = ref({
-  total_income: 0,
-  exempt_amount: 0,
-  taxable_amount: 0,
-  exempt_percentage: 0,
-  taxable_percentage: 0,
-});
-
-const deductibleExpensesData = ref({
-  total_deductible: 0,
-  categories: [],
-});
-
-const revenueStats = ref({
-  total_income: 0,
-  total_expenses: 0,
-  net_revenue: 0,
-});
-
-const nonDeductibleExpensesData = ref({
-  total_non_deductible: 0,
-  categories: [],
-});
-
-const declarationForm = ref({
-  year: new Date().getFullYear(),
-  amount: 0,
-  status: "unpaid",
-  declaration_date: new Date().toISOString().split("T")[0],
-});
-
-const rentaBruta = computed(() => islrData.value.gross_income || 0);
-const deducciones = computed(() => islrData.value.deductions || 0);
-const montoConDeducciones = computed(() => islrData.value.net_income || 0);
-
-const impuestoISLR = computed(() => {
-  if (unidadesTributarias.value === 0) return 0;
-
-  const utCalculadas = rentaBruta.value / unidadesTributarias.value;
-  let impuesto = 0;
-
-  if (utCalculadas <= 2000) {
-    impuesto = utCalculadas * 0.15;
-  } else if (utCalculadas <= 3000) {
-    impuesto = utCalculadas * 0.22 - 140;
-  } else {
-    impuesto = utCalculadas * 0.34 - 500;
-  }
-
-  return impuesto * unidadesTributarias.value;
-});
-
-const tramoISLR = computed(() => {
-  if (unidadesTributarias.value === 0)
-    return { tramo: "N/A", tasa: 0, ajuste: 0 };
-
-  const utCalculadas = rentaBruta.value / unidadesTributarias.value;
-
-  if (utCalculadas <= 2000) {
-    return { tramo: "Hasta 2.000 UT", tasa: 15, ajuste: 0 };
-  } else if (utCalculadas <= 3000) {
-    return { tramo: "2.001 a 3.000 UT", tasa: 22, ajuste: 140 };
-  } else {
-    return { tramo: "Más de 3.000 UT", tasa: 34, ajuste: 500 };
-  }
-});
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "VES",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString("es-VE", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-};
-
-const fetchIslrData = async () => {
-  loading.value = true;
+const fetchStats = async () => {
   try {
-    const { data } = await axios.get("/islr/summary", {
-      params: { year: selectedYear.value },
-    });
-    islrData.value = data.data || {
-      gross_income: 0,
-      deductions: 0,
-      net_income: 0,
-      ibg: 0,
-      costs: 0,
-      year: selectedYear.value,
-    };
-
-    await fetchTaxUnit();
-  } catch (error) {
-    console.error("Error al cargar datos del ISLR:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const fetchTaxUnit = async () => {
-  try {
-    const { data } = await axios.get("/islr/tax-unit");
-    unidadesTributarias.value = data.data.value || 0;
-  } catch (error) {
-    console.error("Error al cargar Unidades Tributarias:", error);
-    unidadesTributarias.value = 0;
-  }
-};
-
-const fetchTotalIncome = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/total-income", {
-      params: { year: selectedYear.value },
-    });
-    totalIncomeData.value = data.data || {
-      total_income: 0,
-      exempt_amount: 0,
-      taxable_amount: 0,
-      exempt_percentage: 0,
-      taxable_percentage: 0,
-    };
-  } catch (error) {
-    console.error("Error al cargar ingresos totales:", error);
-  }
-};
-
-const fetchDeductibleExpenses = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/deductible-expenses", {
-      params: { year: selectedYear.value },
-    });
-    deductibleExpensesData.value = data.data || {
-      total_deductible: 0,
-      categories: [],
-    };
-  } catch (error) {
-    console.error("Error al cargar gastos deducibles:", error);
-  }
-};
-
-const fetchRevenueStats = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/revenue-report", {
-      params: { year: selectedYear.value },
-    });
-    revenueStats.value = data.data?.summary || {
-      total_income: 0,
-      total_expenses: 0,
-      net_revenue: 0,
-    };
-  } catch (error) {
-    console.error("Error al cargar estadísticas de ingresos:", error);
-  }
-};
-
-const fetchNonDeductibleExpenses = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/non-deductible-expenses", {
-      params: { year: selectedYear.value },
-    });
-    nonDeductibleExpensesData.value = data.data || {
-      total_non_deductible: 0,
-      categories: [],
-    };
-  } catch (error) {
-    console.error("Error al cargar gastos no deducibles:", error);
-  }
-};
-
-const fetchLatestDeclaration = async () => {
-  loadingDeclaration.value = true;
-  try {
-    const { data } = await axios.get("/islr/declarations", {
-      params: { year: selectedYear.value },
-    });
-    latestDeclaration.value = data.data;
-  } catch (error) {
-    if (error.response?.status === 404) {
-      latestDeclaration.value = null;
-    } else {
-      console.error("Error al cargar declaración:", error);
-      toast.error("Error al cargar la declaración");
+    // 1. Ventas desde Cierre de Caja (Monto unificado en USD)
+    const cashResponse = await axios.get("/api/finances/cash-closure/monthlyCash");
+    if (cashResponse.data && cashResponse.data.data && cashResponse.data.data.length > 0) {
+      // Buscamos el mes actual en los datos (por nombre o tomamos el primero si no se encuentra)
+      const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthsEs = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      
+      const currentMonthIdx = new Date().getMonth();
+      const currentYear = new Date().getFullYear().toString();
+      
+      const currentMonthNameEn = monthsEn[currentMonthIdx];
+      const currentMonthNameEs = monthsEs[currentMonthIdx];
+      
+      const currentMonthData = cashResponse.data.data.find(item => 
+        (item.period.includes(currentMonthNameEn) || item.period.includes(currentMonthNameEs)) && 
+        item.period.includes(currentYear)
+      ) || cashResponse.data.data[0]; // Si no lo encuentra, usa el más reciente (primero)
+      
+      stats.value.sales = `${currentMonthData.total_usd_equivalent} USD`;
     }
-  } finally {
-    loadingDeclaration.value = false;
-  }
-};
 
-const openCreateDeclarationDialog = () => {
-  declarationForm.value = {
-    year: selectedYear.value,
-    amount: impuestoISLR.value,
-    status: "unpaid",
-    declaration_date: new Date().toISOString().split("T")[0],
-  };
-  showCreateDialog.value = true;
-};
+    // 2. Ingresos (Ganancia) desde Reporte Fiscal
+    const revResponse = await axios.get("/api/dashboard/revenue-report", {
+      params: { year: new Date().getFullYear() }
+    });
+    if (revResponse.data && revResponse.data.data) {
+      const monthlyData = revResponse.data.data.monthly_data;
+      const currentMonth = new Date().getMonth() + 1;
+      const currentMonthData = monthlyData.find(m => m.month === currentMonth);
+      if (currentMonthData) {
+        stats.value.revenue = formatCurrencyUSD(currentMonthData.net);
+      }
+    }
+    
+    // 3. Clientes Nuevos
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+    const clientsResponse = await axios.post("/api/crm/clients/filtrar-sin-paginar", {
+      fechaDesde_filtro: startOfMonth,
+      fechaHasta_filtro: endOfMonth,
+    });
+    if (clientsResponse.data && clientsResponse.data.data) {
+      stats.value.clients = clientsResponse.data.data.length.toString();
+    }
 
-const createDeclaration = async () => {
-  const { valid } = await formRef.value.validate();
-  if (!valid) return;
-
-  savingDeclaration.value = true;
-  try {
-    await axios.post("/islr/declarations", declarationForm.value);
-    toast.success("Declaración creada exitosamente");
-    showCreateDialog.value = false;
-    await fetchLatestDeclaration();
+    // 4. Productos (Unidades Vendidas)
+    const unitsResponse = await axios.get("/api/dashboard/units-sold", {
+      params: {
+        start_date: startOfMonth,
+        end_date: endOfMonth,
+      }
+    });
+    if (unitsResponse.data && unitsResponse.data.units !== undefined) {
+      stats.value.products = unitsResponse.data.units.toString();
+    }
   } catch (error) {
-    console.error("Error al crear declaración:", error);
-    toast.error(
-      error.response?.data?.message || "Error al crear la declaración",
-    );
-  } finally {
-    savingDeclaration.value = false;
+    console.error("Error fetching stats:", error);
   }
 };
+
+const fetchLeader = async () => {
+  try {
+    const response = await axios.get("/api/rrhh/employee-performance", {
+      params: {
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+      },
+    });
+    if (response.data && response.data.status) {
+      const employees = response.data.data;
+      if (employees.length > 0) {
+        let maxSales = -1;
+        let bestEmployee = null;
+        employees.forEach(e => {
+          const sales = Number(e.sales || 0);
+          if (sales > maxSales) {
+            maxSales = sales;
+            bestEmployee = e;
+          }
+        });
+        leader.value = bestEmployee;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching leader:", error);
+  }
+};
+
+const formatCurrencyUSD = (amount) =>
+  new Intl.NumberFormat("es-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+
+// Datos Mock basados en la captura
+const popularProducts = ref([
+  { name: 'Apple iPhone 13', code: 'Item: #FXZ-4567', price: '999.29' },
+  { name: 'Nike Air Jordan', code: 'Item: #FXZ-3456', price: '72.40' },
+  { name: 'Beats Studio 2', code: 'Item: #FXZ-9485', price: '99.00' },
+  { name: 'Apple Watch Series 7', code: 'Item: #FXZ-2345', price: '249.99' },
+  { name: 'Amazon Echo Dot', code: 'Item: #FXZ-8959', price: '79.40' },
+]);
+
+const transactions = ref([
+  { title: 'Wallet', subtitle: 'Starbucks', amount: -75, icon: 'tabler-wallet', color: 'primary' },
+  { title: 'Bank Transfer', subtitle: 'Add Money', amount: 480, icon: 'tabler-building-bank', color: 'success' },
+  { title: 'PayPal', subtitle: 'Client Payment', amount: 268, icon: 'tabler-brand-paypal', color: 'info' },
+  { title: 'Master Card', subtitle: 'Ordered iPhone 13', amount: -699, icon: 'tabler-credit-card', color: 'warning' },
+  { title: 'Bank Transactions', subtitle: 'Refund', amount: 98, icon: 'tabler-building-bank', color: 'success' },
+]);
 
 onMounted(() => {
-  fetchIslrData();
-  fetchLatestDeclaration();
-  fetchTotalIncome();
-  fetchDeductibleExpenses();
-  fetchRevenueStats();
-  fetchNonDeductibleExpenses();
+  if (authStore.isLoaded) {
+    fetchLeader();
+    fetchStats();
+  }
+});
+
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
+    fetchLeader();
+    fetchStats();
+  }
+}, { immediate: true });
+
+watch(() => authStore.isLoaded, (isLoaded) => {
+  if (isLoaded && !authStore.isAdmin) {
+    router.push('/tpv/orderUser');
+  }
 });
 </script>
 
@@ -759,5 +376,9 @@ onMounted(() => {
 
 .match-height .v-card {
   width: 100%;
+}
+
+.bg-light-primary {
+  background-color: rgb(var(--v-theme-primary), 0.1) !important;
 }
 </style>

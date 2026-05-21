@@ -295,9 +295,9 @@ class EmployeeCleaningActivityActionService
 
             $execution = \App\Models\CleaningActivityExecution::findOrFail($executionId);
 
-            // Verificar que esté en estado Procesada
-            if (!$execution->isProcessed()) {
-                throw new \Exception('Solo se pueden aprobar ejecuciones en estado Procesada');
+            // Verificar que esté en estado Procesada o Vencida
+            if (!in_array($execution->status, ['Procesada', 'Vencida'])) {
+                throw new \Exception('Solo se pueden aprobar ejecuciones en estado Procesada o Vencida');
             }
 
             $execution->update([
@@ -372,9 +372,9 @@ class EmployeeCleaningActivityActionService
 
             $execution = \App\Models\CleaningActivityExecution::findOrFail($executionId);
 
-            // Solo se pueden cancelar ejecuciones Procesadas o Pendientes
-            if (!in_array($execution->status, ['Pendiente', 'Procesada'])) {
-                throw new \Exception('Solo se pueden cancelar ejecuciones Pendientes o Procesadas');
+            // Solo se pueden cancelar ejecuciones Procesadas, Pendientes o Vencidas
+            if (!in_array($execution->status, ['Pendiente', 'Procesada', 'Vencida'])) {
+                throw new \Exception('Solo se pueden cancelar ejecuciones Pendientes, Procesadas o Vencidas');
             }
 
             $execution->update([

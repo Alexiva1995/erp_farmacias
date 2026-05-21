@@ -2,8 +2,10 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfGastos from "@/utils/pdfGastos";
 import { reactive, ref, watch } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 export function useExpenses() {
+  const authStore = useAuthStore();
   const isDeductible = ref(false);
   // Pestaña activa: null = Todos, o 'Pending' | 'Approved' | 'Cancelled'
   const activeTab = ref(null);
@@ -553,7 +555,7 @@ export function useExpenses() {
   }
 
   async function initialize() {
-    formulario.user_id = 1;
+    formulario.user_id = authStore.user.id;
     await consultarCategorias();
     await Promise.all([actualizarTabla(), consultarStats()]);
   }

@@ -24,12 +24,6 @@ export default [
         subject: 'admin',
       },
       {
-        title: 'Pedidos',
-        to: 'tpv-order-general',
-        action: 'manage',
-        subject: 'order-general-user',
-      },
-      {
         title: 'Creditos',
         to: 'tpv-credit',
       },

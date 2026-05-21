@@ -38,8 +38,10 @@ class SocialBenefitController extends Controller
 
     public function getSettlementData(Employee $employee, Request $request)
     {
+        \Log::info('getSettlementData overrides', $request->only(['hire_date', 'resignation_date']));
         $overrides = $request->only([
             'hire_date', 
+            'resignation_date',
             'base_salary_usd', 
             'additional_deductions_usd',
             'vacation_deduction_bs',

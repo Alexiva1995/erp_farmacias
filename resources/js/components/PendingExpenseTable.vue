@@ -1,7 +1,9 @@
 <script setup lang="js">
 import dayjs from 'dayjs';
+import { computed } from 'vue';
+import { useAuthStore } from "@/stores/auth";
 
-
+const authStore = useAuthStore();
 
 const props= defineProps({
   items: { type: Array, required: true },
@@ -14,33 +16,38 @@ const props= defineProps({
 
 const emit= defineEmits(["edit",'delete','update:options',"cambiarEstado"])
 
-const headers = [
-  { title: 'id', key: 'id', sortable: true,},
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
-  { title: 'Categoria', key: 'category.name', sortable: false },
-  { title: 'Monto', key: 'amount', sortable: true },
-  { title: 'USD', key: 'total_usd', sortable: true },
-  { title: 'Moneda', key: 'currency', sortable: true },
-  { title: 'Cuenta', key: 'count', sortable: true },
-  { title: 'Deducible', key: 'is_deductible', sortable: false, value: (item) => {
-    if(item.is_deductible==null){
-      return ""
-    }
-    if(item.is_deductible=="1"){
-      return "Si"
-    }
-    if(item.is_deductible=="0"){
-      return "No"
-    }
-  }},
-  { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
-    const fechaStr = item.created_at.replace('Z', '');
-    const fecha = dayjs(fechaStr).format('DD/MM/YYYY');
-    return fecha;
-  }},
-  { title: 'Usuario', key: 'user.username', sortable: false },
-  { title: 'Acciones', key: 'actions', sortable: false },
-];
+const headers = computed(() => {
+  const h = [
+    { title: 'id', key: 'id', sortable: true,},
+    { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true, },
+    { title: 'Categoria', key: 'category.name', sortable: false },
+    { title: 'Monto', key: 'amount', sortable: true },
+    { title: 'USD', key: 'total_usd', sortable: true },
+    { title: 'Moneda', key: 'currency', sortable: true },
+    { title: 'Cuenta', key: 'count', sortable: true },
+    { title: 'Deducible', key: 'is_deductible', sortable: false, value: (item) => {
+      if(item.is_deductible==null){
+        return ""
+      }
+      if(item.is_deductible=="1"){
+        return "Si"
+      }
+      if(item.is_deductible=="0"){
+        return "No"
+      }
+    }},
+    { title: 'Fecha',    key: 'created_at', sortable: true, value: item =>{
+      const fechaStr = item.created_at.replace('Z', '');
+      const fecha = dayjs(fechaStr).format('DD/MM/YYYY');
+      return fecha;
+    }},
+    { title: 'Usuario', key: 'user.username', sortable: false },
+  ];
+  if (authStore.isAdmin) {
+    h.push({ title: 'Acciones', key: 'actions', sortable: false });
+  }
+  return h;
+});
 </script>
 <template>
   <VCard>

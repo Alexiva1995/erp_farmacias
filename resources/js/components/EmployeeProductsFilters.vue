@@ -4,6 +4,9 @@
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import axios from "@/plugins/axios";
 import { computed, ref, watch } from "vue";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 // ── Búsqueda remota de productos ──────────────────────────────────────────
 const searchProduct = ref("");
@@ -69,7 +72,7 @@ const hasAdvancedFilters = computed(() => !!props.selectedProduct);
     :has-advanced-filters="hasAdvancedFilters"
     :show-sort="true"
     :sort-options="sortOptions"
-    :show-add="true"
+    :show-add="can('manage', 'admin')"
     add-button-text="Asignar Producto"
     search-placeholder="Buscar empleado por nombre..."
     class="py-1"

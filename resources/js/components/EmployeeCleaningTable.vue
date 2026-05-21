@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
+import { useAbility } from "@casl/vue";
+
+const { can } = useAbility();
 
 const props = defineProps({
   employeeCleanings: { type: Array, required: true },
@@ -103,10 +106,10 @@ const getAvatarColor = (id) => {
             <IconBtn size="small" color="info" variant="tonal" class="rounded" @click="emit('view-activities', item)">
               <VIcon icon="tabler-eye" size="18" />
             </IconBtn>
-            <IconBtn size="small" color="warning" variant="tonal" class="rounded" @click="emit('edit-assignment', item)">
+            <IconBtn size="small" color="warning" variant="tonal" class="rounded" @click="emit('edit-assignment', item)" v-if="can('manage', 'admin')">
               <VIcon icon="tabler-edit" size="18" />
             </IconBtn>
-            <VMenu v-if="item.cleaning_activities.length > 0" location="bottom end">
+            <VMenu v-if="item.cleaning_activities.length > 0 && can('manage', 'admin')" location="bottom end">
               <template #activator="{ props: menuProps }">
                 <IconBtn v-bind="menuProps" size="small" color="error" variant="tonal" class="rounded">
                   <VIcon icon="tabler-trash" size="18" />
@@ -172,10 +175,10 @@ const getAvatarColor = (id) => {
                   <IconBtn size="small" color="info" variant="tonal" class="rounded" @click="emit('view-activities', item)">
                     <VIcon icon="tabler-eye" size="18" />
                   </IconBtn>
-                  <IconBtn size="small" color="warning" variant="tonal" class="rounded" @click="emit('edit-assignment', item)">
+                  <IconBtn size="small" color="warning" variant="tonal" class="rounded" @click="emit('edit-assignment', item)" v-if="can('manage', 'admin')">
                     <VIcon icon="tabler-edit" size="18" />
                   </IconBtn>
-                  <VMenu v-if="item.cleaning_activities && item.cleaning_activities.length > 0" location="bottom end">
+                  <VMenu v-if="item.cleaning_activities && item.cleaning_activities.length > 0 && can('manage', 'admin')" location="bottom end">
                     <template #activator="{ props: menuProps }">
                       <IconBtn v-bind="menuProps" size="small" color="error" variant="tonal" class="rounded">
                         <VIcon icon="tabler-trash" size="18" />

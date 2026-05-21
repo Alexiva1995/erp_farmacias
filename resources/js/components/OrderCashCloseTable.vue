@@ -1,6 +1,8 @@
 <script setup>
 import { useDisplay } from "vuetify";
 import Swal from "sweetalert2";
+import { ref, computed } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -8,10 +10,12 @@ const props = defineProps({
   totalOrders: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  isBlind: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options", "view-order", "cancelar-order"]);
 const { mobile } = useDisplay();
+const authStore = useAuthStore();
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -51,15 +55,24 @@ const getPaymentMethodLabel = (methodValue) => {
   return paymentMethodLabels[methodValue] || methodValue;
 };
 
-const headers = [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Identificación", key: "identification", sortable: true },
-  { title: "Cliente", key: "client_full_name", sortable: true },
-  { title: "Monto", key: "total_amount", sortable: true },
-  { title: "Moneda", key: "currency", sortable: true },
-  { title: "Fecha", key: "date", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "end" },
-];
+const headers = computed(() => {
+  const baseHeaders = [
+    { title: "ID", key: "id", sortable: true },
+    { title: "Identificación", key: "identification", sortable: true },
+    { title: "Cliente", key: "client_full_name", sortable: true },
+  ];
+  if (!props.isBlind) {
+    baseHeaders.push(
+      { title: "Monto", key: "total_amount", sortable: true },
+      { title: "Moneda", key: "currency", sortable: true }
+    );
+  }
+  baseHeaders.push(
+    { title: "Fecha", key: "date", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false, align: "end" }
+  );
+  return baseHeaders;
+});
 
 const handleView = (orderId) => {
   emit("view-order", orderId);
@@ -254,7 +267,7 @@ const hasCreditPayment = (rawData) => {
                 </div>
               </div>
 
-              <div class="d-flex justify-space-between align-end">
+              <div v-if="!props.isBlind" class="d-flex justify-space-between align-end">
                 <div>
                   <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Monto Total</div>
                     <div class="text-lg font-weight-bold">

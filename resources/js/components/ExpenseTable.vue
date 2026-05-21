@@ -1,5 +1,9 @@
 <script setup lang="js">
 import dayjs from 'dayjs';
+import { computed } from 'vue';
+import { useAuthStore } from "@/stores/auth";
+
+const authStore = useAuthStore();
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -16,16 +20,21 @@ function verImagne(item) {
   window.open(item.url_file, "_blank");
 }
 
-const headers = [
-  { title: 'ID',             key: 'id',            sortable: true,  width: '70px' },
-  { title: 'Descripción',     key: 'name',          sortable: true,  width: '250px' },
-  { title: 'Categoría',       key: 'category.name', sortable: false, width: '150px' },
-  { title: 'Moneda',          key: 'currency',      sortable: false, width: '100px' },
-  { title: 'Monto Total',     key: 'total_usd',     sortable: true,  align: 'end', width: '150px' },
-  { title: 'Estado',          key: 'status',        sortable: false, align: 'center', width: '120px' },
-  { title: 'Fecha',           key: 'created_at',    sortable: true,  width: '100px' },
-  { title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '100px' },
-];
+const headers = computed(() => {
+  const h = [
+    { title: 'ID',             key: 'id',            sortable: true,  width: '70px' },
+    { title: 'Descripción',     key: 'name',          sortable: true,  width: '250px' },
+    { title: 'Categoría',       key: 'category.name', sortable: false, width: '150px' },
+    { title: 'Moneda',          key: 'currency',      sortable: false, width: '100px' },
+    { title: 'Monto Total',     key: 'total_usd',     sortable: true,  align: 'end', width: '150px' },
+    { title: 'Estado',          key: 'status',        sortable: false, align: 'center', width: '120px' },
+    { title: 'Fecha',           key: 'created_at',    sortable: true,  width: '100px' },
+  ];
+  if (authStore.isAdmin) {
+    h.push({ title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '100px' });
+  }
+  return h;
+});
 </script>
 
 <template>
@@ -203,7 +212,7 @@ const headers = [
               </div>
             </div>
 
-            <div class="d-flex justify-end gap-2 mt-4 ml-2">
+            <div v-if="authStore.isAdmin" class="d-flex justify-end gap-2 mt-4 ml-2">
               <VBtn
                 v-if="item.status === 'Pending' || item.status === 'Pendiente'"
                 color="success"

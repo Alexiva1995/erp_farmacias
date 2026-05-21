@@ -73,7 +73,7 @@ export default [
             title: 'Gastos',
             to: 'finances-expense-expenses',
             action: 'manage',
-            subject: 'admin',
+            subject: 'gastos-expenses',
           },
       {
         title: 'Balance General',

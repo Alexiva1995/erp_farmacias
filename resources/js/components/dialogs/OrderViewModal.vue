@@ -53,6 +53,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isBlind: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["update:isDialogVisible"]);
@@ -373,9 +377,9 @@ const productLineLabel = (product) => {
                 <thead>
                   <tr>
                     <th class="ps-2 py-1">Item</th>
-                    <th class="text-end py-1">P.U</th>
+                    <th v-if="!isBlind" class="text-end py-1">P.U</th>
                     <th class="text-center py-1">Cant</th>
-                    <th class="text-end pe-2 py-1">Total</th>
+                    <th v-if="!isBlind" class="text-end pe-2 py-1">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -391,11 +395,11 @@ const productLineLabel = (product) => {
                         </span>
                       </div>
                     </td>
-                    <td class="text-end table-amount text-super-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td v-if="!isBlind" class="text-end table-amount text-super-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
                     <td class="text-center">
                       <VChip size="x-small" density="compact" variant="tonal" class="font-weight-black" style="font-size: 0.6rem !important; height: 14px;">{{ product.selectedQuantity }}</VChip>
                     </td>
-                    <td class="text-end table-amount text-super-xs font-weight-black pe-2">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                    <td v-if="!isBlind" class="text-end table-amount text-super-xs font-weight-black pe-2">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -403,7 +407,7 @@ const productLineLabel = (product) => {
           </VCard>
 
           <!-- Summary -->
-          <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden">
+          <VCard v-if="!isBlind" variant="flat" class="rounded border shadow-sm bg-white overflow-hidden">
             <VCardText class="pa-2">
               <div class="summary-list d-flex flex-column gap-0">
                 <div v-if="activeDiscount" class="summary-row" style="min-height: 18px;">

@@ -12,6 +12,12 @@ export default [
     subject: 'supervisor-or-admin',
     children: [
       {
+        title: 'Home',
+        to: 'fiscal-home',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
+      },
+      {
         title: 'Facturas',
         to: 'fiscal-history',
         action: 'manage',

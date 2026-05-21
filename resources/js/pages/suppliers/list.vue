@@ -10,8 +10,10 @@ import { toast } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
+const authStore = useAuthStore();
 const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
@@ -23,7 +25,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref(null);
+const typeFilter = ref("drogueria");
 
 const stats = ref({
   total_debt: 0,
@@ -386,6 +388,7 @@ const updateTableOptions = (options) => {
       />
 
       <SupplierStatsCards
+        v-if="authStore.isAdmin"
         :stats="stats"
         :loading="isLoadingStats"
         class="mt-0"

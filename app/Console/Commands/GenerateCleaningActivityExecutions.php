@@ -160,7 +160,6 @@ class GenerateCleaningActivityExecutions extends Command
                 // Calcular fecha límite según frecuencia
                 $dueDate = $this->calculateDueDate($scheduledDate->copy(), $frequency);
 
-                // Verificar si ya existe una ejecución para esta fecha
                 $exists = CleaningActivityExecution::where('employee_id', $employee->id)
                     ->where('cleaning_activity_id', $activity->id)
                     ->where('scheduled_date', $scheduledDate->format('Y-m-d'))
@@ -324,20 +323,27 @@ class GenerateCleaningActivityExecutions extends Command
      */
     private function markOverdueExecutions(): void
     {
-        $this->info('🕐 Marcando ejecuciones vencidas...');
+        $this->info('🕐 Renovando ejecuciones vencidas...');
 
-        // Ahora usa due_date en lugar de scheduled_date
-        $overdueCount = CleaningActivityExecution::where('status', 'Pendiente')
+        $overdueExecutions = CleaningActivityExecution::where('status', 'Pendiente')
             ->where('due_date', '<', Carbon::today())
-            ->update([
+            ->get();
+
+        $updatedCount = 0;
+
+        foreach ($overdueExecutions as $execution) {
+            $execution->update([
                 'status' => 'Vencida',
                 'updated_at' => now(),
             ]);
 
-        if ($overdueCount > 0) {
-            $this->warn("⏰ {$overdueCount} ejecuciones marcadas como vencidas.");
+            $updatedCount++;
+        }
+
+        if ($updatedCount > 0) {
+            $this->info("🔄 {$updatedCount} ejecuciones marcadas como vencidas.");
         } else {
-            $this->info('✓ No hay ejecuciones vencidas.');
+            $this->info('✓ No hay ejecuciones para marcar como vencidas.');
         }
     }
 }

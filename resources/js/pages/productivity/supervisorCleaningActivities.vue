@@ -24,7 +24,7 @@ const sortBy = ref();
 const orderBy = ref();
 
 const searchQuery = ref("");
-const selectedStatus = ref("Procesada"); // Por defecto mostrar las que necesitan revisión
+const selectedStatus = ref(""); // Por defecto mostrar todas las que requieren atención
 const selectedEmployee = ref(null);
 const dateFrom = ref("");
 const dateTo = ref("");
@@ -114,7 +114,7 @@ const updateTableOptions = (options) => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
-  selectedStatus.value = "Procesada";
+  selectedStatus.value = "";
   selectedEmployee.value = null;
   dateFrom.value = "";
   dateTo.value = "";
@@ -202,6 +202,27 @@ const handleCancel = async (data) => {
   }
 };
 
+const handleResolveVencida = async ({ item, action }) => {
+  try {
+    if (action === 'hide') {
+      await axios.post(`/supervisor/cleaning-executions/${item.execution_id}/cancel`, {
+        cancellation_reason: 'Revisada por supervisor (Vencida)',
+      });
+      toast.success("Actividad marcada como revisada y archivada");
+    } else if (action === 'complete') {
+      await axios.post(`/supervisor/cleaning-executions/${item.execution_id}/approve`, {
+        notes: 'Aprobada manualmente por supervisor (Vencida)',
+      });
+      toast.success("Actividad marcada como completada");
+    }
+    await fetchExecutions();
+    await fetchStats();
+  } catch (error) {
+    console.error("Error al resolver actividad vencida:", error);
+    toast.error("Hubo un error al procesar la acción.");
+  }
+};
+
 const clearDialogErrors = () => {
   dialogErrors.value = {};
 };
@@ -224,7 +245,7 @@ const clearDialogErrors = () => {
 
       <!-- Tarjetas de Estadísticas -->
       <VRow dense class="mb-0">
-        <VCol cols="12" sm="6" md="4" lg="2">
+        <VCol class="kpi-col">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -240,7 +261,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="4" lg="2">
+        <VCol class="kpi-col">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -256,23 +277,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="4" lg="2">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden">
-            <VCardText class="pa-4 d-flex align-center justify-space-between">
-              <div>
-                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Rechazadas</div>
-                <div class="text-h5 font-weight-black">
-                  {{ stats.rejected_total }}
-                </div>
-              </div>
-              <VAvatar color="error" variant="tonal" size="40" rounded="lg">
-                <VIcon icon="tabler-x" size="24" />
-              </VAvatar>
-            </VCardText>
-          </VCard>
-        </VCol>
-
-        <VCol cols="12" sm="6" md="4" lg="2">
+        <VCol class="kpi-col">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -288,7 +293,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="4" lg="2">
+        <VCol class="kpi-col">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -304,7 +309,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="4" lg="2">
+        <VCol class="kpi-col">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -330,6 +335,7 @@ const clearDialogErrors = () => {
         :page="page"
         @update:options="updateTableOptions"
         @review="handleReview"
+        @resolve-vencida="handleResolveVencida"
       />
 
       <!-- Modal de Revisión -->
@@ -345,3 +351,22 @@ const clearDialogErrors = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.kpi-col {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+@media (min-width: 600px) {
+  .kpi-col {
+    flex: 0 0 33.33%;
+    max-width: 33.33%;
+  }
+}
+@media (min-width: 960px) {
+  .kpi-col {
+    flex: 0 0 20%;
+    max-width: 20%;
+  }
+}
+</style>

@@ -31,7 +31,7 @@ export default [
         title: 'Pedidos',
         to: "suppliers-supplieriaorderassistant",
         action: 'manage',
-        subject: 'admin',
+        subject: 'ia-pedidos',
       },
       {
         title: 'Reporte',

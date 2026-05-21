@@ -4,6 +4,7 @@ namespace App\Services\Order;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ExchangeRate;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -735,5 +736,211 @@ class OrderQueryService
             Log::error('Error en getFiscalHistoryRecords: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    public function getMonthlyStats(string $startDate, string $endDate): array
+    {
+        try {
+            $units = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->where('orders.status', Order::COMPLETED)
+                ->whereBetween('orders.order_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->sum('order_details.quantity');
+
+            // Fuente auditada única: Cierres de Caja (CashClosing)
+            $sales = DB::table('cash_closing')
+                ->whereBetween('closing_date', [$startDate, $endDate])
+                ->where('status', 'closed')
+                ->sum('total_sales');
+
+            $expenses = \App\Models\Expense::where('status', \App\Models\Expense::STATUS_APPROVED)
+                ->whereBetween('expense_date', [$startDate, $endDate])
+                ->sum('total_usd');
+
+            return [
+                'units' => (int)$units,
+                'sales' => (float)$sales,
+                'expenses' => (float)$expenses,
+                'profit' => (float)($sales - $expenses)
+            ];
+        } catch (\Exception $e) {
+            Log::error('CRITICAL ERROR in getMonthlyStats: ' . $e->getMessage(), [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Obtiene el total de unidades vendidas de órdenes completadas en un rango de fechas.
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @return int
+     */
+    public function getUnitsSold(string $startDate, string $endDate): int
+    {
+        // Sumar cantidades directamente desde los detalles de órdenes completadas
+        return (int) DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->where('orders.status', Order::COMPLETED)
+            ->whereBetween('orders.order_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->sum('order_details.quantity');
+    }
+
+    /**
+     * Obtiene la ganancia bruta acumulada en USD de órdenes completadas en un rango de fechas.
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @return float
+     */
+    public function getProfit(string $startDate, string $endDate): float
+    {
+        // Obtener tasas de cambio activas
+        $exchangeRates = ExchangeRate::all()->pluck('rate', 'currency_code')->toArray();
+        $exchangeRates['USD'] = 1.00;
+
+        if (isset($exchangeRates['BS'])) {
+            $exchangeRates['Bs'] = $exchangeRates['BS'];
+            unset($exchangeRates['BS']);
+        }
+
+        // Obtener órdenes completadas
+        $orders = Order::where('status', Order::COMPLETED)
+            ->whereBetween('order_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->get(['total_amount', 'total_cost', 'currency', 'total_amount_usd']);
+
+        $totalProfit = 0.00;
+
+        foreach ($orders as $order) {
+            // Conversión de ventas totales de la orden a USD
+            $amountUsd = $order->total_amount_usd ?: $this->convertToUsdHelper((float) $order->total_amount, $order->currency, $exchangeRates);
+            
+            // El costo total de la orden ya se calcula y almacena directamente en USD en la base de datos
+            $costUsd = (float) ($order->total_cost ?? 0);
+
+            // Ganancia en USD = Venta en USD - Costo en USD
+            $totalProfit += ($amountUsd - $costUsd);
+        }
+
+        return round($totalProfit, 2);
+    }
+
+    /**
+     * Helper para convertir un monto a USD según tasas de cambio dinámicas.
+     *
+     * @param float $amount
+     * @param string $currencyCode
+     * @param array $exchangeRates
+     * @return float
+     */
+    private function convertToUsdHelper(float $amount, string $currencyCode, array $exchangeRates): float
+    {
+        if (strtoupper($currencyCode) === 'USD') {
+            return $amount;
+        }
+
+        $normalizedCurrency = strtoupper($currencyCode);
+        if ($normalizedCurrency === 'BS') {
+            $normalizedCurrency = 'Bs';
+        }
+
+        if (isset($exchangeRates[$normalizedCurrency]) && $exchangeRates[$normalizedCurrency] > 0) {
+            return $amount / $exchangeRates[$normalizedCurrency];
+        }
+
+        return 0.00;
+    }
+
+    /**
+     * Obtiene los productos más vendidos en unidades en lo que va del mes actual.
+     *
+     * @param int $limit
+     * @return \Illuminate\Support\Collection
+     */
+    public function getPopularProducts(int $limit = 5): \Illuminate\Support\Collection
+    {
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        return DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->whereIn('orders.status', [Order::COMPLETED, Order::CLOSED])
+            ->whereBetween('orders.order_date', [$startOfMonth, $endOfMonth])
+            ->select([
+                'products.id',
+                'products.name',
+                'products.barcode',
+                'products.sale_price',
+                'laboratories.name as laboratory',
+                DB::raw('SUM(order_details.quantity) as total_quantity')
+            ])
+            ->groupBy('products.id', 'products.name', 'products.barcode', 'products.sale_price', 'laboratory')
+            ->orderBy('total_quantity', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Obtiene el listado de ventas por empleado ordenado por monto en USD de mayor a menor.
+     *
+     * @param int $year
+     * @return \Illuminate\Support\Collection
+     */
+    public function getEmployeeSalesByAmount(int $year): \Illuminate\Support\Collection
+    {
+        $sales = Order::where('orders.status', Order::COMPLETED)
+            ->whereYear('orders.order_date', $year)
+            ->selectRaw('orders.seller_id, SUM(orders.total_amount_usd) as total_usd, COUNT(*) as orders_count')
+            ->groupBy('orders.seller_id')
+            ->orderByDesc('total_usd')
+            ->with(['seller.employee'])
+            ->get();
+
+        return $sales->map(function ($item) {
+            $seller = $item->seller;
+            $employee = $seller ? $seller->employee : null;
+            
+            return [
+                'name' => $employee ? ($employee->name . ' ' . $employee->last_name) : ($seller->username ?? 'Desconocido'),
+                'photo_url' => $employee ? $employee->photo_url : null,
+                'sales_amount' => round((float) $item->total_usd, 2),
+                'orders_count' => (int) $item->orders_count,
+            ];
+        });
+    }
+
+    /**
+     * Obtiene el listado de ventas por empleado ordenado por unidades de mayor a menor.
+     *
+     * @param int $year
+     * @return \Illuminate\Support\Collection
+     */
+    public function getEmployeeSalesByUnits(int $year): \Illuminate\Support\Collection
+    {
+        $sales = Order::where('orders.status', Order::COMPLETED)
+            ->whereYear('orders.order_date', $year)
+            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->selectRaw('orders.seller_id, SUM(order_details.quantity) as total_units')
+            ->groupBy('orders.seller_id')
+            ->orderByDesc('total_units')
+            ->with(['seller.employee'])
+            ->get();
+
+        return $sales->map(function ($item) {
+            $seller = $item->seller;
+            $employee = $seller ? $seller->employee : null;
+
+            return [
+                'name' => $employee ? ($employee->name . ' ' . $employee->last_name) : ($seller->username ?? 'Desconocido'),
+                'photo_url' => $employee ? $employee->photo_url : null,
+                'units_sold' => (int) $item->total_units,
+            ];
+        });
     }
 }

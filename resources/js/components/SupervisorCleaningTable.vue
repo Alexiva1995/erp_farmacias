@@ -9,7 +9,19 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "review"]);
+const emit = defineEmits(["update:options", "review", "resolve-vencida"]);
+
+import { useAuthStore } from "@/stores/auth";
+const authStore = useAuthStore();
+
+const isOwnTask = (item) => {
+  // Si el employee relation está cargado, comparamos user_id
+  if (item.employee?.user_id) {
+    return item.employee.user_id === authStore.user?.id;
+  }
+  // Si no, podríamos comparar employee_id si tuviéramos el del usuario actual
+  return false;
+};
 
 const { mobile } = useDisplay();
 
@@ -94,8 +106,10 @@ const canReview = (item) => {
 
 const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
-  const baseUrl = import.meta.env.VITE_API_URL;
-  return `${baseUrl}/storage/${photoPath}`;
+  const cleanPath = photoPath.startsWith("/")
+    ? photoPath.substring(1)
+    : photoPath;
+  return `/storage/${cleanPath}`;
 };
 
 const getEmployeeInitials = (name) => {
@@ -214,10 +228,27 @@ const getEmployeeColor = (employeeId) => {
 
         <!-- Acciones -->
         <template #item.actions="{ item }">
-          <div class="d-flex justify-center">
-            <IconBtn size="small" :color="canReview(item) ? 'primary' : 'info'" variant="tonal" class="rounded" @click="emit('review', item)">
-              <VIcon :icon="canReview(item) ? 'tabler-shield-check' : 'tabler-eye'" size="18" />
-            </IconBtn>
+          <div class="d-flex justify-center gap-1">
+            <template v-if="item.status === 'Procesada' && !isOwnTask(item)">
+              <IconBtn size="small" color="primary" variant="tonal" class="rounded" @click="emit('review', item)">
+                <VIcon icon="tabler-shield-check" size="18" />
+              </IconBtn>
+            </template>
+            <template v-else-if="item.status === 'Vencida' && !isOwnTask(item)">
+              <!-- Check simple: Solo quitar de la lista (marcar como revisada/archivada) -->
+              <IconBtn size="small" color="secondary" variant="tonal" class="rounded" @click="emit('resolve-vencida', { item, action: 'hide' })">
+                <VIcon icon="tabler-check" size="18" />
+              </IconBtn>
+              <!-- Doble check: Marcar como completada -->
+              <IconBtn size="small" color="success" variant="tonal" class="rounded" @click="emit('resolve-vencida', { item, action: 'complete' })">
+                <VIcon icon="tabler-checks" size="18" />
+              </IconBtn>
+            </template>
+            <template v-else-if="!isOwnTask(item)">
+              <IconBtn size="small" color="info" variant="tonal" class="rounded" @click="emit('review', item)">
+                <VIcon icon="tabler-eye" size="18" />
+              </IconBtn>
+            </template>
           </div>
         </template>
 

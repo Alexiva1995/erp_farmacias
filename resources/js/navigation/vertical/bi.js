@@ -8,6 +8,8 @@ export default [
         size: 'sm',
       },
     },
+    action: 'manage',
+    subject: 'admin',
     children: [
       {
         title: 'Reporte ABC',

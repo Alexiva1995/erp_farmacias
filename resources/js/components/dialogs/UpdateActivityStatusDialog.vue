@@ -10,7 +10,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 
 const formData = ref({
-  status: "",
+  status: "Procesada",
   photo: null,
   notes: "",
 });
@@ -28,7 +28,7 @@ watch(
   (newValue) => {
     if (newValue) {
       formData.value = {
-        status: props.activity.status || "Pendiente",
+        status: "Procesada",
         photo: null,
         notes: props.activity.notes || "",
       };
@@ -46,7 +46,7 @@ const closeDialog = () => {
 
 const resetForm = () => {
   formData.value = {
-    status: "Pendiente",
+    status: "Procesada",
     photo: null,
     notes: "",
   };
@@ -136,10 +136,7 @@ const showPhotoUpload = computed(() => {
 });
 
 const isFormValid = computed(() => {
-  if (formData.value.status === "Procesada") {
-    return formData.value.photo !== null;
-  }
-  return formData.value.status !== "";
+  return formData.value.photo !== null;
 });
 
 const formatDate = (date) => {
@@ -253,38 +250,10 @@ const formatDate = (date) => {
         <VForm @submit.prevent="handleSubmit">
           <VRow>
             <!-- Estado -->
-            <VCol cols="12">
-              <VSelect
-                v-model="formData.status"
-                :items="statusOptions"
-                label="Estado *"
-                placeholder="Selecciona el estado"
-                prepend-inner-icon="tabler-flag"
-                :error-messages="props.errors.status"
-                @update:model-value="emit('clear-errors')"
-              >
-                <template #selection="{ item }">
-                  <div class="d-flex align-center gap-2">
-                    <VIcon :icon="getStatusIcon(item.value)" size="18" />
-                    <span>{{ item.title }}</span>
-                  </div>
-                </template>
-                <template #item="{ props: itemProps, item }">
-                  <VListItem v-bind="itemProps">
-                    <template #prepend>
-                      <VIcon
-                        :icon="getStatusIcon(item.value)"
-                        :color="getStatusColor(item.value)"
-                        size="20"
-                      />
-                    </template>
-                  </VListItem>
-                </template>
-              </VSelect>
-            </VCol>
+            <!-- Estado select eliminado según requerimiento -->
 
-            <!-- Alerta informativa cuando selecciona Procesada -->
-            <VCol v-if="showPhotoUpload" cols="12">
+            <!-- Alerta informativa -->
+            <VCol cols="12">
               <VAlert type="info" variant="tonal">
                 <template #prepend>
                   <VIcon icon="tabler-info-circle" />
@@ -297,8 +266,8 @@ const formatDate = (date) => {
               </VAlert>
             </VCol>
 
-            <!-- Subida de Foto (solo si está en Procesada) -->
-            <VCol v-if="showPhotoUpload" cols="12">
+            <!-- Subida de Foto -->
+            <VCol cols="12">
               <VCard variant="outlined" class="pa-4">
                 <div class="d-flex align-center gap-2 mb-3">
                   <VIcon icon="tabler-camera" size="20" color="primary" />
