@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\AutoOrder;
 use App\Contracts\Product;
 use App\Contracts\ProductSupplier;
+use App\Exports\ColombianProductsExport;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use DateTime;
@@ -14,6 +15,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Product as ModelsProduct;
+use Maatwebsite\Excel\Facades\Excel;
+
 class SuppliersIaOrderAssistantController extends Controller
 {
     //
@@ -577,5 +580,24 @@ class SuppliersIaOrderAssistantController extends Controller
             'message' => 'Estado de escasez actualizado con éxito.',
             'is_scarce' => $updatedProduct->is_scarce
         ]);
+    }
+
+    /**
+     * Exporta a Excel los productos de origen colombiano agrupados por laboratorio.
+     * Solo exporta los que tienen solicitar > 0 (los que necesitan pedido).
+     */
+    public function exportarColombianos(Request $request)
+    {
+        // Reutilizamos el mismo pipeline que la paginación pero con filtro colombiano forzado
+        $filtros = $this->prepararFiltros($request);
+        $filtros['isColombian'] = true; // Forzar origen colombiano
+        $filtros['stock']       = $request->get('stock', 'all'); // Respetar el filtro de stock enviado
+
+        // Obtenemos todos los productos sin paginación para exportar el 100%
+        $productos = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
+
+        $fileName = 'colombia-pedido-' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new ColombianProductsExport($productos), $fileName);
     }
 }

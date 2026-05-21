@@ -260,6 +260,41 @@ function generarPedido() {
   });
 }
 
+async function handleExportarColombianos() {
+  // Construir los params con los filtros actuales
+  const params = new URLSearchParams({
+    tipo_filtracion: tipo_de_filtracion.value,
+    lapso_de_tiempo: lapso_de_tiempo.value,
+    stock: stock.value === 'fallas' ? 'fallas' : 'all',
+    isColombian: true,
+    show_ignored: showIgnored.value,
+  });
+
+  if (selectedLaboratory.value.length) {
+    selectedLaboratory.value.forEach(id => params.append('laboratoryId[]', id));
+  }
+
+  try {
+    toast.info('Generando Excel de Colombia...');
+    const resp = await axios.get(
+      `/suppliers-ia-order-assistant/exportar-colombianos?${params.toString()}`,
+      { responseType: 'blob' }
+    );
+    // Descargar el archivo
+    const url  = window.URL.createObjectURL(new Blob([resp.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `colombia-pedido-${new Date().toISOString().slice(0,10)}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success('Excel descargado correctamente.');
+  } catch (e) {
+    toast.error('Error al exportar el archivo Excel.');
+  }
+}
+
 // Modal de Comparación Manual (Productos sin proveedor)
 const isComparatorModalVisible = ref(false);
 const comparatorProduct = ref(null);
@@ -419,6 +454,7 @@ onMounted(async () => {
         @clear-ignore="handleClearIgnore"
         @generarPedido="generarPedido"
         @fetchSuppliers="handleFetchSuppliers"
+        @exportarColombianos="handleExportarColombianos"
       />
 
       <!-- Tabla -->

@@ -37,6 +37,7 @@ const emit = defineEmits([
   "clear-ignore",
   "generarPedido",
   "fetchSuppliers",
+  "exportarColombianos",
 ]);
 
 const precio = [
@@ -138,6 +139,20 @@ const hasAdvancedFilters = computed(() => (
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
         <VTooltip activator="parent" location="top">Generar Pedido IA</VTooltip>
+      </VBtn>
+
+      <!-- Exportar Colombia: visible solo cuando el toggle Colombia está activo -->
+      <VBtn
+        v-if="props.isColombian"
+        icon
+        color="success"
+        variant="flat"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('exportarColombianos')"
+      >
+        <VIcon icon="tabler-file-spreadsheet" size="20" />
+        <VTooltip activator="parent" location="top">Exportar Colombia por Laboratorio (Excel)</VTooltip>
       </VBtn>
 
 
