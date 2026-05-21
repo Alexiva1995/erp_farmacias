@@ -5,6 +5,7 @@ import SupplierIaOrderAssistantIndividualTable from "@/components/SupplierIaOrde
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
