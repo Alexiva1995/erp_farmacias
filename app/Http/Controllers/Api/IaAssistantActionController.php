@@ -214,6 +214,21 @@ class IaAssistantActionController extends Controller
         ]);
     }
 
+    /**
+     * Restaura todos los productos ignorados para que vuelvan a aparecer en el asistente.
+     *
+     * @return JsonResponse
+     */
+    public function clearIgnored(): JsonResponse
+    {
+        $restoredCount = $this->productActionService->clearIgnoredProducts();
+
+        return response()->json([
+            'message' => 'Productos restaurados correctamente.',
+            'restored_count' => $restoredCount,
+        ]);
+    }
+
     private function updateAutoOrderTotals(AutoOrder $order)
     {
         $details = $order->details()->get();

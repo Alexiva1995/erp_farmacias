@@ -247,6 +247,17 @@ class ProductActionService
         return $product;
     }
 
+    /**
+     * Limpia el estado de ignorado para todos los productos, volviéndolos a mostrar en los reportes.
+     *
+     * @return int Cantidad de productos restaurados
+     */
+    public function clearIgnoredProducts(): int
+    {
+        return Product::whereNotNull('ignore_until')
+            ->update(['ignore_until' => null]);
+    }
+
     
     /**
      * Fusiona dos productos, actualizando todas las referencias del producto que se elimina
