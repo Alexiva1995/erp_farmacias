@@ -29,6 +29,41 @@ const fetchSalesByUnits = async () => {
   }
 }
 
+// ── Procesamiento reactivo (Doble capa: unificación de Yenireth y filtrado de admin en frontend) ────
+const computedEmployeesData = computed(() => {
+  const processed: Record<string, EmployeeUnitSale> = {}
+  
+  for (const item of employeesData.value) {
+    const lowerName = item.name.toLowerCase()
+    // Excluir administrador
+    if (lowerName === 'admin' || lowerName.includes('administrator')) {
+      continue
+    }
+    
+    let name = item.name
+    const isYenireth = lowerName.includes('yenireth')
+    
+    if (isYenireth) {
+      name = 'Yenireth Itanare'
+      if (processed[name]) {
+        processed[name].units_sold += item.units_sold
+        if (item.photo_url && !processed[name].photo_url) {
+          processed[name].photo_url = item.photo_url
+        }
+        continue
+      }
+    }
+    
+    processed[name] = {
+      name,
+      photo_url: item.photo_url,
+      units_sold: item.units_sold
+    }
+  }
+  
+  return Object.values(processed).sort((a, b) => b.units_sold - a.units_sold)
+})
+
 // ── Utilidades de Diseño y Avatares ────
 // Obtiene las iniciales de un empleado en caso de que no tenga foto
 const getInitials = (name: string) => {
@@ -85,7 +120,7 @@ onMounted(() => {
 
       <!-- Estado Vacío -->
       <div
-        v-else-if="employeesData.length === 0"
+        v-else-if="computedEmployeesData.length === 0"
         class="d-flex flex-column align-center justify-center py-8 text-center"
       >
         <VAvatar color="secondary" variant="tonal" size="48" class="mb-2">
@@ -97,7 +132,7 @@ onMounted(() => {
       <!-- Listado de Vendedores -->
       <VList v-else class="card-list">
         <VListItem
-          v-for="(employee, index) in employeesData"
+          v-for="(employee, index) in computedEmployeesData"
           :key="employee.name"
           class="employee-item"
         >

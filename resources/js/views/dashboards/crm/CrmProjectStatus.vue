@@ -114,7 +114,7 @@ onMounted(() => {
       <div v-else>
         <VList class="card-list mb-4">
           <VListItem
-            v-for="payment in sortedPendingPayments.slice(0, 5)"
+            v-for="payment in sortedPendingPayments.slice(0, 10)"
             :key="payment.supplier_id + '_' + payment.payment_date"
             class="payment-item"
           >

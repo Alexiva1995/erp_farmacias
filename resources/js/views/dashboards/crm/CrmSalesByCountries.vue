@@ -29,6 +29,43 @@ const fetchSales = async () => {
   }
 }
 
+// ── Procesamiento reactivo (Doble capa: unificación de Yenireth y filtrado de admin en frontend) ────
+const computedSalesData = computed(() => {
+  const processed: Record<string, EmployeeSale> = {}
+  
+  for (const item of salesData.value) {
+    const lowerName = item.name.toLowerCase()
+    // Excluir administrador
+    if (lowerName === 'admin' || lowerName.includes('administrator')) {
+      continue
+    }
+    
+    let name = item.name
+    const isYenireth = lowerName.includes('yenireth')
+    
+    if (isYenireth) {
+      name = 'Yenireth Itanare'
+      if (processed[name]) {
+        processed[name].sales_amount += item.sales_amount
+        processed[name].orders_count += item.orders_count
+        if (item.photo_url && !processed[name].photo_url) {
+          processed[name].photo_url = item.photo_url
+        }
+        continue
+      }
+    }
+    
+    processed[name] = {
+      name,
+      photo_url: item.photo_url,
+      sales_amount: item.sales_amount,
+      orders_count: item.orders_count
+    }
+  }
+  
+  return Object.values(processed).sort((a, b) => b.sales_amount - a.sales_amount)
+})
+
 // ── Formateadores ────
 const formatUsd = (val: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -86,7 +123,7 @@ onMounted(() => {
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="salesData.length === 0" class="d-flex flex-column align-center justify-center py-8 text-center">
+      <div v-else-if="computedSalesData.length === 0" class="d-flex flex-column align-center justify-center py-8 text-center">
         <VAvatar color="secondary" variant="tonal" size="48" class="mb-2">
           <VIcon icon="tabler-users" size="24" />
         </VAvatar>
@@ -96,7 +133,7 @@ onMounted(() => {
       <!-- List of Employees -->
       <VList v-else class="card-list">
         <VListItem
-          v-for="(employee, index) in salesData"
+          v-for="(employee, index) in computedSalesData"
           :key="employee.name"
           class="employee-item"
         >
