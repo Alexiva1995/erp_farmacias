@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from '@/plugins/axios'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 interface PendingPaymentGroup {
   supplier_id: number
@@ -31,6 +31,15 @@ const fetchPendingPayments = async () => {
     loading.value = false
   }
 }
+
+// ── Ordenar cronológicamente ascendente (los más cercanos o vencidos primero) ────
+const sortedPendingPayments = computed(() => {
+  return [...pendingPayments.value].sort((a, b) => {
+    if (!a.payment_date) return 1
+    if (!b.payment_date) return -1
+    return new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
+  })
+})
 
 // ── Formateadores ────
 const formatUsd = (val: number) => {
@@ -70,10 +79,10 @@ onMounted(() => {
 <template>
   <VCard
     title="Pagos Pendientes de Facturas"
-    subtitle="Listado consolidado por proveedor"
+    subtitle="Listado consolidado por fecha más cercana"
   >
     <template #append>
-      <div class="mt-n4 me-n2 d-flex align-center gap-x-1">
+      <div class="mt-n4 me-n2">
         <VBtn
           icon
           variant="text"
@@ -86,16 +95,16 @@ onMounted(() => {
       </div>
     </template>
 
-    <VCardText class="position-relative" style="min-height: 250px;">
+    <VCardText class="position-relative" style="min-height: 200px;">
       <!-- Loading State -->
       <div v-if="loading" class="d-flex justify-center align-center position-absolute w-100 h-100 top-0 left-0" style="z-index: 2; background: rgba(var(--v-theme-surface), 0.7);">
         <VProgressCircular indeterminate color="primary" />
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="pendingPayments.length === 0" class="d-flex flex-column align-center justify-center py-10 text-center">
-        <VAvatar color="success" variant="tonal" size="52" class="mb-3">
-          <VIcon icon="tabler-circle-check" size="28" />
+      <div v-else-if="sortedPendingPayments.length === 0" class="d-flex flex-column align-center justify-center py-8 text-center">
+        <VAvatar color="success" variant="tonal" size="48" class="mb-2">
+          <VIcon icon="tabler-circle-check" size="24" />
         </VAvatar>
         <span class="text-high-emphasis font-weight-bold text-body-1 mb-1">¡Al día!</span>
         <span class="text-medium-emphasis text-body-2">No hay pagos de facturas pendientes</span>
@@ -105,13 +114,13 @@ onMounted(() => {
       <div v-else>
         <VList class="card-list mb-4">
           <VListItem
-            v-for="payment in pendingPayments.slice(0, 5)"
+            v-for="payment in sortedPendingPayments.slice(0, 5)"
             :key="payment.supplier_id + '_' + payment.payment_date"
-            class="payment-item px-2 py-1"
+            class="payment-item"
           >
             <template #prepend>
               <VAvatar
-                size="42"
+                size="40"
                 :color="isOverdue(payment.payment_date) ? 'error' : 'warning'"
                 variant="tonal"
                 class="me-3"
@@ -140,7 +149,7 @@ onMounted(() => {
 
             <template #append>
               <div class="d-flex flex-column align-end">
-                <span class="font-weight-black text-body-1" :class="isOverdue(payment.payment_date) ? 'text-error' : 'text-high-emphasis'">
+                <span class="font-weight-black text-body-1 text-high-emphasis">
                   {{ formatUsd(payment.remainingAmountUSD) }}
                 </span>
                 <span v-if="isOverdue(payment.payment_date)" class="text-error font-weight-bold text-caption mt-n1">
@@ -172,19 +181,16 @@ onMounted(() => {
   </VCard>
 </template>
 
-<template>
-</template>
-
 <style lang="scss" scoped>
 .card-list {
-  --v-card-list-gap: 1rem;
+  --v-card-list-gap: 1.25rem;
 }
 .payment-item {
   transition: transform 0.2s ease, background-color 0.2s ease;
   border-radius: 8px;
   
   &:hover {
-    transform: translateX(4px);
+    transform: translateY(-2px);
     background-color: rgba(var(--v-theme-on-surface), 0.04);
   }
 }

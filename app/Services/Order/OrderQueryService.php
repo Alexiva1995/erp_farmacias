@@ -898,21 +898,52 @@ class OrderQueryService
             ->whereYear('orders.order_date', $year)
             ->selectRaw('orders.seller_id, SUM(orders.total_amount_usd) as total_usd, COUNT(*) as orders_count')
             ->groupBy('orders.seller_id')
-            ->orderByDesc('total_usd')
             ->with(['seller.employee'])
             ->get();
 
-        return $sales->map(function ($item) {
+        $processed = [];
+        foreach ($sales as $item) {
             $seller = $item->seller;
-            $employee = $seller ? $seller->employee : null;
+            // Excluir al administrador (ID 1 o nombre admin)
+            if (!$seller || $seller->id === 1 || strtolower($seller->username) === 'admin') {
+                continue;
+            }
             
-            return [
-                'name' => $employee ? ($employee->name . ' ' . $employee->last_name) : ($seller->username ?? 'Desconocido'),
-                'photo_url' => $employee ? $employee->photo_url : null,
+            $employee = $seller->employee;
+            $name = $employee ? ($employee->name . ' ' . $employee->last_name) : ($seller->username ?? 'Desconocido');
+            
+            // Detectar y unificar los registros de Yenireth Itanare
+            $isYenireth = (
+                $seller->id === 70 || 
+                $seller->id === 92 || 
+                str_contains(strtolower($name), 'yenireth')
+            );
+            
+            $photoUrl = $employee ? $employee->photo_url : null;
+            
+            if ($isYenireth) {
+                $name = 'Yenireth Itanare';
+                if (isset($processed['Yenireth Itanare'])) {
+                    $processed['Yenireth Itanare']['sales_amount'] += round((float) $item->total_usd, 2);
+                    $processed['Yenireth Itanare']['orders_count'] += (int) $item->orders_count;
+                    if ($photoUrl && !$processed['Yenireth Itanare']['photo_url']) {
+                        $processed['Yenireth Itanare']['photo_url'] = $photoUrl;
+                    }
+                    continue;
+                }
+            }
+            
+            $key = $isYenireth ? 'Yenireth Itanare' : $name;
+            $processed[$key] = [
+                'name' => $name,
+                'photo_url' => $photoUrl,
                 'sales_amount' => round((float) $item->total_usd, 2),
                 'orders_count' => (int) $item->orders_count,
             ];
-        });
+        }
+
+        // Retornar la colección reordenada por monto de mayor a menor
+        return collect(array_values($processed))->sortByDesc('sales_amount')->values();
     }
 
     /**
@@ -928,19 +959,49 @@ class OrderQueryService
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')
             ->selectRaw('orders.seller_id, SUM(order_details.quantity) as total_units')
             ->groupBy('orders.seller_id')
-            ->orderByDesc('total_units')
             ->with(['seller.employee'])
             ->get();
 
-        return $sales->map(function ($item) {
+        $processed = [];
+        foreach ($sales as $item) {
             $seller = $item->seller;
-            $employee = $seller ? $seller->employee : null;
-
-            return [
-                'name' => $employee ? ($employee->name . ' ' . $employee->last_name) : ($seller->username ?? 'Desconocido'),
-                'photo_url' => $employee ? $employee->photo_url : null,
+            // Excluir al administrador (ID 1 o nombre admin)
+            if (!$seller || $seller->id === 1 || strtolower($seller->username) === 'admin') {
+                continue;
+            }
+            
+            $employee = $seller->employee;
+            $name = $employee ? ($employee->name . ' ' . $employee->last_name) : ($seller->username ?? 'Desconocido');
+            
+            // Detectar y unificar los registros de Yenireth Itanare
+            $isYenireth = (
+                $seller->id === 70 || 
+                $seller->id === 92 || 
+                str_contains(strtolower($name), 'yenireth')
+            );
+            
+            $photoUrl = $employee ? $employee->photo_url : null;
+            
+            if ($isYenireth) {
+                $name = 'Yenireth Itanare';
+                if (isset($processed['Yenireth Itanare'])) {
+                    $processed['Yenireth Itanare']['units_sold'] += (int) $item->total_units;
+                    if ($photoUrl && !$processed['Yenireth Itanare']['photo_url']) {
+                        $processed['Yenireth Itanare']['photo_url'] = $photoUrl;
+                    }
+                    continue;
+                }
+            }
+            
+            $key = $isYenireth ? 'Yenireth Itanare' : $name;
+            $processed[$key] = [
+                'name' => $name,
+                'photo_url' => $photoUrl,
                 'units_sold' => (int) $item->total_units,
             ];
-        });
+        }
+
+        // Retornar la colección reordenada por unidades vendidas de mayor a menor
+        return collect(array_values($processed))->sortByDesc('units_sold')->values();
     }
 }

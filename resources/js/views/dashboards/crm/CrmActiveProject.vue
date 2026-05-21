@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from '@/plugins/axios'
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 // ── Definición de Interfaz ────
 interface EmployeeUnitSale {
@@ -29,17 +29,6 @@ const fetchSalesByUnits = async () => {
   }
 }
 
-// ── Cálculos Dinámicos de Progreso ────
-// El máximo vendedor (primero en la lista) define el 100% de la barra de progreso
-const maxUnits = computed(() => {
-  if (employeesData.value.length === 0) return 1
-  return employeesData.value[0].units_sold || 1
-})
-
-const getProgressPercentage = (units: number) => {
-  return Math.round((units / maxUnits.value) * 100)
-}
-
 // ── Utilidades de Diseño y Avatares ────
 // Obtiene las iniciales de un empleado en caso de que no tenga foto
 const getInitials = (name: string) => {
@@ -51,7 +40,7 @@ const getInitials = (name: string) => {
     .toUpperCase()
 }
 
-// Colores consistentes y estéticos para barras y avatares
+// Colores consistentes y estéticos para avatares
 const colors = ['primary', 'success', 'info', 'warning', 'error', 'secondary']
 const getRandomColor = (index: number) => {
   return colors[index % colors.length]
@@ -127,23 +116,17 @@ onMounted(() => {
           <VListItemTitle class="font-weight-bold text-high-emphasis">
             {{ employee.name }}
           </VListItemTitle>
-          <VListItemSubtitle class="text-body-2">
-            {{ employee.units_sold }} {{ employee.units_sold === 1 ? 'unidad' : 'unidades' }}
+          <VListItemSubtitle class="text-body-2 text-medium-emphasis">
+            Vendedor de tienda
           </VListItemSubtitle>
 
           <template #append>
-            <div class="d-flex align-center gap-x-4">
-              <div style="inline-size: 5.5rem;">
-                <VProgressLinear
-                  :model-value="getProgressPercentage(employee.units_sold)"
-                  :color="getRandomColor(index)"
-                  height="8"
-                  rounded-bar
-                  rounded
-                />
-              </div>
-              <span class="font-weight-bold text-medium-emphasis text-body-2" style="min-width: 2.2rem; text-align: right;">
-                {{ getProgressPercentage(employee.units_sold) }}%
+            <div class="d-flex flex-column align-end">
+              <span class="font-weight-black text-primary text-body-1">
+                {{ employee.units_sold }}
+              </span>
+              <span class="text-caption text-disabled">
+                {{ employee.units_sold === 1 ? 'unidad' : 'unidades' }}
               </span>
             </div>
           </template>
