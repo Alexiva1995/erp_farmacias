@@ -641,7 +641,7 @@ class OrderActionService
 
     /**
      * Valida que la suma de los pagos cubra el total de la orden (en la moneda de la orden).
-     * Lanza \InvalidArgumentException si no coinciden o la suma es menor.
+     * Lanza \App\Exceptions\PaymentDiscrepancyException si no coinciden o la suma es menor.
      */
     private function validatePaymentsCoverOrderTotal(Order $order, array $payments, float $moneyReturns): void
     {
@@ -682,8 +682,11 @@ class OrderActionService
                 'diff' => abs($netPaid - $orderTotal)
             ]);
 
-            throw new \InvalidArgumentException(
-                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ') no coincide con el total de la factura (' . round($orderTotal, 2) . '). Por favor, verifique los montos ingresados.'
+            throw new \App\Exceptions\PaymentDiscrepancyException(
+                $netPaid,
+                $orderTotal,
+                $orderCurrency,
+                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ' ' . $orderCurrency . ') no coincide con el total de la factura (' . round($orderTotal, 2) . ' ' . $orderCurrency . '). Por favor, verifique los montos ingresados.'
             );
         }
     }
