@@ -16,7 +16,49 @@ class AutoOrderDetailsRepository
 
     public function getPurchaseOrderDetails($filters)
     {
-        $results = AutoOrderDetail::where("order_id", $filters["id"])
+        $orderId = $filters["id"];
+        $order = \App\Models\AutoOrder::find($orderId);
+
+        // La sincronización automática aplica a órdenes en estado enviadas (status = 1)
+        if ($order && $order->status->value === 1) {
+            $supplierId = $order->supplier_id;
+
+            // Buscar productos en facturas cargadas o aprobadas del mismo proveedor
+            $receivedProductIds = \App\Models\InvoiceDetail::whereHas('invoice', function ($query) use ($supplierId) {
+                $query->where('supplier_id', $supplierId)
+                    ->whereIn('status', ['loaded', 'to_order', 'ordered']);
+            })->pluck('product_id')->unique()->toArray();
+
+            if (!empty($receivedProductIds)) {
+                // Obtener los detalles de la orden que aún están pendientes
+                $pendingOrderDetails = AutoOrderDetail::where("order_id", $orderId)
+                    ->whereNull('received')
+                    ->with(['productSupplier'])
+                    ->get();
+
+                $hasUpdates = false;
+                foreach ($pendingOrderDetails as $detail) {
+                    $productId = $detail->productSupplier->product_id ?? null;
+                    
+                    // Si el producto está presente en alguna de las facturas cargadas del proveedor
+                    if ($productId && in_array($productId, $receivedProductIds)) {
+                        $detail->update([
+                            'received' => 1,
+                            'status'   => \App\AutoOrderDetailStatus::ARRIVED->value
+                        ]);
+                        $hasUpdates = true;
+                    }
+                }
+
+                if ($hasUpdates) {
+                    // Sincronizar el estado de la orden principal (completada)
+                    $repo = new AutoOrdersRepository();
+                    $repo->checkAndCompleteOrder($order);
+                }
+            }
+        }
+
+        $results = AutoOrderDetail::where("order_id", $orderId)
             ->with(["productSupplier"])
             ->orderBy("subtotal", "desc")
             ->paginate(10)

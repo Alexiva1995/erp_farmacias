@@ -45,4 +45,21 @@ class InsufficientStockException extends Exception
     {
         return $this->productName;
     }
+
+    /**
+     * Renderizar la excepción como una respuesta HTTP JSON
+     */
+    public function render($request): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'error_code' => 'INSUFFICIENT_STOCK',
+            'message' => $this->getMessage(),
+            'data' => [
+                'product_name' => $this->productName,
+                'available_stock' => $this->availableStock,
+                'requested_quantity' => $this->requestedQuantity,
+            ]
+        ], 422);
+    }
 }

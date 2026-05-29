@@ -97,6 +97,7 @@ class ExpirationOfferController extends Controller
                 ->exists();
 
             if ($existingOffer) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Ya existe una oferta activa para este periodo de caducidad (' . $validated['months_to_expiration'] . ' meses).'
@@ -150,6 +151,7 @@ class ExpirationOfferController extends Controller
             $expirationOffer = ExpirationOffer::find($id);
 
             if (!$expirationOffer) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Oferta no encontrada'
@@ -169,6 +171,7 @@ class ExpirationOfferController extends Controller
                     ->exists();
 
                 if ($conflict) {
+                    DB::rollBack();
                     return response()->json([
                         'success' => false,
                         'message' => 'Ya existe otra oferta activa para ' . $targetMonths . ' meses.'
@@ -217,6 +220,7 @@ class ExpirationOfferController extends Controller
             $expirationOffer = ExpirationOffer::find($id);
 
             if (!$expirationOffer) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Oferta no encontrada'

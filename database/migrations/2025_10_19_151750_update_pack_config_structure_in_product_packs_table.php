@@ -19,7 +19,9 @@ return new class extends Migration
         });
 
         // Actualizar el comentario de pack_config
-        DB::statement("ALTER TABLE product_packs MODIFY COLUMN pack_config JSON NULL COMMENT 'JSON: {product_id: {quantity, discount_percentage, sale_price}}'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE product_packs MODIFY COLUMN pack_config JSON NULL COMMENT 'JSON: {product_id: {quantity, discount_percentage, sale_price}}'");
+        }
 
         // Migrar datos existentes al nuevo formato
         $this->migrateExistingData();
@@ -43,7 +45,9 @@ return new class extends Migration
         });
 
         // Restaurar comentario original
-        DB::statement("ALTER TABLE product_packs MODIFY COLUMN pack_config JSON NULL COMMENT 'JSON: {product_id: quantity}'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE product_packs MODIFY COLUMN pack_config JSON NULL COMMENT 'JSON: {product_id: quantity}'");
+        }
     }
 
     /**

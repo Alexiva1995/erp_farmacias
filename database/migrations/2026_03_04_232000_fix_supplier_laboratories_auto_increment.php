@@ -10,6 +10,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Forzar el auto-incremento y primary key si se perdieron
         // Primero verificamos si el id ya es primary key, si no, lo añadimos junto al auto_increment
         try {

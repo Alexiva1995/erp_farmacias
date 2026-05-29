@@ -31,14 +31,20 @@ return new class extends Migration
             $table->index('supplier_id', 'idx_expiration_supplier');
         });
 
-        // Agregar la columna generada virtualmente
-        DB::statement("
-            ALTER TABLE expirations 
-            ADD COLUMN total_cost DECIMAL(10,2) 
-            GENERATED ALWAYS AS (quantity * unit_cost) VIRTUAL 
-            COMMENT 'Costo total calculado'
-            AFTER unit_cost
-        ");
+        // Agregar la columna generada virtualmente de forma condicional según el driver
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("
+                ALTER TABLE expirations 
+                ADD COLUMN total_cost DECIMAL(10,2) 
+                GENERATED ALWAYS AS (quantity * unit_cost) VIRTUAL 
+                COMMENT 'Costo total calculado'
+                AFTER unit_cost
+            ");
+        } else {
+            Schema::table('expirations', function (Blueprint $table) {
+                $table->decimal('total_cost', 10, 2)->virtualAs('quantity * unit_cost')->nullable();
+            });
+        }
     }
 
     /**

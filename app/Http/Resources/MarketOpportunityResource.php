@@ -31,6 +31,7 @@ class MarketOpportunityResource extends JsonResource
             'unit_cost_usd' => (float) $this->unit_cost_usd,
             'inventory_unit_cost' => (float) $this->inventory_unit_cost,
             'effective_min_cost' => (float) $this->effective_min_cost,
+            'effective_max_cost' => (float) $this->effective_max_cost,
             'saving_percentage' => (float) $this->saving_percentage,
             'supplier_name' => $this->supplier_name,
             'total_sold_completed' => (float) $this->total_sold_completed,

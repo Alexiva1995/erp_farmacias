@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         // Asegurar que id tenga auto_increment (bug detectado en entorno local)
-        \Illuminate\Support\Facades\DB::statement('ALTER TABLE `exchange_rates` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+        if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement('ALTER TABLE `exchange_rates` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+        }
 
         ExchangeRate::updateOrCreate(
             ['currency_code' => 'COPC'],

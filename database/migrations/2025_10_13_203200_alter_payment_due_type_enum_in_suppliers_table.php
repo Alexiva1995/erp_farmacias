@@ -12,12 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("
-            ALTER TABLE suppliers 
-            MODIFY COLUMN payment_due_type 
-            ENUM('invoice_date', 'early_payment', 'expiration_date', 'custom') 
-            NOT NULL
-        ");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("
+                ALTER TABLE suppliers 
+                MODIFY COLUMN payment_due_type 
+                ENUM('invoice_date', 'early_payment', 'expiration_date', 'custom') 
+                NOT NULL
+            ");
+        }
     }
 
     /**
@@ -25,11 +27,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("
-            ALTER TABLE suppliers 
-            MODIFY COLUMN payment_due_type 
-            ENUM('invoice_date', 'early_payment', 'custom') 
-            NOT NULL
-        ");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("
+                ALTER TABLE suppliers 
+                MODIFY COLUMN payment_due_type 
+                ENUM('invoice_date', 'early_payment', 'custom') 
+                NOT NULL
+            ");
+        }
     }
 };

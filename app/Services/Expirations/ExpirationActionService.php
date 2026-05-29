@@ -68,7 +68,11 @@ class ExpirationActionService
             throw new Exception('Ya se ha realizado un reajuste de precios para este mes.', 409);
         }
 
-        $allExpiredLogs = ExpiredLog::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+        $formatField = DB::getDriverName() === 'sqlite' 
+            ? "strftime('%Y-%m', created_at)" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $allExpiredLogs = ExpiredLog::whereRaw("$formatField = ?", [$month])
             ->get();
 
         if ($allExpiredLogs->isEmpty()) {
@@ -133,7 +137,11 @@ class ExpirationActionService
         DB::beginTransaction();
 
         try {
-            $allExpiredLogs = ExpiredLog::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+            $formatField = DB::getDriverName() === 'sqlite' 
+                ? "strftime('%Y-%m', created_at)" 
+                : "DATE_FORMAT(created_at, '%Y-%m')";
+
+            $allExpiredLogs = ExpiredLog::whereRaw("$formatField = ?", [$month])
                 ->get();
 
             if ($allExpiredLogs->isEmpty()) {
@@ -296,7 +304,11 @@ class ExpirationActionService
      */
     public function adjustExpiredProductsPrices(string $month, array $expiredLogIds): array
     {
-        $allLogsInMonth = ExpiredLog::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
+        $formatField = DB::getDriverName() === 'sqlite' 
+            ? "strftime('%Y-%m', created_at)" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $allLogsInMonth = ExpiredLog::whereRaw("$formatField = ?", [$month])
             ->pluck('product_id')
             ->unique()
             ->toArray();

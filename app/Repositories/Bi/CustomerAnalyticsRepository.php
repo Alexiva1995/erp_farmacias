@@ -145,27 +145,48 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
             ->select('client_id', DB::raw('MIN(order_date) as first_purchase'))
             ->groupBy('client_id');
 
-        // 2. Unir con todas sus compras para ver la retención por mes
-        $cohorts = DB::table('orders')
-            ->joinSub($firstPurchases, 'first_orders', function ($join) {
-                $join->on('orders.client_id', '=', 'first_orders.client_id');
-            })
-            ->where('orders.status', 'Completed')
-            ->select(
-                DB::raw("DATE_FORMAT(first_orders.first_purchase, '%Y-%m') as cohort_month"),
-                DB::raw("PERIOD_DIFF(DATE_FORMAT(orders.order_date, '%Y%m'), DATE_FORMAT(first_orders.first_purchase, '%Y%m')) as month_number"),
-                DB::raw("COUNT(DISTINCT orders.client_id) as active_clients")
-            )
-            ->groupBy('cohort_month', 'month_number')
-            ->orderBy('cohort_month')
-            ->orderBy('month_number')
-            ->get();
+        // 2. Unir con todas sus compras para ver la retención por mes - SQLite friendly
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $cohorts = DB::table('orders')
+                ->joinSub($firstPurchases, 'first_orders', function ($join) {
+                    $join->on('orders.client_id', '=', 'first_orders.client_id');
+                })
+                ->where('orders.status', 'Completed')
+                ->select(
+                    DB::raw("strftime('%Y-%m', first_orders.first_purchase) as cohort_month"),
+                    DB::raw("( (strftime('%Y', orders.order_date) - strftime('%Y', first_orders.first_purchase)) * 12 + (strftime('%m', orders.order_date) - strftime('%m', first_orders.first_purchase)) ) as month_number"),
+                    DB::raw("COUNT(DISTINCT orders.client_id) as active_clients")
+                )
+                ->groupBy('cohort_month', 'month_number')
+                ->orderBy('cohort_month')
+                ->orderBy('month_number')
+                ->get();
+        } else {
+            $cohorts = DB::table('orders')
+                ->joinSub($firstPurchases, 'first_orders', function ($join) {
+                    $join->on('orders.client_id', '=', 'first_orders.client_id');
+                })
+                ->where('orders.status', 'Completed')
+                ->select(
+                    DB::raw("DATE_FORMAT(first_orders.first_purchase, '%Y-%m') as cohort_month"),
+                    DB::raw("PERIOD_DIFF(DATE_FORMAT(orders.order_date, '%Y%m'), DATE_FORMAT(first_orders.first_purchase, '%Y%m')) as month_number"),
+                    DB::raw("COUNT(DISTINCT orders.client_id) as active_clients")
+                )
+                ->groupBy('cohort_month', 'month_number')
+                ->orderBy('cohort_month')
+                ->orderBy('month_number')
+                ->get();
+        }
 
         return $cohorts->toArray();
     }
 
     public function getRfmData(array $filters): array
     {
+        $recencyExpr = DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(julianday('now') - julianday(MAX(orders.order_date)) AS INTEGER) as recency_days"
+            : "DATEDIFF(NOW(), MAX(orders.order_date)) as recency_days";
+
         return DB::table('orders')
             ->where('orders.status', 'Completed')
             ->join('clients', 'clients.id', '=', 'orders.client_id')
@@ -177,7 +198,7 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
                 DB::raw('MAX(orders.order_date) as last_order_date'),
                 DB::raw('COUNT(*) as frequency'),
                 DB::raw('SUM(orders.total_amount_usd) as monetary'),
-                DB::raw('DATEDIFF(NOW(), MAX(orders.order_date)) as recency_days')
+                DB::raw($recencyExpr)
             )
             ->groupBy('clients.id', 'clients.name', 'clients.last_name', 'clients.phone')
             ->get()

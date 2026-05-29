@@ -45,8 +45,9 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         $tresMesesAtras = now()->modify('-' . $lapsoStr)->toDateTimeString();
         $hoy = now()->toDateTimeString();
 
-        // Subconsulta para Stock por Lotes (v7 pattern)
-        $subqueryStock = '(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_id = products.id AND quantity > 0 AND (expiration_date IS NULL OR expiration_date >= CURDATE()))';
+        // Subconsulta para Stock por Lotes (v7 pattern) - SQLite friendly
+        $currentDateExpr = DB::connection()->getDriverName() === 'sqlite' ? "DATE('now')" : 'CURDATE()';
+        $subqueryStock = "(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_id = products.id AND quantity > 0 AND (expiration_date IS NULL OR expiration_date >= $currentDateExpr))";
 
         // Subconsulta para Auto Pedidos activos
         $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL)';
@@ -54,9 +55,9 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         // Subconsulta para Ventas Realizadas (3 meses)
         $subquerySales = "(SELECT COALESCE(SUM(order_details.quantity), 0) FROM order_details JOIN orders ON orders.id = order_details.order_id WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '{$tresMesesAtras}' AND '{$hoy}' AND orders.status = 'Completed')";
 
-        // Subconsulta para el costo mínimo histórico por producto en los lotes (últimos 12 meses)
-        $minHistoricCostSubquery = DB::table('product_lots')
-            ->select('product_id', DB::raw('MIN(unit_cost) as min_historic_cost'))
+        // Subconsulta para el costo mínimo y máximo histórico por producto en los lotes (últimos 12 meses)
+        $historicCostSubquery = DB::table('product_lots')
+            ->select('product_id', DB::raw('MIN(unit_cost) as min_historic_cost'), DB::raw('MAX(unit_cost) as max_historic_cost'))
             ->whereDate('created_at', '>=', $doceMesesAtras)
             ->groupBy('product_id');
 
@@ -136,17 +137,27 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
                 'sub.lote_quantity',
                 'sub.promedio_calculado',
                 // Solicitar = Demanda - Stock - AutoOrder
-                DB::raw("CASE 
-                    WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
-                    THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
-                    ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
-                END as solicitar"),
+                DB::raw(DB::connection()->getDriverName() === 'sqlite' 
+                    ? "CASE 
+                        WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                        THEN CAST(($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) + 0.999999 AS INTEGER)
+                        ELSE CAST(($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) AS INTEGER)
+                       END as solicitar"
+                    : "CASE 
+                        WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                        THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                        ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                       END as solicitar"),
                 // Mínimo histórico con fallback al costo de inventario
                 DB::raw('COALESCE(historic.min_historic_cost, sub.inventory_unit_cost) as effective_min_cost'),
+                // Máximo histórico con fallback al costo de inventario
+                DB::raw('COALESCE(historic.max_historic_cost, sub.inventory_unit_cost) as effective_max_cost'),
                 // Porcentaje de ahorro real: ((Costo - Oferta) / Costo) * 100
-                DB::raw('FLOOR(((sub.inventory_unit_cost - sub.effective_offer_price) / sub.inventory_unit_cost) * 100) as saving_percentage')
+                DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                    ? 'CAST(((sub.inventory_unit_cost - sub.effective_offer_price) / sub.inventory_unit_cost) * 100 AS INTEGER) as saving_percentage'
+                    : 'FLOOR(((sub.inventory_unit_cost - sub.effective_offer_price) / sub.inventory_unit_cost) * 100) as saving_percentage')
             )
-            ->leftJoinSub($minHistoricCostSubquery, 'historic', function ($join) {
+            ->leftJoinSub($historicCostSubquery, 'historic', function ($join) {
                 $join->on('sub.product_id', '=', 'historic.product_id');
             })
             ->when($hideDuplicates, function ($q) {
@@ -156,17 +167,33 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         // Filtro de Stock (Fallas/Exceso)
         $stockFilter = $filtros['stock'] ?? 'all';
         if ($stockFilter === 'fallas') {
-            $query->whereRaw("(CASE 
-                WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
-                THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
-                ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
-            END) > 0");
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                $query->whereRaw("(CASE 
+                    WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                    THEN CAST(($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) + 0.999999 AS INTEGER)
+                    ELSE CAST(($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) AS INTEGER)
+                END) > 0");
+            } else {
+                $query->whereRaw("(CASE 
+                    WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                    THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                    ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                END) > 0");
+            }
         } elseif ($stockFilter === 'exceso') {
-            $query->whereRaw("(CASE 
-                WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
-                THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
-                ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
-            END) < 0");
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                $query->whereRaw("(CASE 
+                    WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                    THEN CAST(($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) + 0.999999 AS INTEGER)
+                    ELSE CAST(($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) AS INTEGER)
+                END) < 0");
+            } else {
+                $query->whereRaw("(CASE 
+                    WHEN ($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder) > 0 
+                    THEN CEIL($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                    ELSE FLOOR($demandaSql - sub.lote_quantity - sub.totalQuantityInAutoOrder)
+                END) < 0");
+            }
         }
 
         // Aplicación de filtros de búsqueda

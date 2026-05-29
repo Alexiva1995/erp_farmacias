@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         // Forzar AUTO_INCREMENT en la configuración de rentabilidad existente (bug 1364)
-        \Illuminate\Support\Facades\DB::statement('ALTER TABLE `profitability_settings` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+        if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement('ALTER TABLE `profitability_settings` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+        }
     }
 
     /**

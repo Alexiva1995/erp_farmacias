@@ -43,7 +43,7 @@ return new class extends Migration
             $table->decimal('bs_delivered', 15, 2)->default(0.00);
 
             $table->timestamps();
-            $table->index('seller_id', 'seller_id');
+            $table->index('seller_id');
         });
     }
 

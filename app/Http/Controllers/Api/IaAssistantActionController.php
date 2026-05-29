@@ -121,14 +121,13 @@ class IaAssistantActionController extends Controller
             // pero lo ponemos aquí para asegurar la inmediatez que pide el usuario)
             $this->updateAutoOrderTotals($autoOrder);
 
-            // 5. Ignorar el producto por 7 días tras el pedido y limpiar cantidad manual
+            // 5. Limpiar cantidad manual tras el pedido
             $product->update(['manual_solicitar' => null]);
-            $this->productActionService->ignoreProduct($product, 7);
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Producto añadido a la orden y ocultado por 7 días.',
+                'message' => 'Producto añadido a la orden correctamente.',
                 'auto_order_id' => $autoOrder->id
             ]);
 

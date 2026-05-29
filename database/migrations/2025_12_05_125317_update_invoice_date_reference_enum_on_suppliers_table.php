@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE suppliers CHANGE invoice_date_reference invoice_date_reference ENUM('receipt_date', 'expiration_date', 'issue_date') NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE suppliers CHANGE invoice_date_reference invoice_date_reference ENUM('receipt_date', 'expiration_date', 'issue_date') NULL");
+        }
     }
 
     /**
@@ -24,6 +26,8 @@ return new class extends Migration
             ->where('invoice_date_reference', 'issue_date')
             ->update(['invoice_date_reference' => 'receipt_date']);
 
-        DB::statement("ALTER TABLE suppliers CHANGE invoice_date_reference invoice_date_reference ENUM('receipt_date', 'expiration_date') NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE suppliers CHANGE invoice_date_reference invoice_date_reference ENUM('receipt_date', 'expiration_date') NULL");
+        }
     }
 };

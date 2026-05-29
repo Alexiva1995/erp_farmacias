@@ -30,7 +30,7 @@ class DiscountReportRepository
                 CASE 
                     WHEN product_pack_items.discount_percentage > 0 
                          AND product_pack_items.discount_percentage < 100 
-                    THEN order_details.quantity * order_details.unit_price_usd * (product_pack_items.discount_percentage / (100 - product_pack_items.discount_percentage))
+                    THEN order_details.quantity * order_details.unit_price_usd * (CAST(product_pack_items.discount_percentage AS REAL) / (100.0 - product_pack_items.discount_percentage))
                     ELSE 0 
                 END
             ELSE
@@ -121,7 +121,7 @@ class DiscountReportRepository
                         CASE 
                             WHEN product_pack_items.discount_percentage > 0 
                                  AND product_pack_items.discount_percentage < 100 
-                            THEN order_details.quantity * order_details.unit_price_usd * (product_pack_items.discount_percentage / (100 - product_pack_items.discount_percentage))
+                            THEN order_details.quantity * order_details.unit_price_usd * (CAST(product_pack_items.discount_percentage AS REAL) / (100.0 - product_pack_items.discount_percentage))
                             ELSE 0 
                         END
                     ELSE
@@ -289,7 +289,7 @@ class DiscountReportRepository
                         CASE 
                             WHEN product_pack_items.discount_percentage > 0 
                                  AND product_pack_items.discount_percentage < 100 
-                            THEN order_details.quantity * order_details.unit_price_usd * (product_pack_items.discount_percentage / (100 - product_pack_items.discount_percentage))
+                            THEN order_details.quantity * order_details.unit_price_usd * (CAST(product_pack_items.discount_percentage AS REAL) / (100.0 - product_pack_items.discount_percentage))
                             ELSE 0 
                         END
                     ELSE

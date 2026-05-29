@@ -21,7 +21,24 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::table('product_counts', function (Blueprint $table) {
+        $hasIndex = false;
+        try {
+            if (Schema::hasTable('product_counts')) {
+                $indexes = Schema::getIndexes('product_counts');
+                foreach ($indexes as $index) {
+                    if ($index['name'] === 'product_counts_product_lot_id_index') {
+                        $hasIndex = true;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            $hasIndex = DB::getDriverName() === 'sqlite';
+        }
+
+        Schema::table('product_counts', function (Blueprint $table) use ($hasIndex) {
+            if ($hasIndex) {
+                $table->dropIndex('product_counts_product_lot_id_index');
+            }
             $table->dropConstrainedForeignId('product_lot_id');
         });
     }

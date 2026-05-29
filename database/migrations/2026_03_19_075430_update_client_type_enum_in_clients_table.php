@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE clients MODIFY COLUMN client_type ENUM('Nuevo', 'Ocasional', 'Frecuente', 'VIP', 'En Riesgo', 'Inactivo') DEFAULT 'Nuevo'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE clients MODIFY COLUMN client_type ENUM('Nuevo', 'Ocasional', 'Frecuente', 'VIP', 'En Riesgo', 'Inactivo') DEFAULT 'Nuevo'");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE clients MODIFY COLUMN client_type ENUM('Nuevo', 'Ocasional', 'Frecuente', 'VIP', 'En Riesgo') DEFAULT 'Nuevo'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE clients MODIFY COLUMN client_type ENUM('Nuevo', 'Ocasional', 'Frecuente', 'VIP', 'En Riesgo') DEFAULT 'Nuevo'");
+        }
     }
 };

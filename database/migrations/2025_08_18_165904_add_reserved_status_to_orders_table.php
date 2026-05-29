@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            DB::statement("ALTER TABLE orders CHANGE status status ENUM('Completed', 'Cancelled', 'Abandoned', 'Pending', 'closed', 'Reserved') NOT NULL DEFAULT 'Pending'");
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement("ALTER TABLE orders CHANGE status status ENUM('Completed', 'Cancelled', 'Abandoned', 'Pending', 'closed', 'Reserved') NOT NULL DEFAULT 'Pending'");
+            }
         });
     }
 
@@ -23,7 +25,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            DB::statement("ALTER TABLE orders CHANGE status status ENUM('Completed', 'Cancelled', 'Abandoned', 'Pending', 'closed') NOT NULL DEFAULT 'Pending'");
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement("ALTER TABLE orders CHANGE status status ENUM('Completed', 'Cancelled', 'Abandoned', 'Pending', 'closed') NOT NULL DEFAULT 'Pending'");
+            }
         });
     }
 };

@@ -78,34 +78,35 @@ class LoanActionService
      * 
      * @param array $data
      * @return array
+     * @throws \App\Exceptions\InvalidLoanException
      */
     private function validateLoanData(array $data): array
     {
         $validated = [
-            'loan_date' => $data['loan_date'],
-            'monthly_payment' => (float) $data['monthly_payment'],
-            'total_installments' => (int) $data['total_installments'],
+            'loan_date' => $data['loan_date'] ?? null,
+            'monthly_payment' => isset($data['monthly_payment']) ? (float) $data['monthly_payment'] : 0.0,
+            'total_installments' => isset($data['total_installments']) ? (int) $data['total_installments'] : 0,
         ];
 
         if (empty($validated['loan_date'])) {
-            throw new \InvalidArgumentException('La fecha del préstamo es requerida');
+            throw new \App\Exceptions\InvalidLoanException('La fecha del préstamo es requerida');
         }
 
         $date = \DateTime::createFromFormat('Y-m-d', $validated['loan_date']);
         if (!$date || $date->format('Y-m-d') !== $validated['loan_date']) {
-            throw new \InvalidArgumentException('La fecha del préstamo debe tener formato válido (Y-m-d)');
+            throw new \App\Exceptions\InvalidLoanException('La fecha del préstamo debe tener formato válido (Y-m-d)');
         }
 
         if ($validated['monthly_payment'] <= 0) {
-            throw new \InvalidArgumentException('La cuota mensual debe ser mayor a 0');
+            throw new \App\Exceptions\InvalidLoanException('La cuota mensual debe ser mayor a 0');
         }
 
         if ($validated['total_installments'] <= 0) {
-            throw new \InvalidArgumentException('El número total de cuotas debe ser mayor a 0');
+            throw new \App\Exceptions\InvalidLoanException('El número total de cuotas debe ser mayor a 0');
         }
 
         if ($validated['total_installments'] > 600) {
-            throw new \InvalidArgumentException('El número total de cuotas no puede exceder 600 (50 años)');
+            throw new \App\Exceptions\InvalidLoanException('El número total de cuotas no puede exceder 600 (50 años)');
         }
 
         return $validated;

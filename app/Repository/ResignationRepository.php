@@ -77,9 +77,6 @@ class ResignationRepository
         ];
     }
 
-    /**
-     * Obtener estadísticas de renuncias
-     */
     public function getResignationStats(): array
     {
         // Solo contar renuncias activas (sin soft delete)
@@ -92,8 +89,13 @@ class ResignationRepository
         $currentMonth = date('Y-m');
         $currentYear = date('Y');
 
-        $thisMonth = Resignation::whereNull('deleted_at')->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$currentMonth])->count();
-        $thisYear = Resignation::whereNull('deleted_at')->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [$currentYear])->count();
+        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite') {
+            $thisMonth = Resignation::whereNull('deleted_at')->whereRaw("strftime('%Y-%m', created_at) = ?", [$currentMonth])->count();
+            $thisYear = Resignation::whereNull('deleted_at')->whereRaw("strftime('%Y', created_at) = ?", [$currentYear])->count();
+        } else {
+            $thisMonth = Resignation::whereNull('deleted_at')->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$currentMonth])->count();
+            $thisYear = Resignation::whereNull('deleted_at')->whereRaw("DATE_FORMAT(created_at, '%Y') = ?", [$currentYear])->count();
+        }
 
         return [
             'total' => $total,

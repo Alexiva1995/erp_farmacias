@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('returns', function (Blueprint $table) {
-            DB::statement("ALTER TABLE returns CHANGE COLUMN status status ENUM('Created', 'Approved') DEFAULT 'Created'");
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement("ALTER TABLE returns CHANGE COLUMN status status ENUM('Created', 'Approved') DEFAULT 'Created'");
+            }
         });
     }
 
@@ -23,7 +25,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('returns', function (Blueprint $table) {
-            DB::statement("ALTER TABLE returns CHANGE COLUMN status status ENUM('Active', 'Paid') DEFAULT 'Active'");
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement("ALTER TABLE returns CHANGE COLUMN status status ENUM('Active', 'Paid') DEFAULT 'Active'");
+            }
         });
     }
 };

@@ -23,9 +23,9 @@ return new class extends Migration
             $table->timestamp('payment_date');
             $table->timestamps();
 
-            $table->index('seller_id', 'seller_id');
-            $table->index('cash_closing_id', 'cash_closing_id');
-            $table->index('client_id', 'idx_order_client');
+            $table->index('seller_id');
+            $table->index('cash_closing_id');
+            $table->index('client_id', 'idx_credit_payments_client');
 
         });
     }

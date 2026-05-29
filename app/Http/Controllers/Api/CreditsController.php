@@ -156,6 +156,81 @@ class CreditsController extends Controller
         $orderBy = in_array($request->input('order_by'), ['asc', 'desc']) ? $request->input('order_by') : 'desc';
         $itemsPerPage = (int) $request->input('items_per_page', 10);
 
+        if (DB::getDriverName() === 'sqlite') {
+            $creditPayments = \App\Models\CreditPayment::with(['client', 'seller'])->get();
+            $payments = [];
+
+            foreach ($creditPayments as $cp) {
+                $methodPayments = $cp->method_Payment;
+                if (!is_array($methodPayments)) {
+                    $methodPayments = [];
+                }
+
+                $clientName = $cp->client ? $cp->client->name . ' ' . $cp->client->last_name : 'N/A';
+                $sellerName = $cp->seller ? $cp->seller->username : 'N/A';
+                $paymentDate = $cp->payment_date
+                    ? (is_object($cp->payment_date) ? $cp->payment_date->format('Y-m-d H:i:s') : (string) $cp->payment_date)
+                    : null;
+
+                foreach ($methodPayments as $payment) {
+                    $amount = (float) ($payment['amount'] ?? 0);
+                    if ($amount <= 0) {
+                        continue;
+                    }
+
+                    $payments[] = [
+                        'id' => $cp->id,
+                        'amount' => $amount,
+                        'method' => $payment['method'] ?? '',
+                        'currency' => $payment['currency'] ?? 'USD',
+                        'reference' => $payment['reference'] ?? 'N/A',
+                        'date' => $paymentDate,
+                        'seller' => $sellerName,
+                        'client' => $clientName,
+                    ];
+                }
+            }
+
+            $paymentsCollection = collect($payments);
+
+            if ($currency = $request->input('currency')) {
+                $paymentsCollection = $paymentsCollection->where('currency', $currency);
+            }
+
+            if ($search) {
+                $paymentsCollection = $paymentsCollection->filter(function ($item) use ($search) {
+                    return stripos($item['client'], $search) !== false;
+                });
+            }
+
+            if ($date = $request->input('date')) {
+                $paymentsCollection = $paymentsCollection->filter(function ($item) use ($date) {
+                    return substr($item['date'], 0, 10) === $date;
+                });
+            }
+
+            $sortKey = $sortBy;
+            if ($sortKey === 'date') $sortKey = 'date';
+            
+            $paymentsCollection = $orderBy === 'desc'
+                ? $paymentsCollection->sortByDesc($sortKey)
+                : $paymentsCollection->sortBy($sortKey);
+
+            $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+            $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+                $paymentsCollection->forPage($currentPage, $itemsPerPage)->values()->all(),
+                $paymentsCollection->count(),
+                $itemsPerPage,
+                $currentPage,
+                ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath()]
+            );
+
+            return response()->json([
+                'data' => $paginated->items(),
+                'total' => $paginated->total(),
+            ]);
+        }
+
         $query = DB::table('credit_payments as cp')
             ->crossJoin(DB::raw('JSON_TABLE(
             cp.method_Payment,

@@ -13,7 +13,9 @@ return new class extends Migration {
     {
         // 1. Asegurar AUTO_INCREMENT en users_salary_details
         // Nota: El campo ya es PRIMARY KEY según SHOW INDEX
-        DB::statement('ALTER TABLE users_salary_details MODIFY id BIGINT UNSIGNED AUTO_INCREMENT');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE users_salary_details MODIFY id BIGINT UNSIGNED AUTO_INCREMENT');
+        }
 
         // 2. Añadir claves foráneas (Comentado porque ya existen desde la migración original)
         /*
@@ -36,6 +38,8 @@ return new class extends Migration {
         });
         */
 
-        DB::statement('ALTER TABLE users_salary_details MODIFY id BIGINT UNSIGNED');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE users_salary_details MODIFY id BIGINT UNSIGNED');
+        }
     }
 };

@@ -10,11 +10,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Fix para expense_categories
-        DB::statement('ALTER TABLE `expense_categories` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+        if (DB::getDriverName() !== 'sqlite') {
+            // Fix para expense_categories
+            DB::statement('ALTER TABLE `expense_categories` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
 
-        // Fix para expenses
-        DB::statement('ALTER TABLE `expenses` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+            // Fix para expenses
+            DB::statement('ALTER TABLE `expenses` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT');
+        }
     }
 
     /**

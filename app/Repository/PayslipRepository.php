@@ -225,22 +225,24 @@ class PayslipRepository
     $idList = implode(',', $ids);
     $caseSql = implode(' ', $cases);
 
+    $nowExpr = DB::connection()->getDriverName() === 'sqlite' ? "datetime('now')" : "NOW()";
+
     $sql = "UPDATE payslip_details
         SET amount = CASE id {$caseSql} END,
-            updated_at = NOW()
+            updated_at = {$nowExpr}
         WHERE id IN ({$idList})
         AND payslip_id = ?";
     DB::statement($sql, [$payslip->id]);
 
     DB::statement(
-      'UPDATE payslips
+      "UPDATE payslips
          SET total = (
                SELECT COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0)
                FROM payslip_details
                WHERE payslip_id = payslips.id
              ),
-             updated_at = NOW()
-         WHERE id = ?',
+             updated_at = {$nowExpr}
+         WHERE id = ?",
       [$payslip->id]
     );
 
@@ -267,7 +269,7 @@ class PayslipRepository
       'name' => 'Nómina',
       'category_id' => 1,
       'amount' => $total,
-      'amount_usd' => $payslip->total,
+      'total_usd' => $payslip->total,
       'amount_bs' => $total_bs,
       'currency' => $currency,
       'expense_date' => now(),
@@ -314,8 +316,18 @@ class PayslipRepository
     $month = (int) $now->format('n');
     $isDec = $month === 12;
 
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        $rowExpr = "ROW_NUMBER() OVER(ORDER BY employees.name) as id";
+        $activeYearsExpr = "MAX(CAST((julianday('{$payslip->payslip_date}') - julianday(employees.created_at)) / 365.25 AS INTEGER))";
+        $seniorityCheckExpr = "MAX(CAST((julianday('now') - julianday(employees.created_at)) / 365.25 AS INTEGER))";
+    } else {
+        $rowExpr = "@row := @row + 1 as id";
+        $activeYearsExpr = "MAX(TIMESTAMPDIFF(YEAR, employees.created_at, '{$payslip->payslip_date}'))";
+        $seniorityCheckExpr = "MAX(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE()))";
+    }
+
     $select = [
-      DB::raw('@row := @row + 1 as id'),
+      DB::raw($rowExpr),
       'employees.id          as employee_id',
       DB::raw('COALESCE(employees.name, users.username) as name'),
       'employees.last_name',
@@ -323,7 +335,7 @@ class PayslipRepository
       'roles.name            as role',
       'employees.total_package_usd',
       DB::raw((int) $isDec . '  as is_december'),
-      DB::raw("MAX(TIMESTAMPDIFF(YEAR, employees.created_at, '{$payslip->payslip_date}')) AS active_years"),
+      DB::raw("$activeYearsExpr AS active_years"),
     ];
 
     $add = function (array $cols) use (&$select) {
@@ -332,12 +344,12 @@ class PayslipRepository
 
     $add([
       DB::raw("
-      CASE WHEN MAX(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE())) > 1 THEN
+      CASE WHEN $seniorityCheckExpr > 1 THEN
       ROUND(MAX(CASE WHEN sc.name = 'Vacaciones'      THEN pd.amount * {$currency} ELSE 0 END), 2)
       ELSE 0 END
       AS vacation_voucher"),
       DB::raw("
-       CASE WHEN MAX(TIMESTAMPDIFF(YEAR, employees.created_at, CURDATE())) > 1 THEN
+       CASE WHEN $seniorityCheckExpr > 1 THEN
       ROUND(MAX(CASE WHEN sc.name = 'Bono Vacacional' THEN pd.amount * {$currency} ELSE 0 END), 2)
       ELSE 0 END
       AS vacation_bonus_voucher"),
@@ -368,7 +380,10 @@ class PayslipRepository
       DB::raw("SUM(CASE WHEN sc.name = 'RPE - Paro Forzoso (0.5%)'     THEN pd.amount * {$currency} ELSE 0 END) AS employment_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'FAOV (1%)'                    THEN pd.amount * {$currency} ELSE 0 END) AS housing_property_benefits_voucher"),
     ]);
-    DB::statement('SET @row := 0');
+
+    if (DB::connection()->getDriverName() !== 'sqlite') {
+        DB::statement('SET @row := 0');
+    }
 
     return Employee::query()
       ->select($select)

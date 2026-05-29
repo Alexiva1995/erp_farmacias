@@ -55,6 +55,50 @@ class SocialBenefitRepository
     $perPage = $data['perPage'] ?? 10;
     $currentDate = $this->getCurrentDateForMySQL();
 
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        $activeYearsExpr = "(julianday('{$currentDate}') - julianday(employees.created_at)) / 365.25";
+        $vacationExpr = "MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30.0, 2) *
+                    (15 + CASE WHEN $activeYearsExpr > 1 THEN CAST($activeYearsExpr AS INTEGER) - 1 ELSE 0 END)
+                  ELSE 0
+                END) AS vacation_voucher";
+        $vacationBonusExpr = "MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30.0, 2) *
+                    (15 + CASE WHEN $activeYearsExpr > 1 THEN CAST($activeYearsExpr AS INTEGER) - 1 ELSE 0 END)
+                  ELSE 0
+                END) AS vacation_bonus_voucher";
+        $earningsExpr = "MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30.0, 2) *
+                    CAST($activeYearsExpr AS INTEGER)
+                  ELSE 0
+                END) AS earnings_voucher";
+    } else {
+        $activeYearsExpr = "DATEDIFF('{$currentDate}', employees.created_at) / 365.25";
+        $vacationExpr = "MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30, 2) *
+                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1,
+                             FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25) - 1, 0))
+                  ELSE 0
+                END) AS vacation_voucher";
+        $vacationBonusExpr = "MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30, 2) *
+                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1,
+                             FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25) - 1, 0))
+                  ELSE 0
+                END) AS vacation_bonus_voucher";
+        $earningsExpr = "MAX(CASE
+                  WHEN sc.name = 'Salario Base' THEN
+                    ROUND(usd.amount / 30, 2) *
+                    FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25)
+                  ELSE 0
+                END) AS earnings_voucher";
+    }
+
     return Employee::query()
       ->select([
         'employees.id',
@@ -64,30 +108,10 @@ class SocialBenefitRepository
         'users.email',
         'roles.name as role_name',
         'employees.created_at',
-        DB::raw("DATEDIFF('{$currentDate}', employees.created_at) / 365.25 AS active_years"),
-
-        DB::raw("MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30, 2) *
-                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1,
-                             FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25) - 1, 0))
-                  ELSE 0
-                END) AS vacation_voucher"),
-
-        DB::raw("MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30, 2) *
-                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1,
-                             FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25) - 1, 0))
-                  ELSE 0
-                END) AS vacation_bonus_voucher"),
-
-        DB::raw("MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30, 2) *
-                    FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25)
-                  ELSE 0
-                END) AS earnings_voucher"),
+        DB::raw("$activeYearsExpr AS active_years"),
+        DB::raw($vacationExpr),
+        DB::raw($vacationBonusExpr),
+        DB::raw($earningsExpr),
         DB::raw("MAX(es.created_at) as settlement_date"),
         DB::raw("MAX(es.signed_document_path) as signed_document_path")
       ])
@@ -226,6 +250,10 @@ class SocialBenefitRepository
     // Calcular años de antigüedad usando las fechas correctas
     $activeYears = $this->getDetailedSeniorityYears($hireDate, $currentDate);
 
+    $activeYearsExpr = DB::connection()->getDriverName() === 'sqlite'
+        ? "(julianday('{$currentDate}') - julianday('{$hireDateForSql}')) / 365.25"
+        : "DATEDIFF('{$currentDate}', '{$hireDateForSql}') / 365.25";
+
     $settlement = Employee::query()
       ->select([
         DB::raw("COALESCE(ROUND(
@@ -239,7 +267,7 @@ class SocialBenefitRepository
               ELSE 1
             END
         * {$currency}, 2), 0) as amount"),
-        DB::raw("DATEDIFF('{$currentDate}', '{$hireDateForSql}') / 365.25 AS active_years")
+        DB::raw("$activeYearsExpr AS active_years")
       ])
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
       ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
@@ -723,8 +751,8 @@ class SocialBenefitRepository
         'company_name' => $employee->id == 15 ? 'Toffle' : 'FARMACIA BARRIO SUCRE 2024 C.A.',
         'company_rif' => $employee->id == 15 ? 'V27.108.387-0' : 'J-505406957',
         'company_logo' => $employee->id == 15 ? 'logoToffle.png' : 'logoDonative.png',
-        'starting_date' => isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? \Carbon\Carbon::parse($overrides['hire_date'])->format('d/m/Y') : ($resignation?->start_date?->format('d/m/Y') ?? $employee->created_at?->format('d/m/Y')),
-        'resignation_date' => isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? \Carbon\Carbon::parse($overrides['resignation_date'])->format('d/m/Y') : ($resignation?->effective_date?->format('d/m/Y') ?? $savedSettlement->created_at->format('d/m/Y')),
+        'starting_date' => isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? $this->parseDate($overrides['hire_date'])->format('d/m/Y') : ($resignation?->start_date?->format('d/m/Y') ?? $employee->created_at?->format('d/m/Y')),
+        'resignation_date' => isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? $this->parseDate($overrides['resignation_date'])->format('d/m/Y') : ($resignation?->effective_date?->format('d/m/Y') ?? $savedSettlement->created_at->format('d/m/Y')),
         'active_years' => 0, // Se calculará abajo si es necesario para el string
         'detailed_seniority' => '', // Se calculará abajo
         'base_salary' => isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0 ? $overrides['base_salary_usd'] * $savedSettlement->currency : 0,
@@ -747,8 +775,8 @@ class SocialBenefitRepository
       ];
 
       // Re-calcular antigüedad para el PDF usando las fechas (con prioridad a overrides)
-      $start = isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? \Carbon\Carbon::parse($overrides['hire_date']) : ($resignation?->start_date ?? $employee->created_at);
-      $end = isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? \Carbon\Carbon::parse($overrides['resignation_date']) : ($resignation?->effective_date ?? $savedSettlement->created_at);
+      $start = isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? $this->parseDate($overrides['hire_date']) : ($resignation?->start_date ?? $employee->created_at);
+      $end = isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? $this->parseDate($overrides['resignation_date']) : ($resignation?->effective_date ?? $savedSettlement->created_at);
       
       $pdfData['active_years'] = $start->diffInYears($end, true);
       $pdfData['detailed_seniority'] = $this->getDetailedSeniority($start, $end);

@@ -25,12 +25,19 @@ return new class extends Migration
             $table->index('cycle_id', 'idx_closure_cycle');
         });
 
-        DB::statement("
-            ALTER TABLE inventory_closures 
-            ADD COLUMN total_units BIGINT 
-            GENERATED ALWAYS AS (missing_units + leftover_units) VIRTUAL
-            AFTER total_amount
-        ");
+        // Agregar la columna generada virtualmente de forma condicional según el driver
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("
+                ALTER TABLE inventory_closures 
+                ADD COLUMN total_units BIGINT 
+                GENERATED ALWAYS AS (missing_units + leftover_units) VIRTUAL
+                AFTER total_amount
+            ");
+        } else {
+            Schema::table('inventory_closures', function (Blueprint $table) {
+                $table->bigInteger('total_units')->virtualAs('missing_units + leftover_units')->nullable();
+            });
+        }
     }
 
     /**

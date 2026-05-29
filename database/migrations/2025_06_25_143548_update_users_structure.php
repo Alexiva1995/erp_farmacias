@@ -24,6 +24,14 @@ return new class extends Migration
             $table->string('email')->nullable()->change();
             $table->boolean('is_active')->nullable()->default(1)->change();
 
+            if (Schema::hasColumn('users', 'cedula')) {
+                try {
+                    $table->dropUnique('users_cedula_unique');
+                } catch (\Exception $e) {
+                    // Ignorar si no existe
+                }
+            }
+
             $columnsToDrop = [
                 'first_name', 'last_name', 'cedula', 'email_verified_at', 'photo',
                 'token_login', 'salary', 'currency_salary', 'active_product_units',

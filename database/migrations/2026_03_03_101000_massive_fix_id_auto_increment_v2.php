@@ -10,6 +10,10 @@ return new class extends Migration {
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Consulta corregida uniendo COLUMNS y TABLES para filtrar por TABLE_TYPE
         $tables = DB::select("
             SELECT c.TABLE_NAME 

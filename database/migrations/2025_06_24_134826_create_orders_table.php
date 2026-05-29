@@ -27,8 +27,8 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index('seller_id', 'seller_id');
-            $table->index('cash_closing_id', 'cash_closing_id');
+            $table->index('seller_id');
+            $table->index('cash_closing_id');
             $table->index('order_date', 'idx_order_date');
             $table->index('status', 'idx_order_status');
             $table->index('client_id', 'idx_order_client');

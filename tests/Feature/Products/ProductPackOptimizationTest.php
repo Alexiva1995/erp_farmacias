@@ -143,17 +143,31 @@ class ProductPackOptimizationTest extends TestCase
             'total_price' => 80.00
         ]);
 
+        // Verificar que el booted() sincronizó el pivot correctamente
+        $this->assertDatabaseHas('product_pack_items', [
+            'pack_id' => $pack->id,
+            'product_id' => $product->id,
+            'discount_percentage' => 20.00,
+        ]);
+
+        $now = now()->format('Y-m-d H:i:s');
+
         // Crear una orden con este pack
         $order = Order::create([
             'seller_id' => $seller->id,
             'status' => 'Completed',
-            'order_date' => now()->format('Y-m-d H:i:s'),
             'total_amount' => 80.00,
             'total_amount_usd' => 80.00,
             'money_returns' => 0.00,
+            'total_cost' => 0.00,
             'currency' => 'USD',
-            'payment_methods' => [],
-            'created_at' => now()->format('Y-m-d H:i:s'),
+            'payment_methods' => null,
+            'usd_conversion' => 0.00,
+            'taxable_base' => 0.00,
+            'spe_surcharge_rate' => 0.00,
+            'spe_surcharge_amount' => 0.00,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
         OrderDetail::create([
@@ -166,7 +180,7 @@ class ProductPackOptimizationTest extends TestCase
             'unit_cost' => 80.00,
             'unit_price_usd' => 80.00,
             'price_before_discount' => 100.00,
-            'discount_percentage' => 0 // el descuento es por pack
+            'discount_percentage' => 0 // el descuento viene del pivot del pack
         ]);
 
         // Calcular el impacto financiero mediante el repositorio refactorizado

@@ -14,6 +14,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Primero necesitamos eliminar las foreign keys que dependen del índice único
         // Luego eliminar el índice único
         // Y finalmente recrear las foreign keys sin el índice único
@@ -49,6 +53,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Para restaurar, primero eliminamos la foreign key
         Schema::table('product_suppliers', function (Blueprint $table) {
             $table->dropForeign(['product_id']);

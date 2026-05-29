@@ -55,6 +55,7 @@ class OrderActionService
                 $data['money_returns'] = $data['money_returns'] ?? 0;
                 $data['total_cost'] = $data['total_cost'] ?? 0;
                 $data['payment_methods'] = null;
+                $data['currency'] = $data['currency'] ?? 'USD';
 
                 $order = Order::create($data);
                 $order->load('seller', 'client');

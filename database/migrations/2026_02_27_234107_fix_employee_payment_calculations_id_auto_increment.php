@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE employee_payment_calculations MODIFY id BIGINT UNSIGNED AUTO_INCREMENT');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE employee_payment_calculations MODIFY id BIGINT UNSIGNED AUTO_INCREMENT');
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE employee_payment_calculations MODIFY id BIGINT UNSIGNED');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE employee_payment_calculations MODIFY id BIGINT UNSIGNED');
+        }
     }
 };
