@@ -408,49 +408,17 @@ class OrderActionService
             $order->total_amount_usd = $validatedData['total_amount_usd'];
             // $order->total_cost = $validatedData['total_cost']; // No usar costo del frontend
             $order->currency = $targetCurrency;
-            //   dd($targetCurrency);
             $order->save();
             $order->load('details.product');
+
+            // Instanciamos dinámicamente la estrategia de precios utilizando el Factory
+            $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
+
             foreach ($order->details as $item) {
                 $product = $item->product;
-                $priceToSet = 0;
-                if ($item->pack_id && $item->unit_price_usd > 0) {
-                    switch ($targetCurrency) {
-                        case 'USD':
-                            $priceToSet = $item->unit_price_usd;
-                            break;
-                        case 'BS':
-                            $salePrice = $product->sale_price ?? 0;
-                            $priceBs = $product->price_bs ?? 0;
-                            $rate = ($salePrice > 0) ? ($priceBs / $salePrice) : 0;
-                            // Fallback if rate calculation fails, though product should have prices
-                            if ($rate == 0 && $priceBs > 0)
-                                $rate = 1; // Unlikely but fail safe to avoid 0
-                            $priceToSet = $item->unit_price_usd * $rate;
-                            break;
-                        case 'COP':
-                            $rate = ($product->sale_price > 0) ? ($product->price_cop / $product->sale_price) : 0;
-                            $priceToSet = $item->unit_price_usd * $rate;
-                            break;
-                        default:
-                            $priceToSet = $item->unit_price_usd;
-                    }
-                } else {
-                    switch ($targetCurrency) {
-                        case 'USD':
-                            $priceToSet = $product->sale_price ?? $product->price ?? 0;
-                            break;
-                        case 'BS':
-                            $priceToSet = $product->price_bs ?? 0;
-                            break;
-                        case 'COP':
-                            $priceToSet = $product->price_cop ?? 0;
-                            break;
-                        default:
-                            $priceToSet = $product->sale_price ?? $product->price ?? 0;
-                            break;
-                    }
-                }
+                
+                // Aplicamos el Patrón Estrategia para obtener el precio base de venta según divisa
+                $priceToSet = $pricingStrategy->calculatePrice($product, $item);
 
                 // Preservar y re-aplicar descuento si existe
                 if ($item->discount_percentage > 0 && $item->discount_type) {
@@ -459,7 +427,6 @@ class OrderActionService
                 }
 
                 $item->price = $priceToSet;
-                // $item->unit_cost = $priceToSet; // NO sobreescribir el costo real con el precio de venta recalculado
                 $item->save();
             }
             $order->updateTotals(); // Recalcular costos y totales correctamente en el servidor
