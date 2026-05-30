@@ -1,5 +1,46 @@
 // Write your overrides
 
+:root {
+  --color-primary: #E20074;
+  --color-primary-dark: #D8005A;
+  --color-secondary: #7A0099;
+  --color-secondary-dark: #5C007A;
+  --color-dark: #121426;
+  --color-dark-light: #1E2243;
+  --color-light: #F8F9FA;
+  --color-light-gray: #E9ECEF;
+  --color-white: #FFFFFF;
+  --brand-gradient: linear-gradient(135deg, #7A0099, #E20074);
+}
+
+.tova-gradient {
+  background: var(--brand-gradient) !important;
+  color: var(--color-white) !important;
+}
+
+.v-btn.v-btn--variant-elevated.v-btn--color-primary,
+.v-btn.v-btn--variant-flat.v-btn--color-primary {
+  background: var(--brand-gradient) !important;
+  color: var(--color-white) !important;
+  border: none !important;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 15px rgba(226, 0, 116, 0.4) !important;
+  }
+}
+
+.v-navigation-drawer {
+  .v-list-item--active {
+    background: var(--brand-gradient) !important;
+    color: var(--color-white) !important;
+    .v-icon {
+      color: var(--color-white) !important;
+    }
+  }
+}
+
 /*
   Global override to adjust the "oval" appearance of internal cards in modals.
   As requested by the user, we change rounded-xl to 8px inside dialogs
