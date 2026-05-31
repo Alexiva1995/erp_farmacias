@@ -16,7 +16,7 @@ import 'cropperjs/dist/cropper.css';
 
 async function startApp() {
   try {
-    await axiosInstance.get('/sanctum/csrf-cookie');
+    await axiosInstance.get('/sanctum/csrf-cookie', { baseURL: '' });
     console.log("✅ CSRF cookie obtained successfully.");
 
     const app = createApp(App)
