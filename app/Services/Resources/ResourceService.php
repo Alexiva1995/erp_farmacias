@@ -64,17 +64,47 @@ class ResourceService
         });
     }
     /**
-     * Obtiene una sola tasa, utilizando caché.
+     * Obtiene una sola tasa, utilizando caché y una estrategia robusta de recuperación (Fallback Cache).
      */
     public function getExchangeRate(string $currencyCode): float
     {
-        return Cache::remember("resources.exchange_rate.{$currencyCode}", now()->addHours(1), function () use ($currencyCode) {
-            $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
-            if ($exchangeRate) {
-                return (float) $exchangeRate->rate;
+        $cacheKey = "resources.exchange_rate.{$currencyCode}";
+        $fallbackKey = "resources.exchange_rate.{$currencyCode}.fallback";
+
+        try {
+            // Intentar obtener la tasa fresca o desde la caché con expiración
+            $rate = Cache::remember($cacheKey, now()->addHours(1), function () use ($currencyCode, $fallbackKey) {
+                $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+                if ($exchangeRate) {
+                    $val = (float) $exchangeRate->rate;
+                    // Almacenar en caché persistente (sin expiración) como fallback de seguridad
+                    Cache::forever($fallbackKey, $val);
+                    return $val;
+                }
+                
+                // Si no hay registro fresco pero hay fallback, usarlo
+                if (Cache::has($fallbackKey)) {
+                    return (float) Cache::get($fallbackKey);
+                }
+
+                return 1.0;
+            });
+
+            return $rate;
+        } catch (\Exception $e) {
+            // Registrar el error para observabilidad detallando el fallo de base de datos/caché
+            Log::error("Fallo al recuperar tasa de cambio para '{$currencyCode}' en ResourceService::getExchangeRate. Se utilizará fallback.", [
+                'currency_code' => $currencyCode,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Fallback ante cualquier error de red, timeout o fallo de base de datos
+            if (Cache::has($fallbackKey)) {
+                return (float) Cache::get($fallbackKey);
             }
             return 1.0;
-        });
+        }
     }
 
     /**

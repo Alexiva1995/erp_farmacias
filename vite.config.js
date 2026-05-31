@@ -108,4 +108,12 @@ export default defineConfig({
       './resources/js/**/*.vue',
     ],
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    alias: {
+      '@/': fileURLToPath(new URL('./resources/js/', import.meta.url)),
+      '@axios': fileURLToPath(new URL('./resources/js/plugins/axios', import.meta.url)),
+    },
+  },
 })

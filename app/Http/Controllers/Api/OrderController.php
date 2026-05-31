@@ -186,6 +186,8 @@ class OrderController extends Controller
             $sellerId = Auth::id();
             $result = $this->orderActionService->complete($orderId, $request, $sellerId);
             return ApiResponse::success($result, 'Compra finalizada exitosamente.', 200);
+        } catch (\App\Exceptions\PaymentDiscrepancyException $e) {
+            return $e->render($request);
         } catch (InsufficientStockException $e) {
             Log::warning('Stock insuficiente al completar orden', [
                 'order_id' => $orderId->id,
