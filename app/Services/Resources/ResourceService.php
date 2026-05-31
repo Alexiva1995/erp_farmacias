@@ -92,6 +92,13 @@ class ResourceService
 
             return $rate;
         } catch (\Exception $e) {
+            // Registrar el error para observabilidad detallando el fallo de base de datos/caché
+            Log::error("Fallo al recuperar tasa de cambio para '{$currencyCode}' en ResourceService::getExchangeRate. Se utilizará fallback.", [
+                'currency_code' => $currencyCode,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             // Fallback ante cualquier error de red, timeout o fallo de base de datos
             if (Cache::has($fallbackKey)) {
                 return (float) Cache::get($fallbackKey);
