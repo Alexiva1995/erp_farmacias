@@ -40,11 +40,9 @@
   </div>
 
   <script>
-    const loaderColor = localStorage.getItem('vuexy-initial-loader-bg') || '#FFFFFF'
-    const primaryColor = localStorage.getItem('vuexy-initial-loader-color') || '#E20074'
+    const loaderColor = localStorage.getItem('ERP-initial-loader-bg') || '#FFFFFF'
+    const primaryColor = localStorage.getItem('ERP-initial-loader-color') || '#E20074'
 
-    if (loaderColor)
-      document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
     if (loaderColor)
       document.documentElement.style.setProperty('--initial-loader-bg', loaderColor)
 
