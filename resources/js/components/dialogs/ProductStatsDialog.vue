@@ -74,7 +74,7 @@ const chartOptions = computed(() => ({
     borderColor: "rgba(var(--v-border-color), 0.1)",
     strokeDashArray: 5,
   },
-  colors: ["#7367f0", "#28c76f", "#ea5455", "#ff9f43", "#00cfe8", "#4b4b4b"],
+  colors: ["#E20074", "#28c76f", "#ea5455", "#ff9f43", "#00cfe8", "#4b4b4b"],
   tooltip: {
     theme: "dark",
     shared: true,
@@ -119,7 +119,7 @@ const marketShareOptions = computed(() => ({
   },
   stroke: { dashArray: 4 },
   labels: ['Mkt Share'],
-  colors: ['#7367f0'],
+  colors: ['#E20074'],
 }));
 
 const series = computed(() => stats.value?.trend_chart?.series || []);
@@ -299,7 +299,7 @@ const closeDialog = () => {
 }
 
 .header-gradient {
-  background: linear-gradient(135deg, #7367f0 0%, #3f2b96 100%);
+  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%);
 }
 
 .bg-light {
@@ -326,7 +326,7 @@ const closeDialog = () => {
   border-radius: 4px;
 }
 
-.header-indicator.primary { background-color: #7367f0; }
+.header-indicator.primary { background-color: #E20074; }
 
 .card-glow {
   position: absolute;
@@ -340,7 +340,7 @@ const closeDialog = () => {
   border-radius: 50%;
 }
 
-.card-glow.primary { background-color: #7367f0; }
+.card-glow.primary { background-color: #E20074; }
 .card-glow.success { background-color: #28c76f; }
 .card-glow.info { background-color: #00cfe8; }
 

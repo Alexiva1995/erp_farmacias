@@ -31,12 +31,55 @@
   }
 }
 
+.layout-vertical-nav,
 .v-navigation-drawer {
-  .v-list-item--active {
+  // Íconos inactivos con el color morado oscuro de TOVA (#6E0865)
+  .v-list-item:not(.v-list-item--active),
+  .nav-link:not(.active),
+  .nav-group:not(.active),
+  .nav-group:not(.open) {
+    .v-icon,
+    .nav-item-icon,
+    svg,
+    svg path {
+      color: #6E0865 !important;
+      fill: #6E0865 !important;
+      opacity: 0.95 !important;
+      transition: all 0.25s ease;
+    }
+
+    &:hover,
+    > a:hover,
+    > div:hover {
+      .v-icon,
+      .nav-item-icon,
+      svg,
+      svg path {
+        color: #E20074 !important; // Hover en fucsia explícito de TOVA
+        fill: #E20074 !important;
+        opacity: 1 !important;
+        transform: scale(1.08) !important; // Micro-animación de escala elegante
+      }
+    }
+  }
+
+  // Asegurar que los items activos destaquen con el gradiente e iconos en blanco puro
+  .v-list-item--active,
+  .nav-link.active,
+  .nav-link.router-link-active,
+  .nav-link.router-link-exact-active,
+  .nav-group.active,
+  .nav-group.open {
     background: var(--brand-gradient) !important;
     color: var(--color-white) !important;
-    .v-icon {
+    
+    .v-icon,
+    .nav-item-icon,
+    svg,
+    svg path {
       color: var(--color-white) !important;
+      fill: var(--color-white) !important;
+      opacity: 1 !important;
     }
   }
 }
@@ -83,4 +126,52 @@
   .border-dashed {
     border-color: rgba(var(--v-border-color), 0.1) !important;
   }
+}
+
+/*
+  PREMIUM VISUAL WEIGHT AND DARK CONTRAST SYSTEM FOR TOVA
+  Forzamos contrastes oscuros del color corporativo en textos principales,
+  secundarios, títulos y campos de formulario para evitar la pérdida de peso visual.
+*/
+body, 
+.v-application {
+  color: var(--color-dark) !important;
+  font-family: 'Outfit', 'Inter', sans-serif !important;
+}
+
+// Títulos y encabezados con fuerte contraste y peso
+h1, h2, h3, h4, h5, h6,
+.text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6,
+.v-card-title {
+  color: var(--color-dark) !important;
+  font-weight: 800 !important;
+}
+
+// Párrafos, textos descriptivos y de énfasis medio (marino profundo de alta legibilidad)
+p, 
+span.text-medium-emphasis,
+.text-body-1, 
+.text-body-2, 
+.v-list-item-subtitle,
+.text-medium-emphasis {
+  color: #2b2e4a !important; // Marino intermedio con excelente contraste sobre fondos claros
+  opacity: 0.95 !important;
+  font-weight: 500 !important;
+}
+
+// Elementos de formulario
+.v-label, 
+.v-field-label {
+  color: var(--color-dark) !important;
+  font-weight: 700 !important;
+  opacity: 0.9 !important;
+}
+
+.v-field__input {
+  color: var(--color-dark) !important;
+  font-weight: 600 !important;
+}
+
+.v-field__placeholder {
+  opacity: 0.6 !important;
 }

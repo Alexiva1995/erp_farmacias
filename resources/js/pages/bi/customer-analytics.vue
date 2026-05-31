@@ -61,13 +61,13 @@ const acquisitionChartOptions = computed(() => ({
     type: 'line', 
     toolbar: { show: false }, 
     fontFamily: 'Inter, sans-serif',
-    dropShadow: { enabled: true, top: 10, left: 0, blur: 3, color: '#7367F0', opacity: 0.1 }
+    dropShadow: { enabled: true, top: 10, left: 0, blur: 3, color: '#E20074', opacity: 0.1 }
   },
   stroke: { curve: 'smooth', width: 4 },
-  colors: ['#7367F0'],
+  colors: ['#E20074'],
   fill: {
     type: 'gradient',
-    gradient: { shade: 'dark', gradientToColors: ['#A098FF'], shadeIntensity: 1, type: 'horizontal', opacityFrom: 1, opacityTo: 1, stops: [0, 100] }
+    gradient: { shade: 'dark', gradientToColors: ['#7A0099'], shadeIntensity: 1, type: 'horizontal', opacityFrom: 1, opacityTo: 1, stops: [0, 100] }
   },
   xaxis: {
     categories: analyticsData.value?.growth?.new_customers_daily?.map(d => d.date) || [],
@@ -77,13 +77,13 @@ const acquisitionChartOptions = computed(() => ({
   yaxis: { labels: { style: { colors: '#a3a3a3' } } },
   grid: { borderColor: 'rgba(144, 164, 174, 0.05)' },
   tooltip: { theme: 'dark' },
-  markers: { size: 4, colors: ['#7367F0'], strokeColors: '#fff', strokeWidth: 2, hover: { size: 7 } }
+  markers: { size: 4, colors: ['#E20074'], strokeColors: '#fff', strokeWidth: 2, hover: { size: 7 } }
 }));
 
 // 2. Frecuencia de Compra (Donut)
 const frequencyDonutOptions = computed(() => ({
   labels: Object.keys(analyticsData.value?.frequency || {}).map(f => `${f} ${f === '1' ? 'Orden' : 'Órdenes'}`),
-  colors: ['#7367F0', '#28C76F', '#FF9F43', '#EA5455', '#00CFE8'],
+  colors: ['#E20074', '#7A0099', '#28C76F', '#FF9F43', '#EA5455'],
   plotOptions: {
     pie: {
       donut: {
@@ -108,7 +108,7 @@ const frequencyDonutOptions = computed(() => ({
 const valueTreemapOptions = computed(() => ({
   legend: { show: false },
   chart: { height: 350, type: 'treemap', toolbar: { show: false } },
-  colors: ['#7367F0', '#28C76F', '#FF9F43', '#EA5455'],
+  colors: ['#E20074', '#7A0099', '#FF9F43', '#EA5455'],
   plotOptions: {
     treemap: {
       distributed: true,
@@ -138,7 +138,7 @@ const valueTreemapSeries = computed(() => [
 const getCohortColor = (percentage) => {
   if (!percentage) return 'transparent';
   const opacity = percentage / 100;
-  return `rgba(115, 103, 240, ${opacity})`;
+  return `rgba(226, 0, 116, ${opacity})`;
 };
 
 const getTextColor = (percentage) => {
@@ -368,7 +368,7 @@ const getTextColor = (percentage) => {
   box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
 }
 
-.bg-light-primary { background-color: #f7fbff; }
+.bg-light-primary { background-color: #fff0f6; }
 .bg-light-error { background-color: #fff5f5; }
 
 .font-weight-black { font-weight: 900 !important; }
@@ -390,7 +390,7 @@ const getTextColor = (percentage) => {
 }
 
 .segment-indicator { width: 12px; height: 12px; border-radius: 3px; }
-.platinum { background-color: #7367F0; }
+.platinum { background-color: #E20074; }
 .gold { background-color: #28C76F; }
 .silver { background-color: #FF9F43; }
 .bronze { background-color: #EA5455; }

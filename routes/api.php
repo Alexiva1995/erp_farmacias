@@ -97,6 +97,7 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
+Route::get('/general-settings', [GeneralSettingController::class, 'index']);
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
@@ -358,7 +359,6 @@ Route::middleware("auth:sanctum")->group(function () {
 
 
     //ruta de configuracion
-    Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
 
     // Rutas del Dashboard

@@ -8,8 +8,8 @@ export const useBrandingStore = defineStore('branding', () => {
     app_rif: '',
     app_logo: '',
     app_favicon: '',
-    primary_color: '#043D7A',
-    secondary_color: '#82868B',
+    primary_color: '#E20074',
+    secondary_color: '#7A0099',
     footer_text: 'Todos los derechos reservados de Tova',
   })
 

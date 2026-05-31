@@ -4,12 +4,20 @@ import authV1BottomShape from "@images/svg/auth-v1-bottom-shape.svg?raw";
 import authV1TopShape from "@images/svg/auth-v1-top-shape.svg?raw";
 import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
 import { themeConfig } from "@themeConfig";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { onMounted, ref } from "vue";
+
+const brandingStore = useBrandingStore();
 
 definePage({
   meta: {
     layout: "blank",
     public: true,
   },
+});
+
+onMounted(async () => {
+  await brandingStore.fetchSettings();
 });
 
 const form = ref({
@@ -22,19 +30,19 @@ const isPasswordVisible = ref(false);
 </script>
 
 <template>
-  <div class="auth-wrapper d-flex align-center justify-center pa-4">
+  <div class="auth-wrapper branding-auth-bg d-flex align-center justify-center pa-4">
     <div class="position-relative my-sm-16">
-      <!-- 👉 Top shape -->
-      <VNodeRenderer
-        :nodes="h('div', { innerHTML: authV1TopShape })"
-        class="text-primary auth-v1-top-shape d-none d-sm-block"
-      />
-
-      <!-- 👉 Bottom shape -->
-      <VNodeRenderer
-        :nodes="h('div', { innerHTML: authV1BottomShape })"
-        class="text-primary auth-v1-bottom-shape d-none d-sm-block"
-      />
+      <!-- Isotipos de TOVA como marca de agua de fondo -->
+      <img
+        src="/isotipo.svg"
+        alt="tova-brand-shape-top"
+        class="auth-v1-top-shape d-none d-sm-block"
+      >
+      <img
+        src="/isotipo.svg"
+        alt="tova-brand-shape-bottom"
+        class="auth-v1-bottom-shape d-none d-sm-block"
+      >
 
       <!-- 👉 Auth Card -->
       <VCard
@@ -46,10 +54,11 @@ const isPasswordVisible = ref(false);
           <VCardTitle>
             <RouterLink to="/">
               <div class="app-logo">
-                <VNodeRenderer :nodes="themeConfig.app.logo" />
-                <h1 class="app-logo-title">
-                  {{ themeConfig.app.title }}
-                </h1>
+                <img
+                  :src="brandingStore.settings.app_logo || '/logo.svg'"
+                  alt="logo"
+                  style="max-height: 80px; max-width: 100%; object-fit: contain;"
+                >
               </div>
             </RouterLink>
           </VCardTitle>
@@ -106,7 +115,7 @@ const isPasswordVisible = ref(false);
                 </div>
 
                 <!-- login button -->
-                <VBtn block type="submit"> Login </VBtn>
+                <VBtn block color="primary" type="submit"> Login </VBtn>
               </VCol>
 
               <!-- create account -->
@@ -140,4 +149,59 @@ const isPasswordVisible = ref(false);
 
 <style lang="scss">
 @use "@core-scss/template/pages/page-auth";
+
+.login-card {
+  width: 546px !important;
+  max-width: 546px !important;
+  min-width: 546px !important;
+}
+
+// Asegurar que la tarjeta tenga el ancho correcto en todos los tamaños de pantalla
+@media (max-width: 959px) {
+  .login-card {
+    width: 90% !important;
+    max-width: 546px !important;
+    min-width: 320px !important;
+  }
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  img {
+    height: 100px !important;
+    max-width: 350px !important;
+    width: auto !important;
+  }
+}
+
+.branding-auth-bg {
+  background: linear-gradient(135deg, #7A0099, #E20074) !important;
+}
+
+// Estilos premium de marcas de agua para isotipos de TOVA
+.auth-v1-top-shape,
+.auth-v1-bottom-shape {
+  position: absolute;
+  z-index: -1;
+  width: 260px !important;
+  height: auto !important;
+  opacity: 0.15 !important;
+  filter: brightness(0) invert(1); // Hacerlos blancos para contrastar sobre el gradiente
+  pointer-events: none;
+}
+
+.auth-v1-top-shape {
+  top: -80px !important;
+  left: -80px !important;
+  transform: rotate(-15deg);
+}
+
+.auth-v1-bottom-shape {
+  bottom: -80px !important;
+  right: -80px !important;
+  transform: rotate(15deg);
+}
 </style>

@@ -32,7 +32,7 @@ const userName = computed(() => {
 })
 
 const userRole = computed(() => (authStore.isAdmin ? 'Admin' : 'Usuario'))
-const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.user?.photo || '/src/assets/images/avatars/avatar-1.png')
+const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.user?.photo || '/images/avatars/admin-avatar.png')
 </script>
 
 <template>

@@ -102,16 +102,19 @@ const on2FAVerified = () => {
 </script>
 
 <template>
-  <div class="auth-wrapper d-flex align-center justify-center pa-4">
+  <div class="auth-wrapper branding-auth-bg d-flex align-center justify-center pa-4">
     <div class="position-relative my-sm-16">
-      <VNodeRenderer
-        :nodes="h('div', { innerHTML: authV1TopShape })"
-        class="text-primary auth-v1-top-shape d-none d-sm-block"
-      />
-      <VNodeRenderer
-        :nodes="h('div', { innerHTML: authV1BottomShape })"
-        class="text-primary auth-v1-bottom-shape d-none d-sm-block"
-      />
+      <!-- Isotipos de TOVA como marca de agua de fondo -->
+      <img
+        src="/isotipo.svg"
+        alt="tova-brand-shape-top"
+        class="auth-v1-top-shape d-none d-sm-block"
+      >
+      <img
+        src="/isotipo.svg"
+        alt="tova-brand-shape-bottom"
+        class="auth-v1-bottom-shape d-none d-sm-block"
+      >
 
       <VCard
         class="auth-card login-card"
@@ -122,15 +125,10 @@ const on2FAVerified = () => {
             <RouterLink to="/">
               <div class="app-logo">
                 <img
-                  v-if="brandingStore.settings.app_logo"
-                  :src="brandingStore.settings.app_logo"
+                  :src="brandingStore.settings.app_logo || '/logo.svg'"
                   alt="logo"
-                  style="max-height: 100px; max-width: 100%;"
+                  style="max-height: 80px; max-width: 100%; object-fit: contain;"
                 >
-                <VNodeRenderer
-                  v-else
-                  :nodes="themeConfig.app.logo"
-                />
               </div>
             </RouterLink>
           </VCardTitle>
@@ -176,6 +174,7 @@ const on2FAVerified = () => {
                 <VBtn
                   class="mt-6"
                   block
+                  color="primary"
                   type="submit"
                   :loading="isLoading"
                   :disabled="isLoading"
@@ -226,5 +225,33 @@ const on2FAVerified = () => {
     max-width: 350px !important;
     width: auto !important;
   }
+}
+
+.branding-auth-bg {
+  background: linear-gradient(135deg, #7A0099, #E20074) !important;
+}
+
+// Estilos premium de marcas de agua para isotipos de TOVA
+.auth-v1-top-shape,
+.auth-v1-bottom-shape {
+  position: absolute;
+  z-index: -1;
+  width: 260px !important;
+  height: auto !important;
+  opacity: 0.15 !important;
+  filter: brightness(0) invert(1); // Hacerlos blancos para contrastar sobre el gradiente
+  pointer-events: none;
+}
+
+.auth-v1-top-shape {
+  top: -80px !important;
+  left: -80px !important;
+  transform: rotate(-15deg);
+}
+
+.auth-v1-bottom-shape {
+  bottom: -80px !important;
+  right: -80px !important;
+  transform: rotate(15deg);
 }
 </style>

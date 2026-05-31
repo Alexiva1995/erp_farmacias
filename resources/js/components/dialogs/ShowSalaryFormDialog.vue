@@ -218,7 +218,7 @@ watch(
 </template>
 <style scoped>
 .headline {
-  background: linear-gradient(135deg, #7367f0 0%, #ce93d8 100%);
+  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%);
   background-clip: text;
   font-size: 1.25rem;
   -webkit-text-fill-color: transparent;

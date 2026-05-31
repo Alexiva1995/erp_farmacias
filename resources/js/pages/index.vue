@@ -8,10 +8,7 @@
           <VCardText class="d-flex flex-column justify-space-between h-100">
             <div class="d-flex align-center gap-3 mb-2">
               <VAvatar size="50" class="leader-avatar border-2 border-white shadow-lg">
-                <VImg v-if="leader?.photo" :src="leader.photo" />
-                <div v-else class="text-h5 font-weight-black text-white bg-primary d-flex align-center justify-center h-100 w-100">
-                  {{ leader?.name?.charAt(0) || 'A' }}
-                </div>
+                <VImg :src="leader?.photo || '/images/avatars/seller-avatar.png'" />
               </VAvatar>
               <div>
                 <h6 class="text-h6 text-primary font-weight-semibold mb-0">

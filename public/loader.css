@@ -36,19 +36,21 @@ html {
   border: 3px solid transparent;
   border-radius: 50%;
   block-size: 100%;
-  border-inline-start: 3px solid var(--initial-loader-color, #eee);
   inline-size: 100%;
 }
 
 .loading .effect-1 {
+  border-inline-start: 3px solid #E20074 !important;
   animation: rotate 1s ease infinite;
 }
 
 .loading .effect-2 {
+  border-inline-start: 3px solid #7A0099 !important;
   animation: rotate-opacity 1s ease infinite 0.1s;
 }
 
 .loading .effect-3 {
+  border-inline-start: 3px solid #D8005A !important;
   animation: rotate-opacity 1s ease infinite 0.2s;
 }
 
