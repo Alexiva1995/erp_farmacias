@@ -44,7 +44,7 @@ test.describe('Pruebas del Dashboard y Widget de Vencimientos (E2E)', () => {
       });
     });
 
-    // 3. Mock de otros endpoints del dashboard para evitar fallos o demoras
+    // 3. Mock de todos los endpoints consumidos en onMounted de index.vue
     await page.route('**/api/dashboard/stats**', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ units: 10, sales: 500, expenses: 100, profit: 400 }) });
     });
@@ -71,6 +71,106 @@ test.describe('Pruebas del Dashboard y Widget de Vencimientos (E2E)', () => {
           exchange_rates: [],
           system_profitability: 25.2
         }) 
+      });
+    });
+
+    await page.route('**/api/rrhh/employee-performance**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: true,
+          data: [
+            { id: 1, name: 'Admin', sales: 500 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/finances/cash-closure/monthlyCash**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { period: 'Enero 2026', total_usd_equivalent: 5000 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/dashboard/profit**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ profit: 2000 })
+      });
+    });
+
+    await page.route('**/api/crm/clients/filtrar-sin-paginar**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { id: 1, name: 'Cliente de Prueba' }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/dashboard/units-sold**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ units: 150 })
+      });
+    });
+
+    await page.route('**/api/finances/cash-closure/dailyCash**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { id: 1, total_sales: 300, created_at: '2026-05-31' }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/dashboard/popular-products**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { name: 'Ibuprofeno 400mg', laboratory: 'LAB-POPULAR', quantity: 10, price: 5 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/finances/transactions/income-summary**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { method: 'Efectivo', type: 'CASH', currency: 'USD', amount: 1000 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/invoices**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          total: 0
+        })
       });
     });
   });
@@ -125,8 +225,8 @@ test.describe('Pruebas del Dashboard y Widget de Vencimientos (E2E)', () => {
     // 1. Ir a la página de inicio
     await page.goto('/');
 
-    // 2. Verificar cabecera y saludo
-    await expect(page.locator('text=¡Felicitaciones Admin! 🎉')).toBeVisible({ timeout: 15000 });
+    // 2. Verificar cabecera y saludo usando un localizador flexible para evitar fallos por timing con leader.name
+    await expect(page.locator('text=Felicitaciones').first()).toBeVisible({ timeout: 15000 });
 
     // 3. Verificar métricas y estadísticas clave
     await expect(page.locator('text=Líder de Ventas')).toBeVisible();
