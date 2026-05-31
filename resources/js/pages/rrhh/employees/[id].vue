@@ -12,7 +12,10 @@ import { useDisplay } from "vuetify";
 
 const route = useRoute();
 const router = useRouter();
-const { isAdmin } = useAuthStore();
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.isAdmin);
+const isOwnProfile = computed(() => authStore.user?.employee?.id === Number(route.params.id) || authStore.user?.employee_id === Number(route.params.id));
+const canEdit = computed(() => isAdmin.value || isOwnProfile.value);
 const { mobile } = useDisplay();
 
 const loading = ref(false);
@@ -51,7 +54,7 @@ const documentLabels = {
 const docInputs = ref({}); // Para los refs de los inputs de archivos
 
 const triggerPhotoInput = () => {
-  if (isAdmin) photoInput.value?.click();
+  if (canEdit.value) photoInput.value?.click();
 };
 
 /** Compresión de imagen usando Canvas */
@@ -535,7 +538,7 @@ watch(activeView, (view) => {
                 </div>
               </VAvatar>
               <VBtn
-                v-if="isAdmin && !photoUploading && !(mobile && isProfileCollapsed)"
+                v-if="canEdit && !photoUploading && !(mobile && isProfileCollapsed)"
                 icon="tabler-camera"
                 color="primary"
                 size="34"
@@ -604,7 +607,7 @@ watch(activeView, (view) => {
                 <!-- Botones de Acción Global -->
                 <div class="mt-8 d-flex flex-column gap-3">
                   <VBtn
-                    v-if="isAdmin"
+                    v-if="canEdit"
                     block
                     :color="isEditing ? 'success' : 'primary'"
                     variant="tonal"
@@ -617,7 +620,7 @@ watch(activeView, (view) => {
                     {{ isEditing ? 'GUARDAR' : 'EDITAR PERFIL' }}
                   </VBtn>
 
-                  <VBtn v-if="isAdmin && isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="isEditing = false">
+                  <VBtn v-if="canEdit && isEditing" block color="secondary" variant="tonal" class="rounded-lg" @click="isEditing = false">
                     <VIcon start icon="tabler-x" size="18" />
                     CANCELAR
                   </VBtn>

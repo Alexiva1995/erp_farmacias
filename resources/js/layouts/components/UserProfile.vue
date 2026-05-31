@@ -1,11 +1,22 @@
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const handleLogout = async () => {
   await authStore.logout()
+}
+
+const goToProfile = () => {
+  const employeeId = authStore.user?.employee?.id || authStore.user?.employee_id
+  if (employeeId) {
+    router.push(`/rrhh/employees/${employeeId}`)
+  } else {
+    console.warn('El usuario no tiene una ficha de empleado asociada.')
+  }
 }
 
 // Obtener nombre y apellido del usuario
@@ -97,7 +108,7 @@ const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.u
         <VDivider class="my-2" />
 
         <!-- 👉 Perfil -->
-        <VListItem link>
+        <VListItem link @click="goToProfile">
           <template #prepend>
             <VIcon
               class="me-2"
