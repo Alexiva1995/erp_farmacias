@@ -22,13 +22,7 @@ class SoldExpiringProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Buscar el lote de este producto que vence en el mes actual
-        $startOfMonth = \Carbon\Carbon::now()->startOfMonth()->toDateString();
-        $endOfMonth = \Carbon\Carbon::now()->endOfMonth()->toDateString();
-
-        $lot = \App\Models\ProductLot::where('product_id', $this->product_id)
-            ->whereBetween('expiration_date', [$startOfMonth, $endOfMonth])
-            ->first();
+        $lot = $this->productLot;
 
         return [
             'id' => $this->id,
@@ -38,7 +32,9 @@ class SoldExpiringProductResource extends JsonResource
             'expiration_date' => $lot && $lot->expiration_date ? $lot->expiration_date->format('Y-m-d') : null,
             'quantity' => abs((int) $this->quantity),
             'sold_date' => $this->movement_date ?? $this->created_at?->toDateTimeString(),
-            'user_name' => $this->user?->name ?? 'Usuario de Ventas',
+            'user_name' => $this->user?->employee
+                ? trim($this->user->employee->name . ' ' . $this->user->employee->last_name)
+                : ($this->user?->username ?? 'Usuario de Ventas'),
         ];
     }
 }

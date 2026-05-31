@@ -136,24 +136,26 @@ class ExpirationQueryService
 
     public function getSoldExpiringLotsThisMonth()
     {
-        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
-        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateTimeString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateTimeString();
 
         return InventoryMovement::with([
             'product' => function ($q) {
                 $q->withTrashed()->with('laboratory');
             },
-            'user'
+            'productLot',
+            'user.employee'
         ])
         ->where('movement_type', 'sale')
         ->whereBetween('movement_date', [$startOfMonth, $endOfMonth])
         ->whereExists(function ($query) use ($startOfMonth, $endOfMonth) {
             $query->select(DB::raw(1))
                 ->from('product_lots')
-                ->whereColumn('product_lots.product_id', 'inventory_movements.product_id')
+                ->whereColumn('product_lots.id', 'inventory_movements.product_lot_id')
                 ->whereBetween('product_lots.expiration_date', [$startOfMonth, $endOfMonth]);
         })
         ->orderBy('movement_date', 'desc')
+        ->take(4)
         ->get();
     }
 }
