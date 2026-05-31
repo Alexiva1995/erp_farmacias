@@ -565,4 +565,87 @@ class ExpirationAndOfferTest extends TestCase
         $lot->refresh();
         $this->assertEquals(9, $lot->quantity);
     }
+
+    public function test_get_sold_expiring_products_dashboard_endpoint_returns_correct_lot_and_includes_end_of_month_sales()
+    {
+        // 1. Crear otro lote que expira en el futuro lejano (no debe ser retornado por el widget)
+        $futureLot = ProductLot::create([
+            'product_id' => $this->product->id,
+            'lot_number' => 'LOT-FUTURE-1Y',
+            'expiration_date' => now()->addYear(),
+            'quantity' => 10,
+            'unit_cost' => 1.00,
+        ]);
+
+        // 2. Crear el lote que expira este mes (se ubica antes en orden de expiración por lo que el FIFO lo tomará)
+        $expiringLot = ProductLot::create([
+            'product_id' => $this->product->id,
+            'lot_number' => 'LOT-EXP-THIS-MONTH',
+            'expiration_date' => now()->startOfMonth()->addDays(15),
+            'quantity' => 5,
+            'unit_cost' => 1.00,
+        ]);
+
+        // 3. Crear una orden vacía
+        $order = Order::create([
+            'client_id' => null,
+            'seller_id' => $this->cajero->id,
+            'currency' => 'USD',
+            'status' => 'Pending',
+            'cash_closing_id' => $this->openCash->id,
+            'total_amount' => 0.00,
+            'total_amount_usd' => 0.00,
+            'total_cost' => 0.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
+            'taxable_base' => 0.00,
+            'spe_surcharge_rate' => 0.00,
+            'spe_surcharge_amount' => 0.00,
+        ]);
+
+        // Agregar el producto usando el endpoint oficial del TPV para cumplir con todas las restricciones del modelo
+        $this->actingAs($this->cajero, 'sanctum')
+            ->postJson("/api/tpv/orders/{$order->id}/items", [
+                'product_id' => $this->product->id,
+                'quantity' => 1,
+                'price_at_product' => 1.00,
+                'currency_at_order' => 'USD',
+                'price_usd_unit' => 1.00,
+            ])
+            ->assertStatus(201);
+
+        // 4. Completar la orden en el POS para simular el flujo real que genera los movimientos
+        $this->actingAs($this->cajero, 'sanctum')
+            ->postJson("/api/tpv/orders/{$order->id}/complete", [
+                'payments' => [
+                    [
+                        'method' => 'cash_usd',
+                        'amount' => 1.00,
+                        'currency' => 'USD',
+                    ]
+                ],
+                'changeAmount' => 0.00,
+            ])
+            ->assertStatus(200);
+
+        // 5. Forzar la fecha del movimiento de inventario creado al último segundo del mes
+        $movement = \App\Models\InventoryMovement::where('order_id', $order->id)->first();
+        $this->assertNotNull($movement);
+        $movement->movement_date = now()->endOfMonth()->subSeconds(5); // Venta al final del mes
+        $movement->save();
+
+        // 6. Invocar el endpoint del dashboard de productos vendidos por vencer
+        $response = $this->actingAs($this->cajero, 'sanctum')
+            ->getJson('/api/dashboard/expiring-sold-products');
+
+        $response->assertStatus(200);
+
+        // 7. Asertar que el lote devuelto sea el exacto LOT-EXP-THIS-MONTH y no el LOT-FUTURE-1Y
+        $data = $response->json('data');
+        $this->assertNotEmpty($data);
+        
+        $item = collect($data)->firstWhere('lot_number', 'LOT-EXP-THIS-MONTH');
+        $this->assertNotNull($item, 'No se encontro la venta del lote que expira en el fin de mes');
+        $this->assertEquals('LOT-EXP-THIS-MONTH', $item['lot_number']);
+    }
 }

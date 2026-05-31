@@ -50,6 +50,10 @@ class ProductObserver
      */
     public static function handleOrderMovement(Order $order): void
     {
+        if (InventoryMovement::where('order_id', $order->id)->exists()) {
+            return;
+        }
+
         foreach ($order->details as $detail) {
             $product = $detail->product;
             if (!$product) {

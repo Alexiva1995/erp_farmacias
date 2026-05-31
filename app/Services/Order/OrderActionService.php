@@ -794,6 +794,21 @@ class OrderActionService
                         });
                     }
 
+                    // Registrar el movimiento de inventario con el lote exacto vendido
+                    \App\Models\InventoryMovement::create([
+                        'product_id' => $detail->product_id,
+                        'product_lot_id' => $lot->id,
+                        'movement_type' => 'sale',
+                        'quantity' => -$taken,
+                        'invoice_id' => null,
+                        'supplier_id' => null,
+                        'order_id' => $orderId->id,
+                        'user_id' => $orderId->seller_id,
+                        'stock_before' => $lot->quantity + $taken,
+                        'stock_after' => $lot->quantity,
+                        'movement_date' => \Carbon\Carbon::now(),
+                    ]);
+
 
                     // Check if this lot is expiring (within 6 months)
                     if ($lot->expiration_date) {
