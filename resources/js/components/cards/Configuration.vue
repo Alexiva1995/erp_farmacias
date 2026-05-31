@@ -21,10 +21,11 @@ const specialTaxpayerOptions = [
 const fetchSettings = async () => {
   try {
     const response = await axios.get('/general-settings')
-    fiscalMode.value = response.data.fiscal_mode
-    specialStatus.value = response.data.special_taxpayer_status
-    allForeignSalesSpe.value = !!response.data.all_foreign_sales_spe
-    blindCashClosure.value = !!response.data.blind_cash_closure
+    const settings = response.data.data
+    fiscalMode.value = settings.fiscal_mode
+    specialStatus.value = settings.special_taxpayer_status
+    allForeignSalesSpe.value = !!settings.all_foreign_sales_spe
+    blindCashClosure.value = !!settings.blind_cash_closure
   } catch (error) {
     console.error("Error cargando configuración:", error)
     toast.success("Error al cargar la configuración")
