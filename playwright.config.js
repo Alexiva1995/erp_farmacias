@@ -13,6 +13,7 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: 'https://erp_farmacias.test', // El servidor local de Laragon
+    ignoreHTTPSErrors: true, // Ignorar errores de certificado SSL autofirmado de Laragon
     trace: 'on-first-retry',
     viewport: { width: 1280, height: 720 },
   },
