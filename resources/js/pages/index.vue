@@ -578,7 +578,7 @@ const timeSpendingChartSeries = [23, 35, 10, 20, 35, 23]
 
 const fetchAnalyticsData = async () => {
   try {
-    const response = await axios.get('/api/dashboard/analytics-data')
+    const response = await axios.get('/dashboard/analytics-data')
     const data = response.data
 
     if (data.weekly_metrics) {
@@ -616,7 +616,7 @@ const fetchStats = async () => {
     const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
 
     // 1. Ventas desde Cierre de Caja (Monto unificado en USD)
-    const cashResponse = await axios.get("/api/finances/cash-closure/monthlyCash");
+    const cashResponse = await axios.get("/finances/cash-closure/monthlyCash");
     if (cashResponse.data && cashResponse.data.data && cashResponse.data.data.length > 0) {
       // Buscamos el mes actual en los datos (por nombre o tomamos el primero si no se encuentra)
       const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -637,7 +637,7 @@ const fetchStats = async () => {
     }
 
     // 2. Ganancia Real en USD (Precio Venta - Costo) del mes actual
-    const profitResponse = await axios.get("/api/dashboard/profit", {
+    const profitResponse = await axios.get("/dashboard/profit", {
       params: {
         start_date: startOfMonth,
         end_date: endOfMonth,
@@ -648,7 +648,7 @@ const fetchStats = async () => {
     }
     
     // 3. Clientes Nuevos
-    const clientsResponse = await axios.post("/api/crm/clients/filtrar-sin-paginar", {
+    const clientsResponse = await axios.post("/crm/clients/filtrar-sin-paginar", {
       fechaDesde_filtro: startOfMonth,
       fechaHasta_filtro: endOfMonth,
     });
@@ -657,7 +657,7 @@ const fetchStats = async () => {
     }
 
     // 4. Productos (Unidades Vendidas)
-    const unitsResponse = await axios.get("/api/dashboard/units-sold", {
+    const unitsResponse = await axios.get("/dashboard/units-sold", {
       params: {
         start_date: startOfMonth,
         end_date: endOfMonth,
@@ -673,7 +673,7 @@ const fetchStats = async () => {
 
 const fetchLeader = async () => {
   try {
-    const response = await axios.get("/api/rrhh/employee-performance", {
+    const response = await axios.get("/rrhh/employee-performance", {
       params: {
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
@@ -704,7 +704,7 @@ const recentClosures = ref([]);
 // Obtener los cierres de caja diarios recientes
 const fetchRecentClosures = async () => {
   try {
-    const response = await axios.get("/api/finances/cash-closure/dailyCash", {
+    const response = await axios.get("/finances/cash-closure/dailyCash", {
       params: {
         itemsPerPage: 8,
         page: 1,
@@ -738,7 +738,7 @@ const popularProducts = ref([]);
 
 const fetchPopularProducts = async () => {
   try {
-    const response = await axios.get("/api/dashboard/popular-products", {
+    const response = await axios.get("/dashboard/popular-products", {
       params: {
         limit: 8,
       }
@@ -755,7 +755,7 @@ const transactions = ref([]);
 
 const fetchTransactionsSummary = async () => {
   try {
-    const response = await axios.get("/api/finances/transactions/income-summary");
+    const response = await axios.get("/finances/transactions/income-summary");
     if (response.data && response.data.data) {
       const typeConfig = {
         CASH: { icon: 'tabler-wallet', color: 'success' },
