@@ -100,6 +100,7 @@ Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController:
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
+    Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {
         Route::get("/income-statement", [FinancialStatementController::class, "index"]);
@@ -358,7 +359,6 @@ Route::middleware("auth:sanctum")->group(function () {
 
 
     //ruta de configuracion
-    Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
 
     // Rutas del Dashboard

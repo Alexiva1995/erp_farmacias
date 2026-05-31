@@ -10,8 +10,8 @@ const isLoading = ref(false)
 const form = ref({
   app_name: '',
   app_rif: '',
-  primary_color: '#7367F0',
-  secondary_color: '#82868B',
+  primary_color: '#E20074',
+  secondary_color: '#7A0099',
   footer_text: '',
 })
 

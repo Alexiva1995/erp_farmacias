@@ -4,7 +4,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { themeConfig } from "@themeConfig";
 import { computed } from "vue";
-import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
+import logoSvg from '@images/logo.svg?raw';
 
 // Components
 import Footer from "@/layouts/components/Footer.vue";
@@ -68,22 +68,31 @@ const processedNavItems = computed(() => {
       <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
         <RouterLink
           to="/"
-          class="app-logo d-flex align-center gap-x-3"
+          class="app-logo d-flex align-center justify-center w-100 px-2"
         >
-          <img
-            v-if="brandingStore.settings.app_logo"
-            :src="brandingStore.settings.app_logo"
-            alt="logo"
-            height="30"
-          >
-          <VNodeRenderer
-            v-else
-            :nodes="themeConfig.app.logo"
-          />
+          <!-- Logo Expandido (SVG de TOVA o Logo personalizado de base de datos) -->
+          <div class="logo-expanded-wrapper">
+            <img
+              v-if="brandingStore.settings.app_logo"
+              :src="brandingStore.settings.app_logo"
+              alt="logo"
+              class="logo-expanded"
+            >
+            <div
+              v-else
+              class="logo-expanded-svg text-primary"
+              v-html="logoSvg"
+            />
+          </div>
 
-          <h1 class="app-title font-weight-bold leading-normal text-xl text-capitalize">
-            {{ brandingStore.settings.app_name || themeConfig.app.title }}
-          </h1>
+          <!-- Logo Colapsado (Favicon Isotipo mini) -->
+          <img
+            :src="brandingStore.settings.app_favicon || '/favicon-96x96.png'"
+            alt="logo-collapsed"
+            class="logo-collapsed"
+            width="32"
+            height="32"
+          >
         </RouterLink>
 
         <IconBtn
@@ -145,7 +154,43 @@ const processedNavItems = computed(() => {
 </template>
 
 <style lang="scss">
-.layout-vertical-nav-collapsed .layout-vertical-nav:not(.hovered) .app-title {
+.app-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.logo-expanded-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 150px;
+  
+  .logo-expanded {
+    max-height: 38px;
+    object-fit: contain;
+  }
+  
+  .logo-expanded-svg svg {
+    width: 100%;
+    height: auto;
+    max-height: 38px;
+  }
+}
+
+.logo-collapsed {
   display: none !important;
+}
+
+// Cuando el menú lateral vertical está colapsado y no se le pasa el mouse
+.layout-vertical-nav-collapsed .layout-vertical-nav:not(.hovered) {
+  .logo-expanded-wrapper {
+    display: none !important;
+  }
+  
+  .logo-collapsed {
+    display: block !important;
+    margin: 0 auto;
+  }
 }
 </style>

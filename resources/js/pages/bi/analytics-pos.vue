@@ -77,7 +77,7 @@ const dailyChartOptions = computed(() => ({
     labels: { style: { fontSize: '11px', fontWeight: 600, colors: '#a3a3a3' } }
   },
   yaxis: { labels: { style: { colors: '#a3a3a3' } } },
-  colors: ['#EA5455', '#7367f0', '#28c76f', '#ff9f43', '#00cfe8', '#00bbd4', '#607d8b'],
+  colors: ['#EA5455', '#E20074', '#7A0099', '#28c76f', '#ff9f43', '#00cfe8', '#607d8b'],
   grid: { borderColor: 'rgba(144, 164, 174, 0.1)', show: false },
   legend: { show: false },
   tooltip: { theme: 'dark' }
@@ -98,7 +98,7 @@ const hourlyChartOptions = computed(() => ({
     axisBorder: { show: false }
   },
   yaxis: { show: false },
-  colors: ['#7367F0'],
+  colors: ['#E20074'],
   grid: { borderColor: 'rgba(144, 164, 174, 0.1)', strokeDashArray: 4 },
   tooltip: { 
     theme: 'dark',
@@ -131,7 +131,7 @@ const unitsDonutOptions = computed(() => ({
       }
     }
   },
-  colors: ['#7367f0', '#ff9f43', '#28c76f', '#ea5455'],
+  colors: ['#E20074', '#7A0099', '#ff9f43', '#28c76f'],
   legend: { position: 'bottom', labels: { colors: '#a3a3a3' }, fontSize: '11px', fontWeight: 600 },
   dataLabels: { enabled: false }
 }));
@@ -147,7 +147,7 @@ const monetaryChartOptions = computed(() => ({
       distributed: true
     }
   },
-  colors: ['#7367f0', '#28c76f', '#ff9f43', '#ea5455', '#00cfe8', '#161616', '#a8aaad', '#7367f0'],
+  colors: ['#E20074', '#7A0099', '#28c76f', '#ff9f43', '#ea5455', '#00cfe8', '#161616', '#a8aaad'],
   dataLabels: {
     enabled: true,
     style: { fontSize: '10px', fontWeight: 900, colors: ['#fff'] },
@@ -499,7 +499,7 @@ const monetaryChartOptions = computed(() => ({
 }
 
 .bg-light-primary {
-  background-color: #f7fbff;
+  background-color: #fff0f6;
 }
 
 .bg-light-success {

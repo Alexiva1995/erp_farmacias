@@ -106,7 +106,7 @@ watch([auditPage, auditItemsPerPage], () => {
 const distributionChartOptions = computed(() => ({
   chart: { type: 'donut', toolbar: { show: false } },
   labels: dashboardData.value.distribution.map(d => d.promo_type),
-  colors: ['#7367F0', '#28C76F', '#FF9F43', '#EA5455', '#00CFE8', '#1E1E1E', '#BDBDBD'],
+  colors: ['#E20074', '#7A0099', '#28C76F', '#FF9F43', '#EA5455', '#1E1E1E', '#BDBDBD'],
   legend: { position: 'bottom' },
   dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
   plotOptions: { 
@@ -141,7 +141,7 @@ const transactionChartOptions = computed(() => ({
   xaxis: {
     categories: dashboardData.value.distribution.map(d => d.promo_type),
   },
-  colors: ['#7367F0'],
+  colors: ['#E20074'],
   tooltip: { y: { formatter: (val) => `${val} Tickets` } }
 }));
 
@@ -154,7 +154,7 @@ const transactionChartSeries = computed(() => ([{
 const packVsIndividualOptions = computed(() => ({
   chart: { type: 'pie', toolbar: { show: false } },
   labels: ['Packs', 'Individuales'],
-  colors: ['#7367F0', '#FF9F43'],
+  colors: ['#E20074', '#7A0099'],
   legend: { position: 'bottom' },
   stroke: { width: 0 }
 }));
@@ -472,7 +472,7 @@ const getDiscountTypeColor = (type) => {
 .bi-report-grid :deep(.v-row) { margin: -8px !important; }
 .bi-report-grid :deep(.v-col) { padding: 8px !important; }
 
-.bg-light-primary { background-color: rgba(115, 103, 240, 0.05); }
+.bg-light-primary { background-color: rgba(226, 0, 116, 0.05); }
 .bg-light-success { background-color: rgba(40, 199, 111, 0.05); }
 .bg-light-error { background-color: rgba(234, 84, 85, 0.05); }
 

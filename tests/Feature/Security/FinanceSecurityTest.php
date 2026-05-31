@@ -36,4 +36,14 @@ class FinanceSecurityTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    /**
+     * Test de regresión para el Bug 2: Asegura que el endpoint de general-settings
+     * esté protegido bajo autenticación Sanctum y un usuario invitado no pueda ver datos.
+     */
+    public function test_general_settings_route_requires_authentication(): void
+    {
+        $response = $this->getJson('/api/general-settings');
+        $response->assertStatus(401);
+    }
 }

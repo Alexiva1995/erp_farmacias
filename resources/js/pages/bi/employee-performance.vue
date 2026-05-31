@@ -78,11 +78,11 @@ const historyChartOptions = computed(() => ({
   chart: { toolbar: { show: false } },
   stroke: { width: [4, 0], curve: 'smooth' },
   plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
-  colors: ['#7367F0', '#28C76F'],
+  colors: ['#E20074', '#7A0099'],
   labels: employeeDetail.value?.history?.map(h => h.label) || [],
   yaxis: [
-    { title: { text: 'Ventas (USD)' }, labels: { style: { colors: '#7367F0' } } },
-    { opposite: true, title: { text: 'Unidades' }, labels: { style: { colors: '#28C76F' } } }
+    { title: { text: 'Ventas (USD)' }, labels: { style: { colors: '#E20074' } } },
+    { opposite: true, title: { text: 'Unidades' }, labels: { style: { colors: '#7A0099' } } }
   ],
   tooltip: { shared: true, intersect: false, theme: 'dark' }
 }));
@@ -95,7 +95,7 @@ const historyChartSeries = computed(() => [
 // 2. Radar Chart (Face-Off)
 const radarChartOptions = computed(() => ({
   chart: { toolbar: { show: false }, dropShadow: { enabled: true, blur: 1, left: 1, top: 1 } },
-  colors: ['#7367F0', '#EA5455'],
+  colors: ['#E20074', '#7A0099'],
   stroke: { width: 2 },
   fill: { opacity: 0.1 },
   markers: { size: 0 },
@@ -431,7 +431,7 @@ const getStatusColor = (val, target) => {
 <style scoped>
 .employee-performance { background-color: transparent; }
 .bg-surface { background-color: #fff !important; }
-.bg-light-primary { background-color: #f7fbff; }
+.bg-light-primary { background-color: #fff0f6; }
 .bg-light-surface { background-color: #fafafa; }
 .bg-light-error { background-color: #fff5f5; }
 

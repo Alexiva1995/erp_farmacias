@@ -536,8 +536,13 @@ class OrderActionService
             $totalAmountBs = $taxable_base + $speAmountBs;
 
             // --- GENERACIÓN DE HASH DE AUDITORÍA ---
+            $clientIdentification = $client?->identification ?? '00000000';
+            $clientBusinessName = $client ? trim($client->name . ' ' . $client->last_name) : 'CLIENTE GENERICO';
+            $clientIdentificationFull = $client ? ($client->identification_type . $client->identification) : 'V00000000';
+            $clientAddress = $client?->address ?? 'N/A';
+
             $auditString = implode('|', [
-                $client->identification,
+                $clientIdentification,
                 number_format($exemptAmount, 2, '.', ''),
                 number_format($taxableAmount, 2, '.', ''),
                 number_format($totalIva, 2, '.', ''),
@@ -551,9 +556,9 @@ class OrderActionService
                 'user_id' => $order->seller_id,
                 'order_id' => $order->id,
                 'invoice_number' => null,
-                'business_name' => $client->name . ' ' . $client->last_name,
-                'identification' => $client->identification_type . $client->identification,
-                'address' => $client->address,
+                'business_name' => $clientBusinessName,
+                'identification' => $clientIdentificationFull,
+                'address' => $clientAddress,
                 'exempt_amount' => $exemptAmount,
                 'taxable_amount' => $taxableAmount,
                 'iva_amount' => $totalIva,
