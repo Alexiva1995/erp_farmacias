@@ -97,10 +97,10 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
-Route::get('/general-settings', [GeneralSettingController::class, 'index']);
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
+    Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {
         Route::get("/income-statement", [FinancialStatementController::class, "index"]);

@@ -40,17 +40,19 @@ html {
 }
 
 .loading .effect-1 {
-  border-inline-start: 3px solid #E20074 !important;
+  border-inline-start: 3px solid var(--initial-loader-color, #E20074) !important;
   animation: rotate 1s ease infinite;
 }
 
 .loading .effect-2 {
-  border-inline-start: 3px solid #7A0099 !important;
+  border-inline-start: 3px solid var(--initial-loader-color, #7A0099) !important;
+  opacity: 0.8;
   animation: rotate-opacity 1s ease infinite 0.1s;
 }
 
 .loading .effect-3 {
-  border-inline-start: 3px solid #D8005A !important;
+  border-inline-start: 3px solid var(--initial-loader-color, #D8005A) !important;
+  opacity: 0.6;
   animation: rotate-opacity 1s ease infinite 0.2s;
 }
 

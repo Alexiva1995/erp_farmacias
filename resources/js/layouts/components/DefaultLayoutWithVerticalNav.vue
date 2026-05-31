@@ -87,7 +87,7 @@ const processedNavItems = computed(() => {
 
           <!-- Logo Colapsado (Favicon Isotipo mini) -->
           <img
-            src="/favicon-96x96.png"
+            :src="brandingStore.settings.app_favicon || '/favicon-96x96.png'"
             alt="logo-collapsed"
             class="logo-collapsed"
             width="32"
