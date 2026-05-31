@@ -244,4 +244,76 @@ class PosOrderFlowTest extends TestCase
         $this->openCash->refresh();
         $this->assertEquals(7.50, (float) $this->openCash->usd_cash);
     }
+
+    /**
+     * Valida que una discrepancia en el monto del pago arroje un error 422 en lugar de un error 500.
+     */
+    public function test_complete_order_throws_validation_error_on_payment_discrepancy(): void
+    {
+        // 1. Crear el lote del producto con stock
+        ProductLot::create([
+            'product_id' => $this->product->id,
+            'supplier_id' => $this->supplier->id,
+            'lot_number' => 'LOT-002',
+            'expiration_date' => now()->addYear(),
+            'quantity' => 10,
+            'unit_cost' => 1.50,
+        ]);
+
+        // 2. Crear una orden y agregar 2 unidades del producto (Total = 5.00 USD)
+        $order = Order::create([
+            'client_id' => $this->client->id,
+            'seller_id' => $this->seller->id,
+            'currency' => 'USD',
+            'status' => 'Pending',
+            'cash_closing_id' => $this->openCash->id,
+            'total_amount' => 0.00,
+            'total_amount_usd' => 0.00,
+            'total_cost' => 0.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
+            'taxable_base' => 0.00,
+            'spe_surcharge_rate' => 0.00,
+            'spe_surcharge_amount' => 0.00,
+        ]);
+
+        OrderDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'price' => 2.50,
+            'unit_cost' => 1.50,
+            'unit_price_usd' => 2.50,
+            'product_type' => 'normal',
+        ]);
+
+        $order->updateTotals();
+
+        // 3. Completar con pago menor a lo requerido (enviamos 3.00 USD en vez de 5.00 USD)
+        $response = $this->actingAs($this->seller, 'sanctum')
+            ->postJson("/api/tpv/orders/{$order->id}/complete", [
+                'payments' => [
+                    [
+                        'method' => 'cash_usd',
+                        'amount' => 3.00, // Discrepancia aquí
+                        'currency' => 'USD',
+                    ]
+                ],
+                'changeAmount' => 0.00,
+            ]);
+
+        // 4. Validar que retorne 422 y la firma de error PAYMENT_DISCREPANCY
+        $response->assertStatus(422);
+        $response->assertJsonPath('error_code', 'PAYMENT_DISCREPANCY');
+        $response->assertJsonStructure([
+            'success',
+            'error_code',
+            'message',
+            'data' => [
+                'net_paid',
+                'order_total',
+                'currency'
+            ]
+        ]);
+    }
 }

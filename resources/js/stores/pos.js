@@ -31,9 +31,11 @@ export const usePosStore = defineStore('pos', () => {
   async function searchClient(identification) {
     try {
       const response = await axios.get(`/tpv/order/client/${identification}`)
-      if (response.data) {
-        activeClient.value = response.data
-        return response.data
+      // ApiResponse retorna { success: true, data: { found: true, client: {...} } }
+      const responseData = response.data?.data || response.data
+      if (responseData && responseData.found && responseData.client) {
+        activeClient.value = responseData.client
+        return responseData.client
       }
       return null
     } catch (error) {
@@ -46,7 +48,8 @@ export const usePosStore = defineStore('pos', () => {
   async function fetchProducts() {
     try {
       const response = await axios.get('/productsAll')
-      availableProducts.value = response.data
+      const responseData = response.data?.data || response.data
+      availableProducts.value = responseData
     } catch (error) {
       console.error('Error al cargar productos:', error)
     }
@@ -56,11 +59,16 @@ export const usePosStore = defineStore('pos', () => {
   async function loadPendingOrder() {
     try {
       const response = await axios.get('/tpv/order/seller/my-open-order')
-      if (response.data?.pending_order) {
-        activeOrder.value = response.data.pending_order
-        cartItems.value = response.data.pending_order.details || []
-        activeClient.value = response.data.pending_order.client
-        currency.value = response.data.pending_order.currency || 'USD'
+      const responseData = response.data?.data || response.data
+      if (responseData?.order) {
+        activeOrder.value = responseData.order
+        cartItems.value = responseData.order.details || []
+        activeClient.value = responseData.order.client
+        currency.value = responseData.order.currency || 'USD'
+      } else {
+        activeOrder.value = null
+        cartItems.value = []
+        activeClient.value = null
       }
     } catch (error) {
       console.error('Error al recuperar orden pendiente:', error)
@@ -81,6 +89,7 @@ export const usePosStore = defineStore('pos', () => {
         quantity: quantity,
         price_at_product: priceUnit,
         price_usd_unit: priceUsdUnit,
+        currency_at_order: currency.value || activeOrder.value.currency || 'USD',
         pack_id: packId
       })
 

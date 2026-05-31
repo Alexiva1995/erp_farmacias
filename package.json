@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --fix",
+    "test:unit": "vitest run",
     "build:icons": "tsx resources/js/plugins/iconify/build-icons.js",
     "msw:init": "msw init public/ --save",
     "postinstall": "npm run build:icons && npm run msw:init"
@@ -93,6 +94,7 @@
     "@videojs-player/vue": "1.0.0",
     "@vitejs/plugin-vue": "5.2.4",
     "@vitejs/plugin-vue-jsx": "4.2.0",
+    "@vue/test-utils": "^2.4.10",
     "eslint": "^9.0.0",
     "eslint-import-resolver-typescript": "3.10.1",
     "eslint-plugin-import": "2.31.0",
@@ -100,6 +102,7 @@
     "eslint-plugin-regex": "1.10.0",
     "eslint-plugin-unicorn": "51.0.1",
     "eslint-plugin-vue": "9.33.0",
+    "jsdom": "^29.1.1",
     "laravel-vite-plugin": "1.2.0",
     "msw": "2.6.8",
     "postcss-html": "1.8.0",
@@ -120,6 +123,7 @@
     "vite-plugin-vue-meta-layouts": "0.5.1",
     "vite-plugin-vuetify": "^2.1.0",
     "vite-svg-loader": "5.1.0",
+    "vitest": "^4.1.7",
     "vue-shepherd": "3.0.0"
   },
   "resolutions": {

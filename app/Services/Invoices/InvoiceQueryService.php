@@ -79,19 +79,28 @@ class InvoiceQueryService
         ]);
 
         // Obtener todos los precios de autoórdenes activas del proveedor en un solo query (PENDING=0, SENT=1)
-        // Agrupado por product_id para evitar N+1 queries
-        $autoOrderPrices = DB::table('auto_order_details')
-            ->join('auto_orders', 'auto_order_details.order_id', '=', 'auto_orders.id')
-            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
-            ->where('auto_orders.supplier_id', $invoice->supplier_id)
-            ->whereIn('auto_orders.status', [0, 1]) // PENDING o SENT (no COMPLETED=2)
-            ->whereNull('auto_orders.deleted_at')
-            ->whereNull('auto_order_details.deleted_at')
-            ->select('product_suppliers.product_id', 'auto_order_details.unit_cost')
-            ->orderBy('auto_order_details.created_at', 'desc')
-            ->get()
-            ->unique('product_id') // El más reciente por producto
-            ->keyBy('product_id'); // Indexado por product_id para acceso O(1)
+        // Agrupado en base de datos usando subconsulta para traer el costo de la autoorden más reciente por product_id
+        $latestAutoOrderDetails = DB::table('auto_order_details as aod')
+            ->join('auto_orders as ao', 'aod.order_id', '=', 'ao.id')
+            ->join('product_suppliers as ps', 'aod.product_suppliers_id', '=', 'ps.id')
+            ->where('ao.supplier_id', $invoice->supplier_id)
+            ->whereIn('ao.status', [0, 1]) // PENDING o SENT
+            ->whereNull('ao.deleted_at')
+            ->whereNull('aod.deleted_at')
+            ->select('ps.product_id', 'aod.unit_cost')
+            ->whereIn('aod.id', function ($query) use ($invoice) {
+                $query->select(DB::raw('MAX(sub_aod.id)'))
+                    ->from('auto_order_details as sub_aod')
+                    ->join('auto_orders as sub_ao', 'sub_aod.order_id', '=', 'sub_ao.id')
+                    ->join('product_suppliers as sub_ps', 'sub_aod.product_suppliers_id', '=', 'sub_ps.id')
+                    ->where('sub_ao.supplier_id', $invoice->supplier_id)
+                    ->whereIn('sub_ao.status', [0, 1])
+                    ->whereNull('sub_ao.deleted_at')
+                    ->whereNull('sub_aod.deleted_at')
+                    ->groupBy('sub_ps.product_id');
+            });
+
+        $autoOrderPrices = $latestAutoOrderDetails->get()->keyBy('product_id');
 
         $normalDetails = $invoice->details()
             ->with('product.laboratory')
