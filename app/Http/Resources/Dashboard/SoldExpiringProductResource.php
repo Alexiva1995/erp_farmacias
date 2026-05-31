@@ -23,6 +23,14 @@ class SoldExpiringProductResource extends JsonResource
     public function toArray(Request $request): array
     {
         $lot = $this->productLot;
+        
+        if (!$lot) {
+            $startOfMonth = \Carbon\Carbon::now()->startOfMonth()->toDateString();
+            $endOfMonth = \Carbon\Carbon::now()->endOfMonth()->toDateString();
+            $lot = \App\Models\ProductLot::where('product_id', $this->product_id)
+                ->whereBetween('expiration_date', [$startOfMonth, $endOfMonth])
+                ->first();
+        }
 
         return [
             'id' => $this->id,

@@ -151,7 +151,13 @@ class ExpirationQueryService
         ->whereExists(function ($query) use ($startOfMonth, $endOfMonth) {
             $query->select(DB::raw(1))
                 ->from('product_lots')
-                ->whereColumn('product_lots.id', 'inventory_movements.product_lot_id')
+                ->where(function ($sub) {
+                    $sub->whereColumn('product_lots.id', 'inventory_movements.product_lot_id')
+                        ->orWhere(function ($orSub) {
+                            $orSub->whereNull('inventory_movements.product_lot_id')
+                                  ->whereColumn('product_lots.product_id', 'inventory_movements.product_id');
+                        });
+                })
                 ->whereBetween('product_lots.expiration_date', [$startOfMonth, $endOfMonth]);
         })
         ->orderBy('movement_date', 'desc')
