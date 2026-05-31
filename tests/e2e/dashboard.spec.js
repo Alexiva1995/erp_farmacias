@@ -1,0 +1,284 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Pruebas del Dashboard y Widget de Vencimientos (E2E)', () => {
+
+  test.beforeEach(async ({ page }) => {
+    // Incrementar el tiempo de espera para el entorno Laragon
+    test.setTimeout(60000);
+
+    // Mock de CSRF requerido para iniciar la app
+    await page.route('**/sanctum/csrf-cookie', async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { 'set-cookie': 'XSRF-TOKEN=mock; path=/' }
+      });
+    });
+
+    // 1. Mock de configuraciones generales
+    await page.route('**/api/general-settings', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            app_name: 'Farmacia E2E',
+            primary_color: '#E20074',
+            secondary_color: '#7A0099',
+          }
+        })
+      });
+    });
+
+    // 2. Mock del usuario autenticado (Admin)
+    await page.route('**/api/user', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 1,
+          name: 'Administrador E2E',
+          username: 'admin_e2e',
+          role_id: 1,
+        })
+      });
+    });
+
+    // 3. Mock de todos los endpoints consumidos en onMounted de index.vue
+    await page.route('**/api/dashboard/stats**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ units: 10, sales: 500, expenses: 100, profit: 400 }) });
+    });
+    
+    await page.route('**/api/dashboard/analytics-data**', async (route) => {
+      await route.fulfill({ 
+        status: 200, 
+        contentType: 'application/json', 
+        body: JSON.stringify({ 
+          average_daily_sales: 100,
+          historical_averages: [],
+          total_monthly_sales: 3000,
+          weekly_metrics: { sales: { value: 500, change: 5 }, profit: { value: 200, change: 10 }, orders: { value: 50, change: 2 } },
+          orders_summary: { completed: 45, cancelled: 5, total: 50 },
+          daily_earnings: [],
+          lab_summary_amount: [],
+          lab_summary_units: [],
+          auto_orders_summary: { pending: 0, sent: 0, completed: 0, total: 0 },
+          expirations_summary: [],
+          conversion_summary: [],
+          promotions_summary: [],
+          packs_summary: [],
+          sellers_ranking: [],
+          exchange_rates: [],
+          system_profitability: 25.2
+        }) 
+      });
+    });
+
+    await page.route('**/api/rrhh/employee-performance**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: true,
+          data: [
+            { id: 1, name: 'Admin', sales: 500 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/finances/cash-closure/monthlyCash**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { period: 'Enero 2026', total_usd_equivalent: 5000 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/dashboard/profit**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ profit: 2000 })
+      });
+    });
+
+    await page.route('**/api/crm/clients/filtrar-sin-paginar**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { id: 1, name: 'Cliente de Prueba' }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/dashboard/units-sold**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ units: 150 })
+      });
+    });
+
+    await page.route('**/api/finances/cash-closure/dailyCash**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { id: 1, total_sales: 300, created_at: '2026-05-31' }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/dashboard/popular-products**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { name: 'Ibuprofeno 400mg', laboratory: 'LAB-POPULAR', quantity: 10, price: 5 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/finances/transactions/income-summary**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { method: 'Efectivo', type: 'CASH', currency: 'USD', amount: 1000 }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/invoices**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          total: 0
+        })
+      });
+    });
+  });
+
+  test('Debe renderizar correctamente la lista de productos vencidos vendidos este mes', async ({ page }) => {
+    // 1. Interceptar el endpoint de productos vendidos por vencer con datos de prueba envueltos en data
+    await page.route('**/api/dashboard/expiring-sold-products', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              id: 99901,
+              product_name: 'Ibuprofeno 400mg E2E',
+              laboratory_name: 'LAB-PRUEBA',
+              lot_number: 'LOTE-E2E-XYZ',
+              expiration_date: '2026-05-30',
+              quantity: 5,
+              sold_date: '2026-05-31T10:00:00Z',
+              user_name: 'Cajero de Prueba'
+            }
+          ]
+        })
+      });
+    });
+
+    // 2. Ir a la página de inicio (Dashboard)
+    await page.goto('/');
+
+    // 3. Buscar el widget y verificar que se muestre con la información correctamente mapeada
+    const titleLocator = page.locator('text=Productos que Vencían este Mes y se Vendieron');
+    await expect(titleLocator).toBeVisible({ timeout: 15000 });
+
+    const productNameLocator = page.locator('text=Ibuprofeno 400mg E2E');
+    await expect(productNameLocator).toBeVisible({ timeout: 15000 });
+
+    const lotNumberLocator = page.locator('text=LOTE-E2E-XYZ');
+    await expect(lotNumberLocator).toBeVisible();
+
+    const labLocator = page.locator('text=LAB-PRUEBA');
+    await expect(labLocator).toBeVisible();
+
+    const quantityLocator = page.locator('text=5 Unidades Vendidas');
+    await expect(quantityLocator).toBeVisible();
+
+    const sellerLocator = page.locator('text=Vendido por: Cajero de Prueba');
+    await expect(sellerLocator).toBeVisible();
+  });
+
+  test('Debe cargar correctamente todas las secciones y métricas principales del dashboard', async ({ page }) => {
+    // 1. Ir a la página de inicio
+    await page.goto('/');
+
+    // 2. Verificar cabecera y saludo usando un localizador flexible para evitar fallos por timing con leader.name
+    await expect(page.locator('text=Felicitaciones').first()).toBeVisible({ timeout: 15000 });
+
+    // 3. Verificar métricas y estadísticas clave
+    await expect(page.locator('text=Líder de Ventas')).toBeVisible();
+    await expect(page.locator('text=Gastos Totales')).toBeVisible();
+    await expect(page.locator('text=Clientes Compradores')).toBeVisible();
+    await expect(page.locator('text=Reporte de Ingresos')).toBeVisible();
+    await expect(page.locator('text=Promedio de Venta Diaria')).toBeVisible();
+
+    // 4. Verificar resúmenes, gráficos e informes financieros
+    await expect(page.locator('text=Resumen de Ventas').first()).toBeVisible();
+    await expect(page.locator('text=Informes de Ganancias').first()).toBeVisible();
+    await expect(page.locator('text=Tracker de Ventas').first()).toBeVisible();
+    await expect(page.locator('text=Crecimiento de Ingresos').first()).toBeVisible();
+
+    // 5. Verificar secciones de inventario y compras
+    await expect(page.locator('text=Últimos Ciclos de Inventario')).toBeVisible();
+    await expect(page.locator('text=Resumen de Caducidad')).toBeVisible();
+    await expect(page.locator('text=Facturas Cargadas')).toBeVisible();
+
+    // 6. Verificar análisis de productos y marketing
+    await expect(page.locator('text=Productos Populares')).toBeVisible();
+    await expect(page.locator('text=Tasa de Conversión')).toBeVisible();
+    await expect(page.locator('text=Rendimiento de Promociones')).toBeVisible();
+    await expect(page.locator('text=Detalle de Pack')).toBeVisible();
+
+    // 7. Verificar rankings e información de equipo
+    await expect(page.locator('text=Top Vendedores este mes')).toBeVisible();
+    await expect(page.locator('text=Venta de Empleados')).toBeVisible();
+    await expect(page.locator('text=Vendedores por Unidades')).toBeVisible();
+  });
+
+  test('Debe mostrar el estado vacio "Sin perdidas por caducidad" cuando no hay productos vencidos vendidos', async ({ page }) => {
+    // 1. Interceptar el endpoint con un array vacio
+    await page.route('**/api/dashboard/expiring-sold-products', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: []
+        })
+      });
+    });
+
+    // 2. Ir a la página de inicio
+    await page.goto('/');
+
+    // 3. Verificar que se muestre el estado vacío
+    const emptyStateTitle = page.locator('text=¡Sin pérdidas por caducidad!');
+    await expect(emptyStateTitle).toBeVisible({ timeout: 15000 });
+
+    const emptyStateText = page.locator('text=No se registran ventas de productos con vencimiento en el mes en curso.');
+    await expect(emptyStateText).toBeVisible();
+  });
+
+});
