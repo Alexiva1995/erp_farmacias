@@ -38,7 +38,9 @@ class SoldExpiringProductResource extends JsonResource
             'expiration_date' => $lot && $lot->expiration_date ? $lot->expiration_date->format('Y-m-d') : null,
             'quantity' => abs((int) $this->quantity),
             'sold_date' => $this->movement_date ?? $this->created_at?->toDateTimeString(),
-            'user_name' => $this->user?->name ?? 'Usuario de Ventas',
+            'user_name' => $this->user?->employee
+                ? trim($this->user->employee->name . ' ' . $this->user->employee->last_name)
+                : ($this->user?->username ?? 'Usuario de Ventas'),
         ];
     }
 }

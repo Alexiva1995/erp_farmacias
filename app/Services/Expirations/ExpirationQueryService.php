@@ -143,7 +143,7 @@ class ExpirationQueryService
             'product' => function ($q) {
                 $q->withTrashed()->with('laboratory');
             },
-            'user'
+            'user.employee'
         ])
         ->where('movement_type', 'sale')
         ->whereBetween('movement_date', [$startOfMonth, $endOfMonth])
@@ -154,6 +154,7 @@ class ExpirationQueryService
                 ->whereBetween('product_lots.expiration_date', [$startOfMonth, $endOfMonth]);
         })
         ->orderBy('movement_date', 'desc')
+        ->take(4)
         ->get();
     }
 }
