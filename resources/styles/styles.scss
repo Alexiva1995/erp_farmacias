@@ -73,6 +73,18 @@
     background: var(--brand-gradient) !important;
     color: var(--color-white) !important;
     
+    .v-list-item-title,
+    .v-list-item-subtitle,
+    .v-list-item__prepend,
+    .v-list-item__append,
+    .nav-link-title,
+    span,
+    div,
+    p {
+      color: var(--color-white) !important;
+      opacity: 1 !important;
+    }
+    
     .v-icon,
     .nav-item-icon,
     svg,
@@ -80,6 +92,50 @@
       color: var(--color-white) !important;
       fill: var(--color-white) !important;
       opacity: 1 !important;
+    }
+  }
+
+  // Estilos adicionales para submenús activos o con foco para asegurar contraste
+  .v-list-group__items {
+    .v-list-item--active,
+    .v-list-item:hover {
+      background: rgba(226, 0, 116, 0.15) !important;
+      
+      .v-list-item-title,
+      .v-list-item-subtitle,
+      span,
+      div {
+        color: #E20074 !important; // Texto fucsia para el sub-item activo
+        font-weight: 700 !important;
+      }
+      
+      .v-icon,
+      svg,
+      svg path {
+        color: #E20074 !important;
+        fill: #E20074 !important;
+      }
+    }
+
+    // Si el sub-item es el activo exacto (router-link-exact-active), usar gradiente
+    .v-list-item--active.router-link-exact-active,
+    .v-list-item--active.router-link-active {
+      background: var(--brand-gradient) !important;
+      
+      .v-list-item-title,
+      .v-list-item-subtitle,
+      span,
+      div {
+        color: var(--color-white) !important;
+        font-weight: 700 !important;
+      }
+      
+      .v-icon,
+      svg,
+      svg path {
+        color: var(--color-white) !important;
+        fill: var(--color-white) !important;
+      }
     }
   }
 }

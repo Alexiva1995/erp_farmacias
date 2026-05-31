@@ -391,7 +391,7 @@ import EcommerceTotalProfitLineCharts from "@/components/EcommerceTotalProfitLin
 import EcommerceExpensesRadialBarCharts from "@/components/EcommerceExpensesRadialBarCharts.vue";
 import EcommerceGeneratedLeads from "@/components/EcommerceGeneratedLeads.vue";
 import { useAuthStore } from "@/stores/auth";
-import axios from "axios";
+import axios from "@/plugins/axios";
 import { onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
