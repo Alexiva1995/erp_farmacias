@@ -648,4 +648,97 @@ class ExpirationAndOfferTest extends TestCase
         $this->assertNotNull($item, 'No se encontro la venta del lote que expira en el fin de mes');
         $this->assertEquals('LOT-EXP-THIS-MONTH', $item['lot_number']);
     }
+
+    /**
+     * Valida de manera estricta que no exista un patrón de consultas N+1
+     * en el endpoint de productos vendidos por vencer.
+     */
+    public function test_get_sold_expiring_products_does_not_trigger_n_plus_one_queries(): void
+    {
+        // Crear múltiples lotes y movimientos para forzar el patrón N+1 si existiera
+        for ($i = 1; $i <= 5; $i++) {
+            $prod = Product::create([
+                'name' => "Producto de Prueba {$i}",
+                'unit_cost' => 1.00,
+                'sale_price' => 2.00,
+                'iva' => 0,
+                'stock' => 10,
+            ]);
+
+            $lot = ProductLot::create([
+                'product_id' => $prod->id,
+                'lot_number' => "LOT-N1-{$i}",
+                'expiration_date' => now()->startOfMonth()->addDays(10),
+                'quantity' => 10,
+                'unit_cost' => 1.00,
+            ]);
+
+            \App\Models\InventoryMovement::create([
+                'product_id' => $prod->id,
+                'product_lot_id' => $lot->id,
+                'movement_type' => 'sale',
+                'quantity' => -1,
+                'movement_date' => now()->startOfMonth()->addDays(12),
+                'user_id' => $this->cajero->id,
+                'stock_before' => 10,
+                'stock_after' => 9,
+            ]);
+        }
+
+        // Habilitar el log de consultas de base de datos
+        DB::enableQueryLog();
+
+        $response = $this->actingAs($this->cajero, 'sanctum')
+            ->getJson('/api/dashboard/expiring-sold-products');
+
+        $response->assertStatus(200);
+
+        // Contar consultas ejecutadas
+        $queries = DB::getQueryLog();
+        $queryCount = count($queries);
+
+        // Apagar el log
+        DB::disableQueryLog();
+
+        // El endpoint solo debe realizar consultas constantes O(1) para resolver relaciones, no O(N)
+        $this->assertLessThanOrEqual(5, $queryCount, "Se ha detectado una fuga de rendimiento de tipo N+1. Consultas ejecutadas: {$queryCount}");
+    }
+
+    /**
+     * Valida que los movimientos antiguos (donde product_lot_id es NULL)
+     * sean estrictamente excluidos para evitar la atribución errónea de lotes.
+     */
+    public function test_get_sold_expiring_products_excludes_movements_without_lot_id_fully_isolated(): void
+    {
+        // Lote expirando este mes
+        $lot = ProductLot::create([
+            'product_id' => $this->product->id,
+            'lot_number' => 'LOT-EXP-LEGACY',
+            'expiration_date' => now()->startOfMonth()->addDays(10),
+            'quantity' => 5,
+            'unit_cost' => 1.00,
+        ]);
+
+        // Movimiento antiguo/legado donde product_lot_id es explícitamente NULL
+        \App\Models\InventoryMovement::create([
+            'product_id' => $this->product->id,
+            'product_lot_id' => null, // Simulando registro antiguo antes de la mejora
+            'movement_type' => 'sale',
+            'quantity' => -1,
+            'movement_date' => now()->startOfMonth()->addDays(12),
+            'user_id' => $this->cajero->id,
+            'stock_before' => 10,
+            'stock_after' => 9,
+        ]);
+
+        $response = $this->actingAs($this->cajero, 'sanctum')
+            ->getJson('/api/dashboard/expiring-sold-products');
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+
+        // El movimiento antiguo debe ser completamente ignorado para evitar asignar falsamente el lote
+        $legacyItem = collect($data)->firstWhere('lot_number', 'LOT-EXP-LEGACY');
+        $this->assertNull($legacyItem, 'Se detectó y atribuyó falsamente un lote activo a una venta histórica sin lote.');
+    }
 }
