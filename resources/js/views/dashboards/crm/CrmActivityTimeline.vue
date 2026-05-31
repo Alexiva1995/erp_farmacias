@@ -22,7 +22,7 @@ const fetchSoldExpiringProducts = async () => {
   try {
     loading.value = true
     const response = await axios.get('/dashboard/expiring-sold-products')
-    soldProducts.value = response.data || []
+    soldProducts.value = Array.isArray(response.data) ? response.data : (response.data.data || [])
   } catch (error) {
     console.error('Error al cargar ventas de productos por vencer:', error)
   } finally {
