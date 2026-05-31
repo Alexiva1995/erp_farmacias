@@ -12,7 +12,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:8000', // El servidor local de laravel run dev/serve
+    baseURL: 'https://erp_farmacias.test', // El servidor local de Laragon
     trace: 'on-first-retry',
     viewport: { width: 1280, height: 720 },
   },
