@@ -121,6 +121,43 @@ test.describe('Pruebas del Dashboard y Widget de Vencimientos (E2E)', () => {
     await expect(sellerLocator).toBeVisible();
   });
 
+  test('Debe cargar correctamente todas las secciones y métricas principales del dashboard', async ({ page }) => {
+    // 1. Ir a la página de inicio
+    await page.goto('/');
+
+    // 2. Verificar cabecera y saludo
+    await expect(page.locator('text=¡Felicitaciones Admin! 🎉')).toBeVisible({ timeout: 15000 });
+
+    // 3. Verificar métricas y estadísticas clave
+    await expect(page.locator('text=Líder de Ventas')).toBeVisible();
+    await expect(page.locator('text=Gastos Totales')).toBeVisible();
+    await expect(page.locator('text=Clientes Compradores')).toBeVisible();
+    await expect(page.locator('text=Reporte de Ingresos')).toBeVisible();
+    await expect(page.locator('text=Promedio de Venta Diaria')).toBeVisible();
+
+    // 4. Verificar resúmenes, gráficos e informes financieros
+    await expect(page.locator('text=Resumen de Ventas').first()).toBeVisible();
+    await expect(page.locator('text=Informes de Ganancias').first()).toBeVisible();
+    await expect(page.locator('text=Tracker de Ventas').first()).toBeVisible();
+    await expect(page.locator('text=Crecimiento de Ingresos').first()).toBeVisible();
+
+    // 5. Verificar secciones de inventario y compras
+    await expect(page.locator('text=Últimos Ciclos de Inventario')).toBeVisible();
+    await expect(page.locator('text=Resumen de Caducidad')).toBeVisible();
+    await expect(page.locator('text=Facturas Cargadas')).toBeVisible();
+
+    // 6. Verificar análisis de productos y marketing
+    await expect(page.locator('text=Productos Populares')).toBeVisible();
+    await expect(page.locator('text=Tasa de Conversión')).toBeVisible();
+    await expect(page.locator('text=Rendimiento de Promociones')).toBeVisible();
+    await expect(page.locator('text=Detalle de Pack')).toBeVisible();
+
+    // 7. Verificar rankings e información de equipo
+    await expect(page.locator('text=Top Vendedores este mes')).toBeVisible();
+    await expect(page.locator('text=Venta de Empleados')).toBeVisible();
+    await expect(page.locator('text=Vendedores por Unidades')).toBeVisible();
+  });
+
   test('Debe mostrar el estado vacio "Sin perdidas por caducidad" cuando no hay productos vencidos vendidos', async ({ page }) => {
     // 1. Interceptar el endpoint con un array vacio
     await page.route('**/api/dashboard/expiring-sold-products', async (route) => {
