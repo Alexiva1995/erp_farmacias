@@ -78,13 +78,35 @@ class InvoiceQueryService
             'supplier.autoOrders.details.productSupplier.product.laboratory'
         ]);
 
+        // Obtener todos los precios de autoórdenes activas del proveedor en un solo query (PENDING=0, SENT=1)
+        // Agrupado por product_id para evitar N+1 queries
+        $autoOrderPrices = DB::table('auto_order_details')
+            ->join('auto_orders', 'auto_order_details.order_id', '=', 'auto_orders.id')
+            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+            ->where('auto_orders.supplier_id', $invoice->supplier_id)
+            ->whereIn('auto_orders.status', [0, 1]) // PENDING o SENT (no COMPLETED=2)
+            ->whereNull('auto_orders.deleted_at')
+            ->whereNull('auto_order_details.deleted_at')
+            ->select('product_suppliers.product_id', 'auto_order_details.unit_cost')
+            ->orderBy('auto_order_details.created_at', 'desc')
+            ->get()
+            ->unique('product_id') // El más reciente por producto
+            ->keyBy('product_id'); // Indexado por product_id para acceso O(1)
+
         $normalDetails = $invoice->details()
             ->with('product.laboratory')
             ->orderBy('display_order', 'asc')
             ->orderBy('id', 'asc')
             ->get()
-            ->map(function ($detail) {
+            ->map(function ($detail) use ($autoOrderPrices) {
                 $detail->is_return = false;
+
+                // Adjuntar precio de referencia de autoórden activa si existe
+                $autoOrderRef = $autoOrderPrices->get($detail->product_id);
+                $detail->auto_order_unit_cost_usd = $autoOrderRef
+                    ? (float) $autoOrderRef->unit_cost
+                    : null;
+
                 return $detail;
             });
 
@@ -105,6 +127,7 @@ class InvoiceQueryService
                 'location' => 'N/A',
                 'tax_enabled' => $returnItem->product->iva,
                 'is_return' => true,
+                'auto_order_unit_cost_usd' => null, // Devoluciones no tienen referencia de autoorden
             ];
         });
 
@@ -137,6 +160,7 @@ class InvoiceQueryService
                             'is_return' => false,
                             'expiration_date' => $autoOrderDetail->productSupplier->expiration,
                             'auto_order_detail_id' => $autoOrderDetail->id,
+                            'auto_order_unit_cost_usd' => (float) $autoOrderDetail->unit_cost, // Mismo ítem = su propio precio
                         ]);
                     }
                 }

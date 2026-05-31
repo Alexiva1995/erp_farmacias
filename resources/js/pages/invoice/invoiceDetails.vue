@@ -374,6 +374,47 @@ const getCostTooltipText = (item) => {
   )} | Factura: ${formatCurrency(invoiceCostUSD, "USD")}`;
 };
 
+/**
+ * Compara el precio unitario de la factura (en USD) vs el precio de la autoorden
+ * activa más reciente del proveedor para ese producto.
+ * Retorna { icon, color, tooltip } o null si no hay referencia de autoorden.
+ */
+const getPriceVsAutoOrderIndicator = (item) => {
+  const autoOrderPrice = item.auto_order_unit_cost_usd;
+
+  // Sin referencia de autoorden → sin indicador
+  if (autoOrderPrice == null) return null;
+
+  // Usar el precio en USD ya calculado en processedInvoiceDetails
+  const invoicePrice = item.unit_cost_usd;
+  if (invoicePrice == null || isNaN(invoicePrice)) return null;
+
+  const tolerance = 0.001; // Tolerancia de 0.1 centavo de USD
+
+  if (invoicePrice > autoOrderPrice + tolerance) {
+    // Más caro que la autoorden
+    return {
+      icon: 'tabler-trending-up',
+      color: 'error',
+      tooltip: `Más caro que la autoorden: Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
+    };
+  } else if (invoicePrice < autoOrderPrice - tolerance) {
+    // Más económico que la autoorden
+    return {
+      icon: 'tabler-trending-down',
+      color: 'success',
+      tooltip: `Más económico que la autoorden: Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
+    };
+  } else {
+    // Igual al precio de la autoorden
+    return {
+      icon: 'tabler-equal',
+      color: 'secondary',
+      tooltip: `Igual al precio de la autoorden: ${formatCurrency(autoOrderPrice, 'USD')}`,
+    };
+  }
+};
+
 onMounted(async () => {
   await fetchInvoiceData(props.invoiceId);
   if (invoice.value) {
@@ -1722,9 +1763,26 @@ const detailsHeaders = computed(() => {
                         { 'returned-item': isItemReturned(item) },
                       ]"
                     >
-                      <span class="font-weight-medium">{{
-                        formatCurrency(item.unit_cost, invoice.currency)
-                      }}</span>
+                      <div class="d-flex align-center gap-1">
+                        <span class="font-weight-medium">{{
+                          formatCurrency(item.unit_cost, invoice.currency)
+                        }}</span>
+                        <!-- Indicador precio vs autoorden activa -->
+                        <VTooltip
+                          v-if="getPriceVsAutoOrderIndicator(item)"
+                          :text="getPriceVsAutoOrderIndicator(item).tooltip"
+                          location="top"
+                        >
+                          <template #activator="{ props: tipProps }">
+                            <VIcon
+                              v-bind="tipProps"
+                              :icon="getPriceVsAutoOrderIndicator(item).icon"
+                              :color="getPriceVsAutoOrderIndicator(item).color"
+                              size="15"
+                            />
+                          </template>
+                        </VTooltip>
+                      </div>
                       <span
                         v-if="invoice.currency !== 'USD'"
                         class="text-caption text-medium-emphasis"
@@ -1739,9 +1797,26 @@ const detailsHeaders = computed(() => {
                   class="d-flex flex-column align-end"
                   :class="{ 'returned-item': isItemReturned(item) }"
                 >
-                  <span class="font-weight-medium">{{
-                    formatCurrency(item.unit_cost, invoice.currency)
-                  }}</span>
+                  <div class="d-flex align-center gap-1">
+                    <span class="font-weight-medium">{{
+                      formatCurrency(item.unit_cost, invoice.currency)
+                    }}</span>
+                    <!-- Indicador precio vs autoorden activa -->
+                    <VTooltip
+                      v-if="getPriceVsAutoOrderIndicator(item)"
+                      :text="getPriceVsAutoOrderIndicator(item).tooltip"
+                      location="top"
+                    >
+                      <template #activator="{ props: tipProps }">
+                        <VIcon
+                          v-bind="tipProps"
+                          :icon="getPriceVsAutoOrderIndicator(item).icon"
+                          :color="getPriceVsAutoOrderIndicator(item).color"
+                          size="15"
+                        />
+                      </template>
+                    </VTooltip>
+                  </div>
                   <span
                     v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
@@ -1971,7 +2046,24 @@ const detailsHeaders = computed(() => {
                           class="mt-1"
                         />
                         <div v-else class="d-flex flex-column align-start">
-                          <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
+                          <div class="d-flex align-center gap-1">
+                            <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
+                            <!-- Indicador precio vs autoorden activa -->
+                            <VTooltip
+                              v-if="getPriceVsAutoOrderIndicator(item)"
+                              :text="getPriceVsAutoOrderIndicator(item).tooltip"
+                              location="top"
+                            >
+                              <template #activator="{ props: tipProps }">
+                                <VIcon
+                                  v-bind="tipProps"
+                                  :icon="getPriceVsAutoOrderIndicator(item).icon"
+                                  :color="getPriceVsAutoOrderIndicator(item).color"
+                                  size="15"
+                                />
+                              </template>
+                            </VTooltip>
+                          </div>
                           <span v-if="invoice.currency !== 'USD'" class="text-super-xs text-disabled">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
                         </div>
                       </div>
