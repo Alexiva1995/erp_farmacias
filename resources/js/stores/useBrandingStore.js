@@ -18,7 +18,7 @@ export const useBrandingStore = defineStore('branding', () => {
   const fetchSettings = async () => {
     isLoading.value = true
     try {
-      const response = await axios.get('/api/general-settings')
+      const response = await axios.get('/general-settings')
       settings.value = { ...settings.value, ...response.data.data }
       
       // Aplicar colores dinámicamente si existen

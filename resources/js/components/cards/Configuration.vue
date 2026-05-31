@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert";
 
 const fiscalMode = ref('')
@@ -20,11 +20,12 @@ const specialTaxpayerOptions = [
 
 const fetchSettings = async () => {
   try {
-    const response = await axios.get('/api/general-settings')
-    fiscalMode.value = response.data.fiscal_mode
-    specialStatus.value = response.data.special_taxpayer_status
-    allForeignSalesSpe.value = !!response.data.all_foreign_sales_spe
-    blindCashClosure.value = !!response.data.blind_cash_closure
+    const response = await axios.get('/general-settings')
+    const settings = response.data.data
+    fiscalMode.value = settings.fiscal_mode
+    specialStatus.value = settings.special_taxpayer_status
+    allForeignSalesSpe.value = !!settings.all_foreign_sales_spe
+    blindCashClosure.value = !!settings.blind_cash_closure
   } catch (error) {
     console.error("Error cargando configuración:", error)
     toast.success("Error al cargar la configuración")
@@ -33,7 +34,7 @@ const fetchSettings = async () => {
 
 const updateSettings = async () => {
   try {
-    await axios.post('/api/general-settings', {
+    await axios.post('/general-settings', {
       fiscal_mode: fiscalMode.value,
       special_taxpayer_status: specialStatus.value,
       all_foreign_sales_spe: allForeignSalesSpe.value,

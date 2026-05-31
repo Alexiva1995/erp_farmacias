@@ -55,7 +55,7 @@ const saveBranding = async () => {
   }
 
   try {
-    await axios.post('/api/general-settings', formData, {
+    await axios.post('/general-settings', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
