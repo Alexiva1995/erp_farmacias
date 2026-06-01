@@ -12,19 +12,38 @@ import '@core-scss/template/libs/vuetify/index.scss'
 import 'vuetify/styles'
 
 export default function (app) {
+  // Si la cookie del color primario tiene el valor anterior por defecto, la forzamos al nuevo color corporativo #E20074
+  const lightColor = cookieRef('lightThemePrimaryColor', staticPrimaryColor)
+  if (lightColor.value === '#7367F0' || lightColor.value === '#7367f0' || !lightColor.value) {
+    lightColor.value = staticPrimaryColor
+  }
+  const darkColor = cookieRef('darkThemePrimaryColor', staticPrimaryColor)
+  if (darkColor.value === '#7367F0' || darkColor.value === '#7367f0' || !darkColor.value) {
+    darkColor.value = staticPrimaryColor
+  }
+
+  const lightDarken = cookieRef('lightThemePrimaryDarkenColor', staticPrimaryDarkenColor)
+  if (lightDarken.value === '#685dd8' || !lightDarken.value) {
+    lightDarken.value = staticPrimaryDarkenColor
+  }
+  const darkDarken = cookieRef('darkThemePrimaryDarkenColor', staticPrimaryDarkenColor)
+  if (darkDarken.value === '#685dd8' || !darkDarken.value) {
+    darkDarken.value = staticPrimaryDarkenColor
+  }
+
   const cookieThemeValues = {
     defaultTheme: resolveVuetifyTheme(themeConfig.app.theme),
     themes: {
       light: {
         colors: {
-          'primary': cookieRef('lightThemePrimaryColor', staticPrimaryColor).value,
-          'primary-darken-1': cookieRef('lightThemePrimaryDarkenColor', staticPrimaryDarkenColor).value,
+          'primary': lightColor.value,
+          'primary-darken-1': lightDarken.value,
         },
       },
       dark: {
         colors: {
-          'primary': cookieRef('darkThemePrimaryColor', staticPrimaryColor).value,
-          'primary-darken-1': cookieRef('darkThemePrimaryDarkenColor', staticPrimaryDarkenColor).value,
+          'primary': darkColor.value,
+          'primary-darken-1': darkDarken.value,
         },
       },
     },
@@ -43,3 +62,4 @@ export default function (app) {
 
   app.use(vuetify)
 }
+
