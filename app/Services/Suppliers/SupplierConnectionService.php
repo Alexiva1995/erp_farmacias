@@ -500,6 +500,12 @@ class SupplierConnectionService
                                 break;
                             }
 
+                            // Si es otra columna decimal (como discount_percentage, margen, etc.), simplemente guardarla y no recalcular el unit_cost_usd
+                            if ($meta["target"] !== "unit_cost") {
+                                $entry[$meta["target"]] = $newValue;
+                                break;
+                            }
+
                             // Si ya tiene el precio en bs y usd
                             if ($hasUnitCostUsd) {
                                 $entry[$meta["target"]] = $newValue;
