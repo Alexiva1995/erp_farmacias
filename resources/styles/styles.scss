@@ -11,10 +11,6 @@
   --color-light-gray: #E9ECEF;
   --color-white: #FFFFFF;
   --brand-gradient: linear-gradient(135deg, #7A0099, #E20074);
-  
-  // Forzar las variables del tema de Vuetify de forma global para eliminar el morado por completo
-  --v-theme-primary: 226, 0, 116 !important;
-  --v-theme-primary-darken-1: 216, 0, 90 !important;
 }
 
 // Forzar color magenta fucsia de TOVA en todos los enlaces y textos primarios

@@ -116,7 +116,7 @@ const chartOptions = computed(() => {
         },
       },
       colors: [
-        "#E20074",
+        "rgba(var(--v-theme-primary),1)",
         "rgba(var(--v-theme-warning),1)",
       ],
       dataLabels: { enabled: false },
