@@ -10,7 +10,7 @@
   --color-light: #F8F9FA;
   --color-light-gray: #E9ECEF;
   --color-white: #FFFFFF;
-  --brand-gradient: linear-gradient(135deg, #E20074, #D8005A);
+  --brand-gradient: linear-gradient(135deg, #7A0099, #E20074);
   
   // Forzar las variables del tema de Vuetify de forma global para eliminar el morado por completo
   --v-theme-primary: 226, 0, 116 !important;
@@ -83,7 +83,7 @@ a.text-primary,
   .nav-link.router-link-exact-active,
   .nav-group.active,
   .nav-group.open {
-    background: var(--brand-gradient) !important;
+    background: #E20074 !important;
     color: var(--color-white) !important;
     
     .v-list-item-title,
@@ -133,7 +133,7 @@ a.text-primary,
     // Si el sub-item es el activo exacto (router-link-exact-active), usar gradiente
     .v-list-item--active.router-link-exact-active,
     .v-list-item--active.router-link-active {
-      background: var(--brand-gradient) !important;
+      background: #E20074 !important;
       
       .v-list-item-title,
       .v-list-item-subtitle,
