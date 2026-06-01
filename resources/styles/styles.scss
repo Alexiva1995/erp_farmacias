@@ -79,8 +79,8 @@ a.text-primary,
   // Asegurar que los items activos destaquen con el gradiente e iconos en blanco puro
   .v-list-item--active,
   .nav-link.active,
-  .nav-link.router-link-active,
-  .nav-link.router-link-exact-active {
+  .nav-link .router-link-active,
+  .nav-link .router-link-exact-active {
     background: #E20074 !important;
     color: var(--color-white) !important;
     
