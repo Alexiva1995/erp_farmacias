@@ -12,23 +12,19 @@ import '@core-scss/template/libs/vuetify/index.scss'
 import 'vuetify/styles'
 
 export default function (app) {
-  // Si la cookie del color primario tiene el valor anterior por defecto, la forzamos al nuevo color corporativo #E20074
-  const lightColor = cookieRef('lightThemePrimaryColor', staticPrimaryColor)
-  if (lightColor.value === '#7367F0' || lightColor.value === '#7367f0' || !lightColor.value) {
+  // Sincronizar cookies por si acaso se leen en otro lado, pero forzar estáticamente el color corporativo #E20074
+  try {
+    const lightColor = cookieRef('lightThemePrimaryColor', staticPrimaryColor)
     lightColor.value = staticPrimaryColor
-  }
-  const darkColor = cookieRef('darkThemePrimaryColor', staticPrimaryColor)
-  if (darkColor.value === '#7367F0' || darkColor.value === '#7367f0' || !darkColor.value) {
+    const darkColor = cookieRef('darkThemePrimaryColor', staticPrimaryColor)
     darkColor.value = staticPrimaryColor
-  }
 
-  const lightDarken = cookieRef('lightThemePrimaryDarkenColor', staticPrimaryDarkenColor)
-  if (lightDarken.value === '#685dd8' || !lightDarken.value) {
+    const lightDarken = cookieRef('lightThemePrimaryDarkenColor', staticPrimaryDarkenColor)
     lightDarken.value = staticPrimaryDarkenColor
-  }
-  const darkDarken = cookieRef('darkThemePrimaryDarkenColor', staticPrimaryDarkenColor)
-  if (darkDarken.value === '#685dd8' || !darkDarken.value) {
+    const darkDarken = cookieRef('darkThemePrimaryDarkenColor', staticPrimaryDarkenColor)
     darkDarken.value = staticPrimaryDarkenColor
+  } catch (e) {
+    console.error('Error overriding color cookies:', e)
   }
 
   const cookieThemeValues = {
@@ -36,14 +32,14 @@ export default function (app) {
     themes: {
       light: {
         colors: {
-          'primary': lightColor.value,
-          'primary-darken-1': lightDarken.value,
+          'primary': staticPrimaryColor,
+          'primary-darken-1': staticPrimaryDarkenColor,
         },
       },
       dark: {
         colors: {
-          'primary': darkColor.value,
-          'primary-darken-1': darkDarken.value,
+          'primary': staticPrimaryColor,
+          'primary-darken-1': staticPrimaryDarkenColor,
         },
       },
     },
