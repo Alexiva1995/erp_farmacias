@@ -62,8 +62,8 @@ const isAdmin = computed(() => authStore.isAdmin);
 
 const fetchSuppliers = async () => {
   try {
-    const response = await axios.get("/available-suppliers");
-    suppliers.value = response.data;
+    const response = await axios.get("/product-lots/available-suppliers");
+    suppliers.value = response.data.data;
   } catch (error) {
     console.error("Error al obtener proveedores:", error);
   }

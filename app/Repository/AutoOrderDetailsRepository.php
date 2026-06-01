@@ -58,11 +58,19 @@ class AutoOrderDetailsRepository
             }
         }
 
-        $results = AutoOrderDetail::where("order_id", $orderId)
-            ->with(["productSupplier"])
-            ->orderBy("subtotal", "desc")
-            ->paginate(10)
-            ->through(fn($record) => [...$record->toArray(), "product_name" => $record->productSupplier->name ?? null]);
+        $perPage = isset($filters["perPage"]) ? min(max((int)$filters["perPage"], 1), 100) : 10;
+        
+        $query = AutoOrderDetail::query()
+            ->select(["auto_order_details.*", "product_suppliers.name as product_name"])
+            ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
+            ->where("auto_order_details.order_id", $orderId);
+
+        if (!empty($filters["search"])) {
+            $query->where("product_suppliers.name", "like", "%" . $filters["search"] . "%");
+        }
+
+        $results = $query->orderBy("product_name", "asc")
+            ->paginate($perPage);
 
         return $results;
     }

@@ -75,8 +75,8 @@ const formatTime = (dateString) => {
   <div class="purchase-orders-container">
     <VDataTableServer
       v-if="!mobile"
-      v-model:items-per-page="props.itemsPerPage"
-      v-model:page="props.page"
+      :items-per-page="props.itemsPerPage"
+      :page="props.page"
       :headers="headers"
       :items="props.purchaseOrders"
       :items-length="props.totalPurchaseOrders"

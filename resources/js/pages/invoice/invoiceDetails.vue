@@ -368,10 +368,16 @@ const getCostTooltipText = (item) => {
     )} (No se puede comparar - tasa inválida)`;
   }
 
-  return `Costo en Sistema: ${formatCurrency(
+  let text = `Costo en Sistema: ${formatCurrency(
     systemCostUSD,
     "USD",
   )} | Factura: ${formatCurrency(invoiceCostUSD, "USD")}`;
+
+  if (item.auto_order_unit_cost_usd != null) {
+    text += ` | AO: ${formatCurrency(item.auto_order_unit_cost_usd, "USD")}`;
+  }
+
+  return text;
 };
 
 /**
@@ -1768,20 +1774,12 @@ const detailsHeaders = computed(() => {
                           formatCurrency(item.unit_cost, invoice.currency)
                         }}</span>
                         <!-- Indicador precio vs autoorden activa -->
-                        <VTooltip
+                        <VIcon
                           v-if="getPriceVsAutoOrderIndicator(item)"
-                          :text="getPriceVsAutoOrderIndicator(item).tooltip"
-                          location="top"
-                        >
-                          <template #activator="{ props: tipProps }">
-                            <VIcon
-                              v-bind="tipProps"
-                              :icon="getPriceVsAutoOrderIndicator(item).icon"
-                              :color="getPriceVsAutoOrderIndicator(item).color"
-                              size="15"
-                            />
-                          </template>
-                        </VTooltip>
+                          :icon="getPriceVsAutoOrderIndicator(item).icon"
+                          :color="getPriceVsAutoOrderIndicator(item).color"
+                          size="15"
+                        />
                       </div>
                       <span
                         v-if="invoice.currency !== 'USD'"
