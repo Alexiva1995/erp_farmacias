@@ -22,6 +22,7 @@ const details = ref([]);
 const page = ref(1);
 const itemsPerPage = ref(10);
 const totalDetails = ref(0);
+const searchQuery = ref("");
 
 // Estado de edición
 const affectedRows = ref(new Map());
@@ -33,9 +34,27 @@ const isDirty = computed(() => {
   );
 });
 
-const closeDialog = () => {
+let searchDebounceTimer;
+watch(searchQuery, () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    page.value = 1;
+    fetchDetails();
+  }, 300);
+});
+
+const closeDialog = async () => {
+  if (props.purchaseOrder?.id) {
+    try {
+      await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/reject-pending`);
+      emit("refresh");
+    } catch (error) {
+      console.error("Error al rechazar productos pendientes:", error);
+    }
+  }
   emit("update:modelValue", false);
   page.value = 1;
+  searchQuery.value = "";
 };
 
 const formatDate = (dateString) => {
@@ -85,7 +104,11 @@ const fetchDetails = async () => {
   loading.value = true;
   try {
     const { data } = await axios.get(`/suppliers/purchase-orders/${props.purchaseOrder.id}`, {
-      params: { page: page.value, perPage: itemsPerPage.value },
+      params: { 
+        page: page.value, 
+        perPage: itemsPerPage.value,
+        search: searchQuery.value
+      },
     });
     details.value = data.data;
     totalDetails.value = data.total;
@@ -265,6 +288,19 @@ watch(
               </div>
             </VCol>
           </VRow>
+        </div>
+
+        <!-- Buscador de Productos -->
+        <div class="px-4 py-3 border-b bg-surface d-flex align-center">
+          <AppTextField
+            v-model="searchQuery"
+            placeholder="Buscar producto por nombre..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            hide-details
+            clearable
+            class="w-100 max-w-sm"
+          />
         </div>
 
         <!-- Vista Escritorio -->

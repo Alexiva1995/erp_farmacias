@@ -315,4 +315,13 @@ class AutoOrdersRepository
     {
         return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
     }
+    public function rejectPendingDetails(AutoOrder $autoOrder): void
+    {
+        $autoOrder->details()->whereNull('received')->update([
+            'received' => 0,
+            'status' => \App\AutoOrderDetailStatus::NOT_ARRIVED->value
+        ]);
+        
+        $this->checkAndCompleteOrder($autoOrder);
+    }
 }

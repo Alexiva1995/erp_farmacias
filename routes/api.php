@@ -576,6 +576,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::put("/details/update-status/{autoOrderDetail}", [PurchaseOrderDetailController::class, "updateDetailStatus"]);
         Route::delete("/details/{autoOrderDetail}", [PurchaseOrderDetailController::class, "destroy"]);
         Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
+        Route::post("/{autoOrder}/reject-pending", [PurchaseOrderController::class, "rejectPendingDetails"]);
     });
     Route::prefix("supplier-laboratories")->group(function () {
         Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);

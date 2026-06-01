@@ -11,8 +11,15 @@ class ProductSupplierRepository
 {
     public function consultSupplierByProductWithBetterPrice($product_id, $conDescuento): Collection
     {
+        // Obtener solo el ID más reciente por cada proveedor para este producto
+        $latestIds = DB::table('product_suppliers')
+            ->select(DB::raw('MAX(id) as id'))
+            ->where("product_id", "=", $product_id)
+            ->groupBy('supplier_id')
+            ->pluck('id');
+
         $consulta = ProductSupplier::query()
-            ->where("product_id", "=", $product_id);
+            ->whereIn("id", $latestIds);
 
         if ($conDescuento == "true") {
             $consulta->where("unit_cost_usd_with_discount", ">", 0)
@@ -27,7 +34,14 @@ class ProductSupplierRepository
 
     public function consultarTodosLosProveedorProIdProducto($product_id): Collection
     {
-        return ProductSupplier::where("product_id", "=", $product_id)
+        // Obtener solo el ID más reciente por cada proveedor para este producto
+        $latestIds = DB::table('product_suppliers')
+            ->select(DB::raw('MAX(id) as id'))
+            ->where("product_id", "=", $product_id)
+            ->groupBy('supplier_id')
+            ->pluck('id');
+
+        return ProductSupplier::whereIn("id", $latestIds)
             ->with("supplier")
             ->get();
     }
@@ -40,16 +54,23 @@ class ProductSupplierRepository
     {
         $productIds = $products->pluck('id')->toArray();
         
-        // 1. Obtener todas las ofertas disponibles para estos productos de una sola vez
+        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id
+        $latestIds = DB::table('product_suppliers')
+            ->select(DB::raw('MAX(id) as id'))
+            ->whereIn('product_id', $productIds)
+            ->groupBy('product_id', 'supplier_id')
+            ->pluck('id');
+
+        // 2. Obtener todas las ofertas disponibles para estos productos de una sola vez
         // No incluyas 'deleted_at' ya que la tabla product_suppliers no lo tiene.
         $query = DB::table('product_suppliers')
-            ->whereIn('product_id', $productIds)
+            ->whereIn('id', $latestIds)
             ->where(function ($query) {
                 $query->where('unit_cost_usd', '>', 0)
                     ->orWhere('unit_cost_usd_with_discount', '>', 0);
             });
 
-        // 2. Ordenar por precio según preferencia del usuario (ignorando ceros)
+        // 3. Ordenar por precio según preferencia del usuario (ignorando ceros)
         if ($conDescuento === "true") {
             $query->where("unit_cost_usd_with_discount", ">", 0)
                 ->orderBy("unit_cost_usd_with_discount", "ASC");
@@ -60,7 +81,7 @@ class ProductSupplierRepository
 
         $allOffers = $query->get();
 
-        // 3. Mapear de vuelta a la estructura que espera el servicio y checkTolerance
+        // 4. Mapear de vuelta a la estructura que espera el servicio y checkTolerance
         $results = [];
         
         // Importante: Mantener el orden de los productos entrantes
@@ -77,7 +98,7 @@ class ProductSupplierRepository
             $results[] = [
                 'product' => $product,
                 'supplier' => $supplier,
-                'productSupplier' => $bestOffer,
+                'productSupplier' => $bestOffer ? ProductSupplier::find($bestOffer->id) : null,
                 'precio_final_supplier' => 0, // Se hidratará en checkTolerance
                 'percentageIncrease' => 0,
                 'increase' => null,

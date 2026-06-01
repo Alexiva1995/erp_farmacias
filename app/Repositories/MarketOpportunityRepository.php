@@ -66,7 +66,12 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
          * Selecciona todas las ofertas que son mejores que nuestro costo de inventario.
          * La numeración (row_num) se usa para la deduplicación (solo mejor oferta).
          */
+        $latestIdsQuery = DB::table('product_suppliers')
+            ->select(DB::raw('MAX(id)'))
+            ->groupBy('product_id', 'supplier_id');
+
         $sub = ProductSupplier::query()
+            ->whereIn('product_suppliers.id', $latestIdsQuery)
             ->select(
                 'product_suppliers.*',
                 'products.name as product_name_inventory',
