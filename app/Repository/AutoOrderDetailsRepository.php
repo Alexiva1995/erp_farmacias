@@ -58,7 +58,7 @@ class AutoOrderDetailsRepository
             }
         }
 
-        $perPage = $filters["perPage"] ?? 10;
+        $perPage = isset($filters["perPage"]) ? min(max((int)$filters["perPage"], 1), 100) : 10;
         
         $query = AutoOrderDetail::query()
             ->select(["auto_order_details.*", "product_suppliers.name as product_name"])

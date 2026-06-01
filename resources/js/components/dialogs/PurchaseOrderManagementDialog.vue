@@ -43,8 +43,8 @@ watch(searchQuery, () => {
   }, 300);
 });
 
-const closeDialog = async () => {
-  if (props.purchaseOrder?.id) {
+const closeDialog = async (shouldReject = true) => {
+  if (shouldReject && props.purchaseOrder?.id && props.purchaseOrder.status === 1) {
     try {
       await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/reject-pending`);
       emit("refresh");
@@ -161,7 +161,7 @@ const handleConfirmSent = async () => {
     await axios.post(url);
     toast.success(isFinishing ? "Orden finalizada correctamente." : "Orden marcada como enviada.");
     emit("refresh");
-    closeDialog();
+    closeDialog(false);
   } catch (error) {
     toast.error("Error al procesar la solicitud.");
   } finally {

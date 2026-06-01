@@ -181,16 +181,12 @@ class SupplierQueryService
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
-            // Borrado automático de productos previos del proveedor que NO estén en auto-orden activa (PENDING o SENT)
+            // Borrado automático de productos previos del proveedor que NO estén en auto-orden
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🧹 Iniciando limpieza automática de productos para el proveedor: {$supplier->id}\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             
             $deletedCount = $supplier->productSuppliers()
-                ->whereDoesntHave('autoOrderDetails', function ($q) {
-                    $q->whereHas('order', function ($query) {
-                        $query->whereIn('status', [0, 1]); // 0 = PENDING, 1 = SENT
-                    });
-                })
+                ->whereDoesntHave('autoOrderDetails')
                 ->delete();
             
             $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Limpieza completada. Productos eliminados: {$deletedCount}\n";

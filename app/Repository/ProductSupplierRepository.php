@@ -63,7 +63,7 @@ class ProductSupplierRepository
 
         // 2. Obtener todas las ofertas disponibles para estos productos de una sola vez
         // No incluyas 'deleted_at' ya que la tabla product_suppliers no lo tiene.
-        $query = DB::table('product_suppliers')
+        $query = ProductSupplier::with('supplier')
             ->whereIn('id', $latestIds)
             ->where(function ($query) {
                 $query->where('unit_cost_usd', '>', 0)
@@ -88,17 +88,10 @@ class ProductSupplierRepository
         foreach ($products as $product) {
             $bestOffer = $allOffers->where('product_id', $product->id)->first();
             
-            // Si hay oferta, necesitamos el nombre del proveedor para la UI
-            $supplier = null;
-            if ($bestOffer) {
-                // Caché simple o Lazy loading si es necesario, pero para 10-25 items está bien
-                $supplier = Supplier::find($bestOffer->supplier_id);
-            }
-
             $results[] = [
                 'product' => $product,
-                'supplier' => $supplier,
-                'productSupplier' => $bestOffer ? ProductSupplier::find($bestOffer->id) : null,
+                'supplier' => $bestOffer ? $bestOffer->supplier : null,
+                'productSupplier' => $bestOffer,
                 'precio_final_supplier' => 0, // Se hidratará en checkTolerance
                 'percentageIncrease' => 0,
                 'increase' => null,
