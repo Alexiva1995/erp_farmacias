@@ -47,6 +47,7 @@ const headers = [
   { title: "% Ahorro", key: "saving_percentage", align: "end", sortable: true },
   { title: "vent.", key: "total_sold_completed", align: "end", sortable: true },
   { title: "stock", key: "lote_quantity", align: "end", sortable: true },
+  { title: "AO", key: "totalQuantityInAutoOrder", align: "end", sortable: true },
   { title: "PRomedio", key: "promedio_calculado", align: "end", sortable: true },
   {
     title: "Añadir",
@@ -392,20 +393,16 @@ onMounted(() => {
             </template>
 
             <template #item.historic_costs="{ item }">
-              <div class="d-flex flex-column align-end">
-                <template v-if="item.effective_min_cost && item.effective_min_cost < item.inventory_unit_cost">
-                  <span class="text-sm font-weight-bold text-success" title="Mínimo Histórico">
-                    {{ formatCurrency(item.effective_min_cost, "USD") }}
-                  </span>
-                  <span class="text-sm font-weight-bold text-error" title="Costo Actual">
-                    {{ formatCurrency(item.inventory_unit_cost, "USD") }}
-                  </span>
-                </template>
-                <template v-else>
-                  <span class="text-sm font-weight-bold text-high-emphasis">
-                    {{ formatCurrency(item.inventory_unit_cost, "USD") }}
-                  </span>
-                </template>
+              <div class="d-flex flex-column align-end text-right">
+                <span class="text-xs text-error font-weight-bold leading-none mb-1" title="Costo Máximo Histórico">
+                  {{ formatCurrency(item.effective_max_cost, "USD") }}
+                </span>
+                <span class="text-sm text-high-emphasis font-weight-black leading-none mb-1" title="Precio Actual">
+                  {{ formatCurrency(item.inventory_unit_cost, "USD") }}
+                </span>
+                <span class="text-xs text-success font-weight-bold leading-none" title="Costo Mínimo Histórico">
+                  {{ formatCurrency(item.effective_min_cost, "USD") }}
+                </span>
               </div>
             </template>
 
@@ -430,6 +427,17 @@ onMounted(() => {
                 class="font-weight-bold"
               >
                 {{ item.lote_quantity || 0 }}
+              </VChip>
+            </template>
+
+            <template #item.totalQuantityInAutoOrder="{ item }">
+              <VChip
+                :color="item.totalQuantityInAutoOrder > 0 ? 'warning' : 'grey'"
+                variant="tonal"
+                size="small"
+                class="font-weight-bold"
+              >
+                {{ item.totalQuantityInAutoOrder || 0 }}
               </VChip>
             </template>
 
@@ -540,6 +548,12 @@ onMounted(() => {
                     </span>
                   </div>
                   <div class="info-item">
+                    <span class="label">AO</span>
+                    <span class="text-sm font-weight-bold text-warning">
+                        {{ item.totalQuantityInAutoOrder || 0 }}
+                    </span>
+                  </div>
+                  <div class="info-item">
                     <span class="label">Ventas</span>
                     <span class="text-sm font-weight-bold">{{ item.total_sold_completed || 0 }}</span>
                   </div>
@@ -554,11 +568,14 @@ onMounted(() => {
                   <VCol cols="4">
                     <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Histórico</div>
                     <div class="d-flex flex-column">
-                      <span v-if="item.effective_min_cost && item.effective_min_cost < item.inventory_unit_cost" class="text-sm font-weight-bold text-success">
-                        MIN: {{ formatCurrency(item.effective_min_cost, "USD") }}
+                      <span class="text-super-xs font-weight-bold text-error">
+                        MAX: {{ formatCurrency(item.effective_max_cost, "USD") }}
                       </span>
-                      <span class="text-sm font-weight-bold" :class="item.effective_min_cost && item.effective_min_cost < item.inventory_unit_cost ? 'text-error' : ''">
+                      <span class="text-xs font-weight-black text-high-emphasis my-0.5">
                         ACT: {{ formatCurrency(item.inventory_unit_cost, "USD") }}
+                      </span>
+                      <span class="text-super-xs font-weight-bold text-success">
+                        MIN: {{ formatCurrency(item.effective_min_cost, "USD") }}
                       </span>
                     </div>
                   </VCol>
@@ -694,7 +711,7 @@ onMounted(() => {
 
 .grid-mobile-info {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
