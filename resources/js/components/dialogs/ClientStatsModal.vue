@@ -2,12 +2,17 @@
 import axios from "@/plugins/axios";
 import { ref, watch, computed } from "vue";
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   clientId: { type: [Number, null], default: null },
 });
 
 const emit = defineEmits(["update:modelValue"]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const loading = ref(false);
 const clientData = ref(null);
@@ -197,7 +202,9 @@ const onClose = () => {
             <VCard v-if="topProducts.length > 0" variant="flat" border class="overflow-hidden">
               <div class="bg-light pa-3 border-b d-flex align-center gap-2">
                 <VIcon icon="tabler-star-filled" size="16" color="warning" />
-                <span class="text-xs font-weight-black uppercase">Productos Favoritos</span>
+                <span class="text-xs font-weight-black uppercase">
+                  {{ isRestaurant ? 'Platos/Productos Favoritos' : 'Productos Favoritos' }}
+                </span>
               </div>
               <VList density="compact" class="pa-0">
                 <template v-for="(product, index) in topProducts" :key="'top-' + index">
@@ -207,14 +214,16 @@ const onClose = () => {
                     </template>
                     <VListItemTitle class="text-super-xs font-weight-black uppercase truncate">{{ product.product_name }}</VListItemTitle>
                     <VListItemSubtitle class="text-super-xs font-weight-bold text-disabled uppercase">
-                      {{ product.laboratory_name || 'Sin lab.' }} · {{ product.total_quantity }} Uds.
+                      <span v-if="product.is_dish">Plato</span>
+                      <span v-else>{{ product.laboratory_name || 'Sin lab.' }}</span>
+                      · {{ product.total_quantity }} Uds.
                     </VListItemSubtitle>
                   </VListItem>
                   <VDivider v-if="index < topProducts.length - 1" class="border-opacity-10" />
                 </template>
               </VList>
             </VCard>
-
+ 
             <!-- Historial Reciente -->
             <VCard v-if="lastProducts.length > 0" variant="flat" border class="overflow-hidden">
               <div class="bg-light pa-3 border-b d-flex align-center gap-2">
@@ -229,7 +238,7 @@ const onClose = () => {
                         <div class="min-width-0 me-2">
                           <div class="text-super-xs font-weight-black uppercase truncate">{{ product.product_name }}</div>
                           <div class="text-super-xs text-disabled font-weight-bold uppercase">
-                            {{ product.date }} · {{ product.quantity }} uds.
+                            {{ product.date }} · {{ product.quantity }} uds. <span v-if="product.is_dish">· Plato</span>
                           </div>
                         </div>
                         <div class="text-right flex-shrink-0">
@@ -256,12 +265,11 @@ const onClose = () => {
 
       <VCardActions class="pa-4 bg-light">
         <VBtn
-          color="secondary"
-          variant="tonal"
+          color="primary"
           size="large"
           block
           block-size="52"
-          class="font-weight-black rounded-lg text-button uppercase"
+          class="font-weight-black rounded-lg text-button uppercase text-white header-gradient"
           @click="onClose"
         >
           CERRAR ANÁLISIS

@@ -32,7 +32,7 @@ const processedNavItems = computed(() => {
       if (!isRestaurant) {
         childs = childs.filter((c) => c.to !== 'inventory-dishes');
       } else {
-        childs = childs.filter((c) => c.title !== 'Devoluciones' && c.title !== 'Medico' && c.title !== 'Recipe');
+        childs = childs.filter((c) => c.title !== 'Devoluciones' && c.title !== 'Medico' && c.title !== 'Recipe' && c.to !== 'crm-doctors');
         childs = childs.map((c) => {
           if (c.to === 'inventory-laboratories') {
             return { ...c, title: 'Marcas' };
