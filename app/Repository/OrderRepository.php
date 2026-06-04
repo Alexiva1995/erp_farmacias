@@ -34,36 +34,18 @@ class OrderRepository
             $consulta->where("total_amount_usd", ">", $filtros["minimo"]);
         }
 
-        $hasJoin = false;
         if (array_key_exists("laboratory_id", $filtros) && !empty($filtros["laboratory_id"])) {
-            $consulta->select('orders.*')
-                ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-                ->join('products', 'order_details.product_id', '=', 'products.id');
-            $hasJoin = true;
-
-            if (is_array($filtros["laboratory_id"])) {
-                $consulta->whereIn('products.laboratory_id', $filtros["laboratory_id"]);
-            } else {
-                $consulta->where('products.laboratory_id', "=", $filtros["laboratory_id"]);
-            }
-
-            $consulta->distinct();
+            $labs = is_array($filtros["laboratory_id"]) ? $filtros["laboratory_id"] : [$filtros["laboratory_id"]];
+            $consulta->whereHas('details.product', function ($query) use ($labs) {
+                $query->whereIn('laboratory_id', $labs);
+            });
         }
 
         if (array_key_exists("dish_id", $filtros) && !empty($filtros["dish_id"])) {
-            if (!$hasJoin) {
-                $consulta->select('orders.*')
-                    ->join('order_details', 'orders.id', '=', 'order_details.order_id');
-                $hasJoin = true;
-            }
-            
-            if (is_array($filtros["dish_id"])) {
-                $consulta->whereIn('order_details.dish_id', $filtros["dish_id"]);
-            } else {
-                $consulta->where('order_details.dish_id', "=", $filtros["dish_id"]);
-            }
-            
-            $consulta->distinct();
+            $dishes = is_array($filtros["dish_id"]) ? $filtros["dish_id"] : [$filtros["dish_id"]];
+            $consulta->whereHas('details', function ($query) use ($dishes) {
+                $query->whereIn('dish_id', $dishes);
+            });
         }
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {

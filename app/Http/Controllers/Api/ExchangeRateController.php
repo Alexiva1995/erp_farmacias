@@ -72,6 +72,8 @@ class ExchangeRateController extends Controller
 
                     if ($responseBinance->successful() && isset($responseBinance->json('data')[0]['adv']['price'])) {
                         $rate = floatval($responseBinance->json('data')[0]['adv']['price']);
+                    } else {
+                        \Log::warning("Binance P2P respondió con status " . $responseBinance->status() . " y body: " . substr($responseBinance->body(), 0, 500));
                     }
                 } catch (\Exception $e) {
                     \Log::error("Error consultando Binance P2P en Controller store: " . $e->getMessage());
