@@ -1,7 +1,11 @@
 <script setup>
 // Filtros IA Asistente Pedidos (Proveedores)
 import AppFilterBase from "@/components/AppFilterBase.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   searchQuery:        { type: String,  default: "" },
@@ -18,6 +22,8 @@ const props = defineProps({
   isNovaventa:        Boolean,
   showIgnored:        { type: Boolean, default: false },
   showGraphs:         { type: Boolean, default: false },
+  selectedSupplier:   { type: [Number, String, Object, null], default: null },
+  suppliers:          { type: Array,   default: () => [] },
 });
 
 const emit = defineEmits([
@@ -33,6 +39,7 @@ const emit = defineEmits([
   "update:isNovaventa",
   "update:showIgnored",
   "update:showGraphs",
+  "update:selectedSupplier",
   "clear",
   "clear-ignore",
   "generarPedido",
@@ -72,7 +79,7 @@ const stockOpciones = [
 ];
 
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier)
 ));
 </script>
 
@@ -159,12 +166,28 @@ const hasAdvancedFilters = computed(() => (
     </template>
 
     <template #advanced-filters>
+      <!-- Proveedor Destino -->
+      <VCol cols="12" sm="6" md="3">
+        <VAutocomplete
+          :model-value="props.selectedSupplier"
+          :items="props.suppliers"
+          placeholder="Proveedor Destino"
+          item-title="name"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-truck"
+          @update:model-value="emit('update:selectedSupplier', $event)"
+        />
+      </VCol>
+
       <!-- Laboratorio (múltiple) -->
       <VCol cols="12" sm="6" md="3">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
-          placeholder="Laboratorios"
+          :placeholder="isRestaurant ? 'Marcas' : 'Laboratorios'"
           item-title="name"
           item-value="id"
           clearable

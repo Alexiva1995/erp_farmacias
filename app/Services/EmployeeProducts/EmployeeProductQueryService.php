@@ -16,8 +16,8 @@ class EmployeeProductQueryService
     public function getFilteredEmployeeProducts(array $data): LengthAwarePaginator
     {
         $query = Employee::where('is_active', true)
-            ->with(['products'])
-            ->withCount('products')
+            ->with(['products', 'dishes'])
+            ->withCount(['products', 'dishes'])
             ->orderByRaw('photo IS NOT NULL DESC');
 
         // Búsqueda por nombre de empleado
@@ -30,10 +30,14 @@ class EmployeeProductQueryService
             });
         }
 
-        // Filtro por producto específico
+        // Filtro por producto o plato específico
         if (!empty($data['product_id'])) {
-            $query->whereHas('products', function ($q) use ($data) {
-                $q->where('products.id', $data['product_id']);
+            $query->where(function ($q) use ($data) {
+                $q->whereHas('products', function ($sp) use ($data) {
+                    $sp->where('products.id', $data['product_id']);
+                })->orWhereHas('dishes', function ($sd) use ($data) {
+                    $sd->where('dishes.id', $data['product_id']);
+                });
             });
         }
 
@@ -45,6 +49,7 @@ class EmployeeProductQueryService
             if ($sortBy === 'employee_name') {
                 $query->orderBy('name', $orderBy);
             } elseif ($sortBy === 'products_count') {
+                // Para simplificar, ordenamos por la cuenta de la consulta
                 $query->orderBy('products_count', $orderBy);
             } else {
                 $query->orderBy($sortBy, $orderBy);
@@ -59,19 +64,32 @@ class EmployeeProductQueryService
 
         // Transformar datos para el frontend
         $employees->getCollection()->transform(function ($employee) {
+            $products = $employee->products->map(function ($prod) {
+                return [
+                    'id' => $prod->id,
+                    'name' => $prod->name,
+                    'type' => 'product',
+                ];
+            });
+
+            $dishes = $employee->dishes->map(function ($dish) {
+                return [
+                    'id' => $dish->id,
+                    'name' => $dish->name,
+                    'type' => 'dish',
+                ];
+            });
+
+            $combined = $products->concat($dishes);
+
             return [
                 'employee_id' => $employee->id,
                 'employee_name' => trim($employee->name . ' ' . $employee->last_name),
                 'photo_url' => $employee->photo_url,
                 'identification' => $employee->identification,
                 'is_active' => $employee->is_active,
-                'products' => $employee->products->map(function ($prod) {
-                    return [
-                        'id' => $prod->id,
-                        'name' => $prod->name,
-                    ];
-                }),
-                'products_count' => $employee->products_count,
+                'products' => $combined,
+                'products_count' => $combined->count(),
             ];
         });
 
@@ -85,17 +103,17 @@ class EmployeeProductQueryService
      */
     public function getAssignmentStats(): array
     {
-        $employees = Employee::where('is_active', true)->withCount('products')->get();
+        $employees = Employee::where('is_active', true)->withCount(['products', 'dishes'])->get();
 
-        $employeesWithProds = $employees->filter(fn($emp) => $emp->products_count > 0);
-        $employeesWithoutProds = $employees->filter(fn($emp) => $emp->products_count === 0);
+        $employeesWithProds = $employees->filter(fn($emp) => ($emp->products_count + $emp->dishes_count) > 0);
+        $employeesWithoutProds = $employees->filter(fn($emp) => ($emp->products_count + $emp->dishes_count) === 0);
 
         return [
             'total_employees' => $employees->count(),
             'employees_with_products' => $employeesWithProds->count(),
             'employees_without_products' => $employeesWithoutProds->count(),
-            'average_products_per_employee' => $employees->avg('products_count'),
-            'max_products_assigned' => $employees->max('products_count'),
+            'average_products_per_employee' => $employees->avg(fn($emp) => $emp->products_count + $emp->dishes_count),
+            'max_products_assigned' => $employees->max(fn($emp) => $emp->products_count + $emp->dishes_count),
         ];
     }
 }

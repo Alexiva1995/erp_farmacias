@@ -100,7 +100,7 @@ const hasProducts = computed(() => {
                       size="34"
                       class="rounded"
                     >
-                      <VIcon icon="tabler-pill" size="18" />
+                      <VIcon :icon="product.type === 'dish' ? 'tabler-tools-kitchen-2' : 'tabler-pill'" size="18" />
                     </VAvatar>
                   </template>
 
@@ -110,12 +110,12 @@ const hasProducts = computed(() => {
 
                   <template #append>
                     <VChip
-                      :color="getProductColor(index)"
+                      :color="product.type === 'dish' ? 'success' : getProductColor(index)"
                       size="x-small"
                       variant="flat"
                       class="font-weight-black rounded tabular-nums"
                     >
-                      #{{ product.id }}
+                      {{ product.type === 'dish' ? 'PLATO' : 'PROD' }} #{{ product.id }}
                     </VChip>
                   </template>
                 </VListItem>

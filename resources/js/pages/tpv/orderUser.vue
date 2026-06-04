@@ -136,6 +136,27 @@ const fetchExchangeRates = async () => {
       }
     });
 
+    // Override BS with BINANCE for restaurants, and EUR for pharmacies
+    if (formattedRates["USD"]) {
+      if (isRestaurant.value && formattedRates["USD"]["BINANCE"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["BINANCE"];
+      } else if (!isRestaurant.value && formattedRates["USD"]["EUR"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["EUR"];
+      }
+
+      if (formattedRates["BS"]) {
+        formattedRates["BS"]["USD"] = 1 / formattedRates["USD"]["BS"];
+      }
+      if (formattedRates["COP"]) {
+        formattedRates["COP"]["BS"] =
+          parseFloat(formattedRates["USD"]["BS"]) /
+          parseFloat(formattedRates["USD"]["COP"]);
+        formattedRates["BS"]["COP"] =
+          parseFloat(formattedRates["USD"]["COP"]) /
+          parseFloat(formattedRates["USD"]["BS"]);
+      }
+    }
+
     exchangeRates.value = formattedRates;
     ratesLoaded.value = true;
     console.log("[ORDER_USER] Tasas de cambio cargadas:", exchangeRates.value);
@@ -1117,6 +1138,16 @@ onMounted(async () => {
   console.log("[ORDER_USER] onMounted iniciado");
 
   try {
+    try {
+      console.log("[ORDER_USER] Cargando configuración general...");
+      await fetchGeneralSettings();
+    } catch (error) {
+      console.error(
+        "[ORDER_USER] Error al cargar configuración general",
+        error,
+      );
+    }
+
     // Primero cargar la configuración del usuario
     console.log("[ORDER_USER] Cargando configuración del usuario...");
     try {
@@ -1227,21 +1258,13 @@ onMounted(async () => {
       console.error("[ORDER_USER] Error al cargar ofertas de recetas", error);
     }
 
+
+
     try {
       console.log("[ORDER_USER] Cargando tasas de cambio...");
       fetchExchangeRates();
     } catch (error) {
       console.error("[ORDER_USER] Error al cargar tasas", error);
-    }
-
-    try {
-      console.log("[ORDER_USER] Cargando configuración general...");
-      fetchGeneralSettings();
-    } catch (error) {
-      console.error(
-        "[ORDER_USER] Error al cargar configuración general",
-        error,
-      );
     }
 
     console.log("[ORDER_USER] onMounted completado");

@@ -17,17 +17,25 @@ class SkuReportRepository implements SkuReportRepositoryInterface
      */
     public function getBaseQuery(array $filters): Builder
     {
-        $query = OrderDetail::query()
+        // Filtro de Fechas (usa la tabla orders) — Se restringe estrictamente a partir de Abril 2026
+        $minDate = '2026-04-01 00:00:00';
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
+        if ($startDate < $minDate) $startDate = $minDate;
+        
+        $endDate = !empty($filters['end_date']) ? $filters['end_date'] . ' 23:59:59' : null;
+
+        // Query Base para Productos
+        $productsQuery = OrderDetail::query()
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id') // Para filtro de proveedor/laboratorio
+            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->select(
                 'products.id as product_id',
                 'products.barcode',
                 'products.name as product_name',
                 'laboratories.name as laboratory_name',
-                'products.unit_cost as current_cost', // Corregido
-                'products.sale_price as list_price', // Corregido
+                'products.unit_cost as current_cost',
+                'products.sale_price as list_price',
                 DB::raw('SUM(order_details.quantity) as total_sold'),
                 DB::raw('SUM(order_details.unit_cost * order_details.quantity) as total_historical_cost'),
                 DB::raw('SUM(order_details.quantity * CASE 
@@ -39,7 +47,8 @@ class SkuReportRepository implements SkuReportRepositoryInterface
                     WHEN order_details.price_before_discount IS NOT NULL AND orders.currency = \'USD\' THEN (order_details.price_before_discount - order_details.price)
                     WHEN order_details.price_before_discount IS NOT NULL AND orders.currency != \'USD\' THEN ((order_details.price_before_discount - order_details.price) / NULLIF(orders.usd_conversion, 0))
                     ELSE 0
-                END) as total_discount_amount')
+                END) as total_discount_amount'),
+                DB::raw("'product' as item_type")
             )
             ->where('orders.status', 'completed')
             ->groupBy(
@@ -51,47 +60,79 @@ class SkuReportRepository implements SkuReportRepositoryInterface
                 'products.sale_price'
             );
 
-        // Filtro de Búsqueda Global
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function($q) use ($search) {
-                $q->where('products.name', 'LIKE', "%{$search}%")
-                  ->orWhere('products.barcode', 'LIKE', "%{$search}%");
-            });
+        // Query Base para Platos (Dishes)
+        $dishesQuery = OrderDetail::query()
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('dishes', 'order_details.dish_id', '=', 'dishes.id')
+            ->leftJoin('categories', 'dishes.category_id', '=', 'categories.id')
+            ->select(
+                'dishes.id as product_id',
+                DB::raw('NULL as barcode'),
+                'dishes.name as product_name',
+                'categories.name as laboratory_name', // Usamos categoría como laboratorio para platos
+                'dishes.cost_price as current_cost',
+                'dishes.designated_price as list_price',
+                DB::raw('SUM(order_details.quantity) as total_sold'),
+                DB::raw('SUM(order_details.unit_cost * order_details.quantity) as total_historical_cost'),
+                DB::raw('SUM(order_details.quantity * CASE 
+                    WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd 
+                    WHEN orders.currency = \'USD\' THEN order_details.price 
+                    ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) 
+                END) as total_revenue'),
+                DB::raw('SUM(order_details.quantity * CASE
+                    WHEN order_details.price_before_discount IS NOT NULL AND orders.currency = \'USD\' THEN (order_details.price_before_discount - order_details.price)
+                    WHEN order_details.price_before_discount IS NOT NULL AND orders.currency != \'USD\' THEN ((order_details.price_before_discount - order_details.price) / NULLIF(orders.usd_conversion, 0))
+                    ELSE 0
+                END) as total_discount_amount'),
+                DB::raw("'dish' as item_type")
+            )
+            ->where('orders.status', 'completed')
+            ->groupBy(
+                'dishes.id',
+                'dishes.name',
+                'categories.name',
+                'dishes.cost_price',
+                'dishes.designated_price'
+            );
+
+        // Aplicar Filtros comunes
+        foreach ([$productsQuery, $dishesQuery] as $query) {
+            if ($endDate) {
+                $query->whereBetween('orders.created_at', [$startDate, $endDate]);
+            } else {
+                $query->where('orders.created_at', '>=', $startDate);
+            }
+
+            if (!empty($filters['search'])) {
+                $search = $filters['search'];
+                // Para platos el barcode es null, así que solo buscamos por nombre
+                $query->where(function($q) use ($search) {
+                    $q->where(DB::raw('COALESCE(products.name, dishes.name)'), 'LIKE', "%{$search}%")
+                      ->orWhere('products.barcode', 'LIKE', "%{$search}%");
+                });
+            }
         }
 
-        // Filtro de Fechas (usa la tabla orders) — Se restringe estrictamente a partir de Abril 2026
-        $minDate = '2026-04-01 00:00:00';
-        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
-        
-        if ($startDate < $minDate) {
-            $startDate = $minDate;
-        }
-        
-        if (!empty($filters['end_date'])) {
-            $endDate = $filters['end_date'] . ' 23:59:59';
-            $query->whereBetween('orders.created_at', [$startDate, $endDate]);
-        } else {
-            // Si no hay end date establecido, tomar desde startDate hasta hoy
-            $query->where('orders.created_at', '>=', $startDate);
-        }
-
-        // Filtros adicionales si aplica
+        // Filtros específicos de productos
         if (!empty($filters['laboratory_id'])) {
-            $query->where('products.laboratory_id', $filters['laboratory_id']);
+            $productsQuery->where('products.laboratory_id', $filters['laboratory_id']);
+            // Si filtramos por laboratorio, platos no deberían aparecer a menos que mapeemos categorías?
+            // Por ahora, si hay filtro de lab, vaciamos la query de platos para consistencia
+            $dishesQuery->whereRaw('1 = 0');
         }
         
         if (!empty($filters['group_id'])) {
-            $query->join('groups_products', 'products.id', '=', 'groups_products.product_id')
-                  ->where('groups_products.group_id', $filters['group_id']);
+            $productsQuery->join('groups_products', 'products.id', '=', 'groups_products.product_id')
+                          ->where('groups_products.group_id', $filters['group_id']);
+            $dishesQuery->whereRaw('1 = 0');
         }
 
-        // Filtro de estado del producto
         if (isset($filters['is_active']) && $filters['is_active'] !== null && $filters['is_active'] !== '') {
-            $query->where('products.is_active', $filters['is_active']);
+            $productsQuery->where('products.is_active', $filters['is_active']);
+            $dishesQuery->where('dishes.status', $filters['is_active'] ? 1 : 0);
         }
 
-        return $query;
+        return $productsQuery->union($dishesQuery);
     }
 
     /**

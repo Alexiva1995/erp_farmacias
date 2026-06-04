@@ -27,65 +27,58 @@ class AbcReportRepository implements AbcReportRepositoryInterface
         $startDate = $filtros['start_date'] ?? now()->subDays(90)->startOfDay()->format('Y-m-d H:i:s');
         $endDate = $filtros['end_date'] ?? now()->endOfDay()->format('Y-m-d H:i:s');
 
-        // Subconsulta para calcular la rotación (Desviación Típica de ventas diarias por producto)
+        // Subconsulta para calcular la rotación (Desviación Típica de ventas diarias por ítem)
         $dailySalesQuery = DB::table('order_details')
             ->select(
                 'order_details.product_id',
+                'order_details.dish_id',
                 DB::raw('DATE(orders.order_date) as order_date_only'),
                 DB::raw('SUM(order_details.quantity) as daily_quantity')
             )
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.order_date', [$startDate, $endDate])
-            ->groupBy('order_details.product_id', 'order_date_only');
+            ->groupBy('order_details.product_id', 'order_details.dish_id', 'order_date_only');
 
         $varianceSubquery = DB::table(DB::raw("({$dailySalesQuery->toSql()}) as daily_sales"))
             ->mergeBindings($dailySalesQuery)
             ->select(
                 'daily_sales.product_id',
+                'daily_sales.dish_id',
                 DB::raw('STDDEV(daily_sales.daily_quantity) as std_dev_sales'),
                 DB::raw('AVG(daily_sales.daily_quantity) as avg_daily_sales')
             )
-            ->groupBy('daily_sales.product_id');
+            ->groupBy('daily_sales.product_id', 'daily_sales.dish_id');
 
-        // Subconsulta agrupada de Ventas y Márgenes para evitar duplicidad o producto cartesiano
+        // Subconsulta agrupada de Ventas y Márgenes para evitar duplicidad
         $salesSubquery = DB::table('order_details')
             ->select(
                 'order_details.product_id',
+                'order_details.dish_id',
                 DB::raw('SUM(order_details.quantity) as sold_units'),
                 DB::raw('SUM(order_details.quantity * CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = \'USD\' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END) as total_sales'),
                 DB::raw('SUM(order_details.quantity * order_details.unit_cost) as total_cost')
             )
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.order_date', [$startDate, $endDate])
-            ->where(function($q) {
-                // Filtro de Coherencia: El costo de la venta no puede ser > 3 veces el costo actual (error de moneda)
-                // Usamos un pequeño margen de COALESCE para productos nuevos sin costo
-                $q->whereRaw('order_details.unit_cost <= (COALESCE(products.unit_cost, 0) * 3)')
-                  ->orWhereRaw('products.unit_cost = 0');
-            })
-            ->where(DB::raw('CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd ELSE order_details.price / NULLIF(orders.usd_conversion, 1) END'), '<', 1000)
-            ->groupBy('order_details.product_id');
+            ->groupBy('order_details.product_id', 'order_details.dish_id');
 
-        // Consulta Principal: Obtener el resumen de ventas (Ventas Totales, Costos, Margen) por producto
-        $query = Product::query()
+        // Consulta 1: Productos de Inventario
+        $productsQuery = DB::table('products')
             ->select(
                 'products.id',
                 'products.name as product_name',
                 'laboratories.name as laboratory_name',
                 'products.stock as current_stock',
                 'products.unit_cost as last_cost',
-                // Promedio mensual de ventas precalculado en el producto (para Días de Cobertura)
                 DB::raw('COALESCE(products.sales_average, 0) as sales_average'),
-                // Agregados de Ventas en base Dolarizada usando factor de conversión
                 DB::raw('COALESCE(sales.sold_units, 0) as sold_units'),
                 DB::raw('COALESCE(sales.total_sales, 0) as total_sales'),
                 DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
-                // Variables de cálculo para XYZ (del periodo filtrado)
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
-                DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales')
+                DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
+                DB::raw("'product' as item_type")
             )
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->leftJoinSub($salesSubquery, 'sales', function($join) {
@@ -94,27 +87,43 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->leftJoinSub($varianceSubquery, 'variance', function($join) {
                 $join->on('products.id', '=', 'variance.product_id');
             })
-            // Solo traer productos que hayan tenido alguna venta o tengan stock para ser analizados
-            ->havingRaw('sold_units > 0 OR current_stock > 0')
-            ->groupBy(
-                'products.id',
-                'products.name',
-                'laboratories.name',
-                'products.stock',
-                'products.unit_cost',
-                'sales.sold_units',
-                'sales.total_sales',
-                'sales.total_cost',
-                'variance.std_dev_sales',
-                'variance.avg_daily_sales',
-                'products.sales_average'
-            );
+            ->where(function($q) {
+                $q->where('sales.sold_units', '>', 0)
+                  ->orWhere('products.stock', '>', 0);
+            });
 
-        // Aplicar Filtros adicionales
         if (!empty($filtros['laboratory_id'])) {
-            $query->whereIn('products.laboratory_id', (array) $filtros['laboratory_id']);
+            $productsQuery->whereIn('products.laboratory_id', (array) $filtros['laboratory_id']);
         }
 
-        return $query->get();
+        // Consulta 2: Platos de Menú (Dishes)
+        $dishesQuery = DB::table('dishes')
+            ->select(
+                'dishes.id',
+                'dishes.name as product_name',
+                'categories.name as laboratory_name', // Usamos la categoría como "laboratorio" para platos
+                DB::raw('0 as current_stock'), // Los platos no suelen tener stock directo
+                'dishes.cost_price as last_cost',
+                DB::raw('0 as sales_average'),
+                DB::raw('COALESCE(sales.sold_units, 0) as sold_units'),
+                DB::raw('COALESCE(sales.total_sales, 0) as total_sales'),
+                DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
+                DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
+                DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
+                DB::raw("'dish' as item_type")
+            )
+            ->leftJoin('categories', 'dishes.category_id', '=', 'categories.id')
+            ->leftJoinSub($salesSubquery, 'sales', function($join) {
+                $join->on('dishes.id', '=', 'sales.dish_id');
+            })
+            ->leftJoinSub($varianceSubquery, 'variance', function($join) {
+                $join->on('dishes.id', '=', 'variance.dish_id');
+            })
+            ->where('sales.sold_units', '>', 0);
+
+        // Combinar ambas consultas
+        $combinedQuery = $productsQuery->unionAll($dishesQuery);
+
+        return collect($combinedQuery->get());
     }
 }

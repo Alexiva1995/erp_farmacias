@@ -35,10 +35,7 @@ return new class extends Migration {
             $hasIndex = DB::getDriverName() === 'sqlite';
         }
 
-        Schema::table('product_counts', function (Blueprint $table) use ($hasIndex) {
-            if ($hasIndex) {
-                $table->dropIndex('product_counts_product_lot_id_index');
-            }
+        Schema::table('product_counts', function (Blueprint $table) {
             $table->dropConstrainedForeignId('product_lot_id');
         });
     }

@@ -153,7 +153,7 @@ class OrderActionService
                     $unitPriceAtOrder = ceil(($price_usd * $tasaCop) / 100) * 100;
                 } elseif ($targetCurrency === 'BS') {
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
-                    $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                    $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
                     $unitPriceAtOrder = round($price_usd * $tasaBs, 2);
                 } else {
                     $unitPriceAtOrder = $price_usd;
@@ -487,7 +487,7 @@ class OrderActionService
                         $priceToSet = ceil($rawCop / 100) * 100;
                     } elseif ($targetCurrency === 'BS') {
                         $resourceService = app(\App\Services\Resources\ResourceService::class);
-                        $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                        $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
                         $priceToSet = round($usdPrice * $tasaBs, 2);
                     } else {
                         $priceToSet = $usdPrice;
@@ -1531,7 +1531,7 @@ class OrderActionService
                             $priceInOrderCurrency = ceil(($promo->fixed_price * $tasaCop) / 100) * 100;
                         } elseif ($order->currency === 'BS') {
                             $resourceService = app(\App\Services\Resources\ResourceService::class);
-                            $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                            $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
                             $priceInOrderCurrency = round($promo->fixed_price * $tasaBs, 2);
                         }
 
@@ -1680,7 +1680,7 @@ class OrderActionService
                 $priceToSet = ceil(($usdPrice * $tasaCop) / 100) * 100;
             } elseif ($targetCurrency === 'BS') {
                 $resourceService = app(\App\Services\Resources\ResourceService::class);
-                $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
                 $priceToSet = round($usdPrice * $tasaBs, 2);
             } else {
                 $priceToSet = $usdPrice;

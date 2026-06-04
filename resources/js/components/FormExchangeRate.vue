@@ -1,23 +1,32 @@
 <script setup>
 import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { computed, ref } from "vue";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const props = defineProps({
   dollar: { type: Number, required: true },
   pesos: { type: Number, required: true },
   euros: { type: Number, required: false, default: 0 },
+  binance: { type: Number, required: false, default: 0 },
   copc: { type: Number, required: false, default: 0 },
   idDollar: { type: Number, required: false },
   idPesos: { type: Number, required: false },
   idEuros: { type: Number, required: false },
+  idBinance: { type: Number, required: false },
   idCopc: { type: Number, required: false },
   dateUpdateDollar: { type: String, required: false },
   dateUpdatePesos: { type: String, required: false },
   dateUpdateEuros: { type: String, required: false },
+  dateUpdateBinance: { type: String, required: false },
   dateUpdateCopc: { type: String, required: false },
   dateColorDollar: { type: String, required: true },
   dateColorPesos: { type: String, required: true },
   dateColorEuros: { type: String, default: "success" },
+  dateColorBinance: { type: String, default: "success" },
   dateColorCopc: { type: String, default: "success" },
 });
 
@@ -68,7 +77,7 @@ const submitEuros = async () => {
   }
 };
 
-const updateBCV = async (currency) => {
+const updateRate = async (currency) => {
   let data = {
     currency_code: currency,
     rate: null,
@@ -76,7 +85,8 @@ const updateBCV = async (currency) => {
 
   try {
     await axios.post("/finances/exchange-rates/store", data);
-    Swal.fire("Tasa actualizada desde BCV");
+    const sourceText = currency === "BINANCE" ? "Binance P2P" : "BCV";
+    Swal.fire(`Tasa actualizada desde ${sourceText}`);
     setTimeout(() => { emit("refresh"); }, 150);
   } catch (error) {
     console.error("Error al enviar:", error);
@@ -112,7 +122,7 @@ const submitCOPC = async () => {
 <template>
   <VRow class="match-height ma-0 mx-n1">
     <!-- Dólar BCV -->
-    <VCol cols="12" md="3" class="pa-1">
+    <VCol cols="12" sm="6" md="3" class="pa-1">
       <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
         <div
           class="card-bg-decoration"
@@ -133,7 +143,7 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h3 font-weight-black text-primary">Bs. {{ props.dollar }}</div>
+            <div class="text-h4 font-weight-black text-primary">Bs. {{ Number(props.dollar).toFixed(4) }}</div>
           </div>
 
           <VDivider class="mb-4 opacity-20" />
@@ -150,7 +160,7 @@ const submitCOPC = async () => {
               color="primary" 
               variant="flat" 
               block 
-              @click="updateBCV('BS')" 
+              @click="updateRate('BS')" 
               prepend-icon="tabler-refresh"
               class="rounded-lg font-weight-black text-xs shadow-sm"
               size="small"
@@ -163,8 +173,62 @@ const submitCOPC = async () => {
       </VCard>
     </VCol>
 
+    <!-- Dólar Binance (Nuevo) -->
+    <VCol cols="12" sm="6" md="3" class="pa-1">
+      <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm" :class="{'restaurant-selected-card': isRestaurant}">
+        <div
+          class="card-bg-decoration"
+          style="background: linear-gradient(45deg, rgba(var(--v-theme-error), 0.1), transparent)"
+        ></div>
+        
+        <VCardText class="pa-5 relative-content d-flex flex-column h-100">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <VAvatar color="error" variant="tonal" rounded="lg" size="44" class="elevation-1">
+              <VIcon size="24" icon="tabler-currency-bitcoin" />
+            </VAvatar>
+            <div class="text-right">
+              <span class="text-overline font-weight-bold text-disabled leading-none mb-1 d-block" style="letter-spacing: 1px !important">
+                Dólar Binance
+              </span>
+              <span class="text-super-xs font-weight-black opacity-60 uppercase text-error">
+                {{ isRestaurant ? 'Tasa Activa (Rest)' : 'Tasa P2P' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="text-h4 font-weight-black text-error">Bs. {{ Number(props.binance).toFixed(4) }}</div>
+          </div>
+
+          <VDivider class="mb-4 opacity-20" />
+
+          <div class="d-flex flex-column gap-3 mt-auto">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <VChip :color="dateColorBinance" size="x-small" class="font-weight-black rounded uppercase">
+                <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
+                {{ dateUpdateBinance || 'Cargando...' }}
+              </VChip>
+            </div>
+
+            <VBtn 
+              color="error" 
+              variant="flat" 
+              block 
+              @click="updateRate('BINANCE')" 
+              prepend-icon="tabler-refresh"
+              class="rounded-lg font-weight-black text-xs shadow-sm"
+              size="small"
+            >
+              ACTUALIZAR BINANCE
+            </VBtn>
+          </div>
+        </VCardText>
+        <div class="accent-border bg-error"></div>
+      </VCard>
+    </VCol>
+
     <!-- Peso Colombiano (COP) -->
-    <VCol cols="12" md="3" class="pa-1">
+    <VCol cols="12" sm="6" md="3" class="pa-1">
       <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
         <div
           class="card-bg-decoration"
@@ -185,7 +249,7 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h3 font-weight-black text-info">{{ props.pesos }}</div>
+            <div class="text-h4 font-weight-black text-info">{{ props.pesos }}</div>
             <div class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Tasa Actual de Venta</div>
           </div>
 
@@ -226,7 +290,7 @@ const submitCOPC = async () => {
     </VCol>
 
     <!-- Euro (EUR) -->
-    <VCol cols="12" md="3" class="pa-1">
+    <VCol cols="12" sm="6" md="3" class="pa-1">
       <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
         <div
           class="card-bg-decoration"
@@ -247,7 +311,7 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h3 font-weight-black text-warning">Bs. {{ props.euros }}</div>
+            <div class="text-h4 font-weight-black text-warning">Bs. {{ Number(props.euros).toFixed(4) }}</div>
           </div>
 
           <VDivider class="mb-4 opacity-20" />
@@ -264,7 +328,7 @@ const submitCOPC = async () => {
               color="warning" 
               variant="flat" 
               block 
-              @click="updateBCV('EUR')" 
+              @click="updateRate('EUR')" 
               prepend-icon="tabler-refresh"
               class="rounded-lg font-weight-black text-xs shadow-sm"
               size="small"
@@ -278,7 +342,7 @@ const submitCOPC = async () => {
     </VCol>
 
     <!-- COP Cambio (COPC) -->
-    <VCol cols="12" md="3" class="pa-1">
+    <VCol cols="12" sm="6" md="3" class="pa-1">
       <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm">
         <div
           class="card-bg-decoration"
@@ -299,7 +363,7 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h3 font-weight-black text-success">{{ props.copc }}</div>
+            <div class="text-h4 font-weight-black text-success">{{ props.copc }}</div>
             <div class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Tasa para Compras</div>
           </div>
 
@@ -354,6 +418,10 @@ const submitCOPC = async () => {
   transform: translateY(-4px);
   background: rgba(var(--v-theme-surface), 95%) !important;
   box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+.restaurant-selected-card {
+  border: 2px solid rgb(var(--v-theme-error)) !important;
 }
 
 .card-bg-decoration {

@@ -28,6 +28,12 @@ class ExchangeRateRepository
         return $exhange;
     }
 
+    public function consultOneBINANCE(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BINANCE')->first();
+        return $exhange;
+    }
+
     public function consultOneEUR(): Model|null
     {
         $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'EUR')->first();

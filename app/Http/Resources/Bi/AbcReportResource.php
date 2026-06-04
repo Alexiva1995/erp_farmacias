@@ -22,6 +22,7 @@ class AbcReportResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'item_type' => $this->item_type ?? 'product',
             'name' => $this->product_name,
             'laboratory_name' => $this->laboratory_name ?? 'N/A',
             'sold_units' => round($this->sold_units, 2),

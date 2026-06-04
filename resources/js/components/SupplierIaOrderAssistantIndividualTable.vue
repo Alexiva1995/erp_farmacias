@@ -1,5 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 import { useDisplay } from 'vuetify';
 import VueApexCharts from 'vue3-apexcharts';
@@ -8,6 +9,9 @@ import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import { useDebounceFn } from '@vueuse/core';
 import Swal from 'sweetalert2';
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -19,6 +23,7 @@ const props = defineProps({
   showGraphs: { type: Boolean, default: false },
   sortBy: { type: String, default: "solicitar" },
   orderBy: { type: String, default: "desc" },
+  selectedSupplierId: { type: [Number, String], default: null },
 });
 
 const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item"]);
@@ -84,8 +89,8 @@ const onActionClick = async (item, action) => {
 
   if (action === 'add') {
     const quantity = getInputValue(item);
-    if (!item.best_supplier) {
-      // Si no hay proveedor, abrir modal de comparación
+    if (!props.selectedSupplierId && !item.best_supplier) {
+      // Si no hay proveedor seleccionado ni proveedor más barato, abrir modal de comparación
       emit('open-comparator', { item, quantity });
       return;
     }
@@ -150,26 +155,21 @@ const onActionClick = async (item, action) => {
 
     isProcessing.value[item.id] = 'adding';
     try {
-      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {
+      const payload = {
         product_id: item.id,
         quantity: quantity,
-        product_supplier_id: item.best_supplier.product_suppliers_id
-      });
+      };
+
+      if (props.selectedSupplierId) {
+        payload.supplier_id = props.selectedSupplierId;
+      } else {
+        payload.product_supplier_id = item.best_supplier.product_suppliers_id;
+      }
+
+      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', payload);
       emit('remove-item', item.id);
     } catch (error) {
        console.error("Error adding to order:", error);
-    } finally {
-      delete isProcessing.value[item.id];
-    }
-  }
-
-  if (action === 'ignore') {
-    isProcessing.value[item.id] = 'ignoring';
-    try {
-      await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
-      emit('remove-item', item.id);
-    } catch (error) {
-       console.error("Error ignoring product:", error);
     } finally {
       delete isProcessing.value[item.id];
     }
@@ -239,7 +239,6 @@ const headers = computed(() => {
   base.push(
     { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
     { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
-    { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
     { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
     { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
     { title: "Pedido", key: "solicitar", sortable: true, align: 'center', width: '100px' },
@@ -420,18 +419,6 @@ function rowClass(item) {
                 <VIcon icon="tabler-shopping-cart-plus" size="18" />
                 <VTooltip activator="parent" location="top">Añadir a Orden</VTooltip>
               </VBtn>
-
-              <VBtn
-                icon
-                variant="tonal"
-                color="error"
-                size="32"
-                :loading="isProcessing[item.id] === 'ignoring'"
-                @click.stop="onActionClick(item, 'ignore')"
-              >
-                <VIcon icon="tabler-square-x" size="18" />
-                <VTooltip activator="parent" location="top">Rechazar (7 días)</VTooltip>
-              </VBtn>
             </div>
           </template>
         </VDataTableServer>
@@ -486,9 +473,6 @@ function rowClass(item) {
                     <div class="d-flex ga-1 justify-end mt-2">
                        <VBtn icon variant="tonal" color="success" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
                         <VIcon icon="tabler-shopping-cart-plus" size="18" />
-                      </VBtn>
-                      <VBtn icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
-                        <VIcon icon="tabler-square-x" size="18" />
                       </VBtn>
                     </div>
                   </div>

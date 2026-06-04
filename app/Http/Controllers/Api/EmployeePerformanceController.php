@@ -377,87 +377,173 @@ class EmployeePerformanceController extends Controller
 
     private function getRankings($userId, $month, $year)
     {
-        // Top 10 Productos por unidades (histórico)
-        $topProductsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->where('orders.seller_id', $userId)
-            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
-            ->where(function($query) {
-                $query->where('orders.status', 'Completed')
-                      ->orWhereNotNull('orders.completed_at');
-            })
-            ->selectRaw('
-                products.id,
-                products.name,
-                SUM(order_details.quantity) as units,
-                SUM(order_details.quantity * order_details.unit_price_usd) as amount
-            ')
-            ->groupBy('products.id', 'products.name')
-            ->orderByDesc('units')
-            ->limit(10)
-            ->get();
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
 
-        // Top 10 Productos por monto (histórico)
-        $topProductsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->where('orders.seller_id', $userId)
-            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
-            ->where(function($query) {
-                $query->where('orders.status', 'Completed')
-                      ->orWhereNotNull('orders.completed_at');
-            })
-            ->selectRaw('
-                products.id,
-                products.name,
-                SUM(order_details.quantity) as units,
-                SUM(order_details.quantity * order_details.unit_price_usd) as amount
-            ')
-            ->groupBy('products.id', 'products.name')
-            ->orderByDesc('amount')
-            ->limit(10)
-            ->get();
+        if ($isRestaurant) {
+            // Top 10 Platos por unidades (histórico)
+            $topProductsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('dishes', 'order_details.dish_id', '=', 'dishes.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    dishes.id,
+                    dishes.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('dishes.id', 'dishes.name')
+                ->orderByDesc('units')
+                ->limit(10)
+                ->get();
 
-        // Top 5 Laboratorios por unidades (histórico)
-        $topLabsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->where('orders.seller_id', $userId)
-            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
-            ->where(function($query) {
-                $query->where('orders.status', 'Completed')
-                      ->orWhereNotNull('orders.completed_at');
-            })
-            ->selectRaw('
-                laboratories.id,
-                laboratories.name,
-                SUM(order_details.quantity) as units,
-                SUM(order_details.quantity * order_details.unit_price_usd) as amount
-            ')
-            ->groupBy('laboratories.id', 'laboratories.name')
-            ->orderByDesc('units')
-            ->limit(5)
-            ->get();
+            // Top 10 Platos por monto (histórico)
+            $topProductsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('dishes', 'order_details.dish_id', '=', 'dishes.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    dishes.id,
+                    dishes.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('dishes.id', 'dishes.name')
+                ->orderByDesc('amount')
+                ->limit(10)
+                ->get();
 
-        // Top 5 Laboratorios por monto (histórico)
-        $topLabsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->where('orders.seller_id', $userId)
-            ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
-            ->where(function($query) {
-                $query->where('orders.status', 'Completed')
-                      ->orWhereNotNull('orders.completed_at');
-            })
-            ->selectRaw('
-                laboratories.id,
-                laboratories.name,
-                SUM(order_details.quantity) as units,
-                SUM(order_details.quantity * order_details.unit_price_usd) as amount
-            ')
-            ->groupBy('laboratories.id', 'laboratories.name')
-            ->orderByDesc('amount')
-            ->limit(5)
-            ->get();
+            // Top 5 Categorías de platos por unidades (histórico)
+            $topLabsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('dishes', 'order_details.dish_id', '=', 'dishes.id')
+                ->join('categories', 'dishes.category_id', '=', 'categories.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    categories.id,
+                    categories.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('categories.id', 'categories.name')
+                ->orderByDesc('units')
+                ->limit(5)
+                ->get();
+
+            // Top 5 Categorías de platos por monto (histórico)
+            $topLabsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('dishes', 'order_details.dish_id', '=', 'dishes.id')
+                ->join('categories', 'dishes.category_id', '=', 'categories.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    categories.id,
+                    categories.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('categories.id', 'categories.name')
+                ->orderByDesc('amount')
+                ->limit(5)
+                ->get();
+        } else {
+            // Top 10 Productos por unidades (histórico)
+            $topProductsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    products.id,
+                    products.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('products.id', 'products.name')
+                ->orderByDesc('units')
+                ->limit(10)
+                ->get();
+
+            // Top 10 Productos por monto (histórico)
+            $topProductsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    products.id,
+                    products.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('products.id', 'products.name')
+                ->orderByDesc('amount')
+                ->limit(10)
+                ->get();
+
+            // Top 5 Laboratorios por unidades (histórico)
+            $topLabsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    laboratories.id,
+                    laboratories.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('laboratories.id', 'laboratories.name')
+                ->orderByDesc('units')
+                ->limit(5)
+                ->get();
+
+            // Top 5 Laboratorios por monto (histórico)
+            $topLabsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                ->where('orders.seller_id', $userId)
+                ->whereDate('orders.order_date', '>=', '2026-01-01 00:00:00')
+                ->where(function($query) {
+                    $query->where('orders.status', 'Completed')
+                          ->orWhereNotNull('orders.completed_at');
+                })
+                ->selectRaw('
+                    laboratories.id,
+                    laboratories.name,
+                    SUM(order_details.quantity) as units,
+                    SUM(order_details.quantity * order_details.unit_price_usd) as amount
+                ')
+                ->groupBy('laboratories.id', 'laboratories.name')
+                ->orderByDesc('amount')
+                ->limit(5)
+                ->get();
+        }
 
         return [
             'topProductsByUnits' => $topProductsByUnits,

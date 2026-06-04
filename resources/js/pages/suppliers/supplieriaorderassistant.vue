@@ -38,6 +38,8 @@ const searchQuery = ref("");
 const withSuppliers = ref(false);
 const showIgnored = ref(false);
 const showGraphs = ref(false);
+const selectedSupplier = ref(null);
+const suppliers = ref([]);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
@@ -53,6 +55,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   showIgnored.value = false;
   showGraphs.value = false;
+  selectedSupplier.value = null;
   sortBy.value = "solicitar";
   orderBy.value = "desc";
 };
@@ -69,6 +72,15 @@ async function consultarGruposProductos() {
     return;
   }
   groups.value = [...respuestaApi.data.data];
+}
+
+async function consultarProveedores() {
+  try {
+    const respuesta = await axios.get("/suppliers", { params: { itemsPerPage: -1 } });
+    suppliers.value = respuesta.data.data ?? respuesta.data;
+  } catch (error) {
+    console.error("Error al cargar proveedores", error);
+  }
 }
 
 async function consultarProductosConPaginacion() {
@@ -90,6 +102,7 @@ async function consultarProductosConPaginacion() {
     con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
     show_ignored: showIgnored.value,
     with_trend: showGraphs.value,
+    supplier_id: selectedSupplier.value,
   };
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
@@ -224,6 +237,7 @@ watch(
     con_descuento,
     showIgnored,
     showGraphs,
+    selectedSupplier,
   ],
   () => {
     clearTimeout(filterTimeout);
@@ -425,7 +439,7 @@ const handleSendToAutoOrder = async ({ id, quantity, item }) => {
 };
 
 onMounted(async () => {
-  await Promise.all([consultarGruposProductos(), consultarLaboratorios()]);
+  await Promise.all([consultarGruposProductos(), consultarLaboratorios(), consultarProveedores()]);
   await actualizarTabla();
 });
 </script>
@@ -448,8 +462,10 @@ onMounted(async () => {
         v-model:showGraphs="showGraphs"
         v-model:isColombian="isColombian"
         v-model:isNovaventa="isNovaventa"
+        v-model:selectedSupplier="selectedSupplier"
         :groups="groups"
         :laboratories="laboratories"
+        :suppliers="suppliers"
         @clear="handleClearFilters"
         @clear-ignore="handleClearIgnore"
         @generarPedido="generarPedido"
@@ -470,6 +486,7 @@ onMounted(async () => {
           :loading="loading"
           :with-suppliers="withSuppliers"
           :show-graphs="showGraphs"
+          :selected-supplier-id="selectedSupplier"
           @page-change="onGrupalPageChange"
           @product-scarce-toggled="handleProductScarceToggled"
           @open-comparator="handleOpenComparator"
@@ -487,6 +504,7 @@ onMounted(async () => {
           :show-graphs="showGraphs"
           :sort-by="sortBy"
           :order-by="orderBy"
+          :selected-supplier-id="selectedSupplier"
           @update:options="updateTableOptionsTable"
           @refresh="actualizarTabla"
           @product-scarce-toggled="handleProductScarceToggled"

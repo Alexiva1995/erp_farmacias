@@ -26,12 +26,13 @@ class EmployeeProductActionService
 
             // Sync reemplaza todas las asignaciones con las nuevas
             $employee->products()->sync($validated['product_ids']);
+            $employee->dishes()->sync($validated['dish_ids']);
 
             DB::commit();
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
-            throw new \Exception('Error al asignar productos: ' . $e->getMessage());
+            throw new \Exception('Error al asignar productos o platos: ' . $e->getMessage());
         }
     }
 
@@ -48,16 +49,14 @@ class EmployeeProductActionService
         try {
             DB::beginTransaction();
 
-            // Verificar que el producto existe
-            $product = Product::findOrFail($productId);
-
-            // Verificar que el empleado tiene ese producto asignado
-            if (!$employee->products()->where('products.id', $productId)->exists()) {
-                throw new \Exception('El empleado no tiene asignado este producto');
+            // Verificar si es producto o plato
+            if ($employee->products()->where('products.id', $productId)->exists()) {
+                $employee->products()->detach($productId);
+            } elseif ($employee->dishes()->where('dishes.id', $productId)->exists()) {
+                $employee->dishes()->detach($productId);
+            } else {
+                throw new \Exception('El empleado no tiene asignado este producto o plato');
             }
-
-            // Eliminar la relación
-            $employee->products()->detach($productId);
 
             DB::commit();
             return true;
@@ -137,28 +136,32 @@ class EmployeeProductActionService
             throw new \InvalidArgumentException('El ID del empleado debe ser un número válido');
         }
 
-        if (empty($data['product_ids'])) {
-            throw new \InvalidArgumentException('Debe proporcionar al menos un producto');
-        }
-
-        if (!is_array($data['product_ids'])) {
-            throw new \InvalidArgumentException('Los productos deben ser un array');
-        }
-
-        if (count($data['product_ids']) === 0) {
-            throw new \InvalidArgumentException('Debe seleccionar al menos un producto');
-        }
-
-        // Validar que todos los IDs sean numéricos
-        foreach ($data['product_ids'] as $prodId) {
-            if (!is_numeric($prodId) || $prodId <= 0) {
-                throw new \InvalidArgumentException('Todos los IDs de producto deben ser números válidos');
+        $productIds = [];
+        if (isset($data['product_ids']) && is_array($data['product_ids'])) {
+            foreach ($data['product_ids'] as $prodId) {
+                if (is_numeric($prodId) && $prodId > 0) {
+                    $productIds[] = (int) $prodId;
+                }
             }
+        }
+
+        $dishIds = [];
+        if (isset($data['dish_ids']) && is_array($data['dish_ids'])) {
+            foreach ($data['dish_ids'] as $dishId) {
+                if (is_numeric($dishId) && $dishId > 0) {
+                    $dishIds[] = (int) $dishId;
+                }
+            }
+        }
+
+        if (empty($productIds) && empty($dishIds)) {
+            throw new \InvalidArgumentException('Debe seleccionar al menos un producto o plato');
         }
 
         return [
             'employee_id' => (int) $data['employee_id'],
-            'product_ids' => array_map('intval', $data['product_ids']),
+            'product_ids' => $productIds,
+            'dish_ids' => $dishIds,
         ];
     }
 }

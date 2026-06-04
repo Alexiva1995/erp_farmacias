@@ -77,6 +77,11 @@ class ResourceService
      */
     public function getExchangeRate(string $currencyCode): float
     {
+        if ($currencyCode === 'BS' || $currencyCode === 'VES') {
+            $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+            $currencyCode = $isRestaurant ? 'BINANCE' : 'EUR';
+        }
+
         $cacheKey = "resources.exchange_rate.{$currencyCode}";
         $fallbackKey = "resources.exchange_rate.{$currencyCode}.fallback";
 

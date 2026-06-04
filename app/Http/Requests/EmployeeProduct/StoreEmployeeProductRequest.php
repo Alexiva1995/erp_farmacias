@@ -23,8 +23,10 @@ class StoreEmployeeProductRequest extends FormRequest
     {
         return [
             'employee_id' => 'required|exists:employees,id',
-            'product_ids' => 'required|array|min:1',
+            'product_ids' => 'nullable|array',
             'product_ids.*' => 'exists:products,id',
+            'dish_ids' => 'nullable|array',
+            'dish_ids.*' => 'exists:dishes,id',
         ];
     }
 
@@ -38,10 +40,10 @@ class StoreEmployeeProductRequest extends FormRequest
         return [
             'employee_id.required' => 'Debe seleccionar un empleado',
             'employee_id.exists' => 'El empleado seleccionado no existe',
-            'product_ids.required' => 'Debe seleccionar al menos un producto',
             'product_ids.array' => 'Los productos deben ser un array',
-            'product_ids.min' => 'Debe seleccionar al menos un producto',
             'product_ids.*.exists' => 'Uno o más productos seleccionados no existen',
+            'dish_ids.array' => 'Los platos deben ser un array',
+            'dish_ids.*.exists' => 'Uno o más platos seleccionados no existen',
         ];
     }
 }

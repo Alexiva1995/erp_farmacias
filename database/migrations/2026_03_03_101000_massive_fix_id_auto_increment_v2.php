@@ -20,6 +20,7 @@ return new class extends Migration {
             FROM INFORMATION_SCHEMA.COLUMNS c
             JOIN INFORMATION_SCHEMA.TABLES t ON c.TABLE_NAME = t.TABLE_NAME AND c.TABLE_SCHEMA = t.TABLE_SCHEMA
             WHERE c.COLUMN_NAME = 'id' 
+            AND c.TABLE_NAME != 'sessions'
             AND c.TABLE_SCHEMA = DATABASE()
             AND c.EXTRA NOT LIKE '%auto_increment%'
             AND t.TABLE_TYPE = 'BASE TABLE'
