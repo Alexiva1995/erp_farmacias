@@ -113,6 +113,9 @@ class Order extends Model
 
     public function updateTotals()
     {
+        // Recalcular promociones generales antes de sumar los totales
+        app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotions($this);
+
         // Sumamos (precio unitario * cantidad) de los detalles vinculados
         $newTotal = $this->details()->select(DB::raw('SUM(price * quantity) as total'))->value('total') ?? 0;
         $totalCost = $this->details()->select(DB::raw('SUM(unit_cost * quantity) as total'))->value('total') ?? 0;

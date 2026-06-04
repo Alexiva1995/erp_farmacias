@@ -10,6 +10,7 @@ class OrderDetail extends Model
     protected $fillable = [
         'order_id',
         'pack_id',
+        'dish_id',
         'product_type',
         'product_id',
         'quantity',
@@ -23,6 +24,7 @@ class OrderDetail extends Model
         'price_before_discount',
         'price_bs',
         'price_before_discount_bs',
+        'notes',
     ];
 
     public function order(): BelongsTo
@@ -38,5 +40,10 @@ class OrderDetail extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function dish(): BelongsTo
+    {
+        return $this->belongsTo(Dish::class, 'dish_id');
     }
 }

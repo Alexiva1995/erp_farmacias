@@ -69,7 +69,7 @@ class InventoryStockController extends Controller
             $filtros["days"] = $request->days;
             $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -137,7 +137,7 @@ class InventoryStockController extends Controller
             $filtros["days"] = $request->days;
             $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 
@@ -203,7 +203,7 @@ class InventoryStockController extends Controller
             $filtros["days"] = (int) $request->days;
             $previousDate = new DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["days"] . " days");
-            $filtros["dateToday"] = $dateToday->format("Y-m-d h:m:s");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
             $filtros["previousDate"] = $previousDate->format("Y-m-d");
         }
 

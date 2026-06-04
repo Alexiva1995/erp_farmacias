@@ -2,8 +2,12 @@
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { formatDateSimple } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   lots: { type: Array, required: true },
@@ -42,7 +46,7 @@ onMounted(() => {
   fetchLocations();
 });
 
-const headers = [
+const headers = computed(() => [
   { 
     title: "ID", 
     key: "id", 
@@ -51,7 +55,7 @@ const headers = [
   },
   { title: "Producto", key: "product.name", sortable: true },
   { 
-    title: "Laboratorio", 
+    title: isRestaurant.value ? "Marca" : "Laboratorio", 
     key: "product.laboratory.name", 
     sortable: true,
     visible: false,
@@ -75,7 +79,7 @@ const headers = [
   },
   { title: "Ubicación", key: "location", sortable: false },
   { title: "Acciones", key: "actions", sortable: false },
-];
+]);
 
 const saveInlineEdit = async (lot) => {
   if (!editingLocation.value || !editingLocation.value.trim()) {
@@ -158,8 +162,12 @@ const handleLocationSearch = (search) => {
                 <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.product?.active_ingredient || "" }}</span>
-                <span class="text-disabled mx-1">|</span>
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.product?.active_ingredient || "" }}</span>
+                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
+                <span v-if="isRestaurant && item.product?.presentation" class="text-disabled truncate" style="max-inline-size: 180px;">
+                  {{ item.product.presentation }} {{ item.product.unit_of_measure ? `(${item.product.unit_of_measure})` : '' }}
+                </span>
+                <span v-if="isRestaurant && item.product?.presentation" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                   {{ item.product?.laboratory?.name || 'S/L' }}
                 </span>
@@ -279,8 +287,12 @@ const handleLocationSearch = (search) => {
                   {{ item.product?.name || 'S/N' }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient || '' }}</span>
-                  <span class="text-disabled">|</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient || '' }}</span>
+                  <span v-if="!isRestaurant" class="text-disabled">|</span>
+                  <span v-if="isRestaurant && item.product?.presentation" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                    {{ item.product.presentation }} {{ item.product.unit_of_measure ? `(${item.product.unit_of_measure})` : '' }}
+                  </span>
+                  <span v-if="isRestaurant && item.product?.presentation" class="text-disabled">|</span>
                   <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>

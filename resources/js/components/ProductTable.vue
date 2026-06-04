@@ -4,8 +4,11 @@ import { formatDateSimple } from "@/utils/formatters";
 import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { computed, ref } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -187,8 +190,12 @@ const handleMobilePageChange = (newPage) => {
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
-                <span class="text-disabled mx-1">|</span>
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
+                <span v-if="isRestaurant && item.presentation" class="text-disabled truncate" style="max-inline-size: 200px;">
+                  {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                </span>
+                <span v-if="isRestaurant && item.presentation" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
@@ -332,8 +339,12 @@ const handleMobilePageChange = (newPage) => {
                 </div>
                 
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
-                  <span class="text-disabled">|</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
+                  <span v-if="!isRestaurant" class="text-disabled">|</span>
+                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                  </span>
+                  <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
                   <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>

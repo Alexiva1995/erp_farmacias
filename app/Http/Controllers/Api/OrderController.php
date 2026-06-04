@@ -35,16 +35,30 @@ class OrderController extends Controller
     }
     public function index(Request $request)
     {
-        $query = $this->orderQueryService->getFilteredQueryProduct($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
+
+        // Query de conteo (sin ORDER BY — MySQL rechaza COUNT en subqueries con ORDER BY sin LIMIT)
+        $countQuery = $this->orderQueryService->getCountQueryProduct($request);
+        $total = $countQuery->count();
+
+        // Query de datos (con ORDER BY y paginación)
+        $dataQuery = $this->orderQueryService->getFilteredQueryProduct($request);
 
         if ($perPage < 1) {
-            $items = $query->get();
+            $items = $dataQuery->get();
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
-        $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+
+        $offset = ($page - 1) * $perPage;
+        $items = $dataQuery->skip($offset)->take($perPage)->get();
+
+        return response()->json([
+            'data' => $items,
+            'total' => $total
+        ]);
     }
+
 
     public function consultByIdentification(Request $request)
     {
@@ -271,7 +285,7 @@ class OrderController extends Controller
 
     public function getCPrintOrder(int $orderId)
     {
-        $order = Order::with('details.product.laboratory', 'client', 'seller')->find($orderId);
+        $order = Order::with('details.product.laboratory', 'details.dish', 'client', 'seller')->find($orderId);
         if (!$order) {
             return ApiResponse::error('Orden no encontrada.', 404);
         }
@@ -307,12 +321,17 @@ class OrderController extends Controller
     public function reserveOrder(Order $order): JsonResponse
     {
         $sellerId = Auth::id();
-        $existingReservedOrder = Order::where('seller_id', $sellerId)
-            ->where('status', 'Reserved')
-            ->first();
+        $generalSettings = DB::table('general_settings')->first();
+        $isRestaurant = $generalSettings && $generalSettings->business_type === 'restaurant';
 
-        if ($existingReservedOrder) {
-            return ApiResponse::error('Ya tienes una orden reservada.', 409);
+        if (!$isRestaurant) {
+            $existingReservedOrder = Order::where('seller_id', $sellerId)
+                ->where('status', 'Reserved')
+                ->first();
+
+            if ($existingReservedOrder) {
+                return ApiResponse::error('Ya tienes una orden reservada.', 409);
+            }
         }
 
         if ($order->status !== 'Pending') {
@@ -482,6 +501,88 @@ class OrderController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             return ApiResponse::error('Ocurrió un error al procesar la orden reservada. Intente de nuevo.', 500);
+        }
+    }
+
+    public function getReservedOrders(Request $request): JsonResponse
+    {
+        try {
+            $sellerId = Auth::id();
+            if (!$sellerId) {
+                return ApiResponse::error('Vendedor no autenticado.', 401);
+            }
+
+            $orders = Order::where('seller_id', $sellerId)
+                ->where('status', Order::RESERVED)
+                ->with(['client', 'details.product', 'details.dish'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            // Reparar órdenes con precios corruptos en 0 para platos de restaurante
+            foreach ($orders as $order) {
+                $needsUpdate = false;
+                foreach ($order->details as $detail) {
+                    if ((float)$detail->price === 0.0 && $detail->dish_id && $detail->dish) {
+                        $detail->price = (float)$detail->dish->designated_price;
+                        $detail->save();
+                        $needsUpdate = true;
+                    }
+                }
+                if ($needsUpdate) {
+                    $order->updateTotals();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'orders' => $orders->fresh(['client', 'details.product', 'details.dish'])
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en getReservedOrders', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ApiResponse::error('Ocurrió un error al obtener los pedidos pendientes.', 500);
+        }
+    }
+
+    public function activateOrder(Order $order): JsonResponse
+    {
+        try {
+            $sellerId = Auth::id();
+            if ($order->seller_id !== $sellerId) {
+                return ApiResponse::error('No tienes permiso sobre esta orden.', 403);
+            }
+
+            // Cambiar cualquier orden PENDING activa que tenga el vendedor a RESERVED o eliminarla si está vacía
+            $activePending = Order::where('seller_id', $sellerId)
+                ->where('status', Order::PENDING)
+                ->withCount('details')
+                ->first();
+
+            if ($activePending) {
+                if ($activePending->details_count > 0) {
+                    $activePending->status = Order::RESERVED;
+                    $activePending->save();
+                } else {
+                    $activePending->delete();
+                }
+            }
+
+            $order->status = Order::PENDING;
+            $order->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Orden activada correctamente.',
+                'order' => $order->load(['client', 'details.product', 'details.dish'])
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al activar orden', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ApiResponse::error('No se pudo activar la orden.', 500);
         }
     }
 

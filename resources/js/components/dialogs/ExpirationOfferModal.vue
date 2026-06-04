@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 
@@ -304,7 +304,7 @@ watch(
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
+    rgb(var(--v-theme-gradient-end)) 100%
   );
 }
 

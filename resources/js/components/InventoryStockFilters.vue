@@ -3,6 +3,8 @@ import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
 import { computed, ref } from "vue";
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
 const props = defineProps({
   searchQuery: String,
   selectedLaboratory: [Number, String, null],
@@ -36,6 +38,9 @@ const emit = defineEmits([
   "export-excel",
 ]);
 
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+
 const isAdvancedFiltersVisible = ref(false);
 
 const stockOptions = [
@@ -57,11 +62,11 @@ const diasVencimientos = [
   { title: "90 días", value: 90 },
 ];
 
-const tipoFiltracionOpcion = [
+const tipoFiltracionOpcion = computed(() => [
   { title: "Promedio", value: "average" },
-  { title: "Ventas", value: "sales" },
+  { title: isRestaurant.value ? "Consumido" : "Ventas", value: "sales" },
   { title: "Combinado", value: "combinado" },
-];
+]);
 
 const viewTypeOptions = [
   { title: "Individual", value: "individual" },
@@ -108,13 +113,13 @@ const handleClear = () => {
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          placeholder="Laboratorio"
+          :placeholder="isRestaurant ? 'Marca' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable
           density="compact"
           hide-details
-          prepend-inner-icon="tabler-flask"
+          :prepend-inner-icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'"
           @update:model-value="emit('update:selectedLaboratory', $event)"
         />
       </VCol>

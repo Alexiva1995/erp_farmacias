@@ -1,6 +1,11 @@
 <script setup>
 import { formatDateSimple, formatPrice as formatCurrency } from "@/utils/formatters";
 import { computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const formatDate = formatDateSimple;
 
 const props = defineProps({
   logs: { type: Array, required: true },
@@ -17,11 +22,11 @@ const emit = defineEmits([
   "generate-donation",
 ]);
 
-const headers = [
+const headers = computed(() => [
   { title: "ID", key: "product.id", sortable: true },
   { title: "Producto", key: "product_name", sortable: false },
   { 
-    title: "Laboratorio", 
+    title: isRestaurant.value ? "Marca" : "Laboratorio", 
     key: "laboratory_name", 
     sortable: false,
     value: (item) => item.product?.laboratory?.name || "—"
@@ -40,7 +45,7 @@ const headers = [
     align: "end",
     sortable: false,
   },
-];
+]);
 
 const selected = computed({
   get: () => props.selectedLogs,
@@ -69,7 +74,7 @@ const toggleSelection = (id) => {
 
 <template>
   <VCard variant="flat">
-    <VCardText class="d-flex justify-end pa-4 bg-var-theme-background">
+    <VCardText v-if="!isRestaurant" class="d-flex justify-end pa-4 bg-var-theme-background">
       <VBtn
         color="success"
         variant="elevated"
@@ -94,7 +99,7 @@ const toggleSelection = (id) => {
         :page="props.page"
         :items-per-page="props.itemsPerPage"
         item-value="id"
-        show-select
+        :show-select="!isRestaurant"
         class="text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -104,8 +109,11 @@ const toggleSelection = (id) => {
               <span class="text-body-1 font-weight-medium text-uppercase">{{
                 item.product_name || ""
               }}</span>
-              <span v-if="item.product" class="text-sm text-disabled">{{
+              <span v-if="item.product && !isRestaurant" class="text-sm text-disabled">{{
                 item.product.active_ingredient
+              }}</span>
+              <span v-else-if="item.product && isRestaurant" class="text-sm text-disabled">{{
+                item.product.presentation || "S/P" }}{{ item.product.unit_of_measure ? ` (${item.product.unit_of_measure})` : ''
               }}</span>
             </div>
           </div>
@@ -145,9 +153,9 @@ const toggleSelection = (id) => {
           :key="item.id"
           variant="flat"
           class="border mb-1 overflow-hidden"
-          :class="selected.includes(item.id) ? 'border-primary bg-primary-lighten-5' : ''"
+          :class="!isRestaurant && selected.includes(item.id) ? 'border-primary bg-primary-lighten-5' : ''"
           style="border-radius: 8px !important;"
-          @click="toggleSelection(item.id)"
+          @click="!isRestaurant && toggleSelection(item.id)"
         >
           <div class="pa-3">
             <div class="d-flex justify-space-between align-start mb-2">
@@ -160,12 +168,14 @@ const toggleSelection = (id) => {
                   </h3>
                 </div>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span class="text-medium-emphasis font-weight-medium">{{ item.product?.active_ingredient }}</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium">{{ item.product?.active_ingredient }}</span>
+                  <span v-else class="text-medium-emphasis font-weight-medium">{{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}</span>
                   <span class="text-disabled">|</span>
                   <span class="text-primary font-weight-bold text-uppercase">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
               <VCheckboxBtn
+                v-if="!isRestaurant"
                 :model-value="selected.includes(item.id)"
                 density="compact"
                 hide-details

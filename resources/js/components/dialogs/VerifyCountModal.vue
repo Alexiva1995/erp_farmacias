@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
@@ -386,7 +386,7 @@ const handleClose = () => {
 .header-gradient {
   background: linear-gradient(
     135deg,
-    #1e5128 0%,
+    rgb(var(--v-theme-gradient-end)) 0%,
     rgb(var(--v-theme-primary)) 100%
   );
 }

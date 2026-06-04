@@ -55,6 +55,7 @@ const emit = defineEmits([
   "failures-products",
   "view-pack-details",
   "add-pack",
+  "add-dish",
 ]);
 
 const isInitialLoad = ref(true);
@@ -143,6 +144,14 @@ const handleAddPack = (packId) => {
   const pack = props.products.find((p) => p.id === packId);
   if (pack) emit("add-pack", { pack, quantity: quantityToAdd });
   inputQuantities.value.set(packId, 1);
+};
+
+const handleAddDish = (dishId) => {
+  const quantityToAdd = inputQuantities.value.get(dishId);
+  if (quantityToAdd === null || quantityToAdd === undefined || quantityToAdd <= 0) return;
+  const dish = props.products.find((p) => p.id === dishId);
+  if (dish) emit("add-dish", { dish, quantity: quantityToAdd });
+  inputQuantities.value.set(dishId, 1);
 };
 
 watch(() => props.products, (newProducts) => {
@@ -370,6 +379,16 @@ const getRowClass = (item) => {
             @click="handleAddProduct(item.id)"
           />
           <VBtn
+            v-else-if="item.item_type === 'dish'"
+            color="primary"
+            variant="flat"
+            icon="tabler-plus"
+            size="32"
+            class="rounded-lg shadow-sm"
+            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0"
+            @click="handleAddDish(item.id)"
+          />
+          <VBtn
             v-else
             color="primary"
             variant="flat"
@@ -390,6 +409,7 @@ const getRowClass = (item) => {
             color="info"
             size="30"
             class="rounded-lg"
+            :disabled="item.item_type === 'dish'"
             @click="item.item_type === 'product' ? handleViewGroupProducts(item) : handleViewPack(item)"
           />
           <VBtn
@@ -398,7 +418,7 @@ const getRowClass = (item) => {
             color="error"
             size="30"
             class="rounded-lg"
-            :disabled="item.item_type === 'pack'"
+            :disabled="item.item_type === 'pack' || item.item_type === 'dish'"
             @click="handleFailures(item)"
           />
         </div>
@@ -524,10 +544,10 @@ const getRowClass = (item) => {
             </div>
 
             <div class="d-flex gap-2 mb-3">
-              <VBtn variant="tonal" color="info" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="handleViewGroupProducts(item)">
+              <VBtn variant="tonal" color="info" size="small" class="rounded-lg flex-grow-1 font-weight-black" :disabled="item.item_type === 'dish'" @click="handleViewGroupProducts(item)">
                 <VIcon start icon="tabler-eye" size="16" /> GRUPO
               </VBtn>
-              <VBtn variant="tonal" color="error" size="small" class="rounded-lg flex-grow-1 font-weight-black" @click="handleFailures(item)">
+              <VBtn variant="tonal" color="error" size="small" class="rounded-lg flex-grow-1 font-weight-black" :disabled="item.item_type === 'pack' || item.item_type === 'dish'" @click="handleFailures(item)">
                 <VIcon start icon="tabler-alert-triangle" size="16" /> FALLA
               </VBtn>
             </div>
@@ -548,7 +568,7 @@ const getRowClass = (item) => {
                 color="primary"
                 height="40"
                 class="rounded-lg font-weight-black px-4"
-                @click="item.item_type === 'product' ? handleAddProduct(item.id) : handleAddPack(item.id)"
+                @click="item.item_type === 'product' ? handleAddProduct(item.id) : (item.item_type === 'dish' ? handleAddDish(item.id) : handleAddPack(item.id))"
                 :disabled="(inputQuantities.get(item.id) ?? 0) <= 0 || (item.item_type === 'product' && item.valid_stock_sum === 0)"
               >
                 <VIcon icon="tabler-shopping-cart-plus" />

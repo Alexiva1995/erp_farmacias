@@ -161,7 +161,7 @@ const renderSellerName = (item) => {
                   <VBtn
                     icon="tabler-eye"
                     variant="tonal"
-                    color="info"
+                    color="primary"
                     size="small"
                     @click="handleView(item.raw.id)"
                   />
@@ -293,7 +293,7 @@ const renderSellerName = (item) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
-          <IconBtn @click="handleView(item.id)" color="info">
+          <IconBtn @click="handleView(item.id)" color="primary">
             <VIcon icon="tabler-eye" />
           </IconBtn>
           <template v-if="showPrintActions">

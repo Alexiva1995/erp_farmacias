@@ -304,7 +304,7 @@ const onCancel = () => emit("update:modelValue", false);
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: var(--brand-gradient) !important;
 }
 
 .detail-dialog-card {

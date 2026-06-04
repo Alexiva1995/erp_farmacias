@@ -560,7 +560,79 @@ watch(barcodeSearchQuery, (newValue) => {
   }
 });
 
-onMounted(() => {
+// --- Estado para Restaurante / Menú de Platos ---
+const isRestaurant = ref(false);
+const dishes = ref([]);
+const dishesLoading = ref(false);
+const dishFilterQuery = ref("");
+const selectedDishCategory = ref(null);
+const activeTab = ref("products");
+
+const dishCategories = computed(() => {
+  const categories = new Set();
+  dishes.value.forEach((d) => {
+    if (d.category && d.category.name) {
+      categories.add(d.category.name);
+    }
+  });
+  return Array.from(categories);
+});
+
+// Computed: platos filtrados por búsqueda local y categoría
+const filteredDishes = computed(() => {
+  let list = dishes.value;
+  if (selectedDishCategory.value) {
+    list = list.filter((d) => d.category && d.category.name === selectedDishCategory.value);
+  }
+  if (dishFilterQuery.value) {
+    const q = dishFilterQuery.value.toLowerCase();
+    list = list.filter((d) => d.name.toLowerCase().includes(q));
+  }
+  return list;
+});
+
+const fetchGeneralSettings = async () => {
+  try {
+    const { data } = await axios.get("/general-settings");
+    const settings = data.data || data;
+    isRestaurant.value = settings.business_type === "restaurant";
+    if (isRestaurant.value) {
+      activeTab.value = "menu";
+    }
+  } catch (error) {
+    console.error("Error al cargar configuración", error);
+    toast.error("Error al cargar configuración");
+  }
+};
+
+const fetchDishes = async () => {
+  dishesLoading.value = true;
+  try {
+    const { data } = await axios.get("/dishes", {
+      params: { status: 1, q: dishFilterQuery.value || undefined },
+    });
+    dishes.value = Array.isArray(data.data) ? data.data : data;
+  } catch (error) {
+    console.error("[TPV] Error al cargar platos:", error);
+    toast.error("Error al cargar el menú de platos.");
+  } finally {
+    dishesLoading.value = false;
+  }
+};
+
+watch(activeTab, (val) => {
+  if (val === "menu" && dishes.value.length === 0) {
+    fetchDishes();
+  }
+});
+
+watch(filterSearchQuery, (val) => {
+  dishFilterQuery.value = val;
+  fetchDishes();
+});
+
+onMounted(async () => {
+  await fetchGeneralSettings();
   fetchSelectOptions();
   fetchProducts();
   fetchDoctorOffers();
@@ -568,6 +640,7 @@ onMounted(() => {
   fetchCompanyOffers();
   loadQuotationFromLocalStorage();
 });
+
 
 
 const updateTableOptions = (options) => {
@@ -590,6 +663,44 @@ const addProductToQuotationByBarcode = async (barcode) => {
     toast.error(
       "Producto no encontrado o error al agregar por código de barras.",
     );
+  }
+};
+
+const handleAddDishToQuotation = async ({ dish, quantity }) => {
+  if (quantity <= 0) return;
+
+  const existingItemIndex = quotationItems.value.findIndex(
+    (item) => item.dish_id === dish.id && item.is_dish
+  );
+
+  if (existingItemIndex !== -1) {
+    quotationItems.value[existingItemIndex].selectedQuantity += quantity;
+    toast.success(
+      `Cantidad de "${dish.name}" incrementada a ${quotationItems.value[existingItemIndex].selectedQuantity}.`
+    );
+  } else {
+    const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || 0;
+    const itemToAdd = {
+      id: null,
+      dish_id: dish.id,
+      title: dish.name,
+      active_ingredient: dish.active_ingredient || (dish.category?.name || "Plato"),
+      itemCode: null,
+      price: unitPrice,
+      price_bs: parseFloat(dish.price_bs) || unitPrice,
+      price_cop: parseFloat(dish.price_cop) || unitPrice,
+      availableQuantity: 9999, // Los platos no tienen stock directo
+      selectedQuantity: quantity,
+      laboratory: dish.laboratory_name || (dish.category?.name || "Plato"),
+      taxRate: 0,
+      pack_id: null,
+      discount_percentage: 0,
+      discount_type: null,
+      discount_source_id: null,
+      is_dish: true,
+    };
+    quotationItems.value.push(itemToAdd);
+    toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
   }
 };
 
@@ -746,7 +857,8 @@ const saveQuotation = async () => {
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value?.id || null,
       products: quotationItems.value.map((item) => ({
-        id: item.id,
+        id: item.id || null,
+        dish_id: item.dish_id || null,
         quantity: item.selectedQuantity,
       })),
     };
@@ -795,7 +907,8 @@ const saveAndPrintQuotation = async () => {
       currency: selectedDisplayCurrency.value,
       client_id: selectedClient.value?.id || null,
       products: quotationItems.value.map((item) => ({
-        id: item.id,
+        id: item.id || null,
+        dish_id: item.dish_id || null,
         quantity: item.selectedQuantity,
       })),
     };
@@ -1094,6 +1207,9 @@ const handleCleanAfterSave = () => {
       v-model:stockStatusFilter="stockStatusFilter"
       :laboratories="laboratories"
       :origins="origins"
+      :is-restaurant="isRestaurant"
+      v-model:selectedCategory="selectedDishCategory"
+      :categories="dishCategories.map(cat => ({ id: cat, name: cat }))"
       :loading="isLoadingFilters"
       @clear="handleClearFilters"
       @sort="handleSort"
@@ -1123,8 +1239,17 @@ const handleCleanAfterSave = () => {
       :total-product="totalProduct"
       :items-per-page="itemsPerPage"
       :page="page"
+      :is-restaurant="isRestaurant"
+      v-model:active-tab="activeTab"
+      :dishes="dishes"
+      :dishes-loading="dishesLoading"
+      v-model:dish-filter-query="dishFilterQuery"
+      v-model:selected-dish-category="selectedDishCategory"
+      :dish-categories="dishCategories"
+      :filtered-dishes="filteredDishes"
       @update:options="updateTableOptions"
       @add-product="addProductToQuotation"
+      @add-dish="handleAddDishToQuotation"
       @view-group-products="fetchGroupProducts"
       @failures-products="fetchFailuresProducts"
     />

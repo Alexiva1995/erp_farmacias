@@ -204,7 +204,7 @@ const handleClear = () => {
           <VBtn
             v-if="showAdd"
             color="primary"
-            variant="flat"
+            variant="tonal"
             size="38"
             class="rounded-pill"
             @click="emit('add')"

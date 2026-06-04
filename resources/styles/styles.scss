@@ -11,6 +11,11 @@
   --color-light-gray: #E9ECEF;
   --color-white: #FFFFFF;
   --brand-gradient: linear-gradient(135deg, #7A0099, #E20074);
+
+  // Variables del degradado de branding (usadas por .header-gradient en todos los modales)
+  // El JS del branding store las sobreescribe con los colores configurados en ajustes generales
+  --v-theme-gradient-start: 122, 0, 153;   // #7A0099 en formato RGB
+  --v-theme-gradient-end:   226, 0, 116;   // #E20074 en formato RGB
 }
 
 // Forzar color magenta fucsia de TOVA en todos los enlaces y textos primarios
@@ -203,11 +208,24 @@ body,
 }
 
 // Títulos y encabezados con fuerte contraste y peso
+// EXCEPCIÓN: .header-gradient anula este color para mostrar texto blanco
 h1, h2, h3, h4, h5, h6,
 .text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6,
-.v-card-title {
+.v-card-title:not(:has(.header-gradient)) {
   color: var(--color-dark) !important;
   font-weight: 800 !important;
+}
+
+// Regla global para TODOS los headers de modales del sistema
+// Usa --brand-gradient que el branding store actualiza al cargar la configuración del negocio
+.header-gradient {
+  background: var(--brand-gradient) !important;
+}
+
+// Los headers de modales con gradiente SIEMPRE muestran texto blanco
+.header-gradient,
+.header-gradient * {
+  color: white !important;
 }
 
 // Párrafos, textos descriptivos y de énfasis medio (marino profundo de alta legibilidad)

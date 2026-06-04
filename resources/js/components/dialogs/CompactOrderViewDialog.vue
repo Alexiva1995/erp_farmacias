@@ -216,7 +216,7 @@ const activeDiscount = computed(() => {
 }
 
 .compact-header {
-  background: linear-gradient(90deg, rgb(var(--v-theme-primary)) 0%, #1a4d23 100%);
+  background: linear-gradient(135deg, #7A0099, #E20074) !important;
 }
 
 .bg-light-gray {

@@ -23,13 +23,14 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         $productId = $this->route('product') ? $this->route('product')->id : null;
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'active_ingredient' => ['required', 'string', 'max:255'],
+            'active_ingredient' => $isRestaurant ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'],
             'laboratory_id' => ['required', 'exists:laboratories,id'],
             'category_id' => ['required', 'exists:categories,id'],
-            'origin_id' => ['required', 'exists:origins,id'],
+            'origin_id' => $isRestaurant ? ['nullable', 'exists:origins,id'] : ['required', 'exists:origins,id'],
 
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
@@ -50,6 +51,8 @@ class StoreProductRequest extends FormRequest
             'group_id' => 'nullable|integer|exists:groups_products,id',
             'is_scarce' => ['sometimes', 'boolean'],
             'is_unified_group' => ['sometimes', 'boolean'],
+            'presentation' => ['nullable', 'numeric', 'min:0'],
+            'unit_of_measure' => ['nullable', 'string', 'in:g,ml,und'],
         ];
     }
 

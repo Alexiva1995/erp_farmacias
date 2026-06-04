@@ -22,15 +22,26 @@ class QuotationController extends Controller
 
     public function index(Request $request)
     {
-        $query = $this->quotationQueryService->getFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
+
+        $countQuery = $this->quotationQueryService->getCountQueryProduct($request);
+        $total = $countQuery->count();
+
+        $dataQuery = $this->quotationQueryService->getFilteredQuery($request);
 
         if ($perPage < 1) {
-            $items = $query->get();
+            $items = $dataQuery->get();
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
-        $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+
+        $offset = ($page - 1) * $perPage;
+        $items = $dataQuery->skip($offset)->take($perPage)->get();
+
+        return response()->json([
+            'data' => $items,
+            'total' => $total
+        ]);
     }
 
     /**

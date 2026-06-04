@@ -1,6 +1,6 @@
 <script setup>
-// Filtros Reporte Trazabilidad
 import AppFilterBase from "@/components/AppFilterBase.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
 const props = defineProps({
@@ -18,6 +18,9 @@ const emit = defineEmits([
   "clear",
   "export",
 ]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const movementTypes = [
   { title: "Venta",      value: "sale"       },
@@ -38,7 +41,7 @@ const hasAdvancedFilters = computed(() =>
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     :show-export="true"
-    search-placeholder="Buscar por ID, Producto, Laboratorio..."
+    :search-placeholder="isRestaurant ? 'Buscar por ID, Producto, Marca...' : 'Buscar por ID, Producto, Laboratorio...'"
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"

@@ -274,6 +274,8 @@ class ProductController extends Controller
             'id' => $product->id,
             'name' => $product->name,
             'active_ingredient' => $product->active_ingredient,
+            'presentation' => $product->presentation,
+            'unit_of_measure' => $product->unit_of_measure,
             'formatted_details' => $product->formatted_details,
 
             // Stock y precios
@@ -382,26 +384,52 @@ class ProductController extends Controller
     public function forAutocomplete(): JsonResponse
     {
         try {
-            // Productos activos con stock, ordenados por nombre
-            $products = Product::with(['lots', 'laboratory'])
-                ->where('stock', '>', 0) // Solo con stock
-                ->orderBy('name', 'asc')
+            $q = request()->query('q');
+            
+            // Buscar productos ordenados por nombre que tengan presentación y unidad de medida asignadas
+            $query = Product::with(['lots', 'laboratory'])
+                ->whereNotNull('presentation')
+                ->where('presentation', '>', 0)
+                ->whereNotNull('unit_of_measure')
+                ->where('unit_of_measure', '!=', '');
+
+            // Si se proporciona un término de búsqueda, filtrar
+            if (!empty($q)) {
+                $query->where(function ($queryBuilder) use ($q) {
+                    $queryBuilder->where('name', 'like', "%{$q}%")
+                        ->orWhere('active_ingredient', 'like', "%{$q}%")
+                        ->orWhere('barcode', 'like', "%{$q}%");
+                });
+            }
+
+            $products = $query->orderBy('name', 'asc')
                 ->limit(50) // Límite razonable para autocomplete
                 ->get();
 
+            // Buscar platos base si coincide con la búsqueda
+            $baseDishesQuery = \App\Models\Dish::with('ingredients')
+                ->where('status', 3);
+
+            if (!empty($q)) {
+                $baseDishesQuery->where('name', 'like', "%{$q}%");
+            }
+
+            $baseDishes = $baseDishesQuery->limit(10)->get();
+
             $formattedProducts = $products->map(function ($product) {
                 $nextLot = $product->lots
-                    ->where('quantity', '>', 0)
                     ->sortBy('expiration_date')
                     ->first();
 
                 return [
                     'id' => $product->id,
+                    'is_base_dish' => false,
                     'name' => $product->name,
                     'active_ingredient' => $product->active_ingredient,
+                    'presentation' => $product->presentation,
+                    'unit_of_measure' => $product->unit_of_measure,
                     'stock' => $product->stock,
                     'available_stock' => $product->lots
-                        ->where('quantity', '>', 0)
                         ->sum('quantity'),
                     'sale_price' => (float) $product->sale_price,
                     'unit_cost' => (float) $product->unit_cost,
@@ -410,9 +438,8 @@ class ProductController extends Controller
                     'laboratory' => $product->laboratory ? $product->laboratory->name : null,
                     'formatted_details' => $product->formatted_details,
                     'has_stock' => $product->stock > 0,
-                    'is_available' => true, // Porque ya filtramos por stock y activo
+                    'is_available' => true,
                     'lots' => $product->lots
-                        ->where('quantity', '>', 0)
                         ->sortBy('expiration_date')
                         ->values()
                         ->map(function ($lot) {
@@ -428,10 +455,46 @@ class ProductController extends Controller
                 ];
             });
 
+            // Combinar los platos base formateados
+            $formattedDishes = $baseDishes->map(function ($dish) {
+                return [
+                    'id' => 'dish_' . $dish->id,
+                    'is_base_dish' => true,
+                    'name' => '[RECETA BASE] ' . $dish->name,
+                    'active_ingredient' => null,
+                    'presentation' => 1,
+                    'unit_of_measure' => 'receta',
+                    'stock' => 0,
+                    'available_stock' => 0,
+                    'sale_price' => (float) $dish->designated_price,
+                    'unit_cost' => (float) $dish->cost_price,
+                    'next_expiration' => null,
+                    'expiration_status' => 'good',
+                    'laboratory' => null,
+                    'formatted_details' => 'Importar ingredientes de esta receta base',
+                    'has_stock' => true,
+                    'is_available' => true,
+                    'lots' => [],
+                    'ingredients' => $dish->ingredients->map(function ($ing) {
+                        return [
+                            'product_id' => $ing->id,
+                            'name' => $ing->name,
+                            'portion' => (float) $ing->pivot->portion,
+                            'unit_cost' => (float) $ing->unit_cost,
+                            'presentation' => (float) $ing->presentation,
+                            'unit_of_measure' => $ing->unit_of_measure,
+                            'designated_cost' => (float) $ing->pivot->designated_cost,
+                        ];
+                    })->values()->toArray(),
+                ];
+            });
+
+            $mergedResult = $formattedProducts->concat($formattedDishes);
+
             return response()->json([
                 'success' => true,
-                'data' => $formattedProducts,
-                'total' => $formattedProducts->count(),
+                'data' => $mergedResult,
+                'total' => $mergedResult->count(),
                 'message' => 'Productos para autocomplete obtenidos exitosamente'
             ]);
 

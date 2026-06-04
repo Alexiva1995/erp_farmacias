@@ -1,7 +1,16 @@
 <script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import Swal from "sweetalert2";
 import { computed, nextTick, ref, watch } from "vue";
+
+// Degradado dinámico igual que el login: secondary (inicio) → primary (fin)
+const brandingStore = useBrandingStore();
+const headerGradient = computed(() => {
+  const start = brandingStore.settings?.secondary_color || '#7A0099';
+  const end   = brandingStore.settings?.primary_color   || '#E20074';
+  return `linear-gradient(135deg, ${start} 0%, ${end} 100%)`;
+});
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -160,32 +169,24 @@ const handleSave = async () => {
     <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar
-            color="white"
-            variant="flat"
-            size="40"
-            class="me-3 elevation-1"
-          >
-            <VIcon icon="tabler-clipboard-check" color="primary" size="24" />
-          </VAvatar>
-          <div class="d-flex flex-column leading-none text-white">
-            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase">
-              Conteo de Inventario
-            </h2>
-            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
-              Validación Física • Auditoría de Stock
-            </span>
+        <div class="header-gradient pa-4 d-flex align-center">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-clipboard-check" color="primary" size="24" />
+            </VAvatar>
+            <div>
+              <h2 class="text-h6 font-weight-black leading-tight mb-0" style="color: white !important;">
+                Conteo de Inventario
+              </h2>
+              <span class="text-caption opacity-75" style="color: white !important;">
+                Validación Física • Auditoría de Stock
+              </span>
+            </div>
           </div>
           <VSpacer />
-          <VBtn
-            icon="tabler-x"
-            variant="tonal"
-            color="white"
-            size="small"
-            class="rounded-lg"
-            @click="handleCancel"
-          />
+          <VBtn icon variant="tonal" color="white" size="small" @click="handleCancel">
+            <VIcon>tabler-x</VIcon>
+          </VBtn>
         </div>
       </VCardTitle>
 
@@ -275,6 +276,7 @@ const handleSave = async () => {
                 v-model.number="countedQuantity"
                 type="number"
                 min="0"
+                step="any"
                 placeholder="0"
                 variant="plain"
                 class="audit-huge-input font-weight-black"
@@ -326,13 +328,11 @@ const handleSave = async () => {
 </template>
 
 <style scoped>
+/* El fondo del header es dinámico via CSS vars del branding store */
 .header-gradient {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
-  );
+  background: var(--brand-gradient) !important;
 }
+
 
 .detail-dialog-card {
   border-radius: 12px !important;

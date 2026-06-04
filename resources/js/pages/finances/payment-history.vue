@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="payment-history-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
       <!-- Filtros Premium -->
@@ -813,7 +813,7 @@ onMounted(() => {
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
+    rgb(var(--v-theme-gradient-end)) 100%
   );
 }
 
@@ -898,7 +898,7 @@ onMounted(() => {
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
+    rgb(var(--v-theme-gradient-end)) 100%
   );
 }
 

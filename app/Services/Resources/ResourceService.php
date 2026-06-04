@@ -48,10 +48,19 @@ class ResourceService
     }
 
     /**
-     * Obtiene una lista de todas las categorías, utilizando caché.
+     * Obtiene una lista de todas las categorías, utilizando caché y filtros.
      */
-    public function getCategories(): Collection
+    public function getCategories(array $filters = []): Collection
     {
+        if (isset($filters['type']) && $filters['type'] === 'dishes') {
+            return Cache::remember('resources.categories.dishes', now()->addDay(), function () {
+                return Category::whereHas('dishes')
+                    ->orWhereDoesntHave('products')
+                    ->orderBy('name')
+                    ->get(['id', 'name']);
+            });
+        }
+
         return Cache::remember('resources.categories', now()->addDay(), function () {
             return Category::orderBy('name')->get(['id', 'name']);
         });

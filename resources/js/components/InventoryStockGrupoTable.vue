@@ -1,6 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { ref, computed } from 'vue';
 
 const props = defineProps({
@@ -12,6 +13,9 @@ const props = defineProps({
   sortBy: { type: [String, Array], default: () => [] },
   orderBy: { type: String, default: "asc" },
 });
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const emit = defineEmits(["update:options"]);
 
@@ -95,9 +99,9 @@ const getDiffColor = (val) => {
             
             <VDivider vertical class="mx-0" />
             
-            <!-- Ventas -->
+            <!-- Ventas/Consumido -->
             <div class="text-center min-width-indicator">
-              <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Ventas</span>
+              <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">{{ isRestaurant ? 'Consumido' : 'Ventas' }}</span>
               <span class="text-sm font-weight-black text-high-emphasis">{{ grupo.total_sold_completed }}</span>
             </div>
 
@@ -129,11 +133,11 @@ const getDiffColor = (val) => {
                     <th class="text-xs font-weight-black text-uppercase shadow-sm">ID</th>
                     <th class="text-xs font-weight-black text-uppercase shadow-sm">Producto Individual</th>
                     <th class="text-xs font-weight-black text-uppercase text-right shadow-sm">Costo</th>
-                    <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">Ventas</th>
+                    <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">{{ isRestaurant ? 'Consumido' : 'Ventas' }}</th>
                     <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">Stock</th>
                     <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">Pref %</th>
                     <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">Prom.</th>
-                    <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">AO</th>
+                    <th v-if="!isRestaurant" class="text-xs font-weight-black text-uppercase text-center shadow-sm">AO</th>
                     <th class="text-xs font-weight-black text-uppercase text-center shadow-sm">Dif.</th>
                   </tr>
                 </thead>
@@ -153,7 +157,7 @@ const getDiffColor = (val) => {
                         <div class="d-flex align-center gap-1 text-super-xs text-disabled">
                           <span class="truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '' }}</span>
                           <span>|</span>
-                          <span class="text-primary font-weight-black text-uppercase">{{ item.laboratory?.name || 'S/L' }}</span>
+                          <span class="text-primary font-weight-black text-uppercase">{{ item.laboratory?.name || (isRestaurant ? 'S/M' : 'S/L') }}</span>
                         </div>
                       </div>
                     </td>
@@ -168,7 +172,7 @@ const getDiffColor = (val) => {
                       {{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%
                     </td>
                     <td class="text-center text-xs text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</td>
-                    <td class="text-center">
+                    <td v-if="!isRestaurant" class="text-center">
                       <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small">
                         {{ item.totalQuantityInAutoOrder || 0 }}
                       </VChip>
@@ -203,7 +207,7 @@ const getDiffColor = (val) => {
                 </div>
                 
                 <div class="d-flex align-center justify-space-between text-super-xs mb-2 text-disabled font-weight-bold">
-                   <span class="truncate">{{ item.laboratory?.name || 'SIN LABORATORIO' }}</span>
+                    <span class="truncate">{{ item.laboratory?.name || (isRestaurant ? 'SIN MARCA' : 'SIN LABORATORIO') }}</span>
                    <span>Costo: {{ formatPrice(item.unit_cost) }}</span>
                 </div>
 

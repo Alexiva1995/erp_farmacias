@@ -161,6 +161,9 @@ class OrderQueryService
         $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
         $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
 
+        $generalSettings = DB::table('general_settings')->first();
+        $isRestaurant = $generalSettings && $generalSettings->business_type === 'restaurant';
+
         // 1. Consulta de PRODUCTOS
         $productsQuery = DB::table('products')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -183,32 +186,13 @@ class OrderQueryService
                 DB::raw("'product' as item_type"),
                 DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.quantity > 0) as next_expiration'),
                 DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) as valid_stock_sum'),
-                DB::raw("(
-                    SELECT GREATEST(
-                        COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0),
-                        COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0),
-                        COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND ((YEAR(pl.expiration_date) - YEAR(CURDATE())) * 12 + MONTH(pl.expiration_date) - MONTH(CURDATE()) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0)
-                    )
-                ) as discount_percentage"),
-                DB::raw("(
-                    SELECT CASE
-                        WHEN COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND ((YEAR(pl.expiration_date) - YEAR(CURDATE())) * 12 + MONTH(pl.expiration_date) - MONTH(CURDATE()) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0) >= GREATEST(
-                            COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0),
-                            COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)
-                        ) AND (SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND ((YEAR(pl.expiration_date) - YEAR(CURDATE())) * 12 + MONTH(pl.expiration_date) - MONTH(CURDATE()) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1) > 0
-                        THEN 'expiration'
-                        WHEN COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0) >=
-                             COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)
-                        THEN 'individual'
-                        WHEN (SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1) > 0
-                        THEN 'category'
-                        ELSE NULL
-                    END
-                ) as discount_type"),
+                DB::raw("(SELECT GREATEST(COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0), COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0), COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0)) ) as discount_percentage"),
+                DB::raw("(SELECT CASE WHEN COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0) >= GREATEST(COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0), COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)) AND (SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1) > 0 THEN 'expiration' WHEN COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0) >= COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0) THEN 'individual' WHEN (SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1) > 0 THEN 'category' ELSE NULL END) as discount_type"),
             ])
             ->where(function ($q) {
                 $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
-            });
+            })
+            ->where('products.no_pvp', $isRestaurant ? 1 : 0);
 
         // 2. Consulta de PACKS
         $packsQuery = DB::table('product_packs')
@@ -218,18 +202,7 @@ class OrderQueryService
                 'product_packs.total_price as sale_price',
                 DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
                 DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
-                DB::raw("(
-                SELECT GROUP_CONCAT(
-                    CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') 
-                    SEPARATOR '\n'
-                )
-                FROM products p
-                LEFT JOIN laboratories l ON p.laboratory_id = l.id
-                WHERE JSON_CONTAINS(
-                    JSON_KEYS(product_packs.pack_config), 
-                    CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON)
-                )
-            ) as active_ingredient"),
+                DB::raw("(SELECT GROUP_CONCAT(CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') SEPARATOR ' ') FROM products p LEFT JOIN laboratories l ON p.laboratory_id = l.id WHERE JSON_CONTAINS(JSON_KEYS(product_packs.pack_config), CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON))) as active_ingredient"),
                 DB::raw('NULL as laboratory_id'),
                 DB::raw('NULL as group_id'),
                 DB::raw('NULL as origin_id'),
@@ -248,8 +221,36 @@ class OrderQueryService
             ->whereNull('product_packs.deleted_at')
             ->where(function ($q) {
                 $q->whereNull('product_packs.max_sale_date')
-                    ->orWhere('product_packs.max_sale_date', '>=', now()->toDateString());
+                    ->orWhere('product_packs.max_sale_date', '>=', DB::raw("'" . now()->toDateString() . "'"));
             });
+
+        // 3. Consulta de PLATILLOS (Solo para restaurantes)
+        $dishesQuery = null;
+        if ($isRestaurant) {
+            $dishesQuery = DB::table('dishes')
+                ->select([
+                    'dishes.id',
+                    'dishes.name',
+                    'dishes.designated_price as sale_price',
+                    DB::raw("ROUND(dishes.designated_price * {$tasaBs}, 2) as price_bs"),
+                    DB::raw("ROUND(dishes.designated_price * {$tasaCop}, 2) as price_cop"),
+                    DB::raw("'PLATILLO' as active_ingredient"),
+                    DB::raw('NULL as laboratory_id'),
+                    DB::raw('NULL as group_id'),
+                    DB::raw('NULL as origin_id'),
+                    DB::raw('NULL as sales_average'),
+                    DB::raw('0 as iva'),
+                    DB::raw('0 as is_colombian_origin'),
+                    DB::raw('0 as psychotropic'),
+                    DB::raw("'MENÚ' as laboratory_name"),
+                    DB::raw('NULL as pack_config'),
+                    DB::raw("'dish' as item_type"),
+                    DB::raw('NULL as next_expiration'),
+                    DB::raw('9999 as valid_stock_sum'),
+                    DB::raw('NULL as discount_percentage'),
+                    DB::raw('NULL as discount_type'),
+                ])->where('dishes.status', '1');
+        }
 
         // APLICAR BUSCADOR 'Q' A AMBOS LADOS
         if (!empty($filters['q'])) {
@@ -261,9 +262,12 @@ class OrderQueryService
             $isColombianSearch = in_array($searchTermLower, ['col', '(col)', 'colombiano', 'colombianos']);
             $isIvaSearch = in_array($searchTermLower, ['g', '(g)', 'iva', 'gravado']);
 
-            // Si es búsqueda especial por "col" o "(g)", excluir packs
+            // Si es búsqueda especial por "col" o "(g)", excluir packs y platos
             if ($isColombianSearch || $isIvaSearch) {
                 $packsQuery->whereRaw('1 = 0');
+                if ($dishesQuery) {
+                    $dishesQuery->whereRaw('1 = 0');
+                }
             }
 
             // Filtro para PRODUCTOS
@@ -307,23 +311,53 @@ class OrderQueryService
                     }
                 });
             }
+
+            // Filtro para PLATILLOS (solo si no es búsqueda especial)
+            if ($dishesQuery && !$isColombianSearch && !$isIvaSearch) {
+                $dishesQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
+                    if ($isStrictSearch) {
+                        $subQuery->where('dishes.name', 'like', "%{$searchTerm}%");
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        foreach ($words as $word) {
+                            $subQuery->where('dishes.name', 'like', "%{$word}%");
+                        }
+                    }
+                });
+            }
         }
 
         // APLICAR OTROS FILTROS (Solo a productos)
+        if (!empty($filters['categoryId'])) {
+            $productsQuery->where('products.category_id', $filters['categoryId']);
+            $packsQuery->whereRaw('1 = 0');
+            if ($dishesQuery) {
+                $dishesQuery->where('dishes.category_id', $filters['categoryId']);
+            }
+        }
+
         if (!empty($filters['laboratoryId'])) {
             $productsQuery->where('products.laboratory_id', $filters['laboratoryId']);
-            // Esto hace que si filtras por laboratorio, los packs no salgan (porque no tienen laboratorio)
             $packsQuery->whereRaw('1 = 0');
+            if ($dishesQuery) {
+                $dishesQuery->whereRaw('1 = 0');
+            }
         }
 
         if (!empty($filters['originId'])) {
             $productsQuery->where('origin_id', $filters['originId']);
             $packsQuery->whereRaw('1 = 0');
+            if ($dishesQuery) {
+                $dishesQuery->whereRaw('1 = 0');
+            }
         }
 
         if (!empty($filters['groupId'])) {
             $productsQuery->where('products.group_id', $filters['groupId']);
             $packsQuery->whereRaw('1 = 0');
+            if ($dishesQuery) {
+                $dishesQuery->whereRaw('1 = 0');
+            }
         }
 
 
@@ -331,12 +365,20 @@ class OrderQueryService
         if ($hasStock === true) {
             $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) > 0');
             $packsQuery->where('product_packs.max_quantity', '>', 0);
+            if ($dishesQuery) {
+                $dishesQuery->whereRaw('1 = 1');
+            }
         } elseif ($hasStock === false) {
             $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) = 0');
             $packsQuery->where('product_packs.max_quantity', '=', 0);
-            ;
+            if ($dishesQuery) {
+                $dishesQuery->whereRaw('1 = 0');
+            }
         }
 
+        if ($dishesQuery) {
+            return $productsQuery->unionAll($packsQuery)->unionAll($dishesQuery);
+        }
         return $productsQuery->unionAll($packsQuery);
     }
 
@@ -575,13 +617,15 @@ class OrderQueryService
            return $query;
        }*/
 
-    public function getFilteredQueryProduct(Request $request): QueryBuilder
+    /**
+     * Retorna el query UNION base (sin ORDER BY) para ser usado en el conteo de paginación.
+     * El UNION puro sin ORDER BY es compatible con COUNT(*) de MySQL.
+     */
+    public function getCountQueryProduct(Request $request): QueryBuilder
     {
-
-        //  $query = $this->getBaseQueryProduct();
-
         $filters = [
             'q' => $request->q,
+            'categoryId' => $request->categoryId,
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
@@ -589,13 +633,42 @@ class OrderQueryService
             'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
         ];
 
-        $query = $this->getBaseQueryProduct($filters);
+        // MySQL requiere alias en la subquery del FROM para COUNT sobre UNION multi-parte.
+        // Se usa fromSub para generar: SELECT COUNT(*) FROM (...UNION...) AS tpv_count
+        $unionQuery = $this->getBaseQueryProduct($filters);
+        $sql = $unionQuery->toSql();
+        $bindings = $unionQuery->getBindings();
 
-        //$this->applyFiltersProduct($query, $filters);
+        return DB::table(DB::raw("($sql) as tpv_count"))
+            ->setBindings($bindings);
+    }
+
+    public function getFilteredQueryProduct(Request $request): QueryBuilder
+    {
+        $filters = [
+            'q' => $request->q,
+            'categoryId' => $request->categoryId,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
+            'groupId' => $request->get('groupId'),
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+        ];
+
+        // Construye el UNION de productos + packs [+ platos]
+        $unionQuery = $this->getBaseQueryProduct($filters);
+
+        // En MySQL, aplicar ORDER BY con CASE WHEN sobre columnas alias de un UNION multi-parte
+        // genera SQL inválido. Solución: envolver el UNION en un subquery (fromSub) y ordenar el wrapper.
+        $query = DB::table(DB::raw("({$unionQuery->toSql()}) as tpv_items"))
+            ->mergeBindings($unionQuery)
+            ->select('*');
+
         $this->applySortingProduct($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
     }
+
     public function getDebitoFiscal(string $startDate, string $endDate): array
     {
         try {

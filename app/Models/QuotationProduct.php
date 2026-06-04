@@ -26,6 +26,7 @@ class QuotationProduct extends Model
     protected $fillable = [
         'quotation_id', // ID de la cotización a la que pertenece este producto
         'product_id',   // ID del producto asociado
+        'dish_id',      // ID del platillo asociado
         'units',        // Cantidad de unidades del producto en la cotización
     ];
 
@@ -45,5 +46,13 @@ class QuotationProduct extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Define la relación: Un producto de cotización pertenece a un platillo.
+     */
+    public function dish(): BelongsTo
+    {
+        return $this->belongsTo(Dish::class);
     }
 }

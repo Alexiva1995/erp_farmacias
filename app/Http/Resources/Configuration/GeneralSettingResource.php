@@ -27,6 +27,7 @@ class GeneralSettingResource extends JsonResource
             'secondary_color' => $this->secondary_color ?? '#7A0099',
             'footer_text' => $this->footer_text ?? 'Todos los derechos reservados de Tova',
             'blind_cash_closure' => (bool) $this->blind_cash_closure,
+            'business_type' => $this->business_type ?? 'pharmacy',
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

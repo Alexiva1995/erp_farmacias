@@ -312,10 +312,15 @@ class ProductQueryService
     {
         $query = $this->getBaseQuery();
 
-        $query->where(function ($q) {
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+
+        $query->where(function ($q) use ($isRestaurant) {
             $q->whereNull('barcode')
-                ->orWhereNull('laboratory_id')
-                ->orWhereNull('origin_id');
+                ->orWhereNull('laboratory_id');
+            
+            if (!$isRestaurant) {
+                $q->orWhereNull('origin_id');
+            }
         });
 
         $filters = [

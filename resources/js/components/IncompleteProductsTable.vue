@@ -2,9 +2,13 @@
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { formatDateSimple } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -41,41 +45,46 @@ const currentEditingProduct = ref(null);
 const isScannerVisible = ref(false);
 const activeScannerTarget = ref(null); // 'barcode' | 'etc'
 
-const headers = [
-  { 
-    title: "ID", 
-    key: "id", 
-    sortable: true,
-    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
-    headerClass: "d-none d-sm-table-cell"
-  },
-  { title: "Producto", key: "name", sortable: true, width: "450px" },
-  { title: "Barcode", key: "barcode", sortable: true },
-  { title: "Laboratorio", key: "laboratory", sortable: true },
-  {
-    title: "Stock",
-    key: "valid_stock",
-    visible: true,
-    align: 'center',
-    cellClass: "d-none d-md-table-cell",
-    headerClass: "d-none d-md-table-cell"
-  },
-  { 
-    title: "Exp.", 
-    key: "next_expiration", 
-    sortable: true,
-    align: 'center',
-    cellClass: "d-none d-md-table-cell",
-    headerClass: "d-none d-md-table-cell"
-  },
-  { title: "Origen", key: "origin", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false },
-];
+const headers = computed(() => {
+  const list = [
+    { 
+      title: "ID", 
+      key: "id", 
+      sortable: true,
+      cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+      headerClass: "d-none d-sm-table-cell"
+    },
+    { title: "Producto", key: "name", sortable: true, width: "450px" },
+    { title: "Barcode", key: "barcode", sortable: true },
+    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "laboratory", sortable: true },
+    {
+      title: "Stock",
+      key: "valid_stock",
+      visible: true,
+      align: 'center',
+      cellClass: "d-none d-md-table-cell",
+      headerClass: "d-none d-md-table-cell"
+    },
+    { 
+      title: "Exp.", 
+      key: "next_expiration", 
+      sortable: true,
+      align: 'center',
+      cellClass: "d-none d-md-table-cell",
+      headerClass: "d-none d-md-table-cell"
+    }
+  ];
+  if (!isRestaurant.value) {
+    list.push({ title: "Origen", key: "origin", sortable: true });
+  }
+  list.push({ title: "Acciones", key: "actions", sortable: false });
+  return list;
+});
 
 const isMissing = (product, field) => {
   if (field === "barcode") return !product.barcode;
   if (field === "laboratory") return !product.laboratory_id;
-  if (field === "origin") return !product.origin_id;
+  if (field === "origin") return !isRestaurant.value && !product.origin_id;
   return false;
 };
 
@@ -290,13 +299,17 @@ const nextExpirationDate = (product) => {
                   <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
                 </span>
                 <div class="d-flex gap-1 flex-shrink-0">
-                  <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" variant="flat" class="font-weight-black text-uppercase" style="font-size: 10px !important;">Falta Lab</VChip>
+                  <VChip v-if="isMissing(item, 'laboratory')" size="x-small" color="error" variant="flat" class="font-weight-black text-uppercase" style="font-size: 10px !important;">{{ isRestaurant ? 'Falta Marca' : 'Falta Lab' }}</VChip>
                   <VChip v-if="isMissing(item, 'barcode')" size="x-small" color="error" variant="flat" class="font-weight-black text-uppercase" style="font-size: 10px !important;">Falta Barcode</VChip>
                 </div>
               </div>
               <div class="d-flex align-center gap-x-1 text-super-xs mt-1">
-                <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || "" }}</span>
-                <span class="text-disabled">|</span>
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || "" }}</span>
+                <span v-if="!isRestaurant" class="text-disabled">|</span>
+                <span v-if="isRestaurant && item.presentation" class="text-disabled truncate" style="max-inline-size: 150px;">
+                  {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                </span>
+                <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 100px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
@@ -318,7 +331,7 @@ const nextExpirationDate = (product) => {
               variant="outlined"
               class="responsive-autocomplete"
               style=" flex-grow: 1;min-inline-size: 150px;"
-              placeholder="Buscar o crear laboratorio"
+              :placeholder="isRestaurant ? 'Buscar o crear marca' : 'Buscar o crear laboratorio'"
               clearable
               @keydown.enter.prevent="
                 searchInput && searchInput.trim() && !editingLaboratoryId
@@ -336,7 +349,7 @@ const nextExpirationDate = (product) => {
               :no-data-text="
                 searchInput && searchInput.trim()
                   ? 'No se encontró. Presiona Enter para crear uno nuevo.'
-                  : 'No hay laboratorios disponibles.'
+                  : (isRestaurant ? 'No hay marcas disponibles.' : 'No hay laboratorios disponibles.')
               "
             />
           </template>
@@ -551,7 +564,7 @@ const nextExpirationDate = (product) => {
                       :items="props.laboratories"
                       item-title="name"
                       item-value="id"
-                      label="Laboratorio"
+                      :label="isRestaurant ? 'Marca' : 'Laboratorio'"
                       density="compact"
                       variant="outlined"
                       class="mb-2"
@@ -561,7 +574,7 @@ const nextExpirationDate = (product) => {
                       @keydown.enter.prevent="handleCreateLaboratoryOnEnter"
                     />
                   </VCol>
-                  <VCol v-if="isMissing(item, 'origin')" cols="12">
+                  <VCol v-if="!isRestaurant && isMissing(item, 'origin')" cols="12">
                     <VAutocomplete
                       v-model="editingOriginId"
                       :items="props.origins"
@@ -592,14 +605,14 @@ const nextExpirationDate = (product) => {
                     {{ item.barcode || 'FALTA' }}
                   </span>
                 </div>
-                <div class="d-flex justify-space-between text-super-xs">
+                <div v-if="!isRestaurant" class="d-flex justify-space-between text-super-xs">
                   <span class="text-disabled font-weight-bold">ORIGEN:</span>
                   <span :class="item.origin ? 'text-high-emphasis' : 'text-error font-weight-black'">
                     {{ item.origin?.name || 'FALTA' }}
                   </span>
                 </div>
                 <div v-if="!item.laboratory_id" class="d-flex justify-space-between text-super-xs">
-                  <span class="text-disabled font-weight-bold">LABORATORIO:</span>
+                  <span class="text-disabled font-weight-bold">{{ isRestaurant ? 'MARCA:' : 'LABORATORIO:' }}</span>
                   <span class="text-error font-weight-black">FALTA</span>
                 </div>
               </div>

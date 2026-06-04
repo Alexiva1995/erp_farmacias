@@ -30,4 +30,20 @@ class Category extends Authenticatable
     {
         return $this->hasOne(CategoryProfitability::class);
     }
+
+    /**
+     * Obtener los productos asociados a la categoría.
+     */
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'category_id');
+    }
+
+    /**
+     * Obtener los platos asociados a la categoría.
+     */
+    public function dishes()
+    {
+        return $this->hasMany(Dish::class, 'category_id');
+    }
 }

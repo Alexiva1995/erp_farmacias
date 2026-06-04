@@ -1,9 +1,10 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -16,13 +17,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options", "update-product", "group-created"]);
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const editingProductId = ref(null);
 const editingValue = ref(null);
 const searchInput = ref("");
 const currentEditingProduct = ref(null);
 
-const headers = [
+const headers = computed(() => [
   { 
     title: "ID", 
     key: "id", 
@@ -32,7 +35,7 @@ const headers = [
   },
   { title: "Producto", key: "name", sortable: true },
   { 
-    title: "Laboratorio", 
+    title: isRestaurant.value ? "Marca" : "Laboratorio", 
     key: "laboratory.name", 
     sortable: true,
     cellClass: "d-none d-md-table-cell",
@@ -52,7 +55,7 @@ const headers = [
   },
   { title: "Exp.", key: "next_expiration", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
-];
+]);
 
 const createGroup = async (name) => {
   try {
@@ -197,9 +200,12 @@ const nextExpirationDate = (product) => {
                 <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
               </span>
-              <span class="text-sm text-disabled">{{
+              <span v-if="!isRestaurant" class="text-sm text-disabled">{{
                 item.active_ingredient
               }}</span>
+              <span v-if="isRestaurant && item.presentation" class="text-sm text-disabled">
+                {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+              </span>
             </div>
           </div>
         </template>
@@ -308,8 +314,12 @@ const nextExpirationDate = (product) => {
                   {{ item.name }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-medium-emphasis font-weight-medium">{{ item.active_ingredient }}</span>
-                  <span class="text-disabled">|</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium">{{ item.active_ingredient }}</span>
+                  <span v-if="!isRestaurant" class="text-disabled">|</span>
+                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis font-weight-medium">
+                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                  </span>
+                  <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
                   <span class="text-primary font-weight-bold">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>

@@ -97,13 +97,13 @@ const handleViewOrder = async (orderId) => {
         order: order,
         currency: order.currency?.toUpperCase() || 'COP',
         products: order.details.map((detail) => ({
-          id: detail.product?.id ?? detail.product_id,
-          product_id: detail.product_id ?? detail.product?.id,
-          title: detail.product?.name,
+          id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
+          product_id: detail.product_id ?? detail.dish_id ?? detail.product?.id ?? detail.dish?.id,
+          title: detail.product?.name ?? detail.dish?.name ?? 'S/N',
           active_ingredient: detail.product?.active_ingredient || null,
-          laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
+          laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? (detail.dish ? 'PLATO' : 'S/L'),
           selectedQuantity: detail.quantity,
-          taxRate: detail.product?.iva,
+          taxRate: detail.product?.iva ?? 0,
           price_bs: parseFloat(detail.price),
           price_cop: parseFloat(detail.price),
           price: parseFloat(detail.price),
@@ -183,8 +183,8 @@ const getUserDisplayName = (user) => {
               <VIcon icon="tabler-history" color="primary" />
             </VAvatar>
             <div>
-              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Detalles del Movimiento</h2>
-              <span class="text-caption text-white opacity-75" v-if="movementDetails">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0" style="color: white !important;">Detalles del Movimiento</h2>
+              <span class="text-caption text-white opacity-75" v-if="movementDetails" style="color: white !important;">
                 ID Movimiento: #{{ props.movementId }}
               </span>
             </div>
@@ -425,7 +425,7 @@ const getUserDisplayName = (user) => {
 }
 
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: linear-gradient(135deg, #7A0099, #E20074) !important;
 }
 
 .bg-primary-lighten-5 {

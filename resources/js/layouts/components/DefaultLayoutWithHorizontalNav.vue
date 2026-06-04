@@ -1,6 +1,8 @@
 <script setup>
 import navItems from '@/navigation/horizontal'
 import { themeConfig } from '@themeConfig'
+import { useBrandingStore } from "@/stores/useBrandingStore"
+import { computed } from "vue"
 
 // Components
 import Footer from '@/layouts/components/Footer.vue'
@@ -9,10 +11,29 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
 import NavBarI18n from '@core/components/I18n.vue'
 import { HorizontalNavLayout } from '@layouts'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
+
+const brandingStore = useBrandingStore()
+
+const processedNavItems = computed(() => {
+  let items = [...navItems]
+  const isRestaurant = brandingStore.settings.business_type === 'restaurant'
+  if (!isRestaurant) {
+    items = items.map((item) => {
+      if (item.children && Array.isArray(item.children)) {
+        return {
+          ...item,
+          children: item.children.filter((c) => c.to !== 'inventory-dishes')
+        }
+      }
+      return { ...item }
+    })
+  }
+  return items
+})
 </script>
 
 <template>
-  <HorizontalNavLayout :nav-items="navItems">
+  <HorizontalNavLayout :nav-items="processedNavItems">
     <!-- 👉 navbar -->
     <template #navbar>
       <RouterLink

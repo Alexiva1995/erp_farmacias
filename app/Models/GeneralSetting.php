@@ -22,6 +22,7 @@ class GeneralSetting extends Model
         'secondary_color',
         'footer_text',
         'blind_cash_closure',
+        'business_type',
     ];
 
     protected $casts = [

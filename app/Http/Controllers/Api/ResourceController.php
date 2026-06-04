@@ -68,7 +68,7 @@ class ResourceController extends Controller
 
     public function getCategories()
     {
-        $categories = $this->resourceService->getCategories();
+        $categories = $this->resourceService->getCategories(request()->only('type'));
         return response()->json($categories);
     }
 

@@ -243,6 +243,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(Expenses::class, ExpensesServices::class);
         $this->app->bind(ExpenseCategory::class, ExpenseCategoryServices::class);
+        $this->app->bind(\App\Contracts\Dish::class, \App\Services\DishServices::class);
 
         $this->app->bind(
             \App\Contracts\Fiscal\FiscalCommandRepositoryInterface::class,

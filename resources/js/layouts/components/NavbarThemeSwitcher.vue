@@ -4,6 +4,7 @@ const themes = [
     name: 'light',
     icon: 'tabler-sun-high',
   },
+  /*
   {
     name: 'dark',
     icon: 'tabler-moon-stars',
@@ -12,6 +13,7 @@ const themes = [
     name: 'system',
     icon: 'tabler-device-desktop-analytics',
   },
+  */
 ]
 </script>
 

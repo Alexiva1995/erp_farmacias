@@ -2,7 +2,8 @@
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useAbility } from "@casl/vue";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
-import { ref } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { ref, computed } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 
@@ -17,6 +18,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options", "delete", "refresh"]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const headers = [
   { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
@@ -113,8 +117,8 @@ const handleMobilePageChange = (newPage) => {
               {{ item.product.name.toUpperCase() }}
             </span>
             <div class="d-flex align-center gap-1 text-super-xs mt-1">
-              <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.activeIngredient }}</span>
-              <span class="text-disabled mx-1">|</span>
+              <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.activeIngredient }}</span>
+              <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
               <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                 {{ item.product.laboratory?.name || 'S/L' }}
               </span>
@@ -244,12 +248,12 @@ const handleMobilePageChange = (newPage) => {
                   {{ item.product.name.toUpperCase() }}
                 </span>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product.activeIngredient }}</span>
-                  <span class="text-disabled">|</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product.activeIngredient }}</span>
+                  <span v-if="!isRestaurant" class="text-disabled">|</span>
                   <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.product.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
-              <div class="d-flex align-center gap-1">
+              <div class="d-flex align-start gap-1">
                 <template v-if="editingId === item.id">
                   <IconBtn color="success" variant="tonal" size="32" :loading="isSaving" @click="saveEdit(item)">
                     <VIcon icon="tabler-check" size="18" />

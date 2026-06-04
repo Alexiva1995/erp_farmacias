@@ -48,16 +48,15 @@ export const initConfigStore = () => {
   const vuetifyTheme = useTheme()
   const configStore = useConfigStore()
 
+  // Forzar siempre modo claro
+  configStore.theme = 'light'
+
   watch([() => configStore.theme, userPreferredColorScheme], () => {
-    vuetifyTheme.global.name.value = configStore.theme === 'system'
-      ? userPreferredColorScheme.value === 'dark'
-        ? 'dark'
-        : 'light'
-      : configStore.theme
-  })
+    vuetifyTheme.global.name.value = 'light'
+  }, { immediate: true })
+  
   onMounted(() => {
-    if (configStore.theme === 'system')
-      vuetifyTheme.global.name.value = userPreferredColorScheme.value
+    vuetifyTheme.global.name.value = 'light'
   })
 }
 // !SECTION

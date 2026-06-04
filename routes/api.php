@@ -68,6 +68,7 @@ use App\Http\Controllers\Public\SupplierPublicUploadController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
 use App\Http\Controllers\Api\IaAssistantActionController;
+use App\Http\Controllers\Api\DishController;
 
 // Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON)
 Route::prefix('fiscal')->group(function () {
@@ -179,6 +180,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);
     Route::apiResource("locations", LocationController::class);
+    Route::apiResource("dishes", DishController::class);
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);
@@ -271,6 +273,8 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
+        Route::get('/orders/reserved-list', [OrderController::class, 'getReservedOrders']);
+        Route::post('/orders/{order}/activate', [OrderController::class, 'activateOrder']);
         Route::post('/orders/{order}/items', [OrderController::class, 'storeOrderItem']);
         Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
         Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
@@ -347,6 +351,7 @@ Route::middleware("auth:sanctum")->group(function () {
                 Route::put('/{id}', [PrescriptionOfferController::class, "update"]);
                 Route::delete('/{id}', [PrescriptionOfferController::class, 'destroy']);
             });
+            Route::apiResource("general-promotions", \App\Http\Controllers\Api\GeneralPromotionController::class);
         });
         //ruta para productos con fallas
         Route::post('/product-failure', [ProductFailureController::class, 'store'])->name('product-failure.store');

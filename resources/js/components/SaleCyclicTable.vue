@@ -1,5 +1,8 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { computed } from "vue";
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -12,6 +15,9 @@ const emits = defineEmits([
   "update:options",
   "verify-product",
 ]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const headers = [
   { title: "ID", key: "product_id", align: "center", width: "80px" },
@@ -93,15 +99,15 @@ const formatOperatorName = (user) => {
             <div class="d-flex flex-column text-normal-white">
               <span
                 class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase"
-                :class="{ 'text-warning': item.product.psychotropic }"
+                :class="{ 'text-warning': !isRestaurant && item.product.psychotropic }"
               >
                 {{ item.product.name.toUpperCase() }}
                 <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
               </span>
               <span class="text-super-xs font-weight-bold text-disabled uppercase">
                 <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
-                <span class="mx-1">|</span>
-                {{ item.product.active_ingredient }}
+                <span v-if="!isRestaurant" class="mx-1">|</span>
+                <span v-if="!isRestaurant">{{ item.product.active_ingredient }}</span>
               </span>
             </div>
           </div>
@@ -176,8 +182,8 @@ const formatOperatorName = (user) => {
                 </h3>
                 <div class="text-super-xs text-disabled font-weight-bold uppercase truncate">
                   <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
-                  <span class="mx-1">|</span>
-                  {{ item.product?.active_ingredient }}
+                  <span v-if="!isRestaurant" class="mx-1">|</span>
+                  <span v-if="!isRestaurant">{{ item.product?.active_ingredient }}</span>
                 </div>
               </div>
             </div>

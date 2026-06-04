@@ -22,12 +22,14 @@ class AddOrderItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => ['required', 'exists:products,id'],
-            'quantity' => ['required', 'integer', 'min:1'],
+            'product_id' => ['nullable', 'required_without:dish_id', 'exists:products,id'],
+            'dish_id' => ['nullable', 'required_without:product_id', 'exists:dishes,id'],
+            'quantity' => ['required', 'integer', 'min:0'],
             'price_at_product' => ['required', 'numeric', 'min:0'],
             'currency_at_order' => ['required', 'string', 'in:USD,BS,COP'],
             'price_usd_unit' => ['required', 'numeric', 'min:0'],
             'pack_id' => ['nullable', 'integer', 'exists:product_packs,id'],
+            'notes' => ['nullable', 'string'],
         ];
     }
 

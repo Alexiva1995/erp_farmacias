@@ -7,6 +7,7 @@ const fiscalMode = ref('')
 const specialStatus = ref('')
 const allForeignSalesSpe = ref(false)
 const blindCashClosure = ref(false)
+const businessType = ref('pharmacy')
 
 const configFiscal = [
   { label: "Demo", value: "demo" },
@@ -18,6 +19,11 @@ const specialTaxpayerOptions = [
   { label: "Activa", value: "activa" },
 ]
 
+const businessTypeOptions = [
+  { label: "Farmacia", value: "pharmacy" },
+  { label: "Restaurante", value: "restaurant" },
+]
+
 const fetchSettings = async () => {
   try {
     const response = await axios.get('/general-settings')
@@ -26,6 +32,7 @@ const fetchSettings = async () => {
     specialStatus.value = settings.special_taxpayer_status
     allForeignSalesSpe.value = !!settings.all_foreign_sales_spe
     blindCashClosure.value = !!settings.blind_cash_closure
+    businessType.value = settings.business_type || 'pharmacy'
   } catch (error) {
     console.error("Error cargando configuración:", error)
     toast.success("Error al cargar la configuración")
@@ -38,7 +45,8 @@ const updateSettings = async () => {
       fiscal_mode: fiscalMode.value,
       special_taxpayer_status: specialStatus.value,
       all_foreign_sales_spe: allForeignSalesSpe.value,
-      blind_cash_closure: blindCashClosure.value
+      blind_cash_closure: blindCashClosure.value,
+      business_type: businessType.value
     })
     toast.success("Configuración actualizada existosamente")
   } catch (error) {
@@ -54,6 +62,22 @@ onMounted(() => {
 
 <template>
   <VCard class="mb-6">
+    <VCardItem class="py-2">
+      <VCardTitle class="text-h6"> Tipo de Negocio </VCardTitle>
+      <VRadioGroup
+        v-model="businessType"
+        inline
+        @update:model-value="updateSettings"
+      >
+        <VRadio   
+          v-for="item in businessTypeOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </VRadioGroup>
+    </VCardItem>
+
     <VCardItem class="py-2">
       <VCardTitle class="text-h6"> Configuración Fiscal </VCardTitle>
       <VRadioGroup

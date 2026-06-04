@@ -23,21 +23,46 @@ const configStore = useLayoutConfigStore();
 // Procesar el menú dinámicamente según el rol del usuario
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
 const processedNavItems = computed(() => {
+  let items = [...navItems];
+  
+  const isRestaurant = brandingStore.settings.business_type === 'restaurant';
+  items = items.map((item) => {
+    if (item.children && Array.isArray(item.children)) {
+      let childs = [...item.children];
+      if (!isRestaurant) {
+        childs = childs.filter((c) => c.to !== 'inventory-dishes');
+      } else {
+        childs = childs.filter((c) => c.title !== 'Devoluciones' && c.title !== 'Medico' && c.title !== 'Recipe');
+        childs = childs.map((c) => {
+          if (c.to === 'inventory-laboratories') {
+            return { ...c, title: 'Marcas' };
+          }
+          return { ...c };
+        });
+      }
+      return {
+        ...item,
+        children: childs
+      };
+    }
+    return { ...item };
+  });
+
   // Solo procesar si el usuario está cargado
   if (!authStore.isLoaded || !authStore.user) {
-    return navItems;
+    return items;
   }
 
   const currentRoleId = authStore.user?.role_id;
   const isUser = currentRoleId === 3;
 
   if (!isUser) {
-    return navItems;
+    return items;
   }
 
   // Para usuarios tipo "usuario", mostrar Inventario Ciclicos solo con Pendientes e Inventario de Usuario
   try {
-    return navItems.map((item) => {
+    return items.map((item) => {
       if (
         item.title === "Inventario Ciclicos" &&
         item.children &&
@@ -56,7 +81,7 @@ const processedNavItems = computed(() => {
     });
   } catch (error) {
     console.error("Error procesando menú:", error);
-    return navItems;
+    return items;
   }
 });
 </script>

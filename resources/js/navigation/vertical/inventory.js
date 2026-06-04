@@ -51,10 +51,6 @@ export default [
         to: 'inventory-traceability',
       },
       {
-        title: 'Psicotropicos',
-        to: 'inventory-psychotropics',
-      },
-      {
         title: 'Control de Stock',
         to: 'inventory-stock',
         action: 'manage',
@@ -69,6 +65,10 @@ export default [
       {
         title: 'Laboratorios',
         to: 'inventory-laboratories',
+      },
+      {
+        title: 'Platos / Menú',
+        to: 'inventory-dishes',
       },
     ],
   }, 

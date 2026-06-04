@@ -183,7 +183,8 @@ const handleMobilePageChange = (newPage) => {
         <template #item.actions="{ item }">
           <IconBtn
             size="small"
-            color="info"
+            color="primary"
+            variant="tonal"
             @click.stop="viewCycleDetails(item)"
           >
             <VIcon icon="tabler-eye" />
@@ -250,7 +251,7 @@ const handleMobilePageChange = (newPage) => {
               <div class="d-flex align-center">
                 <IconBtn
                   variant="tonal"
-                  color="info"
+                  color="primary"
                   size="32"
                   class="rounded"
                   @click.stop="viewCycleDetails(cycle)"

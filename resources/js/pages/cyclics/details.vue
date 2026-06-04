@@ -3,6 +3,7 @@ import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue"
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router/auto";
 
@@ -22,6 +23,16 @@ const loading = ref(false);
 const isLoadingFilters = ref(false);
 const isAdvancedFiltersVisible = ref(false);
 
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+
+// Degradado dinámico igual que el login: secondary (inicio) → primary (fin)
+const headerGradient = computed(() => {
+  const start = brandingStore.settings?.secondary_color || '#7A0099';
+  const end   = brandingStore.settings?.primary_color   || '#E20074';
+  return `linear-gradient(135deg, ${start} 0%, ${end} 100%)`;
+});
+
 const page = ref(1);
 const itemsPerPage = ref(10);
 const searchQuery = ref("");
@@ -38,7 +49,7 @@ const itemToEdit = ref(null);
 const newDiscrepancy = ref(0);
 const isSaving = ref(false);
 
-const headers = [
+const headers = computed(() => [
   { title: "#", key: "product_id", value: "product_id", sortable: true, align: "center", width: 60 },
   { title: "Producto", key: "product.name", value: "product.name", sortable: true, width: "280px" },
   { title: "Sistema", key: "system_quantity", value: "system_quantity", sortable: true, align: "center" },
@@ -48,7 +59,7 @@ const headers = [
   { title: "Monto", key: "amount", sortable: true, align: "right" },
   { title: "Usuario / Supervisor", key: "user.email", value: "user.email", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
-];
+]);
 
 const fetchLaboratories = async () => {
   isLoadingFilters.value = true;
@@ -222,7 +233,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           <div class="flex-grow-1">
             <AppTextField
               v-model="searchQuery"
-              placeholder="Buscar producto, laboratorio, contador..."
+              :placeholder="isRestaurant ? 'Buscar producto, marca, contador...' : 'Buscar producto, laboratorio, contador...'"
               prepend-inner-icon="tabler-search"
               clearable
               density="compact"
@@ -282,7 +293,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   v-model="selectedLaboratory"
                   :items="laboratories"
                   :loading="isLoadingFilters"
-                  placeholder="Laboratorio"
+                  :placeholder="isRestaurant ? 'Marca' : 'Laboratorio'"
                   item-title="name"
                   item-value="id"
                   clearable density="compact" hide-details
@@ -492,29 +503,28 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
         <!-- Cabecera Premium -->
         <VCardTitle class="pa-0">
           <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
               <VIcon icon="tabler-edit" size="24" color="primary" />
             </VAvatar>
-            <div class="d-flex flex-column leading-none">
-              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+            <div>
+              <h2 class="text-h6 font-weight-black leading-tight mb-0" style="color: white !important;">
                 Ajustar Discrepancia
               </h2>
-              <div class="d-flex align-center gap-2 mt-1">
-                <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem; letter-spacing: 0.05em;">
-                  Edición Administrativa de Inventario
-                </span>
-              </div>
+              <span class="text-caption opacity-75" style="color: white !important;">
+                Edición Administrativa de Inventario
+              </span>
             </div>
             <VSpacer />
             <VBtn
-              icon="tabler-x"
+              icon
               variant="tonal"
               color="white"
               size="small"
-              class="rounded-lg"
               @click="isDiscrepancyModalVisible = false"
               :disabled="isSaving"
-            />
+            >
+              <VIcon>tabler-x</VIcon>
+            </VBtn>
           </div>
         </VCardTitle>
 
@@ -528,7 +538,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               <div class="d-flex align-center gap-2 text-disabled leading-none">
                 <VIcon icon="tabler-building" size="16" />
                 <span class="text-super-xs font-weight-black uppercase letter-spacing-1">
-                  {{ itemToEdit?.product?.laboratory?.name }}
+                  {{ itemToEdit?.product?.laboratory?.name || (isRestaurant ? 'S/M' : 'S/L') }}
                 </span>
               </div>
             </div>
@@ -555,6 +565,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               <VTextField
                 v-model.number="newDiscrepancy"
                 type="number"
+                step="any"
                 placeholder="0"
                 variant="plain"
                 class="ultra-huge-input-text h-auto font-weight-950"
@@ -607,8 +618,9 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 .bg-var-theme-background { background-color: rgba(var(--v-border-color), 0.05); }
 
 /* Premium Modal Styles */
+/* El fondo del header es dinámico via CSS vars del branding store */
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: var(--brand-gradient) !important;
 }
 .detail-dialog-card { border-radius: 12px !important; }
 .shadow-primary { box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important; }

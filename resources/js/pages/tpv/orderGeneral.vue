@@ -536,13 +536,14 @@ const printOrder = async (orderId) => {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
       orderItems.value = response.data.data.order.details.map((detail) => ({
-        id: detail.product?.id ?? detail.product_id,
+        id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
         product_id: detail.product_id ?? detail.product?.id,
-        title: detail.product?.name,
+        dish_id: detail.dish_id ?? detail.dish?.id,
+        title: detail.product?.name ?? detail.dish?.name ?? '—',
         active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
-        taxRate: detail.product?.iva,
+        taxRate: detail.product?.iva || 0,
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
@@ -649,17 +650,19 @@ const printOrderThermal54 = async (orderId) => {
       orderData.value = order;
       currency.value = order.currency.toUpperCase();
       orderItems.value = order.details.map((detail) => ({
-        id: detail.product?.id ?? detail.product_id,
+        id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
         product_id: detail.product_id ?? detail.product?.id,
-        title: detail.product?.name,
+        dish_id: detail.dish_id ?? detail.dish?.id,
+        title: detail.product?.name ?? detail.dish?.name ?? '—',
         active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,
-        taxRate: detail.product?.iva,
+        taxRate: detail.product?.iva || 0,
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
         price_before_discount: parseFloat(detail.price_before_discount),
+        notes: detail.notes,
       }));
       paymentsForPrint.value = order.payment_methods;
       changeAmountForPrint.value = parseFloat(order.money_returns);
@@ -723,9 +726,10 @@ const handleViewOrder = async (orderId) => {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
       orderItems.value = response.data.data.order.details.map((detail) => ({
-        id: detail.product?.id ?? detail.product_id,
+        id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
         product_id: detail.product_id ?? detail.product?.id,
-        title: detail.product?.name,
+        dish_id: detail.dish_id ?? detail.dish?.id,
+        title: detail.product?.name ?? detail.dish?.name ?? '—',
         active_ingredient: detail.product?.active_ingredient || null,
         laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
         selectedQuantity: detail.quantity,

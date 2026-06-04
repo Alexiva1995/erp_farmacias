@@ -140,6 +140,9 @@ const clientDisplayLine = computed(() => {
       >
         <div class="thermal-col-desc">
           <span class="thermal-product-name">{{ productLineText(item) }}</span>
+          <span v-if="item.notes" class="thermal-product-meta" style="font-weight: bold; margin-top: 2px;">
+            NOTA: {{ item.notes }}
+          </span>
         </div>
       </div>
     </div>
