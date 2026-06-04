@@ -141,8 +141,23 @@ class OrderActionService
             if ($dishId) {
                 $dish = \App\Models\Dish::with('ingredients')->findOrFail($dishId);
                 $requestedQuantity = (int)$validatedData['quantity'];
-                $unitPriceAtOrder = $validatedData['price_at_product'];
-                $price_usd = $validatedData['price_usd_unit'];
+                
+                // Derivar precio de designated_price
+                $price_usd = $dish->designated_price ?? 0;
+                $targetCurrency = $order->currency;
+                if ($targetCurrency === 'USD') {
+                    $unitPriceAtOrder = $price_usd;
+                } elseif ($targetCurrency === 'COP') {
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+                    $unitPriceAtOrder = ceil(($price_usd * $tasaCop) / 100) * 100;
+                } elseif ($targetCurrency === 'BS') {
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                    $unitPriceAtOrder = round($price_usd * $tasaBs, 2);
+                } else {
+                    $unitPriceAtOrder = $price_usd;
+                }
 
                 // 1. Remove existing detail for this dish
                 $order->details()->where('dish_id', $dishId)->delete();
@@ -1503,6 +1518,7 @@ class OrderActionService
                 if (!$categoryId) continue;
 
                 foreach ($fixedPricePromos as $promo) {
+                    if (is_null($promo->fixed_price)) continue;
                     if (is_array($promo->categories) && in_array($categoryId, $promo->categories)) {
                         // Aplicar el precio fijo especificado en la promoción. 
                         // El precio fijo viene en USD, hay que convertir a la moneda de la orden.

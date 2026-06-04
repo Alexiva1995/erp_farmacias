@@ -417,7 +417,9 @@ class ProductController extends Controller
             $baseDishes = $baseDishesQuery->limit(10)->get();
 
             $formattedProducts = $products->map(function ($product) {
-                $nextLot = $product->lots
+                $activeLots = $product->lots->filter(fn($lot) => $lot->quantity > 0);
+
+                $nextLot = $activeLots
                     ->sortBy('expiration_date')
                     ->first();
 
@@ -429,7 +431,7 @@ class ProductController extends Controller
                     'presentation' => $product->presentation,
                     'unit_of_measure' => $product->unit_of_measure,
                     'stock' => $product->stock,
-                    'available_stock' => $product->lots
+                    'available_stock' => $activeLots
                         ->sum('quantity'),
                     'sale_price' => (float) $product->sale_price,
                     'unit_cost' => (float) $product->unit_cost,
@@ -439,7 +441,7 @@ class ProductController extends Controller
                     'formatted_details' => $product->formatted_details,
                     'has_stock' => $product->stock > 0,
                     'is_available' => true,
-                    'lots' => $product->lots
+                    'lots' => $activeLots
                         ->sortBy('expiration_date')
                         ->values()
                         ->map(function ($lot) {

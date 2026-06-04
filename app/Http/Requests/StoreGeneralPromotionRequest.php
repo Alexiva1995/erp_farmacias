@@ -22,7 +22,7 @@ class StoreGeneralPromotionRequest extends FormRequest
     {
         return [
             'type' => ['required', 'string', 'in:2x1,3x2,50_second,fixed_price'],
-            'fixed_price' => ['nullable', 'numeric', 'min:0'],
+            'fixed_price' => ['required_if:type,fixed_price', 'nullable', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'categories' => ['nullable', 'array'],
             'categories.*' => ['required', 'integer', 'exists:categories,id'],

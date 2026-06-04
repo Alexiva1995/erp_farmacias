@@ -36,7 +36,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('itemsPerPage', 10);
-        $page = (int) $request->input('page', 1);
+        $page = max(1, (int) $request->input('page', 1));
 
         // Query de conteo (sin ORDER BY — MySQL rechaza COUNT en subqueries con ORDER BY sin LIMIT)
         $countQuery = $this->orderQueryService->getCountQueryProduct($request);
