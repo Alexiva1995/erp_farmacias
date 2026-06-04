@@ -141,6 +141,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
                 'sub.total_sold_completed',
                 'sub.lote_quantity',
                 'sub.promedio_calculado',
+                'sub.totalQuantityInAutoOrder',
                 // Solicitar = Demanda - Stock - AutoOrder
                 DB::raw(DB::connection()->getDriverName() === 'sqlite' 
                     ? "CASE 
