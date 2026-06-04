@@ -316,61 +316,124 @@ class ClientController extends Controller
             ? Carbon::parse($lastOrder->order_date)->format('d/m/Y')
             : null;
 
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+        
         // Top 5 productos más comprados (Solo compras efectivas)
-        $topProducts = OrderDetail::select(
-                'order_details.product_id',
-                'products.name as product_name',
-                'laboratories.name as laboratory_name',
-                DB::raw('SUM(order_details.quantity) as total_quantity')
-            )
-            ->join('orders', 'orders.id', '=', 'order_details.order_id')
-            ->join('products', 'products.id', '=', 'order_details.product_id')
-            ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
-            ->where('orders.client_id', $id)
-            ->where('orders.status', Order::COMPLETED)
-            ->groupBy('order_details.product_id', 'products.name', 'laboratories.name')
-            ->orderByDesc('total_quantity')
-            ->limit(5)
-            ->get();
+        // Si es restaurante, también puede tener platos (dish_id)
+        if ($isRestaurant) {
+            $topProducts = OrderDetail::select(
+                    'order_details.product_id',
+                    'order_details.dish_id',
+                    DB::raw('COALESCE(products.name, dishes.name) as product_name'),
+                    'laboratories.name as laboratory_name',
+                    DB::raw('SUM(order_details.quantity) as total_quantity')
+                )
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->leftJoin('products', 'products.id', '=', 'order_details.product_id')
+                ->leftJoin('dishes', 'dishes.id', '=', 'order_details.dish_id')
+                ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+                ->where('orders.client_id', $id)
+                ->where('orders.status', Order::COMPLETED)
+                ->groupBy('order_details.product_id', 'order_details.dish_id', 'products.name', 'dishes.name', 'laboratories.name')
+                ->orderByDesc('total_quantity')
+                ->limit(5)
+                ->get();
+        } else {
+            $topProducts = OrderDetail::select(
+                    'order_details.product_id',
+                    'products.name as product_name',
+                    'laboratories.name as laboratory_name',
+                    DB::raw('SUM(order_details.quantity) as total_quantity')
+                )
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->join('products', 'products.id', '=', 'order_details.product_id')
+                ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+                ->where('orders.client_id', $id)
+                ->where('orders.status', Order::COMPLETED)
+                ->groupBy('order_details.product_id', 'products.name', 'laboratories.name')
+                ->orderByDesc('total_quantity')
+                ->limit(5)
+                ->get();
+        }
 
         // Últimos 10 productos comprados con precio en USD (Solo compras efectivas)
-        $lastProducts = OrderDetail::select(
-                'order_details.product_id',
-                'products.name as product_name',
-                'laboratories.name as laboratory_name',
-                'order_details.quantity',
-                DB::raw('
-                    CASE 
-                        WHEN order_details.unit_price_usd IS NOT NULL AND order_details.unit_price_usd > 0 THEN order_details.unit_price_usd
-                        WHEN orders.currency = "USD" AND order_details.quantity > 0 THEN (order_details.price / order_details.quantity)
-                        ELSE 0
-                    END as unit_price_usd_calc
-                '),
-                DB::raw('
-                    CASE 
-                        WHEN order_details.unit_price_usd IS NOT NULL AND order_details.unit_price_usd > 0 THEN (order_details.unit_price_usd * order_details.quantity)
-                        WHEN orders.currency = "USD" THEN order_details.price
-                        ELSE 0
-                    END as total_usd
-                '),
-                'orders.order_date'
-            )
-            ->join('orders', 'orders.id', '=', 'order_details.order_id')
-            ->join('products', 'products.id', '=', 'order_details.product_id')
-            ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
-            ->where('orders.client_id', $id)
-            ->where('orders.status', Order::COMPLETED)
-            ->where(function($q) {
-                // El producto debe tener un valor monetario real en USD o en la moneda base
-                $q->where('order_details.unit_price_usd', '>', 0)
-                  ->orWhere(function($sq) {
-                      $sq->where('orders.currency', 'USD')
-                         ->where('order_details.price', '>', 0);
-                  });
-            })
-            ->orderByDesc('orders.order_date')
-            ->limit(10)
-            ->get();
+        if ($isRestaurant) {
+            $lastProducts = OrderDetail::select(
+                    'order_details.product_id',
+                    'order_details.dish_id',
+                    DB::raw('COALESCE(products.name, dishes.name) as product_name'),
+                    'laboratories.name as laboratory_name',
+                    'order_details.quantity',
+                    DB::raw('
+                        CASE 
+                            WHEN order_details.unit_price_usd IS NOT NULL AND order_details.unit_price_usd > 0 THEN order_details.unit_price_usd
+                            WHEN orders.currency = "USD" AND order_details.quantity > 0 THEN (order_details.price / order_details.quantity)
+                            ELSE 0
+                        END as unit_price_usd_calc
+                    '),
+                    DB::raw('
+                        CASE 
+                            WHEN order_details.unit_price_usd IS NOT NULL AND order_details.unit_price_usd > 0 THEN (order_details.unit_price_usd * order_details.quantity)
+                            WHEN orders.currency = "USD" THEN order_details.price
+                            ELSE 0
+                        END as total_usd
+                    '),
+                    'orders.order_date'
+                )
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->leftJoin('products', 'products.id', '=', 'order_details.product_id')
+                ->leftJoin('dishes', 'dishes.id', '=', 'order_details.dish_id')
+                ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+                ->where('orders.client_id', $id)
+                ->where('orders.status', Order::COMPLETED)
+                ->where(function($q) {
+                    $q->where('order_details.unit_price_usd', '>', 0)
+                      ->orWhere(function($sq) {
+                          $sq->where('orders.currency', 'USD')
+                             ->where('order_details.price', '>', 0);
+                      });
+                })
+                ->orderByDesc('orders.order_date')
+                ->limit(10)
+                ->get();
+        } else {
+            $lastProducts = OrderDetail::select(
+                    'order_details.product_id',
+                    'products.name as product_name',
+                    'laboratories.name as laboratory_name',
+                    'order_details.quantity',
+                    DB::raw('
+                        CASE 
+                            WHEN order_details.unit_price_usd IS NOT NULL AND order_details.unit_price_usd > 0 THEN order_details.unit_price_usd
+                            WHEN orders.currency = "USD" AND order_details.quantity > 0 THEN (order_details.price / order_details.quantity)
+                            ELSE 0
+                        END as unit_price_usd_calc
+                    '),
+                    DB::raw('
+                        CASE 
+                            WHEN order_details.unit_price_usd IS NOT NULL AND order_details.unit_price_usd > 0 THEN (order_details.unit_price_usd * order_details.quantity)
+                            WHEN orders.currency = "USD" THEN order_details.price
+                            ELSE 0
+                        END as total_usd
+                    '),
+                    'orders.order_date'
+                )
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->join('products', 'products.id', '=', 'order_details.product_id')
+                ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+                ->where('orders.client_id', $id)
+                ->where('orders.status', Order::COMPLETED)
+                ->where(function($q) {
+                    $q->where('order_details.unit_price_usd', '>', 0)
+                      ->orWhere(function($sq) {
+                          $sq->where('orders.currency', 'USD')
+                             ->where('order_details.price', '>', 0);
+                      });
+                })
+                ->orderByDesc('orders.order_date')
+                ->limit(10)
+                ->get();
+        }
 
         // Badge: usar el guardado en DB o calcular en tiempo real
         $badge = $client->client_type ?? 'Nuevo';
@@ -413,6 +476,7 @@ class ClientController extends Controller
                 'product_name' => $item->product_name,
                 'laboratory_name' => $item->laboratory_name,
                 'total_quantity' => $item->total_quantity,
+                'is_dish' => isset($item->dish_id) && $item->dish_id !== null,
             ]),
             'last_products' => $lastProducts->map(fn($item) => [
                 'product_name' => $item->product_name,
@@ -421,6 +485,7 @@ class ClientController extends Controller
                 'price_usd' => round($item->unit_price_usd_calc ?? 0, 2),
                 'total_usd' => round($item->total_usd ?? 0, 2),
                 'date' => Carbon::parse($item->order_date)->format('d/m/Y'),
+                'is_dish' => isset($item->dish_id) && $item->dish_id !== null,
             ]),
         ];
 

@@ -117,7 +117,12 @@ class EmployeeRepository implements EmployeeContract
 
     unset($data['password'], $data['role']);
 
-    $employee->update($data);
+    if (isset($data['created_at']) && auth()->user()->role_id === 1) {
+      $employee->created_at = $data['created_at'];
+    }
+
+    $employee->fill($data);
+    $employee->save();
 
     return !empty($employee->user);
   }

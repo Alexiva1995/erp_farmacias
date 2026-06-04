@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -11,6 +12,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const { mobile } = useDisplay();
@@ -40,20 +44,47 @@ const loadRemoteProducts = async (query = "") => {
   
   isSearching.value = true;
   try {
-    const response = await axios.get("/products", {
-      params: { q: query, itemsPerPage: 50 },
-    });
-    const products = response.data.data;
+    const promises = [
+      axios.get("/products", { params: { q: query, itemsPerPage: 50 } })
+    ];
+
+    if (isRestaurant.value) {
+      promises.push(
+        axios.get("/dishes", { params: { q: query, itemsPerPage: 50 } })
+      );
+    }
+
+    const responses = await Promise.all(promises);
+    
+    const products = responses[0].data.data;
+    const dishes = responses[1] ? (responses[1].data.data.data || responses[1].data.data || []) : [];
+
     const uniqueMap = new Map();
     products.forEach(p => {
-      uniqueMap.set(p.id, {
-        ...p,
-        displayLabel: `${p.id} - ${p.name}`
+      const key = `product-${p.id}`;
+      uniqueMap.set(key, {
+        valueKey: key,
+        id: p.id,
+        name: p.name,
+        type: 'product',
+        displayLabel: `[P] ${p.id} - ${p.name}`
       });
     });
+
+    dishes.forEach(d => {
+      const key = `dish-${d.id}`;
+      uniqueMap.set(key, {
+        valueKey: key,
+        id: d.id,
+        name: d.name,
+        type: 'dish',
+        displayLabel: `[Plato] ${d.id} - ${d.name}`
+      });
+    });
+
     remoteProducts.value = Array.from(uniqueMap.values());
   } catch (error) {
-    console.error("Error buscando productos:", error);
+    console.error("Error buscando productos o platos:", error);
   } finally {
     isSearching.value = false;
   }
@@ -129,19 +160,20 @@ const closeDialog = () => {
 const handleAddProduct = () => {
   if (!formData.value.new_product_id) return;
 
-  const product = remoteProducts.value.find(
-    (prod) => Number(prod.id) === Number(formData.value.new_product_id),
+  const item = remoteProducts.value.find(
+    (prod) => prod.valueKey === formData.value.new_product_id,
   );
 
-  if (product) {
+  if (item) {
     const exists = formData.value.products.some(
-      (prod) => Number(prod.id) === Number(product.id),
+      (prod) => prod.id === item.id && prod.type === item.type,
     );
 
     if (!exists) {
       formData.value.products.push({
-        id: product.id,
-        name: product.name,
+        id: item.id,
+        name: item.name,
+        type: item.type,
       });
     }
     // Siempre limpiar después de intentar añadir (sea éxito o duplicado)
@@ -150,33 +182,35 @@ const handleAddProduct = () => {
   }
 };
 
-const handleRemoveProduct = (productId) => {
+const handleRemoveProduct = (product) => {
   formData.value.products = formData.value.products.filter(
-    (prod) => prod.id !== productId,
+    (prod) => !(prod.id === product.id && prod.type === product.type),
   );
 };
 
 const handleEditProduct = (product) => {
-  editingProduct.value = product.id;
-  tempProductId.value = product.id;
+  editingProduct.value = `${product.type || 'product'}-${product.id}`;
+  tempProductId.value = `${product.type || 'product'}-${product.id}`;
   remoteProducts.value = [];
   remoteProducts.value.push({ 
+    valueKey: `${product.type || 'product'}-${product.id}`,
     id: product.id, 
     name: product.name, 
-    displayLabel: `${product.id} - ${product.name}` 
+    type: product.type || 'product',
+    displayLabel: `${product.type === 'dish' ? '[Plato]' : '[P]'} ${product.id} - ${product.name}` 
   });
 };
 
-const handleSaveEdit = (oldProductId) => {
+const handleSaveEdit = (oldProduct) => {
   if (!tempProductId.value) return;
 
   const newProd = remoteProducts.value.find(
-    (prod) => prod.id === tempProductId.value,
+    (prod) => prod.valueKey === tempProductId.value,
   );
 
   if (newProd) {
     const index = formData.value.products.findIndex(
-      (prod) => prod.id === oldProductId,
+      (prod) => prod.id === oldProduct.id && prod.type === oldProduct.type,
     );
 
     if (index !== -1) {
@@ -184,6 +218,7 @@ const handleSaveEdit = (oldProductId) => {
       updatedProds[index] = {
         id: newProd.id,
         name: newProd.name,
+        type: newProd.type,
       };
       formData.value.products = updatedProds;
     }
@@ -202,14 +237,15 @@ const handleSubmit = () => {
   if (!formData.value.employee_id) return;
   const dataToSend = {
     employee_id: formData.value.employee_id,
-    product_ids: formData.value.products.map((prod) => prod.id),
+    product_ids: formData.value.products.filter(p => p.type === 'product' || !p.type).map((prod) => prod.id),
+    dish_ids: formData.value.products.filter(p => p.type === 'dish').map((prod) => prod.id),
   };
   emit("save", dataToSend);
 };
 
 const availableProductsWithId = computed(() => {
   return remoteProducts.value.filter(
-    (prod) => !formData.value.products.some((p) => p.id === prod.id),
+    (prod) => !formData.value.products.some((p) => p.id === prod.id && p.type === prod.type),
   );
 });
 
@@ -314,8 +350,8 @@ const getProductColor = (index) => {
                       :items="availableProductsWithId"
                       :loading="isSearching"
                       item-title="displayLabel"
-                      item-value="id"
-                      label="Añadir producto"
+                      item-value="valueKey"
+                      :label="isRestaurant ? 'Añadir producto o plato' : 'Añadir producto'"
                       placeholder="Escribir ID o nombre..."
                       :disabled="!formData.employee_id"
                       variant="outlined"
@@ -323,7 +359,7 @@ const getProductColor = (index) => {
                       hide-details
                       :no-filter="true"
                       class="flex-grow-1 shadow-sm"
-                      prepend-inner-icon="tabler-pill"
+                      :prepend-inner-icon="isRestaurant ? 'tabler-tools-kitchen-2' : 'tabler-pill'"
                     />
                     <VBtn
                       color="primary"
@@ -349,18 +385,18 @@ const getProductColor = (index) => {
               </div>
 
               <VList v-else class="pa-0">
-                <template v-for="(product, index) in formData.products" :key="product.id">
+                <template v-for="(product, index) in formData.products" :key="`${product.type || 'product'}-${product.id}`">
                   <VListItem class="px-4 py-3">
                     <template #prepend>
                       <VAvatar :color="getProductColor(index)" variant="tonal" size="36" class="rounded-lg">
-                        <VIcon icon="tabler-pill" size="20" />
+                        <VIcon :icon="product.type === 'dish' ? 'tabler-tools-kitchen-2' : 'tabler-pill'" size="20" />
                       </VAvatar>
                     </template>
 
                     <VListItemTitle>
-                      <div v-if="editingProduct !== product.id" class="d-flex align-center gap-2">
-                        <VChip size="x-small" color="primary" variant="flat" label class="rounded font-weight-black">
-                          {{ product.id }}
+                      <div v-if="editingProduct !== `${product.type || 'product'}-${product.id}`" class="d-flex align-center gap-2">
+                        <VChip size="x-small" :color="product.type === 'dish' ? 'success' : 'primary'" variant="flat" label class="rounded font-weight-black">
+                          {{ product.type === 'dish' ? 'PLATO' : 'PROD' }} #{{ product.id }}
                         </VChip>
                         <span class="text-sm font-weight-black uppercase text-high-emphasis">
                           {{ product.name }}
@@ -373,7 +409,7 @@ const getProductColor = (index) => {
                         :items="remoteProducts"
                         :loading="isSearching"
                         item-title="displayLabel"
-                        item-value="id"
+                        item-value="valueKey"
                         density="compact"
                         variant="outlined"
                         hide-details
@@ -384,16 +420,16 @@ const getProductColor = (index) => {
 
                     <template #append>
                       <div class="d-flex gap-1">
-                        <template v-if="editingProduct !== product.id">
+                        <template v-if="editingProduct !== `${product.type || 'product'}-${product.id}`">
                           <VBtn icon variant="tonal" size="x-small" color="warning" class="rounded" @click="handleEditProduct(product)">
                             <VIcon icon="tabler-edit" size="18" />
                           </VBtn>
-                          <VBtn icon variant="tonal" size="x-small" color="error" class="rounded" @click="handleRemoveProduct(product.id)">
+                          <VBtn icon variant="tonal" size="x-small" color="error" class="rounded" @click="handleRemoveProduct(product)">
                             <VIcon icon="tabler-trash" size="18" />
                           </VBtn>
                         </template>
                         <template v-else>
-                          <VBtn icon variant="flat" size="x-small" color="success" class="rounded" @click="handleSaveEdit(product.id)">
+                          <VBtn icon variant="flat" size="x-small" color="success" class="rounded" @click="handleSaveEdit(product)">
                             <VIcon icon="tabler-check" size="18" />
                           </VBtn>
                           <VBtn icon variant="flat" size="x-small" color="error" class="rounded" @click="handleCancelEdit">

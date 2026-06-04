@@ -26,6 +26,7 @@ const password = ref("");
 const role = ref(null);
 const showPassword = ref(false);
 const totalPackageUsd = ref("");
+const createdAt = ref("");
 
 const roleItems = computed(() =>
   props.roles.map((role) => ({
@@ -57,6 +58,7 @@ const handleClearFilters = () => {
   password.value = "";
   role.value = null;
   totalPackageUsd.value = "";
+  createdAt.value = "";
 };
 
 const submitForm = async () => {
@@ -77,6 +79,10 @@ const submitForm = async () => {
 
     if (props.selectedEmployee != null && totalPackageUsd.value !== "" && totalPackageUsd.value != null) {
       form.append("total_package_usd", totalPackageUsd.value);
+    }
+
+    if (isAdmin && createdAt.value) {
+      form.append("created_at", createdAt.value);
     }
 
     if (props.selectedEmployee == null) {
@@ -149,6 +155,7 @@ watch(
       role.value = currentRoleId != null ? Number(currentRoleId) : null;
       password.value = "";
       totalPackageUsd.value = employee.total_package_usd != null ? String(employee.total_package_usd) : "";
+      createdAt.value = employee.created_at || "";
     }
   },
   { immediate: true }
@@ -319,6 +326,25 @@ watch(
                     />
                     <div class="text-super-xs text-disabled mt-1 px-1">
                       * Monto de referencia para el cálculo de nómina mensual.
+                    </div>
+                  </div>
+                </VCol>
+
+                <VCol v-if="props.selectedEmployee != null && isAdmin" cols="12">
+                  <div class="mt-2">
+                    <AppTextField
+                      v-model="createdAt"
+                      label="Fecha de Ingreso"
+                      type="date"
+                      placeholder="Seleccionar fecha"
+                      variant="outlined"
+                      density="comfortable"
+                      :error-messages="errors.created_at"
+                      class="shadow-sm"
+                      hide-details="auto"
+                    />
+                    <div class="text-super-xs text-disabled mt-1 px-1">
+                      * Modificar la fecha de registro o ingreso del empleado en el sistema.
                     </div>
                   </div>
                 </VCol>

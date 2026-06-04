@@ -34,7 +34,10 @@ class DishServices implements DishContract
             $query->where('category_id', $filters['category_id']);
         }
 
-        $itemsPerPage = $filters['itemsPerPage'] ?? 10;
+        $itemsPerPage = $filters['itemsPerPage'] ?? 1000;
+        if ($itemsPerPage == -1) {
+            $itemsPerPage = 10000;
+        }
         
         // Ordenar
         $sortBy = $filters['sortBy'] ?? 'id';

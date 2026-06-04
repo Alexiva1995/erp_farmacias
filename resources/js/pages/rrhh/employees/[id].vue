@@ -2,6 +2,7 @@
 import EmployeeFormDialog from "@/components/dialogs/EmployeeFormDialog.vue";
 import ImageCropperDialog from "@/components/dialogs/ImageCropperDialog.vue";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import defaultAvatarImg from "@images/avatars/avatar-1.png";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -13,6 +14,8 @@ import { useDisplay } from "vuetify";
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 const isAdmin = computed(() => authStore.isAdmin);
 const isOwnProfile = computed(() => authStore.user?.employee?.id === Number(route.params.id) || authStore.user?.employee_id === Number(route.params.id));
 const canEdit = computed(() => isAdmin.value || isOwnProfile.value);
@@ -384,13 +387,17 @@ const saveProfileChanges = async () => {
   try {
     loading.value = true;
     const roleId = employee.value.user?.role_id ?? employee.value.user?.role?.id;
-    await axios.put(`rrhh/employees/${employee.value.id}`, {
+    const payload = {
       name: employee.value.name,
       last_name: employee.value.last_name,
       identification: employee.value.identification,
       email: employee.value.email || employee.value.user?.email,
       role: roleId,
-    });
+    };
+    if (isAdmin.value && employee.value.created_at) {
+      payload.created_at = employee.value.created_at;
+    }
+    await axios.put(`rrhh/employees/${employee.value.id}`, payload);
     toast.success("Perfil actualizado");
     isEditing.value = false;
     await fetchEmployee();
@@ -602,6 +609,21 @@ watch(activeView, (view) => {
                     </div>
                     <VTextField v-else v-model="employee.email" density="compact" hide-details class="premium-input-compact" />
                   </div>
+
+                  <div class="info-group">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha de Ingreso</span>
+                    <div v-if="!isEditing || !isAdmin" class="text-xs font-weight-black text-high-emphasis tracking-wide tabular-nums">
+                      {{ employee.created_at || '—' }}
+                    </div>
+                    <VTextField
+                      v-else
+                      v-model="employee.created_at"
+                      type="date"
+                      density="compact"
+                      hide-details
+                      class="premium-input-compact"
+                    />
+                  </div>
                 </div>
 
                 <!-- Botones de Acción Global -->
@@ -756,35 +778,39 @@ watch(activeView, (view) => {
             <VRow>
               <VCol cols="12" lg="6">
                 <VCard class="rounded-lg border-0 shadow-sm h-100 overflow-hidden">
-                  <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
-                    <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 10 Productos (Unidades)</span>
-                    <VIcon icon="tabler-crown" size="18" color="warning" />
-                  </div>
-                  <VCardText :class="mobile ? 'pa-1' : 'pa-2'">
-                    <VList density="compact" class="ranking-list ultra-compact">
-                      <VListItem v-for="(product, i) in performanceData.topProducts.slice(0, 10)" :key="i" class="rounded-lg mb-0 px-2 py-1">
-                        <template #prepend>
-                          <div :class="`rank-number rank-${i+1} font-weight-black text-super-xs me-2`" :style="mobile ? 'width: 18px; height: 18px;' : ''">{{ i + 1 }}</div>
-                        </template>
-                        <VListItemTitle class="text-super-xs font-weight-black text-high-emphasis uppercase leading-tight">{{ product.name || product.product_name }}</VListItemTitle>
-                        <template #append>
-                          <div class="text-right d-flex flex-column align-end">
-                            <span class="text-super-xs font-weight-black text-primary">{{ product.units || product.total_units }} unds</span>
-                            <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">{{ formatCurrency(product.amount || product.total_amount) }}</span>
-                          </div>
-                        </template>
-                      </VListItem>
-                    </VList>
-                  </VCardText>
-                </VCard>
-              </VCol>
-
-              <VCol cols="12" lg="6">
-                <VCard class="rounded-lg border-0 shadow-sm h-100 overflow-hidden">
-                  <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
-                    <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">Top 5 Laboratorios</span>
-                    <VIcon icon="tabler-flask" size="18" color="info" />
-                  </div>
+                   <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
+                     <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
+                       {{ isRestaurant ? 'Top 10 Platos (Unidades)' : 'Top 10 Productos (Unidades)' }}
+                     </span>
+                     <VIcon icon="tabler-crown" size="18" color="warning" />
+                   </div>
+                   <VCardText :class="mobile ? 'pa-1' : 'pa-2'">
+                     <VList density="compact" class="ranking-list ultra-compact">
+                       <VListItem v-for="(product, i) in performanceData.topProducts.slice(0, 10)" :key="i" class="rounded-lg mb-0 px-2 py-1">
+                         <template #prepend>
+                           <div :class="`rank-number rank-${i+1} font-weight-black text-super-xs me-2`" :style="mobile ? 'width: 18px; height: 18px;' : ''">{{ i + 1 }}</div>
+                         </template>
+                         <VListItemTitle class="text-super-xs font-weight-black text-high-emphasis uppercase leading-tight">{{ product.name || product.product_name }}</VListItemTitle>
+                         <template #append>
+                           <div class="text-right d-flex flex-column align-end">
+                             <span class="text-super-xs font-weight-black text-primary">{{ product.units || product.total_units }} unds</span>
+                             <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">{{ formatCurrency(product.amount || product.total_amount) }}</span>
+                           </div>
+                         </template>
+                       </VListItem>
+                     </VList>
+                   </VCardText>
+                 </VCard>
+               </VCol>
+ 
+               <VCol cols="12" lg="6">
+                 <VCard class="rounded-lg border-0 shadow-sm h-100 overflow-hidden">
+                   <div class="pa-4 bg-light border-b d-flex align-center justify-space-between">
+                     <span class="font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
+                       {{ isRestaurant ? 'Top 5 Categorías de Platos' : 'Top 5 Laboratorios' }}
+                     </span>
+                     <VIcon icon="tabler-flask" size="18" color="info" />
+                   </div>
                   <VCardText class="pa-4 text-center d-flex flex-column gap-3">
                     <div v-for="(lab, i) in performanceData.topLaboratories.slice(0, 5)" :key="i" class="lab-row rounded-lg pa-3 border d-flex align-center justify-space-between shadow-xs transition-all">
                       <div class="d-flex align-center gap-3">

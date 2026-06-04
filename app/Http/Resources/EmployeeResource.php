@@ -32,6 +32,7 @@ class EmployeeResource extends JsonResource
             'rif' => $this->rif,
             'residence_letter' => $this->residence_letter,
             'cv' => $this->cv,
+            'created_at' => $this->created_at?->format('Y-m-d'),
         ];
     }
 }

@@ -26,27 +26,51 @@ const processedNavItems = computed(() => {
   let items = [...navItems];
   
   const isRestaurant = brandingStore.settings.business_type === 'restaurant';
-  items = items.map((item) => {
-    if (item.children && Array.isArray(item.children)) {
-      let childs = [...item.children];
-      if (!isRestaurant) {
-        childs = childs.filter((c) => c.to !== 'inventory-dishes');
-      } else {
-        childs = childs.filter((c) => c.title !== 'Devoluciones' && c.title !== 'Medico' && c.title !== 'Recipe');
-        childs = childs.map((c) => {
-          if (c.to === 'inventory-laboratories') {
-            return { ...c, title: 'Marcas' };
-          }
-          return { ...c };
-        });
+  
+  const filterRestaurantNav = (navItemsList) => {
+    return navItemsList.map((item) => {
+      let copy = { ...item };
+      
+      // Si el item padre es el de IA Assistence, renombrarlo a Pedidos en restaurante
+      if (isRestaurant && copy.title === 'IA Assistence') {
+        copy.title = 'Pedidos';
+        // Asignarle 'to' directo para que redirija inmediatamente al hacer click
+        copy.to = 'suppliers-supplieriaorderassistant';
+        // Eliminar los hijos para evitar el desplegable y que entre directo
+        delete copy.children;
+        return copy;
       }
-      return {
-        ...item,
-        children: childs
-      };
-    }
-    return { ...item };
-  });
+
+      if (copy.children && Array.isArray(copy.children)) {
+        // Primero procesamos recursivamente los hijos
+        let childs = filterRestaurantNav([...copy.children]);
+        
+        if (!isRestaurant) {
+          childs = childs.filter((c) => c.to !== 'inventory-dishes');
+        } else {
+          childs = childs.filter((c) => 
+            c.title !== 'Devoluciones' && 
+            c.title !== 'Medico' && 
+            c.title !== 'Recipe' && 
+            c.to !== 'crm-doctors' &&
+            c.to !== 'productivity-laboratory' &&
+            c.title !== 'Laboratorios Empleados' &&
+            c.to !== 'fiscal-retenciones'
+          );
+          childs = childs.map((c) => {
+            if (c.to === 'inventory-laboratories') {
+              return { ...c, title: 'Marcas' };
+            }
+            return { ...c };
+          });
+        }
+        copy.children = childs;
+      }
+      return copy;
+    });
+  };
+
+  items = filterRestaurantNav(items);
 
   // Solo procesar si el usuario está cargado
   if (!authStore.isLoaded || !authStore.user) {

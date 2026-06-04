@@ -35,6 +35,11 @@ class ExchangeRateServices implements ExchangeRate
         return $this->exchangeRateRepository->consultOneBCV();
     }
 
+    public function consultOneBINANCE(): Model|null
+    {
+        return $this->exchangeRateRepository->consultOneBINANCE();
+    }
+
     public function consultOneEUR(): Model|null
     {
         return $this->exchangeRateRepository->consultOneEUR();

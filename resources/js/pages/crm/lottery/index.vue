@@ -17,6 +17,7 @@ const statuModule= reactive({
   total:0,
   ordenesParaLaLoteria:[],
   laboratories:[],
+  dishes:[],
 })
 
 const numero_de_premios = ref(3)
@@ -30,12 +31,14 @@ const sortBy = ref('id')
 const orderBy = ref('desc')
 
 const laboratory_id= ref([]);
+const dish_id= ref([]);
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
 const monto_minimo= ref(null);
 
 function limpiarFiltros(){
   laboratory_id.value=[]
+  dish_id.value=[]
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
   monto_minimo.value=null
@@ -45,6 +48,7 @@ function limpiarFiltros(){
 watch(
     [
       laboratory_id,
+      dish_id,
       fechaDesde_filtro,
       fechaHasta_filtro,
       monto_minimo,
@@ -68,6 +72,21 @@ async function consultAllLaboratories(){
     return [...res.data]
   } catch (error) {
     console.error("Error al consultar laboratorios:", error)
+    return []
+  }
+}
+
+async function consultAllDishes(){
+  try {
+    let res = await axios.get("/dishes")
+    if(res.status!=200){
+      console.error("error => ",res)
+      return []
+    }
+    // Si la API devuelve un wrapper 'data', lo extraemos
+    return Array.isArray(res.data) ? res.data : (res.data.data || [])
+  } catch (error) {
+    console.error("Error al consultar platos:", error)
     return []
   }
 }
@@ -102,6 +121,9 @@ async function filtrar(){
     // Solo enviar filtros que tengan valor real
     if(laboratory_id.value && laboratory_id.value.length > 0){
       filtros.laboratory_id = laboratory_id.value
+    }
+    if(dish_id.value && dish_id.value.length > 0){
+      filtros.dish_id = dish_id.value
     }
     if(fechaDesde_filtro.value && fechaHasta_filtro.value){
       filtros.fechaDesde_filtro = fechaDesde_filtro.value
@@ -148,6 +170,9 @@ async function sortiar(){
 
     if(laboratory_id.value && laboratory_id.value.length > 0){
       filtros.laboratory_id = laboratory_id.value
+    }
+    if(dish_id.value && dish_id.value.length > 0){
+      filtros.dish_id = dish_id.value
     }
     if(fechaDesde_filtro.value && fechaHasta_filtro.value){
       filtros.fechaDesde_filtro = fechaDesde_filtro.value
@@ -222,6 +247,8 @@ function seleccionarGanadores(lista, totalGanadores, permitirRepetidos = false) 
 onMounted(async () => {
   let laboratorios=await consultAllLaboratories()
   statuModule.laboratories=[...laboratorios]
+  let platos=await consultAllDishes()
+  statuModule.dishes=[...platos]
   await filtrar()
 })
 </script>
@@ -238,8 +265,10 @@ onMounted(async () => {
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       v-model:laboratory_id="laboratory_id"
+      v-model:dish_id="dish_id"
       v-model:monto_minimo="monto_minimo"
       :laboratories="statuModule.laboratories"
+      :dishes="statuModule.dishes"
       @clear="limpiarFiltros"
       @action-sortiar="sortiar"
     />

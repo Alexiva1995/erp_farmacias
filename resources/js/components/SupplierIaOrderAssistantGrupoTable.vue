@@ -1,10 +1,14 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useDisplay } from 'vuetify';
 import { useDebounceFn } from '@vueuse/core';
 import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   grupos: { type: Array, required: true },         // Array de { group_id, group_name, productos }
@@ -15,6 +19,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   showGraphs: { type: Boolean, default: false },
   withSuppliers: { type: Boolean, default: false },
+  selectedSupplierId: { type: [Number, String], default: null },
 });
 
 const emit = defineEmits(['page-change', 'product-scarce-toggled', 'open-comparator', 'remove-item']);
@@ -78,7 +83,7 @@ const onActionClick = async (item, action) => {
 
   if (action === 'add') {
     const quantity = getInputValue(item);
-    if (!item.best_supplier) {
+    if (!props.selectedSupplierId && !item.best_supplier) {
       emit('open-comparator', { item, quantity });
       return;
     }
@@ -143,26 +148,21 @@ const onActionClick = async (item, action) => {
 
     isProcessing.value[item.id] = 'adding';
     try {
-      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', {
+      const payload = {
         product_id: item.id,
         quantity: quantity,
-        product_supplier_id: item.best_supplier.product_suppliers_id
-      });
+      };
+
+      if (props.selectedSupplierId) {
+        payload.supplier_id = props.selectedSupplierId;
+      } else {
+        payload.product_supplier_id = item.best_supplier.product_suppliers_id;
+      }
+
+      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', payload);
       emit('remove-item', item.id);
     } catch (error) {
        console.error("Error adding to order:", error);
-    } finally {
-      delete isProcessing.value[item.id];
-    }
-  }
-
-  if (action === 'ignore') {
-    isProcessing.value[item.id] = 'ignoring';
-    try {
-      await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
-      emit('remove-item', item.id);
-    } catch (error) {
-       console.error("Error ignoring product:", error);
     } finally {
       delete isProcessing.value[item.id];
     }
@@ -241,7 +241,6 @@ const innerHeaders = computed(() => {
   base.push(
     { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
     { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
-    { title: "PREF", key: "preferencia_product", sortable: true, align: 'end', width: '70px' },
     { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
     { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
     { title: "Pedido", key: "solicitar", sortable: true, align: 'center', width: '100px' },
@@ -439,17 +438,6 @@ function rowClass(item) {
                     <VIcon size="18">tabler-shopping-cart-plus</VIcon>
                     <VTooltip activator="parent" location="top">Añadir a Orden</VTooltip>
                   </VBtn>
-                  <VBtn
-                    variant="tonal"
-                    color="error"
-                    size="30"
-                    icon
-                    :loading="isProcessing[item.id] === 'ignoring'"
-                    @click.stop="onActionClick(item, 'ignore')"
-                  >
-                    <VIcon size="18">tabler-square-x</VIcon>
-                    <VTooltip activator="parent" location="top">Rechazar (7 días)</VTooltip>
-                  </VBtn>
                 </div>
               </template>
             </VDataTable>
@@ -514,12 +502,6 @@ function rowClass(item) {
                       <div class="stat-item">
                         <span class="stat-label">Prom.</span>
                         <span class="stat-value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
-                      </div>
-                      <div class="stat-item">
-                        <span class="stat-label">PREF</span>
-                        <span class="stat-value" :class="item.preferencia_product > 0 ? 'text-primary font-weight-black' : ''">
-                          {{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) + '%' : '—' }}
-                        </span>
                       </div>
                     </div>
 
@@ -589,18 +571,6 @@ function rowClass(item) {
                         >
                           <VIcon icon="tabler-shopping-cart-plus" size="18" />
                           <VTooltip activator="parent" location="top">Añadir a Orden</VTooltip>
-                        </VBtn>
-
-                        <VBtn
-                          icon
-                          variant="tonal"
-                          color="error"
-                          size="32"
-                          :loading="isProcessing[item.id] === 'ignoring'"
-                          @click.stop="onActionClick(item, 'ignore')"
-                        >
-                          <VIcon icon="tabler-square-x" size="18" />
-                          <VTooltip activator="parent" location="top">Rechazar (7 días)</VTooltip>
                         </VBtn>
                       </div>
                     </div>
@@ -676,7 +646,7 @@ function rowClass(item) {
 /* Grid de Estadísticas */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   background: rgba(var(--v-border-color), 0.04);
   padding: 8px;

@@ -62,7 +62,7 @@ class IaAssistantReportService
         if ($tipo === 'combinado') {
             $procesado = $this->processCombinedReport($resultado, $filtros);
         } else {
-            $procesado = $this->processRegularReport($resultado, $tipo);
+            $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         }
 
         // 5. ORDENAMIENTO FINAL DINÁMICO (Garantiza coherencia total en la página actual)
@@ -221,13 +221,13 @@ class IaAssistantReportService
         
         if ($tipo === 'sales') {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
-            $procesado = $this->processRegularReport($resultado, $tipo);
+            $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         } else {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
             if ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
             } else {
-                $procesado = $this->processRegularReport($resultado, $tipo);
+                $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
             }
         }
 
@@ -393,14 +393,14 @@ class IaAssistantReportService
     /**
      * Procesa los reportes simples (Averages o Sales) sin cruces pesados
      */
-    private function processRegularReport($resultados, string $tipo)
+    private function processRegularReport($resultados, string $tipo, array $filtros = [])
     {
         // $resultados puede ser un Paginator o una Collection
         $isPaginator = $resultados instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator;
         $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
 
         // Hidratación masiva de AO para evitar N+1
-        $this->hydrateAutoOrderBulk($items);
+        $this->hydrateAutoOrderBulk($items, $filtros);
 
         $items->transform(function ($item) use ($tipo) {
             // La demanda ponderada en reportes simples es el valor base (ventas o promedio)
@@ -449,7 +449,7 @@ class IaAssistantReportService
         $ventasMap = collect($ventasDb)->keyBy('id');
 
         // Hidratación masiva de AO para evitar N+1
-        $this->hydrateAutoOrderBulk($items);
+        $this->hydrateAutoOrderBulk($items, $filtros);
 
         $items->transform(function ($item) use ($ventasMap) {
             // Buscar si tiene datos de venta en el mapa
@@ -634,7 +634,7 @@ class IaAssistantReportService
     /**
      * Hidrata masivamente las cantidades en Auto Order (AO) para evitar N+1 queries.
      */
-    private function hydrateAutoOrderBulk($products): void
+    private function hydrateAutoOrderBulk($products, array $filtros = []): void
     {
         $items = ($products instanceof LengthAwarePaginator) ? $products->getCollection() : collect($products);
         if ($items->isEmpty()) return;
@@ -642,7 +642,7 @@ class IaAssistantReportService
         $productIds = $items->pluck('id')->toArray();
 
         // Una sola consulta SQL para obtener todos los totales de AO
-        $aoData = \Illuminate\Support\Facades\DB::table('auto_order_details')
+        $query = \Illuminate\Support\Facades\DB::table('auto_order_details')
             ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
             ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
             ->select('product_suppliers.product_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total'))
@@ -650,8 +650,13 @@ class IaAssistantReportService
             ->whereIn('auto_orders.status', [0, 1]) // PENDING, SENT (No Completados/Recibidos)
             ->where('auto_order_details.status', 0)
             ->whereNull('auto_orders.deleted_at')
-            ->whereNull('auto_order_details.deleted_at')
-            ->groupBy('product_suppliers.product_id')
+            ->whereNull('auto_order_details.deleted_at');
+
+        if (!empty($filtros['supplier_id'])) {
+            $query->where('auto_orders.supplier_id', $filtros['supplier_id']);
+        }
+
+        $aoData = $query->groupBy('product_suppliers.product_id')
             ->get()
             ->keyBy('product_id');
 
@@ -733,15 +738,20 @@ class IaAssistantReportService
                 };
 
                 // 5. Sumar Auto Order (AO)
-                $totalAO = \Illuminate\Support\Facades\DB::table('auto_order_details')
+                $totalAOQuery = \Illuminate\Support\Facades\DB::table('auto_order_details')
                     ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
                     ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
                     ->whereIn('product_suppliers.product_id', $groupProductIds)
                     ->whereIn('auto_orders.status', [0, 1])
                     ->where('auto_order_details.status', 0)
                     ->whereNull('auto_orders.deleted_at')
-                    ->whereNull('auto_order_details.deleted_at')
-                    ->sum('auto_order_details.quantity');
+                    ->whereNull('auto_order_details.deleted_at');
+
+                if (!empty($filtros['supplier_id'])) {
+                    $totalAOQuery->where('auto_orders.supplier_id', $filtros['supplier_id']);
+                }
+
+                $totalAO = $totalAOQuery->sum('auto_order_details.quantity');
 
                 // 6. Calcular solicitar y demanda ponderada
                 if ($tipo === 'sales') {
@@ -862,15 +872,20 @@ class IaAssistantReportService
                     default    => $sumSalesAverage,
                 };
 
-                $totalAO = \Illuminate\Support\Facades\DB::table('auto_order_details')
+                $totalAOQuery = \Illuminate\Support\Facades\DB::table('auto_order_details')
                     ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
                     ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
                     ->whereIn('product_suppliers.product_id', $groupProductIds)
                     ->whereIn('auto_orders.status', [0, 1])
                     ->where('auto_order_details.status', 0)
                     ->whereNull('auto_orders.deleted_at')
-                    ->whereNull('auto_order_details.deleted_at')
-                    ->sum('auto_order_details.quantity');
+                    ->whereNull('auto_order_details.deleted_at');
+
+                if (!empty($filtros['supplier_id'])) {
+                    $totalAOQuery->where('auto_orders.supplier_id', $filtros['supplier_id']);
+                }
+
+                $totalAO = $totalAOQuery->sum('auto_order_details.quantity');
 
                 // 3. Calcular solicitar consolidado (demanda - stock - AO)
                 if ($tipo === 'sales') {

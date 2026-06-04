@@ -81,6 +81,16 @@ class Employee extends Model
     }
 
     /**
+     * Un empleado puede tener asignados muchos platos.
+     * Un plato puede estar asignado a muchos empleados.
+     */
+    public function dishes(): BelongsToMany
+    {
+        return $this->belongsToMany(Dish::class, 'employee_dish')
+            ->withTimestamps();
+    }
+
+    /**
      * Un empleado puede tener asignadas muchas actividades de limpieza.
      * Una actividad de limpieza puede estar asignada a muchos empleados.
      */

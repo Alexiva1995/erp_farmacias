@@ -105,6 +105,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["q"] = $request->q;
         }
 
+        if ($request->filled("supplier_id")) {
+            $filtros["supplier_id"] = $request->supplier_id;
+        }
+
         if ($request->filled("stock")) {
             $filtros["stock"] = $request->stock;
         }

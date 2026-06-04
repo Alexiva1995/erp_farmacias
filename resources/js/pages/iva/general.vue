@@ -6,8 +6,11 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref } from "vue";
 import { useDisplay } from "vuetify";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const { mobile } = useDisplay();
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 // Estados reactivos para las cards de resumen
 const debitoFiscal = ref(0);
@@ -360,7 +363,7 @@ onMounted(() => {
           </VCol>
 
           <!-- Retenciones (75% del Crédito Fiscal) -->
-          <VCol cols="auto" class="flex-grow-1">
+          <VCol v-if="!isRestaurant" cols="auto" class="flex-grow-1">
             <VCard class="stats-card border-0 overflow-hidden mb-2">
               <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.1), transparent)' }"></div>
               <VCardText class="pa-5 relative-content">

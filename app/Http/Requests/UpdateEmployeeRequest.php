@@ -43,6 +43,7 @@ class UpdateEmployeeRequest extends FormRequest
             'password' => 'nullable|string|min:3',
             'role' => 'nullable|integer|exists:roles,id',
             'total_package_usd' => 'nullable|numeric|min:0',
+            'created_at' => auth()->user()->role_id === 1 ? 'nullable|date_format:Y-m-d' : 'nullable|prohibited',
         ];
     }
 

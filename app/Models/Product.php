@@ -384,14 +384,10 @@ class Product extends Model
         return $resourceService->getExchangeRate($currencyCode);
     }
 
-    /**
-     * Accesor para el precio en Bolívares (BS).
-     * Calcula el precio de venta multiplicando por la tasa de cambio de BS.
-     */
     protected function priceBs(): Attribute
     {
         return Attribute::make(
-            get: fn() => round($this->sale_price * $this->getServiceExchangeRate('EUR'), 2),
+            get: fn() => round($this->sale_price * $this->getServiceExchangeRate('BS'), 2),
         );
     }
 

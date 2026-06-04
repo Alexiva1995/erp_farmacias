@@ -15,6 +15,8 @@ interface ExchangeRate
 
     public function consultOneBCV(): Model|null;
 
+    public function consultOneBINANCE(): Model|null;
+
     public function consultOneEUR(): Model|null;
 
     public function consultOneCOPC(): Model|null;

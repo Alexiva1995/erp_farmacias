@@ -158,7 +158,7 @@ class OrderQueryService
     private function getBaseQueryProduct(array $filters = []): QueryBuilder
     {
         $resourceService = app(\App\Services\Resources\ResourceService::class);
-        $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+        $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
         $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
 
         $generalSettings = DB::table('general_settings')->first();

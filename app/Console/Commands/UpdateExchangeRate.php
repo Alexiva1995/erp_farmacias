@@ -64,6 +64,43 @@ class UpdateExchangeRate extends Command
             $this->error("No se pudo obtener la tasa de Dólar BCV desde el API.");
         }
 
+        // ── Dólar Binance → BINANCE ─────────────────────────────────────────
+        $binanceRate = null;
+        try {
+            $responseBinance = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            ])->post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', [
+                "fiat" => "VES",
+                "page" => 1,
+                "rows" => 5,
+                "tradeType" => "BUY",
+                "asset" => "USDT",
+                "countries" => [],
+                "proMerchantAds" => false,
+                "shieldMerchantAds" => false,
+                "publisherType" => null,
+                "payTypes" => []
+            ]);
+
+            if ($responseBinance->successful() && isset($responseBinance->json('data')[0]['adv']['price'])) {
+                $binanceRate = floatval($responseBinance->json('data')[0]['adv']['price']);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Error consultando Binance P2P en comando: " . $e->getMessage());
+        }
+
+        if ($binanceRate && floatval($binanceRate) > 0) {
+            ExchangeRate::updateOrCreate(
+                ['currency_code' => 'BINANCE'],
+                ['rate' => floatval($binanceRate), 'source' => 'binance']
+            );
+            Cache::forget('resources.exchange_rate.BINANCE');
+            $this->info("Dólar Binance actualizado: {$binanceRate} BS");
+        } else {
+            $this->error("No se pudo obtener la tasa de Dólar Binance.");
+        }
+
         // ── Euro → BS (ve.dolarapi.com) ──────────────────────────────────────
         $eurToVes = null;
         try {
