@@ -28,6 +28,10 @@ class LotteryController extends Controller
             $filtros["laboratory_id"] = $request->laboratory_id;
         }
 
+        if ($request->filled("dish_id")) {
+            $filtros["dish_id"] = $request->dish_id;
+        }
+
         if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
             $filtros["fechaDesde_filtro"] = $request->fechaDesde_filtro;
             $filtros["fechaHasta_filtro"] = $request->fechaHasta_filtro;
@@ -53,6 +57,10 @@ class LotteryController extends Controller
 
         if ($request->filled("laboratory_id")) {
             $filtros["laboratory_id"] = $request->laboratory_id;
+        }
+
+        if ($request->filled("dish_id")) {
+            $filtros["dish_id"] = $request->dish_id;
         }
 
         if ($request->filled("fechaDesde_filtro") && $request->filled("fechaHasta_filtro")) {
