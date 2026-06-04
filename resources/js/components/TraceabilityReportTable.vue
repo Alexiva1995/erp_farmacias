@@ -1,8 +1,12 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatDateSimple } from "@/utils/formatters";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   sales: { type: Array, required: true },
@@ -109,7 +113,9 @@ const headers = [
                 <span v-if="item.product?.is_colombian_origin"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient || "" }}</span>
+                <span class="text-disabled truncate" style="max-inline-size: 150px;">
+                  {{ isRestaurant ? `${item.product?.presentation || ''} ${item.product?.unit_of_measure || ''}` : (item.product?.active_ingredient || "") }}
+                </span>
                 <span class="text-disabled">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 100px;">
                   {{ item.product?.laboratory?.name || 'S/L' }}
@@ -196,7 +202,9 @@ const headers = [
                   {{ item.product?.name || 'S/N' }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient || '' }}</span>
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                    {{ isRestaurant ? `${item.product?.presentation || ''} ${item.product?.unit_of_measure || ''}` : (item.product?.active_ingredient || '') }}
+                  </span>
                   <span class="text-disabled">|</span>
                   <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>

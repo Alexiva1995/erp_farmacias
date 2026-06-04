@@ -62,7 +62,8 @@ class QuotationActionService
             foreach ($validatedData['products'] as $itemData) {
                 $quotationProductsData[] = [
                     'quotation_id' => $quotation->id,
-                    'product_id' => $itemData['id'],
+                    'product_id' => $itemData['id'] ?? null,
+                    'dish_id' => $itemData['dish_id'] ?? null,
                     'units' => $itemData['quantity'],
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -73,7 +74,7 @@ class QuotationActionService
                 QuotationProduct::insert($quotationProductsData);
             }
             DB::commit();
-            $quotation->load(['products.product']);
+            $quotation->load(['products.product', 'products.dish']);
             return $quotation;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -84,7 +85,7 @@ class QuotationActionService
 
     public function getProducts(string $quotationId): ?Quotation
     {
-        $quotation = Quotation::with('products')->find($quotationId);
+        $quotation = Quotation::with(['products.product', 'products.dish'])->find($quotationId);
         return $quotation;
     }
 

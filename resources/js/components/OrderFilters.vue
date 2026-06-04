@@ -13,6 +13,9 @@ const props = defineProps({
   sortBy: { type: [String, undefined], default: undefined },
   orderBy: { type: String, default: "asc" },
   loading: { type: Boolean, default: false },
+  isRestaurant: { type: Boolean, default: false },
+  selectedCategory: [Number, String, null],
+  categories: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -21,6 +24,7 @@ const emit = defineEmits([
   "update:selectedOrigin",
   "update:stockStatusFilter",
   "update:isStrictSearch",
+  "update:selectedCategory",
   "clear",
   "clear-sort",
   "back",
@@ -47,6 +51,7 @@ const hasAdvancedFilters = computed(() => {
   return (
     props.selectedLaboratory !== null ||
     props.selectedOrigin !== null ||
+    props.selectedCategory !== null ||
     props.stockStatusFilter !== null ||
     props.isStrictSearch
   );
@@ -122,36 +127,55 @@ const handleBack = () => {
           @update:model-value="emit('update:stockStatusFilter', $event)"
         />
       </VCol>
-      <VCol cols="12" sm="4">
-        <VSelect
-          :model-value="props.selectedLaboratory"
-          placeholder="Laboratorio"
-          :items="props.laboratories"
-          item-title="name"
-          item-value="id"
-          density="compact"
-          variant="outlined"
-          clearable
-          hide-details
-          prepend-inner-icon="tabler-flask"
-          @update:model-value="emit('update:selectedLaboratory', $event)"
-        />
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VSelect
-          :model-value="props.selectedOrigin"
-          placeholder="Origen"
-          :items="props.origins"
-          item-title="name"
-          item-value="id"
-          density="compact"
-          variant="outlined"
-          clearable
-          hide-details
-          prepend-inner-icon="tabler-world"
-          @update:model-value="emit('update:selectedOrigin', $event)"
-        />
-      </VCol>
+      <template v-if="props.isRestaurant">
+        <VCol cols="12" sm="4">
+          <VSelect
+            :model-value="props.selectedCategory"
+            placeholder="Categoría"
+            :items="props.categories"
+            item-title="name"
+            item-value="id"
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+            prepend-inner-icon="tabler-category"
+            @update:model-value="emit('update:selectedCategory', $event)"
+          />
+        </VCol>
+      </template>
+      <template v-else>
+        <VCol cols="12" sm="4">
+          <VSelect
+            :model-value="props.selectedLaboratory"
+            placeholder="Laboratorio"
+            :items="props.laboratories"
+            item-title="name"
+            item-value="id"
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+            prepend-inner-icon="tabler-flask"
+            @update:model-value="emit('update:selectedLaboratory', $event)"
+          />
+        </VCol>
+        <VCol cols="12" sm="4">
+          <VSelect
+            :model-value="props.selectedOrigin"
+            placeholder="Origen"
+            :items="props.origins"
+            item-title="name"
+            item-value="id"
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+            prepend-inner-icon="tabler-world"
+            @update:model-value="emit('update:selectedOrigin', $event)"
+          />
+        </VCol>
+      </template>
     </template>
   </AppFilterBase>
 </template>

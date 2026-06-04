@@ -43,12 +43,22 @@ class ProductRepository
 
         // Subconsultas Base
         $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
-        $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
-                AND orders.status = "Completed")';
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+        if ($isRestaurant) {
+            $subqueryTotalSold = '(SELECT COALESCE(ABS(SUM(inventory_movements.quantity)), 0)
+                    FROM inventory_movements
+                    WHERE inventory_movements.product_id = products.id
+                    AND inventory_movements.quantity < 0
+                    AND inventory_movements.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
+                    )';
+        } else {
+            $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
+                    FROM order_details
+                    JOIN orders ON orders.id = order_details.order_id
+                    WHERE order_details.product_id = products.id
+                    AND orders.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
+                    AND orders.status = "Completed")';
+        }
 
         $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod

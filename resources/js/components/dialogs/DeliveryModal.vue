@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
 import { formatCurrency } from "@/utils/currencyFormatter";
@@ -963,7 +963,7 @@ defineExpose({ printReport });
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
+    rgb(var(--v-theme-gradient-end)) 100%
   );
 }
 

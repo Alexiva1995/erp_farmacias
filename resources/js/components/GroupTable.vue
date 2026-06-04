@@ -1,6 +1,10 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useAbility } from "@casl/vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const { can } = useAbility();
 
@@ -159,7 +163,7 @@ const handleItemsPerPageChange = (val) => {
                 <tr>
                   <th class="text-super-xs font-weight-black uppercase text-center" style="width: 60px;">ID</th>
                   <th class="text-super-xs font-weight-black uppercase">Nombre del Producto</th>
-                  <th class="text-super-xs font-weight-black uppercase">Laboratorio</th>
+                  <th class="text-super-xs font-weight-black uppercase">{{ isRestaurant ? 'Marca' : 'Laboratorio' }}</th>
                   <th class="text-super-xs font-weight-black uppercase text-center" style="width: 100px;">S. Actual</th>
                 </tr>
               </thead>
@@ -176,7 +180,10 @@ const handleItemsPerPageChange = (val) => {
                         {{ product.name }}
                         <VChip v-if="product.iva == 1" size="x-super-small" color="success" variant="flat" class="ms-1 font-weight-black">G</VChip>
                       </span>
-                      <span class="text-super-xs text-disabled uppercase truncate" style="max-inline-size: 300px;">{{ product.active_ingredient || 'Sin componente' }}</span>
+                      <span v-if="!isRestaurant" class="text-super-xs text-disabled uppercase truncate" style="max-inline-size: 300px;">{{ product.active_ingredient || 'Sin componente' }}</span>
+                      <span v-if="isRestaurant && product.presentation" class="text-super-xs text-disabled uppercase truncate" style="max-inline-size: 300px;">
+                        {{ product.presentation }} {{ product.unit_of_measure ? `(${product.unit_of_measure})` : '' }}
+                      </span>
                     </div>
                   </td>
                   <td>

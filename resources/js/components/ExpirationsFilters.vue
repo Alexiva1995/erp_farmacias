@@ -3,9 +3,13 @@
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import dayjs from "dayjs";
 import { computed, ref } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useAbility } from "@casl/vue";
 
 const { can } = useAbility();
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   searchQuery:        { type: String, required: true },
@@ -158,7 +162,7 @@ const applyQuickFilter = (filter) => {
           v-model="laboratoryModel"
           :items="props.laboratories"
           :loading="props.loading"
-          placeholder="Laboratorio"
+          :placeholder="isRestaurant ? 'Marca' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable

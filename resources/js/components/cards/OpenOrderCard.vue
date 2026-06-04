@@ -100,7 +100,10 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
-
+  isRestaurant: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -119,6 +122,7 @@ const emit = defineEmits([
   "company-discount-selected",
   "add-pack",
   "edit-cliente",
+  "add-note",
 ]);
 
 const discountOptions = computed(() => {
@@ -465,7 +469,7 @@ const handleClickProductItem = (product) => {
 
   Swal.fire({
     title: "¿Estás seguro?",
-    text: "¡Desea eliminar el producto!",
+    text: product.is_dish ? "¡Desea eliminar el plato!" : "¡Desea eliminar el producto!",
     icon: "warning",
     showCancelButton: true,
     confirmButtonColor: "#3085d6",
@@ -474,7 +478,32 @@ const handleClickProductItem = (product) => {
     cancelButtonText: "Cancelar",
   }).then(async (result) => {
     if (result.isConfirmed) {
-      emit("remove-item", product.product_id);
+      if (product.is_dish) {
+        emit("remove-item", null, product.order_detail_id);
+      } else {
+        emit("remove-item", product.product_id);
+      }
+    }
+  });
+};
+const handleAddNote = (product) => {
+  Swal.fire({
+    title: 'Anotaciones del Plato',
+    input: 'text',
+    inputLabel: 'Ej. Sin cebolla, sin salsa, etc.',
+    inputValue: product.notes || '',
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    cancelButtonText: 'Cancelar',
+    inputValidator: (value) => {
+      // Opcional, permitimos nota vacía para borrar anotación
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      emit('add-note', {
+        product: product,
+        notes: result.value || ''
+      });
     }
   });
 };
@@ -617,7 +646,7 @@ const handleIncrement = (product) => {
     emit("add-pack", { pack: packSimulado, quantity: 1 });
   } else {
     emit("update-quantity", {
-      productId: product.product_id,
+      productId: product.is_dish ? null : product.product_id,
       quantity: product.selectedQuantity + 1,
       orderDetailId: product.order_detail_id,
     });
@@ -627,7 +656,7 @@ const handleIncrement = (product) => {
 const handleDecrement = (product) => {
   if (product.selectedQuantity > 1 && !product.pack_id) {
     emit("update-quantity", {
-      productId: product.product_id,
+      productId: product.is_dish ? null : product.product_id,
       quantity: product.selectedQuantity - 1,
       orderDetailId: product.order_detail_id,
     });
@@ -926,7 +955,7 @@ const getIva = (product, currency) => {
                     style="white-space: pre-wrap;"
                   >
                     <span class="text-disabled">{{ product.active_ingredient || '—' }}</span>
-                    <template v-if="!product.pack_id">
+                    <template v-if="!product.pack_id && !product.is_dish">
                       <span class="text-disabled mx-1">|</span>
                       <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                         {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
@@ -934,8 +963,26 @@ const getIva = (product, currency) => {
                     </template>
                   </div>
 
+                  <!-- Botón de Anotación (Solo Platos) -->
+                  <div v-if="product.is_dish" class="d-flex align-center ml-auto">
+                    <VBtn
+                      icon="tabler-note"
+                      size="24"
+                      variant="text"
+                      :color="product.notes ? 'success' : 'grey'"
+                      @click="handleAddNote(product)"
+                      title="Agregar anotaciones"
+                    />
+                  </div>
+
+                  <!-- Mostrar nota si existe -->
+                  <div v-if="product.notes" class="text-super-xs font-weight-bold text-success w-100 mt-1 d-flex align-center gap-1">
+                    <VIcon icon="tabler-message" size="12" />
+                    <span>Nota: {{ product.notes }}</span>
+                  </div>
+
                   <!-- Desglose de Precios Inline (Inmediatamente después del título) -->
-                  <div class="d-flex align-center gap-1 flex-wrap">
+                  <div class="d-flex align-center gap-1 flex-wrap w-100">
                     <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
                        <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
                        <span class="text-super-xs font-weight-black text-secondary">
@@ -1037,29 +1084,54 @@ const getIva = (product, currency) => {
 
            <!-- Acciones Rápidas (En la misma línea) -->
            <div class="d-flex align-center gap-2 mt-1">
-              <VBtn
-                v-if="!props.orderReserved"
-                color="warning"
-                variant="tonal"
-                height="40"
-                class="rounded-lg font-weight-950 px-4"
-                @click="handleReserveOrder"
-              >
-                <VIcon start icon="tabler-hourglass" size="18" />
-                <span class="d-none d-sm-inline">RESERVAR</span>
-              </VBtn>
-              
-              <VBtn
-                color="primary"
-                variant="flat"
-                height="40"
-                min-inline-size="160"
-                class="rounded-lg font-weight-950 px-6 elevation-2"
-                @click="handleCompleteOrder"
-              >
-                <VIcon start icon="tabler-circle-check" size="20" />
-                COBRAR AHORA
-              </VBtn>
+              <template v-if="isRestaurant">
+                <VBtn
+                  color="primary"
+                  variant="flat"
+                  height="40"
+                  min-inline-size="160"
+                  class="rounded-lg font-weight-950 px-6 elevation-2"
+                  @click="handleReserveOrder"
+                >
+                  <VIcon start icon="tabler-device-floppy" size="20" />
+                  GUARDAR
+                </VBtn>
+                <VBtn
+                  color="success"
+                  variant="tonal"
+                  height="40"
+                  class="rounded-lg font-weight-950 px-4"
+                  @click="handleCompleteOrder"
+                >
+                  <VIcon start icon="tabler-circle-check" size="18" />
+                  COBRAR / CERRAR
+                </VBtn>
+              </template>
+              <template v-else>
+                <VBtn
+                  v-if="!props.orderReserved"
+                  color="warning"
+                  variant="tonal"
+                  height="40"
+                  class="rounded-lg font-weight-950 px-4"
+                  @click="handleReserveOrder"
+                >
+                  <VIcon start icon="tabler-hourglass" size="18" />
+                  <span class="d-none d-sm-inline">RESERVAR</span>
+                </VBtn>
+                
+                <VBtn
+                  color="primary"
+                  variant="flat"
+                  height="40"
+                  min-inline-size="160"
+                  class="rounded-lg font-weight-950 px-6 elevation-2"
+                  @click="handleCompleteOrder"
+                >
+                  <VIcon start icon="tabler-circle-check" size="20" />
+                  COBRAR AHORA
+                </VBtn>
+              </template>
            </div>
         </div>
      </VCardText>

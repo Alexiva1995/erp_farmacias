@@ -1,7 +1,8 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import ProductFilters from "../ProductFilters.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
@@ -9,6 +10,9 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   selectedGroup: { type: Object, required: true },
 });
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const emit = defineEmits(["update:modelValue"]);
 
@@ -322,7 +326,8 @@ onMounted(() => {
                     <VChip v-if="item.iva == 1" size="x-small" color="success" variant="flat" density="compact" class="ms-1 font-weight-black">G</VChip>
                   </span>
                   <div class="d-flex align-center gap-x-1 text-super-xs mt-1">
-                    <span class="text-disabled truncate">{{ item.active_ingredient || "Sin Componente" }}</span>
+                    <span v-if="!isRestaurant" class="text-disabled truncate">{{ item.active_ingredient || "Sin Componente" }}</span>
+                    <span v-else class="text-disabled truncate">{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
                     <span class="text-disabled">|</span>
                     <span class="text-primary font-weight-black text-uppercase truncate">
                       {{ item.laboratory?.name || 'S/L' }}
@@ -389,7 +394,8 @@ onMounted(() => {
                     {{ item.name }}
                   </h3>
                   <div class="text-super-xs text-disabled truncate mt-1 uppercase font-weight-bold">
-                    {{ item.laboratory?.name || 'S/L' }} | {{ item.active_ingredient || "S/C" }}
+                    {{ item.laboratory?.name || 'S/L' }} | <span v-if="!isRestaurant">{{ item.active_ingredient || "S/C" }}</span>
+                    <span v-else>{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
                   </div>
                 </div>
               </div>
@@ -473,7 +479,7 @@ onMounted(() => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: var(--brand-gradient) !important;
 }
 
 .detail-dialog-card {

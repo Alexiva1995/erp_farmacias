@@ -1,4 +1,4 @@
-<script setup lang="js">
+﻿<script setup lang="js">
 import { VDateInput } from "vuetify/labs/VDateInput";
 
 const props = defineProps({
@@ -389,7 +389,7 @@ function formatearFechaCompleta(fechaInput) {
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
+    rgb(var(--v-theme-gradient-end)) 100%
   );
 }
 

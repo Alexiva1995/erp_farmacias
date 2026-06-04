@@ -61,11 +61,14 @@ class Product extends Model
         'is_scarce',
         'is_deleted',
         'is_active',
+        'no_pvp',
         'stock',
         'ignore_until',
         'manual_solicitar',
         'is_unified_group',
         'is_novaventa',
+        'presentation',
+        'unit_of_measure',
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -85,6 +88,7 @@ class Product extends Model
         'is_scarce' => 'boolean',
         'ignore_until' => 'datetime',
         'is_unified_group' => 'boolean',
+        'no_pvp' => 'boolean',
     ];
 
 

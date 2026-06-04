@@ -450,7 +450,7 @@ const getProductColor = (index) => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: var(--brand-gradient) !important;
 }
 
 .header-indicator {

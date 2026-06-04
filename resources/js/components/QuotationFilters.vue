@@ -12,6 +12,9 @@ const props = defineProps({
   origins:            { type: Array,   default: () => [] },
   stockStatusFilter:  [Boolean, null],
   isStrictSearch:     [Boolean, false],
+  isRestaurant:       { type: Boolean, default: false },
+  selectedCategory:   [Number, String, null],
+  categories:         { type: Array,   default: () => [] },
 });
 
 const emit = defineEmits([
@@ -20,6 +23,7 @@ const emit = defineEmits([
   "update:selectedOrigin",
   "update:stockStatusFilter",
   "update:isStrictSearch",
+  "update:selectedCategory",
   "clear",
   "sort",
   "clear-sort",
@@ -127,7 +131,7 @@ const handleClearAndSort = () => {
 
     <template #advanced-filters>
       <!-- Laboratorio -->
-      <VCol cols="12" sm="4">
+      <VCol v-if="!props.isRestaurant" cols="12" sm="4">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
@@ -143,7 +147,7 @@ const handleClearAndSort = () => {
       </VCol>
 
       <!-- Origen -->
-      <VCol cols="12" sm="4">
+      <VCol v-if="!props.isRestaurant" cols="12" sm="4">
         <VAutocomplete
           :model-value="props.selectedOrigin"
           :items="props.origins"
@@ -155,6 +159,22 @@ const handleClearAndSort = () => {
           hide-details
           prepend-inner-icon="tabler-world"
           @update:model-value="emit('update:selectedOrigin', $event)"
+        />
+      </VCol>
+
+      <!-- Categoría de Platos si es Restaurante -->
+      <VCol v-if="props.isRestaurant" cols="12" sm="4">
+        <VSelect
+          :model-value="props.selectedCategory"
+          :items="props.categories"
+          placeholder="Categoría"
+          item-title="name"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-category"
+          @update:model-value="emit('update:selectedCategory', $event)"
         />
       </VCol>
 

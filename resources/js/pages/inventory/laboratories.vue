@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import AppFilterBase from "@/components/AppFilterBase.vue"
@@ -7,6 +7,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue"
 import { toast } from "@/plugins/sweetalert"
 import Swal from "sweetalert2"
 import { useAbility } from "@casl/vue"
+import { useBrandingStore } from "@/stores/useBrandingStore"
 
 const { can } = useAbility()
 
@@ -36,13 +37,23 @@ const isGroupDialogOpen = ref(false)
 const labForm = ref({ id: null, name: '', group_id: null })
 const groupForm = ref({ id: null, name: '', laboratory_ids: [] })
 
-const headers = [
-  { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
-  { title: "Laboratorio", key: "name", sortable: true },
-  { title: "Grupo Corporativo", key: "group.name", sortable: false },
-  { title: "Productos", key: "products_count", sortable: true, align: 'center' },
-  { title: "Acciones", key: "actions", sortable: false, align: 'right' },
-]
+const brandingStore = useBrandingStore()
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant')
+
+const headers = computed(() => {
+  const list = [
+    { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
+    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true },
+  ];
+  if (!isRestaurant.value) {
+    list.push({ title: "Grupo Corporativo", key: "group.name", sortable: false });
+  }
+  list.push(
+    { title: "Productos", key: "products_count", sortable: true, align: 'center' },
+    { title: "Acciones", key: "actions", sortable: false, align: 'right' }
+  );
+  return list;
+})
 
 const groupHeaders = [
   { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
@@ -95,8 +106,10 @@ const goToProducts = (lab) => {
 
 const deleteLab = async (id) => {
   const result = await Swal.fire({
-    title: "¿Borrar laboratorio?",
-    text: "Los productos asociados quedarán sin laboratorio asignado.",
+    title: isRestaurant.value ? "¿Borrar marca?" : "¿Borrar laboratorio?",
+    text: isRestaurant.value 
+      ? "Los productos asociados quedarán sin marca asignada." 
+      : "Los productos asociados quedarán sin laboratorio asignado.",
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, borrar",
@@ -109,7 +122,7 @@ const deleteLab = async (id) => {
   if (result.isConfirmed) {
     try {
       await axios.delete(`/inventory/laboratories-manage/${id}`)
-      toast.success("Laboratorio eliminado. Productos desvinculados.")
+      toast.success(isRestaurant.value ? "Marca eliminada. Productos desvinculados." : "Laboratorio eliminado. Productos desvinculados.")
       fetchLabs()
     } catch (error) { toast.error("Error al eliminar") }
   }
@@ -174,13 +187,12 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 
 <template>
   <div>
-    <!-- Tabs principales -->
     <VTabs v-model="activeTab" class="mb-4" color="primary">
       <VTab value="laboratories">
-        <VIcon icon="tabler-flask" class="me-2" size="18" />
-        Laboratorios
+        <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" class="me-2" size="18" />
+        {{ isRestaurant ? 'Marcas' : 'Laboratorios' }}
       </VTab>
-      <VTab value="groups">
+      <VTab v-if="!isRestaurant" value="groups">
         <VIcon icon="tabler-layers-intersect" class="me-2" size="18" />
         Grupos Corporativos
         <VChip class="ms-2" size="x-small" color="primary" variant="tonal">{{ groups.length }}</VChip>
@@ -193,7 +205,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
         <AppFilterBase
           v-model:search="searchQuery"
           :show-add="true"
-          add-button-text="Añadir Laboratorio"
+          :add-button-text="isRestaurant ? 'Añadir Marca' : 'Añadir Laboratorio'"
           @clear="searchQuery = ''; fetchLabs()"
           @add="openLabEdit()"
         />
@@ -244,7 +256,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                       <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
                       <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
                     </div>
-                    <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
+                    <VChip v-if="item.group && !isRestaurant" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
                   </div>
                   <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
                     <span class="text-base font-weight-black text-info">{{ item.products_count }} <small>SKUS</small></span>
@@ -329,16 +341,16 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
       </VWindowItem>
     </VWindow>
 
-    <!-- DIÁLOGO LABORATORIO -->
+    <!-- DIÁLOGO LABORATORIO/MARCA -->
     <VDialog v-model="isLabDialogOpen" max-width="500">
       <VCard class="rounded-xl shadow-xl border-0">
         <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
           <VAvatar color="primary" variant="tonal" class="me-4" size="48">
-            <VIcon icon="tabler-flask" size="24" />
+            <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="24" />
           </VAvatar>
           <div>
-            <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nuevo' }} Laboratorio</div>
-            <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">Información del fabricante</div>
+            <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nueva' }} {{ isRestaurant ? 'Marca' : 'Laboratorio' }}</div>
+            <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">{{ isRestaurant ? 'Información de la marca' : 'Información del fabricante' }}</div>
           </div>
           <VSpacer />
           <VBtn icon="tabler-x" variant="text" color="disabled" @click="isLabDialogOpen = false" />
@@ -349,22 +361,24 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
               <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Datos Generales</p>
               <AppTextField
                 v-model="labForm.name"
-                label="Nombre del Laboratorio"
-                placeholder="Ej: Bayer"
+                :label="isRestaurant ? 'Nombre de la Marca' : 'Nombre del Laboratorio'"
+                :placeholder="isRestaurant ? 'Ej: Nestlé' : 'Ej: Bayer'"
                 persistent-placeholder
                 class="mb-4"
               />
-              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación Corporativa</p>
-              <AppAutocomplete
-                v-model="labForm.group_id"
-                :items="groups"
-                item-title="name"
-                item-value="id"
-                label="Grupo de Laboratorio"
-                placeholder="Seleccionar grupo..."
-                clearable
-                persistent-placeholder
-              />
+              <template v-if="!isRestaurant">
+                <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación Corporativa</p>
+                <AppAutocomplete
+                  v-model="labForm.group_id"
+                  :items="groups"
+                  item-title="name"
+                  item-value="id"
+                  label="Grupo de Laboratorio"
+                  placeholder="Seleccionar grupo..."
+                  clearable
+                  persistent-placeholder
+                />
+              </template>
             </VCol>
           </VRow>
         </VCardText>
@@ -373,7 +387,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
           <VSpacer />
           <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isLabDialogOpen = false">CANCELAR</VBtn>
           <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveLab">
-            GUARDAR {{ labForm.id ? 'CAMBIOS' : 'LABORATORIO' }}
+            GUARDAR {{ labForm.id ? 'CAMBIOS' : (isRestaurant ? 'MARCA' : 'LABORATORIO') }}
           </VBtn>
         </VCardActions>
       </VCard>

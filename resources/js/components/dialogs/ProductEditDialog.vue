@@ -5,9 +5,13 @@ import { useAuthStore } from "@/stores/auth";
 import { calculateStock, formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const authStore = useAuthStore();
 const { xs } = useDisplay();
+const brandingStore = useBrandingStore();
+
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -47,7 +51,7 @@ const createLaboratory = async () => {
       name: newLabName.value,
     });
 
-    toast.success("Laboratorio creado con éxito");
+    toast.success(isRestaurant.value ? "Marca creada con éxito" : "Laboratorio creado con éxito");
     emit("laboratory-created", response.data.laboratory);
     formData.value.laboratory_id = response.data.laboratory.id;
     isLabDialogVisible.value = false;
@@ -58,7 +62,7 @@ const createLaboratory = async () => {
         error.response.data.errors?.name?.[0] || "Error de validación",
       );
     } else {
-      toast.error("Error al crear el laboratorio");
+      toast.error(isRestaurant.value ? "Error al crear la marca" : "Error al crear el laboratorio");
     }
   } finally {
     isSavingLab.value = false;
@@ -122,11 +126,11 @@ const imagePreviewUrl = computed(() => {
   return null;
 });
 
-const groupProductsHeaders = [
+const groupProductsHeaders = computed(() => [
   { title: "Nombre", key: "name", sortable: false },
-  { title: "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "laboratory.name", sortable: false },
   { title: "Stock", key: "lots", sortable: false },
-];
+]);
 
 // calculateStock eliminado (ahora se importa)
 
@@ -152,6 +156,7 @@ watch(
       clonedProduct.is_novaventa = clonedProduct.is_novaventa ? 1 : 0;
       clonedProduct.is_scarce = clonedProduct.is_scarce ? 1 : 0;
       clonedProduct.is_unified_group = clonedProduct.is_unified_group ? 1 : 0;
+      clonedProduct.no_pvp = clonedProduct.no_pvp ? 1 : 0;
       formData.value = clonedProduct;
     } else {
       formData.value = {
@@ -171,8 +176,11 @@ watch(
         is_novaventa: 0,
         is_scarce: 0,
         is_unified_group: 0,
+        no_pvp: 0,
         lots: [],
         photo_url: null,
+        presentation: null,
+        unit_of_measure: null,
       };
     }
     imageFile.value = null;
@@ -391,7 +399,7 @@ const submitForm = () => {
                 >
                   <VForm @submit.prevent="submitForm">
                     <VRow dense>
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" :md="isRestaurant ? 12 : 6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre del Producto</span>
                         <AppTextField
                           v-model="formData.name"
@@ -402,7 +410,7 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol cols="12" md="6">
+                      <VCol v-if="!isRestaurant" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Principio Activo</span>
                         <AppTextField
                           v-model="formData.active_ingredient"
@@ -413,8 +421,8 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol cols="12" md="4">
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Laboratorio</span>
+                      <VCol cols="12" :md="isRestaurant ? 6 : 4">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant ? 'Marca' : 'Laboratorio' }}</span>
                         <AppSelect
                           v-model="formData.laboratory_id"
                           placeholder="SELECCIONAR..."
@@ -440,7 +448,7 @@ const submitForm = () => {
                           </template>
                         </AppSelect>
                       </VCol>
-                      <VCol cols="12" md="4">
+                      <VCol v-if="!isRestaurant" cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Origen</span>
                         <AppSelect
                           v-model="formData.origin_id"
@@ -456,7 +464,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol cols="12" md="4">
+                      <VCol cols="12" :md="isRestaurant ? 6 : 4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Categoría</span>
                         <AppSelect
                           v-model="formData.category_id"
@@ -468,6 +476,40 @@ const submitForm = () => {
                           density="comfortable"
                           clearable
                           :error-messages="formErrors.category_id"
+                          class="rounded-lg font-weight-black"
+                          hide-details="auto"
+                        />
+                      </VCol>
+                      <VCol v-if="isRestaurant" cols="12" md="6">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Presentación</span>
+                        <AppTextField
+                          v-model="formData.presentation"
+                          placeholder="Ej: 30, 200, 1"
+                          type="number"
+                          step="any"
+                          variant="outlined"
+                          density="comfortable"
+                          :error-messages="formErrors.presentation"
+                          class="rounded-lg font-weight-black"
+                          hide-details="auto"
+                        />
+                      </VCol>
+                      <VCol v-if="isRestaurant" cols="12" md="6">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Unidad de Medida</span>
+                        <AppSelect
+                          v-model="formData.unit_of_measure"
+                          placeholder="SELECCIONAR..."
+                          :items="[
+                            { title: 'Gramos (g)', value: 'g' },
+                            { title: 'Mililitros (ml)', value: 'ml' },
+                            { title: 'Unidades (und)', value: 'und' }
+                          ]"
+                          item-title="title"
+                          item-value="value"
+                          variant="outlined"
+                          density="comfortable"
+                          clearable
+                          :error-messages="formErrors.unit_of_measure"
                           class="rounded-lg font-weight-black"
                           hide-details="auto"
                         />
@@ -555,107 +597,129 @@ const submitForm = () => {
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
-                    <VCol cols="12" sm="4" md="2">
-                      <VCard
-                        variant="flat"
-                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
-                      >
-                        <VSwitch
-                          v-model="formData.iva"
-                          label="IVA"
-                          :true-value="1"
-                          :false-value="0"
-                          color="success"
-                          density="compact"
-                          hide-details
-                          class="font-weight-black scale-90"
-                        />
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="4" md="2">
-                      <VCard
-                        variant="flat"
-                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
-                      >
-                        <VSwitch
-                          v-model="formData.is_novaventa"
-                          label="Novaventa"
-                          :true-value="1"
-                          :false-value="0"
-                          color="secondary"
-                          density="compact"
-                          hide-details
-                          class="font-weight-black scale-90"
-                        />
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="4" md="2">
-                      <VCard
-                        variant="flat"
-                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
-                      >
-                        <VSwitch
-                          v-model="formData.psychotropic"
-                          label="Psicotrópico"
-                          :true-value="1"
-                          :false-value="0"
-                          color="warning"
-                          density="compact"
-                          hide-details
-                          class="font-weight-black scale-90"
-                        />
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="4" md="2">
-                      <VCard
-                        variant="flat"
-                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
-                      >
-                        <VSwitch
-                          v-model="formData.is_colombian_origin"
-                          label="COL"
-                          :true-value="1"
-                          :false-value="0"
-                          color="primary"
-                          density="compact"
-                          hide-details
-                          class="font-weight-black scale-90"
-                        />
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="4" md="2">
-                      <VCard
-                        variant="flat"
-                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
-                      >
-                        <VSwitch
-                          v-model="formData.is_scarce"
-                          label="Redundante"
-                          :true-value="1"
-                          :false-value="0"
-                          color="error"
-                          density="compact"
-                          hide-details
-                          class="font-weight-black scale-90"
-                        />
-                      </VCard>
-                    </VCol>
-                    <VCol cols="12" sm="4" md="2">
-                      <VCard
-                        variant="flat"
-                        class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center"
-                      >
-                        <VSwitch
-                          v-model="formData.is_unified_group"
-                          label="Unificado"
-                          :true-value="1"
-                          :false-value="0"
-                          color="info"
-                          density="compact"
-                          hide-details
-                          class="font-weight-black scale-90"
-                        />
-                      </VCard>
+                    <VCol cols="12">
+                      <div class="d-flex flex-wrap gap-3 w-100 mb-2">
+                        <VCard
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.iva"
+                            label="IVA"
+                            :true-value="1"
+                            :false-value="0"
+                            color="success"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+
+                        <VCard
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.is_novaventa"
+                            label="Novaventa"
+                            :true-value="1"
+                            :false-value="0"
+                            color="secondary"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+
+                        <VCard
+                          v-if="!isRestaurant"
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.psychotropic"
+                            label="Psicotrópico"
+                            :true-value="1"
+                            :false-value="0"
+                            color="warning"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+
+                        <VCard
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.is_colombian_origin"
+                            label="COL"
+                            :true-value="1"
+                            :false-value="0"
+                            color="primary"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+
+                        <VCard
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.is_scarce"
+                            label="Redundante"
+                            :true-value="1"
+                            :false-value="0"
+                            color="error"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+
+                        <VCard
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.is_unified_group"
+                            label="Unificado"
+                            :true-value="1"
+                            :false-value="0"
+                            color="info"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+
+                        <VCard
+                          v-if="isRestaurant"
+                          variant="flat"
+                          class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                          style="min-width: 140px; max-width: 220px;"
+                        >
+                          <VSwitch
+                            v-model="formData.no_pvp"
+                            label="NO PVP"
+                            :true-value="1"
+                            :false-value="0"
+                            color="error"
+                            density="compact"
+                            hide-details
+                            class="font-weight-black scale-90"
+                          />
+                        </VCard>
+                      </div>
                     </VCol>
 
                     <VCol v-if="!isNewProduct" cols="12" md="6" class="mt-6">
@@ -1012,7 +1076,7 @@ const submitForm = () => {
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-subtitle-1 font-weight-black leading-tight mb-0 uppercase">
-              Nuevo Laboratorio
+              {{ isRestaurant ? 'Nueva Marca' : 'Nuevo Laboratorio' }}
             </h2>
             <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">Registro Maestro</span>
           </div>
@@ -1033,10 +1097,10 @@ const submitForm = () => {
           variant="flat"
           class="pa-5 bg-white rounded-xl border shadow-sm"
         >
-          <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre Oficial del Laboratorio</span>
+          <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant ? 'Nombre Oficial de la Marca' : 'Nombre Oficial del Laboratorio' }}</span>
           <VTextField
             v-model="newLabName"
-            placeholder="EJ: LABORATORIOS GOVIMAR"
+            :placeholder="isRestaurant ? 'EJ: MARCA NESTLÉ' : 'EJ: LABORATORIOS GOVIMAR'"
             variant="outlined"
             density="comfortable"
             autofocus
@@ -1086,12 +1150,12 @@ const submitForm = () => {
 
 <style scoped>
 .header-gradient {
-  background:
-    linear-gradient(
-      135deg,
-      rgb(var(--v-theme-primary)) 0%,
-      #1e5128 100%
-    );
+  background: linear-gradient(135deg, rgb(var(--v-theme-secondary)) 0%, rgb(var(--v-theme-primary)) 100%) !important;
+}
+
+.header-gradient h2,
+.header-gradient span {
+  color: #ffffff !important;
 }
 
 

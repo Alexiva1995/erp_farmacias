@@ -2,7 +2,12 @@
 // Filtros Lotes de Productos (Inventario)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, onMounted, ref, watch } from "vue";
+
+// defineProps and defineEmits code unchanged...
+// ... (rest of props) ...
+
 
 const props = defineProps({
   searchQuery:        { type: String,  required: true },
@@ -53,6 +58,8 @@ const sortOptions = [
 ];
 
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 
@@ -95,7 +102,7 @@ watch(() => currentUser.value?.id, (newVal) => { if(newVal) loadSavedSort(); }, 
 const hasAdvancedFilters = computed(() => {
   return !!(
     props.selectedLaboratory ||
-    props.selectedOrigin ||
+    (!isRestaurant.value && props.selectedOrigin) ||
     props.stockStatusFilter !== null ||
     props.startDate ||
     props.endDate
@@ -160,13 +167,13 @@ const hasAdvancedFilters = computed(() => {
     </template>
 
     <template #advanced-filters>
-      <!-- Laboratorio -->
+       <!-- Laboratorio -->
       <VCol cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          placeholder="Laboratorio"
+          :placeholder="isRestaurant ? 'Marca' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable
@@ -178,7 +185,7 @@ const hasAdvancedFilters = computed(() => {
       </VCol>
 
       <!-- Origen -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol v-if="!isRestaurant" cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.selectedOrigin"
           placeholder="Origen"

@@ -1,6 +1,8 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatDateSimple } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { computed } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -11,8 +13,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options", "adjust-lots"]);
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
-const headers = [
+const headers = computed(() => [
   { 
     title: "ID", 
     key: "id", 
@@ -27,7 +31,7 @@ const headers = [
     align: "center" 
   },
   { 
-    title: "Laboratorio", 
+    title: isRestaurant.value ? "Marca" : "Laboratorio", 
     key: "laboratory.name", 
     sortable: true,
     visible: false,
@@ -50,7 +54,7 @@ const headers = [
     headerClass: "d-none d-sm-table-cell"
   },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
-];
+]);
 
 const getNextExpiration = (lots) => {
   if (!lots || lots.length === 0) return null;
@@ -109,8 +113,12 @@ const getNextExpiration = (lots) => {
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || "" }}</span>
-                <span class="text-disabled mx-1">|</span>
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || "" }}</span>
+                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
+                <span v-if="isRestaurant && item.presentation" class="text-disabled truncate" style="max-inline-size: 180px;">
+                  {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                </span>
+                <span v-if="isRestaurant && item.presentation" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
@@ -193,8 +201,12 @@ const getNextExpiration = (lots) => {
                   {{ item.name || 'S/N' }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '' }}</span>
-                  <span class="text-disabled">|</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '' }}</span>
+                  <span v-if="!isRestaurant" class="text-disabled">|</span>
+                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                  </span>
+                  <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
                   <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>

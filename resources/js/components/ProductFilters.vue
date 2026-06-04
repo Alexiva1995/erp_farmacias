@@ -3,6 +3,7 @@
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
 import { computed, ref, onMounted, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   searchQuery:        String,
@@ -70,6 +71,8 @@ const sortOptions = [
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const getStorageKey = () => `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
@@ -178,13 +181,13 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Laboratorio -->
+      <!-- Laboratorio / Marca -->
       <VCol cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          placeholder="Laboratorio"
+          :placeholder="isRestaurant ? 'Marca' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable
@@ -196,7 +199,7 @@ const showExport = computed(() => props.mode === 'products');
       </VCol>
 
       <!-- Origen -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol v-if="!isRestaurant" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedOrigin"
           :items="props.origins"

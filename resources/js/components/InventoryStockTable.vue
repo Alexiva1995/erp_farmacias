@@ -1,6 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
 const props = defineProps({
@@ -14,6 +15,9 @@ const props = defineProps({
   viewType: { type: String, default: "individual" },
 });
 
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+
 const isGroup = computed(() => props.viewType === "group");
 
 const sortByModel = computed(() => {
@@ -24,17 +28,22 @@ const sortByModel = computed(() => {
 
 const emit = defineEmits(["update:options"]);
 
-const headers = [
-  { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
-  { title: "Producto / Grupo", key: "name", sortable: true, width: "400px" },
-  { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
-  { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
-  { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
-  { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
-  { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
-  { title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' },
-  { title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' },
-];
+const headers = computed(() => {
+  const list = [
+    { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
+    { title: "Producto / Grupo", key: "name", sortable: true, width: "400px" },
+    { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
+    { title: isRestaurant.value ? "Consumido" : "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
+    { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
+    { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
+    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
+  ];
+  if (!isRestaurant.value) {
+    list.push({ title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' });
+  }
+  list.push({ title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' });
+  return list;
+});
 
 const getDiffColor = (val) => {
   const num = parseFloat(val);
@@ -81,7 +90,7 @@ const getDiffColor = (val) => {
                 <span class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || "" }}</span>
                 <span class="text-disabled">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                  {{ item.laboratory?.name || 'S/L' }}
+                  {{ item.laboratory?.name || (isRestaurant ? 'S/M' : 'S/L') }}
                 </span>
               </div>
               <div v-else class="text-super-xs mt-1 text-disabled"> Consolidado de grupo </div>
@@ -167,7 +176,7 @@ const getDiffColor = (val) => {
                 <div v-if="!isGroup" class="d-flex align-center flex-wrap gap-x-1 text-super-xs mt-1 text-disabled font-weight-bold">
                   <span class="truncate" style="max-width: 130px;">{{ item.active_ingredient || 'S/G' }}</span>
                   <span>•</span>
-                  <span class="text-primary text-uppercase truncate" style="max-width: 100px;">{{ item.laboratory?.name || 'S/L' }}</span>
+                  <span class="text-primary text-uppercase truncate" style="max-width: 100px;">{{ item.laboratory?.name || (isRestaurant ? 'S/M' : 'S/L') }}</span>
                 </div>
                 <div v-else class="text-super-xs mt-1 text-disabled font-weight-bold uppercase">Consolidado Grupal</div>
               </div>
@@ -215,7 +224,7 @@ const getDiffColor = (val) => {
                     <span class="text-xs font-weight-black">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</span>
                   </div>
                </div>
-               <div class="d-flex flex-column align-end">
+               <div v-if="!isRestaurant" class="d-flex flex-column align-end">
                   <span class="text-super-xs text-disabled uppercase font-weight-black">A.O.</span>
                   <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small" density="compact" class="font-weight-black">
                      {{ item.totalQuantityInAutoOrder || 0 }}

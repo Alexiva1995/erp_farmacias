@@ -68,6 +68,8 @@ class UpdateProductRequest extends FormRequest
                 'image',
                 'max:2048',
             ],
+            'presentation' => 'nullable|numeric|min:0',
+            'unit_of_measure' => 'nullable|string|in:g,ml,und',
         ];
     }
 }

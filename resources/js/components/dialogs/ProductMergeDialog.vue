@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, watch } from "vue";
@@ -557,7 +557,7 @@ const handleMerge = async () => {
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    #1e5128 100%
+    rgb(var(--v-theme-gradient-end)) 100%
   );
 }
 

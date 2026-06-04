@@ -93,19 +93,13 @@ export default [
             to: 'tpv-company-offer',
           },
           {
-            title: 'Medico',
-
-            to: 'tpv-doctor-offer',
-          },
-          {
-            title: 'Recipe',
-
-            to: 'tpv-prescription-offer',
-          },
-          {
             title: 'Caducidad',
 
             to: 'tpv-expiration-offer',
+          },
+          {
+            title: 'Generales',
+            to: 'tpv-general-offer',
           },
         ],
       },

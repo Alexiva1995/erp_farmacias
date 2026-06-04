@@ -1,4 +1,7 @@
 <script setup>
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { computed } from "vue";
+
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -12,6 +15,9 @@ const emits = defineEmits([
   "product-click",
   "verify-product",
 ]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const headers = [
   { title: "ID", key: "product_id", align: "center", width: "80px" },
@@ -93,14 +99,14 @@ const formatOperatorName = (user) => {
             <div class="d-flex flex-column text-normal-white">
               <span
                 class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase"
-                :class="{ 'text-warning': item.product.psychotropic }"
+                :class="{ 'text-warning': !isRestaurant && item.product.psychotropic }"
               >
                 {{ item.product.name.toUpperCase() }}
                 <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs mt-1">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.active_ingredient }}</span>
-                <span class="text-disabled mx-1">|</span>
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.active_ingredient }}</span>
+                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                   {{ item.product.laboratory?.name || 'S/L' }}
                 </span>
@@ -177,8 +183,8 @@ const formatOperatorName = (user) => {
                   {{ item.product?.name.toUpperCase() }}
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient }}</span>
-                  <span class="text-disabled">|</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient }}</span>
+                  <span v-if="!isRestaurant" class="text-disabled">|</span>
                   <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.product.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>

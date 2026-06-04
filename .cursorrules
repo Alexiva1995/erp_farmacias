@@ -30,4 +30,4 @@
 - **Pull Requests:** Solo crear Pull Requests cuando el usuario lo solicite explícitamente.
 
 ## 5. CONTROL DE COMPILACIÓN Y ASSETS
-- **ESTRICTO:** No ejecutar comandos de compilación o instalación de paquetes como `npm run build`, `npm run dev`, `npm install`, `pnpm build`, `pnpm dev` o `pnpm install` bajo ninguna circunstancia, a menos que el usuario lo solicite de manera explícita y directa en su mensaje.
+- **PROHIBICIÓN ABSOLUTA:** Queda terminantemente prohibido ejecutar `npm run build`, `vite build`, `pnpm build` o cualquier comando de compilación bajo cualquier circunstancia. No se debe intentar compilar producción.

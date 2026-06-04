@@ -2,9 +2,12 @@
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useAbility } from "@casl/vue";
 
 const { can } = useAbility();
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   modelValue: {
@@ -39,7 +42,7 @@ const emit = defineEmits([
   "expire-lot",
 ]);
 
-const headers = [
+const headers = computed(() => [
   { 
     title: "ID", 
     key: "product.id", 
@@ -48,7 +51,7 @@ const headers = [
   },
   { title: "Producto", key: "product.name", sortable: true },
   { 
-    title: "Laboratorio", 
+    title: isRestaurant.value ? "Marca" : "Laboratorio", 
     key: "laboratory_name", 
     sortable: true,
     visible: false,
@@ -58,7 +61,7 @@ const headers = [
   { title: "Exp.", key: "expiration_date", sortable: true },
   { title: "Stock", key: "quantity", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
-];
+]);
 
 const selected = computed({
   get: () => props.modelValue,
@@ -139,7 +142,8 @@ const formatDate = (dateString) => {
                 item.product?.name || ""
               }}</span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product?.active_ingredient || "" }}</span>
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product?.active_ingredient || "" }}</span>
+                <span v-else class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}</span>
                 <span class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                   {{ item.product?.laboratory?.name || 'S/L' }}
@@ -234,7 +238,8 @@ const formatDate = (dateString) => {
                 </div>
                 
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient }}</span>
+                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient }}</span>
+                  <span v-else class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}</span>
                   <span class="text-disabled">|</span>
                   <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
                 </div>

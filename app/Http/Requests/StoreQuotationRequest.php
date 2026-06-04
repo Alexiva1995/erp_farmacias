@@ -28,7 +28,8 @@ class StoreQuotationRequest extends FormRequest
             'client_id' => ['nullable', 'numeric', 'exists:clients,id'],
             'currency' => ['required'],
             'products' => ['required', 'array', 'min:1'],
-            'products.*.id' => ['required', 'exists:products,id'],
+            'products.*.id' => ['nullable', 'required_without:products.*.dish_id', 'exists:products,id'],
+            'products.*.dish_id' => ['nullable', 'required_without:products.*.id', 'exists:dishes,id'],
             'products.*.quantity' => ['required', 'integer', 'min:1'],
         ];
     }
@@ -42,6 +43,7 @@ class StoreQuotationRequest extends FormRequest
             'products.required' => 'La cotización debe contener al menos.',
             'products.min' => 'La cotización debe contener al menos un producto.',
             'products.*.id.exists' => 'Uno de los productos seleccionados no es válido.',
+            'products.*.dish_id.exists' => 'Uno de los platillos seleccionados no es válido.',
         ];
     }
 }

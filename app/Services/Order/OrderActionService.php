@@ -99,7 +99,11 @@ class OrderActionService
                         'product' => function ($q) {
                             $q->with('laboratory')
                                 ->withSum('lots', 'quantity');
-                        }
+                        },
+                        // Cargar relación de plato para ítems de menú de restaurante
+                        'dish' => function ($q) {
+                            $q->with('category');
+                        },
                     ]);
                 }
             ];
@@ -132,6 +136,58 @@ class OrderActionService
     {
         DB::beginTransaction();
         try {
+            // HANDLE DISHES (Only for restaurant mode)
+            $dishId = $validatedData['dish_id'] ?? null;
+            if ($dishId) {
+                $dish = \App\Models\Dish::with('ingredients')->findOrFail($dishId);
+                $requestedQuantity = (int)$validatedData['quantity'];
+                
+                // Derivar precio de designated_price
+                $price_usd = $dish->designated_price ?? 0;
+                $targetCurrency = $order->currency;
+                if ($targetCurrency === 'USD') {
+                    $unitPriceAtOrder = $price_usd;
+                } elseif ($targetCurrency === 'COP') {
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+                    $unitPriceAtOrder = ceil(($price_usd * $tasaCop) / 100) * 100;
+                } elseif ($targetCurrency === 'BS') {
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                    $unitPriceAtOrder = round($price_usd * $tasaBs, 2);
+                } else {
+                    $unitPriceAtOrder = $price_usd;
+                }
+
+                // 1. Remove existing detail for this dish
+                $order->details()->where('dish_id', $dishId)->delete();
+
+                if ($requestedQuantity === 0) {
+                    $order->updateTotals();
+                    DB::commit();
+                    return new OrderDetail(['dish_id' => $dishId, 'quantity' => 0]);
+                }
+
+
+                // 3. Create detail
+                $orderItem = $order->details()->create([
+                    'dish_id' => $dishId,
+                    'quantity' => $requestedQuantity,
+                    'price' => $unitPriceAtOrder,
+                    'unit_cost' => $dish->cost_price ?? 0,
+                    'unit_price_usd' => $price_usd,
+                    'product_type' => 'dish',
+                    'notes' => $validatedData['notes'] ?? null,
+                ]);
+
+                $order->updateTotals();
+                DB::commit();
+                // Recargar desde BD para obtener los campos de descuento actualizados por applyGeneralPromotions
+                $orderItem = $orderItem->fresh(['dish' => function ($q) {
+                    $q->with('category');
+                }]);
+                return $orderItem;
+            }
 
             $product = Product::findOrFail($validatedData['product_id']);
             Log::info('--- ADD_ORDER_ITEM START ---');
@@ -379,12 +435,17 @@ class OrderActionService
             }
 
             // Fallback if transaction commited but no items created (qty 0 case handled above)
-            return new OrderDetail(['product_id' => $validatedData['product_id'], 'quantity' => 0]);
+            return new OrderDetail([
+                'product_id' => $validatedData['product_id'] ?? null,
+                'dish_id' => $validatedData['dish_id'] ?? null,
+                'quantity' => 0
+            ]);
         } catch (InsufficientStockException $e) {
             DB::rollBack();
             Log::warning("Intento de agregar o actualizar productos con stock insuficiente: " . $e->getMessage(), [
                 'order_id' => $order->id,
-                'product_id' => $validatedData['product_id'],
+                'product_id' => $validatedData['product_id'] ?? null,
+                'dish_id' => $validatedData['dish_id'] ?? null,
                 'requested_quantity' => $validatedData['quantity'],
                 'available_stock' => $e->getAvailableStock(),
             ]);
@@ -415,10 +476,28 @@ class OrderActionService
             $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
 
             foreach ($order->details as $item) {
-                $product = $item->product;
-                
-                // Aplicamos el Patrón Estrategia para obtener el precio base de venta según divisa
-                $priceToSet = $pricingStrategy->calculatePrice($product, $item);
+                if ($item->dish_id) {
+                    $usdPrice = $item->unit_price_usd;
+                    if ($targetCurrency === 'USD') {
+                        $priceToSet = $usdPrice;
+                    } elseif ($targetCurrency === 'COP') {
+                        $resourceService = app(\App\Services\Resources\ResourceService::class);
+                        $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+                        $rawCop = $usdPrice * $tasaCop;
+                        $priceToSet = ceil($rawCop / 100) * 100;
+                    } elseif ($targetCurrency === 'BS') {
+                        $resourceService = app(\App\Services\Resources\ResourceService::class);
+                        $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                        $priceToSet = round($usdPrice * $tasaBs, 2);
+                    } else {
+                        $priceToSet = $usdPrice;
+                    }
+                } else {
+                    $product = $item->product;
+                    
+                    // Aplicamos el Patrón Estrategia para obtener el precio base de venta según divisa
+                    $priceToSet = $pricingStrategy->calculatePrice($product, $item);
+                }
 
                 // Preservar y re-aplicar descuento si existe
                 if ($item->discount_percentage > 0 && $item->discount_type) {
@@ -499,6 +578,17 @@ class OrderActionService
         if (!$fiscalexist) {
             $detailsForHash = [];
             foreach ($order->details as $detail) {
+                // Los platos de restaurante no tienen producto asociado (product es null)
+                if ($detail->product_type === 'dish') {
+                    $dish = $detail->dish;
+                    $priceBs = $detail->price_bs ?? (float)$detail->price;
+                    $quantity = $detail->quantity;
+                    $itemSubtotal = $priceBs * $quantity;
+                    $exemptAmount += $itemSubtotal;
+                    $detailsForHash[] = "dish_{$detail->dish_id}:{$quantity}:" . number_format($priceBs, 4, '.', '');
+                    continue;
+                }
+
                 $product = $detail->product;
                 $quantity = $detail->quantity;
 
@@ -574,9 +664,27 @@ class OrderActionService
 
             foreach ($order->details as $detail) {
                 $unitPriceInOrderCurrency = $detail->unit_cost;
+                $quantity = $detail->quantity;
+
+                // Los platos de restaurante no tienen producto, tratar como exentos
+                if ($detail->product_type === 'dish') {
+                    $dish = $detail->dish;
+                    $priceBs = $detail->price_bs ?? (float)$detail->price;
+                    FiscalHistoryDetail::create([
+                        'fiscal_history_id' => $fiscalHistory->id,
+                        'product_id'        => null,
+                        'product_name'      => $dish?->name ?? 'Plato',
+                        'quantity'          => $quantity,
+                        'vat_status'        => 0,
+                        'exempt_amount'     => $priceBs,
+                        'iva_amount'        => 0,
+                        'total_amount'      => $priceBs,
+                        'big_amount'        => $priceBs,
+                    ]);
+                    continue;
+                }
 
                 $product = $detail->product;
-                $quantity = $detail->quantity;
 
                 // Usar el precio en BS mandado desde el frontend para el desglose
                 $priceBs = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)));
@@ -586,7 +694,6 @@ class OrderActionService
                     $priceBs = $priceBs / 1.16;
                 }
 
-                $quantity = $detail->quantity;
                 $isTaxable = ($product->iva == 1);
                 $ivaAmountUnit = $isTaxable ? ($priceBs * 0.16) : 0;
                 $totalItemUnit = $priceBs + $ivaAmountUnit;
@@ -594,14 +701,14 @@ class OrderActionService
                 // Insertamos en la tabla de detalles
                 FiscalHistoryDetail::create([
                     'fiscal_history_id' => $fiscalHistory->id,
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'quantity' => $quantity,
-                    'vat_status' => $isTaxable ? 1 : 0,
-                    'exempt_amount' => !$isTaxable ? $priceBs : 0,
-                    'iva_amount' => $ivaAmountUnit,
-                    'total_amount' => $totalItemUnit,
-                    'big_amount' => $totalItemUnit,
+                    'product_id'        => $product->id,
+                    'product_name'      => $product->name,
+                    'quantity'          => $quantity,
+                    'vat_status'        => $isTaxable ? 1 : 0,
+                    'exempt_amount'     => !$isTaxable ? $priceBs : 0,
+                    'iva_amount'        => $ivaAmountUnit,
+                    'total_amount'      => $totalItemUnit,
+                    'big_amount'        => $totalItemUnit,
                 ]);
             }
 
@@ -754,8 +861,22 @@ class OrderActionService
             $orderId->has_multiple_currencies = (count($uniqueCurrencies) > 1) ? 1 : 0;
 
             // Bloqueo anti-overselling: cargar y bloquear los lotes de los productos de la orden
-            $orderId->load('details.product');
-            $productIds = $orderId->details->pluck('product_id')->unique()->filter()->values()->all();
+            // También cargamos la relación dish para los ítems de tipo plato (restaurante)
+            $orderId->load(['details.product', 'details.dish']);
+            $productIds = $orderId->details->where('product_type', '!=', 'dish')->pluck('product_id')->unique()->filter()->values()->all();
+            
+            // Si hay platos, extraer todos los product_id de sus ingredientes
+            $dishDetails = $orderId->details->where('product_type', 'dish');
+            if ($dishDetails->isNotEmpty()) {
+                $dishIds = $dishDetails->pluck('dish_id')->unique()->all();
+                $ingredientProductIds = DB::table('dish_ingredients')
+                    ->whereIn('dish_id', $dishIds)
+                    ->pluck('product_id')
+                    ->unique()
+                    ->all();
+                $productIds = array_unique(array_merge($productIds, $ingredientProductIds));
+            }
+
             $lotsByProduct = collect();
             if (!empty($productIds)) {
                 $lockedLots = ProductLot::whereIn('product_id', $productIds)
@@ -767,75 +888,155 @@ class OrderActionService
             }
 
             foreach ($orderId->details as $detail) {
-                $quantityToReduce = (int) $detail->quantity;
-                $quantityExpiration = 0;
-                $lots = $lotsByProduct->get($detail->product_id, collect())->sortBy('expiration_date')->values();
-
-                foreach ($lots as $lot) {
-                    if ($quantityToReduce <= 0) {
-                        break;
-                    }
-
-                    $taken = 0;
-                    //  dd($lot->quantity >= $quantityToReduce);
-                    if ($lot->quantity >= $quantityToReduce) {
-                        $taken = $quantityToReduce;
-                        $lot->quantity -= $quantityToReduce;
-                        ProductLot::withoutEvents(function () use ($lot) {
-                            $lot->save();
-                        });
-                        $quantityToReduce = 0;
-                    } else {
-                        $taken = $lot->quantity;
-                        $quantityToReduce -= $lot->quantity;
-                        $lot->quantity = 0;
-                        ProductLot::withoutEvents(function () use ($lot) {
-                            $lot->save();
-                        });
-                    }
-
-                    // Registrar el movimiento de inventario con el lote exacto vendido
-                    \App\Models\InventoryMovement::create([
-                        'product_id' => $detail->product_id,
-                        'product_lot_id' => $lot->id,
-                        'movement_type' => 'sale',
-                        'quantity' => -$taken,
-                        'invoice_id' => null,
-                        'supplier_id' => null,
-                        'order_id' => $orderId->id,
-                        'user_id' => $orderId->seller_id,
-                        'stock_before' => $lot->quantity + $taken,
-                        'stock_after' => $lot->quantity,
-                        'movement_date' => \Carbon\Carbon::now(),
-                    ]);
-
-
-                    // Check if this lot is expiring (within 6 months)
-                    if ($lot->expiration_date) {
-                        $expDate = Carbon::parse($lot->expiration_date);
-                        $sixMonthsLimit = Carbon::now()->addMonths(6);
-                        if ($expDate->lt($sixMonthsLimit)) {
-                            $quantityExpiration += $taken;
+                if ($detail->product_type === 'dish') {
+                    $dish = \App\Models\Dish::with('ingredients')->findOrFail($detail->dish_id);
+                    foreach ($dish->ingredients as $ingredient) {
+                        $quantityToReduce = $ingredient->pivot->portion * $detail->quantity;
+                        $lots = $lotsByProduct->get($ingredient->id, collect())->sortBy('expiration_date')->values();
+                        
+                        foreach ($lots as $lot) {
+                            if ($quantityToReduce <= 0) {
+                                break;
+                            }
+                            
+                            $taken = 0;
+                            if ($lot->quantity >= $quantityToReduce) {
+                                $taken = $quantityToReduce;
+                                $lot->quantity -= $quantityToReduce;
+                                ProductLot::withoutEvents(function () use ($lot) {
+                                    $lot->save();
+                                });
+                                $quantityToReduce = 0;
+                            } else {
+                                $taken = $lot->quantity;
+                                $quantityToReduce -= $lot->quantity;
+                                $lot->quantity = 0;
+                                ProductLot::withoutEvents(function () use ($lot) {
+                                    $lot->save();
+                                });
+                            }
+                            
+                            // Registrar el movimiento de inventario con el lote exacto vendido
+                            \App\Models\InventoryMovement::create([
+                                'product_id' => $ingredient->id,
+                                'product_lot_id' => $lot->id,
+                                'movement_type' => 'sale',
+                                'quantity' => -$taken,
+                                'invoice_id' => null,
+                                'supplier_id' => null,
+                                'order_id' => $orderId->id,
+                                'user_id' => $orderId->seller_id,
+                                'stock_before' => $lot->quantity + $taken,
+                                'stock_after' => $lot->quantity,
+                                'movement_date' => \Carbon\Carbon::now(),
+                            ]);
+                        }
+                        
+                        if ($quantityToReduce > 0) {
+                            $fallbackLot = ProductLot::where('product_id', $ingredient->id)->first();
+                            if (!$fallbackLot) {
+                                $fallbackLot = ProductLot::create([
+                                    'product_id' => $ingredient->id,
+                                    'lot_number' => 'S/L',
+                                    'expiration_date' => \Carbon\Carbon::now()->addYears(5)->toDateString(),
+                                    'quantity' => 0,
+                                    'unit_cost' => $ingredient->unit_cost ?? 0,
+                                ]);
+                            }
+                            
+                            $fallbackLot->quantity -= $quantityToReduce;
+                            ProductLot::withoutEvents(function () use ($fallbackLot) {
+                                $fallbackLot->save();
+                            });
+                            
+                            \App\Models\InventoryMovement::create([
+                                'product_id' => $ingredient->id,
+                                'product_lot_id' => $fallbackLot->id,
+                                'movement_type' => 'sale',
+                                'quantity' => -$quantityToReduce,
+                                'invoice_id' => null,
+                                'supplier_id' => null,
+                                'order_id' => $orderId->id,
+                                'user_id' => $orderId->seller_id,
+                                'stock_before' => $fallbackLot->quantity + $quantityToReduce,
+                                'stock_after' => $fallbackLot->quantity,
+                                'movement_date' => \Carbon\Carbon::now(),
+                            ]);
+                            
+                            $quantityToReduce = 0;
                         }
                     }
-                }
+                } else {
+                    $quantityToReduce = (int) $detail->quantity;
+                    $quantityExpiration = 0;
+                    $lots = $lotsByProduct->get($detail->product_id, collect())->sortBy('expiration_date')->values();
 
-                if ($quantityToReduce > 0) {
-                    $product = $detail->product;
-                    $productName = $product?->name ?? 'Producto';
-                    $available = $product ? (int) $product->lots->sum('quantity') : 0;
-                    throw new InsufficientStockException(
-                        $productName,
-                        $available,
-                        (int) $detail->quantity,
-                        "No hay suficiente stock para '{$productName}'. Disponible: {$available}, solicitado: {$detail->quantity}."
-                    );
-                }
+                    foreach ($lots as $lot) {
+                        if ($quantityToReduce <= 0) {
+                            break;
+                        }
 
-                // Save quantity_expiration
-                if ($quantityExpiration > 0) {
-                    $detail->quantity_expiration = $quantityExpiration;
-                    $detail->save();
+                        $taken = 0;
+                        //  dd($lot->quantity >= $quantityToReduce);
+                        if ($lot->quantity >= $quantityToReduce) {
+                            $taken = $quantityToReduce;
+                            $lot->quantity -= $quantityToReduce;
+                            ProductLot::withoutEvents(function () use ($lot) {
+                                $lot->save();
+                            });
+                            $quantityToReduce = 0;
+                        } else {
+                            $taken = $lot->quantity;
+                            $quantityToReduce -= $lot->quantity;
+                            $lot->quantity = 0;
+                            ProductLot::withoutEvents(function () use ($lot) {
+                                $lot->save();
+                            });
+                        }
+
+                        // Registrar el movimiento de inventario con el lote exacto vendido
+                        \App\Models\InventoryMovement::create([
+                            'product_id' => $detail->product_id,
+                            'product_lot_id' => $lot->id,
+                            'movement_type' => 'sale',
+                            'quantity' => -$taken,
+                            'invoice_id' => null,
+                            'supplier_id' => null,
+                            'order_id' => $orderId->id,
+                            'user_id' => $orderId->seller_id,
+                            'stock_before' => $lot->quantity + $taken,
+                            'stock_after' => $lot->quantity,
+                            'movement_date' => \Carbon\Carbon::now(),
+                        ]);
+
+
+                        // Check if this lot is expiring (within 6 months)
+                        if ($lot->expiration_date) {
+                            $expDate = Carbon::parse($lot->expiration_date);
+                            $sixMonthsLimit = Carbon::now()->addMonths(6);
+                            if ($expDate->lt($sixMonthsLimit)) {
+                                $quantityExpiration += $taken;
+                            }
+                        }
+                    }
+
+                    if ($quantityToReduce > 0) {
+                        $product = $detail->product;
+                        $productName = $product?->name ?? 'Producto';
+                        $available = $product ? (int) $product->lots->sum('quantity') : 0;
+                        throw new InsufficientStockException(
+                            $productName,
+                            $available,
+                            (int) $detail->quantity,
+                            "No hay suficiente stock para '{$productName}'. Disponible: {$available}, solicitado: {$detail->quantity}."
+                        );
+                    }
+
+                    // Save quantity_expiration
+                    if ($quantityExpiration > 0) {
+                        $detail->quantity_expiration = $quantityExpiration;
+                        $detail->save();
+                    }
                 }
             }
 
@@ -1056,14 +1257,19 @@ class OrderActionService
         DB::beginTransaction();
         try {
 
-            $alreadyReserved = Order::where('seller_id', $sellerId)
-                ->where('status', Order::RESERVED)
-                ->where('id', '!=', $order->id)
-                ->lockForUpdate()
-                ->exists();
+            $generalSettings = DB::table('general_settings')->first();
+            $isRestaurant = $generalSettings && $generalSettings->business_type === 'restaurant';
 
-            if ($alreadyReserved) {
-                throw new \Exception("Ya tienes una orden reservada. No puedes tener dos al mismo tiempo.");
+            if (!$isRestaurant) {
+                $alreadyReserved = Order::where('seller_id', $sellerId)
+                    ->where('status', Order::RESERVED)
+                    ->where('id', '!=', $order->id)
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($alreadyReserved) {
+                    throw new \Exception("Ya tienes una orden reservada. No puedes tener dos al mismo tiempo.");
+                }
             }
 
             $order->status = Order::RESERVED;
@@ -1266,5 +1472,227 @@ class OrderActionService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Aplica las promociones generales a los ítems de la orden.
+     * Soporta: 2x1, 3x2, 50% en el segundo, y precio fijo por categoría.
+     */
+    public function applyGeneralPromotions(Order $order): void
+    {
+        // 1. Obtener todas las promociones generales activas
+        $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
+        if ($promotions->isEmpty()) {
+            // Si no hay promociones activas, restaurar precios normales si tenían descuento general anterior
+            $details = $order->details()->with(['product', 'dish'])->get();
+            foreach ($details as $detail) {
+                if ($detail->discount_type === 'general') {
+                    $detail->discount_percentage = null;
+                    $detail->discount_type = null;
+                    // Restaurar precio base según la moneda actual
+                    $this->restoreBasePrice($order, $detail);
+                    $detail->save();
+                }
+            }
+            return;
+        }
+
+        // Cargar los detalles de la orden
+        $details = $order->details()->with(['product', 'dish'])->get();
+
+        // 2. Primero restaurar los detalles que tengan descuento general viejo, para tener base limpia
+        foreach ($details as $detail) {
+            if ($detail->discount_type === 'general') {
+                $detail->discount_percentage = null;
+                $detail->discount_type = null;
+                $this->restoreBasePrice($order, $detail);
+            }
+        }
+
+        // 3. Procesar Precio Fijo (fixed_price) primero, ya que altera el precio base del ítem
+        $fixedPricePromos = $promotions->where('type', 'fixed_price');
+        if ($fixedPricePromos->isNotEmpty()) {
+            foreach ($details as $detail) {
+                // Obtener ID de categoría del producto o plato
+                $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
+                if (!$categoryId) continue;
+
+                foreach ($fixedPricePromos as $promo) {
+                    if (is_null($promo->fixed_price)) continue;
+                    if (is_array($promo->categories) && in_array($categoryId, $promo->categories)) {
+                        // Aplicar el precio fijo especificado en la promoción. 
+                        // El precio fijo viene en USD, hay que convertir a la moneda de la orden.
+                        $priceInOrderCurrency = $promo->fixed_price;
+                        $usdPrice = $promo->fixed_price;
+
+                        if ($order->currency === 'COP') {
+                            $resourceService = app(\App\Services\Resources\ResourceService::class);
+                            $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+                            $priceInOrderCurrency = ceil(($promo->fixed_price * $tasaCop) / 100) * 100;
+                        } elseif ($order->currency === 'BS') {
+                            $resourceService = app(\App\Services\Resources\ResourceService::class);
+                            $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                            $priceInOrderCurrency = round($promo->fixed_price * $tasaBs, 2);
+                        }
+
+                        $detail->price = $priceInOrderCurrency;
+                        $detail->unit_price_usd = $usdPrice;
+                        // Marcar que fue afectado por promoción general
+                        $detail->discount_percentage = 0; // Opcional, solo para indicar que aplica promo
+                        $detail->discount_type = 'general';
+                        $detail->discount_source_id = $promo->id;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 4. Agrupar los detalles por categoría
+        $detailsByCategory = [];
+        foreach ($details as $detail) {
+            $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
+            if (!$categoryId) continue;
+            $detailsByCategory[$categoryId][] = $detail;
+        }
+
+        // 5. Procesar ofertas de volumen (2x1, 3x2, 50_second)
+        $volumePromos = $promotions->whereIn('type', ['2x1', '3x2', '50_second']);
+
+        foreach ($detailsByCategory as $categoryId => $categoryDetails) {
+            // Buscar si hay una promoción aplicable a esta categoría
+            $applicablePromo = null;
+            foreach ($volumePromos as $promo) {
+                if (is_array($promo->categories) && in_array($categoryId, $promo->categories)) {
+                    $applicablePromo = $promo;
+                    break;
+                }
+            }
+
+            if (!$applicablePromo) continue;
+
+            // Desglosar la cantidad de ítems a nivel individual de unidad (para poder ordenar por precio individual)
+            $flatItems = [];
+            foreach ($categoryDetails as $detail) {
+                $qty = (int) $detail->quantity;
+                // Usamos el precio unitario del ítem
+                $unitPrice = (float) $detail->price;
+                $unitPriceUsd = (float) $detail->unit_price_usd;
+
+                for ($i = 0; $i < $qty; $i++) {
+                    $flatItems[] = [
+                        'detail' => $detail,
+                        'price' => $unitPrice,
+                        'unit_price_usd' => $unitPriceUsd,
+                        'discount_percentage' => 0,
+                    ];
+                }
+            }
+
+            // Ordenar de mayor a menor precio
+            usort($flatItems, function ($a, $b) {
+                return $b['price'] <=> $a['price'];
+            });
+
+            $totalItemsCount = count($flatItems);
+
+            if ($applicablePromo->type === '2x1') {
+                // Paga el de mayor valor y el de menor de la misma categoría sale gratis
+                // Agrupamos en pares: (1ero, 2do), (3ero, 4to), etc.
+                for ($i = 0; $i < $totalItemsCount; $i += 2) {
+                    if ($i + 1 < $totalItemsCount) {
+                        // El segundo elemento de la pareja (menor o igual valor) sale gratis (100% descuento)
+                        $flatItems[$i + 1]['discount_percentage'] = 100;
+                    }
+                }
+            } elseif ($applicablePromo->type === '3x2') {
+                // Paga los dos más caros, el tercero (más barato) sale gratis
+                // Agrupamos en tríos: (1ero, 2do, 3ero), (4to, 5to, 6to), etc.
+                for ($i = 0; $i < $totalItemsCount; $i += 3) {
+                    if ($i + 2 < $totalItemsCount) {
+                        // El tercer elemento del trío (menor valor) sale gratis (100% descuento)
+                        $flatItems[$i + 2]['discount_percentage'] = 100;
+                    }
+                }
+            } elseif ($applicablePromo->type === '50_second') {
+                // Paga el más caro, el segundo (más barato) sale al 50%
+                // Agrupamos en parejas: (1ero, 2do), (3ero, 4to), etc.
+                for ($i = 0; $i < $totalItemsCount; $i += 2) {
+                    if ($i + 1 < $totalItemsCount) {
+                        // El segundo elemento de la pareja (menor valor) sale con 50% de descuento
+                        $flatItems[$i + 1]['discount_percentage'] = 50;
+                    }
+                }
+            }
+
+            // Consolidar los descuentos de vuelta en los objetos de detalle correspondientes
+            // Dado que un mismo OrderDetail puede tener cantidad > 1 y las unidades individuales pueden tener descuentos diferentes,
+            // si un detalle se divide en "unidades con descuento" y "unidades sin descuento",
+            // calculamos el descuento promedio ponderado para esa línea de detalle.
+            $discountsByDetailId = [];
+            foreach ($flatItems as $item) {
+                $detailId = $item['detail']->id;
+                if (!isset($discountsByDetailId[$detailId])) {
+                    $discountsByDetailId[$detailId] = [];
+                }
+                $discountsByDetailId[$detailId][] = $item['discount_percentage'];
+            }
+
+            foreach ($categoryDetails as $detail) {
+                $itemDiscounts = $discountsByDetailId[$detail->id] ?? [];
+                if (empty($itemDiscounts)) continue;
+
+                // Promedio de descuento de las unidades de este detalle
+                $avgDiscount = array_sum($itemDiscounts) / count($itemDiscounts);
+
+                if ($avgDiscount > 0) {
+                    // Primero restaurar el precio original antes de aplicar el nuevo descuento promedio general
+                    $this->restoreBasePrice($order, $detail);
+
+                    $detail->discount_percentage = $avgDiscount;
+                    $detail->discount_type = 'general';
+                    $detail->discount_source_id = $applicablePromo->id;
+                    $detail->price = $detail->price * (1 - ($avgDiscount / 100));
+                    $detail->unit_price_usd = $detail->unit_price_usd * (1 - ($avgDiscount / 100));
+                }
+            }
+        }
+
+        // Guardar todos los detalles modificados en la BD
+        foreach ($details as $detail) {
+            $detail->save();
+        }
+    }
+
+    /**
+     * Restaura el precio original del producto o plato de un detalle de la orden.
+     */
+    private function restoreBasePrice(Order $order, OrderDetail $detail): void
+    {
+        $targetCurrency = $order->currency;
+        if ($detail->product_type === 'dish') {
+            $dish = $detail->dish;
+            $usdPrice = $dish->designated_price ?? 0;
+            if ($targetCurrency === 'USD') {
+                $priceToSet = $usdPrice;
+            } elseif ($targetCurrency === 'COP') {
+                $resourceService = app(\App\Services\Resources\ResourceService::class);
+                $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+                $priceToSet = ceil(($usdPrice * $tasaCop) / 100) * 100;
+            } elseif ($targetCurrency === 'BS') {
+                $resourceService = app(\App\Services\Resources\ResourceService::class);
+                $tasaBs = $resourceService->getExchangeRate('EUR') ?: 1;
+                $priceToSet = round($usdPrice * $tasaBs, 2);
+            } else {
+                $priceToSet = $usdPrice;
+            }
+        } else {
+            $product = $detail->product;
+            $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
+            $priceToSet = $pricingStrategy->calculatePrice($product, $detail);
+            $usdPrice = $product->sale_price;
+        }
+
+        $detail->price = $priceToSet;
+        $detail->unit_price_usd = $usdPrice;
     }
 }

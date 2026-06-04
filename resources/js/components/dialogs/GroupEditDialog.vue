@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
@@ -11,6 +12,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const formData = ref({});
 const formErrors = ref({});
@@ -100,7 +104,7 @@ const submitForm = () => {
   emit("save", payload);
 };
 
-const productHeaders = [
+const productHeaders = computed(() => [
   { 
     title: "id", 
     key: "id", 
@@ -110,7 +114,7 @@ const productHeaders = [
   },
   { title: "Producto", key: "name", sortable: true, width: "40%" },
   { 
-    title: "Laboratorio", 
+    title: isRestaurant.value ? "Marca" : "Laboratorio", 
     key: "laboratory.name", 
     sortable: true,
     cellClass: "d-none d-md-table-cell",
@@ -129,7 +133,7 @@ const productHeaders = [
   },
   { title: "Exp.", key: "next_expiration", sortable: true },
   { title: "Acción", key: "actions", sortable: false, align: "end" },
-];
+]);
 
 const nextExpirationDate = (product) => {
   if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
@@ -275,7 +279,8 @@ const nextExpirationDate = (product) => {
                         >
                           {{ item.name }}
                         </span>
-                        <span class="text-super-xs text-disabled font-weight-bold uppercase truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                        <span v-if="!isRestaurant" class="text-super-xs text-disabled font-weight-bold uppercase truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                        <span v-else class="text-super-xs text-disabled font-weight-bold uppercase truncate" style="max-inline-size: 200px;">{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
                       </div>
                     </div>
                   </template>
@@ -418,7 +423,7 @@ const nextExpirationDate = (product) => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e5128 100%);
+  background: var(--brand-gradient) !important;
 }
 
 .detail-dialog-card {

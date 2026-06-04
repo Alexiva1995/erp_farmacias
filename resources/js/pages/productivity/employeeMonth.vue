@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import EmployeeMonthFilters from "@/components/EmployeeMonthFilters.vue";
 import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
 import axios from "axios";
@@ -144,7 +144,7 @@ const handleLockMonth = async () => {
       title: "¡Mes Cerrado!",
       text: "Los datos han sido persistidos correctamente.",
       icon: "success",
-      confirmButtonColor: "#1e5128",
+      confirmButtonColor: "rgb(var(--v-theme-gradient-end))",
     });
     await fetchEmployees();
   }

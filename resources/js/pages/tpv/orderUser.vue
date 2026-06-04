@@ -12,6 +12,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { formatCurrency } from "@/utils/currencyFormatter";
 import {
   computed,
   nextTick,
@@ -35,6 +36,23 @@ const packsItemsPerPage = ref(10);
 const showPackDetailsModal = ref(false);
 const selectedPack = ref(null);
 
+// --- Estado para Restaurante / Menú de Platos ---
+const isRestaurant = ref(false);
+const dishes = ref([]);
+const dishesLoading = ref(false);
+const dishFilterQuery = ref("");
+const selectedDishCategory = ref(null);
+
+const dishCategories = computed(() => {
+  const categories = new Set();
+  dishes.value.forEach((d) => {
+    if (d.category && d.category.name) {
+      categories.add(d.category.name);
+    }
+  });
+  return Array.from(categories);
+});
+
 const products = ref([]);
 const totalProduct = ref(0);
 const loading = ref(false);
@@ -55,6 +73,8 @@ const discountMaxProducts = ref(0);
 
 const laboratories = ref([]);
 const origins = ref([]);
+const categories = ref([]);
+const selectedCategory = ref(null);
 const isLoadingFilters = ref(false);
 
 const barcodeSearchQuery = ref("");
@@ -227,13 +247,49 @@ const currentGroupId = ref(null);
 const fetchGeneralSettings = async () => {
   try {
     const { data } = await axios.get("/general-settings");
-    isSpecialTaxpayer.value = data.special_taxpayer_status === "activa";
-    allForeignSalesSpe.value = !!data.all_foreign_sales_spe;
+    const settings = data.data || data;
+    isSpecialTaxpayer.value = settings.special_taxpayer_status === "activa";
+    allForeignSalesSpe.value = !!settings.all_foreign_sales_spe;
+    // Determinar si el negocio es restaurante para mostrar el menú de platos
+    isRestaurant.value = settings.business_type === "restaurant";
+    if (isRestaurant.value) {
+      activeTab.value = "menu";
+    }
   } catch (error) {
     console.error("Error al cargar configuración", error);
     toast.error("Error al cargar configuración");
   }
 };
+
+// Carga el catálogo de platos activos para el TPV
+const fetchDishes = async () => {
+  dishesLoading.value = true;
+  try {
+    const { data } = await axios.get("/dishes", {
+      params: { status: 1, q: dishFilterQuery.value || undefined },
+    });
+    // La API devuelve { data: [...] } via DishResource::collection
+    dishes.value = Array.isArray(data.data) ? data.data : data;
+  } catch (error) {
+    console.error("[TPV] Error al cargar platos:", error);
+    toast.error("Error al cargar el menú de platos.");
+  } finally {
+    dishesLoading.value = false;
+  }
+};
+
+// Computed: platos filtrados por búsqueda local y categoría
+const filteredDishes = computed(() => {
+  let list = dishes.value;
+  if (selectedDishCategory.value) {
+    list = list.filter((d) => d.category && d.category.name === selectedDishCategory.value);
+  }
+  if (dishFilterQuery.value) {
+    const q = dishFilterQuery.value.toLowerCase();
+    list = list.filter((d) => d.name.toLowerCase().includes(q));
+  }
+  return list;
+});
 
 onMounted(async () => {
   await authStore.fetchUser();
@@ -244,6 +300,7 @@ const fetchProducts = async () => {
   loading.value = true;
   const params = {
     q: filterSearchQuery.value,
+    categoryId: selectedCategory.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
@@ -277,12 +334,14 @@ const fetchProducts = async () => {
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse] = await Promise.all([
+    const [labResponse, originResponse, catResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
+      axios.get("/categories"),
     ]);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
+    categories.value = catResponse.data;
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -817,6 +876,7 @@ watch(
     filterSearchQuery,
     selectedLaboratory,
     selectedOrigin,
+    selectedCategory,
     stockStatusFilter,
     isStrictSearch,
     currentGroupId,
@@ -840,6 +900,53 @@ const consultAllcomapanies = async () => {
 };
 
 const formatOrderItemForFrontend = (backendItem) => {
+  // --- Ítem de tipo PLATO (restaurante) ---
+  if (backendItem.product_type === "dish" && backendItem.dish) {
+    const dish = backendItem.dish;
+    // Precio original del plato (sin descuentos), lo usamos para mostrar precio tachado
+    const originalPrice = parseFloat(dish.designated_price) || 0;
+    // Precio actual ya calculado por el backend (puede incluir descuento de promo general)
+    const unitPrice = parseFloat(backendItem.price) ?? originalPrice;
+    // Preservar datos de descuento que el backend ya aplicó (promo general, etc.)
+    const discountPct = parseFloat(backendItem.discount_percentage) || 0;
+    const discountType = backendItem.discount_type || null;
+    const discountSourceId = backendItem.discount_source_id || null;
+    return {
+      order_detail_id: backendItem.id,
+      product_id: null,
+      dish_id: dish.id,
+      title: dish.name,
+      active_ingredient: dish.category?.name || "Plato",
+      itemCode: null,
+      price: unitPrice,
+      // Precio antes del descuento: precio original del plato (para mostrar tachado en UI)
+      price_before_discount: discountPct > 0 ? originalPrice : unitPrice,
+      price_bs: unitPrice,
+      price_cop: unitPrice,
+      base_price: unitPrice,
+      base_price_bs: unitPrice,
+      base_price_cop: unitPrice,
+      unitCost: parseFloat(dish.cost_price) || 0,
+      basePrice: originalPrice,
+      original_price_usd: originalPrice,
+      original_price_bs: originalPrice,
+      original_price_cop: originalPrice,
+      availableQuantity: 9999, // Los platos no tienen stock directo
+      selectedQuantity: parseInt(backendItem.quantity) || 0,
+      laboratory: dish.category?.name || "Plato",
+      taxRate: 0,
+      pack_id: null,
+      discount_percentage: discountPct,
+      discount_type: discountType,
+      discount_source_id: discountSourceId,
+      original_pack_config: null,
+      has_pack_discount: false,
+      is_dish: true, // Flag para distinguirlo en la UI
+      notes: backendItem.notes || "",
+    };
+  }
+
+  // --- Ítem de tipo PRODUCTO normal ---
   const product = backendItem.product;
   const availableQuantity = product.lots_sum_quantity ?? 0;
 
@@ -860,14 +967,6 @@ const formatOrderItemForFrontend = (backendItem) => {
   const discountedPrice =
     parseFloat(backendItem.unit_price_usd) || originalPrice * discountFactor;
 
-  /*const discountedPriceBs = backendItem.unit_cost
-    ? originalPriceBs * (discountedPrice / originalPriceBs)
-    : originalPriceBs * discountFactor;
-
-  const discountedPriceCop = backendItem.unit_cost
-    ? originalPriceCop * (discountedPrice / originalPriceCop)
-    : originalPriceCop * discountFactor;*/
-
   let priceFactor = discountFactor; // Por defecto el factor de vencimiento (1 o menos)
 
   if (backendItem.unit_price_usd) {
@@ -876,7 +975,7 @@ const formatOrderItemForFrontend = (backendItem) => {
     priceFactor = originalPrice > 0 ? unitPriceUsd / originalPrice : 1;
   }
 
-  // 3. Aplicar el factor resultante a todas las monedas para mantener la paridad
+  // Aplicar el factor resultante a todas las monedas para mantener la paridad
   const discountedPriceBs = originalPriceBs * priceFactor;
   const discountedPriceCop = originalPriceCop * priceFactor;
 
@@ -889,6 +988,7 @@ const formatOrderItemForFrontend = (backendItem) => {
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
+    dish_id: null,
     title: product.name,
     active_ingredient: product.active_ingredient,
     itemCode: product.barcode,
@@ -900,7 +1000,7 @@ const formatOrderItemForFrontend = (backendItem) => {
     base_price_bs: discountedPriceBs,
     base_price_cop: discountedPriceCop,
     unitCost: parseFloat(product.unit_cost) || 0,
-    basePrice: originalPrice, // Store original base price
+    basePrice: originalPrice,
     original_price_usd: originalPrice,
     original_price_bs: originalPriceBs,
     original_price_cop: originalPriceCop,
@@ -915,8 +1015,47 @@ const formatOrderItemForFrontend = (backendItem) => {
     discount_source_id: backendItem.discount_source_id || null,
     original_pack_config:
       backendItem.pack_config || backendItem.product?.pack_config || null,
-    has_pack_discount: hasPackDiscount, // Flag para indicar si tiene descuento de pack
+    has_pack_discount: hasPackDiscount,
+    is_dish: false,
   };
+};
+
+const showPedidosModal = ref(false);
+const pedidosList = ref([]);
+const loadingPedidos = ref(false);
+
+const fetchPedidosList = async () => {
+  try {
+    const response = await axios.get('/tpv/orders/reserved-list');
+    pedidosList.value = response.data.orders || [];
+  } catch (error) {
+    console.error("Error al cargar pedidos:", error);
+  }
+};
+
+const openPedidosModal = async () => {
+  loadingPedidos.value = true;
+  showPedidosModal.value = true;
+  try {
+    await fetchPedidosList();
+  } catch (error) {
+    console.error("Error al cargar pedidos:", error);
+    toast.error("No se pudieron cargar los pedidos pendientes.");
+  } finally {
+    loadingPedidos.value = false;
+  }
+};
+
+const selectPedido = async (pedido) => {
+  try {
+    const response = await axios.post(`/tpv/orders/${pedido.id}/activate`);
+    showPedidosModal.value = false;
+    await fetchOpenOrder();
+    toast.success("Pedido cargado correctamente.");
+  } catch (error) {
+    console.error("Error al cargar pedido:", error);
+    toast.error("No se pudo cargar el pedido.");
+  }
 };
 
 const fetchOpenOrder = async () => {
@@ -968,6 +1107,9 @@ const fetchOpenOrder = async () => {
     orderItems.value = [];
   } finally {
     isLoadingInitialOrder.value = false;
+    if (isRestaurant.value) {
+      fetchPedidosList();
+    }
   }
 };
 
@@ -1136,6 +1278,7 @@ const handleClearFilters = () => {
   filterSearchQuery.value = "";
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
+  selectedCategory.value = null;
   stockStatusFilter.value = null;
   isStrictSearch.value = false;
   sortBy.value = undefined;
@@ -1150,7 +1293,7 @@ const handleClearSortOrder = () => {
 };
 
 watch(
-  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter],
+  [filterSearchQuery, selectedLaboratory, selectedOrigin, selectedCategory, stockStatusFilter],
   () => {
     page.value = 1;
   },
@@ -1910,8 +2053,9 @@ const updateOrderItemQuantity = async ({
     // 2. Lógica de cantidad acumulada
     let computedTotalQuantity = quantity;
 
-    // Solo acumulamos si NO es un pack (los packs se manejan por líneas únicas)
-    if (!currentItem.pack_id && orderDetailId) {
+    // Los platos se identifican por order_detail_id (no product_id), no acumular
+    // Solo acumulamos para productos normales con múltiples líneas del mismo producto
+    if (!currentItem.pack_id && !currentItem.is_dish && orderDetailId) {
       const otherItemsQuantity = orderItems.value
         .filter(
           (item) =>
@@ -1924,16 +2068,18 @@ const updateOrderItemQuantity = async ({
       computedTotalQuantity = otherItemsQuantity + quantity;
     }
 
-    // 3. Construcción del Payload con pack_id
-    console.log(currentItem);
+    // 3. Construcción del Payload con pack_id o dish_id
+    // Para platos usar basePrice (designated_price) como precio base; el backend aplicará el descuento de promo general automáticamente
+    const basePriceForPayload = currentItem.is_dish
+      ? (currentItem.basePrice || currentItem.original_price_usd || currentItem.price || 0)
+      : (currentItem.basePrice || currentItem.price);
     const payload = {
-      product_id: productId,
+      product_id: currentItem.is_dish ? null : productId,
+      dish_id: currentItem.is_dish ? currentItem.dish_id : null,
       quantity: computedTotalQuantity,
-      price_usd_unit: currentItem.basePrice || currentItem.price,
-      price_at_product: currentItem.price,
+      price_usd_unit: basePriceForPayload,
+      price_at_product: basePriceForPayload,
       currency_at_order: selectedDisplayCurrency.value,
-      // --- CAMBIO CRUCIAL ---
-      // Enviamos el pack_id si el ítem lo tiene para que el backend mantenga la relación
       pack_id: currentItem.pack_id || null,
     };
 
@@ -1944,6 +2090,36 @@ const updateOrderItemQuantity = async ({
     // ... tu manejo de errores actual
     console.error("Error al actualizar cantidad:", error);
     toast.error(error.response?.data?.message || "Error al actualizar");
+  }
+};
+
+const handleSaveOrderItemNote = async ({ product, notes }) => {
+  if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
+    toast.error("Debe haber una orden abierta para agregar notas.");
+    return;
+  }
+  try {
+    const basePriceForPayload = product.is_dish
+      ? (product.basePrice || product.original_price_usd || product.price || 0)
+      : (product.basePrice || product.price);
+
+    const payload = {
+      product_id: product.is_dish ? null : product.product_id,
+      dish_id: product.is_dish ? product.dish_id : null,
+      quantity: product.selectedQuantity,
+      price_usd_unit: basePriceForPayload,
+      price_at_product: basePriceForPayload,
+      currency_at_order: selectedDisplayCurrency.value,
+      pack_id: product.pack_id || null,
+      notes: notes,
+    };
+
+    await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload);
+    await fetchOpenOrder();
+    toast.success("Nota del plato guardada exitosamente.");
+  } catch (error) {
+    console.error("Error al guardar anotación:", error);
+    toast.error(error.response?.data?.message || "Error al guardar la nota.");
   }
 };
 
@@ -2109,36 +2285,35 @@ watch(
 
 const getItemPriceByCurrency = (item, currency, useBase = false) => {
   if (currency === "BS") {
-    return useBase ? item.base_price_bs || 0 : item.price_bs || 0;
+    // Usar ?? para que el precio 0 (plato gratis) sea respetado
+    return useBase ? (item.base_price_bs ?? 0) : (item.price_bs ?? 0);
   } else if (currency === "COP") {
-    return useBase ? item.base_price_cop || 0 : item.price_cop || 0;
+    return useBase ? (item.base_price_cop ?? 0) : (item.price_cop ?? 0);
   } else {
     return useBase
-      ? item.base_price || item.original_price_usd || 0
-      : item.price || item.sale_price || 0;
+      ? (item.base_price ?? item.original_price_usd ?? 0)
+      : (item.price ?? item.sale_price ?? 0);
   }
 };
 
-const removeOrderItem = async (productIdToRemove) => {
-  /* Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¡Desea eliminar el producto!",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Continuar",
-    cancelButtonText: "Cancelar",
-  }).then(async (result) => {
-    if (result.isConfirmed) {*/
+// Elimina un ítem por su product_id (productos normales) o por order_detail_id (platos)
+const removeOrderItem = async (productIdToRemove, orderDetailId = null) => {
   if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
     toast.error("No hay una orden abierta para eliminar productos.");
     return;
   }
   try {
-    const itemToRemove = orderItems.value.find(
-      (item) => item.product_id === productIdToRemove,
-    );
+    let itemToRemove;
+    if (orderDetailId) {
+      // Eliminación directa por order_detail_id (platos)
+      itemToRemove = orderItems.value.find(
+        (item) => item.order_detail_id === orderDetailId,
+      );
+    } else {
+      itemToRemove = orderItems.value.find(
+        (item) => item.product_id === productIdToRemove,
+      );
+    }
     if (!itemToRemove || !itemToRemove.order_detail_id) {
       toast.error(
         "No se encontró el detalle del producto en la orden para eliminar.",
@@ -2190,6 +2365,9 @@ const reserverOrder = async () => {
     orderItems.value = [];
     reservedOrderData.value = response.data.data.reserved_order;
     toast.success("Orden reservada exitosamente.");
+    if (isRestaurant.value) {
+      await fetchPedidosList();
+    }
   } catch (error) {
     console.error(
       "Error al reservar la orden:",
@@ -2891,7 +3069,78 @@ watch(activeTab, (val) => {
   if (val === "packs" && packs.value.length === 0 && totalPacks.value === 0) {
     fetchPacks();
   }
+  // Cargar platos al cambiar al tab de menú
+  if (val === "menu" && dishes.value.length === 0) {
+    fetchDishes();
+  }
 });
+
+// Métodos de Pedidos Activos (Mesas) movidos arriba para evitar TDZ
+
+// Agregar un plato al carrito de la orden activa
+const addDishToOrder = async (dish) => {
+  if (!hasOpenOrder.value || !openOrderData.value?.id) {
+    toast.error("Debe haber una orden abierta para agregar platos.");
+    return;
+  }
+
+  // Buscar si ya está en la orden para acumular cantidad
+  const existing = orderItems.value.find((item) => item.dish_id === dish.id);
+  const newQty = existing ? existing.selectedQuantity + 1 : 1;
+  const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || parseFloat(dish.price) || 0;
+
+  try {
+    const payload = {
+      dish_id: dish.id,
+      quantity: newQty,
+      price_at_product: unitPrice,
+      price_usd_unit: unitPrice,
+      currency_at_order: selectedDisplayCurrency.value,
+    };
+
+    await axios.post(
+      `/tpv/orders/${openOrderData.value.id}/items`,
+      payload,
+    );
+    await fetchOpenOrder();
+    toast.success(`"${dish.name}" agregado al pedido.`);
+  } catch (error) {
+    const msg = error.response?.data?.message || "Error al agregar el plato.";
+    toast.error(msg);
+  }
+};
+
+const handleAddDishToOrder = async ({ dish, quantity }) => {
+  if (!hasOpenOrder.value || !openOrderData.value?.id) {
+    toast.error("Debe haber una orden abierta para agregar platos.");
+    return;
+  }
+
+  const existing = orderItems.value.find((item) => item.dish_id === dish.id);
+  const currentQty = existing ? existing.selectedQuantity : 0;
+  const newQty = currentQty + quantity;
+  const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || parseFloat(dish.price) || 0;
+
+  try {
+    const payload = {
+      dish_id: dish.id,
+      quantity: newQty,
+      price_at_product: unitPrice,
+      price_usd_unit: unitPrice,
+      currency_at_order: selectedDisplayCurrency.value,
+    };
+
+    await axios.post(
+      `/tpv/orders/${openOrderData.value.id}/items`,
+      payload,
+    );
+    await fetchOpenOrder();
+    toast.success(`"${dish.name}" agregado al pedido.`);
+  } catch (error) {
+    const msg = error.response?.data?.message || "Error al agregar el plato.";
+    toast.error(msg);
+  }
+};
 
 /*
 const handleAddPackToOrder = async ({ pack, quantity }) => {
@@ -3038,6 +3287,9 @@ const finalizeAndCheckPending = () => {
   clientIdentification.value = "";
   reservedOrderData.value = null;
   //}
+  if (isRestaurant.value) {
+    fetchPedidosList();
+  }
 };
 
 // Enviamos una petición cada 5 minutos (300,000 ms)
@@ -3085,6 +3337,49 @@ onUnmounted(() => {
       </div>
     </VOverlay>
 
+    <!-- Barra Superior de Acceso Rápido a Pedidos (Solo Restaurante) -->
+    <div v-if="!isLoadingInitialOrder && isRestaurant" class="d-flex justify-space-between align-center mb-4 pa-2 bg-grey-lighten-4 rounded-lg border">
+      <div class="d-flex align-center gap-2">
+        <VIcon icon="tabler-tools-kitchen-2" color="primary" />
+        <span class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis">Modo Restaurante</span>
+      </div>
+    </div>
+
+    <!-- Listado de Pedidos Activos / Mesas en la parte superior -->
+    <div v-if="!isLoadingInitialOrder && isRestaurant && pedidosList.length > 0" class="mb-6">
+      <VRow>
+        <VCol v-for="pedido in pedidosList" :key="pedido.id" cols="12" sm="6" md="4" lg="3">
+          <VCard
+            variant="outlined"
+            class="rounded-lg cursor-pointer bg-white"
+            style="border: 1px solid #e0e0e0; transition: transform 0.2s, box-shadow 0.2s;"
+            @click="selectPedido(pedido)"
+            @mouseover="$event.currentTarget.style.transform = 'translateY(-2px)'"
+            @mouseleave="$event.currentTarget.style.transform = 'none'"
+          >
+            <div style="height: 4px; background-color: #d81b60;"></div>
+            <VCardText class="pa-3">
+              <div class="d-flex justify-space-between align-center mb-2">
+                <span class="font-weight-black text-subtitle-2" style="color: #d81b60;">Pedido #{{ pedido.id }}</span>
+                <VChip color="warning" size="x-small" variant="flat" class="font-weight-black rounded">PENDIENTE</VChip>
+              </div>
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
+                Cliente: {{ pedido.client ? (pedido.client.name + ' ' + (pedido.client.last_name || '')) : 'Cliente General' }}
+              </div>
+              <div class="text-caption text-disabled mb-2">
+                Última actualización: {{ new Date(pedido.updated_at).toLocaleString() }}
+              </div>
+              <VDivider class="my-2 border-opacity-10" />
+              <div class="d-flex justify-space-between align-center text-caption mt-1">
+                <span class="font-weight-bold text-disabled">Monto Total:</span>
+                <span class="font-weight-black text-subtitle-2" style="color: #d81b60;">{{ formatCurrency(pedido.total_amount || 0, pedido.currency || 'USD') }}</span>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
+    </div>
+
     <div v-if="isLoadingInitialOrder">
       <p>Cargando sesión de orden...</p>
     </div>
@@ -3125,29 +3420,37 @@ onUnmounted(() => {
         :global-discount="currentGlobalDiscountDetails || null"
         @add-pack="handleAddPackToOrder"
         @edit-cliente="handleEditCliente"
+        @add-note="handleSaveOrderItemNote"
         :is-special-taxpayer="isSpecialTaxpayer || false"
+        :is-restaurant="isRestaurant"
       />
     </div>
     <div v-else>
+
       <OrderClienteCard
         v-model="clientIdentification"
         :buttons-icon-only="true"
         :show-quotation-input="true"
+        :show-reserved-button="!isRestaurant"
         @verify-client="verifyClient"
         @identify-and-start="handleIdentifyAndStart"
-        @reserved-order-cliente="reservedOrderCliente"
+        @reserved-order-cliente="openPedidosModal"
         @load-quotation="handleLoadQuotation"
       />
     </div>
+
 
     <OrderFilters
       v-model:searchQuery="filterSearchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
+      v-model:selectedCategory="selectedCategory"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories || []"
       :origins="origins || []"
+      :categories="categories || []"
+      :is-restaurant="isRestaurant || false"
       :loading="isLoadingFilters || false"
       :sort-by="sortBy"
       :order-by="orderBy"
@@ -3173,11 +3476,13 @@ onUnmounted(() => {
       :currency="selectedDisplayCurrency"
       @update:options="updateTableOptions"
       @add-product="addProductToOrder"
+      @add-dish="handleAddDishToOrder"
       @view-group-products="fetchGroupProducts"
       @failures-products="fetchFailuresProducts"
       @view-pack-details="handleViewPackDetails"
       @add-pack="handleAddPackToOrder"
     />
+
 
     <!--   <OrderPacksTable
           :packs="packs"
@@ -3268,5 +3573,63 @@ onUnmounted(() => {
         :spe-surcharge-amount="speSurchargeAmountPrint || 0"
       />
     </div>
+
+    <!-- Modal de Pedidos Activos (Mesas) -->
+    <VDialog v-model="showPedidosModal" max-width="800px">
+      <VCard class="rounded-lg">
+        <VCardTitle class="pa-4 bg-primary text-white d-flex align-center justify-space-between">
+          <span class="font-weight-black text-uppercase">Pedidos Activos / Mesas Abiertas</span>
+          <VBtn icon="tabler-x" variant="text" color="white" @click="showPedidosModal = false" />
+        </VCardTitle>
+        <VCardText class="pa-4">
+          <VProgressLinear v-if="loadingPedidos" indeterminate color="primary" class="mb-4" />
+          
+          <div v-if="pedidosList.length === 0 && !loadingPedidos" class="text-center py-8 text-disabled">
+            <VIcon icon="tabler-receipt-off" size="48" class="mb-2" />
+            <div class="font-weight-bold">No hay pedidos o mesas pendientes activas.</div>
+          </div>
+          
+          <VRow v-else>
+            <VCol v-for="pedido in pedidosList" :key="pedido.id" cols="12" md="6">
+              <VCard variant="outlined" class="rounded-lg product-row cursor-pointer" @click="selectPedido(pedido)">
+                <VCardText class="pa-3">
+                  <div class="d-flex justify-space-between align-center mb-2">
+                    <span class="text-primary font-weight-black text-subtitle-2">Pedido #{{ pedido.id }}</span>
+                    <VChip color="warning" size="x-small" variant="flat" class="font-weight-black">PENDIENTE</VChip>
+                  </div>
+                  <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
+                    Cliente: {{ pedido.client ? (pedido.client.name + ' ' + (pedido.client.last_name || '')) : 'Cliente General' }}
+                  </div>
+                  <div class="text-caption text-disabled mb-2">
+                    Última actualización: {{ new Date(pedido.updated_at).toLocaleString() }}
+                  </div>
+                  <VDivider class="my-2 border-opacity-10" />
+                  <div class="d-flex justify-space-between align-center text-caption">
+                    <span class="font-weight-bold text-disabled">Monto Total:</span>
+                    <span class="font-weight-black text-primary">{{ formatCurrency(pedido.total_amount || 0, pedido.currency || 'USD') }}</span>
+                  </div>
+                </VCardText>
+              </VCard>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </div>
 </template>
+
+<style scoped>
+/* Tarjetas de platos en el menú del restaurante */
+.dish-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+.dish-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+}
+.dish-card--inactive {
+  opacity: 0.55;
+  filter: grayscale(40%);
+}
+</style>

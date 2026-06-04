@@ -4,9 +4,12 @@ import { toast } from "@/plugins/sweetalert";
 import { generateDonationPDF } from "@/utils/donationPdfGenerator";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useAbility } from "@casl/vue";
 
 const { can } = useAbility();
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 import PriceAdjustmentDialog from "@/components/dialogs/PriceAdjustmentDialog.vue";
 import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
@@ -678,7 +681,7 @@ onMounted(() => {
                       </IconBtn>
                     </template>
                   </VTooltip>
-                  <VTooltip text="Imprimir Carta(s) de Donación">
+                  <VTooltip v-if="!isRestaurant" text="Imprimir Carta(s) de Donación">
                     <template #activator="{ props: tooltipProps }">
                       <div v-bind="tooltipProps" class="d-inline-block">
                         <IconBtn
@@ -759,7 +762,7 @@ onMounted(() => {
                     </div>
 
                     <VRow no-gutters class="border-t">
-                      <VCol cols="4" class="border-e">
+                      <VCol :cols="isRestaurant ? 6 : 4" class="border-e">
                         <VBtn
                           block
                           variant="text"
@@ -771,7 +774,7 @@ onMounted(() => {
                           <VIcon icon="tabler-eye" size="22" />
                         </VBtn>
                       </VCol>
-                      <VCol cols="4" class="border-e">
+                      <VCol v-if="!isRestaurant" cols="4" class="border-e">
                         <VBtn
                           block
                           variant="text"
@@ -784,7 +787,7 @@ onMounted(() => {
                           <VIcon icon="tabler-printer" size="22" />
                         </VBtn>
                       </VCol>
-                      <VCol cols="4">
+                      <VCol :cols="isRestaurant ? 6 : 4">
                         <VBtn
                           block
                           variant="text"
