@@ -1626,6 +1626,14 @@ class ProductRepository
                 });
             }
         }
+        if (array_key_exists("hasStock", $filtros)) {
+            $hasStockVal = $filtros["hasStock"];
+            if ($hasStockVal === true || $hasStockVal === 'true' || $hasStockVal === 1) {
+                $query->whereRaw("($subqueryStock) > 0");
+            } elseif ($hasStockVal === false || $hasStockVal === 'false' || $hasStockVal === 0) {
+                $query->whereRaw("($subqueryStock) = 0");
+            }
+        }
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
              $query->where(function($q) use ($filtros) {
                  $q->where("products.name", "like", "%" . $filtros["q"] . "%")
