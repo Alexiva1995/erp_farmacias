@@ -1113,7 +1113,50 @@ class ProductRepository
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
-            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+            $sortCol = $filtros["sortBy"];
+            $sortDir = strtolower($filtros["orderBy"]) === 'desc' ? 'desc' : 'asc';
+            
+            if ($sortCol === 'lote_quantity' || $sortCol === 'stock') {
+                $consulta->orderByRaw("(" . $this->subConsultaParaCalcularStockPorLotes . ") $sortDir");
+            } elseif ($sortCol === 'total_sold_completed') {
+                $consulta->orderByRaw("(
+                    SELECT COALESCE(SUM(order_details.quantity), 0)
+                    FROM order_details
+                    JOIN orders ON orders.id = order_details.order_id
+                    WHERE order_details.product_id = products.id
+                    AND orders.created_at BETWEEN '{$filtros["previousDate"]}' AND '{$filtros["dateToday"]}'
+                    AND orders.status = 'Completed'
+                ) $sortDir");
+            } elseif ($sortCol === 'promedio_calculado') {
+                $consulta->orderByRaw("($promedio_calculado) $sortDir");
+            } elseif ($sortCol === 'totalQuantityInAutoOrder') {
+                $consulta->orderByRaw("($subqueryAO) $sortDir");
+            } elseif ($sortCol === 'solicitar') {
+                $consulta->orderByRaw("(CASE 
+                    WHEN $calcSolicitar > 0 THEN CEIL($calcSolicitar) 
+                    ELSE FLOOR($calcSolicitar) 
+                END) $sortDir");
+            } elseif ($sortCol === 'best_supplier_percentage') {
+                $subqueryBestSupplierPrice = '(
+                    SELECT MIN(
+                        CASE 
+                            WHEN ps.unit_cost_usd_with_discount > 0 THEN ps.unit_cost_usd_with_discount 
+                            ELSE ps.unit_cost 
+                        END
+                    )
+                    FROM product_suppliers ps
+                    WHERE ps.product_id = products.id
+                )';
+                $subqueryVariation = "CASE 
+                    WHEN products.unit_cost > 0 THEN 
+                        ((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100
+                    ELSE 0
+                END";
+                $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
+                $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
+            } else {
+                $consulta->orderBy($sortCol, $sortDir);
+            }
         } else {
             $consulta->orderBy("name", "ASC");
         }
@@ -1411,7 +1454,56 @@ class ProductRepository
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
-            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+            $sortCol = $filtros["sortBy"];
+            $sortDir = strtolower($filtros["orderBy"]) === 'desc' ? 'desc' : 'asc';
+            
+            $subqueryAO = '(
+                SELECT COALESCE(SUM(aod.quantity), 0)
+                FROM auto_order_details aod
+                JOIN auto_orders ao ON ao.id = aod.order_id
+                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+                WHERE ps.product_id = products.id
+                AND ao.status IN (0, 1)
+                AND aod.status = 0
+                AND ao.deleted_at IS NULL
+                AND aod.deleted_at IS NULL
+            )';
+            
+            if ($sortCol === 'lote_quantity' || $sortCol === 'stock') {
+                $consulta->orderByRaw("(" . $this->subConsultaParaCalcularStockPorLotes . ") $sortDir");
+            } elseif ($sortCol === 'total_sold_completed') {
+                $consulta->orderByRaw("($ventasIndividualDelProducto) $sortDir");
+            } elseif ($sortCol === 'promedio_calculado') {
+                $consulta->orderByRaw("($promedio_calculado) $sortDir");
+            } elseif ($sortCol === 'totalQuantityInAutoOrder') {
+                $consulta->orderByRaw("($subqueryAO) $sortDir");
+            } elseif ($sortCol === 'solicitar') {
+                $calcSolicitarSales = "(($ventasIndividualDelProducto) - {$this->subConsultaParaCalcularStockPorLotes} - $subqueryAO)";
+                $consulta->orderByRaw("(CASE 
+                    WHEN $calcSolicitarSales > 0 THEN CEIL($calcSolicitarSales) 
+                    ELSE FLOOR($calcSolicitarSales) 
+                END) $sortDir");
+            } elseif ($sortCol === 'best_supplier_percentage') {
+                $subqueryBestSupplierPrice = '(
+                    SELECT MIN(
+                        CASE 
+                            WHEN ps.unit_cost_usd_with_discount > 0 THEN ps.unit_cost_usd_with_discount 
+                            ELSE ps.unit_cost 
+                        END
+                    )
+                    FROM product_suppliers ps
+                    WHERE ps.product_id = products.id
+                )';
+                $subqueryVariation = "CASE 
+                    WHEN products.unit_cost > 0 THEN 
+                        ((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100
+                    ELSE 0
+                END";
+                $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
+                $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
+            } else {
+                $consulta->orderBy($sortCol, $sortDir);
+            }
         } else {
             $consulta->orderBy("solicitar", "DESC");
         }
