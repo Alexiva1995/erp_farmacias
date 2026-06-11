@@ -61,6 +61,9 @@ class AutoOrdersRepository
             $query->whereDate("auto_orders.order_date", "<=", $endDate);
         }
 
+        // Ordenar siempre desde la más reciente (ID más alto) a la más antigua
+        $query->orderByDesc("auto_orders.id");
+
         return $query->paginate($perPage);
     }
 
@@ -323,5 +326,23 @@ class AutoOrdersRepository
         ]);
         
         $this->checkAndCompleteOrder($autoOrder);
+    }
+
+    public function revertToSent(AutoOrder $autoOrder): bool
+    {
+        return DB::transaction(function () use ($autoOrder) {
+            // Revertir estado de la orden a ENVIADA (1)
+            $autoOrder->update([
+                'status' => AutoOrderStatus::SENT
+            ]);
+
+            // Revertir todos sus detalles a PENDIENTES (status = 0, received = null)
+            $autoOrder->details()->update([
+                'status' => \App\AutoOrderDetailStatus::PENDING->value,
+                'received' => null
+            ]);
+
+            return true;
+        });
     }
 }

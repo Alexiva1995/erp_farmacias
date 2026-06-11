@@ -113,6 +113,10 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["stock"] = $request->stock;
         }
 
+        if ($request->filled("hasStock") && $request->hasStock !== "all") {
+            $filtros["hasStock"] = $request->hasStock === "with" || $request->hasStock === "true" || $request->hasStock === true;
+        }
+
         if ($request->filled("laboratoryId")) {
             $filtros["laboratoryId"] = $request->laboratoryId;
         }

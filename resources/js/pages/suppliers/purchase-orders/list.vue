@@ -131,6 +131,23 @@ const handleDeleteOrder = async (id) => {
   }
 };
 
+const handleRevertOrder = async (order) => {
+  if (
+    confirm(
+      `¿Estás seguro de devolver la orden de compra #${order.id} al estado 'Enviada'? Los productos marcados como recibidos volverán a estar pendientes.`,
+    )
+  ) {
+    try {
+      await axios.post(`/suppliers/purchase-orders/${order.id}/revert-to-sent`);
+      toast.success("Orden devuelta a estado 'Enviada' correctamente.");
+      fetchPurchaseOrders();
+      fetchStats();
+    } catch (error) {
+      toast.error("Error al devolver la orden a enviada.");
+    }
+  }
+};
+
 onMounted(() => {
   fetchSuppliers();
   fetchPurchaseOrders();
@@ -313,6 +330,7 @@ const handleClearFilters = () => {
         @update:options="updateTableOptions"
         @manage="handleManage"
         @delete-purchaseOrder="handleDeleteOrder"
+        @revert="handleRevertOrder"
         @refresh="
           fetchPurchaseOrders();
           fetchStats();

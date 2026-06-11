@@ -88,4 +88,9 @@ class PurchaseOrderController extends Controller
         $repo->rejectPendingDetails($autoOrder);
         return response()->json(['status' => 'ok', 'message' => 'Productos pendientes marcados como rechazados.']);
     }
+    public function revertToSent(AutoOrder $autoOrder)
+    {
+        $repo = new \App\Repository\AutoOrdersRepository();
+        return response()->json(['success' => $repo->revertToSent($autoOrder)]);
+    }
 }

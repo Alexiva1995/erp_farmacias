@@ -14,6 +14,7 @@ const emit = defineEmits([
   "update:options",
   "manage",
   "delete-purchaseOrder",
+  "revert",
 ]);
 
 const { mobile } = useDisplay();
@@ -161,6 +162,20 @@ const formatTime = (dateString) => {
       <!-- Acciones -->
       <template #item.actions="{ item }">
         <div class="d-flex align-center justify-center gap-2">
+          <!-- Botón Devolver a Enviada (sólo si está COMPLETADA) -->
+          <VBtn
+            v-if="item.status === 2"
+            icon
+            size="32"
+            variant="tonal"
+            color="warning"
+            class="rounded-circle shadow-sm"
+            @click="emit('revert', item)"
+          >
+            <VIcon icon="tabler-arrow-back-up" size="18" />
+            <VTooltip activator="parent" location="top">Devolver a Enviada</VTooltip>
+          </VBtn>
+
           <VBtn
             icon
             size="32"
@@ -259,6 +274,19 @@ const formatTime = (dateString) => {
             </VRow>
 
             <div class="d-flex align-center gap-2 mt-4">
+              <!-- Botón Devolver a Enviada en móvil -->
+              <VBtn
+                v-if="item.status === 2"
+                icon
+                variant="tonal"
+                color="warning"
+                class="rounded-lg"
+                size="32"
+                @click="emit('revert', item)"
+              >
+                <VIcon icon="tabler-arrow-back-up" size="18" />
+              </VBtn>
+
               <VBtn
                 color="primary"
                 variant="tonal"

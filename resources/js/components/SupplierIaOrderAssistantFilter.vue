@@ -24,6 +24,7 @@ const props = defineProps({
   showGraphs:         { type: Boolean, default: false },
   selectedSupplier:   { type: [Number, String, Object, null], default: null },
   suppliers:          { type: Array,   default: () => [] },
+  hasStock:           { type: String,  default: "all" },
 });
 
 const emit = defineEmits([
@@ -33,6 +34,7 @@ const emit = defineEmits([
   "update:tipo_de_filtracion",
   "update:lapso_de_tiempo",
   "update:stock",
+  "update:hasStock",
   "update:selectedLaboratory",
   "update:selectedGroup",
   "update:isColombian",
@@ -78,8 +80,14 @@ const stockOpciones = [
   { title: "Todos",  value: "all"    },
 ];
 
+const hasStockOpciones = [
+  { title: "Todos",       value: "all"     },
+  { title: "Con Stock",   value: "with"    },
+  { title: "Sin Stock",   value: "without" },
+];
+
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier)
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
 ));
 </script>
 
@@ -171,7 +179,7 @@ const hasAdvancedFilters = computed(() => (
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"
-          placeholder="Proveedor Destino"
+          label="Proveedor Destino"
           item-title="name"
           item-value="id"
           clearable
@@ -187,7 +195,7 @@ const hasAdvancedFilters = computed(() => (
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
-          :placeholder="isRestaurant ? 'Marcas' : 'Laboratorios'"
+          :label="isRestaurant ? 'Marcas' : 'Laboratorios'"
           item-title="name"
           item-value="id"
           clearable
@@ -206,7 +214,7 @@ const hasAdvancedFilters = computed(() => (
         <VAutocomplete
           :model-value="props.selectedGroup"
           :items="props.groups"
-          placeholder="Grupos"
+          label="Grupos"
           item-title="name"
           item-value="id"
           clearable
@@ -225,7 +233,7 @@ const hasAdvancedFilters = computed(() => (
         <VSelect
           :model-value="props.lapso_de_tiempo"
           :items="lapsoDeTiempoOpciones"
-          placeholder="Periodo"
+          label="Periodo"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-calendar-time"
@@ -238,7 +246,7 @@ const hasAdvancedFilters = computed(() => (
         <VSelect
           :model-value="props.tipo_de_filtracion"
           :items="tipoFiltracionOpcion"
-          placeholder="Cálculo"
+          label="Cálculo"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-math-function"
@@ -251,7 +259,7 @@ const hasAdvancedFilters = computed(() => (
         <VSelect
           :model-value="props.tipo_de_vista"
           :items="tipoDeVistaOpcion"
-          placeholder="Vista"
+          label="Vista"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-layout-grid"
@@ -264,7 +272,7 @@ const hasAdvancedFilters = computed(() => (
         <VSelect
           :model-value="props.selectConDescuento"
           :items="precio"
-          placeholder="Precios"
+          label="Precios"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-currency-dollar"
@@ -277,11 +285,24 @@ const hasAdvancedFilters = computed(() => (
         <VSelect
           :model-value="props.stock"
           :items="stockOpciones"
-          placeholder="Stock"
+          label="Análisis Stock"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-box"
           @update:model-value="emit('update:stock', $event)"
+        />
+      </VCol>
+
+      <!-- Disponibilidad Inventario -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.hasStock"
+          :items="hasStockOpciones"
+          label="Disponibilidad"
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-package"
+          @update:model-value="emit('update:hasStock', $event)"
         />
       </VCol>
 
