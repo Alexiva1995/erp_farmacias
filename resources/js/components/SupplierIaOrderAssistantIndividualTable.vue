@@ -257,7 +257,7 @@ const headers = computed(() => {
   base.push({ title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' });
 
   if (props.withSuppliers) {
-    base.push({ title: "COSTP", key: "best_supplier_price", sortable: false, align: 'end', width: '90px' });
+    base.push({ title: "COSTP", key: "best_supplier_percentage", sortable: true, align: 'end', width: '90px' });
   }
 
   base.push(
@@ -369,7 +369,7 @@ function rowClass(item) {
           </template>
 
           <!-- Costo Proveedor -->
-          <template v-if="props.withSuppliers" #item.best_supplier_price="{ item }">
+          <template v-if="props.withSuppliers" #item.best_supplier_percentage="{ item }">
             <span class="font-weight-black text-warning">
               ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
             </span>

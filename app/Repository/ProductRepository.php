@@ -1665,6 +1665,25 @@ class ProductRepository
             $query->orderByRaw("($subqueryAO) $sortDir");
         } elseif ($sortCol === 'solicitar') {
             $query->orderByRaw("($solicitarCol) $sortDir");
+        } elseif ($sortCol === 'best_supplier_percentage') {
+            $subqueryBestSupplierPrice = '(
+                SELECT MIN(
+                    CASE 
+                        WHEN ps.unit_cost_usd_with_discount > 0 THEN ps.unit_cost_usd_with_discount 
+                        ELSE ps.unit_cost 
+                    END
+                )
+                FROM product_suppliers ps
+                WHERE ps.product_id = products.id
+                AND ps.is_deleted = 0
+            )';
+            $subqueryVariation = "CASE 
+                WHEN products.unit_cost > 0 THEN 
+                    ((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100
+                ELSE 0
+            END";
+            $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
+            $query->orderByRaw("($subqueryVariation) $dbSortDir");
         } elseif ($sortCol === 'preferencia_product') {
             // Como preferencia requiere group_sales_average_sum, lo manejamos con una subconsulta simplificada o por products.name si falla
             $query->orderBy('products.name', 'ASC');

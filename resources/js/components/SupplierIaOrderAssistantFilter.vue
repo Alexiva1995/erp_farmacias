@@ -25,6 +25,7 @@ const props = defineProps({
   selectedSupplier:   { type: [Number, String, Object, null], default: null },
   suppliers:          { type: Array,   default: () => [] },
   hasStock:           { type: String,  default: "all" },
+  ordenarAhorro:      Boolean,
 });
 
 const emit = defineEmits([
@@ -42,6 +43,7 @@ const emit = defineEmits([
   "update:showIgnored",
   "update:showGraphs",
   "update:selectedSupplier",
+  "update:ordenarAhorro",
   "clear",
   "clear-ignore",
   "generarPedido",
@@ -333,6 +335,21 @@ const hasAdvancedFilters = computed(() => (
             @update:model-value="emit('update:isNovaventa', $event)"
           />
           <VTooltip activator="parent" location="top">Filtrar solo productos Novaventa</VTooltip>
+        </div>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="2">
+        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+          <VSwitch
+            :model-value="props.ordenarAhorro"
+            label="Ordenar Ahorro"
+            color="success"
+            hide-details
+            density="compact"
+            class="ms-1 font-weight-bold text-xs"
+            @update:model-value="emit('update:ordenarAhorro', $event)"
+          />
+          <VTooltip activator="parent" location="top">Ordenar por mayor ahorro (descuento/variación de precio)</VTooltip>
         </div>
       </VCol>
     </template>
