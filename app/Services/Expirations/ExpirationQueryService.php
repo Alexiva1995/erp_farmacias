@@ -141,7 +141,7 @@ class ExpirationQueryService
 
         return InventoryMovement::with([
             'product' => function ($q) {
-                $q->withTrashed()->with('laboratory');
+                $q->withTrashed()->withoutGlobalScope('not_deleted')->with('laboratory');
             },
             'productLot',
             'user.employee'

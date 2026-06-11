@@ -31,6 +31,7 @@ const tipo_de_vista = ref(false);
 const tipo_de_filtracion = ref("combinado");
 const lapso_de_tiempo = ref("1 month");
 const stock = ref("fallas");
+const hasStock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
@@ -48,6 +49,7 @@ const handleClearFilters = () => {
   tipo_de_filtracion.value = "combinado";
   lapso_de_tiempo.value = "1 month";
   stock.value = "fallas";
+  hasStock.value = "all";
   isColombian.value = false;
   isNovaventa.value = false;
   selectedLaboratory.value = [];
@@ -91,6 +93,7 @@ async function consultarProductosConPaginacion() {
     tipo_filtracion: tipo_de_filtracion.value,
     lapso_de_tiempo: lapso_de_tiempo.value,
     stock: stock.value,
+    hasStock: hasStock.value,
     isColombian: isColombian.value,
     isNovaventa: isNovaventa.value,
     q: searchQuery.value,
@@ -231,6 +234,7 @@ watch(
     tipo_de_filtracion,
     lapso_de_tiempo,
     stock,
+    hasStock,
     isColombian,
     isNovaventa,
     searchQuery,
@@ -457,6 +461,7 @@ onMounted(async () => {
         v-model:tipo_de_filtracion="tipo_de_filtracion"
         v-model:lapso_de_tiempo="lapso_de_tiempo"
         v-model:stock="stock"
+        v-model:hasStock="hasStock"
         v-model:searchQuery="searchQuery"
         v-model:showIgnored="showIgnored"
         v-model:showGraphs="showGraphs"

@@ -18,6 +18,7 @@ const { mobile } = useDisplay();
 const loading = ref(false);
 const saving = ref(false);
 const sending = ref(false);
+const reverting = ref(false);
 const details = ref([]);
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -43,15 +44,7 @@ watch(searchQuery, () => {
   }, 300);
 });
 
-const closeDialog = async (shouldReject = true) => {
-  if (shouldReject && props.purchaseOrder?.id && props.purchaseOrder.status === 1) {
-    try {
-      await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/reject-pending`);
-      emit("refresh");
-    } catch (error) {
-      console.error("Error al rechazar productos pendientes:", error);
-    }
-  }
+const closeDialog = () => {
   emit("update:modelValue", false);
   page.value = 1;
   searchQuery.value = "";
@@ -166,6 +159,21 @@ const handleConfirmSent = async () => {
     toast.error("Error al procesar la solicitud.");
   } finally {
     sending.value = false;
+  }
+};
+
+// Revertir el estado de la orden de compra a Enviada
+const handleRevertToSent = async () => {
+  reverting.value = true;
+  try {
+    await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/revert-to-sent`);
+    toast.success("Orden devuelta a estado enviada correctamente.");
+    emit("refresh");
+    closeDialog(false);
+  } catch (error) {
+    toast.error("Error al devolver la orden a enviada.");
+  } finally {
+    reverting.value = false;
   }
 };
 
