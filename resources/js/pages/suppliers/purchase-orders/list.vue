@@ -128,6 +128,9 @@ const handleDeleteOrder = async (id) => {
     } catch (error) {
       toast.error("Error al eliminar la orden.");
     }
+  }
+};
+
 const handleRevertOrder = async (order) => {
   if (
     confirm(
