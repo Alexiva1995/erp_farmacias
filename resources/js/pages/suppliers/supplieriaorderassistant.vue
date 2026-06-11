@@ -35,6 +35,7 @@ const hasStock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
+const ordenarAhorro = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
 const showIgnored = ref(false);
@@ -52,6 +53,7 @@ const handleClearFilters = () => {
   hasStock.value = "all";
   isColombian.value = false;
   isNovaventa.value = false;
+  ordenarAhorro.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
   searchQuery.value = "";
@@ -251,6 +253,26 @@ watch(
     }, 400); // 400ms de retraso para evitar peticiones masivas
   },
 );
+
+watch(ordenarAhorro, (nuevoValor) => {
+  if (nuevoValor) {
+    sortBy.value = "best_supplier_percentage";
+    orderBy.value = "desc";
+  } else {
+    if (sortBy.value === "best_supplier_percentage") {
+      sortBy.value = "solicitar";
+      orderBy.value = "desc";
+    }
+  }
+});
+
+watch(sortBy, (nuevaColumna) => {
+  if (nuevaColumna !== "best_supplier_percentage") {
+    ordenarAhorro.value = false;
+  } else {
+    ordenarAhorro.value = true;
+  }
+});
 
 let paginationTimeout = null;
 watch([page, itemsPerPage, orderBy, sortBy], () => {
@@ -467,6 +489,7 @@ onMounted(async () => {
         v-model:showGraphs="showGraphs"
         v-model:isColombian="isColombian"
         v-model:isNovaventa="isNovaventa"
+        v-model:ordenarAhorro="ordenarAhorro"
         v-model:selectedSupplier="selectedSupplier"
         :groups="groups"
         :laboratories="laboratories"
