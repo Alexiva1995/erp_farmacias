@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref, watch } from "vue";
@@ -217,7 +217,7 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
             <VIcon
               icon="tabler-currency-dollar"
               size="24"
-              color="primary"
+              class="text-primary"
             />
           </VAvatar>
           <div class="d-flex flex-column leading-none">
@@ -244,7 +244,6 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
           />
         </div>
       </VCardTitle>
-
       <VCardText class="pa-3 pa-sm-4 bg-light overflow-y-auto" style="max-block-size: 70vh;">
         <!-- Resumen de Deuda Destacado -->
         <VCard
@@ -495,11 +494,7 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    rgb(var(--v-theme-gradient-end)) 100%
-  );
+  background: var(--brand-gradient) !important;
 }
 
 .detail-dialog-card {

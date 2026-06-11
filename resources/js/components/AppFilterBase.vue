@@ -127,7 +127,7 @@ const handleClear = () => {
             variant="tonal"
             :color="isPanelVisible ? 'primary' : 'secondary'"
             size="38"
-            class="rounded-pill"
+            rounded="circle"
             @click="togglePanel"
           >
             <VIcon :icon="isPanelVisible ? 'tabler-filter-off' : 'tabler-filter'" />
@@ -144,7 +144,7 @@ const handleClear = () => {
                 variant="tonal"
                 color="info"
                 size="38"
-                class="rounded-pill"
+                rounded="circle"
               >
                 <VIcon :icon="selectedSortIcon" />
                 <VTooltip activator="parent" location="top">Ordenar Por</VTooltip>
@@ -175,7 +175,7 @@ const handleClear = () => {
                 color="success"
                 variant="tonal"
                 size="38"
-                class="rounded-pill"
+                rounded="circle"
               >
                 <VIcon icon="tabler-file-export" />
                 <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
@@ -203,10 +203,11 @@ const handleClear = () => {
           <!-- Añadir -->
           <VBtn
             v-if="showAdd"
+            icon
             color="primary"
             variant="tonal"
             size="38"
-            class="rounded-pill"
+            rounded="circle"
             @click="emit('add')"
           >
             <VIcon icon="tabler-plus" />
@@ -217,10 +218,11 @@ const handleClear = () => {
 
           <!-- Limpiar todo -->
           <VBtn
+            icon
             variant="text"
             color="secondary"
             size="38"
-            class="rounded-pill"
+            rounded="circle"
             @click="handleClear"
           >
             <VIcon icon="tabler-eraser" />

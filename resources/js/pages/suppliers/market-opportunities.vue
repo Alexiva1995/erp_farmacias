@@ -138,7 +138,8 @@ const handleAddUnits = async (item) => {
       product_id: item.product_id,
       quantity: item.quantity_to_add,
       supplier_id: item.supplier_id,
-      product_supplier_id: item.id
+      product_supplier_id: item.id,
+      unit_cost: item.unit_cost_usd
     };
 
     const response = await axios.post("/suppliers-ia-order-assistant/add-to-order", data);

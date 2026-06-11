@@ -10,7 +10,7 @@
   --color-light: #F8F9FA;
   --color-light-gray: #E9ECEF;
   --color-white: #FFFFFF;
-  --brand-gradient: linear-gradient(135deg, #7A0099, #E20074);
+  --brand-gradient: linear-gradient(135deg, #7A0099, #E20074) !important;
 
   // Variables del degradado de branding (usadas por .header-gradient en todos los modales)
   // El JS del branding store las sobreescribe con los colores configurados en ajustes generales

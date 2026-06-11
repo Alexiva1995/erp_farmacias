@@ -31,12 +31,14 @@ class IaAssistantActionController extends Controller
             'quantity' => 'required|numeric|min:0.01',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'product_supplier_id' => 'nullable|exists:product_suppliers,id',
+            'unit_cost' => 'nullable|numeric|min:0',
         ]);
 
         $productId = $request->product_id;
         $quantity = $request->quantity;
         $supplierId = $request->supplier_id;
         $productSupplierId = $request->product_supplier_id;
+        $customUnitCost = $request->unit_cost;
 
         DB::beginTransaction();
         try {
@@ -76,10 +78,14 @@ class IaAssistantActionController extends Controller
 
             $supplierId = $ps->supplier_id;
             $productSupplierId = $ps->id;
-            // Prioridad: Costo con descuento > Costo normal > Costo del producto base
-            $unitCost = $ps->unit_cost_usd_with_discount > 0 
-                ? $ps->unit_cost_usd_with_discount 
-                : ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : $product->unit_cost);
+
+            // Si se proporciona un costo unitario exacto desde el frontend (respetando filtros), se usa.
+            // De lo contrario, se aplica la prioridad por defecto: Costo con descuento > Costo normal > Costo del producto base.
+            $unitCost = $customUnitCost !== null && $customUnitCost > 0
+                ? (float) $customUnitCost
+                : ($ps->unit_cost_usd_with_discount > 0 
+                    ? $ps->unit_cost_usd_with_discount 
+                    : ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : $product->unit_cost));
 
             // 2. Buscar o crear una AutoOrder abierta para este proveedor
             $autoOrder = AutoOrder::firstOrCreate(
