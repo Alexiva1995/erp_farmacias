@@ -190,16 +190,6 @@ class OrderActionService
             }
 
             $product = Product::findOrFail($validatedData['product_id']);
-            Log::info('--- ADD_ORDER_ITEM START ---');
-            Log::info('Product details:', [
-                'id' => $product->id,
-                'name' => $product->name,
-                'sale_price' => $product->sale_price,
-                'price_cop_attribute' => $product->price_cop, // Test if attribute is working here
-            ]);
-            Log::info('Payload received:', $validatedData);
-            Log::info('Order info:', ['id' => $order->id, 'currency' => $order->currency]);
-
             $product->loadSum('lots', 'quantity');
             $availableStock = (int) $product->lots_sum_quantity ?? 0;
 

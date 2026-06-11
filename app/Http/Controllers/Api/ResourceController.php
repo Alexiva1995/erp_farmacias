@@ -99,9 +99,7 @@ class ResourceController extends Controller
 
     public function getExchangeRates(): JsonResponse
     {
-        \Log::info('getExchangeRates called');
         $rates = $this->resourceService->getAllExchangeRate();
-        \Log::info('Exchange rates data:', $rates->toArray());
         return response()->json($rates);
     }
     public function getAllProducts()

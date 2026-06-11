@@ -1675,7 +1675,6 @@ class ProductRepository
                 )
                 FROM product_suppliers ps
                 WHERE ps.product_id = products.id
-                AND ps.is_deleted = 0
             )';
             $subqueryVariation = "CASE 
                 WHEN products.unit_cost > 0 THEN 
