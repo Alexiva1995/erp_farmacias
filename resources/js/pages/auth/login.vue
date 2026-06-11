@@ -159,9 +159,9 @@ const isPasswordVisible = ref(false);
 // Asegurar que la tarjeta tenga el ancho correcto en todos los tamaños de pantalla
 @media (max-width: 959px) {
   .login-card {
-    width: 90% !important;
-    max-width: 546px !important;
-    min-width: 320px !important;
+    width: 100% !important;
+    max-width: 450px !important;
+    min-width: 0 !important;
   }
 }
 
@@ -169,11 +169,14 @@ const isPasswordVisible = ref(false);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   
   img {
-    height: 100px !important;
-    max-width: 350px !important;
+    height: auto !important;
+    max-height: 80px !important;
+    max-width: 100% !important;
     width: auto !important;
+    object-fit: contain !important;
   }
 }
 

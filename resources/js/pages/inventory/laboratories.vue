@@ -343,17 +343,24 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 
     <!-- DIÁLOGO LABORATORIO/MARCA -->
     <VDialog v-model="isLabDialogOpen" max-width="500">
-      <VCard class="rounded-xl shadow-xl border-0">
-        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center">
-          <VAvatar color="primary" variant="tonal" class="me-4" size="48">
-            <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="24" />
-          </VAvatar>
-          <div>
-            <div class="text-h6 font-weight-black leading-tight">{{ labForm.id ? 'Editar' : 'Nueva' }} {{ isRestaurant ? 'Marca' : 'Laboratorio' }}</div>
-            <div class="text-xs text-disabled font-weight-bold text-uppercase ls-1">{{ isRestaurant ? 'Información de la marca' : 'Información del fabricante' }}</div>
+      <VCard class="rounded-xl shadow-xl border-0 overflow-hidden">
+        <!-- Cabecera Premium con gradiente -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar color="white" variant="flat" class="me-3 elevation-1" size="40">
+              <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="24" color="primary" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                {{ labForm.id ? 'Editar' : 'Nueva' }} {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
+              </h2>
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold mt-1">
+                {{ isRestaurant ? 'Información de la marca' : 'Información del fabricante' }}
+              </span>
+            </div>
+            <VSpacer />
+            <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="isLabDialogOpen = false" />
           </div>
-          <VSpacer />
-          <VBtn icon="tabler-x" variant="text" color="disabled" @click="isLabDialogOpen = false" />
         </VCardTitle>
         <VCardText class="pa-6 pt-6">
           <VRow>
@@ -383,23 +390,56 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
           </VRow>
         </VCardText>
         <VDivider />
-        <VCardActions class="pa-6">
-          <VSpacer />
-          <VBtn color="secondary" variant="tonal" class="px-6 font-weight-black" @click="isLabDialogOpen = false">CANCELAR</VBtn>
-          <VBtn color="primary" variant="elevated" class="px-8 font-weight-black" elevation="4" @click="saveLab">
-            GUARDAR {{ labForm.id ? 'CAMBIOS' : (isRestaurant ? 'MARCA' : 'LABORATORIO') }}
-          </VBtn>
+        <!-- Botones con distribución equitativa y diseño premium -->
+        <VCardActions class="pa-4 bg-light border-t">
+          <VRow no-gutters class="w-100">
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="secondary"
+                variant="tonal"
+                size="large"
+                block
+                height="50"
+                class="font-weight-black rounded-lg text-button uppercase"
+                @click="isLabDialogOpen = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="primary"
+                variant="flat"
+                size="large"
+                block
+                height="50"
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                @click="saveLab"
+              >
+                Guardar {{ labForm.id ? 'Cambios' : (isRestaurant ? 'Marca' : 'Laboratorio') }}
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>
 
     <!-- MODAL GRUPOS -->
     <VDialog v-model="isGroupDialogOpen" max-width="600">
-      <VCard class="rounded-xl shadow-xl border-0">
-        <VCardTitle class="pa-6 bg-var-theme-background d-flex align-center font-weight-black text-uppercase">
-          <VAvatar color="primary" variant="tonal" class="me-4"><VIcon icon="tabler-layers-intersect" /></VAvatar>
-          Configurar Grupo
-          <VSpacer /><VBtn icon="tabler-x" variant="text" @click="isGroupDialogOpen = false" />
+      <VCard class="rounded-xl shadow-xl border-0 overflow-hidden">
+        <!-- Cabecera Premium con gradiente -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar color="white" variant="flat" class="me-3 elevation-1" size="40">
+              <VIcon icon="tabler-layers-intersect" size="24" color="primary" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">Configurar Grupo</h2>
+              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold mt-1">Asignación de laboratorios</span>
+            </div>
+            <VSpacer />
+            <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="isGroupDialogOpen = false" />
+          </div>
         </VCardTitle>
         <VCardText class="pa-6">
           <AppTextField v-model="groupForm.name" label="Nombre del Grupo" class="mb-4" />
@@ -413,10 +453,36 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
           />
         </VCardText>
         <VDivider />
-        <VCardActions class="pa-6">
-          <VSpacer />
-          <VBtn color="secondary" variant="tonal" @click="isGroupDialogOpen = false">DESCARTAR</VBtn>
-          <VBtn color="primary" variant="elevated" @click="saveGroup">GUARDAR</VBtn>
+        <!-- Botones con distribución equitativa y diseño premium -->
+        <VCardActions class="pa-4 bg-light border-t">
+          <VRow no-gutters class="w-100">
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="secondary"
+                variant="tonal"
+                size="large"
+                block
+                height="50"
+                class="font-weight-black rounded-lg text-button uppercase"
+                @click="isGroupDialogOpen = false"
+              >
+                Descartar
+              </VBtn>
+            </VCol>
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="primary"
+                variant="flat"
+                size="large"
+                block
+                height="50"
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                @click="saveGroup"
+              >
+                Guardar
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -427,4 +493,14 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 .bg-var-theme-background { background-color: rgba(var(--v-border-color), 0.05); }
 .text-super-xs { font-size: 0.65rem !important; }
 :deep(.v-data-table th) { font-size: 0.75rem !important; font-weight: 700 !important; text-transform: uppercase; }
+
+.header-gradient {
+  background: var(--brand-gradient) !important;
+}
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
 </style>

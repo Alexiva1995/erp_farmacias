@@ -155,8 +155,14 @@ const onActionClick = async (item, action) => {
 
       if (props.selectedSupplierId) {
         payload.supplier_id = props.selectedSupplierId;
+        if (item.best_supplier_price) {
+          payload.unit_cost = item.best_supplier_price;
+        }
       } else {
         payload.product_supplier_id = item.best_supplier.product_suppliers_id;
+        if (item.best_supplier_price) {
+          payload.unit_cost = item.best_supplier_price;
+        }
       }
 
       await axios.post('/api/suppliers-ia-order-assistant/add-to-order', payload);

@@ -63,8 +63,7 @@ class ProductRepository
         $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
+                WHERE aod.product_id = products.id
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
                 AND ao.deleted_at IS NULL
@@ -352,8 +351,7 @@ class ProductRepository
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
+                WHERE aod.product_id = products.id
                 AND ao.status IN (0, 1)
                 AND aod.status = 0
                 AND ao.deleted_at IS NULL

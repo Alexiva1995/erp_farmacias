@@ -50,7 +50,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         $subqueryStock = "(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_id = products.id AND quantity > 0 AND (expiration_date IS NULL OR expiration_date >= $currentDateExpr))";
 
         // Subconsulta para Auto Pedidos activos
-        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id WHERE ps.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL)';
+        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id WHERE aod.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL)';
 
         // Subconsulta para Ventas Realizadas (3 meses)
         $subquerySales = "(SELECT COALESCE(SUM(order_details.quantity), 0) FROM order_details JOIN orders ON orders.id = order_details.order_id WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '{$tresMesesAtras}' AND '{$hoy}' AND orders.status = 'Completed')";

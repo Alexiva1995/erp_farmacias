@@ -571,12 +571,12 @@ class PendingPaymentsController extends Controller
             // 7. Crear expense
             $this->createExpense($invoices, $payment, false);
 
-            // 8. Guardar pago para mostrar en cierre de caja
+            // 8. Guardar pago para mostrar en cierre de caja (truncando descripción para evitar error de longitud en la BD)
             Transaction::create([
                 'user_id' => auth()->id(),
                 'category_id' => ExpenseCategory::firstOrCreate(['name' => 'Pagos de Facturas'])->id,
                 'exchange_rate' => $exchangeRate->rate ?? 1,
-                'description' => "Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$invoices->first()->supplier->name}",
+                'description' => substr("Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$invoices->first()->supplier->name}", 0, 1000),
                 'currency' => $normalizedCurrency,
                 'type' => $payment->method,
                 'amount' => $request->payment_amount,
