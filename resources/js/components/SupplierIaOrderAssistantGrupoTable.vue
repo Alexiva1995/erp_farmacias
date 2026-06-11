@@ -172,6 +172,24 @@ const onActionClick = async (item, action) => {
     } finally {
       delete isProcessing.value[item.id];
     }
+  } else if (action === 'ignore') {
+    isProcessing.value[item.id] = 'ignoring';
+    try {
+      await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      emit('remove-item', item.id);
+      Swal.fire({
+        title: "Ignorado",
+        text: "Producto ocultado del asistente por 7 días.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error ignoring product:", error);
+      Swal.fire("Error", "No se pudo ignorar el producto.", "error");
+    } finally {
+      delete isProcessing.value[item.id];
+    }
   }
 };
 
@@ -434,6 +452,18 @@ function rowClass(item) {
               <template #item.actions="{ item }">
                 <div class="d-flex justify-end ga-1">
                   <VBtn
+                    v-if="!isRestaurant"
+                    variant="tonal"
+                    color="error"
+                    size="30"
+                    icon
+                    :loading="isProcessing[item.id] === 'ignoring'"
+                    @click.stop="onActionClick(item, 'ignore')"
+                  >
+                    <VIcon size="18">tabler-trash-x</VIcon>
+                    <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
+                  </VBtn>
+                  <VBtn
                     variant="tonal"
                     color="success"
                     size="30"
@@ -567,6 +597,18 @@ function rowClass(item) {
                       </div>
 
                       <div class="d-flex ga-1">
+                        <VBtn
+                          v-if="!isRestaurant"
+                          icon
+                          variant="tonal"
+                          color="error"
+                          size="32"
+                          :loading="isProcessing[item.id] === 'ignoring'"
+                          @click.stop="onActionClick(item, 'ignore')"
+                        >
+                          <VIcon icon="tabler-trash-x" size="18" />
+                          <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
+                        </VBtn>
                         <VBtn
                           icon
                           variant="tonal"
