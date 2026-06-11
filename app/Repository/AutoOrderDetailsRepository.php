@@ -23,10 +23,14 @@ class AutoOrderDetailsRepository
         if ($order && $order->status->value === 1) {
             $supplierId = $order->supplier_id;
 
-            // Buscar productos en facturas cargadas o aprobadas del mismo proveedor
-            $receivedProductIds = \App\Models\InvoiceDetail::whereHas('invoice', function ($query) use ($supplierId) {
+            // Buscar productos en facturas cargadas o aprobadas del mismo proveedor registradas después o asociadas a la orden de compra
+            $receivedProductIds = \App\Models\InvoiceDetail::whereHas('invoice', function ($query) use ($supplierId, $order) {
                 $query->where('supplier_id', $supplierId)
-                    ->whereIn('status', ['loaded', 'to_order', 'ordered']);
+                    ->whereIn('status', ['loaded', 'to_order', 'ordered'])
+                    ->where(function ($q) use ($order) {
+                        $q->where('created_at', '>=', $order->created_at)
+                          ->orWhere('auto_order_id', $order->id);
+                    });
             })->pluck('product_id')->unique()->toArray();
 
             if (!empty($receivedProductIds)) {
