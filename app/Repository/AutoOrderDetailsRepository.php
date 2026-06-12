@@ -65,12 +65,13 @@ class AutoOrderDetailsRepository
         $perPage = isset($filters["perPage"]) ? min(max((int)$filters["perPage"], 1), 100) : 10;
         
         $query = AutoOrderDetail::query()
-            ->select(["auto_order_details.*", "product_suppliers.name as product_name"])
+            ->select(["auto_order_details.*", "products.name as product_name"])
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
+            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->where("auto_order_details.order_id", $orderId);
 
         if (!empty($filters["search"])) {
-            $query->where("product_suppliers.name", "like", "%" . $filters["search"] . "%");
+            $query->where("products.name", "like", "%" . $filters["search"] . "%");
         }
 
         $results = $query->orderBy("product_name", "asc")
