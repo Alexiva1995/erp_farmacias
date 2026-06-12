@@ -40,6 +40,9 @@ class AutoOrdersRepository
     public function applyFilters($query, array $filters = [])
     {
         $perPage = $filters["itemsPerPage"] ?? 10;
+        if ($perPage <= 0) {
+            $perPage = 999999;
+        }
         $supplierId = $filters["selectedSupplier"] ?? null;
         $search = $filters["search"] ?? null;
         $startDate = $filters["start_date"] ?? null;

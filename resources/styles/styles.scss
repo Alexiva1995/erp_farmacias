@@ -256,3 +256,23 @@ span.text-medium-emphasis,
 .v-field__placeholder {
   opacity: 0.6 !important;
 }
+
+/* Forzar botones redondos para todos los filtros del sistema */
+.app-filter-base .v-btn,
+[class*="filter"] .v-btn,
+[id*="filter"] .v-btn,
+.filters-container .v-btn,
+.filter-container .v-btn,
+.filter-box .v-btn,
+.filter-row .v-btn,
+.filter-panel .v-btn,
+.filter-actions .v-btn {
+  border-radius: 9999px !important;
+  
+  &.rounded-lg,
+  &.rounded-md,
+  &.rounded-sm,
+  &.rounded-xl {
+    border-radius: 9999px !important;
+  }
+}

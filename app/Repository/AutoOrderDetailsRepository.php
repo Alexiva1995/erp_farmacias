@@ -10,6 +10,12 @@ class AutoOrderDetailsRepository
 {
     public function create(array $datos): ?AutoOrderDetail
     {
+        if (!empty($datos['product_suppliers_id']) && empty($datos['product_id'])) {
+            $ps = \App\Models\ProductSupplier::find($datos['product_suppliers_id']);
+            if ($ps) {
+                $datos['product_id'] = $ps->product_id;
+            }
+        }
         $record = AutoOrderDetail::create($datos);
         return $record;
     }
@@ -67,7 +73,7 @@ class AutoOrderDetailsRepository
         $query = AutoOrderDetail::query()
             ->select(["auto_order_details.*", "products.name as product_name"])
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
-            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->leftJoin("products", "products.id", "=", "auto_order_details.product_id")
             ->where("auto_order_details.order_id", $orderId);
 
         if (!empty($filters["search"])) {
@@ -98,7 +104,7 @@ class AutoOrderDetailsRepository
         $results = AutoOrderDetail::query()
             ->select(["auto_order_details.*", "products.name as product_name"])
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
-            ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->leftJoin("products", "products.id", "=", "auto_order_details.product_id")
             ->where("auto_order_details.order_id", $id)
             ->orderBy("auto_order_details.subtotal", "desc")
             ->paginate($perPage);
