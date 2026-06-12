@@ -46,7 +46,7 @@ const emit = defineEmits([
   "update:ordenarAhorro",
   "clear",
   "clear-ignore",
-  "generarPedido",
+  "pedirAhorro",
   "fetchSuppliers",
   "exportarColombianos",
 ]);
@@ -152,10 +152,10 @@ const hasAdvancedFilters = computed(() => (
         variant="flat"
         size="38"
         class="ml-1 shadow-sm rounded-circle"
-        @click="emit('generarPedido')"
+        @click="emit('pedirAhorro')"
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
-        <VTooltip activator="parent" location="top">Generar Pedido IA</VTooltip>
+        <VTooltip activator="parent" location="top">Pedir Todo Ahorro</VTooltip>
       </VBtn>
 
       <!-- Exportar Colombia: visible solo cuando el toggle Colombia está activo -->

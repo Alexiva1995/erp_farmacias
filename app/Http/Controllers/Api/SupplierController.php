@@ -382,7 +382,7 @@ class SupplierController extends Controller
         );
     }
 
-    return ApiResponse::error('No se pudo procesar la solicitud');
+    return ApiResponse::error($results['message'] ?? 'No se pudo procesar la solicitud');
     }
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)

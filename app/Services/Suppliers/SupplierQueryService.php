@@ -716,10 +716,12 @@ class SupplierQueryService
     {
         $productId = $request->productId;
         $mainProductId = $request->main_product_id;
+        if ($mainProductId === 'null' || $mainProductId === 'undefined' || !$mainProductId) {
+            $mainProductId = null;
+        }
         $quantity = $request->quantity;
         $discount = $request->boolean("discount");
         $product = ProductSupplier::find($productId);
-        $mainProduct = Product::find($mainProductId);
 
         $barcodeWarning = null;
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
@@ -742,6 +744,8 @@ class SupplierQueryService
             ]);
         }
 
+        $targetProductId = $mainProductId ?: ($product ? $product->product_id : null);
+
         $order = AutoOrder::where('supplier_id', $product->supplier_id)
             ->where('status', \App\Enums\AutoOrderStatus::PENDING)
             ->orderByDesc("created_at")
@@ -751,7 +755,7 @@ class SupplierQueryService
         $subtotal = $unitCost * $quantity;
 
         $detailPayload = [
-            "product_id" => $mainProductId ?: $product->product_id,
+            "product_id" => $mainProductId ?: ($product ? $product->product_id : null),
             "product_suppliers_id" => $productId,
             "quantity" => $quantity,
             "unit_cost" => $unitCost,

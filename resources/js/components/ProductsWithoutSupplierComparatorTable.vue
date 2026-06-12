@@ -20,6 +20,9 @@ const props = defineProps({
   lapso_de_tiempo: String,
   stock: String,
   selectConDescuento: Boolean,
+  hasStock: { type: String, default: "all" },
+  isColombian: { type: Boolean, default: false },
+  isNovaventa: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -33,6 +36,9 @@ const emit = defineEmits([
   "update:lapso_de_tiempo",
   "update:stock",
   "update:selectConDescuento",
+  "update:hasStock",
+  "update:isColombian",
+  "update:isNovaventa",
   "delete",
   "delete-old",
   "save-analysis",
@@ -64,6 +70,12 @@ const stockOpciones = [
   { title: "Todos", value: "all" },
 ];
 
+const hasStockOpciones = [
+  { title: "Todos", value: "all" },
+  { title: "Con Stock", value: "with" },
+  { title: "Sin Stock", value: "without" },
+];
+
 const isAdvancedFiltersVisible = ref(false);
 
 const toggleAdvancedFilters = () => {
@@ -71,7 +83,13 @@ const toggleAdvancedFilters = () => {
 };
 
 const hasActiveAdvancedFilters = computed(() => {
-  return props.selectedLaboratory?.length > 0;
+  return props.selectedLaboratory?.length > 0 ||
+         props.selectedGroup?.length > 0 ||
+         props.tipo_de_filtracion !== 'combinado' ||
+         props.stock !== 'fallas' ||
+         props.hasStock !== 'all' ||
+         props.isColombian ||
+         props.isNovaventa;
 });
 
 const { mdAndUp } = useDisplay();
@@ -282,6 +300,46 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                   prepend-inner-icon="tabler-tag"
                   @update:model-value="emit('update:selectConDescuento', $event)"
                 />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="3">
+                <VSelect
+                  :model-value="props.hasStock"
+                  :items="hasStockOpciones"
+                  placeholder="Disponibilidad"
+                  hide-details
+                  density="compact"
+                  prepend-inner-icon="tabler-box"
+                  @update:model-value="emit('update:hasStock', $event)"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="3">
+                <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background" style="min-height: 40px;">
+                  <VSwitch
+                    :model-value="props.isColombian"
+                    label="Colombia"
+                    color="info"
+                    hide-details
+                    density="compact"
+                    class="ms-1 font-weight-bold text-xs"
+                    @update:model-value="emit('update:isColombian', $event)"
+                  />
+                </div>
+              </VCol>
+
+              <VCol cols="12" sm="6" md="3">
+                <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background" style="min-height: 40px;">
+                  <VSwitch
+                    :model-value="props.isNovaventa"
+                    label="Novaventa"
+                    color="secondary"
+                    hide-details
+                    density="compact"
+                    class="ms-1 font-weight-bold text-xs"
+                    @update:model-value="emit('update:isNovaventa', $event)"
+                  />
+                </div>
               </VCol>
 
 
