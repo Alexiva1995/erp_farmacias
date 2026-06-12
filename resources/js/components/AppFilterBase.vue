@@ -88,7 +88,7 @@ const handleClear = () => {
 </script>
 
 <template>
-  <VCard :class="{ 'rounded-lg border shadow-sm overflow-hidden mb-4': !flat, 'elevation-0 border-0': flat }">
+  <VCard :class="[{ 'rounded-lg border shadow-sm overflow-hidden mb-4': !flat, 'elevation-0 border-0': flat }, 'app-filter-base']">
     <VCardText class="pa-3">
 
       <!-- ── Fila Principal: Buscador + Acciones ──────────────────────── -->

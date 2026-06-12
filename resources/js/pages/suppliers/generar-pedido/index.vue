@@ -435,6 +435,40 @@ const TOTAL_PAGINAS_NO_ENCONTRADOS = computed(() => {
   return Math.ceil(FILTRADA_NO_ENCONTRADOS.value.length / itemsPerPageNoEncontrados);
 })
 
+function pedirTodoAhorro() {
+  const ahorroFiltrados = module.listasPaginadas.decreased.filter(item => {
+    if (module.excludeColombian && item.product?.is_colombian_origin) return false;
+    if (module.excludedLaboratories.length > 0 && module.excludedLaboratories.includes(item.product?.laboratory?.id)) return false;
+    return true;
+  });
+
+  if (ahorroFiltrados.length === 0) {
+    toast.info("No hay productos en ahorro con los filtros actuales.");
+    return;
+  }
+
+  ahorroFiltrados.forEach(item => {
+    let cantidad = item.reponer;
+    if (!cantidad || cantidad <= 0) {
+      cantidad = item.solicitar && Math.abs(item.solicitar) > 0 ? Math.abs(item.solicitar) : 1;
+    }
+    item.reponer = cantidad;
+    module.manualQuantities[item.productSupplier.id] = { ...item, reponer: cantidad };
+  });
+
+  seleccionarProductosParaElDetalle();
+
+  Swal.fire({
+    title: 'Productos en Ahorro seleccionados',
+    text: `Se van a solicitar ${ahorroFiltrados.length} productos en ahorro.`,
+    icon: 'success',
+    confirmButtonText: 'Aceptar',
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated v-theme--light bg-success v-btn--density-default v-btn--size-default v-btn--variant-elevated',
+    }
+  });
+}
+
 function abrirModalNoEncontrados() {
   pageNoEncontrados.value = 1;
   searchNoEncontrados.value = '';
@@ -697,6 +731,18 @@ function eliminarItemOrden(payload){
                 @click="module.overcostMinOne = !module.overcostMinOne"
             >
                 Sobre Costo: {{ module.overcostMinOne ? 'Min 1' : 'Sugerido' }}
+            </VBtn>
+
+            <!-- Pedir todo lo que está en Ahorro -->
+            <VBtn
+                color="info"
+                variant="flat"
+                size="small"
+                class="font-weight-bold"
+                prepend-icon="tabler-shopping-cart-discount"
+                @click="pedirTodoAhorro"
+            >
+                Pedir Todo Ahorro
             </VBtn>
           </div>
         </div>

@@ -736,6 +736,12 @@ class SupplierQueryService
             }
         }
 
+        if ($product && $mainProductId && $product->product_id != $mainProductId) {
+            $product->update([
+                'product_id' => $mainProductId
+            ]);
+        }
+
         $order = AutoOrder::where('supplier_id', $product->supplier_id)
             ->where('status', \App\Enums\AutoOrderStatus::PENDING)
             ->orderByDesc("created_at")
@@ -745,7 +751,7 @@ class SupplierQueryService
         $subtotal = $unitCost * $quantity;
 
         $detailPayload = [
-            "product_id" => $mainProduct ? $mainProduct->id : null,
+            "product_id" => $mainProductId ?: $product->product_id,
             "product_suppliers_id" => $productId,
             "quantity" => $quantity,
             "unit_cost" => $unitCost,

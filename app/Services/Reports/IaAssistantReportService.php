@@ -23,7 +23,7 @@ class IaAssistantReportService
         $tipo = $filtros['tipo_filtracion'] ?? 'average';
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
-        if ($perPage <= 0) $perPage = 25;
+        if ($perPage <= 0) $perPage = 999999;
 
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
@@ -104,7 +104,7 @@ class IaAssistantReportService
         $tipo = $filtros['tipo_filtracion'] ?? 'average';
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
-        if ($perPage <= 0) $perPage = 25;
+        if ($perPage <= 0) $perPage = 999999;
 
         // 1. Obtener todos los group_ids ordenados alfabéticamente
         $allGroupIds = $this->getFilteredIds($filtros, true);
@@ -581,6 +581,7 @@ class IaAssistantReportService
         $tipoAnalisis = $filtros['tipo_analisis'] ?? 'all'; // increased, decreased, stable, all
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 20);
+        if ($perPage <= 0) $perPage = 999999;
         $conDescuento = filter_var($filtros['con_descuento'] ?? false, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
 
         // Reutilizamos la lógica de filtrado inicial
