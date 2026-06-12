@@ -1153,6 +1153,7 @@ class ProductRepository
                     ELSE 0
                 END";
                 $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
+                $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
                 $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
             } else {
                 $consulta->orderBy($sortCol, $sortDir);
@@ -1500,6 +1501,7 @@ class ProductRepository
                     ELSE 0
                 END";
                 $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
+                $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
                 $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
             } else {
                 $consulta->orderBy($sortCol, $sortDir);
@@ -1774,6 +1776,7 @@ class ProductRepository
                 ELSE 0
             END";
             $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
+            $query->whereRaw("($subqueryBestSupplierPrice) > 0");
             $query->orderByRaw("($subqueryVariation) $dbSortDir");
         } elseif ($sortCol === 'preferencia_product') {
             // Como preferencia requiere group_sales_average_sum, lo manejamos con una subconsulta simplificada o por products.name si falla
