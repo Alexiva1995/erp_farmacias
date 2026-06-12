@@ -184,13 +184,6 @@ const onActionClick = async (item, action) => {
     try {
       await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
       emit('remove-item', item.id);
-      Swal.fire({
-        title: "Ignorado",
-        text: "Producto ocultado del asistente por 7 días.",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-      });
     } catch (error) {
       console.error("Error ignoring product:", error);
       Swal.fire("Error", "No se pudo ignorar el producto.", "error");

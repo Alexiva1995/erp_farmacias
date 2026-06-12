@@ -92,14 +92,20 @@ const tipo_de_vista = ref(false); // grupo o individual
 const tipo_de_filtracion = ref("combinado"); // mismos defaults que el Asistente IA
 const lapso_de_tiempo = ref("1 month"); // mismos defaults que el Asistente IA
 const stock = ref("fallas"); // Mostrar siempre fallas (lo que hay que pedir)
+const needsHasStock = ref("all");
+const needsIsColombian = ref(false);
+const needsIsNovaventa = ref(false);
 const laboratoriesProductsWithoutSupplier = ref([]);
 
 const handleClearFilters = () => {
   con_descuento.value = true;
   tipo_de_vista.value = false;
-  tipo_de_filtracion.value = "sales";
-  lapso_de_tiempo.value = "3 month";
-  stock.value = "all";
+  tipo_de_filtracion.value = "combinado";
+  lapso_de_tiempo.value = "1 month";
+  stock.value = "fallas";
+  needsHasStock.value = "all";
+  needsIsColombian.value = false;
+  needsIsNovaventa.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
   needsLaboratory.value = [];
@@ -383,6 +389,10 @@ const fetchProductsWithoutSupplier = async () => {
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
+      hasStock: needsHasStock.value,
+      isColombian: needsIsColombian.value,
+      isNovaventa: needsIsNovaventa.value,
+      con_descuento: con_descuento.value,
       q: searchQueryRight.value,
       without_supplier: false,
       isStrictSearch: false, // Por ahora general para la tabla derecha
@@ -477,6 +487,10 @@ watch(
     tipo_de_filtracion,
     lapso_de_tiempo,
     stock,
+    needsHasStock,
+    needsIsColombian,
+    needsIsNovaventa,
+    con_descuento,
     searchQueryRight,
     filterSearchQuery,
     selectedSupplier,
@@ -837,6 +851,9 @@ const handleOpenPublicLink = (supplier) => {
               v-model:lapso_de_tiempo="lapso_de_tiempo"
               v-model:stock="stock"
               v-model:select-con-descuento="con_descuento"
+              v-model:has-stock="needsHasStock"
+              v-model:is-colombian="needsIsColombian"
+              v-model:is-novaventa="needsIsNovaventa"
               @delete-old="isDeleteDialogVisible = true"
             />
           </VCol>

@@ -210,13 +210,14 @@ class AutoOrdersRepository
     {
         $query = DB::table("auto_order_details")
             ->select([
-                DB::raw("TRIM(BOTH '\"' FROM product_suppliers.name) as product_name"),
+                "products.name as product_name",
                 "auto_order_details.quantity",
                 "product_suppliers.cod_supplier as cod",
                 "product_suppliers.unit_cost as unit_cost_bs",
                 "product_suppliers.unit_cost_usd as unit_cost",
             ])
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
+            ->leftJoin("products", "products.id", "=", "auto_order_details.product_id")
             ->where("auto_order_details.order_id", $autoOrder->id)
             ->get();
 

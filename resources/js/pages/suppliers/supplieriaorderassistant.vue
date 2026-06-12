@@ -8,6 +8,7 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 
 const router = useRouter();
 
@@ -282,22 +283,90 @@ watch([page, itemsPerPage, orderBy, sortBy], () => {
   }, 200);
 });
 
-function generarPedido() {
-  toast.info("Navegando a generar pedido...");
-  console.log("[DEBUG] Iniciando generarPedido desde el asistente");
-  router.push({
-    path: "/suppliers/generar-pedido",
-    query: {
-      con_descuento: con_descuento.value,
+async function pedirTodoAhorro() {
+  toast.info("Analizando oportunidades de ahorro...");
+  try {
+    const data = {
+      laboratoryId: selectedLaboratory.value,
+      groups: selectedGroup.value,
+      tipo_vista: false, // Forzar vista individual para obtener el listado plano
       tipo_filtracion: tipo_de_filtracion.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       stock: stock.value,
+      hasStock: hasStock.value,
       isColombian: isColombian.value,
-      laboratoryId: JSON.stringify(selectedLaboratory.value),
-      groups: JSON.stringify(selectedGroup.value),
+      isNovaventa: isNovaventa.value,
       q: searchQuery.value,
-    },
-  });
+      page: 1,
+      itemsPerPage: 999999, // Límite alto para obtener todo
+      sortBy: sortBy.value,
+      orderBy: orderBy.value,
+      with_suppliers: true, // Forzar comparación de proveedores
+      con_descuento: con_descuento.value,
+      show_ignored: showIgnored.value,
+      supplier_id: selectedSupplier.value,
+    };
+
+    const resp = await axios.post("/suppliers-ia-order-assistant/filtrar-paginate?page=1", data);
+    
+    if (resp.status !== 200) {
+      toast.error("Error al obtener productos");
+      return;
+    }
+
+    const todosLosProductos = resp.data.data?.paginate?.data ?? [];
+
+    const ahorroFiltrados = todosLosProductos.filter(item => {
+      return item.best_supplier && item.best_supplier.id && item.best_supplier_percentage < 0 && item.best_supplier_price > 0;
+    });
+
+    if (ahorroFiltrados.length === 0) {
+      toast.info("No hay productos con ofertas de ahorro bajo los filtros actuales.");
+      return;
+    }
+
+    const { isConfirmed } = await Swal.fire({
+      title: "¿Solicitar productos en ahorro?",
+      text: `Se van a solicitar ${ahorroFiltrados.length} productos en ahorro. ¿Desea proceder?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, solicitar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!isConfirmed) return;
+
+    const itemsPayload = ahorroFiltrados.map(item => {
+      const qty = item.manual_solicitar !== null 
+        ? item.manual_solicitar 
+        : (item.solicitar ? roundIaAnalysis(item.solicitar) : 1);
+
+      return {
+        product_id: item.id,
+        quantity: qty > 0 ? qty : 1,
+        supplier_id: selectedSupplier.value || item.best_supplier.id,
+        product_supplier_id: item.best_supplier.product_suppliers_id,
+        unit_cost: item.best_supplier_price
+      };
+    });
+
+    toast.info("Procesando solicitudes...");
+    
+    const sendResp = await axios.post("/api/suppliers-ia-order-assistant/add-multiple-to-order", {
+      items: itemsPayload
+    });
+
+    if (sendResp.status === 200) {
+      toast.success("Productos añadidos a la orden correctamente.");
+      await actualizarTabla();
+    } else {
+      toast.error("No se pudieron procesar las solicitudes");
+    }
+
+  } catch (error) {
+    console.error("Error en pedirTodoAhorro:", error);
+    toast.error("Ocurrió un error al procesar el pedido masivo.");
+  }
 }
 
 async function handleExportarColombianos() {
@@ -496,7 +565,7 @@ onMounted(async () => {
         :suppliers="suppliers"
         @clear="handleClearFilters"
         @clear-ignore="handleClearIgnore"
-        @generarPedido="generarPedido"
+        @pedirAhorro="pedirTodoAhorro"
         @fetchSuppliers="handleFetchSuppliers"
         @exportarColombianos="handleExportarColombianos"
       />

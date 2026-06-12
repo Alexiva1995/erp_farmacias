@@ -144,6 +144,105 @@ class IaAssistantActionController extends Controller
     }
 
     /**
+     * Añade múltiples productos a las auto-órdenes de sus respectivos proveedores en una sola transacción.
+     */
+    public function addMultipleToOrder(Request $request): JsonResponse
+    {
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.supplier_id' => 'required|exists:suppliers,id',
+            'items.*.product_supplier_id' => 'required|exists:product_suppliers,id',
+            'items.*.unit_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $items = $request->items;
+        $ordersToUpdate = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($items as $item) {
+                $productId = $item['product_id'];
+                $quantity = $item['quantity'];
+                $supplierId = $item['supplier_id'];
+                $productSupplierId = $item['product_supplier_id'];
+                $customUnitCost = $item['unit_cost'] ?? null;
+
+                $product = Product::findOrFail($productId);
+                $ps = ProductSupplier::findOrFail($productSupplierId);
+
+                // Forzar vinculación
+                if ($ps && $ps->product_id != $productId) {
+                    $ps->update(['product_id' => $productId]);
+                }
+
+                $unitCost = $customUnitCost !== null && $customUnitCost > 0
+                    ? (float) $customUnitCost
+                    : ($ps->unit_cost_usd_with_discount > 0 
+                        ? $ps->unit_cost_usd_with_discount 
+                        : ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : $product->unit_cost));
+
+                // Buscar o crear la AutoOrder
+                $autoOrder = AutoOrder::firstOrCreate(
+                    [
+                        'supplier_id' => $supplierId,
+                        'status' => AutoOrderStatus::PENDING,
+                    ],
+                    [
+                        'order_date' => now(),
+                        'total_items' => 0,
+                        'total_quantity' => 0,
+                        'total_amount' => 0,
+                    ]
+                );
+
+                $ordersToUpdate[$autoOrder->id] = $autoOrder;
+
+                // Añadir o actualizar detalle
+                $detail = AutoOrderDetail::where('order_id', $autoOrder->id)
+                    ->where('product_id', $productId)
+                    ->first();
+
+                if ($detail) {
+                    $detail->quantity += $quantity;
+                    $detail->unit_cost = $unitCost;
+                    $detail->subtotal = (float) $detail->quantity * (float) $unitCost;
+                    $detail->product_suppliers_id = $productSupplierId;
+                    $detail->save();
+                } else {
+                    $detail = AutoOrderDetail::create([
+                        'order_id' => $autoOrder->id,
+                        'product_id' => $productId,
+                        'product_suppliers_id' => $productSupplierId,
+                        'quantity' => $quantity,
+                        'unit_cost' => $unitCost,
+                        'subtotal' => (float) $quantity * (float) $unitCost,
+                    ]);
+                }
+
+                $product->update(['manual_solicitar' => null]);
+            }
+
+            // Actualizar totales de todas las órdenes modificadas
+            foreach ($ordersToUpdate as $order) {
+                $this->updateAutoOrderTotals($order);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Productos añadidos a las órdenes correctamente.',
+                'updated_orders' => array_keys($ordersToUpdate)
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error al añadir a las órdenes: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Ignora un producto manualmente por 7 días.
      */
     public function ignore(Request $request, Product $product): JsonResponse
