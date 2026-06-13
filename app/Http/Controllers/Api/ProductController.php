@@ -386,12 +386,8 @@ class ProductController extends Controller
         try {
             $q = request()->query('q');
             
-            // Buscar productos ordenados por nombre que tengan presentación y unidad de medida asignadas
-            $query = Product::with(['lots', 'laboratory'])
-                ->whereNotNull('presentation')
-                ->where('presentation', '>', 0)
-                ->whereNotNull('unit_of_measure')
-                ->where('unit_of_measure', '!=', '');
+            // Buscar productos ordenados por nombre
+            $query = Product::with(['lots', 'laboratory']);
 
             // Si se proporciona un término de búsqueda, filtrar
             if (!empty($q)) {
@@ -428,8 +424,8 @@ class ProductController extends Controller
                     'is_base_dish' => false,
                     'name' => $product->name,
                     'active_ingredient' => $product->active_ingredient,
-                    'presentation' => $product->presentation,
-                    'unit_of_measure' => $product->unit_of_measure,
+                    'presentation' => $product->presentation ?: 1,
+                    'unit_of_measure' => $product->unit_of_measure ?: 'und',
                     'stock' => $product->stock,
                     'available_stock' => $activeLots
                         ->sum('quantity'),

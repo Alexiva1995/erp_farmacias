@@ -2350,7 +2350,7 @@ const removeOrderItem = async (productIdToRemove, orderDetailId = null) => {
       `/tpv/orders/${openOrderData.value.id}/items/${itemToRemove.order_detail_id}`,
     );
     orderItems.value = orderItems.value.filter(
-      (item) => item.product_id !== productIdToRemove,
+      (item) => item.order_detail_id !== itemToRemove.order_detail_id,
     );
     toast.success("Producto eliminado de la orden.");
   } catch (error) {
