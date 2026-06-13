@@ -208,13 +208,23 @@ class AutoOrdersRepository
 
     public function getExportableData(AutoOrder $autoOrder)
     {
+        $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')
+            ->orderByDesc('created_at')
+            ->value('rate') ?? 1.0;
+
         $query = DB::table("auto_order_details")
             ->select([
                 "products.name as product_name",
                 "auto_order_details.quantity",
-                "product_suppliers.cod_supplier as cod",
-                "product_suppliers.unit_cost as unit_cost_bs",
-                "product_suppliers.unit_cost_usd as unit_cost",
+                DB::raw("COALESCE(product_suppliers.cod_supplier, product_suppliers.barcode_match, products.barcode, '') as cod"),
+                DB::raw("COALESCE(
+                    CASE 
+                        WHEN auto_order_details.unit_cost = product_suppliers.unit_cost_usd_with_discount THEN COALESCE(product_suppliers.unit_cost_with_discount, product_suppliers.unit_cost)
+                        ELSE product_suppliers.unit_cost
+                    END,
+                    auto_order_details.unit_cost * {$rate}
+                ) as unit_cost_bs"),
+                "auto_order_details.unit_cost as unit_cost",
             ])
             ->leftJoin("product_suppliers", "product_suppliers.id", "=", "auto_order_details.product_suppliers_id")
             ->leftJoin("products", "products.id", "=", "auto_order_details.product_id")

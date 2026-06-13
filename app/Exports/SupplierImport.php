@@ -209,6 +209,10 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         if (!$letters) {
             return null;
         }
+        $letters = trim($letters);
+        if (is_numeric($letters)) {
+            return (int) $letters - 1;
+        }
         $letters = strtoupper($letters);
         $len = strlen($letters);
         $index = 0;
