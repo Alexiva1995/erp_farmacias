@@ -713,8 +713,8 @@ const getIva = (product, currency) => {
   <VCard variant="flat" border class="mb-6 rounded-lg overflow-hidden elevation-1">
     <!-- Header estilo Cotización -->
     <VCardItem class="pa-3 border-b bg-surface">
-      <div class="d-flex align-center justify-space-between w-100 gap-3">
-        <div class="d-flex align-center min-width-0">
+      <div class="d-flex align-center justify-space-between w-100 gap-2 flex-wrap flex-sm-nowrap">
+        <div class="d-flex align-center min-width-0 flex-grow-1">
           <VIcon icon="tabler-file-invoice" size="24" color="primary" class="me-2" />
           <div class="d-flex flex-column min-width-0">
             <h2 class="text-subtitle-1 font-weight-950 text-high-emphasis leading-none mb-1 text-uppercase truncate">
@@ -740,7 +740,7 @@ const getIva = (product, currency) => {
           </div>
         </div>
 
-        <div class="d-flex align-center gap-2 flex-shrink-0">
+        <div class="d-flex align-center gap-1 gap-sm-2 flex-shrink-0 ms-auto">
           <!-- Selector de Descuento (VMenu Style) -->
           <VMenu>
             <template #activator="{ props: menuProps }">
@@ -751,7 +751,10 @@ const getIva = (product, currency) => {
                 size="small"
                 class="rounded-lg font-weight-black text-uppercase"
               >
-                <span>{{ props.selectedDiscountType || 'Descuento' }}</span>
+                <span>
+                  <span class="d-inline d-sm-none">{{ props.selectedDiscountType ? props.selectedDiscountType.substring(0, 3) : 'Desc' }}</span>
+                  <span class="d-none d-sm-inline">{{ props.selectedDiscountType || 'Descuento' }}</span>
+                </span>
                 <VIcon end icon="tabler-chevron-down" size="14" />
               </VBtn>
             </template>
@@ -982,29 +985,29 @@ const getIva = (product, currency) => {
                   </div>
 
                   <!-- Desglose de Precios Inline (Inmediatamente después del título) -->
-                  <div class="d-flex align-center gap-1 flex-wrap w-100">
-                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
+                  <div class="d-none d-sm-flex align-center gap-1 flex-wrap w-100">
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border">
                        <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
                        <span class="text-super-xs font-weight-black text-secondary">
                          {{ formatCurrency(getPricePerUnit(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                        </span>
                     </div>
                     
-                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border">
                        <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
                        <span class="text-super-xs font-weight-black text-high-emphasis">
                          {{ formatCurrency(getProductPriceSinIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                        </span>
                     </div>
 
-                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border" style="block-size: 16px;">
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border">
                        <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
                        <span class="text-super-xs font-weight-black text-success">
                          {{ formatCurrency(getIva(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }}
                        </span>
                     </div>
 
-                    <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1" style="block-size: 14px;">-{{ product.discount_percentage }}%</VChip>
+                    <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1">-{{ product.discount_percentage }}%</VChip>
                   </div>
                 </div>
               </div>
@@ -1089,22 +1092,23 @@ const getIva = (product, currency) => {
                   color="primary"
                   variant="flat"
                   height="40"
-                  min-inline-size="160"
-                  class="rounded-lg font-weight-950 px-6 elevation-2"
+                  min-inline-size="0"
+                  class="rounded-lg font-weight-950 px-3 px-sm-6 elevation-2"
                   @click="handleReserveOrder"
                 >
-                  <VIcon start icon="tabler-device-floppy" size="20" />
-                  GUARDAR
+                  <VIcon icon="tabler-device-floppy" size="20" class="me-0 me-sm-2" />
+                  <span class="d-none d-sm-inline">GUARDAR</span>
                 </VBtn>
                 <VBtn
                   color="success"
                   variant="tonal"
                   height="40"
-                  class="rounded-lg font-weight-950 px-4"
+                  min-inline-size="0"
+                  class="rounded-lg font-weight-950 px-3 px-sm-4"
                   @click="handleCompleteOrder"
                 >
-                  <VIcon start icon="tabler-circle-check" size="18" />
-                  COBRAR / CERRAR
+                  <VIcon icon="tabler-circle-check" size="18" class="me-0 me-sm-2" />
+                  <span class="d-none d-sm-inline">COBRAR / CERRAR</span>
                 </VBtn>
               </template>
               <template v-else>
@@ -1113,10 +1117,11 @@ const getIva = (product, currency) => {
                   color="warning"
                   variant="tonal"
                   height="40"
-                  class="rounded-lg font-weight-950 px-4"
+                  min-inline-size="0"
+                  class="rounded-lg font-weight-950 px-3 px-sm-4"
                   @click="handleReserveOrder"
                 >
-                  <VIcon start icon="tabler-hourglass" size="18" />
+                  <VIcon icon="tabler-hourglass" size="18" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">RESERVAR</span>
                 </VBtn>
                 
@@ -1124,12 +1129,12 @@ const getIva = (product, currency) => {
                   color="primary"
                   variant="flat"
                   height="40"
-                  min-inline-size="160"
-                  class="rounded-lg font-weight-950 px-6 elevation-2"
+                  min-inline-size="0"
+                  class="rounded-lg font-weight-950 px-3 px-sm-6 elevation-2"
                   @click="handleCompleteOrder"
                 >
-                  <VIcon start icon="tabler-circle-check" size="20" />
-                  COBRAR AHORA
+                  <VIcon icon="tabler-circle-check" size="20" class="me-0 me-sm-2" />
+                  <span class="d-none d-sm-inline">COBRAR AHORA</span>
                 </VBtn>
               </template>
            </div>

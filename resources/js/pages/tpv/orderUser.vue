@@ -1109,6 +1109,7 @@ const fetchOpenOrder = async () => {
         openOrderData.value = null;
         reservedOrderData.value = null;
         selectedClient.value = null;
+        selectedDisplayCurrency.value = "COP"; // Por defecto COP
         orderItems.value = [];
       }
       foreignOrdersCount.value = response.data.data.foreign_orders_count || 0;
@@ -1117,6 +1118,7 @@ const fetchOpenOrder = async () => {
       openOrderData.value = null;
       reservedOrderData.value = null;
       selectedClient.value = null;
+      selectedDisplayCurrency.value = "COP"; // Por defecto COP
       orderItems.value = [];
       foreignOrdersCount.value = 0;
     }
@@ -1125,6 +1127,7 @@ const fetchOpenOrder = async () => {
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
+    selectedDisplayCurrency.value = "COP"; // Por defecto COP
     orderItems.value = [];
   } finally {
     isLoadingInitialOrder.value = false;
@@ -2364,6 +2367,7 @@ const cancelarOrder = async () => {
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
+    selectedDisplayCurrency.value = "COP";
     orderItems.value = [];
   } catch (error) {
     console.error(
@@ -2385,6 +2389,7 @@ const reserverOrder = async () => {
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
+    selectedDisplayCurrency.value = "COP";
     orderItems.value = [];
     reservedOrderData.value = response.data.data.reserved_order;
     toast.success("Orden reservada exitosamente.");
