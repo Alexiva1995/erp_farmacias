@@ -111,6 +111,7 @@ class AutoOrdersRepository
     public function update(AutoOrder $autoOrder, $data)
     {
         $whensQty = "";
+        $whensCost = "";
         $whensSub = "";
         $whensUpd = "";
         $ids = [];
@@ -118,10 +119,12 @@ class AutoOrdersRepository
         foreach ($data["details"] as $row) {
             $id = (int) $row["id"];
             $qty = (float) $row["quantity"];
-            $subtotal = $qty * (float) $row["unit_cost"];
+            $cost = (float) $row["unit_cost"];
+            $subtotal = $qty * $cost;
             $ids[] = $id;
 
             $whensQty .= "WHEN {$id} THEN {$qty} ";
+            $whensCost .= "WHEN {$id} THEN {$cost} ";
             $whensSub .= "WHEN {$id} THEN {$subtotal} ";
             $whensUpd .= "WHEN {$id} THEN NOW() ";
         }
@@ -129,12 +132,13 @@ class AutoOrdersRepository
         $idsList = implode(",", $ids);
 
         try {
-            $affected = DB::transaction(function () use ($autoOrder, $whensQty, $whensSub, $whensUpd, $idsList) {
+            $affected = DB::transaction(function () use ($autoOrder, $whensQty, $whensCost, $whensSub, $whensUpd, $idsList) {
                 $total = DB::affectingStatement(
                     "
                     UPDATE auto_order_details
                     SET
                         quantity   = CASE id {$whensQty} END,
+                        unit_cost  = CASE id {$whensCost} END,
                         subtotal   = CASE id {$whensSub} END,
                         updated_at = CASE id {$whensUpd} END
                     WHERE order_id = ?
@@ -214,13 +218,14 @@ class AutoOrdersRepository
 
         $query = DB::table("auto_order_details")
             ->select([
-                "products.name as product_name",
+                DB::raw("COALESCE(product_suppliers.name, products.name) as product_name"),
                 "auto_order_details.quantity",
                 DB::raw("COALESCE(product_suppliers.cod_supplier, product_suppliers.barcode_match, products.barcode, '') as cod"),
                 DB::raw("COALESCE(
                     CASE 
                         WHEN auto_order_details.unit_cost = product_suppliers.unit_cost_usd_with_discount THEN COALESCE(product_suppliers.unit_cost_with_discount, product_suppliers.unit_cost)
-                        ELSE product_suppliers.unit_cost
+                        WHEN auto_order_details.unit_cost = product_suppliers.unit_cost_usd THEN product_suppliers.unit_cost
+                        ELSE auto_order_details.unit_cost * {$rate}
                     END,
                     auto_order_details.unit_cost * {$rate}
                 ) as unit_cost_bs"),

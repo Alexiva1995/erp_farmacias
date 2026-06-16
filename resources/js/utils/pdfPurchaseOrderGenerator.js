@@ -74,20 +74,12 @@ export function pdfPurchaseOrderGenerator(data) {
   doc.text("¡Feliz y bendecido día!", headerX, headerY + 125);
 
   doc.addPage();
-
+ 
   const tableYPosition = 15;
-  const tableColumn = ["Cod", "Nombre", "Cantidad", "Costo (Bs.)", "Costo (Usd.)"];
+  const tableColumn = ["Cod", "Nombre", "Cantidad", "Costo (Usd.)", "Subtotal (Usd.)"];
   const tableRows = [];
   let totalValue = 0;
-
-  const formatBs = (amount) => {
-    return (
-      new Intl.NumberFormat("es-VE", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(amount) + " Bs."
-    );
-  };
+ 
   const formatUsd = (amount) => {
     return (
       new Intl.NumberFormat("es-VE", {
@@ -96,12 +88,12 @@ export function pdfPurchaseOrderGenerator(data) {
       }).format(amount) + " $"
     );
   };
-
+ 
   data.details.data.forEach((detail) => {
-    const { cod, product_name, quantity, unit_cost_bs, unit_cost } = detail;
+    const { cod, product_name, quantity, unit_cost } = detail;
     const total = unit_cost * quantity;
     totalValue += total;
-
+ 
     const detailData = [
       {
         content: cod,
@@ -113,17 +105,17 @@ export function pdfPurchaseOrderGenerator(data) {
         styles: { halign: "right" },
       },
       {
-        content: formatBs(unit_cost_bs),
+        content: formatUsd(unit_cost),
         styles: { halign: "right" },
       },
       {
-        content: formatUsd(unit_cost),
+        content: formatUsd(total),
         styles: { halign: "right" },
       },
     ];
     tableRows.push(detailData);
   });
-
+ 
   // Fila del total
   tableRows.push([
     { content: "TOTAL", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } },
