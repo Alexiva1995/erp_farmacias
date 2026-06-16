@@ -34,6 +34,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'footer_text' => 'nullable|string|max:500',
             'blind_cash_closure' => 'nullable|boolean',
             'business_type' => 'nullable|string|in:pharmacy,restaurant',
+            'default_currency' => 'nullable|string|in:COP,USD,BS',
         ];
     }
 }

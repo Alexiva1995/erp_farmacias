@@ -125,7 +125,7 @@ const on2FAVerified = () => {
             <RouterLink to="/">
               <div class="app-logo">
                 <img
-                  :src="brandingStore.settings.app_logo || '/logo.svg'"
+                  :src="(brandingStore.settings.app_logo && brandingStore.settings.app_logo !== 'null') ? brandingStore.settings.app_logo : '/logo.png'"
                   alt="logo"
                   style="max-height: 80px; max-width: 100%; object-fit: contain;"
                 >

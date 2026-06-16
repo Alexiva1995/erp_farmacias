@@ -26,6 +26,7 @@ const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const selectedGroup = ref(null);
+const selectedSupplier = ref(null);
 const stockStatusFilter = ref(null);
 const productTypeFilter = ref(null);
 const startDate = ref(null);
@@ -51,16 +52,18 @@ const isLoadingFilters = ref(false);
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse, categoryResponse, groupsResponse] = await Promise.all([
+    const [labResponse, originResponse, categoryResponse, groupsResponse, suppliersResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/categories"),
       axios.get("/groups/consult-all"),
+      axios.get("/suppliers"),
     ]);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
     groups.value = groupsResponse.data?.data || groupsResponse.data || [];
+    suppliers.value = suppliersResponse.data?.data || suppliersResponse.data || [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -76,6 +79,7 @@ const fetchProducts = async () => {
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     groupId: selectedGroup.value,
+    supplierId: selectedSupplier.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -115,6 +119,7 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     selectedGroup,
+    selectedSupplier,
     stockStatusFilter,
     productTypeFilter,
     startDate,
@@ -129,7 +134,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, stockStatusFilter, productTypeFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, stockStatusFilter, productTypeFilter, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -275,6 +280,7 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   selectedGroup.value = null;
+  selectedSupplier.value = null;
   stockStatusFilter.value = null;
   productTypeFilter.value = null;
   startDate.value = null;
@@ -360,6 +366,7 @@ const handleSort = sortOptions => {
       v-model:selectedLaboratory="selectedLaboratory"
       v-model:selectedOrigin="selectedOrigin"
       v-model:selectedGroup="selectedGroup"
+      v-model:selectedSupplier="selectedSupplier"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:productTypeFilter="productTypeFilter"
       v-model:startDate="startDate"
@@ -368,6 +375,7 @@ const handleSort = sortOptions => {
       :laboratories="laboratories"
       :origins="origins"
       :groups="groups"
+      :suppliers="suppliers"
       :loading="isLoadingFilters"
       :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"

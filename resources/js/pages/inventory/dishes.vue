@@ -5,6 +5,7 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { formatPrice as formatCurrency } from "@/utils/formatters";
 import AppFilterBase from "@/components/AppFilterBase.vue";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 // Listado de platos
 const dishes = ref([]);
@@ -487,8 +488,8 @@ onMounted(() => {
         <p>Registra un nuevo plato o ajusta tus filtros</p>
       </div>
 
-      <!-- Table view -->
-      <div v-else>
+      <!-- Desktop Table view -->
+      <div v-else class="d-none d-md-block">
         <VDataTableServer
           :items-per-page="itemsPerPage"
           :page="page"
@@ -554,6 +555,90 @@ onMounted(() => {
             </div>
           </template>
         </VDataTableServer>
+      </div>
+
+      <!-- Mobile Cards view -->
+      <div v-if="dishes.length > 0" class="d-block d-md-none pa-2">
+        <div class="d-flex flex-column gap-2">
+          <VCard
+            v-for="item in dishes"
+            :key="item.id"
+            variant="flat"
+            class="product-mobile-card border mb-1"
+          >
+            <div class="pa-3">
+              <div class="d-flex gap-3 align-start">
+                <div class="flex-grow-1 min-width-0">
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                      <span class="text-primary text-xs">#{{ item.id }}</span>
+                      <span class="mx-1 text-disabled">|</span>
+                      {{ item.name.toUpperCase() }}
+                    </h3>
+                  </div>
+                  
+                  <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
+                    <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.category?.name || 'S/C' }}</span>
+                  </div>
+                </div>
+                
+                <VChip :color="getStatusChipColor(item.status)" size="x-small" label class="font-weight-black uppercase">
+                  {{ getStatusLabel(item.status) }}
+                </VChip>
+              </div>
+
+              <VDivider class="my-3 border-opacity-10" />
+
+              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Costo</span>
+                  <span class="text-base font-weight-black">
+                    {{ formatCurrency(item.cost_price) }}
+                  </span>
+                </div>
+                <div class="d-flex flex-column text-right">
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Designado</span>
+                  <span class="text-base font-weight-black text-success">
+                    {{ formatCurrency(item.designated_price) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Acciones Rectangulares al 100% -->
+            <div class="d-flex border-t border-opacity-10">
+              <VBtn 
+                color="warning" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-edit" 
+                @click="handleEditDish(item)"
+              />
+              <VDivider vertical class="border-opacity-10" />
+              <VBtn 
+                color="error" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-trash" 
+                @click="handleDeleteDish(item)"
+              />
+            </div>
+          </VCard>
+        </div>
+
+        <div class="mt-4">
+          <AppMobilePagination
+            :page="page"
+            :items-per-page="itemsPerPage"
+            :total-items="totalDishes"
+            :loading="loading"
+            :sort-by="sortBy"
+            :order-by="orderBy"
+            @change="updateTableOptions"
+          />
+        </div>
       </div>
     </VCard>
 
@@ -809,16 +894,72 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-.header-gradient {
-  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%) !important;
-}
-
 .bg-light {
   background-color: #f8fafc !important;
 }
 
+.header-gradient {
+  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%) !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.product-row {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.premium-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1;
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
+}
+
+.product-mobile-card {
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
+}
+
+.truncate-2-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 
 .bg-warning-light {

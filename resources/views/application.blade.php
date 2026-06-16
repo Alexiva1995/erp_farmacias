@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png') }}" />
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>TOVA ERP</title>
+  <title>Tova - Cerebro Operativo</title>
   <style>
     html {
       touch-action: manipulation;

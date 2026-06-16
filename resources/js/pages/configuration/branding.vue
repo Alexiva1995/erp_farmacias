@@ -13,6 +13,7 @@ const form = ref({
   primary_color: '#E20074',
   secondary_color: '#7A0099',
   footer_text: '',
+  default_currency: 'COP',
 })
 
 const logoFile = ref(null)
@@ -45,6 +46,7 @@ const saveBranding = async () => {
   formData.append('primary_color', form.value.primary_color)
   formData.append('secondary_color', form.value.secondary_color)
   formData.append('footer_text', form.value.footer_text || '')
+  formData.append('default_currency', form.value.default_currency || 'COP')
   
   if (logoFile.value) {
     formData.append('app_logo', logoFile.value)
@@ -79,6 +81,7 @@ onMounted(async () => {
     primary_color: brandingStore.settings.primary_color,
     secondary_color: brandingStore.settings.secondary_color,
     footer_text: brandingStore.settings.footer_text,
+    default_currency: brandingStore.settings.default_currency || 'COP',
   }
   logoPreview.value = brandingStore.settings.app_logo
   faviconPreview.value = brandingStore.settings.app_favicon
@@ -105,6 +108,16 @@ onMounted(async () => {
                   v-model="form.app_rif"
                   label="RIF de la Empresa"
                   placeholder="Ej: J-12345678-9"
+                />
+              </VCol>
+
+              <!-- Moneda por defecto -->
+              <VCol cols="12" md="6">
+                <VSelect
+                  v-model="form.default_currency"
+                  :items="['COP', 'USD', 'BS']"
+                  label="Moneda por defecto del sistema"
+                  placeholder="Selecciona la moneda principal"
                 />
               </VCol>
 

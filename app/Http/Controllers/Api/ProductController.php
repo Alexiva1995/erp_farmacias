@@ -30,7 +30,7 @@ class ProductController extends Controller
         // Acepta product_id (snake_case) y productId (camelCase)
         $productId = $request->input('product_id') ?? $request->input('productId') ?? $request->input('id');
         if ($productId && is_numeric($productId)) {
-            $product = Product::with(['category', 'laboratory', 'origin', 'group', 'profitability', 'lots'])
+            $product = Product::with(['category', 'laboratory', 'origin', 'group', 'profitability', 'lots', 'productSuppliers'])
                 ->find((int) $productId);
             if ($product) {
                 $product->stock_calculado = $product->lots->sum('quantity');

@@ -60,7 +60,8 @@ class ProductActionService
             $validatedData['sale_price'] === '') {
             // Si unit_cost > 0, calcular el precio basado en rentabilidad
             if ($validatedData['unit_cost'] > 0) {
-                $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+                $setting = ProfitabilitySetting::orderBy('id', 'desc')->first();
+                $percentage = $setting ? $setting->default_profitability_percentage : 30;
                 $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
             } else {
                 $validatedData['sale_price'] = 0;
@@ -74,9 +75,24 @@ class ProductActionService
             $this->resolveBarcodeConflict($validatedData['barcode']);
         }
 
+        $supplierIds = $validatedData['supplier_ids'] ?? [];
+        if (isset($validatedData['supplier_ids'])) {
+            unset($validatedData['supplier_ids']);
+        }
+
         $product = Product::create($validatedData);
 
-        $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
+        if (!empty($supplierIds)) {
+            foreach ($supplierIds as $supplierId) {
+                $product->productSuppliers()->create([
+                    'supplier_id' => $supplierId,
+                    'connection_date' => now(),
+                    'unit_cost' => $product->unit_cost ?? 0,
+                ]);
+            }
+        }
+
+        $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers']);
 
         return $product;
     }
@@ -105,7 +121,8 @@ class ProductActionService
             if ($product->profitability && $product->profitability->is_locked) {
                 $percentage = $product->profitability->profitability_percentage;
             } else {
-                $percentage = ProfitabilitySetting::orderBy('id', 'desc')->first()->default_profitability_percentage;
+                $setting = ProfitabilitySetting::orderBy('id', 'desc')->first();
+                $percentage = $setting ? $setting->default_profitability_percentage : 30;
             }
 
             $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
@@ -115,9 +132,34 @@ class ProductActionService
             $this->resolveBarcodeConflict($validatedData['barcode'], $product->id);
         }
 
+        $supplierIds = $validatedData['supplier_ids'] ?? null;
+        if (isset($validatedData['supplier_ids'])) {
+            unset($validatedData['supplier_ids']);
+        }
+
         $product->update($validatedData);
 
-        $product->load(['category', 'laboratory', 'origin', 'lots', 'group']);
+        if ($supplierIds !== null) {
+            $currentSupplierIds = $product->productSuppliers()->pluck('supplier_id')->toArray();
+            
+            // Eliminar los no seleccionados
+            $toDelete = array_diff($currentSupplierIds, $supplierIds);
+            if (!empty($toDelete)) {
+                $product->productSuppliers()->whereIn('supplier_id', $toDelete)->delete();
+            }
+            
+            // Crear los nuevos
+            $toCreate = array_diff($supplierIds, $currentSupplierIds);
+            foreach ($toCreate as $supplierId) {
+                $product->productSuppliers()->create([
+                    'supplier_id' => $supplierId,
+                    'connection_date' => now(),
+                    'unit_cost' => $product->unit_cost ?? 0,
+                ]);
+            }
+        }
+
+        $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers']);
 
         return $product;
     }

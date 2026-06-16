@@ -21,6 +21,13 @@ class InventoryMovement extends Model
         'stock_after',
         'movement_date',
     ];
+    
+    protected $casts = [
+        'quantity' => 'float',
+        'stock_before' => 'float',
+        'stock_after' => 'float',
+        'movement_date' => 'datetime',
+    ];
     protected function movementType(): Attribute
     {
         return Attribute::make(

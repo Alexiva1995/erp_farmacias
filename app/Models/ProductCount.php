@@ -20,9 +20,9 @@ class ProductCount extends Model
     ];
 
     protected $casts = [
-        'counted_quantity' => 'integer',
-        'system_quantity' => 'integer',
-        'discrepancy' => 'integer',
+        'counted_quantity' => 'float',
+        'system_quantity' => 'float',
+        'discrepancy' => 'float',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -125,9 +125,9 @@ class ProductCount extends Model
         return 'sin_discrepancia';
     }
 
-    public function getAbsoluteDiscrepancyAttribute(): int
+    public function getAbsoluteDiscrepancyAttribute(): float
     {
-        return abs($this->discrepancy ?? 0);
+        return abs($this->discrepancy ?? 0.0);
     }
     public function distributions()
     {

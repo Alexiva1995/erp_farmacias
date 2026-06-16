@@ -10,6 +10,7 @@ const props = defineProps({
   selectedLaboratory: [Number, String, null],
   selectedOrigin:     [Number, String, null],
   selectedGroup:      [Number, String, null],
+  selectedSupplier:   [Number, String, null],
   stockStatusFilter:  [Boolean, null],
   productTypeFilter:  [String, null],
   startDate:          [String, null],
@@ -17,6 +18,7 @@ const props = defineProps({
   laboratories:       { type: Array,   default: () => [] },
   origins:            { type: Array,   default: () => [] },
   groups:             { type: Array,   default: () => [] },
+  suppliers:          { type: Array,   default: () => [] },
   loading:            { type: Boolean, default: false },
   mode:               { type: String,  default: "products" },
   showAddButton:      { type: Boolean, default: true },
@@ -32,6 +34,7 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:selectedGroup",
+  "update:selectedSupplier",
   "update:stockStatusFilter",
   "update:productTypeFilter",
   "update:startDate",
@@ -123,6 +126,7 @@ const hasAdvancedFilters = computed(() => {
     props.selectedLaboratory ||
     props.selectedOrigin ||
     props.selectedGroup ||
+    props.selectedSupplier ||
     props.stockStatusFilter !== null ||
     props.productTypeFilter ||
     props.startDate ||
@@ -215,8 +219,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Grupo -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Grupo o Proveedor (si es restaurante) -->
+      <VCol v-if="!isRestaurant" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedGroup"
           :items="props.groups"
@@ -229,6 +233,21 @@ const showExport = computed(() => props.mode === 'products');
           hide-details
           prepend-inner-icon="tabler-category-2"
           @update:model-value="emit('update:selectedGroup', $event)"
+        />
+      </VCol>
+      <VCol v-else cols="12" sm="6" md="2">
+        <VAutocomplete
+          :model-value="props.selectedSupplier"
+          :items="props.suppliers"
+          :loading="props.loading"
+          placeholder="Proveedor"
+          item-title="name"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-truck"
+          @update:model-value="emit('update:selectedSupplier', $event)"
         />
       </VCol>
 

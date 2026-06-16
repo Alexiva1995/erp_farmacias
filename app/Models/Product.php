@@ -89,6 +89,7 @@ class Product extends Model
         'ignore_until' => 'datetime',
         'is_unified_group' => 'boolean',
         'no_pvp' => 'boolean',
+        'stock' => 'float',
     ];
 
 

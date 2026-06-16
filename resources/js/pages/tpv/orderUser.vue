@@ -11,6 +11,7 @@ import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import {
@@ -87,7 +88,8 @@ const selectedClient = ref(null);
 const isLoadingInitialOrder = ref(true);
 const isPrinting = ref(false);
 
-const selectedDisplayCurrency = ref("COP");
+const brandingStore = useBrandingStore();
+const selectedDisplayCurrency = ref(brandingStore.settings?.default_currency || "COP");
 
 const recipeDiscountForPrint = ref(0);
 const doctorDiscountForPrint = ref(0);
@@ -1109,7 +1111,7 @@ const fetchOpenOrder = async () => {
         openOrderData.value = null;
         reservedOrderData.value = null;
         selectedClient.value = null;
-        selectedDisplayCurrency.value = "COP"; // Por defecto COP
+        selectedDisplayCurrency.value = brandingStore.settings?.default_currency || "COP"; // Por defecto
         orderItems.value = [];
       }
       foreignOrdersCount.value = response.data.data.foreign_orders_count || 0;
@@ -1118,7 +1120,7 @@ const fetchOpenOrder = async () => {
       openOrderData.value = null;
       reservedOrderData.value = null;
       selectedClient.value = null;
-      selectedDisplayCurrency.value = "COP"; // Por defecto COP
+      selectedDisplayCurrency.value = brandingStore.settings?.default_currency || "COP"; // Por defecto
       orderItems.value = [];
       foreignOrdersCount.value = 0;
     }
@@ -1127,7 +1129,7 @@ const fetchOpenOrder = async () => {
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
-    selectedDisplayCurrency.value = "COP"; // Por defecto COP
+    selectedDisplayCurrency.value = brandingStore.settings?.default_currency || "COP"; // Por defecto
     orderItems.value = [];
   } finally {
     isLoadingInitialOrder.value = false;
@@ -2367,7 +2369,7 @@ const cancelarOrder = async () => {
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
-    selectedDisplayCurrency.value = "COP";
+    selectedDisplayCurrency.value = brandingStore.settings?.default_currency || "COP";
     orderItems.value = [];
   } catch (error) {
     console.error(
@@ -2389,7 +2391,7 @@ const reserverOrder = async () => {
     hasOpenOrder.value = false;
     openOrderData.value = null;
     selectedClient.value = null;
-    selectedDisplayCurrency.value = "COP";
+    selectedDisplayCurrency.value = brandingStore.settings?.default_currency || "COP";
     orderItems.value = [];
     reservedOrderData.value = response.data.data.reserved_order;
     toast.success("Orden reservada exitosamente.");
@@ -3309,7 +3311,7 @@ const finalizeAndCheckPending = () => {
   } else {*/
   hasOpenOrder.value = false;
   openOrderData.value = null;
-  selectedDisplayCurrency.value = "COP";
+  selectedDisplayCurrency.value = brandingStore.settings?.default_currency || "COP";
   orderItems.value = [];
   selectedClient.value = null;
   clientIdentification.value = "";

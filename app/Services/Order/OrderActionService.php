@@ -881,7 +881,8 @@ class OrderActionService
                 if ($detail->product_type === 'dish') {
                     $dish = \App\Models\Dish::with('ingredients')->findOrFail($detail->dish_id);
                     foreach ($dish->ingredients as $ingredient) {
-                        $quantityToReduce = $ingredient->pivot->portion * $detail->quantity;
+                        $presentation = $ingredient->presentation > 0 ? $ingredient->presentation : 1;
+                        $quantityToReduce = ($ingredient->pivot->portion * $detail->quantity) / $presentation;
                         $lots = $lotsByProduct->get($ingredient->id, collect())->sortBy('expiration_date')->values();
                         
                         foreach ($lots as $lot) {
