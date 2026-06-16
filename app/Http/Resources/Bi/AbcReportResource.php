@@ -43,6 +43,8 @@ class AbcReportResource extends JsonResource
             'last_cost' => round($this->last_cost, 2),
             'gmroi' => round($this->gmroi, 2),
             'inventory_value' => round($this->inventory_value, 2),
+            'sales_average' => round($this->sales_average ?? 0, 2),
+            'last_sale_date' => $this->last_sale_date,
         ];
     }
 }

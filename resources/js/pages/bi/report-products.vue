@@ -806,4 +806,27 @@ const resetFilters = () => {
 .text-xs {
   font-size: 0.75rem !important;
 }
+
+/* Forzar estilos del tooltip de ApexCharts para evitar texto invisible */
+:deep(.apexcharts-tooltip) {
+  background: #2f2b3d !important;
+  color: #fff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 18px 0 rgba(15, 10, 30, 0.1) !important;
+}
+:deep(.apexcharts-tooltip-title) {
+  background: rgba(0, 0, 0, 0.2) !important;
+  color: #fff !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+  font-weight: bold !important;
+}
+:deep(.apexcharts-tooltip-series-group) {
+  color: #fff !important;
+}
+:deep(.apexcharts-tooltip-text-y-value),
+:deep(.apexcharts-tooltip-text-y-label) {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
 </style>
+

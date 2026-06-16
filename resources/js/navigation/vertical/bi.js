@@ -16,6 +16,10 @@ export default [
         to: 'bi-report-abc', // Necesitará una entrada en el router o arreglar la ruta de vue
       },
       {
+        title: 'Reporte Stock Muerto',
+        to: 'bi-report-dead-stock',
+      },
+      {
         title: 'Reporte de Margen SKU',
         to: 'bi-report-sku',
       },

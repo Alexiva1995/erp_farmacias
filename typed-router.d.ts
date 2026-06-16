@@ -28,6 +28,7 @@ declare module 'vue-router/auto-routes' {
     'bi-employee-performance': RouteRecordInfo<'bi-employee-performance', '/bi/employee-performance', Record<never, never>, Record<never, never>>,
     'bi-inventory-cyclic': RouteRecordInfo<'bi-inventory-cyclic', '/bi/inventory-cyclic', Record<never, never>, Record<never, never>>,
     'bi-report-abc': RouteRecordInfo<'bi-report-abc', '/bi/report-abc', Record<never, never>, Record<never, never>>,
+    'bi-report-dead-stock': RouteRecordInfo<'bi-report-dead-stock', '/bi/report-dead-stock', Record<never, never>, Record<never, never>>,
     'bi-report-expiry': RouteRecordInfo<'bi-report-expiry', '/bi/report-expiry', Record<never, never>, Record<never, never>>,
     'bi-report-laboratories': RouteRecordInfo<'bi-report-laboratories', '/bi/report-laboratories', Record<never, never>, Record<never, never>>,
     'bi-report-products': RouteRecordInfo<'bi-report-products', '/bi/report-products', Record<never, never>, Record<never, never>>,

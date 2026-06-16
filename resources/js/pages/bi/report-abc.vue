@@ -248,12 +248,14 @@ const handleClearFilters = () => {
               @click="toggleAdvancedFilters"
             >
               <VBadge
-                v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
-                color="error" dot offset-x="2" offset-y="-2"
+                :model-value="hasActiveAdvancedFilters && !isAdvancedFiltersVisible"
+                color="error"
+                dot
+                offset-x="2"
+                offset-y="-2"
               >
                 <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="18" />
               </VBadge>
-              <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="18" />
               <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
             </VBtn>
 

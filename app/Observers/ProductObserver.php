@@ -18,27 +18,31 @@ class ProductObserver
      */
     public function updated(Product $product): void
     {
-        if ($product->isDirty('stock') && !$product->lots()->exists()) {
-            $originalStock = $product->getOriginal('stock') ?? 0;
+        if ($product->isDirty('stock')) {
             $newStock = $product->stock ?? 0;
-            $difference = $newStock - $originalStock;
+            \App\Services\Inventory\StockoutService::syncStockout($product, $newStock);
 
-            if ($difference != 0) {
-                $movementType = $difference > 0 ? 'purchase' : 'adjustment';
+            if (!$product->lots()->exists()) {
+                $originalStock = $product->getOriginal('stock') ?? 0;
+                $difference = $newStock - $originalStock;
 
-                InventoryMovement::create([
-                    'product_id' => $product->id,
-                    'product_lot_id' => null,
-                    'movement_type' => $movementType,
-                    'quantity' => $difference,
-                    'invoice_id' => null,
-                    'supplier_id' => $product->supplier_id,
-                    'order_id' => null,
-                    'user_id' => Auth::id(),
-                    'stock_before' => $originalStock,
-                    'stock_after' => $newStock,
-                    'movement_date' => now(),
-                ]);
+                if ($difference != 0) {
+                    $movementType = $difference > 0 ? 'purchase' : 'adjustment';
+
+                    InventoryMovement::create([
+                        'product_id' => $product->id,
+                        'product_lot_id' => null,
+                        'movement_type' => $movementType,
+                        'quantity' => $difference,
+                        'invoice_id' => null,
+                        'supplier_id' => $product->supplier_id,
+                        'order_id' => null,
+                        'user_id' => Auth::id(),
+                        'stock_before' => $originalStock,
+                        'stock_after' => $newStock,
+                        'movement_date' => now(),
+                    ]);
+                }
             }
         }
     }
@@ -75,6 +79,8 @@ class ProductObserver
             Product::withoutEvents(function () use ($product, $stockAfter) {
                 $product->update(['stock' => $stockAfter]);
             });
+
+            \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
 
             InventoryMovement::create([
                 'product_id' => $product->id,
@@ -143,6 +149,8 @@ class ProductObserver
                 ]);
             });
 
+            \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
+
             // Buscar el lote por producto, número de lote y fecha de expiración si no hay product_lot_id
             $productLotId = $detail->product_lot_id ?? null;
 
@@ -190,6 +198,8 @@ class ProductObserver
         Product::withoutEvents(function () use ($product, $stockAfter) {
             $product->update(['stock' => $stockAfter]);
         });
+
+        \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
 
         InventoryMovement::create([
             'product_id' => $product->id,
