@@ -23,6 +23,7 @@ class GeneralSetting extends Model
         'footer_text',
         'blind_cash_closure',
         'business_type',
+        'default_currency',
     ];
 
     protected $casts = [

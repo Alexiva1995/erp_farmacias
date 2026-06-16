@@ -96,6 +96,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  isRestaurant: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -248,6 +252,34 @@ const handlePrintButtonClick = () => {
 const generateWhatsappMessage = () => {
   if (props.quotationProducts.length === 0) {
     return ""; // Retorna vacío si no hay productos
+  }
+
+  if (props.isRestaurant) {
+    const productos_array = [];
+    props.quotationProducts.forEach((product) => {
+      let price = getProductPrice(product, props.selectedDisplayCurrency);
+      let symbol = props.selectedDisplayCurrency === "USD" ? "$" : props.selectedDisplayCurrency === "COP" ? "$" : "Bs. ";
+      let rows = `o     ${product.selectedQuantity}x ${product.title} — ${symbol}${formatCurrency(price, props.selectedDisplayCurrency)}`;
+      productos_array.push(rows);
+    });
+
+    let totalSymbol = props.selectedDisplayCurrency === "USD" ? "$" : props.selectedDisplayCurrency === "COP" ? "$" : "Bs. ";
+    let totalAmountVal = props.selectedDisplayCurrency === "USD" 
+      ? props.totalAmountUsd 
+      : props.selectedDisplayCurrency === "COP" 
+        ? roundUpToNearestHundred(props.totalAmountCop) 
+        : props.totalAmountBs;
+
+    const whatsappMessage = 
+      "¡Hola, gracias por escribirnos! 🌟\n\n" +
+      "Aquí tienes el detalle de tu pedido:\n\n" +
+      "📝 DETALLE DEL PEDIDO\n\n" +
+      productos_array.join("\n") +
+      "\n\n" +
+      `💰 TOTAL A PAGAR: ${totalSymbol}${formatCurrency(totalAmountVal, props.selectedDisplayCurrency)}\n\n` +
+      "👉 Nota: Los precios pueden variar sin previo aviso. Válido según disponibilidad del día. ¡Buen provecho! 🍽️";
+      
+    return whatsappMessage;
   }
 
   const fecha = new Date();

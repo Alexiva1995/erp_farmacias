@@ -15,7 +15,7 @@ class GeneralSettingRepository implements GeneralSettingRepositoryInterface
         return GeneralSetting::firstOrCreate([], [
             'fiscal_mode' => 'demo',
             'special_taxpayer_status' => 'desactivada',
-            'app_name' => 'ERP Farmacia',
+            'app_name' => 'Tova - Cerebro Operativo',
             'footer_text' => 'Todos los derechos reservados de Tova'
         ]);
     }

@@ -4,7 +4,7 @@ import { ref } from 'vue'
 
 export const useBrandingStore = defineStore('branding', () => {
   const settings = ref({
-    app_name: 'ERP Farmacia',
+    app_name: 'Tova - Cerebro Operativo',
     app_rif: '',
     app_logo: '',
     app_favicon: '',

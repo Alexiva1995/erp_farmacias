@@ -23,6 +23,7 @@ class ProductQueryService
             'origin',
             'group',
             'profitability',
+            'productSuppliers',
             'lots' => function ($query) {
                 $query->where('quantity', '>', 0);
             },
@@ -121,6 +122,12 @@ class ProductQueryService
 
         if (!empty($filters['groupId'])) {
             $query->where('group_id', $filters['groupId']);
+        }
+
+        if (!empty($filters['supplierId'])) {
+            $query->whereHas('productSuppliers', function ($q) use ($filters) {
+                $q->where('supplier_id', $filters['supplierId']);
+            });
         }
 
         // Filtrar productos sin grupo o del grupo actual (útil para añadir productos a un grupo)
@@ -289,6 +296,7 @@ class ProductQueryService
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'groupId' => $request->groupId,
+            'supplierId' => $request->supplierId ?? $request->supplier_id,
             'withoutGroupOrCurrentGroup' => $request->withoutGroupOrCurrentGroup,
             'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
             'startDate' => $request->startDate,

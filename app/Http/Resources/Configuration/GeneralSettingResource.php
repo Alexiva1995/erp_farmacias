@@ -19,7 +19,7 @@ class GeneralSettingResource extends JsonResource
             'fiscal_mode' => $this->fiscal_mode,
             'special_taxpayer_status' => $this->special_taxpayer_status,
             'all_foreign_sales_spe' => (bool) $this->all_foreign_sales_spe,
-            'app_name' => $this->app_name ?? 'ERP Farmacia',
+            'app_name' => $this->app_name ?? 'Tova - Cerebro Operativo',
             'app_rif' => $this->app_rif,
             'app_logo' => $this->app_logo,
             'app_favicon' => $this->app_favicon,
@@ -28,6 +28,7 @@ class GeneralSettingResource extends JsonResource
             'footer_text' => $this->footer_text ?? 'Todos los derechos reservados de Tova',
             'blind_cash_closure' => (bool) $this->blind_cash_closure,
             'business_type' => $this->business_type ?? 'pharmacy',
+            'default_currency' => $this->default_currency ?? 'COP',
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

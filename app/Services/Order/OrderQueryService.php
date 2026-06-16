@@ -192,7 +192,7 @@ class OrderQueryService
             ->where(function ($q) {
                 $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
             })
-            ->where('products.no_pvp', $isRestaurant ? 1 : 0);
+            ->where('products.no_pvp', 0);
 
         // 2. Consulta de PACKS
         $packsQuery = DB::table('product_packs')

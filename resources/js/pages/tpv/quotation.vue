@@ -92,7 +92,7 @@ const origins = ref([]);
 const selectedGroupId = ref(null);
 
 const isLoadingFilters = ref(false);
-const selectedDisplayCurrency = ref("USD");
+const selectedDisplayCurrency = ref("COP");
 
 const quotationDetails = ref(null);
 const isPrinting = ref(false);
@@ -1188,6 +1188,7 @@ const handleCleanAfterSave = () => {
           "
           :active-company-offers="activeCompanyOffers"
           :global-discount-percentage="getGlobalDiscountPercentage()"
+          :is-restaurant="isRestaurant"
           @doctor-discount-selected="handleDoctorDiscountSelected"
           @prescription-file-selected="handlePrescriptionFileSelected"
           @company-discount-selected="handleCompanyDiscountSelected"

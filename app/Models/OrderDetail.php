@@ -26,6 +26,11 @@ class OrderDetail extends Model
         'price_before_discount_bs',
         'notes',
     ];
+    
+    protected $casts = [
+        'quantity' => 'float',
+        'quantity_expiration' => 'float',
+    ];
 
     public function order(): BelongsTo
     {

@@ -157,6 +157,11 @@ watch(
       clonedProduct.is_scarce = clonedProduct.is_scarce ? 1 : 0;
       clonedProduct.is_unified_group = clonedProduct.is_unified_group ? 1 : 0;
       clonedProduct.no_pvp = clonedProduct.no_pvp ? 1 : 0;
+      if (clonedProduct.product_suppliers) {
+        clonedProduct.supplier_ids = clonedProduct.product_suppliers.map(ps => ps.supplier_id);
+      } else {
+        clonedProduct.supplier_ids = [];
+      }
       formData.value = clonedProduct;
     } else {
       formData.value = {
@@ -181,6 +186,7 @@ watch(
         photo_url: null,
         presentation: null,
         unit_of_measure: null,
+        supplier_ids: [],
       };
     }
     imageFile.value = null;
@@ -286,6 +292,12 @@ const submitForm = () => {
     !isNaN(formData.value.sale_price)
   ) {
     payload.append("sale_price", formData.value.sale_price);
+  }
+
+  if (Array.isArray(formData.value.supplier_ids)) {
+    formData.value.supplier_ids.forEach((id) => {
+      payload.append("supplier_ids[]", id);
+    });
   }
 
   emit("save", payload);
@@ -917,6 +929,44 @@ const submitForm = () => {
                         GRUPO ACTUAL: {{ assignedGroupName }}
                       </VChip>
                     </div>
+                  </div>
+                </VCard>
+              </div>
+
+              <!-- Proveedores Asociados (Solo Restaurante) -->
+              <div v-if="isRestaurant" class="d-flex flex-column gap-3">
+                <div class="d-flex align-center gap-2">
+                  <div class="header-indicator primary shadow-sm" />
+                  <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Proveedores del Producto</span>
+                </div>
+
+                <VCard
+                  variant="flat"
+                  :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
+                >
+                  <div class="pa-4 bg-light rounded-xl border-dashed-2">
+                    <div class="d-flex align-center gap-2 mb-4 leading-none">
+                      <VIcon
+                        icon="tabler-truck"
+                        size="18"
+                        color="primary"
+                      />
+                      <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Vincular Proveedores (Seleccionar uno o más)</span>
+                    </div>
+                    <VAutocomplete
+                      v-model="formData.supplier_ids"
+                      :items="props.suppliers"
+                      item-title="name"
+                      item-value="id"
+                      placeholder="SELECCIONAR PROVEEDORES..."
+                      variant="outlined"
+                      density="comfortable"
+                      multiple
+                      chips
+                      closable-chips
+                      class="bg-surface rounded-lg font-weight-black"
+                      hide-details
+                    />
                   </div>
                 </VCard>
               </div>
