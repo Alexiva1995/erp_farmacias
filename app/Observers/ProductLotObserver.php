@@ -322,6 +322,7 @@ class ProductLotObserver
         if ($recentOrderedInvoice) {
             $totalStock = $product->lots()->sum('quantity');
             $product->updateQuietly(['stock' => $totalStock]);
+            \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
             return;
         }
 
@@ -337,10 +338,12 @@ class ProductLotObserver
 
         if ($lots->isEmpty()) {
             $product->updateQuietly(['stock' => $totalStock]);
+            \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
             return;
         }
 
         // Solo actualizar stock (igual que antes). NO tocar unit_cost.
         $product->updateQuietly(['stock' => $totalStock]);
+        \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
     }
 }

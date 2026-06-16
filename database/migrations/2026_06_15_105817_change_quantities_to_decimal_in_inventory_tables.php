@@ -35,12 +35,12 @@ return new class extends Migration
             $table->decimal('system_quantity', 12, 3)->nullable()->change();
         });
 
-        Schema::table('sale_counts', function (Blueprint $table) {
+        Schema::table('sales_counts', function (Blueprint $table) {
             $table->decimal('counted_quantity', 12, 3)->nullable()->change();
             $table->decimal('system_quantity', 12, 3)->nullable()->change();
         });
 
-        Schema::table('invoice_counts', function (Blueprint $table) {
+        Schema::table('invoices_counts', function (Blueprint $table) {
             $table->decimal('counted_quantity', 12, 3)->nullable()->change();
             $table->decimal('system_quantity', 12, 3)->nullable()->change();
         });
@@ -83,12 +83,12 @@ return new class extends Migration
             $table->integer('system_quantity')->nullable()->change();
         });
 
-        Schema::table('sale_counts', function (Blueprint $table) {
+        Schema::table('sales_counts', function (Blueprint $table) {
             $table->integer('counted_quantity')->nullable()->change();
             $table->integer('system_quantity')->nullable()->change();
         });
 
-        Schema::table('invoice_counts', function (Blueprint $table) {
+        Schema::table('invoices_counts', function (Blueprint $table) {
             $table->integer('counted_quantity')->nullable()->change();
             $table->integer('system_quantity')->nullable()->change();
         });

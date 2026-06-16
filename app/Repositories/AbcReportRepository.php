@@ -64,6 +64,17 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->whereBetween('orders.order_date', [$startDate, $endDate])
             ->groupBy('order_details.product_id', 'order_details.dish_id');
 
+        // Subconsulta para obtener la fecha de la última venta absoluta del producto
+        $lastSaleQuery = DB::table('order_details')
+            ->select(
+                'order_details.product_id',
+                'order_details.dish_id',
+                DB::raw('MAX(orders.order_date) as last_sale_date')
+            )
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->where('orders.status', 'Completed')
+            ->groupBy('order_details.product_id', 'order_details.dish_id');
+
         // Consulta 1: Productos de Inventario
         $productsQuery = DB::table('products')
             ->select(
@@ -78,6 +89,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
+                'last_sale.last_sale_date as last_sale_date',
                 DB::raw("'product' as item_type")
             )
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -86,6 +98,9 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             })
             ->leftJoinSub($varianceSubquery, 'variance', function($join) {
                 $join->on('products.id', '=', 'variance.product_id');
+            })
+            ->leftJoinSub($lastSaleQuery, 'last_sale', function($join) {
+                $join->on('products.id', '=', 'last_sale.product_id');
             })
             ->where(function($q) {
                 $q->where('sales.sold_units', '>', 0)
@@ -110,6 +125,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
+                'last_sale.last_sale_date as last_sale_date',
                 DB::raw("'dish' as item_type")
             )
             ->leftJoin('categories', 'dishes.category_id', '=', 'categories.id')
@@ -118,6 +134,9 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             })
             ->leftJoinSub($varianceSubquery, 'variance', function($join) {
                 $join->on('dishes.id', '=', 'variance.dish_id');
+            })
+            ->leftJoinSub($lastSaleQuery, 'last_sale', function($join) {
+                $join->on('dishes.id', '=', 'last_sale.dish_id');
             })
             ->where('sales.sold_units', '>', 0);
 

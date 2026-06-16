@@ -346,6 +346,9 @@ class IaAssistantReportService
             $supplierData = $itemsWithSuppliers[$index] ?? null;
             if ($supplierData) {
                 $bestSupplier = $supplierData['supplier'] ?? null;
+                if ($bestSupplier) {
+                    $bestSupplier = clone $bestSupplier;
+                }
                 if ($bestSupplier && isset($supplierData['productSupplier'])) {
                     $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
                     $bestSupplier->setAttribute('unit_cost_usd_with_discount', $supplierData['productSupplier']->unit_cost_usd_with_discount ?? 0);
@@ -804,7 +807,10 @@ class IaAssistantReportService
 
                 if ($bestOption) {
                     $bestSupplier = $bestOption['supplier'];
-                    if (isset($bestOption['productSupplier'])) {
+                    if ($bestSupplier) {
+                        $bestSupplier = clone $bestSupplier;
+                    }
+                    if ($bestSupplier && isset($bestOption['productSupplier'])) {
                         $bestSupplier->setAttribute('product_suppliers_id', $bestOption['productSupplier']->id ?? null);
                         $bestSupplier->setAttribute('unit_cost_usd_with_discount', $bestOption['productSupplier']->unit_cost_usd_with_discount ?? 0);
                     }
@@ -952,7 +958,10 @@ class IaAssistantReportService
                     
                     // Sincronizar atributos de mejor proveedor en el producto
                     $bestSupplier = $bestReponerItem['supplier'];
-                    if (isset($bestReponerItem['productSupplier'])) {
+                    if ($bestSupplier) {
+                        $bestSupplier = clone $bestSupplier;
+                    }
+                    if ($bestSupplier && isset($bestReponerItem['productSupplier'])) {
                         $bestSupplier->setAttribute('product_suppliers_id', $bestReponerItem['productSupplier']->id ?? null);
                         $bestSupplier->setAttribute('unit_cost_usd_with_discount', $bestReponerItem['productSupplier']->unit_cost_usd_with_discount ?? 0);
                     }
