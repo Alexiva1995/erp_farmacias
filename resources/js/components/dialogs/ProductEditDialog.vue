@@ -157,11 +157,12 @@ watch(
       clonedProduct.is_scarce = clonedProduct.is_scarce ? 1 : 0;
       clonedProduct.is_unified_group = clonedProduct.is_unified_group ? 1 : 0;
       clonedProduct.no_pvp = clonedProduct.no_pvp ? 1 : 0;
-      if (clonedProduct.product_suppliers) {
+       if (clonedProduct.product_suppliers) {
         clonedProduct.supplier_ids = clonedProduct.product_suppliers.map(ps => ps.supplier_id);
       } else {
         clonedProduct.supplier_ids = [];
       }
+      clonedProduct.supplier_id = clonedProduct.supplier_id || null;
       formData.value = clonedProduct;
     } else {
       formData.value = {
@@ -187,6 +188,7 @@ watch(
         presentation: null,
         unit_of_measure: null,
         supplier_ids: [],
+        supplier_id: null,
       };
     }
     imageFile.value = null;
@@ -433,7 +435,7 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol cols="12" :md="isRestaurant ? 6 : 4">
+                      <VCol cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant ? 'Marca' : 'Laboratorio' }}</span>
                         <AppSelect
                           v-model="formData.laboratory_id"
@@ -476,7 +478,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol cols="12" :md="isRestaurant ? 6 : 4">
+                      <VCol cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Categoría</span>
                         <AppSelect
                           v-model="formData.category_id"
@@ -492,6 +494,23 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
+                      <VCol cols="12" md="4">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Proveedor</span>
+                        <AppSelect
+                          v-model="formData.supplier_id"
+                          placeholder="SELECCIONAR..."
+                          :items="props.suppliers"
+                          item-title="name"
+                          item-value="id"
+                          variant="outlined"
+                          density="comfortable"
+                          clearable
+                          :error-messages="formErrors.supplier_id"
+                          class="rounded-lg font-weight-black"
+                          hide-details="auto"
+                        />
+                      </VCol>
+
                       <VCol v-if="isRestaurant" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Presentación</span>
                         <AppTextField

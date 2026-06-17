@@ -219,6 +219,29 @@ class ProductQueryService
             }
         }
 
+        if (!empty($filters['restaurant_type'])) {
+            switch ($filters['restaurant_type']) {
+                case 'pvp':
+                    $query->where('no_pvp', '!=', 1);
+                    break;
+                case 'ingredients':
+                    $query->whereExists(function ($q) {
+                        $q->select(DB::raw(1))
+                            ->from('dish_ingredients')
+                            ->whereColumn('dish_ingredients.product_id', 'products.id');
+                    });
+                    break;
+                case 'mixed':
+                    $query->where('no_pvp', '!=', 1)
+                        ->whereExists(function ($q) {
+                            $q->select(DB::raw(1))
+                                ->from('dish_ingredients')
+                                ->whereColumn('dish_ingredients.product_id', 'products.id');
+                        });
+                    break;
+            }
+        }
+
         return $query;
     }
 
@@ -308,6 +331,7 @@ class ProductQueryService
             'isScarce'       => filter_var($request->get('isScarce'), FILTER_VALIDATE_BOOLEAN),
             'onlyDeleted'    => filter_var($request->get('onlyDeleted'), FILTER_VALIDATE_BOOLEAN),
             'product_type'   => $request->input('product_type') ?? $request->input('productType'),
+            'restaurant_type'=> $request->input('restaurant_type') ?? $request->input('restaurantType'),
         ];
 
         $this->applyFilters($query, $filters);

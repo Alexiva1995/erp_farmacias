@@ -71,7 +71,7 @@ class Product extends Model
         'unit_of_measure',
     ];
 
-    protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
+    protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'sale_price_cop', 'unit_cost_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
@@ -400,6 +400,20 @@ class Product extends Model
     {
         return Attribute::make(
             get: fn() => ceil($this->sale_price * $this->getServiceExchangeRate('COP') / 100) * 100,
+        );
+    }
+
+    protected function salePriceCop(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => ceil($this->sale_price * $this->getServiceExchangeRate('COP') / 100) * 100,
+        );
+    }
+
+    protected function unitCostCop(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => ceil($this->unit_cost * $this->getServiceExchangeRate('COP') / 100) * 100,
         );
     }
 

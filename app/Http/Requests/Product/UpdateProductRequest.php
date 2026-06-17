@@ -34,6 +34,7 @@ class UpdateProductRequest extends FormRequest
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
             'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
             'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
+            'no_pvp' => filter_var($this->input('no_pvp'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
 
@@ -61,6 +62,7 @@ class UpdateProductRequest extends FormRequest
             'is_novaventa' => 'sometimes|boolean',
             'is_scarce' => 'sometimes|boolean',
             'is_unified_group' => 'sometimes|boolean',
+            'no_pvp' => 'sometimes|boolean',
             'group_id' => 'nullable|integer|exists:groups_products,id',
             'photo_url' => [
                 'sometimes',
@@ -70,6 +72,7 @@ class UpdateProductRequest extends FormRequest
             ],
             'presentation' => 'nullable|numeric|min:0',
             'unit_of_measure' => 'nullable|string|in:g,ml,und',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'supplier_ids' => 'sometimes|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
         ];

@@ -34,7 +34,7 @@ const emit = defineEmits([
   "restore-product",
 ]);
 
-const headers = ref([
+const headers = computed(() => [
   { 
     title: "id", 
     key: "id", 
@@ -78,7 +78,7 @@ const headers = ref([
     title: "P.V.P",
     key: "sale_price",
     sortable: true,
-    visible: props.mode !== "inventory" && authStore.isAdmin,
+    visible: props.mode !== "inventory" && authStore.isAdmin && !isRestaurant.value,
   },
   {
     title: "Acciones",
@@ -116,7 +116,9 @@ const nextExpirationDate = (product) => {
 };
 
 const calculateSalePriceWithIva = (product) => {
-  const basePrice = Number(product.sale_price || 0);
+  const basePrice = isRestaurant.value
+    ? Number(product.sale_price_cop || 0)
+    : Number(product.sale_price || 0);
   if (product.iva == 1) {
     return basePrice * 1.16;
   }
@@ -138,6 +140,28 @@ const handleMobilePageChange = (newPage) => {
     itemsPerPage: props.itemsPerPage,
     sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : [],
   });
+};
+
+const formatStock = (item) => {
+  const stock = Number(item.stock_calculado ?? 0);
+  if (!isRestaurant.value || !item.unit_of_measure) {
+    const formatted = stock.toString().replace('.', ',');
+    return `${formatted} UNDS`;
+  }
+  if (item.unit_of_measure === 'g') {
+    const val = Math.round(stock * 1000);
+    return `${val} g`;
+  }
+  if (item.unit_of_measure === 'ml') {
+    const val = Math.round(stock * 1000);
+    return `${val} ml`;
+  }
+  if (item.unit_of_measure === 'und') {
+    const formatted = stock.toString().replace('.', ',');
+    return `${formatted} unidades`;
+  }
+  const formatted = stock.toString().replace('.', ',');
+  return `${formatted} UNDS`;
 };
 </script>
 
@@ -213,7 +237,7 @@ const handleMobilePageChange = (newPage) => {
               variant="tonal"
               class="font-weight-black"
             >
-              {{ item.stock_calculado ?? 0 }}
+              {{ formatStock(item) }}
             </VChip>
           </div>
         </template>
@@ -223,7 +247,9 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.unit_cost="{ item }">
-          <span class="text-sm font-weight-medium text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
+          <span class="text-sm font-weight-medium text-high-emphasis">
+            {{ formatPrice(isRestaurant ? item.unit_cost_cop : item.unit_cost) }}
+          </span>
         </template>
 
         <template #item.sale_price="{ item }">
@@ -356,10 +382,10 @@ const handleMobilePageChange = (newPage) => {
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock</span>
                 <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
-                  {{ item.stock_calculado ?? 0 }} <small class="text-super-xs">UNDS</small>
+                  {{ formatStock(item) }}
                 </span>
               </div>
-              <div class="d-flex flex-column text-right">
+              <div v-if="!isRestaurant" class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
                 <span class="text-base font-weight-black text-primary">
                   {{ formatPrice(calculateSalePriceWithIva(item)) }}

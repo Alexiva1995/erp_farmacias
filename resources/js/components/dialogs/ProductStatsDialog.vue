@@ -4,6 +4,7 @@ import axios from "@/plugins/axios";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
 import VueApexCharts from "vue3-apexcharts";
 import { useDisplay } from "vuetify";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -13,6 +14,9 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const { xs } = useDisplay();
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const loading = ref(false);
 const stats = ref(null);
@@ -30,6 +34,10 @@ const chartOptions = computed(() => ({
   },
   dataLabels: { enabled: false },
   stroke: { curve: "smooth", width: 2 },
+  markers: {
+    size: 5,
+    hover: { size: 7 }
+  },
   fill: {
     type: "gradient",
     gradient: {
@@ -122,7 +130,19 @@ const marketShareOptions = computed(() => ({
   colors: ['#E20074'],
 }));
 
-const series = computed(() => stats.value?.trend_chart?.series || []);
+const series = computed(() => {
+  const rawSeries = stats.value?.trend_chart?.series || [];
+  if (!isIngredient.value) return rawSeries;
+  
+  const factor = (props.product?.unit_of_measure === 'g' || props.product?.unit_of_measure === 'ml') ? 1000 : 1;
+  if (factor === 1) return rawSeries;
+  
+  return rawSeries.map(s => ({
+    ...s,
+    data: s.data.map(val => Math.round(val * factor))
+  }));
+});
+
 const marketShareSeries = computed(() => [stats.value?.market_share || 0]);
 
 const fetchStats = async () => {
@@ -147,6 +167,92 @@ watch(
     }
   }
 );
+
+const isIngredient = computed(() => {
+  return isRestaurant.value || props.product?.no_pvp === true || props.product?.no_pvp == 1 || props.product?.no_pvp === '1';
+});
+
+const ingredientStatusLabel = computed(() => {
+  if (!props.product) return 'Inactivo';
+  const stock = Number(props.product.stock_calculado ?? props.product.stock ?? 0);
+  if (stock <= 0) return 'Agotado';
+  return 'En Stock / Activo';
+});
+
+const ingredientStatusColor = computed(() => {
+  if (!props.product) return 'grey';
+  const stock = Number(props.product.stock_calculado ?? props.product.stock ?? 0);
+  if (stock <= 0) return 'error';
+  return 'success';
+});
+
+const formatIngredientStock = (item) => {
+  if (!item) return '0 UNDS';
+  const stock = Number(item.stock_calculado ?? item.stock ?? 0);
+  if (!item.unit_of_measure) {
+    return `${stock.toString().replace('.', ',')} UNDS`;
+  }
+  if (item.unit_of_measure === 'g') {
+    return `${Math.round(stock * 1000)} g`;
+  }
+  if (item.unit_of_measure === 'ml') {
+    return `${Math.round(stock * 1000)} ml`;
+  }
+  if (item.unit_of_measure === 'und') {
+    return `${stock.toString().replace('.', ',')} unidades`;
+  }
+  return `${stock.toString().replace('.', ',')} UNDS`;
+};
+
+const formatIngredientExp = (item) => {
+  if (!item) return 'N/A';
+  let rawDate = 'N/A';
+  if (!item.lots || !Array.isArray(item.lots) || item.lots.length === 0) {
+    rawDate = item.next_expiration || "N/A";
+  } else {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const validLots = item.lots.filter((lot) => {
+      if (!lot.expiration_date) return false;
+      const expirationDate = new Date(lot.expiration_date);
+      return !isNaN(expirationDate.getTime()) && expirationDate >= today;
+    });
+    if (validLots.length === 0) {
+      rawDate = item.next_expiration || "EXPIRADO";
+    } else {
+      validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+      rawDate = validLots[0].expiration_date;
+    }
+  }
+  
+  if (rawDate && rawDate !== 'N/A' && rawDate !== 'EXPIRADO') {
+    if (rawDate.includes('T')) {
+      return rawDate.split('T')[0];
+    }
+    if (rawDate.includes(' ')) {
+      return rawDate.split(' ')[0];
+    }
+  }
+  return rawDate;
+};
+
+const formatIngredientStockQuantity = (qty) => {
+  const stock = Number(qty || 0);
+  const item = props.product;
+  if (!item || !item.unit_of_measure) {
+    return `${stock.toString().replace('.', ',')} Unds`;
+  }
+  if (item.unit_of_measure === 'g') {
+    return `${Math.round(stock * 1000)} g`;
+  }
+  if (item.unit_of_measure === 'ml') {
+    return `${Math.round(stock * 1000)} ml`;
+  }
+  if (item.unit_of_measure === 'und') {
+    return `${stock.toString().replace('.', ',')} unidades`;
+  }
+  return `${stock.toString().replace('.', ',')} Unds`;
+};
 
 const closeDialog = () => {
   emit("update:modelValue", false);
@@ -195,32 +301,58 @@ const closeDialog = () => {
             <!-- Lado Izquierdo: KPIs y Market Share -->
             <VCol cols="12" md="4" class="d-flex flex-column gap-2">
               <VCard variant="flat" class="pa-4 rounded-lg border shadow-sm bg-surface flex-grow-1 d-flex flex-column align-center justify-center">
-                <div class="text-xs font-weight-black text-disabled uppercase mb-2">Preferencia de Compra</div>
-                <VueApexCharts
-                  :key="props.product?.id"
-                  type="radialBar"
-                  height="220"
-                  :options="marketShareOptions"
-                  :series="marketShareSeries"
-                />
-                <div class="text-super-xs font-weight-bold text-center text-medium-emphasis px-4">
-                  Participación del producto dentro de su grupo competitivo.
-                </div>
+                <template v-if="!isIngredient">
+                  <div class="text-xs font-weight-black text-disabled uppercase mb-2">Preferencia de Compra</div>
+                  <VueApexCharts
+                    :key="props.product?.id"
+                    type="radialBar"
+                    height="220"
+                    :options="marketShareOptions"
+                    :series="marketShareSeries"
+                  />
+                  <div class="text-super-xs font-weight-bold text-center text-medium-emphasis px-4">
+                    Participación del producto dentro de su grupo competitivo.
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="text-xs font-weight-black text-disabled uppercase mb-4">Estado del Ingrediente</div>
+                  <div class="d-flex flex-column align-center gap-2 py-4">
+                    <VChip
+                      :color="ingredientStatusColor"
+                      size="large"
+                      label
+                      variant="tonal"
+                      class="font-weight-black text-subtitle-2 px-4 py-2"
+                    >
+                      <VIcon start icon="tabler-info-circle" size="18" />
+                      {{ ingredientStatusLabel }}
+                    </VChip>
+                    <div class="text-xs font-weight-bold text-medium-emphasis mt-2 text-center leading-relaxed">
+                      <div>Stock Actual: <span class="font-weight-black text-high-emphasis">{{ formatIngredientStock(props.product) }}</span></div>
+                      <div class="mt-1">Próximo Vencimiento: <span class="font-weight-black text-high-emphasis">{{ formatIngredientExp(props.product) }}</span></div>
+                    </div>
+                  </div>
+                </template>
               </VCard>
 
               <div class="d-flex gap-2">
                 <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface flex-grow-1">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Total Vendido</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">{{ isIngredient ? 'Gastado' : 'Total Vendido' }}</span>
                   <div class="d-flex align-center gap-1">
-                    <span class="text-h6 font-weight-black text-primary">{{ stats.total_units_sold }}</span>
-                    <span class="text-super-xs font-weight-bold text-disabled pt-1">UNDS</span>
+                    <span class="text-h6 font-weight-black text-primary">
+                      {{ isIngredient ? formatIngredientStockQuantity(stats.total_units_sold) : stats.total_units_sold }}
+                    </span>
+                    <span v-if="!isIngredient" class="text-super-xs font-weight-bold text-disabled pt-1">UNDS</span>
                   </div>
                 </VCard>
                 <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface flex-grow-1">
                   <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Promedio Mes</span>
                   <div class="d-flex align-center gap-1">
-                    <span class="text-h6 font-weight-black text-success">{{ stats.monthly_average }}</span>
-                    <span class="text-super-xs font-weight-bold text-disabled pt-1">/MES</span>
+                    <span class="text-h6 font-weight-black text-success">
+                      {{ isIngredient ? formatIngredientStockQuantity(stats.monthly_average) : stats.monthly_average }}
+                    </span>
+                    <span v-if="!isIngredient" class="text-super-xs font-weight-bold text-disabled pt-1">/MES</span>
+                    <span v-else class="text-super-xs font-weight-bold text-disabled pt-1">/mes</span>
                   </div>
                 </VCard>
               </div>
@@ -233,7 +365,7 @@ const closeDialog = () => {
                   <div class="d-flex align-center gap-2">
                     <div class="header-indicator primary" />
                     <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">
-                      Tendencia Histórica vs Competidores
+                      {{ isIngredient ? 'Tendencia Histórica de Consumo' : 'Tendencia Histórica vs Competidores' }}
                     </span>
                   </div>
                 </div>
@@ -255,7 +387,9 @@ const closeDialog = () => {
               <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface d-flex align-center justify-space-between">
                 <div class="d-flex align-center gap-3">
                   <VIcon icon="tabler-history" size="18" color="info" />
-                  <span class="text-xs font-weight-bold text-medium-emphasis">Detalle de la última operación registrada:</span>
+                  <span class="text-xs font-weight-bold text-medium-emphasis">
+                    {{ isIngredient ? 'Detalle del último consumo registrado:' : 'Detalle de la última operación registrada:' }}
+                  </span>
                 </div>
                 <template v-if="stats.last_sale">
                   <div class="d-flex align-center gap-4">
@@ -263,17 +397,19 @@ const closeDialog = () => {
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Fecha</span>
                       <span class="text-xs font-weight-black text-high-emphasis">{{ formatDateSimple(stats.last_sale.date) }}</span>
                     </div>
-                    <div class="d-flex flex-column align-end">
+                    <div v-if="!isIngredient" class="d-flex flex-column align-end">
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Precio</span>
                       <span class="text-xs font-weight-black text-primary">{{ formatPrice(stats.last_sale.price) }}</span>
                     </div>
                     <div class="d-flex flex-column align-end">
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Cantidad</span>
-                      <span class="text-xs font-weight-black text-info">{{ stats.last_sale.quantity }} Unds</span>
+                      <span class="text-xs font-weight-black text-info">{{ formatIngredientStockQuantity(stats.last_sale.quantity) }}</span>
                     </div>
                   </div>
                 </template>
-                <span v-else class="text-xs font-weight-bold text-disabled italic">No hay ventas previas</span>
+                <span v-else class="text-xs font-weight-bold text-disabled italic">
+                  {{ isIngredient ? 'No hay consumos previos' : 'No hay ventas previas' }}
+                </span>
               </VCard>
             </VCol>
           </VRow>

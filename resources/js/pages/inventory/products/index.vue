@@ -29,6 +29,7 @@ const selectedGroup = ref(null);
 const selectedSupplier = ref(null);
 const stockStatusFilter = ref(null);
 const productTypeFilter = ref(null);
+const selectedRestaurantType = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
 const isStrictSearch = ref(false);
@@ -91,6 +92,7 @@ const fetchProducts = async () => {
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
     ...(productTypeFilter.value && { productType: productTypeFilter.value }),
+    ...(selectedRestaurantType.value && { restaurantType: selectedRestaurantType.value }),
   };
   Object.keys(params).forEach(
     key => (params[key] === null || params[key] === "") && delete params[key],
@@ -122,6 +124,7 @@ watch(
     selectedSupplier,
     stockStatusFilter,
     productTypeFilter,
+    selectedRestaurantType,
     startDate,
     endDate,
     isStrictSearch,
@@ -134,7 +137,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, stockStatusFilter, productTypeFilter, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, stockStatusFilter, productTypeFilter, selectedRestaurantType, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -283,6 +286,7 @@ const handleClearFilters = () => {
   selectedSupplier.value = null;
   stockStatusFilter.value = null;
   productTypeFilter.value = null;
+  selectedRestaurantType.value = null;
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
@@ -369,6 +373,7 @@ const handleSort = sortOptions => {
       v-model:selectedSupplier="selectedSupplier"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:productTypeFilter="productTypeFilter"
+      v-model:selectedRestaurantType="selectedRestaurantType"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:isStrictSearch="isStrictSearch"

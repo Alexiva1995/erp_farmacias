@@ -46,6 +46,7 @@ class StoreProductRequest extends FormRequest
             'psychotropic' => ['required', 'boolean'],
             'is_colombian_origin' => ['required', 'boolean'],
             'is_novaventa' => ['sometimes', 'boolean'],
+            'no_pvp' => ['sometimes', 'boolean'],
 
             'photo_url' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'group_id' => 'nullable|integer|exists:groups_products,id',
@@ -53,6 +54,7 @@ class StoreProductRequest extends FormRequest
             'is_unified_group' => ['sometimes', 'boolean'],
             'presentation' => ['nullable', 'numeric', 'min:0'],
             'unit_of_measure' => ['nullable', 'string', 'in:g,ml,und'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_ids' => ['sometimes', 'array'],
             'supplier_ids.*' => ['integer', 'exists:suppliers,id'],
         ];
@@ -70,6 +72,7 @@ class StoreProductRequest extends FormRequest
             'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
             'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
             'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
+            'no_pvp' => filter_var($this->input('no_pvp'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
 
