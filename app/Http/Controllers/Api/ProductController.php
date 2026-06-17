@@ -229,7 +229,8 @@ class ProductController extends Controller
     {
         try {
             // Consulta base con relaciones esenciales
-            $products = Product::with(['laboratory', 'category', 'lots'])
+            $products = Product::where('no_pvp', '!=', 1)
+                ->with(['laboratory', 'category', 'lots'])
                 ->withSum('lots as stock_calculado', 'quantity')
                 ->orderBy('name', 'asc')   // Orden alfabético por defecto
                 ->get();

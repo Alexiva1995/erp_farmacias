@@ -176,6 +176,13 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::delete('/groups/{group}', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'destroyGroup']);
         Route::delete('/{laboratory}', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'destroy']);
     });
+
+    // Gestión Administrativa de Categorías de Inventario
+    Route::prefix('inventory/categories-manage')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'store']);
+        Route::delete('/{category}', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'destroy']);
+    });
     Route::get("/origins", [ResourceController::class, "getOrigins"]);
     Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);

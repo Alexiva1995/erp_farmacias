@@ -629,6 +629,7 @@ const submitForm = () => {
                         </VCard>
 
                         <VCard
+                          v-if="!isRestaurant"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"
@@ -664,6 +665,7 @@ const submitForm = () => {
                         </VCard>
 
                         <VCard
+                          v-if="!isRestaurant"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"
