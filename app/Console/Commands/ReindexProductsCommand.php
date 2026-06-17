@@ -68,18 +68,9 @@ class ReindexProductsCommand extends Command
             return 0;
         }
 
-        // Determinar el ID de inicio para los nuevos IDs
+        // Determinar el ID de inicio para los nuevos IDs (por defecto 1000)
         $startId = $this->option('start');
-        if ($startId !== null) {
-            $currentNewId = (int) $startId;
-        } else {
-            // Por defecto, buscar el ID máximo por debajo de 1000
-            $maxUnder1000 = DB::table('products')
-                ->where('id', '<', 1000)
-                ->max('id');
-            
-            $currentNewId = $maxUnder1000 !== null ? ((int) $maxUnder1000 + 1) : 1;
-        }
+        $currentNewId = $startId !== null ? (int) $startId : 1000;
 
         $this->info("Iniciando reindexación de {$products->count()} productos. Nuevo rango empezará en: {$currentNewId}");
 
