@@ -6,16 +6,17 @@ import { computed, ref, onMounted, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
-  searchQuery:        String,
-  selectedLaboratory: [Number, String, null],
-  selectedOrigin:     [Number, String, null],
-  selectedGroup:      [Number, String, null],
-  selectedSupplier:   [Number, String, null],
-  stockStatusFilter:  [Boolean, null],
-  productTypeFilter:  [String, null],
-  startDate:          [String, null],
-  endDate:            [String, null],
-  laboratories:       { type: Array,   default: () => [] },
+  searchQuery:            String,
+  selectedLaboratory:     [Number, String, null],
+  selectedOrigin:         [Number, String, null],
+  selectedGroup:          [Number, String, null],
+  selectedSupplier:       [Number, String, null],
+  stockStatusFilter:      [Boolean, null],
+  productTypeFilter:      [String, null],
+  selectedRestaurantType: [String, null],
+  startDate:              [String, null],
+  endDate:                [String, null],
+  laboratories:           { type: Array,   default: () => [] },
   origins:            { type: Array,   default: () => [] },
   groups:             { type: Array,   default: () => [] },
   suppliers:          { type: Array,   default: () => [] },
@@ -37,6 +38,7 @@ const emit = defineEmits([
   "update:selectedSupplier",
   "update:stockStatusFilter",
   "update:productTypeFilter",
+  "update:selectedRestaurantType",
   "update:startDate",
   "update:endDate",
   "update:isStrictSearch",
@@ -52,9 +54,11 @@ const stockOptions = [
   { title: "Con Stock", value: true  },
   { title: "Sin Stock", value: false },
 ];
-
-
-
+const restaurantTypeOptions = [
+  { title: "PVP", value: "pvp" },
+  { title: "Ingredientes", value: "ingredients" },
+  { title: "Mixto", value: "mixed" },
+];
 const sortOptions = [
   { title: "Precio mayor",    icon: "tabler-arrow-up",      key: "sale_price",      order: "desc" },
   { title: "Precio Menor",    icon: "tabler-arrow-down",    key: "sale_price",      order: "asc"  },
@@ -164,6 +168,19 @@ const showExport = computed(() => props.mode === 'products');
     </template>
 
     <template #advanced-filters>
+      <!-- Tipo (Restaurante) -->
+      <VCol v-if="isRestaurant" cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.selectedRestaurantType"
+          placeholder="Tipo"
+          :items="restaurantTypeOptions"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-tags"
+          @update:model-value="emit('update:selectedRestaurantType', $event)"
+        />
+      </VCol>
 
       <!-- Laboratorio / Marca -->
       <VCol cols="12" sm="6" md="2">
