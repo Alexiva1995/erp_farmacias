@@ -12,14 +12,14 @@ class ReindexProductsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'products:reindex-high-ids {--start= : ID de inicio para la reindexación (opcional)}';
+    protected $signature = 'products:reindex-to-1000 {--start= : ID de inicio para la reindexación (opcional)}';
 
     /**
      * La descripción del comando.
      *
      * @var string
      */
-    protected $description = 'Reindexa en cascada todos los IDs de productos que empiezan desde 1000 en adelante.';
+    protected $description = 'Reindexa en cascada todos los IDs de productos menores a 1000 para que empiecen desde 1000.';
 
     /**
      * Las tablas y columnas que tienen claves foráneas o referencias a products.id.
@@ -57,14 +57,14 @@ class ReindexProductsCommand extends Command
      */
     public function handle(): int
     {
-        // Obtener todos los productos con ID >= 1000 ordenados por ID
+        // Obtener todos los productos con ID < 1000 ordenados por ID
         $products = DB::table('products')
-            ->where('id', '>=', 1000)
+            ->where('id', '<', 1000)
             ->orderBy('id', 'asc')
             ->get();
 
         if ($products->isEmpty()) {
-            $this->info('No se encontraron productos con ID mayor o igual a 1000.');
+            $this->info('No se encontraron productos con ID menor a 1000.');
             return 0;
         }
 
