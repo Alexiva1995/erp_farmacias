@@ -34,7 +34,7 @@ const emit = defineEmits([
   "restore-product",
 ]);
 
-const headers = ref([
+const headers = computed(() => [
   { 
     title: "id", 
     key: "id", 
@@ -78,7 +78,7 @@ const headers = ref([
     title: "P.V.P",
     key: "sale_price",
     sortable: true,
-    visible: props.mode !== "inventory" && authStore.isAdmin,
+    visible: props.mode !== "inventory" && authStore.isAdmin && !isRestaurant.value,
   },
   {
     title: "Acciones",
@@ -385,7 +385,7 @@ const formatStock = (item) => {
                   {{ formatStock(item) }}
                 </span>
               </div>
-              <div class="d-flex flex-column text-right">
+              <div v-if="!isRestaurant" class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
                 <span class="text-base font-weight-black text-primary">
                   {{ formatPrice(calculateSalePriceWithIva(item)) }}

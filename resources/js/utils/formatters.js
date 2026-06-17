@@ -24,12 +24,12 @@ export const formatDateSimple = (dateString) => {
  */
 export const formatPrice = (price) => {
   const numPrice = Number(price);
-  if (isNaN(numPrice)) return "0,00";
+  if (isNaN(numPrice)) return "$ 0";
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(numPrice);
 };
 

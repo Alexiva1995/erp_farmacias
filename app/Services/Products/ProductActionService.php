@@ -80,6 +80,12 @@ class ProductActionService
             unset($validatedData['supplier_ids']);
         }
 
+        if (isset($validatedData['supplier_id']) && $validatedData['supplier_id']) {
+            $singleSupplierId = (int) $validatedData['supplier_id'];
+            $supplierIds[] = $singleSupplierId;
+            $supplierIds = array_unique($supplierIds);
+        }
+
         $product = Product::create($validatedData);
 
         if (!empty($supplierIds)) {
@@ -135,6 +141,16 @@ class ProductActionService
         $supplierIds = $validatedData['supplier_ids'] ?? null;
         if (isset($validatedData['supplier_ids'])) {
             unset($validatedData['supplier_ids']);
+        }
+
+        if (isset($validatedData['supplier_id']) && $validatedData['supplier_id']) {
+            $singleSupplierId = (int) $validatedData['supplier_id'];
+            if ($supplierIds === null) {
+                $supplierIds = [$singleSupplierId];
+            } else {
+                $supplierIds[] = $singleSupplierId;
+                $supplierIds = array_unique($supplierIds);
+            }
         }
 
         $product->update($validatedData);

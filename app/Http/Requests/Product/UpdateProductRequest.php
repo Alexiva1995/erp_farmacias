@@ -72,6 +72,7 @@ class UpdateProductRequest extends FormRequest
             ],
             'presentation' => 'nullable|numeric|min:0',
             'unit_of_measure' => 'nullable|string|in:g,ml,und',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'supplier_ids' => 'sometimes|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
         ];

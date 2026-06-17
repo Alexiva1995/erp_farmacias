@@ -54,6 +54,7 @@ class StoreProductRequest extends FormRequest
             'is_unified_group' => ['sometimes', 'boolean'],
             'presentation' => ['nullable', 'numeric', 'min:0'],
             'unit_of_measure' => ['nullable', 'string', 'in:g,ml,und'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_ids' => ['sometimes', 'array'],
             'supplier_ids.*' => ['integer', 'exists:suppliers,id'],
         ];
