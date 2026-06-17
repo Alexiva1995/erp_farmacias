@@ -139,6 +139,28 @@ const handleMobilePageChange = (newPage) => {
     sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : [],
   });
 };
+
+const formatStock = (item) => {
+  const stock = Number(item.stock_calculado ?? 0);
+  if (!isRestaurant.value || !item.unit_of_measure) {
+    const formatted = stock.toString().replace('.', ',');
+    return `${formatted} UNDS`;
+  }
+  if (item.unit_of_measure === 'g') {
+    const val = Math.round(stock * 1000);
+    return `${val} g`;
+  }
+  if (item.unit_of_measure === 'ml') {
+    const val = Math.round(stock * 1000);
+    return `${val} ml`;
+  }
+  if (item.unit_of_measure === 'und') {
+    const formatted = stock.toString().replace('.', ',');
+    return `${formatted} unidades`;
+  }
+  const formatted = stock.toString().replace('.', ',');
+  return `${formatted} UNDS`;
+};
 </script>
 
 <template>
@@ -213,7 +235,7 @@ const handleMobilePageChange = (newPage) => {
               variant="tonal"
               class="font-weight-black"
             >
-              {{ item.stock_calculado ?? 0 }}
+              {{ formatStock(item) }}
             </VChip>
           </div>
         </template>
@@ -356,7 +378,7 @@ const handleMobilePageChange = (newPage) => {
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock</span>
                 <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
-                  {{ item.stock_calculado ?? 0 }} <small class="text-super-xs">UNDS</small>
+                  {{ formatStock(item) }}
                 </span>
               </div>
               <div class="d-flex flex-column text-right">
