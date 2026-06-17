@@ -116,7 +116,9 @@ const nextExpirationDate = (product) => {
 };
 
 const calculateSalePriceWithIva = (product) => {
-  const basePrice = Number(product.sale_price || 0);
+  const basePrice = isRestaurant.value
+    ? Number(product.sale_price_cop || 0)
+    : Number(product.sale_price || 0);
   if (product.iva == 1) {
     return basePrice * 1.16;
   }
@@ -245,7 +247,9 @@ const formatStock = (item) => {
         </template>
 
         <template #item.unit_cost="{ item }">
-          <span class="text-sm font-weight-medium text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
+          <span class="text-sm font-weight-medium text-high-emphasis">
+            {{ formatPrice(isRestaurant ? item.unit_cost_cop : item.unit_cost) }}
+          </span>
         </template>
 
         <template #item.sale_price="{ item }">

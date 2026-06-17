@@ -284,6 +284,8 @@ class ProductController extends Controller
             'available_stock' => $availableStock,
             'sale_price' => (float) $product->sale_price,
             'unit_cost' => (float) $product->unit_cost,
+            'sale_price_cop' => (float) $product->price_cop,
+            'unit_cost_cop' => (float) (ceil($product->unit_cost * app(\App\Services\Resources\ResourceService::class)->getExchangeRate('COP') / 100) * 100),
             'barcode' => $product->barcode,
 
             // Información de expiración
