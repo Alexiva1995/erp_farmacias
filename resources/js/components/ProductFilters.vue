@@ -53,14 +53,7 @@ const stockOptions = [
   { title: "Sin Stock", value: false },
 ];
 
-const typeOptions = [
-  { title: "Redundantes", value: "redundantes" },
-  { title: "COL (Origen Colombia)", value: "col" },
-  { title: "IVA", value: "iva" },
-  { title: "Exento", value: "exento" },
-  { title: "Novaventa", value: "novaventa" },
-  { title: "Eliminados", value: "eliminados" },
-];
+
 
 const sortOptions = [
   { title: "Precio mayor",    icon: "tabler-arrow-up",      key: "sale_price",      order: "desc" },
@@ -171,19 +164,6 @@ const showExport = computed(() => props.mode === 'products');
     </template>
 
     <template #advanced-filters>
-      <!-- Tipo de Producto -->
-      <VCol cols="12" sm="6" md="2">
-        <VSelect
-          :model-value="props.productTypeFilter"
-          placeholder="Tipo de Producto"
-          :items="typeOptions"
-          clearable
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-tags"
-          @update:model-value="emit('update:productTypeFilter', $event)"
-        />
-      </VCol>
 
       <!-- Laboratorio / Marca -->
       <VCol cols="12" sm="6" md="2">
