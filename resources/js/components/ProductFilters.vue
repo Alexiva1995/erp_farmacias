@@ -148,7 +148,7 @@ const showExport = computed(() => props.mode === 'products');
     :show-export="showExport"
     :show-add="canAdd"
     :add-button-text="props.addButtonText"
-    search-placeholder="ID, Producto, C. Activo..."
+    :search-placeholder="isRestaurant ? 'ID, Producto...' : 'ID, Producto, C. Activo...'"
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
