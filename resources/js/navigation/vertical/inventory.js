@@ -67,6 +67,10 @@ export default [
         to: 'inventory-laboratories',
       },
       {
+        title: 'Categorías',
+        to: 'inventory-categories',
+      },
+      {
         title: 'Platos / Menú',
         to: 'inventory-dishes',
       },

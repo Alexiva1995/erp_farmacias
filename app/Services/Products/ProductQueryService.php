@@ -279,6 +279,7 @@ class ProductQueryService
     public function searchBarcodeProduct(Request $request)
     {
         $product = Product::where('barcode', $request->barcode)
+            ->where('no_pvp', '!=', 1)
             ->with(['laboratory', 'origin', 'category'])
             ->first();
         return $product;
