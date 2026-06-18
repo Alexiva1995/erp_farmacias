@@ -8,6 +8,10 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
@@ -395,7 +399,7 @@ const getPriceVsAutoOrderIndicator = (item) => {
   const invoicePrice = item.unit_cost_usd;
   if (invoicePrice == null || isNaN(invoicePrice)) return null;
 
-  const tolerance = 0.001; // Tolerancia de 0.1 centavo de USD
+  const tolerance = 0.01; // Tolerancia de 1 centavo de USD (0.01)
 
   if (invoicePrice > autoOrderPrice + tolerance) {
     // Más caro que la autoorden
@@ -419,6 +423,73 @@ const getPriceVsAutoOrderIndicator = (item) => {
       tooltip: `Igual al precio de la autoorden: ${formatCurrency(autoOrderPrice, 'USD')}`,
     };
   }
+};
+
+/**
+ * Copia al portapapeles todos los productos de la factura que tengan un precio
+ * facturado superior al precio estimado de la auto-orden (con tolerancia de 0.01 USD).
+ */
+const copyMoreExpensiveProducts = () => {
+  const expensiveProducts = processedInvoiceDetails.value.filter(item => {
+    const autoOrderPrice = item.auto_order_unit_cost_usd;
+    if (autoOrderPrice == null) return false;
+    const invoicePrice = item.unit_cost_usd;
+    if (invoicePrice == null || isNaN(invoicePrice)) return false;
+    
+    const tolerance = 0.01;
+    return invoicePrice > autoOrderPrice + tolerance;
+  });
+
+  if (expensiveProducts.length === 0) {
+    toast.fire({
+      icon: "info",
+      title: "No hay productos con precio mayor al de la auto-orden.",
+    });
+    return;
+  }
+
+  let text = `DATOS DE LA FACTURA
+Proveedor: ${invoice.value?.supplier?.name || 'N/A'}
+Control: ${invoice.value?.control_number || 'N/A'}
+Factura: ${invoice.value?.invoice_number || 'N/A'}
+Tasa de Cambio: ${invoice.value?.exchange_rate || '1'}
+Moneda: ${invoice.value?.currency || 'USD'}
+Total Factura: ${formatCurrency(invoice.value?.total_amount, invoice.value?.currency)}
+
+PRODUCTOS CON PRECIO MAYOR A LA AUTO-ORDEN:
+`;
+
+  let totalDiferencia = 0;
+
+  expensiveProducts.forEach((item) => {
+    const facturado = item.unit_cost_usd;
+    const ordenado = item.auto_order_unit_cost_usd;
+    const qty = Number(item.quantity) || 0;
+    const difUnit = facturado - ordenado;
+    const difTotalItem = difUnit * qty;
+    totalDiferencia += difTotalItem;
+
+    text += `- ${item.product?.name || 'Producto'}:
+  Facturado: $${facturado.toFixed(2)} USD
+  Auto-Orden: $${ordenado.toFixed(2)} USD
+  Cantidad: ${qty}
+  Diferencia Unitario: $${difUnit.toFixed(2)} USD
+  Diferencia Total: $${difTotalItem.toFixed(2)} USD\n`;
+  });
+
+  text += `\nDiferencia Total Acumulada (Exceso facturado): $${totalDiferencia.toFixed(2)} USD`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    toast.fire({
+      icon: "success",
+      title: "Productos más caros copiados al portapapeles.",
+    });
+  }).catch(err => {
+    toast.fire({
+      icon: "error",
+      title: "No se pudo copiar el texto.",
+    });
+  });
 };
 
 onMounted(async () => {
@@ -1570,6 +1641,19 @@ const detailsHeaders = computed(() => {
                   >
                     <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" />
                     <span v-if="!mobile" class="ms-1">{{ isScannerMode ? "Escáner" : "Cargar" }}</span>
+                  </VBtn>
+                </template>
+
+                <template v-if="isApprovalMode && isRestaurant">
+                  <VBtn
+                    color="warning"
+                    variant="tonal"
+                    :size="mobile ? 'default' : 'small'"
+                    class="rounded-lg px-3"
+                    @click="copyMoreExpensiveProducts"
+                  >
+                    <VIcon icon="tabler-copy" />
+                    <span v-if="!mobile" class="ms-1">Copiar más caros</span>
                   </VBtn>
                 </template>
 
