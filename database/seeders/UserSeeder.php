@@ -12,28 +12,14 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Usuario Administrador
+        // Usuario Administrador Único
         User::create([
             'username'      => 'admin',
-            'email'         => 'admin@example.com',
+            'email'         => 'admin@golclubsc.com',
             'password_hash' => Hash::make('12345678'),
+            'role_id'       => 1, // Rol Admin
             'is_active'     => true,
-        ]);
-
-        // Usuario "User" (rol estándar)
-        User::create([
-            'username'      => 'usuario_estandar',
-            'email'         => 'user@example.com',
-            'password_hash' => Hash::make('12345678'),
-            'is_active'     => true,
-        ]);
-
-        // Usuario "Empleado"
-        User::create([
-            'username'      => 'empleado',
-            'email'         => 'empleado@example.com',
-            'password_hash' => Hash::make('12345678'),
-            'is_active'     => true,
+            'token_login'   => null, // Sin 2FA configurado inicialmente
         ]);
     }
 }
