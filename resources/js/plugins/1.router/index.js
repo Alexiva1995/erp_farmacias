@@ -23,7 +23,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/login', '/p/suppliers/upload/:token']
+    const publicRoutes = ['/login', '/p/suppliers/upload/:token', '/reservar']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -39,7 +39,8 @@ const router = createRouter({
       })
     }
 
-    const pagesWithAuth = addAuthMeta(pages)
+    const filteredPages = pages.filter(p => p.path !== '/public/booking')
+    const pagesWithAuth = addAuthMeta(filteredPages)
     
     // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
     const manualRoutes = [
@@ -54,6 +55,15 @@ const router = createRouter({
         name: 'public-supplier-upload',
         component: () => import('@/pages/public/SupplierUpload.vue'),
         meta: { 
+          requiresAuth: false,
+          layout: 'blank'
+        }
+      },
+      {
+        path: '/reservar',
+        name: 'public-booking',
+        component: () => import('@/pages/public/booking.vue'),
+        meta: {
           requiresAuth: false,
           layout: 'blank'
         }
