@@ -35,10 +35,12 @@ return new class extends Migration {
             $hasIndex = DB::getDriverName() === 'sqlite';
         }
 
+        Schema::disableForeignKeyConstraints();
         Schema::table('product_counts', function (Blueprint $table) {
             $table->dropIndex('product_counts_product_lot_id_index');
             $table->dropConstrainedForeignId('product_lot_id');
         });
+        Schema::enableForeignKeyConstraints();
     }
 
     /**
