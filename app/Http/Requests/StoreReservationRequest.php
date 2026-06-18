@@ -23,7 +23,29 @@ class StoreReservationRequest extends FormRequest
             'court_id' => 'required|exists:courts,id',
             'date' => 'required|date_format:Y-m-d',
             'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'end_time' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) {
+                    $start = $this->input('start_time');
+                    if ($start) {
+                        // Si la hora de fin es menor que la de inicio, podría cruzar la medianoche.
+                        // Permitimos esto solo si la hora de inicio es tarde (ej: después de las 18:00)
+                        // y la hora de fin es de madrugada (ej: menor o igual a las 04:00)
+                        $startHour = (int) explode(':', $start)[0];
+                        $endHour = (int) explode(':', $value)[0];
+                        
+                        if ($endHour < $startHour) {
+                            if ($startHour >= 18 && $endHour <= 4) {
+                                return; // Cruce de medianoche válido
+                            }
+                            $fail('La hora de fin debe ser posterior a la hora de inicio.');
+                        } else if ($value <= $start) {
+                            $fail('La hora de fin debe ser posterior a la hora de inicio.');
+                        }
+                    }
+                }
+            ],
             'client_name' => 'required|string|max:255',
             'client_whatsapp' => 'required|string|regex:/^\+?[0-9]{8,15}$/',
         ];

@@ -27,12 +27,19 @@ class StoreFixedScheduleRequest extends FormRequest
                 'required',
                 'date_format:H:i',
                 function ($attribute, $value, $fail) {
-                    if ($value === '00:00') {
-                        return;
-                    }
                     $start = $this->input('start_time');
-                    if ($start && $value <= $start) {
-                        $fail('La hora de fin debe ser posterior a la hora de inicio.');
+                    if ($start) {
+                        $startHour = (int) explode(':', $start)[0];
+                        $endHour = (int) explode(':', $value)[0];
+                        
+                        if ($endHour < $startHour) {
+                            if ($startHour >= 18 && $endHour <= 4) {
+                                return; // Cruce de medianoche válido
+                            }
+                            $fail('La hora de fin debe ser posterior a la hora de inicio.');
+                        } else if ($value <= $start) {
+                            $fail('La hora de fin debe ser posterior a la hora de inicio.');
+                        }
                     }
                 }
             ],
