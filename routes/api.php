@@ -98,9 +98,20 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
+Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
+Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
+Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
+Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
+    Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
+    Route::post('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'store']);
+    Route::delete('/reservations/{id}', [\App\Http\Controllers\Api\ReservationController::class, 'destroy']);
+    Route::post('/fixed-schedules', [\App\Http\Controllers\Api\FixedScheduleController::class, 'store']);
+    Route::put('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'update']);
+    Route::delete('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'destroy']);
+
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {

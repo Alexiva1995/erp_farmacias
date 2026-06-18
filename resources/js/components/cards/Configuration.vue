@@ -22,6 +22,7 @@ const specialTaxpayerOptions = [
 const businessTypeOptions = [
   { label: "Farmacia", value: "pharmacy" },
   { label: "Restaurante", value: "restaurant" },
+  { label: "Alquiler Deportivo", value: "sports_rental" },
 ]
 
 const fetchSettings = async () => {

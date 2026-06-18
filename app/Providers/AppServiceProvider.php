@@ -232,6 +232,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
         $this->app->bind(
+            \App\Contracts\Repositories\ReservationRepositoryInterface::class,
+            \App\Repository\ReservationRepository::class
+        );
+
+        $this->app->bind(
             \App\Contracts\CustomerAnalytics::class,
             \App\Repositories\Bi\CustomerAnalyticsRepository::class
         );
