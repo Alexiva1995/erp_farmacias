@@ -144,7 +144,10 @@ const handleMobilePageChange = (newPage) => {
 
 const formatStock = (item) => {
   const stock = Number(item.stock_calculado ?? 0);
-  if (!isRestaurant.value || !item.unit_of_measure) {
+  if (!isRestaurant.value) {
+    return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace('.', ',');
+  }
+  if (!item.unit_of_measure) {
     const formatted = stock.toString().replace('.', ',');
     return `${formatted} UNDS`;
   }
@@ -162,6 +165,20 @@ const formatStock = (item) => {
   }
   const formatted = stock.toString().replace('.', ',');
   return `${formatted} UNDS`;
+};
+
+const formatPriceWithCurrency = (price) => {
+  const numPrice = Number(price);
+  if (isNaN(numPrice)) return "$ 0,00";
+  if (!isRestaurant.value) {
+    return `$ ${numPrice.toFixed(2).replace('.', ',')}`;
+  }
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numPrice);
 };
 </script>
 
@@ -248,14 +265,14 @@ const formatStock = (item) => {
 
         <template #item.unit_cost="{ item }">
           <span class="text-sm font-weight-medium text-high-emphasis">
-            {{ formatPrice(isRestaurant ? item.unit_cost_cop : item.unit_cost) }}
+            {{ formatPriceWithCurrency(isRestaurant ? item.unit_cost_cop : item.unit_cost) }}
           </span>
         </template>
 
         <template #item.sale_price="{ item }">
           <div class="d-flex flex-column text-end">
             <span class="text-sm font-weight-black text-primary">{{
-              formatPrice(calculateSalePriceWithIva(item))
+              formatPriceWithCurrency(calculateSalePriceWithIva(item))
             }}</span>
             <span v-if="item.iva == 1" class="text-super-xs text-success"
               >IVA INC.</span
@@ -388,7 +405,7 @@ const formatStock = (item) => {
               <div v-if="!isRestaurant" class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
                 <span class="text-base font-weight-black text-primary">
-                  {{ formatPrice(calculateSalePriceWithIva(item)) }}
+                  {{ formatPriceWithCurrency(calculateSalePriceWithIva(item)) }}
                 </span>
               </div>
             </div>

@@ -59,6 +59,15 @@ const restaurantTypeOptions = [
   { title: "Ingredientes", value: "ingredients" },
   { title: "Mixto", value: "mixed" },
 ];
+const productTypeOptions = [
+  { title: "Todos", value: null },
+  { title: "Redundantes", value: "redundantes" },
+  { title: "Origen Colombiano", value: "col" },
+  { title: "Con IVA (G)", value: "iva" },
+  { title: "Exento", value: "exento" },
+  { title: "Novaventa", value: "novaventa" },
+  { title: "Eliminados", value: "eliminados" },
+];
 const sortOptions = [
   { title: "Precio mayor",    icon: "tabler-arrow-up",      key: "sale_price",      order: "desc" },
   { title: "Precio Menor",    icon: "tabler-arrow-down",    key: "sale_price",      order: "asc"  },
@@ -179,6 +188,20 @@ const showExport = computed(() => props.mode === 'products');
           hide-details
           prepend-inner-icon="tabler-tags"
           @update:model-value="emit('update:selectedRestaurantType', $event)"
+        />
+      </VCol>
+
+      <!-- Tipo (Farmacia) -->
+      <VCol v-if="!isRestaurant" cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.productTypeFilter"
+          placeholder="Tipo de Producto"
+          :items="productTypeOptions"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-tags"
+          @update:model-value="emit('update:productTypeFilter', $event)"
         />
       </VCol>
 

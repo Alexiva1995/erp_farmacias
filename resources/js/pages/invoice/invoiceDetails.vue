@@ -1644,7 +1644,7 @@ const detailsHeaders = computed(() => {
                   </VBtn>
                 </template>
 
-                <template v-if="isApprovalMode && isRestaurant">
+                <template v-if="isApprovalMode">
                   <VBtn
                     color="warning"
                     variant="tonal"

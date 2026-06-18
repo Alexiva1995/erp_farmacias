@@ -494,7 +494,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol cols="12" md="4">
+                      <VCol v-if="isRestaurant" cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Proveedor</span>
                         <AppSelect
                           v-model="formData.supplier_id"
