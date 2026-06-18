@@ -485,4 +485,27 @@ const closeDialog = () => {
 .tracking-wide { letter-spacing: 0.1em; }
 .tracking-tight { letter-spacing: -0.05em; }
 .tracking-tighter { letter-spacing: -0.02em; }
+
+:deep(.apexcharts-tooltip) {
+  background: #1e1e1e !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+:deep(.apexcharts-tooltip-title) {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  font-weight: bold !important;
+}
+:deep(.apexcharts-tooltip-text) {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+:deep(.apexcharts-tooltip-series-group) {
+  background: #1e1e1e !important;
+  color: #ffffff !important;
+}
+:deep(.apexcharts-tooltip-y-value) {
+  color: #ffffff !important;
+}
 </style>
