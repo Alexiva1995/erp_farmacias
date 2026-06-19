@@ -46,7 +46,12 @@ class OrderActionService
                     ->first();
 
                 if (!$openCashRegisterClosing) {
-                    throw new \Exception('No se encontró un cierre de caja abierto para el vendedor.');
+                    $openCashRegisterClosing = CashClosing::create([
+                        'seller_id' => $data['seller_id'],
+                        'status' => CashClosing::OPEN,
+                        'opening_date' => Carbon::now(),
+                    ]);
+                    Log::info("Caja auto-abierta para el vendedor {$data['seller_id']} al intentar ingresar orden.");
                 }
 
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
