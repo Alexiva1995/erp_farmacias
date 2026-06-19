@@ -19,6 +19,10 @@ export default [
         title: 'Personalización',
         to: 'configuration-branding',
       },
+      {
+        title: 'Importar Datos',
+        to: 'configuration-import',
+      },
     ],
   }, 
 ]
