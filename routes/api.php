@@ -779,6 +779,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
             Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
             Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
+            Route::patch('/update-blind-amounts', [CashClosureController::class, 'updateBlindAmounts']);
         });
 
         Route::prefix("expenses")->group(function () {

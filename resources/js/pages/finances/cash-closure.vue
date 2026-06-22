@@ -781,6 +781,7 @@ const closingDaily = async (daily) => {
       ref="deliveryModalRef"
       v-model:isDialogVisible="viewModalDelivery"
       :cashData="dailyCashData"
+      @refresh="fetchDailyCashData"
       @close="handleCloseViewModalDelivery"
     />
 

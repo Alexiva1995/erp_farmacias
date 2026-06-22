@@ -1,12 +1,14 @@
-﻿<script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed, defineEmits, defineProps, nextTick } from "vue";
+import { computed, defineEmits, defineProps, nextTick, ref } from "vue";
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
+import { toast } from "@/plugins/sweetalert";
 
 const { mobile } = useDisplay();
+const authStore = useAuthStore();
 
 const props = defineProps({
   isDialogVisible: {
@@ -19,7 +21,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible"]);
+const emit = defineEmits(["update:isDialogVisible", "refresh"]);
 
 const dialogVisible = computed({
   get() {
@@ -30,10 +32,54 @@ const dialogVisible = computed({
   },
 });
 
+// Variables para edición de Cierre Ciego
+const isEditingBlind = ref(false);
+const editingClosingId = ref(null);
+const editForm = ref({
+  declared_cop: 0,
+  declared_usd: 0,
+  declared_credit: 0,
+  declared_bs_mobile: 0,
+  declared_bs_card: 0,
+});
+const isSaving = ref(false);
+
+const startEditBlind = (closing) => {
+  editingClosingId.value = closing.id;
+  editForm.value = {
+    declared_cop: parseFloat(closing.declared_cop) || 0,
+    declared_usd: parseFloat(closing.declared_usd) || 0,
+    declared_credit: parseFloat(closing.declared_credit) || 0,
+    declared_bs_mobile: parseFloat(closing.declared_bs_mobile) || 0,
+    declared_bs_card: parseFloat(closing.declared_bs_card) || 0,
+  };
+  isEditingBlind.value = true;
+};
+
+const saveBlindEdit = async () => {
+  isSaving.value = true;
+  try {
+    const payload = {
+      id: editingClosingId.value,
+      ...editForm.value
+    };
+    await axios.patch("/finances/cash-closure/update-blind-amounts", payload);
+    toast.success("Cierre ciego editado y recalculado con éxito");
+    isEditingBlind.value = false;
+    emit("refresh");
+    closeModal();
+  } catch (error) {
+    console.error("Error al editar cierre ciego:", error);
+    toast.error(error.response?.data?.message || "Error al actualizar los montos.");
+  } finally {
+    isSaving.value = false;
+  }
+};
 
 const closeModal = () => {
   emit("update:isDialogVisible", false);
   emit("modal-closed");
+  isEditingBlind.value = false;
 };
 
 const ticketStyles = `
@@ -208,8 +254,10 @@ const groupedCardTotals = computed(() => {
          total_usd_equivalent: 0,
          blind_mismatches: new Set(),
          blind_note: "",
+         rawClosings: [],
       };
     }
+    acc[sellerId].rawClosings.push(closing);
      acc[sellerId].total_bs_card_debito += bsCarDebitoAmount;
      acc[sellerId].total_bs_card_credito += bsCarCreditoAmount;
      acc[sellerId].total_bs_transfer += bsTransferAmount;
@@ -551,7 +599,46 @@ defineExpose({ printReport });
                 </VChip>
               </div>
 
-              <VCardText class="pa-0">
+              <div v-if="authStore.isAdmin && seller.rawClosings?.[0]?.blind_cash_closure" class="px-6 py-2 border-b bg-light d-flex justify-space-between align-center">
+                <span class="text-caption font-weight-bold text-medium-emphasis">Declaración Ciega</span>
+                <VBtn
+                  v-if="!isEditingBlind || editingClosingId !== seller.rawClosings[0].id"
+                  size="x-small"
+                  color="warning"
+                  variant="tonal"
+                  @click="startEditBlind(seller.rawClosings[0])"
+                >
+                  <VIcon start size="14" icon="tabler-edit" />
+                  Editar Declarado
+                </VBtn>
+              </div>
+
+              <!-- Formulario de Edición de Cierre Ciego -->
+              <VCardText v-if="isEditingBlind && editingClosingId === seller.rawClosings?.[0]?.id" class="pa-4 bg-light-opacity-5">
+                <VRow dense>
+                  <VCol cols="6">
+                    <VTextField v-model="editForm.declared_cop" label="COP Efectivo" type="number" density="compact" hide-details class="mb-2" />
+                  </VCol>
+                  <VCol cols="6">
+                    <VTextField v-model="editForm.declared_usd" label="USD Efectivo" type="number" density="compact" hide-details class="mb-2" />
+                  </VCol>
+                  <VCol cols="6">
+                    <VTextField v-model="editForm.declared_credit" label="Crédito USD" type="number" density="compact" hide-details class="mb-2" />
+                  </VCol>
+                  <VCol cols="6">
+                    <VTextField v-model="editForm.declared_bs_mobile" label="Bs Pago Móvil/Transf" type="number" density="compact" hide-details class="mb-2" />
+                  </VCol>
+                  <VCol cols="12">
+                    <VTextField v-model="editForm.declared_bs_card" label="Bs Tarjetas" type="number" density="compact" hide-details class="mb-3" />
+                  </VCol>
+                </VRow>
+                <div class="d-flex justify-end gap-2">
+                  <VBtn size="small" color="secondary" variant="tonal" @click="isEditingBlind = false">Cancelar</VBtn>
+                  <VBtn size="small" color="success" :loading="isSaving" @click="saveBlindEdit">Guardar</VBtn>
+                </div>
+              </VCardText>
+
+              <VCardText v-else class="pa-0">
                 <VTable
                   density="compact"
                   class="text-caption bg-transparent table-standard"
