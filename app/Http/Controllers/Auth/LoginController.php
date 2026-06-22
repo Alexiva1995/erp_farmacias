@@ -80,6 +80,7 @@ class LoginController extends Controller
             'two_factor' => true,
             'needs_qr_setup' => $needsQrSetup,
             'qr_code_url' => $urlQR,
+            'qr_code_secret' => $needsQrSetup ? $tempSecret : null,
         ]);
         // --- FIN DE CAMBIO IMPORTANTE ---
     }

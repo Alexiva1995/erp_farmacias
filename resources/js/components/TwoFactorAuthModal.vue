@@ -15,6 +15,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  qrCodeSecret: {
+    type: String,
+    default: null,
+  },
 });
 
 const emit = defineEmits(["update:modelValue", "verified"]);
@@ -22,6 +26,20 @@ const emit = defineEmits(["update:modelValue", "verified"]);
 const code = ref("");
 const isLoading = ref(false);
 const error = ref("");
+const isCopied = ref(false);
+
+const copySecretKey = async () => {
+  if (!props.qrCodeSecret) return;
+  try {
+    await navigator.clipboard.writeText(props.qrCodeSecret);
+    isCopied.value = true;
+    setTimeout(() => {
+      isCopied.value = false;
+    }, 3000);
+  } catch (err) {
+    console.error("No se pudo copiar el texto: ", err);
+  }
+};
 
 const isDialogVisible = computed({
   get: () => props.modelValue,
@@ -119,10 +137,21 @@ const handleSubmit = async () => {
                 style="
                   padding: 5px;
                   border: 1px solid #ddd;
-                  block-size: 200px;
-                  inline-size: 200px;
-"
+                  block-size: 180px;
+                  inline-size: 180px;
+                "
+                class="mb-3"
               />
+              <VBtn
+                v-if="props.qrCodeSecret"
+                size="small"
+                variant="tonal"
+                color="primary"
+                @click="copySecretKey"
+              >
+                <VIcon start icon="tabler-copy" />
+                {{ isCopied ? '¡Copiado!' : 'Copiar Clave Manual' }}
+              </VBtn>
             </VCol>
           </VRow>
         </VForm>
