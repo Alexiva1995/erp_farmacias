@@ -14,6 +14,8 @@ export default [
       {
         title: 'Auditoría de Procesos',
         to: 'restaurant-process-audit',
+        action: 'manage',
+        subject: 'admin',
       },
     ],
   },
