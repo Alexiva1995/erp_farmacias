@@ -121,10 +121,16 @@ class PayslipRepository
         $details->push($this->createTempDetail($employee, 'IVSS (4%)',                  -round($baseSalary * 0.04,  2)));
         $details->push($this->createTempDetail($employee, 'RPE - Paro Forzoso (0.5%)', -round($baseSalary * 0.005, 2)));
         $details->push($this->createTempDetail($employee, 'FAOV (1%)',                  -round($baseSalary * 0.01,  2)));
+      }
 
-        // ── 3. Bono de Alimentación ─────────────────────────────────────────
+      // ── 3. Bono de Alimentación ─────────────────────────────────────────
+      // En restaurante, el bono de alimentación no se paga en la primera quincena (día <= 15)
+      $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+      if (!$isRestaurant || $isSecondNomina) {
         $details->push($this->createTempDetail($employee, 'Bono de Alimentación', round($foodVoucher, 2)));
+      }
 
+      if ($isSecondNomina) {
         // ── 4. Asistencia Social de Salud (basada en consumo real de farmacia) ─
         $consumoFarmacia    = $this->getTotalConsumoFarmacia($employee, $date->month, $date->year);
         $saldoDeudaAnterior = (float)($employee->saldo_deuda ?? 0);
