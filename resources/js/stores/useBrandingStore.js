@@ -10,6 +10,7 @@ export const useBrandingStore = defineStore('branding', () => {
     app_favicon: '',
     primary_color: '#E20074',
     secondary_color: '#7A0099',
+    tertiary_color: '#F5C842',
     footer_text: 'Todos los derechos reservados de Tova',
     business_type: 'pharmacy',
   })
@@ -19,13 +20,16 @@ export const useBrandingStore = defineStore('branding', () => {
   const fetchSettings = async () => {
     isLoading.value = true
     try {
-      const response = await axios.get('/general-settings')
+      const response = await axios.get('/public/general-settings')
       settings.value = { ...settings.value, ...response.data.data }
 
       // Aplicar colores dinámicamente al DOM
       applyThemeColors()
     } catch (error) {
-      console.error('Error fetching branding settings:', error)
+      // Silenciamos el 401 (Unauthorized) ya que es normal en accesos públicos / antes del login
+      if (error?.response?.status !== 401) {
+        console.error('Error fetching branding settings:', error)
+      }
     } finally {
       isLoading.value = false
     }

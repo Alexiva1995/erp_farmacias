@@ -31,9 +31,10 @@ class UpdateGeneralSettingRequest extends FormRequest
             'app_favicon' => 'nullable|image|mimes:jpeg,png,jpg,ico,svg|max:1024',
             'primary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
             'secondary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
+            'tertiary_color' => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
             'footer_text' => 'nullable|string|max:500',
             'blind_cash_closure' => 'nullable|boolean',
-            'business_type' => 'nullable|string|in:pharmacy,restaurant,sports_rental',
+            'business_type' => 'nullable|string|in:pharmacy,restaurant,sports_rental,minimarket',
             'default_currency' => 'nullable|string|in:COP,USD,BS',
         ];
     }

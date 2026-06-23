@@ -8,6 +8,9 @@ definePage({
 
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from '@/plugins/axios'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+
+const brandingStore = useBrandingStore()
 
 // ——— Estado principal ———
 const products = ref([])
@@ -173,7 +176,12 @@ const scrollToCatalog = () => {
   if (el) el.scrollIntoView({ behavior: 'smooth' })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    await brandingStore.fetchSettings()
+  } catch (e) {
+    // Silenciar fallos de branding
+  }
   fetchCategories()
   fetchProducts()
 })
@@ -185,8 +193,13 @@ onMounted(() => {
     <nav class="editorial-nav">
       <div class="editorial-nav-inner">
         <div class="brand-logo" @click="selectedCategory = null; fetchProducts()">
-          <span class="logo-main">TOVA</span>
-          <span class="logo-sub">BEAUTY & GEMS</span>
+          <template v-if="brandingStore.settings.app_logo">
+            <img :src="brandingStore.settings.app_logo" alt="Logo" class="editorial-logo-img" style="max-height: 48px; object-fit: contain;" />
+          </template>
+          <template v-else>
+            <span class="logo-main">{{ brandingStore.settings.app_name ? brandingStore.settings.app_name.toUpperCase() : 'TOVA' }}</span>
+            <span class="logo-sub">BEAUTY & GEMS</span>
+          </template>
         </div>
 
         <!-- Enlaces minimalistas de navegación central -->
@@ -390,7 +403,7 @@ onMounted(() => {
       <div class="footer-container">
         <div class="footer-grid">
           <div class="footer-brand-section">
-            <h2 class="footer-brand-logo">TOVA</h2>
+            <h2 class="footer-brand-logo">{{ brandingStore.settings.app_name ? brandingStore.settings.app_name.toUpperCase() : 'TOVA' }}</h2>
             <p class="footer-brand-tagline">BEAUTY & GEMS</p>
             <p class="footer-brand-desc">
               Una estética editorial y fórmulas de lujo pensadas para redefinir el estándar de la cosmética moderna y la joyería de autor.
@@ -410,7 +423,10 @@ onMounted(() => {
           </div>
         </div>
         <div class="footer-bottom-bar">
-          <p class="copyright-text">© {{ new Date().getFullYear() }} TOVA. TODOS LOS DERECHOS RESERVADOS.</p>
+          <p class="copyright-text">
+            © {{ new Date().getFullYear() }} {{ brandingStore.settings.app_name ? brandingStore.settings.app_name.toUpperCase() : 'TOVA' }}. Todos los derechos reservados | Diseñado y Desarrollado por 
+            <a href="https://tovaerp.com/" target="_blank" style="color: var(--editorial-nude-dark); text-decoration: none; font-weight: 600;">Tova tu Cerebro Operativo</a>
+          </p>
         </div>
       </div>
     </footer>

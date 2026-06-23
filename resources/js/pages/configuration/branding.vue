@@ -12,6 +12,7 @@ const form = ref({
   app_rif: '',
   primary_color: '#E20074',
   secondary_color: '#7A0099',
+  tertiary_color: '#F5C842',
   footer_text: '',
   default_currency: 'COP',
 })
@@ -45,6 +46,7 @@ const saveBranding = async () => {
   formData.append('app_rif', form.value.app_rif || '')
   formData.append('primary_color', form.value.primary_color)
   formData.append('secondary_color', form.value.secondary_color)
+  formData.append('tertiary_color', form.value.tertiary_color)
   formData.append('footer_text', form.value.footer_text || '')
   formData.append('default_currency', form.value.default_currency || 'COP')
   
@@ -80,6 +82,7 @@ onMounted(async () => {
     app_rif: brandingStore.settings.app_rif,
     primary_color: brandingStore.settings.primary_color,
     secondary_color: brandingStore.settings.secondary_color,
+    tertiary_color: brandingStore.settings.tertiary_color || '#F5C842',
     footer_text: brandingStore.settings.footer_text,
     default_currency: brandingStore.settings.default_currency || 'COP',
   }
@@ -103,8 +106,8 @@ onMounted(async () => {
               <VCol cols="12" md="6">
                 <VTextField
                   v-model="form.app_name"
-                  label="Nombre del ERP"
-                  placeholder="Ej: Mi Farmacia"
+                  label="Nombre de la Tienda E-commerce"
+                  placeholder="Ej: TOVA Beauty & Gems"
                 />
               </VCol>
               <VCol cols="12" md="6">
@@ -125,9 +128,9 @@ onMounted(async () => {
                 />
               </VCol>
 
-              <!-- Colores -->
-              <VCol cols="12" md="6">
-                <VLabel class="mb-2">Color Primario</VLabel>
+              <!-- Colores de la Tienda E-commerce -->
+              <VCol cols="12" md="4">
+                <VLabel class="mb-2">Color Primario (Tienda)</VLabel>
                 <div class="d-flex align-center gap-4">
                   <input
                     v-model="form.primary_color"
@@ -141,8 +144,8 @@ onMounted(async () => {
                   />
                 </div>
               </VCol>
-              <VCol cols="12" md="6">
-                <VLabel class="mb-2">Color Secundario</VLabel>
+              <VCol cols="12" md="4">
+                <VLabel class="mb-2">Color Secundario (Tienda)</VCol>
                 <div class="d-flex align-center gap-4">
                   <input
                     v-model="form.secondary_color"
@@ -151,6 +154,21 @@ onMounted(async () => {
                   >
                   <VTextField
                     v-model="form.secondary_color"
+                    density="compact"
+                    hide-details
+                  />
+                </div>
+              </VCol>
+              <VCol cols="12" md="4">
+                <VLabel class="mb-2">Color Terciario (Tienda)</VLabel>
+                <div class="d-flex align-center gap-4">
+                  <input
+                    v-model="form.tertiary_color"
+                    type="color"
+                    class="color-picker"
+                  >
+                  <VTextField
+                    v-model="form.tertiary_color"
                     density="compact"
                     hide-details
                   />
@@ -198,14 +216,15 @@ onMounted(async () => {
                 </div>
               </VCol>
 
-              <!-- Footer -->
+              <!-- Footer (Estático no editable) -->
               <VCol cols="12">
-                <VTextarea
-                  v-model="form.footer_text"
-                  label="Texto del Footer"
-                  placeholder="Todos los derechos reservados..."
-                  rows="2"
-                />
+                <VCard variant="flat" class="bg-grey-lighten-4 p-4 rounded-lg">
+                  <p class="text-caption text-muted mb-1 font-weight-bold">PIE DE PÁGINA PREDETERMINADO (INAMOVIBLE)</p>
+                  <p class="text-body-2 mb-0">
+                    © {{ new Date().getFullYear() }} TOVA. Todos los derechos reservados | Diseñado y Desarrollado por 
+                    <a href="https://tovaerp.com/" target="_blank" class="text-primary font-weight-bold text-decoration-none">Tova tu Cerebro Operativo</a>
+                  </p>
+                </VCard>
               </VCol>
 
               <VCol cols="12" class="d-flex gap-4 mt-4">

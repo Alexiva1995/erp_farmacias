@@ -20,6 +20,7 @@ class GeneralSetting extends Model
         'app_favicon',
         'primary_color',
         'secondary_color',
+        'tertiary_color',
         'footer_text',
         'blind_cash_closure',
         'business_type',

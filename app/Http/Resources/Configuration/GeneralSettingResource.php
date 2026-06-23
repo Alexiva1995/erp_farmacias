@@ -25,6 +25,7 @@ class GeneralSettingResource extends JsonResource
             'app_favicon' => $this->app_favicon,
             'primary_color' => $this->primary_color ?? '#E20074',
             'secondary_color' => $this->secondary_color ?? '#7A0099',
+            'tertiary_color' => $this->tertiary_color ?? '#F5C842',
             'footer_text' => $this->footer_text ?? 'Todos los derechos reservados de Tova',
             'blind_cash_closure' => (bool) $this->blind_cash_closure,
             'business_type' => $this->business_type ?? 'pharmacy',
