@@ -58,26 +58,37 @@ const translatePaymentMethodType = (type) => {
   return translations[type] || type;
 };
 
+const isInformalSupplier = computed(() => {
+  if (!selectedSupplier.value) return false;
+  return selectedSupplier.value.name.toLowerCase().includes("informal");
+});
+
 const validateExpDate = (date) => {
   if (!date) {
     expDateError.value = "";
     return true;
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Permitir vencimiento anterior a hoy, pero no anterior a la fecha de emisión (created_invoice_date)
+  if (formData.value.created_invoice_date) {
+    const emissionDate = new Date(formData.value.created_invoice_date);
+    emissionDate.setHours(0, 0, 0, 0);
 
-  const expDate = new Date(date);
-  expDate.setHours(0, 0, 0, 0);
+    const expDate = new Date(date);
+    expDate.setHours(0, 0, 0, 0);
+
+    if (expDate < emissionDate) {
+      expDateError.value = "La fecha de vencimiento no puede ser anterior a la fecha de emisión";
+      return false;
+    }
+  }
 
   const sixMonthsFromNow = new Date();
   sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
   sixMonthsFromNow.setHours(0, 0, 0, 0);
 
-  if (expDate < today) {
-    expDateError.value = "La fecha de vencimiento no puede ser anterior a hoy";
-    return false;
-  }
+  const expDate = new Date(date);
+  expDate.setHours(0, 0, 0, 0);
 
   if (expDate > sixMonthsFromNow) {
     expDateError.value =
@@ -255,6 +266,20 @@ watch(
       // Esperar a que selectedSupplier se actualice
       await nextTick();
       calculatePaymentDate();
+
+      // Si es proveedor informal, auto-generamos secuencia correlativa y llenamos campos
+      if (isInformalSupplier.value) {
+        try {
+          const res = await axios.get("/invoices/next-sequence", {
+            params: { supplier_id: newSupplierId }
+          });
+          const seq = res.data.next_sequence;
+          formData.value.invoice_number = seq;
+          formData.value.control_number = seq;
+        } catch (e) {
+          console.error("Error al obtener la secuencia correlativa informal", e);
+        }
+      }
     } else {
       // Limpiar fecha de pago si no hay proveedor
       formData.value.payment_date = null;
@@ -272,6 +297,17 @@ watch(
     }
   },
   { deep: true },
+);
+
+watch(
+  () => formData.value.created_invoice_date,
+  async (newDate) => {
+    if (formData.value.exp_date) {
+      validateExpDate(formData.value.exp_date);
+    }
+    await nextTick();
+    calculatePaymentDate();
+  },
 );
 
 watch(
@@ -500,12 +536,14 @@ const handleCancel = () => {
               <VTextField
                 v-model="formData.invoice_number"
                 label="N° de factura"
+                :disabled="isInformalSupplier"
               />
             </VCol>
             <VCol cols="12" md="4">
               <VTextField
                 v-model="formData.control_number"
                 label="N° de Control"
+                :disabled="isInformalSupplier"
               />
             </VCol>
           </VRow>

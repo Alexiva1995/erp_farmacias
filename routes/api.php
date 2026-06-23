@@ -547,6 +547,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/{invoice}/reject', 'reject')->name('reject');
         Route::put('/{invoice}/return-pending', 'returnInvoiceToPendingStatus')->name('return.pending');
         Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
+        Route::get('/next-sequence', 'nextSequence')->name('next-sequence');
         Route::get('/{invoice}', 'show')->name('show');
         Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
