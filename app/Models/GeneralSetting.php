@@ -25,10 +25,22 @@ class GeneralSetting extends Model
         'blind_cash_closure',
         'business_type',
         'default_currency',
+        'ecommerce_menu',
+        'hero_title',
+        'hero_subtitle',
+        'hero_tagline',
+        'hero_image',
+        'hero_button_text',
+        'section2_title',
+        'section2_subtitle',
+        'section2_tagline',
+        'section2_image',
+        'section2_button_text',
     ];
 
     protected $casts = [
         'all_foreign_sales_spe' => 'boolean',
         'blind_cash_closure' => 'boolean',
+        'ecommerce_menu' => 'array',
     ];
 }

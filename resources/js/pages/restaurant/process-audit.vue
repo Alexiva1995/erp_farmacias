@@ -8,7 +8,6 @@ const { mobile } = useDisplay();
 
 // Listas e Información inicial
 const orders = ref([]);
-const employees = ref([]);
 const audits = ref([]);
 const flows = ref([]);
 const totalAudits = ref(0);
@@ -25,8 +24,6 @@ const selectedFlowIdFilter = ref(null);
 // Datos del formulario de nueva auditoría
 const selectedFlowId = ref(null);
 const selectedOrderId = ref(null);
-const selectedCashierId = ref(null);
-const selectedCookId = ref(null);
 
 // Fases del flujo seleccionado
 const phases = ref([]);
@@ -66,7 +63,7 @@ const formatTime = (seconds) => {
 // Cargar Flujos de procesos
 const fetchFlows = async () => {
   try {
-    const response = await axios.get("/process-audits/flows");
+    const response = await axios.get("/finances/process-audits/flows");
     flows.value = response.data.data || [];
     if (flows.value.length > 0 && !selectedFlowId.value) {
       selectedFlowId.value = flows.value[0].id;
@@ -98,21 +95,12 @@ const fetchOrders = async () => {
   }
 };
 
-// Cargar lista de Empleados
-const fetchEmployees = async () => {
-  try {
-    const response = await axios.get("/employees");
-    employees.value = response.data.data || response.data || [];
-  } catch (error) {
-    console.error("Error al cargar empleados:", error);
-  }
-};
 
 // Cargar Historial de Auditorías
 const fetchAudits = async () => {
   loading.value = true;
   try {
-    const response = await axios.get("/process-audits", {
+    const response = await axios.get("/finances/process-audits", {
       params: {
         page: page.value,
         itemsPerPage: itemsPerPage.value,
@@ -199,8 +187,14 @@ const nextPhase = () => {
 
 // Guardar e Integrar en Base de Datos
 const saveAudit = async () => {
-  if (!selectedCookId.value) {
-    toast.fire({ icon: "error", title: "Debe seleccionar el Cocinero en turno." });
+  if (!selectedFlowId.value) {
+    toast.fire({ icon: "error", title: "Debe seleccionar un flujo de medición." });
+    return;
+  }
+
+  const allZero = Object.values(phaseTimes.value).every(s => s === 0) && elapsedSeconds.value === 0;
+  if (allZero) {
+    toast.fire({ icon: "warning", title: "No hay tiempos registrados. Inicie el cronómetro primero." });
     return;
   }
 
@@ -224,20 +218,19 @@ const saveAudit = async () => {
   const payload = {
     flow_id: selectedFlowId.value,
     order_id: selectedOrderId.value || null,
-    cashier_id: selectedCashierId.value || null,
-    cook_id: selectedCookId.value,
+    cashier_id: null,
+    cook_id: null,
     phases: payloadPhases,
     total_seconds: total
   };
 
   try {
-    const response = await axios.post("/process-audits", payload);
+    const response = await axios.post("/finances/process-audits", payload);
     if (response.data.success) {
       toast.fire({ icon: "success", title: "Auditoría de proceso registrada con éxito." });
       
       // Limpiar Formulario
       selectedOrderId.value = null;
-      selectedCashierId.value = null;
       currentPhaseIndex.value = 0;
       elapsedSeconds.value = 0;
       
@@ -295,6 +288,22 @@ const currentFilteredFlowPhases = computed(() => {
   }
   // Si no hay filtro, mostrar fases del primer flujo como referencia
   return flows.value.length > 0 ? flows.value[0].phases : [];
+});
+
+// Headers dinámicos para VDataTableServer según el flujo seleccionado
+const auditHeaders = computed(() => {
+  const base = [
+    { title: 'Orden', key: 'order_id', sortable: false, width: '80px' },
+    { title: 'Flujo', key: 'flow', sortable: false },
+  ];
+  const phaseHeaders = currentFilteredFlowPhases.value.map((p, index) => ({
+    title: `Fase ${index + 1}`,
+    key: `phase_${p.id}`,
+    sortable: false,
+    align: 'center',
+  }));
+  const end = [{ title: 'Total', key: 'total_seconds', sortable: false, align: 'center', width: '90px' }];
+  return [...base, ...phaseHeaders, ...end];
 });
 
 // Métodos del configurador de flujos
@@ -355,7 +364,7 @@ const saveFlow = async () => {
   }
 
   try {
-    const response = await axios.post("/process-audits/flows", currentFlowForm.value);
+    const response = await axios.post("/finances/process-audits/flows", currentFlowForm.value);
     if (response.data.success) {
       toast.fire({ icon: "success", title: "Flujo de procesos guardado correctamente." });
       flowConfigDialog.value = false;
@@ -372,7 +381,7 @@ const deleteFlow = async (id) => {
     const confirm = window.confirm("¿Está seguro de que desea eliminar este flujo de procesos? Se perderán las mediciones asociadas.");
     if (!confirm) return;
 
-    const response = await axios.delete(`/process-audits/flows/${id}`);
+    const response = await axios.delete(`/finances/process-audits/flows/${id}`);
     if (response.data.success) {
       toast.fire({ icon: "success", title: "Flujo eliminado correctamente." });
       await fetchFlows();
@@ -387,7 +396,6 @@ const deleteFlow = async (id) => {
 onMounted(() => {
   fetchFlows();
   fetchOrders();
-  fetchEmployees();
   fetchAudits();
 });
 
@@ -476,45 +484,6 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                     </template>
                   </VSelect>
                 </VCol>
-
-                <VCol cols="12" md="6" class="mt-2">
-                  <VSelect
-                    v-model="selectedCashierId"
-                    :items="employees"
-                    item-title="name"
-                    item-value="id"
-                    placeholder="Cajero en Turno (Opcional)"
-                    density="compact"
-                    clearable
-                    prepend-inner-icon="tabler-user"
-                  >
-                    <template #item="{ props, item }">
-                      <VListItem v-bind="props" :title="item.raw.name + ' ' + (item.raw.last_name || '')" />
-                    </template>
-                    <template #selection="{ item }">
-                      <span>{{ item.raw.name }} {{ item.raw.last_name }}</span>
-                    </template>
-                  </VSelect>
-                </VCol>
-
-                <VCol cols="12" md="6" class="mt-2">
-                  <VSelect
-                    v-model="selectedCookId"
-                    :items="employees"
-                    item-title="name"
-                    item-value="id"
-                    placeholder="Cocinero en Turno *"
-                    density="compact"
-                    prepend-inner-icon="tabler-chef-hat"
-                  >
-                    <template #item="{ props, item }">
-                      <VListItem v-bind="props" :title="item.raw.name + ' ' + (item.raw.last_name || '')" />
-                    </template>
-                    <template #selection="{ item }">
-                      <span>{{ item.raw.name }} {{ item.raw.last_name }}</span>
-                    </template>
-                  </VSelect>
-                </VCol>
               </VRow>
 
               <VDivider class="my-6" />
@@ -588,7 +557,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                   class="font-weight-bold"
                   @click="saveAudit"
                 >
-                  Registrar e Integrar en Base de Datos
+                  Guardar Auditoría
                 </VBtn>
               </div>
             </VForm>
@@ -694,70 +663,101 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
             </div>
           </VCardItem>
 
-          <VCardText class="pa-0">
-            <div class="overflow-x-auto">
-              <VTable class="text-no-wrap premium-table" theme="dark">
-                <thead>
-                  <tr>
-                    <th>Orden</th>
-                    <th>Flujo</th>
-                    <th>Cajero</th>
-                    <th>Cocinero</th>
-                    <th
-                      v-for="flowPhase in currentFilteredFlowPhases"
-                      :key="flowPhase.id"
-                      class="text-center"
-                    >
-                      {{ flowPhase.name }}
-                    </th>
-                    <th class="text-center font-weight-black text-primary">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="loading">
-                    <td :colspan="5 + currentFilteredFlowPhases.length" class="text-center py-6 text-disabled">Cargando registros...</td>
-                  </tr>
-                  <tr v-else-if="audits.length === 0">
-                    <td :colspan="5 + currentFilteredFlowPhases.length" class="text-center py-6 text-disabled">No hay auditorías registradas para este periodo.</td>
-                  </tr>
-                  <tr v-for="audit in audits" :key="audit.id">
-                    <td>
-                      <span v-if="audit.order_id" class="font-weight-black">#{{ audit.order_id }}</span>
-                      <span v-else class="text-disabled">N/A</span>
-                    </td>
-                    <td><span class="text-caption bg-var-theme-background border px-2 py-1 rounded">{{ audit.flow?.name }}</span></td>
-                    <td>{{ audit.cashier ? (audit.cashier.name + ' ' + (audit.cashier.last_name || '')) : '—' }}</td>
-                    <td>{{ audit.cook ? (audit.cook.name + ' ' + (audit.cook.last_name || '')) : '—' }}</td>
-                    <td
-                      v-for="flowPhase in currentFilteredFlowPhases"
-                      :key="flowPhase.id"
-                      class="text-center"
-                    >
-                      {{ getAuditPhaseValue(audit, flowPhase.id) }}
-                    </td>
-                    <td class="text-center font-weight-black text-primary">{{ formatTime(audit.total_seconds) }}</td>
-                  </tr>
-                </tbody>
-                <!-- Promedios Dinámicos Calculados por Javascript al Pie -->
-                <tfoot class="font-weight-bold" style="border-top: 2px solid var(--v-theme-primary);">
-                  <tr>
-                    <td colspan="4" class="text-right text-primary uppercase">Promedio Operativo</td>
-                    <td
-                      v-for="flowPhase in currentFilteredFlowPhases"
-                      :key="flowPhase.id"
-                      class="text-center text-success"
-                    >
-                      {{ formatTime(calculateAverageOfPhase(flowPhase.id)) }}
-                    </td>
-                    <td class="text-center text-primary font-weight-black">{{ formatTime(calculateAverageTotal()) }}</td>
-                  </tr>
-                </tfoot>
-              </VTable>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+          <VDataTableServer
+            :headers="auditHeaders"
+            :items="audits"
+            :items-length="totalAudits"
+            :items-per-page="itemsPerPage"
+            :page="page"
+            :loading="loading"
+            item-value="id"
+            density="compact"
+            class="text-no-wrap"
+            no-data-text="No hay auditorías registradas para este periodo."
+            @update:options="({ page: p, itemsPerPage: ipp }) => { page = p; itemsPerPage = ipp; }"
+          >
+            <!-- Columna Orden -->
+            <template #item.order_id="{ item }">
+              <span v-if="item.order_id" class="font-weight-bold text-primary">#{{ item.order_id }}</span>
+              <span v-else class="text-disabled">N/A</span>
+            </template>
+
+            <!-- Columna Flujo -->
+            <template #item.flow="{ item }">
+              <VChip size="small" color="primary" variant="tonal" class="text-xs font-weight-black">
+                {{ item.flow?.name }}
+              </VChip>
+            </template>
+
+            <!-- Headers dinámicos para las fases con Tooltip -->
+            <template
+              v-for="(phase, index) in currentFilteredFlowPhases"
+              :key="'header_' + phase.id"
+              #[`header.phase_${phase.id}`]="{ column }"
+            >
+              <div class="d-flex align-center justify-center gap-1 cursor-pointer">
+                <span>Fase {{ index + 1 }}</span>
+                <VIcon
+                  icon="tabler-help-circle"
+                  size="14"
+                  class="text-disabled"
+                />
+                <VTooltip
+                  activator="parent"
+                  location="top"
+                >
+                  <div class="text-xs">
+                    <p class="font-weight-bold mb-1">{{ phase.name }}</p>
+                    <p class="text-xs text-disabled" style="max-width: 200px; white-space: normal;">{{ phase.description || 'Sin descripción' }}</p>
+                  </div>
+                </VTooltip>
+              </div>
+            </template>
+
+            <!-- Columnas dinámicas de fases -->
+            <template
+              v-for="phase in currentFilteredFlowPhases"
+              :key="phase.id"
+              #[`item.phase_${phase.id}`]="{ item }"
+            >
+              <span class="font-weight-medium">
+                {{ getAuditPhaseValue(item, phase.id) }}
+              </span>
+            </template>
+
+            <!-- Columna Total -->
+            <template #item.total_seconds="{ item }">
+              <VChip size="small" color="success" variant="tonal" class="font-weight-black">
+                {{ formatTime(item.total_seconds) }}
+              </VChip>
+            </template>
+
+            <!-- Fila de Promedios al pie -->
+            <template #body.append>
+              <tr v-if="audits.length > 0" class="audit-avg-row">
+                <td class="text-right font-weight-black text-primary uppercase text-xs pa-3" colspan="2">
+                  Promedio Operativo
+                </td>
+                <td
+                  v-for="phase in currentFilteredFlowPhases"
+                  :key="phase.id"
+                  class="text-center pa-3"
+                >
+                  <VChip size="x-small" color="info" variant="tonal" class="font-weight-bold">
+                    {{ formatTime(calculateAverageOfPhase(phase.id)) }}
+                  </VChip>
+                </td>
+                <td class="text-center pa-3">
+                  <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
+                    {{ formatTime(calculateAverageTotal()) }}
+                  </VChip>
+                </td>
+              </tr>
+            </template>
+          </VDataTableServer>
+      </VCard>
+    </VCol>
+  </VRow>
 
     <!-- Diálogo Configurador de Flujos y Fases -->
     <VDialog v-model="flowConfigDialog" max-width="700px" persistent>
@@ -884,21 +884,21 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
 </template>
 
 <style scoped>
-.premium-table th {
-  font-weight: 900 !important;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
+/* Fila de promedio operativo al pie del historial */
+.audit-avg-row {
+  border-top: 2px solid rgba(var(--v-theme-primary), 0.4);
+  background: rgba(var(--v-theme-primary), 0.04);
 }
-.premium-table td {
-  white-space: nowrap;
+.audit-avg-row td {
+  font-weight: 700;
 }
+
+/* Scrollbar del configurador de fases */
 .max-height-phases::-webkit-scrollbar {
   width: 6px;
 }
 .max-height-phases::-webkit-scrollbar-thumb {
-  background-color: var(--v-theme-primary);
+  background-color: rgb(var(--v-theme-primary));
   border-radius: 4px;
 }
 </style>

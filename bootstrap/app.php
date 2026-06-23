@@ -21,7 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         ]);
 
-        $middleware->redirectGuestsTo('/login');
+        $middleware->redirectGuestsTo(function ($request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return null;
+            }
+            return '/login';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->dontReport([

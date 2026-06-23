@@ -50,6 +50,14 @@ class GeneralSettingService
             $data['app_favicon'] = $this->uploadFile($data['app_favicon'], 'branding');
         }
 
+        if (isset($data['hero_image']) && $data['hero_image'] instanceof UploadedFile) {
+            $data['hero_image'] = $this->uploadFile($data['hero_image'], 'branding');
+        }
+
+        if (isset($data['section2_image']) && $data['section2_image'] instanceof UploadedFile) {
+            $data['section2_image'] = $this->uploadFile($data['section2_image'], 'branding');
+        }
+
         return $this->repository->updateSettings($data);
     }
 

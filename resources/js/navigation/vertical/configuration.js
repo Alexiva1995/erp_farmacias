@@ -16,6 +16,10 @@ export default [
         to: 'configuration-branding',
       },
       {
+        title: 'Menú E-commerce',
+        to: 'configuration-menu',
+      },
+      {
         title: 'Tipo y Fiscal',
         to: 'configuration',
       },

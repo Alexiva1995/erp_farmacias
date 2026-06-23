@@ -251,6 +251,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Contracts\Dish::class, \App\Services\DishServices::class);
 
         $this->app->bind(
+            \App\Contracts\ProductVariantRepositoryInterface::class,
+            \App\Repositories\EloquentProductVariantRepository::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Fiscal\FiscalCommandRepositoryInterface::class,
             \App\Repositories\Fiscal\FiscalCommandRepository::class
         );

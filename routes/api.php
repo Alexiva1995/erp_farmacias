@@ -70,6 +70,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
 use App\Http\Controllers\Api\IaAssistantActionController;
 use App\Http\Controllers\Api\DishController;
+use App\Http\Controllers\Api\EcommerceController;
 
 // Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON)
 Route::prefix('fiscal')->group(function () {
@@ -103,6 +104,12 @@ Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\Reservati
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
 Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
+
+// Rutas de E-commerce TOVA
+Route::get("/public/ecommerce/products", [EcommerceController::class, "getProducts"]);
+Route::get("/public/ecommerce/categories", [EcommerceController::class, "getCategories"]);
+Route::post("/public/ecommerce/checkout", [EcommerceController::class, "checkout"]);
+Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {

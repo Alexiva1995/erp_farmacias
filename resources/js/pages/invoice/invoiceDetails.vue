@@ -868,6 +868,9 @@ const handleSaveProduct = async (productFormData) => {
       console.error("Error al guardar el producto:", error);
       toast.error("Hubo un error al guardar el producto.");
     }
+  }
+};
+
 const removeProductFromInvoice = (detailId) => {
   invoiceDetails.value = invoiceDetails.value.filter(
     (detail) => detail.id !== detailId,

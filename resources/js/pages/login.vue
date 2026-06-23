@@ -20,7 +20,11 @@ definePage({
 });
 
 onMounted(async () => {
-  await brandingStore.fetchSettings();
+  try {
+    await brandingStore.fetchSettings();
+  } catch (e) {
+    // Silenciar error en el login
+  }
 });
 
 const form = ref({

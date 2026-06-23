@@ -171,6 +171,25 @@ const submitOrder = async () => {
   }
 }
 
+const handleMenuClick = (item) => {
+  if (item.type === 'category') {
+    // Buscar la categoría por ID en el listado de categorías para obtener su slug
+    const found = categories.value.find(c => c.id === item.value)
+    if (found) {
+      selectedCategory.value = found.id // O found.slug dependiente del filtro
+      fetchProducts()
+    }
+    scrollToCatalog()
+  } else if (item.type === 'custom') {
+    if (item.value.startsWith('#')) {
+      const el = document.getElementById(item.value.substring(1))
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      window.location.href = item.value
+    }
+  }
+}
+
 const scrollToCatalog = () => {
   const el = document.getElementById('catalog')
   if (el) el.scrollIntoView({ behavior: 'smooth' })
@@ -202,12 +221,40 @@ onMounted(async () => {
           </template>
         </div>
 
-        <!-- Enlaces minimalistas de navegación central -->
+        <!-- Enlaces minimalistas de navegación central (Dinámicos estilo WordPress) -->
         <div class="nav-links-center d-none d-md-flex">
-          <span class="nav-link-item" @click="scrollToCatalog">COMPRAR</span>
-          <span class="nav-link-item" @click="selectedCategory = 'maquillaje'; fetchProducts(); scrollToCatalog()">MAQUILLAJE</span>
-          <span class="nav-link-item" @click="selectedCategory = 'skin-care'; fetchProducts(); scrollToCatalog()">SKIN CARE</span>
-          <span class="nav-link-item" @click="selectedCategory = 'anillos'; fetchProducts(); scrollToCatalog()">JOYERÍA</span>
+          <!-- Si hay un menú dinámico configurado, lo mostramos -->
+          <template v-if="brandingStore.settings.ecommerce_menu && brandingStore.settings.ecommerce_menu.length">
+            <div
+              v-for="item in brandingStore.settings.ecommerce_menu"
+              :key="item.id"
+              class="nav-menu-wrapper-editorial"
+            >
+              <span class="nav-link-item" @click="handleMenuClick(item)">
+                {{ item.label }}
+                <VIcon v-if="item.children && item.children.length" icon="tabler-chevron-down" size="10" class="ml-1" />
+              </span>
+              
+              <!-- Desplegable para Submenús -->
+              <div v-if="item.children && item.children.length" class="submenu-dropdown-editorial">
+                <span
+                  v-for="child in item.children"
+                  :key="child.id"
+                  class="submenu-link-item"
+                  @click="handleMenuClick(child)"
+                >
+                  {{ child.label }}
+                </span>
+              </div>
+            </div>
+          </template>
+          <!-- Si no hay menú, cargamos enlaces por defecto -->
+          <template v-else>
+            <span class="nav-link-item" @click="scrollToCatalog">COMPRAR</span>
+            <span class="nav-link-item" @click="selectedCategory = 9; fetchProducts(); scrollToCatalog()">MAQUILLAJE</span>
+            <span class="nav-link-item" @click="selectedCategory = 5; fetchProducts(); scrollToCatalog()">SKIN CARE</span>
+            <span class="nav-link-item" @click="selectedCategory = 1; fetchProducts(); scrollToCatalog()">JOYERÍA</span>
+          </template>
         </div>
 
         <!-- Elementos del lado derecho -->
@@ -224,7 +271,7 @@ onMounted(async () => {
           </div>
 
           <button class="cart-btn-editorial" @click="cartDrawer = true">
-            <span class="cart-text-btn">BOLSA</span>
+            <VIcon icon="tabler-shopping-bag" size="20" class="text-dark hover-accent" />
             <span v-if="cartTotalItems" class="cart-badge-count">({{ cartTotalItems }})</span>
           </button>
         </div>
@@ -237,13 +284,13 @@ onMounted(async () => {
         <!-- Bloque de Texto de Campaña -->
         <div class="hero-text-block">
           <div class="hero-text-content">
-            <span class="hero-tagline">NUEVA COLECCIÓN</span>
-            <h1 class="hero-heading-serif">YOUR NEW BOMB NUDES</h1>
+            <span class="hero-tagline">{{ brandingStore.settings.hero_tagline || 'NUEVA COLECCIÓN' }}</span>
+            <h1 class="hero-heading-serif">{{ brandingStore.settings.hero_title || 'YOUR NEW BOMB NUDES' }}</h1>
             <p class="hero-description-light">
-              Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.
+              {{ brandingStore.settings.hero_subtitle || 'Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.' }}
             </p>
             <button class="editorial-btn-dark" @click="scrollToCatalog">
-              COMPRAR AHORA
+              {{ brandingStore.settings.hero_button_text || 'COMPRAR AHORA' }}
             </button>
           </div>
         </div>
@@ -251,7 +298,7 @@ onMounted(async () => {
         <div class="hero-image-block">
           <div class="hero-img-wrap">
             <img 
-              src="/resources/js/pages/tova_editorial_campaign_1782228591006.png" 
+              :src="brandingStore.settings.hero_image || '/resources/js/pages/tova_editorial_campaign_1782228591006.png'" 
               alt="TOVA Campaign Model" 
               class="hero-campaign-image"
             />
@@ -284,20 +331,20 @@ onMounted(async () => {
       <div class="split-row">
         <div class="split-col image-col">
           <img 
-            src="/resources/js/pages/tova_product_tint_1782228603853.png" 
+            :src="brandingStore.settings.section2_image || '/resources/js/pages/tova_product_tint_1782228603853.png'" 
             alt="TOVA Tinted Moisturizer" 
             class="split-image"
           />
         </div>
         <div class="split-col text-col bg-nude-light">
           <div class="split-text-inner">
-            <span class="split-eyebrow">PIEL RADIANTE</span>
-            <h2 class="split-heading-serif">MEET YOUR DONE-IN-ONE TINTED MOISTURIZER</h2>
+            <span class="split-eyebrow">{{ brandingStore.settings.section2_tagline || 'PIEL RADIANTE' }}</span>
+            <h2 class="split-heading-serif">{{ brandingStore.settings.section2_title || 'MEET YOUR DONE-IN-ONE TINTED MOISTURIZER' }}</h2>
             <p class="split-paragraph">
-              Nuestra fórmula ultraligera que unifica el tono de la piel, hidrata profundamente y aporta una luminosidad natural y fresca durante todo el día. Disponible en 25 tonos flexibles.
+              {{ brandingStore.settings.section2_subtitle || 'Nuestra fórmula ultraligera que unifica el tono de la piel, hidrata profundamente y aporta una luminosidad natural y fresca durante todo el día. Disponible en 25 tonos flexibles.' }}
             </p>
             <button class="editorial-btn-dark-outline" @click="selectedCategory = 'skin-care'; fetchProducts(); scrollToCatalog()">
-              DESCUBRIR TONOS
+              {{ brandingStore.settings.section2_button_text || 'DESCUBRIR TONOS' }}
             </button>
           </div>
         </div>
@@ -601,13 +648,13 @@ onMounted(async () => {
 
 .tova-editorial-root {
   /* Variables de Color e Identidad */
-  --editorial-black: #0F0E0E;
-  --editorial-white: #FFFFFF;
-  --editorial-grey-bg: #F6F6F6;
+  --editorial-black: #1E1614; /* Chocolate Expreso Profundo: cálido, ultra-premium */
+  --editorial-white: #FAFAFA;
+  --editorial-grey-bg: #FAFAFA;
   --editorial-border: #E8E8E8;
-  --editorial-nude-dark: #A38A78;
-  --editorial-nude-light: #F2ECE7;
-  --editorial-terracotta-light: #EADCD0;
+  --editorial-nude-dark: #E8C5C8;
+  --editorial-nude-light: #FAFAFA;
+  --editorial-terracotta-light: #E8C5C8;
   --editorial-text-muted: #666666;
   --editorial-font-serif: 'Cinzel', Georgia, serif;
   --editorial-font-sans: 'Montserrat', sans-serif;
@@ -679,13 +726,18 @@ onMounted(async () => {
   display: flex;
   gap: 32px;
 }
+.nav-menu-wrapper-editorial {
+  position: relative;
+}
 .nav-link-item {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 2px;
   cursor: pointer;
   position: relative;
-  padding: 4px 0;
+  padding: 10px 0;
+  display: inline-flex;
+  align-items: center;
   transition: color 0.3s;
 }
 .nav-link-item::after {
@@ -700,6 +752,45 @@ onMounted(async () => {
 .nav-link-item:hover::after {
   transform: scaleX(1);
   transform-origin: left;
+}
+
+/* Submenús */
+.submenu-dropdown-editorial {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background-color: var(--editorial-white);
+  border: 1px solid var(--editorial-border);
+  min-width: 180px;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+.nav-menu-wrapper-editorial:hover .submenu-dropdown-editorial {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.submenu-link-item {
+  padding: 8px 24px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--editorial-black);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.submenu-link-item:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--editorial-nude-dark);
+  padding-left: 28px;
 }
 
 .nav-actions-right {
@@ -770,8 +861,8 @@ onMounted(async () => {
 
 .hero-text-block {
   flex: 1;
-  background-color: #2F241E; /* Sofisticado tono cacao profundo */
-  color: var(--editorial-white);
+  background-color: var(--editorial-black); /* Dinámico: usa el Color Secundario elegido (#2B2B2B) */
+  color: #FFFFFF; /* Blanco puro para legibilidad inmaculada */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -782,9 +873,9 @@ onMounted(async () => {
 }
 .hero-tagline {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 4px;
-  color: var(--editorial-nude-dark);
+  color: var(--editorial-nude-dark); /* Dinámico: usa el Color Terciario / Acento elegido (#E8C5C8) */
   display: block;
   margin-bottom: 16px;
 }
@@ -795,12 +886,13 @@ onMounted(async () => {
   line-height: 1.1;
   letter-spacing: 2px;
   margin-bottom: 24px;
+  color: #FFFFFF !important; /* Forzado absoluto a blanco brillante */
 }
 .hero-description-light {
   font-size: 14px;
   font-weight: 300;
   line-height: 1.8;
-  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.9) !important; /* Forzado absoluto a blanco de alta opacidad */
   margin-bottom: 36px;
 }
 
@@ -823,18 +915,20 @@ onMounted(async () => {
 
 /* ——— Botón Editorial Premium ——— */
 .editorial-btn-dark {
-  background-color: var(--editorial-black);
-  color: var(--editorial-white);
+  background-color: var(--editorial-nude-dark); /* Dinámico: usa el Color Terciario / Acento elegido (#E8C5C8) */
+  color: var(--editorial-black); /* Dinámico: usa el Color Secundario de contraste (#2B2B2B) */
   border: none;
   padding: 16px 40px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 3px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
 }
 .editorial-btn-dark:hover:not(:disabled) {
-  background-color: #333333;
+  background-color: #FFFFFF; /* Brilla a blanco puro en hover */
+  color: #000000;
+  transform: translateY(-2px);
 }
 .editorial-btn-dark:disabled {
   opacity: 0.5;

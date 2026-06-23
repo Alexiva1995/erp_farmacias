@@ -13,6 +13,17 @@ export const useBrandingStore = defineStore('branding', () => {
     tertiary_color: '#F5C842',
     footer_text: 'Todos los derechos reservados de Tova',
     business_type: 'pharmacy',
+    ecommerce_menu: [],
+    hero_title: 'YOUR NEW BOMB NUDES',
+    hero_subtitle: 'Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.',
+    hero_tagline: 'NUEVA COLECCIÓN',
+    hero_image: '/resources/js/pages/tova_editorial_campaign_1782228591006.png',
+    hero_button_text: 'COMPRAR AHORA',
+    section2_title: 'MEET YOUR DONE-IN-ONE TINTED MOISTURIZER',
+    section2_subtitle: 'Nuestra fórmula ultraligera que unifica el tono de la piel, hidrata profundamente y aporta una luminosidad natural y fresca durante todo el día. Disponible en 25 tonos flexibles.',
+    section2_tagline: 'PIEL RADIANTE',
+    section2_image: '/resources/js/pages/tova_product_tint_1782228603853.png',
+    section2_button_text: 'DESCUBRIR TONOS',
   })
 
   const isLoading = ref(false)
@@ -36,30 +47,35 @@ export const useBrandingStore = defineStore('branding', () => {
   }
 
   const applyThemeColors = () => {
+    // Si estamos en la página del e-commerce público, evitamos alterar el tema del ERP
+    if (window.location.pathname.includes('/tova-store')) {
+      return
+    }
+
     const root = document.documentElement
 
-    if (settings.value.primary_color) {
-      const rgb = hexToRgb(settings.value.primary_color)
+    // Para el ERP usamos colores de marca que mantengan legibilidad
+    // Si el color secundario (oscuro) o primario original existe, los aplicamos al ERP de forma legible
+    const primary = settings.value.secondary_color || '#E20074' // Usamos el color secundario como primario en el ERP para evitar fondos claros invisibles
+    const secondary = settings.value.tertiary_color || '#7A0099'
+
+    if (primary) {
+      const rgb = hexToRgb(primary)
       root.style.setProperty('--v-global-theme-primary', rgb)
       root.style.setProperty('--v-theme-primary', rgb)
       root.style.setProperty('--v-theme-primary-darken-1', rgb)
       root.style.setProperty('--v-theme-gradient-end', rgb)
     }
 
-    if (settings.value.secondary_color) {
-      const rgb = hexToRgb(settings.value.secondary_color)
+    if (secondary) {
+      const rgb = hexToRgb(secondary)
       root.style.setProperty('--v-global-theme-secondary', rgb)
       root.style.setProperty('--v-theme-secondary', rgb)
       root.style.setProperty('--v-theme-gradient-start', rgb)
-    } else if (settings.value.primary_color) {
-      const rgb = hexToRgb(settings.value.primary_color)
-      root.style.setProperty('--v-theme-gradient-start', rgb)
     }
 
-    // Actualizar --brand-gradient con los colores reales del negocio
-    // Esto es lo que usan todos los .header-gradient del sistema
-    const start = settings.value.secondary_color || '#7A0099'
-    const end   = settings.value.primary_color   || '#E20074'
+    const start = secondary || '#7A0099'
+    const end   = primary   || '#E20074'
     document.documentElement.style.setProperty(
       '--brand-gradient',
       `linear-gradient(135deg, ${start}, ${end})`

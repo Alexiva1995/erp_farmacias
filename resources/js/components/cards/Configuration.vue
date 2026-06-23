@@ -23,6 +23,7 @@ const businessTypeOptions = [
   { label: "Farmacia", value: "pharmacy" },
   { label: "Restaurante", value: "restaurant" },
   { label: "Alquiler Deportivo", value: "sports_rental" },
+  { label: "Mini Market (Accesorios y Cosméticos)", value: "minimarket" },
 ]
 
 const fetchSettings = async () => {

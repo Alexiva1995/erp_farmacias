@@ -108,6 +108,14 @@ class Product extends Model
     }
 
     /**
+     * Un producto puede tener muchas variantes de e-commerce.
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
      * Accesor para la URL de la foto.
      * Si 'photo_url' existe, devuelve la URL accesible públicamente, de lo contrario, null.
      */
