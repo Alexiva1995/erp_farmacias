@@ -1,0 +1,3 @@
+name,category_name,amount,amount_usd,currency,expense_date,has_invoice,is_deductible
+Pago de luz Mayo,Servicios publicos,1800.00,50.00,Bs,2026-05-31,1,1
+Bolsas plasticas tipo camiseta,Papeleria,0.00,15.50,USD,2026-06-10,0,0

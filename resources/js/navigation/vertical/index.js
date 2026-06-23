@@ -12,6 +12,7 @@ import rrhh from './rrhh'
 import suppliers from './suppliers'
 import tpv from './tpv'
 import reservations from './reservations'
+import restaurant from './restaurant'
 
-export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations]
+export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...fiscal, ...finances,...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...restaurant]
 

@@ -1,7 +1,10 @@
 <script setup>
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
+
 const props = defineProps({
   suppliers: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -22,6 +25,9 @@ import { useDisplay } from "vuetify";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const { mobile } = useDisplay();
+
+// Tipo de negocio es restaurante
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
 
 const emit = defineEmits([
   "update:options",
@@ -138,7 +144,7 @@ const headers = [
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center">
-             <VTooltip text="Estado de Conexión" location="top">
+             <VTooltip v-if="!isRestaurant" text="Estado de Conexión" location="top">
               <template #activator="{ props }">
                 <VIcon
                   v-bind="props"
@@ -168,15 +174,15 @@ const headers = [
                   <VListItemTitle>Editar Datos</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="authStore.isAdmin" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
+                <VListItem v-if="authStore.isAdmin && !isRestaurant" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
                   <VListItemTitle>Configurar Conexión</VListItemTitle>
                 </VListItem>
 
-                <VListItem :disabled="checkingApiId === item.id" @click="emit('check-supplier-api', item)" prepend-icon="tabler-api">
+                <VListItem v-if="!isRestaurant" :disabled="checkingApiId === item.id" @click="emit('check-supplier-api', item)" prepend-icon="tabler-api">
                   <VListItemTitle>Sincronizar</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="authStore.isAdmin" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
+                <VListItem v-if="authStore.isAdmin && !isRestaurant" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
                   <VListItemTitle>Configuración Comercial</VListItemTitle>
                 </VListItem>
 
@@ -219,7 +225,7 @@ const headers = [
                   <div class="text-xs text-disabled">ID: {{ item.id }}</div>
                 </div>
               </div>
-              <div class="d-flex align-center gap-1">
+              <div v-if="!isRestaurant" class="d-flex align-center gap-1">
                 <VIcon
                   size="10"
                   :color="checkingApiId === item.id ? 'warning' : 'success'"
@@ -263,7 +269,7 @@ const headers = [
                     />
                   </template>
                 </VTooltip>
-                <VTooltip text="WhatsApp Cobranza" location="top">
+                <VTooltip v-if="!isRestaurant" text="WhatsApp Cobranza" location="top">
                   <template #activator="{ props }">
                     <VBtn
                       v-bind="props"
@@ -288,7 +294,7 @@ const headers = [
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin"
+                  v-if="authStore.isAdmin && !isRestaurant"
                   icon="tabler-plug-connected"
                   variant="tonal"
                   color="warning"
@@ -296,6 +302,7 @@ const headers = [
                   @click="emit('config-connection', item)"
                 />
                 <VBtn
+                  v-if="!isRestaurant"
                   icon="tabler-api"
                   variant="tonal"
                   :color="checkingApiId === item.id ? 'warning' : 'success'"
@@ -304,7 +311,7 @@ const headers = [
                   @click="emit('check-supplier-api', item)"
                 />
                 <VBtn
-                    v-if="authStore.isAdmin"
+                    v-if="authStore.isAdmin && !isRestaurant"
                     icon="tabler-settings-dollar"
                     variant="tonal"
                     color="primary"

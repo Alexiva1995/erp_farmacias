@@ -1,0 +1,3 @@
+barcode,name,active_ingredient,category_name,laboratory_name,origin_name,cost_price,sale_price,iva,psychotropic,from_colombia
+7591234567890,Ibuprofeno 400mg,Ibuprofeno,Analgesicos,Calox,Nacional,1.20,2.50,0,0,0
+7701234567890,Acetaminofen Jarabe,Acetaminofen,Pediatricos,Genfar,Importado,0.85,1.80,0,0,1

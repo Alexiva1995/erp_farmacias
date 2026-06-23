@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE general_settings MODIFY COLUMN business_type ENUM('pharmacy', 'restaurant', 'sports_rental') NOT NULL DEFAULT 'pharmacy'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE general_settings MODIFY COLUMN business_type ENUM('pharmacy', 'restaurant', 'sports_rental') NOT NULL DEFAULT 'pharmacy'");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE general_settings MODIFY COLUMN business_type ENUM('pharmacy', 'restaurant') NOT NULL DEFAULT 'pharmacy'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE general_settings MODIFY COLUMN business_type ENUM('pharmacy', 'restaurant') NOT NULL DEFAULT 'pharmacy'");
+        }
     }
 };

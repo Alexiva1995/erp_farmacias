@@ -11,7 +11,14 @@ import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
 
 // Estado del componente
-const selectedDate = ref(new Date().toISOString().split('T')[0])
+const getLocalDateString = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+const selectedDate = ref(getLocalDateString())
 const courtsData = ref([])
 const loading = ref(false)
 const error = ref(null)

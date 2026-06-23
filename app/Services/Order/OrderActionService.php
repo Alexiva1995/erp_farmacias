@@ -46,7 +46,12 @@ class OrderActionService
                     ->first();
 
                 if (!$openCashRegisterClosing) {
-                    throw new \Exception('No se encontró un cierre de caja abierto para el vendedor.');
+                    $openCashRegisterClosing = CashClosing::create([
+                        'seller_id' => $data['seller_id'],
+                        'status' => CashClosing::OPEN,
+                        'opening_date' => Carbon::now(),
+                    ]);
+                    Log::info("Caja auto-abierta para el vendedor {$data['seller_id']} al intentar ingresar orden.");
                 }
 
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
@@ -1385,7 +1390,29 @@ class OrderActionService
                     ]);
                     throw new \Exception("No se pudo devolver el inventario para el producto ID: {$item->product_id}. No hay lote disponible.");
                 }
+
+                $stockBefore = $item->product->stock ?? 0;
                 $productLot->increment('quantity', $item->quantity);
+                
+                // Sincronizar stock del producto
+                $totalStock = $item->product->lots()->sum('quantity');
+                $item->product->updateQuietly(['stock' => $totalStock]);
+                \App\Services\Inventory\StockoutService::syncStockout($item->product, $totalStock);
+
+                // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
+                \App\Models\InventoryMovement::create([
+                    'product_id' => $item->product_id,
+                    'product_lot_id' => $productLot->id,
+                    'movement_type' => 'return',
+                    'quantity' => $item->quantity,
+                    'invoice_id' => null,
+                    'supplier_id' => null,
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id() ?? $order->seller_id,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $totalStock,
+                    'movement_date' => now(),
+                ]);
             }
             $cashClosing = $order->cashClosing;
             if (!$cashClosing) {
@@ -1401,7 +1428,6 @@ class OrderActionService
                                 $montoDesc = $amount - $order->usd_conversion;
                                 $cashClosing->usd_cash -= $montoDesc;
                                 $cashClosing->usd_conversion -= $order->usd_conversion ?? null;
-                                $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
                                 $cashClosing->usd_cash -= $amount;
                             }
@@ -1431,14 +1457,14 @@ class OrderActionService
                             $cashClosing->bs_card_credit -= $amount;
                             break;
                         case 'cash_cop':
-                            /*if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {
-                                Log::info("dentro de conversion.", $order->usd_conversion);
+                            if (isset($order->money_returns) && $order->money_returns > 0.0) {
+                                // Si se dio vuelto en pesos, el monto neto cobrado en COP es el pago - vuelto
+                                $montoDescCOP = $amount - $order->money_returns;
+                                $cashClosing->cop_cash -= $montoDescCOP;
                                 $cashClosing->cop_conversion -= $order->money_returns ?? null;
                             } else {
-                                Log::info("dentro del else conversion.", $order->money_returns);*/
-                            $montoDescCOP = $amount - $order->money_returns;
-                            $cashClosing->cop_cash -= $montoDescCOP;
-                            // }
+                                $cashClosing->cop_cash -= $amount;
+                            }
                             break;
                         case 'bank_transfer':
                             $cashClosing->cop_transfer -= $amount;

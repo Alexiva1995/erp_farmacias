@@ -20,7 +20,11 @@ definePage({
 });
 
 onMounted(async () => {
-  await brandingStore.fetchSettings();
+  try {
+    await brandingStore.fetchSettings();
+  } catch (e) {
+    // Silenciar error en el login
+  }
 });
 
 const form = ref({
@@ -42,6 +46,7 @@ const is2FAModalVisible = ref(false);
 const twoFactorData = ref({
   needsQrSetup: false,
   qrCodeUrl: null,
+  qrCodeSecret: null,
 });
 
 const isLoading = ref(false);
@@ -62,6 +67,7 @@ const handleLogin = async () => {
     if (data.two_factor) {
       twoFactorData.value.needsQrSetup = data.needs_qr_setup;
       twoFactorData.value.qrCodeUrl = data.qr_code_url;
+      twoFactorData.value.qrCodeSecret = data.qr_code_secret;
       is2FAModalVisible.value = true;
     } else if (data.redirect) {
       window.location.href = data.redirect;
@@ -192,6 +198,7 @@ const on2FAVerified = () => {
       v-model="is2FAModalVisible"
       :needs-qr-setup="twoFactorData.needsQrSetup"
       :qr-code-url="twoFactorData.qrCodeUrl"
+      :qr-code-secret="twoFactorData.qrCodeSecret"
       @verified="on2FAVerified"
     />
   </div>

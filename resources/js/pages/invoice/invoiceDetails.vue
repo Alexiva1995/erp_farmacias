@@ -877,10 +877,58 @@ const removeProductFromInvoice = (detailId) => {
   );
 };
 
-const startEditingDetail = (detail) => {
+const startEditingDetail = async (detail) => {
   editedDetailData.value = { ...detail };
   
-  // Si no tiene fecha, predefinir el día 1 del mes actual para facilitar la edición manual rápida
+  // Guardamos el costo total inicial en restaurantes para edición
+  if (isRestaurant.value) {
+    const qty = Number(editedDetailData.value.quantity) || 0;
+    const unitCost = Number(editedDetailData.value.unit_cost) || 0;
+    
+    // Si tiene IVA activo, el costo total ingresado por el usuario incluye IVA (es decir, unitCost * 1.16 * qty)
+    if (editedDetailData.value.tax_enabled) {
+      editedDetailData.value.total_cost_input = Number((unitCost * 1.16 * qty).toFixed(2));
+    } else {
+      editedDetailData.value.total_cost_input = Number((unitCost * qty).toFixed(2));
+    }
+  }
+
+  const isFruit = computed(() => {
+    return !!editedDetailData.value.product?.laboratory?.name?.toLowerCase().includes("fruta");
+  });
+
+  if (isRestaurant.value && isFruit.value) {
+    // Si no tiene lote, consultar el número de lote correlativo automático
+    if (!editedDetailData.value.lot_number?.trim()) {
+      try {
+        const prodId = editedDetailData.value.product?.id;
+        if (prodId) {
+          const response = await axios.get(`/products/${prodId}/next-lot-number`);
+          if (response.data && response.data.success) {
+            editedDetailData.value.lot_number = response.data.next_lot_number;
+          }
+        }
+      } catch (error) {
+        console.error("Error al obtener el número de lote automático de fruta:", error);
+      }
+    }
+
+    // Fecha de vencimiento: 15 días después de la compra/emisión (created_invoice_date)
+    if (!editedDetailData.value.expiration_date && invoice.value?.created_invoice_date) {
+      try {
+        const purchaseDate = new Date(invoice.value.created_invoice_date + 'T00:00:00');
+        purchaseDate.setDate(purchaseDate.getDate() + 15);
+        const yyyy = purchaseDate.getFullYear();
+        const mm = String(purchaseDate.getMonth() + 1).padStart(2, "0");
+        const dd = String(purchaseDate.getDate()).padStart(2, "0");
+        editedDetailData.value.expiration_date = `${yyyy}-${mm}-${dd}`;
+      } catch (error) {
+        console.error("Error al calcular vencimiento de fruta:", error);
+      }
+    }
+  }
+
+  // Si no tiene fecha y no es fruta (o falló el cálculo anterior), predefinir el día 1 del mes actual
   if (!editedDetailData.value.expiration_date) {
     const now = new Date();
     const year = now.getFullYear();
@@ -900,6 +948,24 @@ const saveEditingDetail = () => {
 
     return;
   }
+
+  // Si es restaurante, calculamos el costo unitario basado en el costo total ingresado
+  if (isRestaurant.value) {
+    const totalCostInput = Number(editedDetailData.value.total_cost_input);
+    if (isNaN(totalCostInput) || totalCostInput < 0 || editedDetailData.value.total_cost_input === null || editedDetailData.value.total_cost_input === '') {
+      toast.error("El costo total debe ser 0 o mayor");
+      return;
+    }
+    const qty = Number(editedDetailData.value.quantity) || 1;
+    // Si tax_enabled está activo, el costo total incluye el 16% de IVA, por lo que deducimos el IVA para obtener el costo base
+    if (editedDetailData.value.tax_enabled) {
+      const baseTotal = totalCostInput / 1.16;
+      editedDetailData.value.unit_cost = Number((baseTotal / qty).toFixed(6));
+    } else {
+      editedDetailData.value.unit_cost = Number((totalCostInput / qty).toFixed(6));
+    }
+  }
+
   if (
     editedDetailData.value.unit_cost === null ||
     editedDetailData.value.unit_cost < 0
@@ -1048,12 +1114,10 @@ const formatCurrency = (value, currency = null) => {
   const targetCurrency = currency || invoice.value?.currency;
   const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
   const mappedCurrency = currencyMap[targetCurrency] || "VES";
-
   return new Intl.NumberFormat("es-VE", {
     style: "currency",
     currency: mappedCurrency,
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   }).format(value);
 };
 
@@ -1066,6 +1130,12 @@ const getCurrencySymbol = () => {
 
 const isNearExpiration = (item) => {
   if (!item.expiration_date) return false;
+  
+  // Omitir validación de expiración / devolución automática si es fruta en restaurante
+  const isFruit = !!item.product?.laboratory?.name?.toLowerCase().includes("fruta");
+  if (isRestaurant.value && isFruit) {
+    return false;
+  }
 
   const expirationDate = new Date(item.expiration_date);
   const today = new Date();
@@ -1078,6 +1148,12 @@ const isNearExpiration = (item) => {
 
 const checkAndMarkAsReturn = (item, forceCheck = false) => {
   if (!item.expiration_date) return false;
+
+  // Si es restaurante y el producto es fruta, no marcar como devolución automáticamente
+  const isFruit = !!item.product?.laboratory?.name?.toLowerCase().includes("fruta");
+  if (isRestaurant.value && isFruit) {
+    return false;
+  }
 
   const expirationDate = new Date(item.expiration_date);
   const today = new Date();
@@ -1658,6 +1734,18 @@ const detailsHeaders = computed(() => {
                 </template>
 
                 <VBtn
+                  v-if="isEditableMode && isEditMode && isRestaurant"
+                  color="info"
+                  variant="tonal"
+                  :size="mobile ? 'default' : 'small'"
+                  class="rounded-lg px-3"
+                  @click="handleShowProductSearch"
+                >
+                  <VIcon icon="tabler-search" />
+                  <span v-if="!mobile" class="ms-1">Catálogo</span>
+                </VBtn>
+
+                <VBtn
                   v-if="isEditableMode && isEditMode"
                   color="primary"
                   variant="flat"
@@ -1825,7 +1913,20 @@ const detailsHeaders = computed(() => {
 
               <template #item.unit_cost="{ item }">
                 <VTextField
-                  v-if="isEditableMode && item.id === editingDetailId"
+                  v-if="isEditableMode && item.id === editingDetailId && isRestaurant"
+                  v-model.number="editedDetailData.total_cost_input"
+                  type="number"
+                  step="0.01"
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  class="editable-cell"
+                  min="0"
+                  :prefix="getCurrencySymbol()"
+                  placeholder="Costo Total"
+                />
+                <VTextField
+                  v-else-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.unit_cost"
                   type="number"
                   step="0.01"
@@ -2116,9 +2217,20 @@ const detailsHeaders = computed(() => {
                         <span v-else class="value">{{ item.quantity }}</span>
                       </div>
                       <div class="detail-item">
-                        <span class="label">Costo {{ invoice.currency }}</span>
+                        <span class="label">{{ isRestaurant ? 'Costo Total' : 'Costo ' + invoice.currency }}</span>
                         <VTextField
-                          v-if="isEditableMode && item.id === editingDetailId"
+                          v-if="isEditableMode && item.id === editingDetailId && isRestaurant"
+                          v-model.number="editedDetailData.total_cost_input"
+                          type="number"
+                          step="0.01"
+                          density="compact"
+                          hide-details
+                          variant="outlined"
+                          class="mt-1"
+                          placeholder="Costo Total"
+                        />
+                        <VTextField
+                          v-else-if="isEditableMode && item.id === editingDetailId"
                           v-model.number="editedDetailData.unit_cost"
                           type="number"
                           step="0.01"

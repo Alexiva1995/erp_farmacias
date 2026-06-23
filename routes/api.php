@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ProcessAuditController;
 use App\Http\Controllers\Api\PendingPaymentsController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
@@ -69,6 +70,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
 use App\Http\Controllers\Api\IaAssistantActionController;
 use App\Http\Controllers\Api\DishController;
+use App\Http\Controllers\Api\EcommerceController;
 
 // Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON)
 Route::prefix('fiscal')->group(function () {
@@ -103,6 +105,12 @@ Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Ap
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
 Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
 
+// Rutas de E-commerce TOVA
+Route::get("/public/ecommerce/products", [EcommerceController::class, "getProducts"]);
+Route::get("/public/ecommerce/categories", [EcommerceController::class, "getCategories"]);
+Route::post("/public/ecommerce/checkout", [EcommerceController::class, "checkout"]);
+Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
+
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {
     Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
@@ -113,6 +121,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::delete('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'destroy']);
 
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
+    Route::post('/import-csv', [\App\Http\Controllers\Api\DataImportController::class, 'importCsv']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {
         Route::get("/income-statement", [FinancialStatementController::class, "index"]);
@@ -155,6 +164,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch('/products/incomplete/{product}', [ProductController::class, 'updateIncomplete']);
     Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
     Route::get('/products/{product}/stats', [ProductController::class, 'getStats']);
+    Route::get('/products/{product}/next-lot-number', [ProductController::class, 'getNextLotNumber']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
@@ -546,6 +556,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/{invoice}/reject', 'reject')->name('reject');
         Route::put('/{invoice}/return-pending', 'returnInvoiceToPendingStatus')->name('return.pending');
         Route::put('/{invoice}/locations', 'updateLocations')->name('locations.update');
+        Route::get('/next-sequence', 'nextSequence')->name('next-sequence');
         Route::get('/{invoice}', 'show')->name('show');
         Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
@@ -762,6 +773,14 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
         });
 
+        Route::prefix('process-audits')->group(function () {
+            Route::get('', [ProcessAuditController::class, 'index']);
+            Route::post('', [ProcessAuditController::class, 'store']);
+            Route::get('flows', [ProcessAuditController::class, 'indexFlows']);
+            Route::post('flows', [ProcessAuditController::class, 'storeFlow']);
+            Route::delete('flows/{id}', [ProcessAuditController::class, 'destroyFlow']);
+        });
+
         Route::prefix("cash-closure")->group(function () {
             Route::get("/", [CashClosureController::class, "getCashClosure"]);
             Route::get('/closingHistory', [CashClosureController::class, 'getClosingHistory']);
@@ -778,6 +797,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
             Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
             Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
+            Route::patch('/update-blind-amounts', [CashClosureController::class, 'updateBlindAmounts']);
         });
 
         Route::prefix("expenses")->group(function () {

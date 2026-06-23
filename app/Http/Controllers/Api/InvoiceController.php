@@ -409,4 +409,32 @@ class InvoiceController extends Controller
             return response()->json(['message' => 'Error al cargar la foto: ' . $e->getMessage()], 500);
         }
     }
+
+    public function nextSequence(Request $request)
+    {
+        $request->validate([
+            'supplier_id' => 'required|integer|exists:suppliers,id',
+        ]);
+
+        $supplierId = $request->input('supplier_id');
+
+        // Buscar la factura con el número de factura más alto para este proveedor que comience con 'INF-'
+        $lastInvoice = Invoice::where('supplier_id', $supplierId)
+            ->where('invoice_number', 'like', 'INF-%')
+            ->orderByRaw('CAST(SUBSTRING(invoice_number, 5) AS UNSIGNED) DESC')
+            ->first();
+
+        if ($lastInvoice) {
+            $numberStr = str_replace('INF-', '', $lastInvoice->invoice_number);
+            $nextVal = ((int)$numberStr) + 1;
+        } else {
+            $nextVal = 1;
+        }
+
+        $formatted = 'INF-' . str_pad($nextVal, 6, '0', STR_PAD_LEFT);
+
+        return response()->json([
+            'next_sequence' => $formatted
+        ]);
+    }
 }

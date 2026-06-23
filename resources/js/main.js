@@ -28,6 +28,12 @@ async function startApp() {
 
     registerPlugins(app)
 
+    app.config.errorHandler = (err, instance, info) => {
+      console.error("¡ERROR CAPTURADO POR VUE GLOBAL!", err);
+      console.log("Instancia donde ocurrió:", instance);
+      console.log("Información adicional de Vue:", info);
+    }
+
     app.mount('#app')
 
   } catch (error) {

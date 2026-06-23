@@ -246,4 +246,87 @@ class CashClosureController extends Controller
             'message' => 'Referencia no encontrada'
         ], 404);
     }
+
+    public function updateBlindAmounts(Request $request)
+    {
+        // Solo administradores (role_id = 1)
+        if ($request->user()->role_id !== 1) {
+            return response()->json(['message' => 'Acceso denegado. Solo administradores pueden realizar esta acción.'], 403);
+        }
+
+        $request->validate([
+            'id' => 'required|exists:cash_closing,id',
+            'declared_cop' => 'nullable|numeric',
+            'declared_usd' => 'nullable|numeric',
+            'declared_credit' => 'nullable|numeric',
+            'declared_bs_mobile' => 'nullable|numeric',
+            'declared_bs_card' => 'nullable|numeric',
+        ]);
+
+        $cashClosing = \App\Models\CashClosing::findOrFail($request->id);
+
+        $decCop = (float) ($request->declared_cop ?? 0);
+        $decUsd = (float) ($request->declared_usd ?? 0);
+        $decCredit = (float) ($request->declared_credit ?? 0);
+        $decBsMobile = (float) ($request->declared_bs_mobile ?? 0);
+        $decBsCard = (float) ($request->declared_bs_card ?? 0);
+
+        // Recalcular discrepancias con el sistema actual
+        $sysCop = (float) $cashClosing->cop_delivered;
+        $sysUsd = (float) $cashClosing->usd_delivered;
+        $sysCredit = (float) $cashClosing->usd_credit;
+        $sysBsMobile = (float) ($cashClosing->bs_transfer + $cashClosing->bs_mobile);
+        $sysBsCard = (float) ($cashClosing->bs_card_debito + $cashClosing->bs_card_credit);
+
+        // Si se editó COP, el sobrante y totales en COP podrían cambiar.
+        // Volvemos a realizar el cálculo que se hace al cerrar.
+        $sobrante = max(0, $decCop - $sysCop);
+        
+        $updateData = [
+            'declared_cop' => $decCop,
+            'declared_usd' => $decUsd,
+            'declared_credit' => $decCredit,
+            'declared_bs_mobile' => $decBsMobile,
+            'declared_bs_card' => $decBsCard,
+            'cop_spare' => $sobrante,
+            // cop_delivered = valor real que debería haber + sobrante
+            'cop_delivered' => $sysCop + $sobrante,
+        ];
+
+        $mismatches = [];
+        $notes = [];
+
+        if (round($decCop, 2) != round($sysCop, 2)) {
+            $mismatches[] = 'cop';
+            $notes[] = "COP Físico: Declarado " . number_format($decCop, 2) . " / Sistema " . number_format($sysCop, 2);
+        }
+        if (round($decUsd, 2) != round($sysUsd, 2)) {
+            $mismatches[] = 'usd';
+            $notes[] = "USD: Declarado " . number_format($decUsd, 2) . " / Sistema " . number_format($sysUsd, 2);
+        }
+        if (round($decCredit, 2) != round($sysCredit, 2)) {
+            $mismatches[] = 'credit';
+            $notes[] = "Crédito USD: Declarado " . number_format($decCredit, 2) . " / Sistema " . number_format($sysCredit, 2);
+        }
+        if (round($decBsMobile, 2) != round($sysBsMobile, 2)) {
+            $mismatches[] = 'bs_mobile';
+            $notes[] = "Transf/PM BS: Declarado " . number_format($decBsMobile, 2) . " / Sistema " . number_format($sysBsMobile, 2);
+        }
+        if (round($decBsCard, 2) != round($sysBsCard, 2)) {
+            $mismatches[] = 'bs_card';
+            $notes[] = "Tarjetas BS: Declarado " . number_format($decBsCard, 2) . " / Sistema " . number_format($sysBsCard, 2);
+        }
+
+        $updateData['blind_mismatches'] = json_encode($mismatches);
+        $updateData['blind_note'] = implode(' | ', $notes);
+
+        $cashClosing->update($updateData);
+        $cashClosing->recalculateTotals();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cierre ciego actualizado y recalculado correctamente',
+            'data' => $cashClosing->refresh()
+        ]);
+    }
 }

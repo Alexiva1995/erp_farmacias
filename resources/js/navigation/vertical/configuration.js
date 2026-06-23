@@ -12,12 +12,20 @@ export default [
     subject: 'admin',
     children: [
       {
-        title: 'General',
+        title: 'Generales',
+        to: 'configuration-branding',
+      },
+      {
+        title: 'Menú E-commerce',
+        to: 'configuration-menu',
+      },
+      {
+        title: 'Tipo y Fiscal',
         to: 'configuration',
       },
       {
-        title: 'Personalización',
-        to: 'configuration-branding',
+        title: 'Importar Datos',
+        to: 'configuration-import',
       },
     ],
   }, 

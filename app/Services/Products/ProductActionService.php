@@ -51,6 +51,16 @@ class ProductActionService
             $validatedData['unit_cost'] = 0;
         }
         
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+        if ($isRestaurant) {
+            if (!isset($validatedData['origin_id'])) {
+                $validatedData['origin_id'] = null;
+            }
+            if (!isset($validatedData['active_ingredient'])) {
+                $validatedData['active_ingredient'] = null;
+            }
+        }
+        
         // Asegurar que unit_cost sea numérico
         $validatedData['unit_cost'] = (float)($validatedData['unit_cost'] ?? 0);
         
