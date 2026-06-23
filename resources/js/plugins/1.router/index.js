@@ -51,6 +51,12 @@ const router = createRouter({
         meta: { requiresAuth: true }
       },
       {
+        path: '/restaurant/process-audit',
+        name: 'restaurant-process-audit',
+        component: () => import('@/pages/restaurant/process-audit.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: '/p/suppliers/upload/:token',
         name: 'public-supplier-upload',
         component: () => import('@/pages/public/SupplierUpload.vue'),

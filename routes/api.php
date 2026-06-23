@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ProcessAuditController;
 use App\Http\Controllers\Api\PendingPaymentsController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
@@ -763,6 +764,14 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/{payslip}/data/{type}', [PayslipController::class, 'getData']);
             Route::put('/{payslip}/vouchers', [PayslipController::class, 'updateVouchers']);
             Route::get('/{payslip}/employees/{employee}/vouchers', [PayslipController::class, 'getVouchers']);
+        });
+
+        Route::prefix('process-audits')->group(function () {
+            Route::get('', [ProcessAuditController::class, 'index']);
+            Route::post('', [ProcessAuditController::class, 'store']);
+            Route::get('flows', [ProcessAuditController::class, 'indexFlows']);
+            Route::post('flows', [ProcessAuditController::class, 'storeFlow']);
+            Route::delete('flows/{id}', [ProcessAuditController::class, 'destroyFlow']);
         });
 
         Route::prefix("cash-closure")->group(function () {
