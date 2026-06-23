@@ -381,8 +381,8 @@ onMounted(async () => {
           <!-- Contenedor de Imagen de Producto con fondo grisáceo suave y sin bordes redondos -->
           <div class="editorial-product-img-wrap">
             <img
-              v-if="product.image_url"
-              :src="product.image_url"
+              v-if="product.photo_url || product.image_url"
+              :src="product.photo_url || product.image_url"
               :alt="product.name"
               class="editorial-product-image"
               loading="lazy"

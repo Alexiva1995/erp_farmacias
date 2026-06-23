@@ -17,34 +17,28 @@ class EcommerceTest extends TestCase
     {
         $category = Category::factory()->create([
             'name' => 'Anillos',
-            'slug' => 'anillos',
-            'is_active' => true,
         ]);
-
+ 
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'is_active' => true,
-            'stock' => 10,
             'sale_price' => 50000,
         ]);
-
+ 
         $response = $this->getJson('/api/public/ecommerce/categories');
         $response->assertStatus(200)
                  ->assertJsonFragment(['slug' => 'anillos']);
-
+ 
         $response = $this->getJson('/api/public/ecommerce/products?category=anillos');
         $response->assertStatus(200)
                  ->assertJsonFragment(['name' => $product->name]);
     }
-
+ 
     /** @test */
     public function can_checkout_ecommerce_order_with_variant_and_deducts_stock()
     {
-        $category = Category::factory()->create(['is_active' => true]);
+        $category = Category::factory()->create();
         $product = Product::factory()->create([
             'category_id' => $category->id,
-            'is_active' => true,
-            'stock' => 10,
             'sale_price' => 20000
         ]);
 
