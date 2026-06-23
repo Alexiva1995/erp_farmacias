@@ -9,14 +9,19 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
 const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
+
+// Tipo de negocio es restaurante
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -25,7 +30,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref("drogueria");
+const typeFilter = ref(brandingStore.settings?.business_type === "restaurant" ? null : "drogueria");
 
 const stats = ref({
   total_debt: 0,
@@ -184,7 +189,7 @@ const handleSort = (sortOptions) => {
 };
 
 const handleAddSupplier = (type = "drogueria") => {
-  currentSupplier.value = { type };
+  currentSupplier.value = { type: isRestaurant.value ? "externo" : type };
   supplierFormErrors.value = {};
   isEditDialogVisible.value = true;
 };

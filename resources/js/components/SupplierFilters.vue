@@ -2,6 +2,9 @@
 // Filtros de Proveedores
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
 
 const props = defineProps({
   searchQuery: String,
@@ -20,6 +23,9 @@ const emit = defineEmits([
   "sort",
   "add-supplier",
 ]);
+
+// Tipo de negocio es restaurante
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
 
 const sortOptions = [
   { title: "Deuda mayor", icon: "tabler-arrow-up", key: "debt", order: "desc" },
@@ -63,7 +69,7 @@ const typeOptions = [
 ];
 
 const hasAdvancedFilters = computed(
-  () => !!(props.debtFilter || props.minScore || props.type),
+  () => !!(props.debtFilter || props.minScore || (!isRestaurant.value && props.type)),
 );
 </script>
 
@@ -79,12 +85,13 @@ const hasAdvancedFilters = computed(
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
-    @add="emit('add-supplier', 'drogueria')"
+    @add="emit('add-supplier', 'externo')"
     class="py-1"
   >
     <template #actions-extra>
       <!-- Botón para añadir proveedor externo -->
       <VBtn
+        v-if="!isRestaurant"
         icon
         color="info"
         variant="tonal"
@@ -127,7 +134,7 @@ const hasAdvancedFilters = computed(
       </VCol>
 
       <!-- Filtro de Tipo -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol v-if="!isRestaurant" cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.type"
           :items="typeOptions"

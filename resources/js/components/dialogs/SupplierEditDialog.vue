@@ -1,8 +1,10 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -11,6 +13,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
+
+// Tipo de negocio es restaurante
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
 
 // ─── Estado ────────────────────────────────────────────────────────────────
 const activeTab = ref(0);
@@ -76,42 +81,56 @@ const submitForm = () => {
   const current = formData.value;
   const payload = {};
 
-  Object.entries(current).forEach(([key, value]) => {
-    const originalValue = original[key];
-    const hasChanged =
-      typeof value === "object" && value !== null
-        ? JSON.stringify(value) !== JSON.stringify(originalValue)
-        : value !== originalValue;
+  if (isRestaurant.value) {
+    // Si es restaurante, solo enviamos Nombre y Teléfono de ventas
+    payload.name = current.name === "" ? null : current.name;
+    payload.sales_phone = current.sales_phone === "" ? null : current.sales_phone;
+    payload.type = "externo"; // Forzar tipo externo/normal para restaurante
+  } else {
+    Object.entries(current).forEach(([key, value]) => {
+      const originalValue = original[key];
+      const hasChanged =
+        typeof value === "object" && value !== null
+          ? JSON.stringify(value) !== JSON.stringify(originalValue)
+          : value !== originalValue;
 
-    if (hasChanged) {
-      payload[key] = value === "" ? null : value;
+      if (hasChanged) {
+        payload[key] = value === "" ? null : value;
+      }
+    });
+
+    // Consistencia de pagos
+    if (payload.payment_due_type !== undefined) {
+      if (current.payment_due_type === "invoice_date") {
+        payload.invoice_date_reference = current.invoice_date_reference;
+        payload.custom_due_days = null;
+        payload.payment_due_reference = null;
+      } else if (current.payment_due_type === "early_payment") {
+        payload.payment_due_reference = current.payment_due_reference;
+        payload.custom_due_days = null;
+        payload.invoice_date_reference = null;
+      } else if (current.payment_due_type === "custom") {
+        payload.custom_due_days = current.custom_due_days;
+        payload.payment_due_reference = null;
+        payload.invoice_date_reference = null;
+      }
     }
-  });
 
-  // Consistencia de pagos
-  if (payload.payment_due_type !== undefined) {
-    if (current.payment_due_type === "invoice_date") {
-      payload.invoice_date_reference = current.invoice_date_reference;
-      payload.custom_due_days = null;
-      payload.payment_due_reference = null;
-    } else if (current.payment_due_type === "early_payment") {
-      payload.payment_due_reference = current.payment_due_reference;
-      payload.custom_due_days = null;
-      payload.invoice_date_reference = null;
-    } else if (current.payment_due_type === "custom") {
-      payload.custom_due_days = current.custom_due_days;
-      payload.payment_due_reference = null;
-      payload.invoice_date_reference = null;
+    if (payload.order_days !== undefined || payload.dispatch_days !== undefined) {
+      payload.order_days = current.order_days;
+      payload.dispatch_days = current.dispatch_days;
     }
-  }
-
-  if (payload.order_days !== undefined || payload.dispatch_days !== undefined) {
-    payload.order_days = current.order_days;
-    payload.dispatch_days = current.dispatch_days;
   }
 
   if (isNewSupplier.value) {
-    emit("save", { ...current });
+    if (isRestaurant.value) {
+      emit("save", {
+        ...current,
+        type: "externo", // Forzar tipo externo/normal para restaurante
+      });
+    } else {
+      emit("save", { ...current });
+    }
   } else {
     emit("save", payload);
   }
@@ -197,10 +216,10 @@ watch(
             </VAvatar>
             <div>
               <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
-                {{ isNewSupplier ? (formData.type === 'externo' ? 'Nuevo Proveedor Externo' : 'Nueva Droguería') : "Editar Proveedor" }}
+                {{ isNewSupplier ? (isRestaurant ? 'Nuevo Proveedor' : (formData.type === 'externo' ? 'Nuevo Proveedor Externo' : 'Nueva Droguería')) : "Editar Proveedor" }}
               </h2>
               <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
-                {{ isNewSupplier ? "Registro de aliado comercial" : (formData.type === 'externo' ? 'Proveedor Externo' : 'Droguería') + ' | ' + formData.name }}
+                {{ isNewSupplier ? "Registro de aliado comercial" : (isRestaurant ? 'Proveedor' : (formData.type === 'externo' ? 'Proveedor Externo' : 'Droguería')) + ' | ' + formData.name }}
               </span>
             </div>
           </div>
@@ -224,6 +243,7 @@ watch(
       <!-- Contenido con Tabs -->
       <VCardText class="pa-0 bg-light">
         <VTabs
+          v-if="!isRestaurant"
           v-model="activeTab"
           color="primary"
           grow
@@ -246,8 +266,42 @@ watch(
               <!-- Tab 1: General -->
               <VWindowItem :value="0">
                 <div class="d-flex flex-column gap-6">
-                  <!-- Identificación -->
-                  <VCard variant="flat" class="border pa-4 bg-white rounded-lg">
+                  <!-- Formulario simplificado para Restaurante -->
+                  <VCard v-if="isRestaurant" variant="flat" class="border pa-4 bg-white rounded-lg">
+                    <div class="d-flex align-center gap-2 mb-4">
+                      <div class="header-indicator primary"></div>
+                      <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Información del Proveedor</span>
+                    </div>
+
+                    <VRow dense>
+                      <VCol cols="12">
+                        <AppTextField
+                          v-model="formData.name"
+                          label="Nombre"
+                          placeholder="Ej: Proveedor de Carnes"
+                          prepend-inner-icon="tabler-user"
+                          :error-messages="formErrors.name"
+                          class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
+                        />
+                      </VCol>
+                      <VCol cols="12" class="mt-4">
+                        <AppTextField
+                          v-model="formData.sales_phone"
+                          label="Número de Teléfono"
+                          type="tel"
+                          placeholder="4121234567"
+                          prepend-inner-icon="tabler-phone"
+                          :error-messages="formErrors.sales_phone"
+                          class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
+                        />
+                      </VCol>
+                    </VRow>
+                  </VCard>
+
+                  <!-- Identificación (Modo Farmacia/Normal) -->
+                  <VCard v-else variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">
                       <div class="header-indicator primary"></div>
                       <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Identificación Fiscal</span>
@@ -301,8 +355,8 @@ watch(
                     </VRow>
                   </VCard>
 
-                  <!-- Contacto y Pagos -->
-                  <VCard v-if="formData.type !== 'externo'" variant="flat" class="border pa-4 bg-white rounded-lg">
+                  <!-- Contacto y Pagos (Modo Farmacia/Normal) -->
+                  <VCard v-if="!isRestaurant && formData.type !== 'externo'" variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">
                       <div class="header-indicator secondary"></div>
                       <span class="text-xs font-weight-black text-secondary uppercase letter-spacing-1">Contacto y Condiciones</span>
@@ -425,7 +479,7 @@ watch(
               </VWindowItem>
 
               <!-- Tab 2: Logística -->
-              <VWindowItem :value="1">
+              <VWindowItem v-if="!isRestaurant" :value="1">
                 <div class="d-flex flex-column gap-6">
                   <VCard variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">
