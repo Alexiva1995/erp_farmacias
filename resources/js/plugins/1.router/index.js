@@ -23,7 +23,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/login', '/p/suppliers/upload/:token', '/reservar']
+    const publicRoutes = ['/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -39,7 +39,7 @@ const router = createRouter({
       })
     }
 
-    const filteredPages = pages.filter(p => p.path !== '/public/booking')
+    const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store')
     const pagesWithAuth = addAuthMeta(filteredPages)
     
     // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
@@ -69,6 +69,15 @@ const router = createRouter({
         path: '/reservar',
         name: 'public-booking',
         component: () => import('@/pages/public/booking.vue'),
+        meta: {
+          requiresAuth: false,
+          layout: 'blank'
+        }
+      },
+      {
+        path: '/tova-store',
+        name: 'tova-store',
+        component: () => import('@/pages/tova-store.vue'),
         meta: {
           requiresAuth: false,
           layout: 'blank'
