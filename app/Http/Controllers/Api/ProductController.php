@@ -601,4 +601,42 @@ class ProductController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Obtener el número correlativo siguiente para el lote de un producto.
+     */
+    public function getNextLotNumber(Product $product): JsonResponse
+    {
+        try {
+            // Buscar el último número de lote del producto que sea numérico
+            $lastLot = \App\Models\ProductLot::where('product_id', $product->id)
+                ->whereRaw("lot_number REGEXP '^[0-9]+$'")
+                ->orderByRaw('CAST(lot_number AS UNSIGNED) DESC')
+                ->first();
+
+            $nextNumber = 1;
+            if ($lastLot) {
+                $nextNumber = ((int) $lastLot->lot_number) + 1;
+            } else {
+                // Si no hay lotes puramente numéricos, buscar el último lote creado de cualquier tipo y tratar de extraer o usar 1
+                $lastLotAny = \App\Models\ProductLot::where('product_id', $product->id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                if ($lastLotAny && is_numeric($lastLotAny->lot_number)) {
+                    $nextNumber = ((int) $lastLotAny->lot_number) + 1;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'next_lot_number' => (string) $nextNumber,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al calcular el siguiente número de lote: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
+
