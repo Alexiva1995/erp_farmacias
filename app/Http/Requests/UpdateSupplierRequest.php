@@ -25,6 +25,26 @@ class UpdateSupplierRequest extends FormRequest
      */
     public function rules()
     {
+        // Obtener el tipo de negocio de la base de datos
+        $businessType = \DB::table('general_settings')->value('business_type') ?? 'pharmacy';
+        $isRestaurant = $businessType === 'restaurant';
+
+        if ($isRestaurant) {
+            return [
+                'type' => ['sometimes', 'string'],
+                'name' => 'sometimes|string|max:255',
+                'sales_phone' => 'sometimes|nullable|string|max:50',
+                'social_reason' => 'sometimes|nullable|string|max:255',
+                'rif' => 'sometimes|nullable|string|max:20',
+                'address' => 'sometimes|nullable|string',
+                'collections_phone' => 'sometimes|nullable|string|max:50',
+                'payment_due_type' => 'sometimes|nullable|in:invoice_date,early_payment,custom',
+                'custom_due_days' => 'nullable|integer|min:1',
+                'payment_due_reference' => 'sometimes|nullable|in:receipt_date,issue_date',
+                'invoice_date_reference' => 'nullable|in:receipt_date,expiration_date,issue_date',
+            ];
+        }
+
         return [
             'type' => ['sometimes', Rule::enum(SupplierType::class)],
             'name' => 'sometimes|string|max:255',

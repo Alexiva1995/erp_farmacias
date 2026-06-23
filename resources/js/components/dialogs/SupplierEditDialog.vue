@@ -82,10 +82,19 @@ const submitForm = () => {
   const payload = {};
 
   if (isRestaurant.value) {
-    // Si es restaurante, solo enviamos Nombre y Teléfono de ventas
-    payload.name = current.name === "" ? null : current.name;
-    payload.sales_phone = current.sales_phone === "" ? null : current.sales_phone;
-    payload.type = "externo"; // Forzar tipo externo/normal para restaurante
+    // Si es restaurante, forzamos tipo externo/normal para restaurante, pero dejamos pasar todos los datos opcionales
+    Object.entries(current).forEach(([key, value]) => {
+      const originalValue = original[key];
+      const hasChanged =
+        typeof value === "object" && value !== null
+          ? JSON.stringify(value) !== JSON.stringify(originalValue)
+          : value !== originalValue;
+
+      if (hasChanged) {
+        payload[key] = value === "" ? null : value;
+      }
+    });
+    payload.type = "externo";
   } else {
     Object.entries(current).forEach(([key, value]) => {
       const originalValue = original[key];
@@ -266,42 +275,8 @@ watch(
               <!-- Tab 1: General -->
               <VWindowItem :value="0">
                 <div class="d-flex flex-column gap-6">
-                  <!-- Formulario simplificado para Restaurante -->
-                  <VCard v-if="isRestaurant" variant="flat" class="border pa-4 bg-white rounded-lg">
-                    <div class="d-flex align-center gap-2 mb-4">
-                      <div class="header-indicator primary"></div>
-                      <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Información del Proveedor</span>
-                    </div>
-
-                    <VRow dense>
-                      <VCol cols="12">
-                        <AppTextField
-                          v-model="formData.name"
-                          label="Nombre"
-                          placeholder="Ej: Proveedor de Carnes"
-                          prepend-inner-icon="tabler-user"
-                          :error-messages="formErrors.name"
-                          class="shadow-sm"
-                          :readonly="!authStore.isAdmin"
-                        />
-                      </VCol>
-                      <VCol cols="12" class="mt-4">
-                        <AppTextField
-                          v-model="formData.sales_phone"
-                          label="Número de Teléfono"
-                          type="tel"
-                          placeholder="4121234567"
-                          prepend-inner-icon="tabler-phone"
-                          :error-messages="formErrors.sales_phone"
-                          class="shadow-sm"
-                          :readonly="!authStore.isAdmin"
-                        />
-                      </VCol>
-                    </VRow>
-                  </VCard>
-
-                  <!-- Identificación (Modo Farmacia/Normal) -->
-                  <VCard v-else variant="flat" class="border pa-4 bg-white rounded-lg">
+                  <!-- Identificación (Modo Restaurante o Farmacia/Normal) -->
+                  <VCard variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">
                       <div class="header-indicator primary"></div>
                       <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Identificación Fiscal</span>
@@ -311,8 +286,8 @@ watch(
                       <VCol cols="12" md="6">
                         <AppTextField
                           v-model="formData.name"
-                          label="Nombre Comercial"
-                          placeholder="Ej: Droguería Nena"
+                          label="Nombre Comercial *"
+                          placeholder="Ej: Proveedor de Carnes"
                           prepend-inner-icon="tabler-user"
                           :error-messages="formErrors.name"
                           class="shadow-sm"
@@ -322,8 +297,8 @@ watch(
                       <VCol cols="12" md="6">
                         <AppTextField
                           v-model="formData.social_reason"
-                          :label="'Razón Social' + (formData.type === 'externo' ? ' *' : '')"
-                          placeholder="Ej: Inversiones Nena C.A."
+                          :label="'Razón Social' + ((isRestaurant || formData.type !== 'externo') ? '' : ' *')"
+                          placeholder="Ej: Inversiones Carnes C.A."
                           prepend-inner-icon="tabler-building"
                           :error-messages="formErrors.social_reason"
                           class="shadow-sm"
@@ -333,7 +308,7 @@ watch(
                       <VCol cols="12" md="5">
                         <AppTextField
                           v-model="formData.rif"
-                          label="RIF"
+                          :label="'RIF' + (isRestaurant ? '' : ' *')"
                           placeholder="J-12345678-9"
                           prepend-inner-icon="tabler-id-badge-2"
                           :error-messages="formErrors.rif"
@@ -344,7 +319,7 @@ watch(
                       <VCol cols="12" md="7">
                         <AppTextField
                           v-model="formData.address"
-                          :label="'Dirección Fiscal' + (formData.type === 'externo' ? ' *' : '')"
+                          :label="'Dirección Fiscal' + ((isRestaurant || formData.type !== 'externo') ? '' : ' *')"
                           placeholder="Ubicación completa"
                           prepend-inner-icon="tabler-map-pin"
                           :error-messages="formErrors.address"
@@ -355,8 +330,8 @@ watch(
                     </VRow>
                   </VCard>
 
-                  <!-- Contacto y Pagos (Modo Farmacia/Normal) -->
-                  <VCard v-if="!isRestaurant && formData.type !== 'externo'" variant="flat" class="border pa-4 bg-white rounded-lg">
+                  <!-- Contacto y Pagos -->
+                  <VCard v-if="isRestaurant || formData.type !== 'externo'" variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">
                       <div class="header-indicator secondary"></div>
                       <span class="text-xs font-weight-black text-secondary uppercase letter-spacing-1">Contacto y Condiciones</span>
