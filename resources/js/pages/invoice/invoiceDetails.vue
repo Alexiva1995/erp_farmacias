@@ -1731,6 +1731,18 @@ const detailsHeaders = computed(() => {
                 </template>
 
                 <VBtn
+                  v-if="isEditableMode && isEditMode && isRestaurant"
+                  color="info"
+                  variant="tonal"
+                  :size="mobile ? 'default' : 'small'"
+                  class="rounded-lg px-3"
+                  @click="handleShowProductSearch"
+                >
+                  <VIcon icon="tabler-search" />
+                  <span v-if="!mobile" class="ms-1">Catálogo</span>
+                </VBtn>
+
+                <VBtn
                   v-if="isEditableMode && isEditMode"
                   color="primary"
                   variant="flat"
