@@ -124,9 +124,8 @@ class PayslipRepository
       }
 
       // ── 3. Bono de Alimentación ─────────────────────────────────────────
-      // En restaurante, el bono de alimentación no se paga en la primera quincena (día <= 15)
-      $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
-      if (!$isRestaurant || $isSecondNomina) {
+      // El bono de alimentación se paga únicamente en la segunda quincena (fin de mes)
+      if ($isSecondNomina) {
         $details->push($this->createTempDetail($employee, 'Bono de Alimentación', round($foodVoucher, 2)));
       }
 
