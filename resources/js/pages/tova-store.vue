@@ -78,7 +78,7 @@ const fetchProducts = async () => {
   }
 }
 
-// Busqueda con debounce
+// Búsqueda con debounce
 let searchTimeout = null
 watch(searchQuery, () => {
   clearTimeout(searchTimeout)
@@ -99,7 +99,6 @@ const addToCart = (product, variant = null) => {
   } else {
     cart.value.push({ cartKey: key, product, variant, quantity: 1 })
   }
-  // Mini feedback visual
   cartDrawer.value = true
 }
 
@@ -169,30 +168,6 @@ const submitOrder = async () => {
   }
 }
 
-// ——— Íconos de categoría ———
-const categoryIcons = {
-  'anillos': 'ri-vip-crown-line',
-  'pulseras': 'ri-hand-coin-line',
-  'aretes': 'ri-star-smile-line',
-  'skin-care': 'ri-leaf-line',
-  'maquillaje': 'ri-palette-line',
-  'cabello': 'ri-scissors-line',
-  'default': 'ri-shopping-bag-line',
-}
-const getCategoryIcon = (slug) => {
-  if (!slug) return categoryIcons.default
-  return categoryIcons[slug] || categoryIcons.default
-}
-
-const categoryGradients = [
-  'linear-gradient(135deg, #ff9a9e, #fad0c4)',
-  'linear-gradient(135deg, #a18cd1, #fbc2eb)',
-  'linear-gradient(135deg, #fda085, #f6d365)',
-  'linear-gradient(135deg, #84fab0, #8fd3f4)',
-  'linear-gradient(135deg, #f093fb, #f5576c)',
-  'linear-gradient(135deg, #4facfe, #00f2fe)',
-]
-
 const scrollToCatalog = () => {
   const el = document.getElementById('catalog')
   if (el) el.scrollIntoView({ behavior: 'smooth' })
@@ -205,303 +180,323 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="tova-root">
-    <!-- NAV -->
-    <nav class="tova-nav">
-      <div class="tova-nav-inner">
-        <!-- Logo -->
-        <div class="tova-logo">
-          <span class="tova-logo-icon">✦</span>
-          <span class="tova-logo-text">TOVA</span>
-          <span class="tova-logo-sub">Beauty & Gems</span>
+  <div class="tova-editorial-root">
+    <!-- BARRA DE NAVEGACIÓN DE LUJO EDITORIAL -->
+    <nav class="editorial-nav">
+      <div class="editorial-nav-inner">
+        <div class="brand-logo" @click="selectedCategory = null; fetchProducts()">
+          <span class="logo-main">TOVA</span>
+          <span class="logo-sub">BEAUTY & GEMS</span>
         </div>
 
-        <!-- Search (desktop) -->
-        <div class="tova-search-wrap">
-          <span class="search-icon">⊕</span>
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="tova-search"
-            placeholder="Buscar productos..."
-          />
+        <!-- Enlaces minimalistas de navegación central -->
+        <div class="nav-links-center d-none d-md-flex">
+          <span class="nav-link-item" @click="scrollToCatalog">COMPRAR</span>
+          <span class="nav-link-item" @click="selectedCategory = 'maquillaje'; fetchProducts(); scrollToCatalog()">MAQUILLAJE</span>
+          <span class="nav-link-item" @click="selectedCategory = 'skin-care'; fetchProducts(); scrollToCatalog()">SKIN CARE</span>
+          <span class="nav-link-item" @click="selectedCategory = 'anillos'; fetchProducts(); scrollToCatalog()">JOYERÍA</span>
         </div>
 
-        <!-- Cart -->
-        <button class="tova-cart-btn" @click="cartDrawer = true">
-          <span class="cart-icon">🛍</span>
-          <span v-if="cartTotalItems" class="cart-badge">{{ cartTotalItems }}</span>
-        </button>
+        <!-- Elementos del lado derecho -->
+        <div class="nav-actions-right">
+          <!-- Input de búsqueda súper minimalista tipo Fenty -->
+          <div class="search-editorial-wrap d-none d-sm-block">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="BUSCAR..."
+              class="search-editorial-input"
+            />
+            <span class="search-line-effect"></span>
+          </div>
+
+          <button class="cart-btn-editorial" @click="cartDrawer = true">
+            <span class="cart-text-btn">BOLSA</span>
+            <span v-if="cartTotalItems" class="cart-badge-count">({{ cartTotalItems }})</span>
+          </button>
+        </div>
       </div>
     </nav>
 
-    <!-- HERO BANNER -->
-    <section class="tova-hero">
-      <div class="hero-particles">
-        <div v-for="n in 12" :key="n" class="hero-particle" :style="`--i: ${n}`"></div>
-      </div>
-      <div class="hero-content">
-        <p class="hero-eyebrow">Nueva colección</p>
-        <h1 class="hero-title">
-          Belleza que<br>
-          <span class="hero-title-accent">te define</span>
-        </h1>
-        <p class="hero-subtitle">Joyería artesanal, cosméticos premium y cuidado personal para tu rutina perfecta.</p>
-        <div class="hero-actions">
-          <button class="btn-primary" @click="scrollToCatalog">
-            Ver Colección
-          </button>
-          <button class="btn-ghost">Conoce TOVA</button>
+    <!-- 1. HERO BANNER EDITORIAL (CAMPAÑA INSPIRADA EN FENTY BEAUTY) -->
+    <section class="editorial-hero">
+      <div class="hero-split-layout">
+        <!-- Bloque de Texto de Campaña -->
+        <div class="hero-text-block">
+          <div class="hero-text-content">
+            <span class="hero-tagline">NUEVA COLECCIÓN</span>
+            <h1 class="hero-heading-serif">YOUR NEW BOMB NUDES</h1>
+            <p class="hero-description-light">
+              Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.
+            </p>
+            <button class="editorial-btn-dark" @click="scrollToCatalog">
+              COMPRAR AHORA
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="hero-decoration">
-        <div class="hero-ring ring-1"></div>
-        <div class="hero-ring ring-2"></div>
-        <div class="hero-ring ring-3"></div>
-        <div class="hero-glow"></div>
+        <!-- Bloque de Imagen de Campaña -->
+        <div class="hero-image-block">
+          <div class="hero-img-wrap">
+            <img 
+              src="/resources/js/pages/tova_editorial_campaign_1782228591006.png" 
+              alt="TOVA Campaign Model" 
+              class="hero-campaign-image"
+            />
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- CATEGORÍAS -->
-    <section class="tova-categories">
-      <div class="section-header">
-        <h2 class="section-title">Explora por categoría</h2>
-        <p class="section-sub">Encuentra exactamente lo que buscas</p>
+    <!-- SECCIÓN DE CATEGORÍAS EDITORIALES -->
+    <section class="editorial-categories-section">
+      <div class="section-title-wrap">
+        <h2 class="editorial-title-serif">EXPLORAR TOVA</h2>
+        <div class="title-decor-line"></div>
       </div>
-      <div class="categories-grid">
+      <div class="categories-editorial-flex">
         <button
-          v-for="(cat, i) in categories"
+          v-for="cat in categories"
           :key="cat.id"
-          class="category-card"
-          :class="{ active: selectedCategory === cat.slug }"
-          :style="`--gradient: ${categoryGradients[i % categoryGradients.length]}`"
+          class="category-editorial-chip"
+          :class="{ 'chip-active': selectedCategory === cat.slug }"
           @click="selectCategory(cat.slug)"
         >
-          <div class="category-icon-wrap">
-            <i :class="getCategoryIcon(cat.slug)" class="category-icon-svg"></i>
-          </div>
-          <span class="category-name">{{ cat.name }}</span>
-          <span v-if="cat.products_count" class="category-count">{{ cat.products_count }} items</span>
+          {{ cat.name.toUpperCase() }}
         </button>
-        <!-- Skeleton si no hay categorías -->
-        <template v-if="!categories.length">
-          <div v-for="n in 6" :key="n" class="category-card skeleton-card"></div>
-        </template>
       </div>
     </section>
 
-    <!-- CATÁLOGO -->
-    <section id="catalog" class="tova-catalog">
-      <div class="catalog-header">
-        <h2 class="section-title">
-          {{ selectedCategory ? categories.find(c => c.slug === selectedCategory)?.name || 'Colección' : 'Todos los productos' }}
-          <span v-if="selectedCategory" class="clear-filter" @click="selectedCategory = null; fetchProducts()">✕ Limpiar</span>
-        </h2>
-        <p class="catalog-count">{{ products.length }} productos encontrados</p>
-      </div>
-
-      <!-- Loading skeleton -->
-      <div v-if="loading" class="products-grid">
-        <div v-for="n in 8" :key="n" class="product-card skeleton-card">
-          <div class="skeleton-img"></div>
-          <div class="skeleton-body">
-            <div class="skeleton-line short"></div>
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line medium"></div>
+    <!-- 2. HÍBRIDO 50/50: MEET YOUR MATCH (TINTED MOISTURIZER) -->
+    <section class="editorial-campaign-split">
+      <div class="split-row">
+        <div class="split-col image-col">
+          <img 
+            src="/resources/js/pages/tova_product_tint_1782228603853.png" 
+            alt="TOVA Tinted Moisturizer" 
+            class="split-image"
+          />
+        </div>
+        <div class="split-col text-col bg-nude-light">
+          <div class="split-text-inner">
+            <span class="split-eyebrow">PIEL RADIANTE</span>
+            <h2 class="split-heading-serif">MEET YOUR DONE-IN-ONE TINTED MOISTURIZER</h2>
+            <p class="split-paragraph">
+              Nuestra fórmula ultraligera que unifica el tono de la piel, hidrata profundamente y aporta una luminosidad natural y fresca durante todo el día. Disponible en 25 tonos flexibles.
+            </p>
+            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'skin-care'; fetchProducts(); scrollToCatalog()">
+              DESCUBRIR TONOS
+            </button>
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Productos -->
-      <div v-else-if="products.length" class="products-grid">
+    <!-- 3. PRODUCT GRID: ESTÉTICA TOTALMENTE PLANA (REPLICANDO FENTY) -->
+    <section id="catalog" class="editorial-products-section">
+      <div class="catalog-header-editorial">
+        <h2 class="editorial-title-serif">
+          {{ selectedCategory ? categories.find(c => c.slug === selectedCategory)?.name.toUpperCase() || 'COLECCIÓN' : 'NUESTROS FAVORITOS' }}
+        </h2>
+        <span v-if="selectedCategory" class="editorial-clear-filter" @click="selectedCategory = null; fetchProducts()">
+          VER TODOS
+        </span>
+      </div>
+
+      <!-- Grid de Productos Estilo Editorial -->
+      <div v-if="loading" class="editorial-grid">
+        <div v-for="n in 4" :key="n" class="editorial-product-skeleton">
+          <div class="skeleton-img-flat"></div>
+          <div class="skeleton-text-flat line-1"></div>
+          <div class="skeleton-text-flat line-2"></div>
+        </div>
+      </div>
+
+      <div v-else-if="products.length" class="editorial-grid">
         <div
           v-for="product in products"
           :key="product.id"
-          class="product-card"
+          class="editorial-product-card"
           @click="openQuickView(product)"
         >
-          <!-- Imagen -->
-          <div class="product-img-wrap">
+          <!-- Contenedor de Imagen de Producto con fondo grisáceo suave y sin bordes redondos -->
+          <div class="editorial-product-img-wrap">
             <img
               v-if="product.image_url"
               :src="product.image_url"
               :alt="product.name"
-              class="product-img"
+              class="editorial-product-image"
               loading="lazy"
             />
-            <div v-else class="product-img-placeholder">
-              <i :class="getCategoryIcon(product.category?.slug)" class="placeholder-icon"></i>
+            <div v-else class="editorial-product-image-fallback">
+              <span class="fallback-logo">TOVA</span>
             </div>
-
-            <!-- Badge -->
-            <span v-if="product.category?.name" class="product-badge">{{ product.category.name }}</span>
-
-            <!-- Hover overlay -->
-            <div class="product-hover-overlay">
-              <button class="quick-view-btn" @click.stop="openQuickView(product)">Vista rápida</button>
-              <button
-                class="add-cart-btn"
-                @click.stop="addToCart(product)"
-              >
-                <span>+</span> Añadir
-              </button>
+            
+            <div class="editorial-card-hover-action">
+              <span class="hover-action-label">VISTA RÁPIDA</span>
             </div>
           </div>
 
-          <!-- Info -->
-          <div class="product-info">
-            <p class="product-brand">{{ product.brand || 'TOVA Collection' }}</p>
-            <h3 class="product-name">{{ product.name }}</h3>
-            <div class="product-footer">
-              <span class="product-price">{{ formatPrice(product.sale_price) }}</span>
-              <div class="product-variants-count" v-if="product.variants?.length">
-                {{ product.variants.length }} variante{{ product.variants.length > 1 ? 's' : '' }}
-              </div>
+          <!-- Información del Producto (Tipografías Refinadas y Alineación Limpia) -->
+          <div class="editorial-product-info">
+            <span class="editorial-product-brand">{{ product.brand || 'TOVA' }}</span>
+            <h3 class="editorial-product-name">{{ product.name.toUpperCase() }}</h3>
+            
+            <div class="editorial-product-footer">
+              <span class="editorial-product-price">{{ formatPrice(product.sale_price) }}</span>
+              <span v-if="product.variants?.length" class="editorial-variants-indicator">
+                {{ product.variants.length }} TONOS
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Empty state -->
-      <div v-else class="catalog-empty">
-        <div class="empty-icon">🔍</div>
-        <h3 class="empty-title">Sin resultados</h3>
-        <p class="empty-sub">Intenta con otra búsqueda o categoría.</p>
-        <button class="btn-primary" @click="searchQuery = ''; selectedCategory = null; fetchProducts()">
-          Ver todo
+      <!-- Estado Vacío -->
+      <div v-else class="editorial-empty-state">
+        <p class="empty-message-serif">No se encontraron productos en esta categoría.</p>
+        <button class="editorial-btn-dark-outline" @click="selectedCategory = null; fetchProducts()">
+          VER TODA LA TIENDA
         </button>
       </div>
     </section>
 
-    <!-- FEATURES STRIP -->
-    <section class="tova-features">
-      <div class="feature-item">
-        <span class="feature-icon">🚚</span>
-        <div>
-          <p class="feature-title">Envío rápido</p>
-          <p class="feature-sub">A todo el país</p>
+    <!-- 4. HÍBRIDO 50/50: SUN STALKER BRONZER (INVERSIÓN DE BLOQUES) -->
+    <section class="editorial-campaign-split reverse-split">
+      <div class="split-row">
+        <div class="split-col text-col bg-terracotta-light">
+          <div class="split-text-inner">
+            <span class="split-eyebrow">EFECTO SOL</span>
+            <h2 class="split-heading-serif">SUN STALK'R SOUFFLÉ PRESSED MOUSSE BRONZER</h2>
+            <p class="split-paragraph">
+              El bronceador definitivo que aporta calidez instantánea a tu rostro con un acabado sedoso y de larga duración. Su textura mousse prensada se funde perfectamente sobre la piel sin esfuerzo.
+            </p>
+            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'maquillaje'; fetchProducts(); scrollToCatalog()">
+              COMPRAR BRONCEADOR
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="feature-item">
-        <span class="feature-icon">✅</span>
-        <div>
-          <p class="feature-title">Calidad garantizada</p>
-          <p class="feature-sub">Productos auténticos</p>
-        </div>
-      </div>
-      <div class="feature-item">
-        <span class="feature-icon">🔒</span>
-        <div>
-          <p class="feature-title">Pago seguro</p>
-          <p class="feature-sub">Transacciones protegidas</p>
-        </div>
-      </div>
-      <div class="feature-item">
-        <span class="feature-icon">💬</span>
-        <div>
-          <p class="feature-title">Soporte 24/7</p>
-          <p class="feature-sub">Siempre para ti</p>
+        <div class="split-col image-col">
+          <img 
+            src="/resources/js/pages/tova_product_bronzer_1782228617577.png" 
+            alt="TOVA Bronzer Compact" 
+            class="split-image"
+          />
         </div>
       </div>
     </section>
 
-    <!-- FOOTER -->
-    <footer class="tova-footer">
-      <div class="tova-logo" style="justify-content:center; margin-bottom: 12px;">
-        <span class="tova-logo-icon">✦</span>
-        <span class="tova-logo-text">TOVA</span>
+    <!-- PIE DE PÁGINA EDITORIAL SOFISTICADO -->
+    <footer class="editorial-footer">
+      <div class="footer-container">
+        <div class="footer-grid">
+          <div class="footer-brand-section">
+            <h2 class="footer-brand-logo">TOVA</h2>
+            <p class="footer-brand-tagline">BEAUTY & GEMS</p>
+            <p class="footer-brand-desc">
+              Una estética editorial y fórmulas de lujo pensadas para redefinir el estándar de la cosmética moderna y la joyería de autor.
+            </p>
+          </div>
+          <div class="footer-links-section">
+            <h4 class="footer-section-title">SERVICIOS</h4>
+            <span class="footer-link">AYUDA Y SOPORTE</span>
+            <span class="footer-link">ENVÍOS Y DEVOLUCIONES</span>
+            <span class="footer-link">ENCUENTRA TU TONO</span>
+          </div>
+          <div class="footer-links-section">
+            <h4 class="footer-section-title">COMPAÑÍA</h4>
+            <span class="footer-link">SOBRE TOVA</span>
+            <span class="footer-link">NUESTRA FILOSOFÍA</span>
+            <span class="footer-link">CONTACTO</span>
+          </div>
+        </div>
+        <div class="footer-bottom-bar">
+          <p class="copyright-text">© {{ new Date().getFullYear() }} TOVA. TODOS LOS DERECHOS RESERVADOS.</p>
+        </div>
       </div>
-      <p class="footer-copy">© {{ new Date().getFullYear() }} TOVA Beauty & Gems. Todos los derechos reservados.</p>
     </footer>
 
-    <!-- ====== CARRITO LATERAL (DRAWER) ====== -->
-    <transition name="drawer">
-      <div v-if="cartDrawer" class="cart-drawer-overlay" @click.self="cartDrawer = false">
-        <div class="cart-drawer">
-          <div class="cart-drawer-header">
-            <h2 class="cart-title">Tu carrito <span class="cart-badge-lg">{{ cartTotalItems }}</span></h2>
-            <button class="close-btn" @click="cartDrawer = false">✕</button>
+    <!-- ====== CARRITO LATERAL EDITORIAL (DRAWER) ====== -->
+    <transition name="drawer-fade">
+      <div v-if="cartDrawer" class="editorial-cart-overlay" @click.self="cartDrawer = false">
+        <div class="editorial-cart-drawer">
+          <div class="editorial-cart-header">
+            <h3 class="editorial-cart-title">TU BOLSA DE COMPRAS</h3>
+            <button class="editorial-cart-close" @click="cartDrawer = false">✕</button>
           </div>
 
-          <!-- Items -->
-          <div class="cart-items" v-if="cart.length">
-            <div v-for="item in cart" :key="item.cartKey" class="cart-item">
-              <div class="cart-item-img">
+          <div class="editorial-cart-items" v-if="cart.length">
+            <div v-for="item in cart" :key="item.cartKey" class="editorial-cart-item">
+              <div class="cart-item-img-wrap">
                 <img v-if="item.product.image_url" :src="item.product.image_url" :alt="item.product.name" />
-                <span v-else class="cart-item-placeholder">✦</span>
+                <div v-else class="cart-fallback-img">✦</div>
               </div>
-              <div class="cart-item-info">
-                <p class="cart-item-name">{{ item.product.name }}</p>
-                <p v-if="item.variant" class="cart-item-variant">{{ item.variant.attribute_value }}</p>
-                <p class="cart-item-price">{{ formatPrice(productPrice(item.product, item.variant)) }}</p>
+              <div class="cart-item-details">
+                <h4 class="cart-item-name-editorial">{{ item.product.name.toUpperCase() }}</h4>
+                <p v-if="item.variant" class="cart-item-variant-editorial">{{ item.variant.attribute_value.toUpperCase() }}</p>
+                <p class="cart-item-price-editorial">{{ formatPrice(productPrice(item.product, item.variant)) }}</p>
+                
+                <div class="cart-item-qty-editorial mt-2">
+                  <button @click="updateQty(item.cartKey, -1)">−</button>
+                  <span class="qty-num">{{ item.quantity }}</span>
+                  <button @click="updateQty(item.cartKey, 1)">+</button>
+                </div>
               </div>
-              <div class="cart-item-qty">
-                <button @click="updateQty(item.cartKey, -1)">−</button>
-                <span>{{ item.quantity }}</span>
-                <button @click="updateQty(item.cartKey, 1)">+</button>
-              </div>
-              <button class="cart-item-remove" @click="removeFromCart(item.cartKey)">✕</button>
+              <button class="cart-item-remove-editorial" @click="removeFromCart(item.cartKey)">✕</button>
             </div>
           </div>
-          <div v-else class="cart-empty">
-            <div class="cart-empty-icon">🛍</div>
-            <p>Tu carrito está vacío</p>
+          <div v-else class="editorial-cart-empty">
+            <span class="empty-sparkle">✦</span>
+            <p class="empty-cart-message">TU BOLSA ESTÁ VACÍA</p>
           </div>
 
-          <!-- Totales + CTA -->
-          <div class="cart-footer" v-if="cart.length">
-            <div class="cart-summary">
-              <span>Subtotal</span>
-              <span class="cart-total-price">{{ formatPrice(cartTotalPrice) }}</span>
+          <div class="editorial-cart-footer" v-if="cart.length">
+            <div class="editorial-cart-summary">
+              <span class="summary-label">SUBTOTAL</span>
+              <span class="summary-value">{{ formatPrice(cartTotalPrice) }}</span>
             </div>
-            <button class="btn-checkout" @click="cartDrawer = false; orderDialog = true">
-              Proceder al pago →
+            <button class="editorial-btn-dark w-100 py-4" @click="cartDrawer = false; orderDialog = true">
+              PROCEDER AL PAGO
             </button>
-            <button class="btn-clear" @click="clearCart">Vaciar carrito</button>
           </div>
         </div>
       </div>
     </transition>
 
-    <!-- ====== QUICK VIEW DIALOG ====== -->
-    <transition name="modal">
-      <div v-if="quickViewDialog && selectedProduct" class="modal-overlay" @click.self="quickViewDialog = false">
-        <div class="modal-card quick-view-modal">
-          <button class="modal-close" @click="quickViewDialog = false">✕</button>
+    <!-- ====== QUICK VIEW EDITORIAL DIALOG ====== -->
+    <transition name="modal-scale">
+      <div v-if="quickViewDialog && selectedProduct" class="editorial-modal-overlay" @click.self="quickViewDialog = false">
+        <div class="editorial-quickview-card">
+          <button class="editorial-modal-close" @click="quickViewDialog = false">✕</button>
 
-          <div class="qv-layout">
-            <!-- Imagen -->
-            <div class="qv-img-wrap">
-              <img v-if="selectedProduct.image_url" :src="selectedProduct.image_url" :alt="selectedProduct.name" class="qv-img" />
-              <div v-else class="qv-img-placeholder">✦</div>
+          <div class="editorial-qv-grid">
+            <div class="editorial-qv-img-container">
+              <img v-if="selectedProduct.image_url" :src="selectedProduct.image_url" :alt="selectedProduct.name" class="editorial-qv-img" />
+              <div v-else class="editorial-qv-fallback">TOVA</div>
             </div>
+            <div class="editorial-qv-details">
+              <span class="qv-brand-tag">{{ selectedProduct.brand || 'TOVA' }}</span>
+              <h2 class="qv-title-serif">{{ selectedProduct.name.toUpperCase() }}</h2>
+              <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes de la colección TOVA.' }}</p>
+              <p class="qv-price-bold">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
 
-            <!-- Detalles -->
-            <div class="qv-info">
-              <p class="qv-category">{{ selectedProduct.category?.name || 'TOVA Collection' }}</p>
-              <h2 class="qv-title">{{ selectedProduct.name }}</h2>
-              <p class="qv-description">{{ selectedProduct.description || 'Producto de alta calidad de la colección TOVA.' }}</p>
-              <p class="qv-price">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
-
-              <!-- Variantes -->
-              <div v-if="selectedProduct.variants?.length" class="qv-variants">
-                <p class="qv-variants-label">Selecciona variante:</p>
-                <div class="qv-variants-list">
+              <!-- Variantes de Tonos / Tamaños -->
+              <div v-if="selectedProduct.variants?.length" class="qv-variants-editorial">
+                <p class="qv-variants-title">SELECCIONAR TONO / VARIANTE:</p>
+                <div class="qv-variants-editorial-flex">
                   <button
                     v-for="v in selectedProduct.variants"
                     :key="v.id"
-                    class="variant-chip"
-                    :class="{ 'variant-chip--active': selectedVariant?.id === v.id }"
+                    class="qv-variant-editorial-chip"
+                    :class="{ 'qv-chip-active': selectedVariant?.id === v.id }"
                     @click="selectedVariant = v"
                   >
-                    {{ v.attribute_value }}
-                    <span v-if="Number(v.price_modifier) > 0" class="variant-mod">+{{ formatPrice(v.price_modifier) }}</span>
+                    {{ v.attribute_value.toUpperCase() }}
                   </button>
                 </div>
               </div>
 
-              <button class="btn-primary w-full" @click="quickAddToCart">
-                🛍 Añadir al carrito
+              <button class="editorial-btn-dark w-100 py-3 mt-4" @click="quickAddToCart">
+                AÑADIR A LA BOLSA
               </button>
             </div>
           </div>
@@ -509,927 +504,1028 @@ onMounted(() => {
       </div>
     </transition>
 
-    <!-- ====== CHECKOUT DIALOG ====== -->
-    <transition name="modal">
-      <div v-if="orderDialog" class="modal-overlay" @click.self="orderDialog = false">
-        <div class="modal-card checkout-modal">
-          <button class="modal-close" @click="orderDialog = false">✕</button>
-          <h2 class="modal-title">Finalizar compra</h2>
+    <!-- ====== CHECKOUT EDITORIAL DIALOG ====== -->
+    <transition name="modal-scale">
+      <div v-if="orderDialog" class="editorial-modal-overlay" @click.self="orderDialog = false">
+        <div class="editorial-checkout-card">
+          <button class="editorial-modal-close" @click="orderDialog = false">✕</button>
+          <h2 class="checkout-title-serif">FINALIZAR COMPRA</h2>
 
-          <!-- Resumen del pedido -->
-          <div class="order-summary">
-            <h3 class="summary-title">Resumen del pedido</h3>
-            <div v-for="item in cart" :key="item.cartKey" class="summary-item">
-              <span class="summary-item-name">{{ item.product.name }}<span v-if="item.variant"> ({{ item.variant.attribute_value }})</span></span>
-              <span>x{{ item.quantity }}</span>
-              <span class="summary-item-price">{{ formatPrice(productPrice(item.product, item.variant) * item.quantity) }}</span>
+          <div class="checkout-editorial-summary">
+            <h3 class="checkout-section-title">RESUMEN DEL PEDIDO</h3>
+            <div v-for="item in cart" :key="item.cartKey" class="checkout-summary-row">
+              <span class="item-name">{{ item.product.name.toUpperCase() }} <span v-if="item.variant">({{ item.variant.attribute_value.toUpperCase() }})</span></span>
+              <span class="item-qty">x{{ item.quantity }}</span>
+              <span class="item-price">{{ formatPrice(productPrice(item.product, item.variant) * item.quantity) }}</span>
             </div>
-            <div class="summary-total">
-              <span>Total</span>
-              <span class="total-price">{{ formatPrice(cartTotalPrice) }}</span>
+            <div class="checkout-total-row">
+              <span>TOTAL</span>
+              <span>{{ formatPrice(cartTotalPrice) }}</span>
             </div>
           </div>
 
-          <!-- Formulario -->
-          <div class="checkout-form">
-            <h3 class="summary-title">Tus datos</h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Nombre completo *</label>
+          <div class="checkout-editorial-form">
+            <h3 class="checkout-section-title">INFORMACIÓN DE ENTREGA</h3>
+            <div class="editorial-form-grid">
+              <div class="form-input-group">
+                <label>NOMBRE COMPLETO *</label>
                 <input v-model="orderForm.customer_name" type="text" placeholder="María García" required />
               </div>
-              <div class="form-group">
-                <label>Teléfono *</label>
+              <div class="form-input-group">
+                <label>TELÉFONO DE CONTACTO *</label>
                 <input v-model="orderForm.customer_phone" type="tel" placeholder="+58 412 000 0000" required />
               </div>
-              <div class="form-group">
-                <label>Email</label>
+              <div class="form-input-group">
+                <label>CORREO ELECTRÓNICO</label>
                 <input v-model="orderForm.customer_email" type="email" placeholder="correo@ejemplo.com" />
               </div>
-              <div class="form-group">
-                <label>Dirección de entrega</label>
+              <div class="form-input-group">
+                <label>DIRECCIÓN DE ENTREGA</label>
                 <input v-model="orderForm.shipping_address" type="text" placeholder="Calle, edificio, ciudad..." />
               </div>
-              <div class="form-group form-group--full">
-                <label>Notas adicionales</label>
-                <textarea v-model="orderForm.notes" placeholder="Instrucciones especiales..." rows="2"></textarea>
+              <div class="form-input-group full-width-input">
+                <label>NOTAS ADICIONALES</label>
+                <textarea v-model="orderForm.notes" placeholder="Instrucciones especiales para la entrega..." rows="2"></textarea>
               </div>
             </div>
           </div>
 
           <button
-            class="btn-checkout"
+            class="editorial-btn-dark w-100 py-4 mt-4"
             :disabled="!orderFormValid || orderSubmitting"
             @click="submitOrder"
           >
-            <span v-if="orderSubmitting">Procesando...</span>
-            <span v-else>Confirmar pedido · {{ formatPrice(cartTotalPrice) }}</span>
+            <span v-if="orderSubmitting">PROCESANDO...</span>
+            <span v-else>CONFIRMAR COMPRA · {{ formatPrice(cartTotalPrice) }}</span>
           </button>
         </div>
       </div>
     </transition>
 
-    <!-- ====== SUCCESS SNACK ====== -->
-    <transition name="snack">
-      <div v-if="orderSuccess" class="order-success-snack">
-        <span class="snack-icon">🎉</span>
-        <div>
-          <p class="snack-title">¡Pedido confirmado!</p>
-          <p class="snack-sub">Orden #{{ lastOrderId }} registrada correctamente.</p>
+    <!-- ====== SUCCESS MESSAGE (TOAST EDITORIAL) ====== -->
+    <transition name="toast-fade">
+      <div v-if="orderSuccess" class="editorial-success-toast">
+        <span class="toast-sparkle">✦</span>
+        <div class="toast-content">
+          <p class="toast-title">¡PEDIDO CONFIRMADO!</p>
+          <p class="toast-desc">La orden #{{ lastOrderId }} ha sido procesada con éxito.</p>
         </div>
-        <button class="snack-close" @click="orderSuccess = false">✕</button>
+        <button class="toast-close" @click="orderSuccess = false">✕</button>
       </div>
     </transition>
   </div>
 </template>
 
 <style>
-/* ============================================
-   TOVA STORE — DISEÑO PREMIUM
-   ============================================ */
+/* ==========================================================================
+   ESTÉTICA EDITORIAL DE ALTA GAMA — TOVA BEAUTY & GEMS (INSPIRADO EN FENTY)
+   ========================================================================== */
 
-.tova-root {
-  --tova-pink: #e91e8c;
-  --tova-rose: #ff6bb5;
-  --tova-deep: #8b005e;
-  --tova-gold: #f5c842;
-  --tova-dark: #0d0d1a;
-  --tova-dark2: #13131f;
-  --tova-surface: #1a1a2e;
-  --tova-surface2: #16213e;
-  --tova-border: rgba(233, 30, 140, 0.15);
-  --tova-text: #f0e6f6;
-  --tova-muted: rgba(240, 230, 246, 0.5);
-  --tova-radius: 18px;
-  --tova-radius-sm: 10px;
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Montserrat:wght@200;300;400;500;600;700&display=swap');
+
+.tova-editorial-root {
+  /* Variables de Color e Identidad */
+  --editorial-black: #0F0E0E;
+  --editorial-white: #FFFFFF;
+  --editorial-grey-bg: #F6F6F6;
+  --editorial-border: #E8E8E8;
+  --editorial-nude-dark: #A38A78;
+  --editorial-nude-light: #F2ECE7;
+  --editorial-terracotta-light: #EADCD0;
+  --editorial-text-muted: #666666;
+  --editorial-font-serif: 'Cinzel', Georgia, serif;
+  --editorial-font-sans: 'Montserrat', sans-serif;
+
   min-height: 100vh;
-  min-height: 100dvh;
-  width: 100%;
-  background: var(--tova-dark) !important;
-  color: var(--tova-text) !important;
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--editorial-white);
+  color: var(--editorial-black);
+  font-family: var(--editorial-font-sans);
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* ——— NAV ——— */
-.tova-nav {
+/* ——— Tipografía General ——— */
+.editorial-title-serif {
+  font-family: var(--editorial-font-serif);
+  font-weight: 700;
+  letter-spacing: 4px;
+  font-size: clamp(24px, 3vw, 36px);
+  color: var(--editorial-black);
+}
+
+/* ——— Barra de Navegación Editorial ——— */
+.editorial-nav {
   position: fixed;
   top: 0; left: 0; right: 0;
-  z-index: 100;
-  background: rgba(13, 13, 26, 0.85);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--tova-border);
+  z-index: 900;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--editorial-border);
 }
-.tova-nav-inner {
-  max-width: 1280px;
+.editorial-nav-inner {
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
-  height: 64px;
+  padding: 0 40px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+@media (max-width: 768px) {
+  .editorial-nav-inner { padding: 0 20px; height: 64px; }
+}
+
+.brand-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.logo-main {
+  font-family: var(--editorial-font-serif);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  line-height: 1;
+}
+.logo-sub {
+  font-family: var(--editorial-font-sans);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  margin-top: 4px;
+  color: var(--editorial-text-muted);
+}
+
+.nav-links-center {
+  display: flex;
+  gap: 32px;
+}
+.nav-link-item {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  cursor: pointer;
+  position: relative;
+  padding: 4px 0;
+  transition: color 0.3s;
+}
+.nav-link-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; width: 100%; height: 1px;
+  background-color: var(--editorial-black);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s ease;
+}
+.nav-link-item:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.nav-actions-right {
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
-.tova-logo {
+.search-editorial-wrap {
+  position: relative;
+}
+.search-editorial-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  padding: 6px 0;
+  width: 120px;
+  transition: width 0.4s ease;
+}
+.search-editorial-input:focus {
+  width: 180px;
+}
+.search-line-effect {
+  position: absolute;
+  bottom: 0; left: 0; width: 100%; height: 1px;
+  background-color: var(--editorial-border);
+}
+.search-editorial-input:focus + .search-line-effect {
+  background-color: var(--editorial-black);
+}
+
+.cart-btn-editorial {
+  background: transparent;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  flex-shrink: 0;
+  gap: 6px;
 }
-.tova-logo-icon {
-  font-size: 22px;
-  color: var(--tova-pink);
-  animation: spin-slow 6s linear infinite;
-}
-.tova-logo-text {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.tova-logo-sub {
-  font-size: 10px;
-  color: var(--tova-muted);
-  letter-spacing: 1px;
-  margin-top: 2px;
-}
-
-.tova-search-wrap {
-  flex: 1;
-  max-width: 480px;
-  position: relative;
-}
-.search-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--tova-muted);
-  font-size: 18px;
-}
-.tova-search {
-  width: 100%;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--tova-border);
-  border-radius: 40px;
-  padding: 10px 18px 10px 42px;
-  color: var(--tova-text);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.3s;
-}
-.tova-search::placeholder { color: var(--tova-muted); }
-.tova-search:focus { border-color: var(--tova-pink); }
-
-.tova-cart-btn {
-  position: relative;
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  border: none;
-  border-radius: 50%;
-  width: 44px; height: 44px;
-  font-size: 20px;
-  cursor: pointer;
-  transition: transform 0.2s;
-  flex-shrink: 0;
-}
-.tova-cart-btn:hover { transform: scale(1.08); }
-.cart-icon { line-height: 1; }
-.cart-badge {
-  position: absolute;
-  top: -4px; right: -4px;
-  background: var(--tova-gold);
-  color: #000;
+.cart-text-btn {
   font-size: 11px;
   font-weight: 700;
-  border-radius: 50%;
-  min-width: 20px; height: 20px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 2px;
+  letter-spacing: 2px;
+}
+.cart-badge-count {
+  font-size: 11px;
+  font-weight: 500;
 }
 
-/* ——— HERO ——— */
-.tova-hero {
-  position: relative;
-  min-height: 100vh;
+/* ——— 1. Hero Banner Editorial ——— */
+.editorial-hero {
+  margin-top: 80px;
+  border-bottom: 1px solid var(--editorial-border);
+}
+@media (max-width: 768px) {
+  .editorial-hero { margin-top: 64px; }
+}
+.hero-split-layout {
+  display: flex;
+  min-height: 560px;
+}
+@media (max-width: 960px) {
+  .hero-split-layout { flex-direction: column-reverse; }
+}
+
+.hero-text-block {
+  flex: 1;
+  background-color: #2F241E; /* Sofisticado tono cacao profundo */
+  color: var(--editorial-white);
   display: flex;
   align-items: center;
-  padding: 80px 24px 60px;
-  overflow: hidden;
-  background: radial-gradient(ellipse at 70% 50%, rgba(233,30,140,0.12) 0%, transparent 60%),
-              radial-gradient(ellipse at 30% 80%, rgba(139,0,94,0.1) 0%, transparent 50%);
+  justify-content: center;
+  padding: 60px 40px;
 }
-
-.hero-content {
-  max-width: 1280px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 2;
+.hero-text-content {
+  max-width: 480px;
 }
-
-.hero-eyebrow {
-  font-size: 12px;
+.hero-tagline {
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--tova-pink);
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  color: var(--editorial-nude-dark);
+  display: block;
+  margin-bottom: 16px;
 }
-.hero-eyebrow::before {
-  content: '';
-  display: inline-block;
-  width: 40px; height: 1px;
-  background: var(--tova-pink);
-}
-
-.hero-title {
-  font-size: clamp(48px, 8vw, 90px);
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: -2px;
+.hero-heading-serif {
+  font-family: var(--editorial-font-serif);
+  font-size: clamp(38px, 5vw, 64px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 2px;
   margin-bottom: 24px;
 }
-.hero-title-accent {
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose), var(--tova-gold));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.hero-description-light {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.8;
+  opacity: 0.85;
+  margin-bottom: 36px;
 }
 
-.hero-subtitle {
-  font-size: 18px;
-  color: var(--tova-muted);
-  max-width: 520px;
-  line-height: 1.7;
-  margin-bottom: 40px;
+.hero-image-block {
+  flex: 1;
+  position: relative;
+  background-color: var(--editorial-grey-bg);
+}
+.hero-img-wrap {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+.hero-campaign-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.hero-actions {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-/* Botones globales */
-.btn-primary {
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  color: #fff;
+/* ——— Botón Editorial Premium ——— */
+.editorial-btn-dark {
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
   border: none;
-  padding: 14px 32px;
-  border-radius: 40px;
-  font-size: 15px;
-  font-weight: 600;
+  padding: 16px 40px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.editorial-btn-dark:hover:not(:disabled) {
+  background-color: #333333;
+}
+.editorial-btn-dark:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editorial-btn-dark-outline {
+  background-color: transparent;
+  color: var(--editorial-black);
+  border: 1px solid var(--editorial-black);
+  padding: 16px 40px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 8px 24px rgba(233,30,140,0.3);
 }
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(233,30,140,0.45);
-}
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary.w-full { width: 100%; }
-
-.btn-ghost {
-  background: transparent;
-  color: var(--tova-text);
-  border: 1px solid rgba(255,255,255,0.2);
-  padding: 14px 32px;
-  border-radius: 40px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-.btn-ghost:hover { border-color: var(--tova-pink); color: var(--tova-pink); }
-
-/* Hero decoracion */
-.hero-decoration {
-  position: absolute;
-  right: -100px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 600px; height: 600px;
-  pointer-events: none;
-}
-.hero-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid var(--tova-border);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-}
-.ring-1 { width: 200px; height: 200px; border-color: rgba(233,30,140,0.3); animation: ring-pulse 3s ease-in-out infinite; }
-.ring-2 { width: 350px; height: 350px; border-color: rgba(233,30,140,0.2); animation: ring-pulse 3s ease-in-out infinite 1s; }
-.ring-3 { width: 500px; height: 500px; border-color: rgba(233,30,140,0.1); animation: ring-pulse 3s ease-in-out infinite 2s; }
-.hero-glow {
-  position: absolute;
-  width: 180px; height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(233,30,140,0.4), transparent);
-  top: 50%; left: 50%;
-  transform: translate(-50%,-50%);
-  animation: glow-pulse 2s ease-in-out infinite;
+.editorial-btn-dark-outline:hover {
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
 }
 
-/* Hero particles */
-.hero-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.hero-particle {
-  position: absolute;
-  width: 3px; height: 3px;
-  border-radius: 50%;
-  background: var(--tova-pink);
-  opacity: 0;
-  left: calc(var(--i) * 8.33%);
-  top: calc(var(--i) * 7%);
-  animation: particle-float 4s ease-in-out infinite calc(var(--i) * 0.3s);
+/* ——— Categorías Editorial ——— */
+.editorial-categories-section {
+  padding: 60px 40px 40px;
+  text-align: center;
 }
-
-/* ——— CATEGORÍAS ——— */
-.tova-categories {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 80px 24px 40px;
+@media (max-width: 768px) {
+  .editorial-categories-section { padding: 40px 20px 20px; }
 }
-
-.section-header { margin-bottom: 40px; }
-.section-title {
-  font-size: clamp(28px, 4vw, 42px);
-  font-weight: 800;
-  letter-spacing: -1px;
-  margin-bottom: 8px;
-}
-.section-sub { color: var(--tova-muted); font-size: 16px; }
-
-.categories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
-}
-
-.category-card {
-  background: var(--tova-surface);
-  border: 1px solid var(--tova-border);
-  border-radius: var(--tova-radius);
-  padding: 28px 16px;
+.section-title-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  margin-bottom: 30px;
+}
+.title-decor-line {
+  width: 60px;
+  height: 1px;
+  background-color: var(--editorial-black);
+  margin-top: 12px;
+}
+.categories-editorial-flex {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.category-editorial-chip {
+  background: transparent;
+  border: 1px solid var(--editorial-border);
+  color: var(--editorial-black);
+  padding: 10px 24px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  position: relative;
-  overflow: hidden;
+  transition: all 0.3s;
 }
-.category-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--gradient);
-  opacity: 0;
-  transition: opacity 0.3s;
+.category-editorial-chip:hover,
+.category-editorial-chip.chip-active {
+  border-color: var(--editorial-black);
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
 }
-.category-card:hover::before,
-.category-card.active::before { opacity: 0.12; }
-.category-card:hover, .category-card.active {
-  border-color: var(--tova-pink);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(233,30,140,0.2);
-}
-.category-icon-wrap {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: var(--gradient, linear-gradient(135deg, var(--tova-pink), var(--tova-rose)));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
-}
-.category-icon-svg { font-size: 24px; }
-.category-name { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; }
-.category-count { font-size: 11px; color: var(--tova-muted); }
 
-/* ——— CATÁLOGO ——— */
-.tova-catalog {
-  max-width: 1280px;
+/* ——— 2. Híbrido 50/50: Split Row ——— */
+.editorial-campaign-split {
+  border-top: 1px solid var(--editorial-border);
+  border-bottom: 1px solid var(--editorial-border);
+}
+.split-row {
+  display: flex;
+}
+@media (max-width: 960px) {
+  .split-row { flex-direction: column; }
+}
+.split-col {
+  flex: 1;
+}
+.split-col.image-col {
+  background-color: var(--editorial-grey-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+}
+.split-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.split-col.text-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 60px;
+}
+@media (max-width: 768px) {
+  .split-col.text-col { padding: 40px 20px; }
+}
+.split-text-inner {
+  max-width: 440px;
+}
+.split-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--editorial-nude-dark);
+  display: block;
+  margin-bottom: 16px;
+}
+.split-heading-serif {
+  font-family: var(--editorial-font-serif);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  color: var(--editorial-black);
+}
+.split-paragraph {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--editorial-text-muted);
+  margin-bottom: 32px;
+}
+
+/* Tonos Nude/Tierra Especiales */
+.bg-nude-light {
+  background-color: var(--editorial-nude-light);
+}
+.bg-terracotta-light {
+  background-color: var(--editorial-terracotta-light);
+}
+
+/* Inversión del bloque 50/50 */
+.reverse-split .split-row {
+  flex-direction: row-reverse;
+}
+@media (max-width: 960px) {
+  .reverse-split .split-row { flex-direction: column-reverse; }
+}
+
+/* ——— 3. Grilla de Productos Editorial (Product Grid) ——— */
+.editorial-products-section {
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 80px 40px;
 }
-
-.catalog-header {
+@media (max-width: 768px) {
+  .editorial-products-section { padding: 40px 20px; }
+}
+.catalog-header-editorial {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 32px;
+  border-bottom: 1px solid var(--editorial-black);
+  padding-bottom: 12px;
+  margin-bottom: 40px;
 }
-.catalog-count { font-size: 14px; color: var(--tova-muted); }
-.clear-filter {
-  font-size: 13px;
-  color: var(--tova-pink);
+.editorial-clear-filter {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
   cursor: pointer;
-  margin-left: 12px;
-  font-weight: 500;
+  color: var(--editorial-black);
+  text-decoration: underline;
 }
-.clear-filter:hover { text-decoration: underline; }
 
-.products-grid {
+.editorial-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 40px 24px;
 }
 
-/* Product card */
-.product-card {
-  background: var(--tova-surface);
-  border: 1px solid var(--tova-border);
-  border-radius: var(--tova-radius);
-  overflow: hidden;
+/* Tarjeta de Producto Totalmente Plana (Inspiración Fenty) */
+.editorial-product-card {
   cursor: pointer;
-  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-.product-card:hover {
-  transform: translateY(-8px);
-  border-color: rgba(233,30,140,0.4);
-  box-shadow: 0 20px 50px rgba(233,30,140,0.15);
-}
-
-.product-img-wrap {
-  position: relative;
-  aspect-ratio: 1;
-  overflow: hidden;
-  background: var(--tova-surface2);
-}
-.product-img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-.product-card:hover .product-img { transform: scale(1.08); }
-
-.product-img-placeholder {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, var(--tova-surface), var(--tova-surface2));
-}
-.placeholder-icon { font-size: 48px; opacity: 0.3; color: var(--tova-pink); }
-
-.product-badge {
-  position: absolute;
-  top: 12px; left: 12px;
-  background: rgba(233,30,140,0.9);
-  backdrop-filter: blur(8px);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 20px;
-}
-
-.product-hover-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(13,13,26,0.8);
   display: flex;
   flex-direction: column;
+}
+.editorial-product-img-wrap {
+  position: relative;
+  aspect-ratio: 1;
+  background-color: var(--editorial-grey-bg);
+  overflow: hidden;
+  border: 1px solid #EDEDED; /* Borde imperceptible súper sutil */
+}
+.editorial-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.editorial-product-card:hover .editorial-product-image {
+  transform: scale(1.04);
+}
+
+.editorial-product-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  background-color: var(--editorial-grey-bg);
+}
+.fallback-logo {
+  font-family: var(--editorial-font-serif);
+  font-size: 24px;
+  letter-spacing: 6px;
+  opacity: 0.15;
+}
+
+/* Hover Editorial tipo Revista */
+.editorial-card-hover-action {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
   transition: opacity 0.3s;
 }
-.product-card:hover .product-hover-overlay { opacity: 1; }
-
-.quick-view-btn {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
-  padding: 8px 20px;
-  border-radius: 30px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
+.editorial-product-card:hover .editorial-card-hover-action {
+  opacity: 1;
 }
-.quick-view-btn:hover { background: rgba(255,255,255,0.2); }
-
-.add-cart-btn {
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  border: none;
-  color: #fff;
-  padding: 10px 24px;
-  border-radius: 30px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+.hover-action-label {
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
+  padding: 12px 24px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
 }
-.add-cart-btn:hover { transform: scale(1.05); }
 
-.product-info { padding: 16px 20px 20px; }
-.product-brand { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--tova-pink); margin-bottom: 6px; }
-.product-name {
+/* Tipografía de la Tarjeta */
+.editorial-product-info {
+  padding: 20px 0 0;
+}
+.editorial-product-brand {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--editorial-nude-dark);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
+.editorial-product-name {
+  font-family: var(--editorial-font-serif);
   font-size: 16px;
   font-weight: 700;
-  margin-bottom: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  line-height: 1.3;
 }
-.product-footer { display: flex; align-items: center; justify-content: space-between; }
-.product-price {
-  font-size: 20px;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.product-variants-count { font-size: 11px; color: var(--tova-muted); }
-
-/* Empty state */
-.catalog-empty {
-  text-align: center;
-  padding: 80px 24px;
-}
-.empty-icon { font-size: 60px; margin-bottom: 20px; }
-.empty-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-.empty-sub { color: var(--tova-muted); margin-bottom: 24px; }
-
-/* ——— FEATURES ——— */
-.tova-features {
-  background: var(--tova-surface);
-  border-top: 1px solid var(--tova-border);
-  border-bottom: 1px solid var(--tova-border);
+.editorial-product-footer {
   display: flex;
-  justify-content: center;
-  gap: 0;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
 }
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 32px 48px;
-  border-right: 1px solid var(--tova-border);
-  flex: 1;
-  min-width: 200px;
-}
-.feature-item:last-child { border-right: none; }
-.feature-icon { font-size: 32px; }
-.feature-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
-.feature-sub { font-size: 13px; color: var(--tova-muted); }
-
-/* ——— FOOTER ——— */
-.tova-footer {
-  text-align: center;
-  padding: 40px 24px;
-  background: var(--tova-dark);
-}
-.footer-copy { font-size: 13px; color: var(--tova-muted); }
-
-/* ——— SKELETONS ——— */
-.skeleton-card { pointer-events: none; }
-.skeleton-img {
-  width: 100%; aspect-ratio: 1;
-  background: linear-gradient(90deg, var(--tova-surface) 25%, rgba(255,255,255,0.04) 50%, var(--tova-surface) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-.skeleton-body { padding: 16px; }
-.skeleton-line {
-  height: 12px; border-radius: 6px; margin-bottom: 10px;
-  background: linear-gradient(90deg, var(--tova-surface) 25%, rgba(255,255,255,0.04) 50%, var(--tova-surface) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-.skeleton-line.short { width: 40%; }
-.skeleton-line.medium { width: 60%; }
-
-/* ——— CARRITO DRAWER ——— */
-.cart-drawer-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
-}
-.cart-drawer {
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: min(420px, 95vw);
-  background: var(--tova-surface);
-  border-left: 1px solid var(--tova-border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.cart-drawer-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 24px;
-  border-bottom: 1px solid var(--tova-border);
-}
-.cart-title { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
-.cart-badge-lg {
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  color: #fff;
-  border-radius: 20px;
-  padding: 2px 10px;
-  font-size: 13px;
-}
-.close-btn {
-  background: none; border: none;
-  color: var(--tova-muted);
-  font-size: 20px;
-  cursor: pointer;
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-.close-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
-
-.cart-items {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.cart-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--tova-surface2);
-  border-radius: var(--tova-radius-sm);
-  padding: 12px;
-}
-.cart-item-img {
-  width: 60px; height: 60px;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--tova-dark);
-  display: flex; align-items: center; justify-content: center;
-}
-.cart-item-img img { width: 100%; height: 100%; object-fit: cover; }
-.cart-item-placeholder { font-size: 24px; color: var(--tova-pink); }
-.cart-item-info { flex: 1; min-width: 0; }
-.cart-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cart-item-variant { font-size: 11px; color: var(--tova-muted); }
-.cart-item-price { font-size: 14px; font-weight: 700; color: var(--tova-pink); margin-top: 2px; }
-
-.cart-item-qty {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--tova-dark);
-  border-radius: 20px;
-  padding: 4px 8px;
-}
-.cart-item-qty button {
-  background: none; border: none;
-  color: var(--tova-text);
-  font-size: 18px;
-  cursor: pointer;
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.2s;
-}
-.cart-item-qty button:hover { background: rgba(255,255,255,0.1); }
-.cart-item-qty span { font-size: 14px; font-weight: 700; min-width: 20px; text-align: center; }
-
-.cart-item-remove {
-  background: none; border: none;
-  color: var(--tova-muted);
+.editorial-product-price {
   font-size: 14px;
+  font-weight: 600;
+}
+.editorial-variants-indicator {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--editorial-text-muted);
+}
+
+/* Skeletons Planos */
+.editorial-product-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+.skeleton-img-flat {
+  aspect-ratio: 1;
+  background-color: var(--editorial-grey-bg);
+  animation: pulse-editorial 1.5s infinite;
+}
+.skeleton-text-flat {
+  height: 12px;
+  background-color: var(--editorial-grey-bg);
+  margin-top: 12px;
+  animation: pulse-editorial 1.5s infinite;
+}
+.skeleton-text-flat.line-1 { width: 40%; }
+.skeleton-text-flat.line-2 { width: 70%; }
+@keyframes pulse-editorial {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.editorial-empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+.empty-message-serif {
+  font-family: var(--editorial-font-serif);
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+
+/* ——— Pie de Página de Lujo ——— */
+.editorial-footer {
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
+  padding: 80px 40px 40px;
+  margin-top: auto;
+}
+@media (max-width: 768px) {
+  .editorial-footer { padding: 60px 20px 30px; }
+}
+.footer-container {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 60px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 60px;
+}
+@media (max-width: 768px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 40px; }
+}
+
+.footer-brand-section {
+  max-width: 400px;
+}
+.footer-brand-logo {
+  font-family: var(--editorial-font-serif);
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  line-height: 1;
+}
+.footer-brand-tagline {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 6px;
+  color: #888;
+  margin-top: 6px;
+  margin-bottom: 24px;
+}
+.footer-brand-desc {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #888;
+}
+
+.footer-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.footer-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.footer-link {
+  font-size: 12px;
+  color: #888;
   cursor: pointer;
   transition: color 0.2s;
 }
-.cart-item-remove:hover { color: #ff6b6b; }
+.footer-link:hover {
+  color: var(--editorial-white);
+}
 
-.cart-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
-.cart-empty-icon { font-size: 60px; opacity: 0.5; }
-.cart-empty p { color: var(--tova-muted); }
+.footer-bottom-bar {
+  padding-top: 40px;
+  display: flex;
+  justify-content: space-between;
+}
+.copyright-text {
+  font-size: 11px;
+  color: #666;
+  letter-spacing: 1px;
+}
 
-.cart-footer {
-  padding: 20px;
-  border-top: 1px solid var(--tova-border);
+/* ——— ====== CARRITO DRAWER EDITORIAL ====== ——— */
+.editorial-cart-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+}
+.editorial-cart-drawer {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: min(460px, 95vw);
+  background-color: var(--editorial-white);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  overflow: hidden;
+  box-shadow: -20px 0 60px rgba(0,0,0,0.15);
 }
-.cart-summary {
+.editorial-cart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 15px;
+  padding: 30px;
+  border-bottom: 1px solid var(--editorial-border);
 }
-.cart-total-price { font-size: 24px; font-weight: 800; color: var(--tova-pink); }
-.btn-checkout {
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  color: #fff;
-  border: none;
-  padding: 16px;
-  border-radius: 40px;
-  font-size: 15px;
+.editorial-cart-title {
+  font-family: var(--editorial-font-serif);
+  font-size: 18px;
   font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 8px 24px rgba(233,30,140,0.35);
+  letter-spacing: 3px;
 }
-.btn-checkout:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(233,30,140,0.5); }
-.btn-checkout:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-clear {
-  background: none;
-  border: 1px solid var(--tova-border);
-  color: var(--tova-muted);
-  padding: 10px;
-  border-radius: 40px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
+.editorial-cart-close {
+  background: none; border: none; font-size: 20px; cursor: pointer;
 }
-.btn-clear:hover { border-color: #ff6b6b; color: #ff6b6b; }
 
-/* ——— MODALES ——— */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 1001;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(8px);
+.editorial-cart-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.editorial-cart-item {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+.cart-item-img-wrap {
+  width: 90px;
+  aspect-ratio: 1;
+  background-color: var(--editorial-grey-bg);
+  border: 1px solid var(--editorial-border);
+}
+.cart-item-img-wrap img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.cart-fallback-img {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--editorial-nude-dark);
+}
+
+.cart-item-details {
+  flex: 1;
+}
+.cart-item-name-editorial {
+  font-family: var(--editorial-font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.cart-item-variant-editorial {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--editorial-text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.cart-item-price-editorial {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cart-item-qty-editorial {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--editorial-border);
+  background-color: var(--editorial-white);
+}
+.cart-item-qty-editorial button {
+  background: none; border: none; width: 32px; height: 32px; font-size: 16px; cursor: pointer;
+}
+.qty-num {
+  font-size: 12px; font-weight: 700; width: 32px; text-align: center;
+}
+.cart-item-remove-editorial {
+  background: none; border: none; cursor: pointer; font-size: 14px; color: #888; align-self: flex-start;
+}
+
+.editorial-cart-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.empty-sparkle {
+  font-size: 32px; color: var(--editorial-nude-dark);
+}
+.empty-cart-message {
+  font-size: 12px; font-weight: 700; letter-spacing: 3px; color: #888;
+}
+
+.editorial-cart-footer {
+  padding: 30px;
+  border-top: 1px solid var(--editorial-border);
+  background-color: var(--editorial-white);
+}
+.editorial-cart-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.summary-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+}
+.summary-value {
+  font-size: 20px; font-weight: 700;
+}
+
+/* ——— ====== DIALOGS EDITORIALES ====== ——— */
+.editorial-modal-overlay {
+  position: fixed; inset: 0; z-index: 1100;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
-.modal-card {
-  background: var(--tova-surface);
-  border: 1px solid var(--tova-border);
-  border-radius: 24px;
+.editorial-quickview-card {
+  background-color: var(--editorial-white);
+  max-width: 900px;
+  width: 100%;
   position: relative;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  box-shadow: 0 40px 100px rgba(0,0,0,0.25);
   max-height: 90vh;
   overflow-y: auto;
-  width: 100%;
 }
-.modal-close {
-  position: sticky;
-  top: 16px; right: 16px;
-  float: right;
-  background: rgba(255,255,255,0.1);
-  border: none;
-  color: #fff;
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  font-size: 16px;
-  cursor: pointer;
-  z-index: 10;
-  transition: background 0.2s;
-}
-.modal-close:hover { background: rgba(255,255,255,0.2); }
-.modal-title {
-  font-size: 22px;
-  font-weight: 800;
-  padding: 24px 24px 0;
-  margin-bottom: 20px;
+.editorial-modal-close {
+  position: absolute; top: 24px; right: 24px; z-index: 10;
+  background: none; border: none; font-size: 20px; cursor: pointer;
 }
 
-/* Quick View Modal */
-.quick-view-modal { max-width: 800px; }
-.qv-layout { display: grid; grid-template-columns: 1fr 1fr; min-height: 400px; }
-@media (max-width: 640px) { .qv-layout { grid-template-columns: 1fr; } }
-.qv-img-wrap { background: var(--tova-surface2); border-radius: 24px 0 0 24px; overflow: hidden; }
-@media (max-width: 640px) { .qv-img-wrap { border-radius: 24px 24px 0 0; min-height: 260px; } }
-.qv-img { width: 100%; height: 100%; object-fit: cover; }
-.qv-img-placeholder {
-  width: 100%; height: 100%; min-height: 400px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 80px; color: var(--tova-pink); opacity: 0.3;
+.editorial-qv-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
 }
-.qv-info { padding: 32px; display: flex; flex-direction: column; gap: 16px; }
-.qv-category { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--tova-pink); }
-.qv-title { font-size: 24px; font-weight: 800; line-height: 1.3; }
-.qv-description { font-size: 14px; color: var(--tova-muted); line-height: 1.7; }
-.qv-price {
-  font-size: 32px; font-weight: 900;
-  background: linear-gradient(135deg, var(--tova-pink), var(--tova-rose));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+@media (max-width: 768px) {
+  .editorial-qv-grid { grid-template-columns: 1fr; }
 }
-.qv-variants-label { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
-.qv-variants-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.variant-chip {
-  background: var(--tova-surface2);
-  border: 1px solid var(--tova-border);
-  color: var(--tova-text);
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 13px;
+.editorial-qv-img-container {
+  background-color: var(--editorial-grey-bg);
+  aspect-ratio: 1;
+}
+.editorial-qv-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.editorial-qv-fallback {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-family: var(--editorial-font-serif); font-size: 40px; letter-spacing: 8px; opacity: 0.1;
+}
+
+.editorial-qv-details {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+@media (max-width: 768px) {
+  .editorial-qv-details { padding: 30px 20px; }
+}
+.qv-brand-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 3px; color: var(--editorial-nude-dark); text-transform: uppercase; margin-bottom: 8px;
+}
+.qv-title-serif {
+  font-family: var(--editorial-font-serif); font-size: 28px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px;
+}
+.qv-desc-light {
+  font-size: 14px; line-height: 1.8; color: var(--editorial-text-muted); margin-bottom: 20px;
+}
+.qv-price-bold {
+  font-size: 24px; font-weight: 700; margin-bottom: 24px;
+}
+
+.qv-variants-editorial-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.qv-variant-editorial-chip {
+  background-color: transparent;
+  border: 1px solid var(--editorial-border);
+  color: var(--editorial-black);
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
-.variant-chip:hover { border-color: var(--tova-pink); }
-.variant-chip--active { background: rgba(233,30,140,0.15); border-color: var(--tova-pink); color: var(--tova-pink); }
-.variant-mod { font-size: 11px; color: var(--tova-muted); margin-left: 4px; }
+.qv-variant-editorial-chip:hover,
+.qv-variant-editorial-chip.qv-chip-active {
+  border-color: var(--editorial-black);
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
+}
 
 /* Checkout Modal */
-.checkout-modal { max-width: 640px; padding: 24px; }
-.order-summary, .checkout-form { margin-bottom: 24px; }
-.summary-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--tova-muted); text-transform: uppercase; letter-spacing: 1px; font-size: 12px; }
-.summary-item { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--tova-border); font-size: 14px; }
-.summary-item-name { flex: 1; }
-.summary-item-price { font-weight: 700; color: var(--tova-pink); }
-.summary-total { display: flex; justify-content: space-between; padding-top: 16px; font-weight: 700; font-size: 16px; }
-.total-price { font-size: 24px; color: var(--tova-pink); }
-
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
-.form-group { display: flex; flex-direction: column; gap: 6px; }
-.form-group--full { grid-column: 1 / -1; }
-.form-group label { font-size: 12px; font-weight: 600; color: var(--tova-muted); letter-spacing: 0.5px; }
-.form-group input,
-.form-group textarea {
-  background: var(--tova-surface2);
-  border: 1px solid var(--tova-border);
-  border-radius: var(--tova-radius-sm);
-  color: var(--tova-text);
-  padding: 12px 14px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-  resize: none;
+.editorial-checkout-card {
+  background-color: var(--editorial-white);
+  max-width: 680px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.25);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 50px;
 }
-.form-group input:focus,
-.form-group textarea:focus { border-color: var(--tova-pink); }
-
-/* ——— SUCCESS SNACK ——— */
-.order-success-snack {
-  position: fixed;
-  bottom: 24px; left: 50%;
-  transform: translateX(-50%);
-  z-index: 2000;
-  background: var(--tova-surface);
-  border: 1px solid rgba(233,30,140,0.4);
-  border-radius: 16px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 20px 60px rgba(233,30,140,0.3);
-  min-width: 300px;
-  max-width: 480px;
-}
-.snack-icon { font-size: 32px; }
-.snack-title { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
-.snack-sub { font-size: 13px; color: var(--tova-muted); }
-.snack-close { background: none; border: none; color: var(--tova-muted); font-size: 18px; cursor: pointer; margin-left: auto; }
-
-/* ——— ANIMACIONES ——— */
-@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes ring-pulse {
-  0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
-  50% { transform: translate(-50%,-50%) scale(1.06); opacity: 0.7; }
-}
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.6; transform: translate(-50%,-50%) scale(1); }
-  50% { opacity: 1; transform: translate(-50%,-50%) scale(1.2); }
-}
-@keyframes particle-float {
-  0%, 100% { opacity: 0; transform: translateY(0); }
-  50% { opacity: 0.6; transform: translateY(-30px); }
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* Transiciones de drawer/modal */
-.drawer-enter-active, .drawer-leave-active { transition: opacity 0.3s; }
-.drawer-enter-from, .drawer-leave-to { opacity: 0; }
-.drawer-enter-active .cart-drawer, .drawer-leave-active .cart-drawer { transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.drawer-enter-from .cart-drawer, .drawer-leave-to .cart-drawer { transform: translateX(100%); }
-
-.modal-enter-active, .modal-leave-active { transition: all 0.3s; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-.modal-enter-active .modal-card, .modal-leave-active .modal-card { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.modal-enter-from .modal-card, .modal-leave-to .modal-card { transform: scale(0.92) translateY(20px); }
-
-.snack-enter-active, .snack-leave-active { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.snack-enter-from, .snack-leave-to { opacity: 0; transform: translateX(-50%) translateY(30px); }
-
-/* ——— RESPONSIVE ——— */
 @media (max-width: 768px) {
-  .tova-search-wrap { display: none; }
-  .hero-decoration { display: none; }
-  .tova-hero { min-height: auto; padding: 100px 24px 60px; }
-  .categories-grid { grid-template-columns: repeat(3, 1fr); }
-  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
-  .feature-item { padding: 24px; }
+  .editorial-checkout-card { padding: 30px 20px; }
+}
+.checkout-title-serif {
+  font-family: var(--editorial-font-serif); font-size: 24px; font-weight: 700; letter-spacing: 3px; margin-bottom: 30px; text-align: center;
 }
 
-@media (max-width: 480px) {
-  .categories-grid { grid-template-columns: repeat(2, 1fr); }
-  .products-grid { grid-template-columns: 1fr; }
+.checkout-editorial-summary {
+  background-color: var(--editorial-grey-bg);
+  padding: 24px;
+  margin-bottom: 30px;
 }
+.checkout-section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--editorial-nude-dark); margin-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 8px;
+}
+.checkout-summary-row {
+  display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.03);
+}
+.checkout-summary-row .item-name { flex: 1; }
+.checkout-summary-row .item-qty { margin-right: 20px; font-weight: 700; }
+.checkout-summary-row .item-price { font-weight: 700; }
+.checkout-total-row {
+  display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; padding-top: 16px;
+}
+
+.editorial-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 580px) {
+  .editorial-form-grid { grid-template-columns: 1fr; }
+}
+.form-input-group {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.form-input-group.full-width-input {
+  grid-column: 1 / -1;
+}
+.form-input-group label {
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-text-muted);
+}
+.form-input-group input,
+.form-input-group textarea {
+  border: 1px solid var(--editorial-border);
+  padding: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  background-color: var(--editorial-white);
+  transition: border-color 0.3s;
+}
+.form-input-group input:focus,
+.form-input-group textarea:focus {
+  border-color: var(--editorial-black);
+}
+
+/* ——— Success Toast ——— */
+.editorial-success-toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 2000;
+  background-color: var(--editorial-black); color: var(--editorial-white);
+  padding: 20px 30px; display: flex; align-items: center; gap: 20px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.3); min-width: 320px; max-width: 520px;
+}
+.toast-sparkle {
+  font-size: 24px; color: var(--editorial-nude-dark);
+}
+.toast-title {
+  font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 4px;
+}
+.toast-desc {
+  font-size: 12px; opacity: 0.8;
+}
+.toast-close {
+  background: none; border: none; color: #888; font-size: 16px; cursor: pointer; margin-left: auto;
+}
+
+/* ——— TRANSITIONS ——— */
+.drawer-fade-enter-active, .drawer-fade-leave-active { transition: opacity 0.4s; }
+.drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; }
+.drawer-fade-enter-active .editorial-cart-drawer, .drawer-fade-leave-active .editorial-cart-drawer { transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+.drawer-fade-enter-from .editorial-cart-drawer, .drawer-fade-leave-to .editorial-cart-drawer { transform: translateX(100%); }
+
+.modal-scale-enter-active, .modal-scale-leave-active { transition: all 0.4s; }
+.modal-scale-enter-from, .modal-scale-leave-to { opacity: 0; }
+.modal-scale-enter-active .editorial-quickview-card, .modal-scale-leave-active .editorial-quickview-card,
+.modal-scale-enter-active .editorial-checkout-card, .modal-scale-leave-active .editorial-checkout-card { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.modal-scale-enter-from .editorial-quickview-card, .modal-scale-leave-to .editorial-quickview-card,
+.modal-scale-enter-from .editorial-checkout-card, .modal-scale-leave-to .editorial-checkout-card { transform: scale(0.95); }
+
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translate(-50%, 40px); }
 </style>
