@@ -16,7 +16,9 @@ import {
     faTrash,
     faUser,
     faUsers,
-    faChartBar
+    faChartBar,
+    faChartLine,
+    faCalendarDays
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -35,7 +37,9 @@ library.add(
   faAddressBook,
   faChartSimple,
   faArrowsRotate,
-  faChartBar
+  faChartBar,
+  faChartLine,
+  faCalendarDays
 )
 
 export default function (app) {
