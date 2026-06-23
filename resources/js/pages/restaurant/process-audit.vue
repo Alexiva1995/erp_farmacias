@@ -3,8 +3,10 @@ import { computed, onMounted, ref, watch } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useDisplay } from "vuetify";
-
+import { useAuthStore } from "@/stores/auth";
+ 
 const { mobile } = useDisplay();
+const authStore = useAuthStore();
 
 // Listas e Información inicial
 const orders = ref([]);
@@ -413,7 +415,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
         <h2 class="text-h4 font-weight-black text-primary">Auditoría Operativa de Tiempos</h2>
         <p class="text-xs font-weight-medium text-disabled">Módulo de cronometraje de fases de servicio y preparación</p>
       </div>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2" v-if="authStore.isAdmin">
         <VBtn
           color="primary"
           variant="tonal"

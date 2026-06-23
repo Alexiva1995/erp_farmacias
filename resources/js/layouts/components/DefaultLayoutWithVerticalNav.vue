@@ -69,22 +69,47 @@ const processedNavItems = computed(() => {
       return copy;
     });
   };
-
+ 
   items = filterRestaurantNav(items);
-
+ 
+  // 2. Si es modo restaurante, ocultar Reservas para TODOS los roles
+  if (isRestaurant) {
+    items = items.filter(item => item.title !== 'Reservas' && item.to !== 'reservations');
+    
+    // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
+    // para que no requiera privilegios exclusivos de 'admin' en la evaluación de CASL del layout.
+    items = items.map(item => {
+      if (item.title === 'Operativa') {
+        let copy = { ...item };
+        delete copy.action;
+        delete copy.subject;
+        if (copy.children) {
+          copy.children = copy.children.map(child => {
+            let childCopy = { ...child };
+            delete childCopy.action;
+            delete childCopy.subject;
+            return childCopy;
+          });
+        }
+        return copy;
+      }
+      return item;
+    });
+  }
+ 
   // Solo procesar si el usuario está cargado
   if (!authStore.isLoaded || !authStore.user) {
     return items;
   }
-
+ 
   const currentRoleId = authStore.user?.role_id;
   const isUser = currentRoleId === 3;
-
+ 
   if (!isUser) {
     return items;
   }
-
-  // Para usuarios tipo "usuario", mostrar Inventario Ciclicos solo con Pendientes e Inventario de Usuario
+ 
+  // Para usuarios tipo "usuario" (empleado), mostrar Inventario Ciclicos solo con Pendientes e Inventario de Usuario
   try {
     return items.map((item) => {
       if (
