@@ -136,7 +136,7 @@ onMounted(async () => {
                     v-model="form.primary_color"
                     type="color"
                     class="color-picker"
-                  >
+                  />
                   <VTextField
                     v-model="form.primary_color"
                     density="compact"
@@ -145,13 +145,13 @@ onMounted(async () => {
                 </div>
               </VCol>
               <VCol cols="12" md="4">
-                <VLabel class="mb-2">Color Secundario (Tienda)</VCol>
+                <VLabel class="mb-2">Color Secundario (Tienda)</VLabel>
                 <div class="d-flex align-center gap-4">
                   <input
                     v-model="form.secondary_color"
                     type="color"
                     class="color-picker"
-                  >
+                  />
                   <VTextField
                     v-model="form.secondary_color"
                     density="compact"
@@ -166,7 +166,7 @@ onMounted(async () => {
                     v-model="form.tertiary_color"
                     type="color"
                     class="color-picker"
-                  >
+                  />
                   <VTextField
                     v-model="form.tertiary_color"
                     density="compact"
