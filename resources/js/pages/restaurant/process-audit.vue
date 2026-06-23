@@ -55,12 +55,6 @@ const currentPhase = computed(() => {
   return phases.value[currentPhaseIndex.value];
 });
 
-// Carga de la orden seleccionada para saber detalles
-const selectedOrderDetails = computed(() => {
-  if (!selectedOrderId.value) return null;
-  return orders.value.find(o => o.id === selectedOrderId.value);
-});
-
 // Convertir segundos a formato MM:SS
 const formatTime = (seconds) => {
   if (seconds === undefined || seconds === null) return "00:00";
@@ -404,16 +398,16 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
 </script>
 
 <template>
-  <div class="process-audit-container pa-6">
+  <div class="process-audit-container pb-12">
     <!-- Header e Inicio de Flujo / Configuración -->
     <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
       <div>
-        <h2 class="text-h4 font-weight-black text-warning">Auditoría Operativa de Procesos</h2>
-        <p class="text-white-50">Gestión de tiempos y flujos críticos de servicio</p>
+        <h2 class="text-h4 font-weight-black text-primary">Auditoría Operativa de Tiempos</h2>
+        <p class="text-xs font-weight-medium text-disabled">Módulo de cronometraje de fases de servicio y preparación</p>
       </div>
       <div class="d-flex gap-2">
         <VBtn
-          color="warning"
+          color="primary"
           variant="tonal"
           prepend-icon="tabler-settings"
           @click="openNewFlowModal"
@@ -423,65 +417,58 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
       </div>
     </div>
 
-    <VRow>
-      <!-- Panel de Control y Cronómetro (Look Oscuro e Industrial) -->
+    <VRow class="mb-6">
+      <!-- Panel de Control y Cronómetro (Integración con estilo nativo de Vuetify) -->
       <VCol cols="12" md="7">
-        <VCard class="rounded-xl overflow-hidden elevation-8 border-dark bg-industrial-dark text-white">
-          <VCardItem class="bg-carbon py-4">
-            <div class="d-flex align-center justify-space-between flex-wrap gap-3">
-              <div class="d-flex align-center gap-3">
-                <VAvatar color="warning" variant="flat" size="40" rounded="lg">
-                  <VIcon icon="tabler-hourglass-high" color="white" />
-                </VAvatar>
-                <div>
-                  <VCardTitle class="text-h5 font-weight-black text-warning">Cronómetro de Auditoría</VCardTitle>
-                  <VCardSubtitle class="text-white-50">Audite la orden seleccionando un flujo dinámico</VCardSubtitle>
-                </div>
+        <VCard class="rounded-lg border shadow-sm bg-surface">
+          <VCardItem class="pa-4 pb-0">
+            <template #prepend>
+              <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
+                <VIcon icon="tabler-hourglass-high" size="20" />
+              </VAvatar>
+            </template>
+            <div class="d-flex align-center justify-space-between flex-wrap gap-3 w-100">
+              <div>
+                <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Cronómetro de Auditoría</VCardTitle>
+                <VCardSubtitle class="text-xs font-weight-medium text-disabled">Inicie y controle el cronómetro del flujo</VCardSubtitle>
               </div>
               <div style="min-width: 200px;">
-                <span class="label-industrial text-warning font-weight-bold text-caption">Flujo de Medición</span>
                 <VSelect
                   v-model="selectedFlowId"
                   :items="flows"
                   item-title="name"
                   item-value="id"
-                  variant="solo"
                   density="compact"
-                  class="mt-1"
-                  bg-color="rgb(30, 30, 30)"
-                  theme="dark"
+                  hide-details
+                  prepend-inner-icon="tabler-git-commit"
+                  placeholder="Seleccionar Flujo"
                 />
               </div>
             </div>
           </VCardItem>
 
-          <VCardText class="pa-6">
+          <VCardText class="pa-4 pt-6">
             <VForm>
-              <!-- Selectores Opcionales y Obligatorios -->
               <VRow dense>
                 <VCol cols="12">
-                  <span class="label-industrial text-white-50 font-weight-bold">1. Selección de Orden Activa (Opcional)</span>
                   <VSelect
                     v-model="selectedOrderId"
                     :items="orders"
                     item-title="id"
                     item-value="id"
-                    placeholder="Puede asociar una orden ahora o al finalizar..."
-                    variant="solo"
-                    density="comfortable"
-                    class="mt-1 border-input-industrial"
-                    bg-color="rgb(30, 30, 30)"
-                    theme="dark"
+                    placeholder="Asociar Orden Activa (Opcional)"
+                    density="compact"
                     clearable
+                    prepend-inner-icon="tabler-clipboard-text"
                   >
                     <template #item="{ props, item }">
                       <VListItem v-bind="props">
                         <template #title>
-                          <span class="font-weight-black text-warning">Orden #{{ item.raw.id }}</span>
-                          <span class="ms-2 text-white-50">(${{ item.raw.total_amount_usd }} USD)</span>
+                          <span class="font-weight-black">Orden #{{ item.raw.id }}</span>
+                          <span class="ms-2 text-disabled">(${{ item.raw.total_amount_usd }} USD)</span>
                         </template>
                         <template #subtitle>
-                          <span class="text-caption text-white-70">
+                          <span class="text-caption text-disabled">
                             Cliente: {{ item.raw.client?.name || 'Cliente de paso' }}
                           </span>
                         </template>
@@ -491,19 +478,15 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                 </VCol>
 
                 <VCol cols="12" md="6" class="mt-2">
-                  <span class="label-industrial text-white-50 font-weight-bold">2. Cajero en Turno (Opcional)</span>
                   <VSelect
                     v-model="selectedCashierId"
                     :items="employees"
                     item-title="name"
                     item-value="id"
-                    placeholder="Seleccione cajero..."
-                    variant="solo"
-                    density="comfortable"
-                    class="mt-1 border-input-industrial"
-                    bg-color="rgb(30, 30, 30)"
-                    theme="dark"
+                    placeholder="Cajero en Turno (Opcional)"
+                    density="compact"
                     clearable
+                    prepend-inner-icon="tabler-user"
                   >
                     <template #item="{ props, item }">
                       <VListItem v-bind="props" :title="item.raw.name + ' ' + (item.raw.last_name || '')" />
@@ -515,18 +498,14 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                 </VCol>
 
                 <VCol cols="12" md="6" class="mt-2">
-                  <span class="label-industrial text-warning font-weight-bold">3. Cocinero en Turno *</span>
                   <VSelect
                     v-model="selectedCookId"
                     :items="employees"
                     item-title="name"
                     item-value="id"
-                    placeholder="Obligatorio para iniciar..."
-                    variant="solo"
-                    density="comfortable"
-                    class="mt-1 border-input-industrial"
-                    bg-color="rgb(30, 30, 30)"
-                    theme="dark"
+                    placeholder="Cocinero en Turno *"
+                    density="compact"
+                    prepend-inner-icon="tabler-chef-hat"
                   >
                     <template #item="{ props, item }">
                       <VListItem v-bind="props" :title="item.raw.name + ' ' + (item.raw.last_name || '')" />
@@ -538,83 +517,77 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                 </VCol>
               </VRow>
 
-              <VDivider class="my-6 border-industrial" />
+              <VDivider class="my-6" />
 
-              <!-- Sección Cronómetro Digital Interactivo -->
-              <div v-if="phases.length > 0" class="timer-section text-center rounded-xl py-6 px-4 bg-black-industrial border-dark-neon">
-                <span class="text-overline text-white-50 tracking-wide uppercase">Fase {{ currentPhaseIndex + 1 }} de {{ phases.length }}</span>
-                <h3 class="text-h4 font-weight-black text-warning mt-1">{{ currentPhase?.name }}</h3>
-                <p class="text-body-2 text-white-50 mt-1 mb-4 italic">"{{ currentPhase?.description || 'Sin descripción' }}"</p>
+              <!-- Cronómetro estilo nativo Premium -->
+              <div v-if="phases.length > 0" class="text-center rounded-lg py-6 px-4 bg-var-theme-background border">
+                <span class="text-overline text-disabled tracking-wide uppercase">Fase {{ currentPhaseIndex + 1 }} de {{ phases.length }}</span>
+                <h3 class="text-h4 font-weight-black mt-1 text-primary">{{ currentPhase?.name }}</h3>
+                <p class="text-body-2 text-disabled mt-1 mb-4 italic">"{{ currentPhase?.description || 'Sin descripción' }}"</p>
 
-                <!-- Reloj Digital Neón -->
-                <div class="digital-clock font-weight-bold my-4 text-neon-yellow">
+                <!-- Reloj Digital con Fuente Estilo Monospace -->
+                <div class="font-weight-black my-4 text-primary" style="font-size: 3.5rem; font-family: monospace; letter-spacing: 0.05em;">
                   {{ formatTime(elapsedSeconds) }}
                 </div>
 
-                <!-- Botones Touch Grandes de Control -->
-                <div class="d-flex justify-center align-center gap-4 flex-wrap mt-6">
+                <div class="d-flex justify-center align-center gap-2 flex-wrap mt-6">
                   <VBtn
                     v-if="!isTimerRunning"
                     color="success"
                     size="large"
-                    variant="elevated"
-                    class="rounded-xl px-8 font-weight-black uppercase"
+                    prepend-icon="tabler-play"
+                    class="font-weight-bold"
                     @click="startTimer"
                   >
-                    <VIcon icon="tabler-play" class="me-2" />
                     Iniciar
                   </VBtn>
                   <VBtn
                     v-else
                     color="warning"
                     size="large"
-                    variant="elevated"
-                    class="rounded-xl px-8 font-weight-black uppercase"
+                    prepend-icon="tabler-pause"
+                    class="font-weight-bold"
                     @click="pauseTimer"
                   >
-                    <VIcon icon="tabler-pause" class="me-2" />
-                    Detener
+                    Pausar
                   </VBtn>
 
                   <VBtn
                     color="info"
                     size="large"
-                    variant="flat"
-                    class="rounded-xl px-8 font-weight-black uppercase"
+                    prepend-icon="tabler-arrow-narrow-right"
+                    class="font-weight-bold"
                     @click="nextPhase"
                   >
-                    <VIcon icon="tabler-arrow-narrow-right" class="me-2" />
                     Siguiente
                   </VBtn>
 
                   <VBtn
                     color="secondary"
-                    size="large"
                     variant="tonal"
-                    class="rounded-xl px-6"
+                    size="large"
+                    prepend-icon="tabler-refresh"
                     @click="resetTimer"
                   >
-                    <VIcon icon="tabler-refresh" class="me-2" />
                     Reiniciar
                   </VBtn>
                 </div>
               </div>
-              <div v-else class="text-center py-6 text-white-50">
-                Seleccione o configure un flujo de medición para iniciar el cronómetro.
+              <div v-else class="text-center py-8 text-disabled border rounded-lg bg-var-theme-background">
+                Seleccione un flujo de medición para habilitar el cronómetro de fases.
               </div>
 
               <!-- Registro Integrado -->
               <div class="mt-6">
                 <VBtn
-                  color="warning"
+                  color="primary"
                   block
-                  size="x-large"
-                  variant="flat"
-                  class="rounded-xl font-weight-black uppercase border-neon-glow"
+                  size="large"
                   :loading="loadingForm"
+                  prepend-icon="tabler-device-floppy"
+                  class="font-weight-bold"
                   @click="saveAudit"
                 >
-                  <VIcon icon="tabler-database-import" class="me-2" />
                   Registrar e Integrar en Base de Datos
                 </VBtn>
               </div>
@@ -625,23 +598,28 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
 
       <!-- Panel de Resumen de Tiempos Registrados para la Orden en Curso -->
       <VCol cols="12" md="5">
-        <VCard class="rounded-xl overflow-hidden border-dark elevation-8 bg-industrial-dark text-white h-100">
-          <VCardItem class="bg-carbon py-4">
-            <VCardTitle class="text-h6 font-weight-bold text-white">Auditoría en Curso</VCardTitle>
-            <VCardSubtitle class="text-white-50">Resumen y tiempos medidos por fase</VCardSubtitle>
+        <VCard class="rounded-lg border shadow-sm bg-surface h-100">
+          <VCardItem class="pa-4 pb-0">
+            <template #prepend>
+              <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
+                <VIcon icon="tabler-clipboard-list" size="20" />
+              </VAvatar>
+            </template>
+            <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Fases del Flujo</VCardTitle>
+            <VCardSubtitle class="text-xs font-weight-medium text-disabled">Resumen de tiempos acumulados</VCardSubtitle>
           </VCardItem>
 
-          <VCardText class="pa-6">
-            <div class="d-flex flex-column gap-4">
+          <VCardText class="pa-4 pt-6">
+            <div class="d-flex flex-column gap-3">
               <div
                 v-for="(phase, index) in phases"
                 :key="phase.id"
-                class="d-flex align-center justify-space-between rounded-lg pa-3 bg-black-industrial border-dark"
-                :class="{ 'border-active-neon': currentPhaseIndex === index }"
+                class="d-flex align-center justify-space-between rounded-lg pa-3 border"
+                :class="{ 'bg-var-theme-background border-primary': currentPhaseIndex === index }"
               >
                 <div class="d-flex align-center gap-3">
                   <VAvatar
-                    :color="currentPhaseIndex === index ? 'warning' : 'secondary'"
+                    :color="currentPhaseIndex === index ? 'primary' : 'secondary'"
                     variant="tonal"
                     size="32"
                     class="font-weight-black"
@@ -649,14 +627,14 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                     {{ index + 1 }}
                   </VAvatar>
                   <div>
-                    <span class="font-weight-bold d-block text-white">{{ phase.name }}</span>
-                    <span class="text-super-xs text-white-50">{{ phase.description || 'Sin descripción' }}</span>
+                    <span class="font-weight-bold d-block text-sm">{{ phase.name }}</span>
+                    <span class="text-caption text-disabled">{{ phase.description || 'Sin descripción' }}</span>
                   </div>
                 </div>
                 <div>
                   <span
                     class="font-weight-black text-h6"
-                    :class="phaseTimes[phase.id] > 0 ? 'text-success' : currentPhaseIndex === index ? 'text-warning font-neon-glow' : 'text-white-30'"
+                    :class="phaseTimes[phase.id] > 0 ? 'text-success' : currentPhaseIndex === index ? 'text-primary' : 'text-disabled'"
                   >
                     {{ phaseTimes[phase.id] > 0 ? formatTime(phaseTimes[phase.id]) : currentPhaseIndex === index ? formatTime(elapsedSeconds) : '00:00' }}
                   </span>
@@ -669,13 +647,21 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
     </VRow>
 
     <!-- Sección de Historial con Promedios Dinámicos al Pie -->
-    <VRow class="mt-6">
+    <VRow>
       <VCol cols="12">
-        <VCard class="rounded-xl overflow-hidden border-dark bg-industrial-dark text-white">
-          <VCardItem class="bg-carbon py-4">
-            <div class="d-flex flex-wrap align-center justify-space-between gap-4">
+        <VCard class="rounded-lg border shadow-sm bg-surface">
+          <VCardItem class="pa-4">
+            <div class="d-flex flex-wrap align-center justify-space-between gap-4 w-100">
               <div class="d-flex align-center gap-4">
-                <VCardTitle class="text-h6 font-weight-bold text-white">Historial de Auditorías</VCardTitle>
+                <VAvatar color="primary" variant="tonal" size="38" class="rounded-lg">
+                  <VIcon icon="tabler-history" size="20" />
+                </VAvatar>
+                <div>
+                  <VCardTitle class="text-subtitle-1 font-weight-black uppercase">Historial de Auditorías</VCardTitle>
+                  <VCardSubtitle class="text-xs font-weight-medium text-disabled">Consolidado de auditorías operativas</VCardSubtitle>
+                </div>
+              </div>
+              <div class="d-flex align-center gap-2 flex-wrap">
                 <div style="min-width: 180px;">
                   <VSelect
                     v-model="selectedFlowIdFilter"
@@ -683,26 +669,25 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                     item-title="name"
                     item-value="id"
                     placeholder="Filtrar por Flujo"
-                    variant="solo"
                     density="compact"
                     clearable
                     hide-details
                   />
                 </div>
-              </div>
-              <div class="d-flex align-center gap-2 flex-wrap">
                 <AppDateTimePicker
                   v-model="startDate"
                   placeholder="Fecha Inicio"
-                  class="bg-dark-select rounded-lg"
                   density="compact"
+                  clearable
+                  hide-details
                   style="max-width: 150px;"
                 />
                 <AppDateTimePicker
                   v-model="endDate"
                   placeholder="Fecha Fin"
-                  class="bg-dark-select rounded-lg"
                   density="compact"
+                  clearable
+                  hide-details
                   style="max-width: 150px;"
                 />
               </div>
@@ -711,7 +696,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
 
           <VCardText class="pa-0">
             <div class="overflow-x-auto">
-              <VTable class="table-industrial" theme="dark">
+              <VTable class="text-no-wrap premium-table" theme="dark">
                 <thead>
                   <tr>
                     <th>Orden</th>
@@ -725,24 +710,24 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                     >
                       {{ flowPhase.name }}
                     </th>
-                    <th class="text-center font-weight-black">Total</th>
+                    <th class="text-center font-weight-black text-primary">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="loading">
-                    <td :colspan="5 + currentFilteredFlowPhases.length" class="text-center py-6 text-white-50">Cargando registros...</td>
+                    <td :colspan="5 + currentFilteredFlowPhases.length" class="text-center py-6 text-disabled">Cargando registros...</td>
                   </tr>
                   <tr v-else-if="audits.length === 0">
-                    <td :colspan="5 + currentFilteredFlowPhases.length" class="text-center py-6 text-white-50">No hay auditorías registradas para este periodo.</td>
+                    <td :colspan="5 + currentFilteredFlowPhases.length" class="text-center py-6 text-disabled">No hay auditorías registradas para este periodo.</td>
                   </tr>
                   <tr v-for="audit in audits" :key="audit.id">
                     <td>
-                      <span v-if="audit.order_id" class="font-weight-black text-warning">#{{ audit.order_id }}</span>
-                      <span v-else class="text-white-30">N/A</span>
+                      <span v-if="audit.order_id" class="font-weight-black">#{{ audit.order_id }}</span>
+                      <span v-else class="text-disabled">N/A</span>
                     </td>
-                    <td><span class="text-caption bg-secondary-dark px-2 py-1 rounded">{{ audit.flow?.name }}</span></td>
-                    <td>{{ audit.cashier ? (audit.cashier.name + ' ' + (audit.cashier.last_name || '')) : 'Sin registrar' }}</td>
-                    <td>{{ audit.cook ? (audit.cook.name + ' ' + (audit.cook.last_name || '')) : 'Sin registrar' }}</td>
+                    <td><span class="text-caption bg-var-theme-background border px-2 py-1 rounded">{{ audit.flow?.name }}</span></td>
+                    <td>{{ audit.cashier ? (audit.cashier.name + ' ' + (audit.cashier.last_name || '')) : '—' }}</td>
+                    <td>{{ audit.cook ? (audit.cook.name + ' ' + (audit.cook.last_name || '')) : '—' }}</td>
                     <td
                       v-for="flowPhase in currentFilteredFlowPhases"
                       :key="flowPhase.id"
@@ -750,13 +735,13 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                     >
                       {{ getAuditPhaseValue(audit, flowPhase.id) }}
                     </td>
-                    <td class="text-center font-weight-black text-warning">{{ formatTime(audit.total_seconds) }}</td>
+                    <td class="text-center font-weight-black text-primary">{{ formatTime(audit.total_seconds) }}</td>
                   </tr>
                 </tbody>
                 <!-- Promedios Dinámicos Calculados por Javascript al Pie -->
-                <tfoot class="bg-carbon-footer font-weight-bold">
+                <tfoot class="font-weight-bold" style="border-top: 2px solid var(--v-theme-primary);">
                   <tr>
-                    <td colspan="4" class="text-right text-warning uppercase">Promedio Operativo</td>
+                    <td colspan="4" class="text-right text-primary uppercase">Promedio Operativo</td>
                     <td
                       v-for="flowPhase in currentFilteredFlowPhases"
                       :key="flowPhase.id"
@@ -764,7 +749,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                     >
                       {{ formatTime(calculateAverageOfPhase(flowPhase.id)) }}
                     </td>
-                    <td class="text-center text-warning font-weight-black">{{ formatTime(calculateAverageTotal()) }}</td>
+                    <td class="text-center text-primary font-weight-black">{{ formatTime(calculateAverageTotal()) }}</td>
                   </tr>
                 </tfoot>
               </VTable>
@@ -776,26 +761,27 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
 
     <!-- Diálogo Configurador de Flujos y Fases -->
     <VDialog v-model="flowConfigDialog" max-width="700px" persistent>
-      <VCard class="bg-industrial-dark text-white rounded-xl">
-        <VCardTitle class="bg-carbon py-4 d-flex justify-space-between align-center">
-          <span class="text-h5 font-weight-black text-warning">
+      <VCard class="rounded-lg">
+        <VCardTitle class="pa-4 d-flex justify-space-between align-center">
+          <span class="text-h5 font-weight-black text-primary">
             {{ isEditingFlow ? 'Editar Flujo de Proceso' : 'Configurador de Flujos' }}
           </span>
-          <VBtn icon="tabler-x" variant="text" color="white" @click="flowConfigDialog = false" />
+          <VBtn icon="tabler-x" variant="text" color="default" @click="flowConfigDialog = false" />
         </VCardTitle>
-        <VCardText class="pa-6">
+        <VDivider />
+        <VCardText class="pa-4">
           <!-- Listado de Flujos Existentes para Editar/Eliminar -->
           <div v-if="!isEditingFlow && flows.length > 0" class="mb-6">
-            <span class="label-industrial text-warning font-weight-bold d-block mb-2">Flujos Existentes</span>
+            <span class="text-subtitle-2 font-weight-bold d-block mb-2 text-primary">Flujos Existentes</span>
             <div class="d-flex flex-column gap-2 mb-4">
               <div
                 v-for="flow in flows"
                 :key="flow.id"
-                class="d-flex align-center justify-space-between bg-black-industrial border-dark rounded-lg pa-3"
+                class="d-flex align-center justify-space-between border rounded-lg pa-3"
               >
                 <div>
-                  <span class="font-weight-black d-block text-white">{{ flow.name }}</span>
-                  <span class="text-caption text-white-50">{{ flow.phases.length }} fases definidas</span>
+                  <span class="font-weight-black d-block">{{ flow.name }}</span>
+                  <span class="text-caption text-disabled">{{ flow.phases.length }} fases definidas</span>
                 </div>
                 <div class="d-flex gap-2">
                   <VBtn color="info" density="comfortable" icon="tabler-edit" @click="openEditFlowModal(flow)" />
@@ -803,7 +789,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                 </div>
               </div>
             </div>
-            <VDivider class="border-industrial my-4" />
+            <VDivider class="my-4" />
           </div>
 
           <VForm>
@@ -813,9 +799,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                   v-model="currentFlowForm.name"
                   label="Nombre del Flujo *"
                   placeholder="Ej: Flujo Waffle Combo o Tina Simple"
-                  variant="solo"
-                  bg-color="rgb(30, 30, 30)"
-                  theme="dark"
+                  density="compact"
                   class="mb-3"
                 />
               </VCol>
@@ -824,9 +808,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                   v-model="currentFlowForm.description"
                   label="Descripción"
                   placeholder="Detalles sobre cuándo usar este flujo..."
-                  variant="solo"
-                  bg-color="rgb(30, 30, 30)"
-                  theme="dark"
+                  density="compact"
                   rows="2"
                   class="mb-4"
                 />
@@ -834,7 +816,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
             </VRow>
 
             <div class="d-flex justify-space-between align-center mb-4">
-              <span class="label-industrial text-warning font-weight-bold">Fases de Medición</span>
+              <span class="text-subtitle-2 font-weight-bold text-primary">Fases de Medición</span>
               <VBtn
                 color="success"
                 size="small"
@@ -850,10 +832,10 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
               <div
                 v-for="(phase, index) in currentFlowForm.phases"
                 :key="index"
-                class="bg-black-industrial border-dark rounded-lg pa-3 d-flex flex-column gap-2"
+                class="border rounded-lg pa-3 d-flex flex-column gap-2"
               >
                 <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-black text-warning">Fase #{{ index + 1 }}</span>
+                  <span class="text-caption font-weight-black text-primary">Fase #{{ index + 1 }}</span>
                   <VBtn
                     v-if="currentFlowForm.phases.length > 1"
                     color="error"
@@ -869,22 +851,16 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
                       v-model="phase.name"
                       label="Nombre de Fase *"
                       placeholder="Ej: Preparación de Masa"
-                      variant="solo"
                       density="compact"
-                      bg-color="rgb(40, 40, 40)"
-                      theme="dark"
                       hide-details
                     />
                   </VCol>
                   <VCol cols="12" md="6">
                     <VTextField
                       v-model="phase.description"
-                      label="Instrucciones/Descripción"
+                      label="Descripción"
                       placeholder="Ej: Cocer masa por 5 min"
-                      variant="solo"
                       density="compact"
-                      bg-color="rgb(40, 40, 40)"
-                      theme="dark"
                       hide-details
                     />
                   </VCol>
@@ -893,11 +869,12 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
             </div>
           </VForm>
         </VCardText>
-        <VCardActions class="pa-6 bg-carbon justify-end">
+        <VDivider />
+        <VCardActions class="pa-4 justify-end">
           <VBtn color="secondary" variant="tonal" class="rounded-lg px-6" @click="flowConfigDialog = false">
             Cancelar
           </VBtn>
-          <VBtn color="warning" variant="flat" class="rounded-lg px-6 font-weight-bold" @click="saveFlow">
+          <VBtn color="primary" class="rounded-lg px-6 font-weight-bold" @click="saveFlow">
             Guardar Flujo
           </VBtn>
         </VCardActions>
@@ -907,79 +884,21 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
 </template>
 
 <style scoped>
-.bg-industrial-dark {
-  background-color: #1e1e1e !important;
-}
-.bg-carbon {
-  background-color: #2b2b2b !important;
-}
-.bg-carbon-footer {
-  background-color: #242424 !important;
-  border-top: 2px solid #ffb900 !important;
-}
-.bg-black-industrial {
-  background-color: #121212 !important;
-}
-.border-dark {
-  border: 1px solid #333333 !important;
-}
-.border-dark-neon {
-  border: 2px solid #333333 !important;
-}
-.border-active-neon {
-  border: 1px solid #ffb900 !important;
-  box-shadow: 0 0 10px rgba(255, 185, 0, 0.2);
-}
-.text-neon-yellow {
-  color: #ffb900 !important;
-  text-shadow: 0 0 15px rgba(255, 185, 0, 0.4);
-}
-.font-neon-glow {
-  text-shadow: 0 0 8px rgba(255, 185, 0, 0.3);
-}
-.border-neon-glow {
-  border: 1px solid #ffb900 !important;
-}
-.digital-clock {
-  font-size: 4rem;
-  letter-spacing: 0.1em;
-  font-family: "Courier New", Courier, monospace;
-}
-.table-industrial th {
-  background-color: #2b2b2b !important;
-  color: #ffb900 !important;
+.premium-table th {
   font-weight: 900 !important;
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
-.table-industrial td {
-  border-bottom: 1px solid #333333 !important;
+.premium-table td {
   white-space: nowrap;
-}
-.label-industrial {
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.text-white-50 {
-  color: rgba(255, 255, 255, 0.5) !important;
-}
-.text-white-70 {
-  color: rgba(255, 255, 255, 0.7) !important;
-}
-.text-white-30 {
-  color: rgba(255, 255, 255, 0.3) !important;
-}
-.text-super-xs {
-  font-size: 0.7rem;
 }
 .max-height-phases::-webkit-scrollbar {
   width: 6px;
 }
 .max-height-phases::-webkit-scrollbar-thumb {
-  background-color: #ffb900;
+  background-color: var(--v-theme-primary);
   border-radius: 4px;
 }
 </style>
