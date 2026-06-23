@@ -91,7 +91,11 @@ onMounted(async () => {
 <template>
   <VRow>
     <VCol cols="12">
-      <VCard title="Personalización de Marca">
+      <VCard>
+        <VCardItem>
+          <VCardTitle class="text-h5 font-weight-bold">Configuraciones Generales</VCardTitle>
+          <VCardSubtitle class="text-muted">Gestión de la marca y elementos visuales (Logo y Favicon) exclusivos para el e-commerce y los PDFs generados de la tienda</VCardSubtitle>
+        </VCardItem>
         <VCardText>
           <VForm @submit.prevent="saveBranding">
             <VRow>
