@@ -201,6 +201,7 @@ const reservationForm = ref({
   identification: '',
   client_name: '',
   client_whatsapp: '',
+  request_weekly_fixed: false,
 })
 
 // Opciones de duración (medias horas hasta las 2 horas, luego horas enteras hasta las 10)
@@ -334,6 +335,7 @@ const openBookingDialog = (court, slot) => {
     identification: '',
     client_name: '',
     client_whatsapp: '',
+    request_weekly_fixed: false,
   }
   isDialogOpen.value = true
 }
@@ -365,6 +367,7 @@ const openEditReservationDialog = (reservation) => {
     identification: reservation.identification || '',
     client_name: reservation.client_name,
     client_whatsapp: reservation.client_whatsapp || '',
+    request_weekly_fixed: !!reservation.request_weekly_fixed,
   }
   isDialogOpen.value = true
 }
@@ -389,6 +392,7 @@ const submitReservation = async () => {
       client_whatsapp: reservationForm.value.client_whatsapp,
       client_id: reservationForm.value.client_id,
       identification: reservationForm.value.identification,
+      request_weekly_fixed: reservationForm.value.request_weekly_fixed,
     }
 
     let response
@@ -1058,6 +1062,22 @@ const copyWeeklyReservations = async () => {
                   hint="Ingresa el número con el código de país, sin espacios ni símbolos (+)"
                   persistent-hint
                 />
+              </VCol>
+              
+              <!-- Checkbox para solicitar Hora Fija Semanal en panel de control -->
+              <VCol cols="12" class="pt-0">
+                <VCheckbox
+                  v-model="reservationForm.request_weekly_fixed"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                >
+                  <template #label>
+                    <div class="text-caption text-grey-darken-3 font-weight-medium">
+                      🔄 ¿Marcar este horario como fijo semanalmente para el cliente?
+                    </div>
+                  </template>
+                </VCheckbox>
               </VCol>
             </VRow>
           </VForm>
