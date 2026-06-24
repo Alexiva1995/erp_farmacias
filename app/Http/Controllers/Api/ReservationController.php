@@ -157,7 +157,7 @@ class ReservationController extends Controller
                 try {
                     $telegram = resolve(\App\Services\TelegramService::class);
                     
-                    // Agenda del día consolidada
+                    // Agenda del día consolidada (solo reservaciones confirmadas, no fijos)
                     $today = $reservation->date->toDateString();
                     $todayFormatted = $reservation->date->format('d/m/Y');
                     $dailyReservations = \App\Models\Reservation::with('court')
@@ -166,11 +166,15 @@ class ReservationController extends Controller
                         ->orderBy('start_time')
                         ->get();
 
+                    // Convertir horas a formato 12 horas AM/PM
+                    $formattedStart = \Carbon\Carbon::createFromFormat('H:i:s', $reservation->start_time)->format('g:i A');
+                    $formattedEnd = \Carbon\Carbon::createFromFormat('H:i:s', $reservation->end_time)->format('g:i A');
+
                     $msg = "⚽ *¡Nueva Reserva Confirmada!* ⚽\n\n"
                          . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
-                         . "🏟️ *Cancha:* {$reservation->court->name}\n"
+                         . "🏟️ *Lugar:* {$reservation->court->name}\n"
                          . "📅 *Fecha:* {$todayFormatted}\n"
-                         . "🕒 *Horario:* " . substr($reservation->start_time, 0, 5) . " a " . substr($reservation->end_time, 0, 5) . "\n"
+                         . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
                          . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
                          
                     if ($reservation->request_weekly_fixed) {
@@ -183,8 +187,9 @@ class ReservationController extends Controller
                     } else {
                         foreach ($dailyReservations as $idx => $r) {
                             $num = $idx + 1;
-                            $weeklyMark = $r->request_weekly_fixed ? " 🔄 (Fijo)" : "";
-                            $msg .= "{$num}. Cancha: *{$r->court->name}* | " . substr($r->start_time, 0, 5) . " a " . substr($r->end_time, 0, 5) . " - {$r->client_name}{$weeklyMark}\n";
+                            $rStart = \Carbon\Carbon::createFromFormat('H:i:s', $r->start_time)->format('g:i A');
+                            $rEnd = \Carbon\Carbon::createFromFormat('H:i:s', $r->end_time)->format('g:i A');
+                            $msg .= "{$num}. *{$r->court->name}* | {$rStart} a {$rEnd} - {$r->client_name}\n";
                         }
                     }
 
@@ -197,7 +202,7 @@ class ReservationController extends Controller
                 try {
                     $this->reservationServices->sendWhatsAppMessage(
                         $reservation->client_whatsapp,
-                        "¡Excelente! Tu reserva para la cancha de '{$reservation->court->name}' el día {$reservation->date->format('d/m/Y')} a las " . substr($reservation->start_time, 0, 5) . " ha sido VERIFICADA exitosamente. ¡Te esperamos!"
+                        "¡Excelente! Tu reserva para la cancha de '{$reservation->court->name}' el día {$reservation->date->format('d/m/Y')} a las " . \Carbon\Carbon::createFromFormat('H:i:s', $reservation->start_time)->format('g:i A') . " ha sido VERIFICADA exitosamente. ¡Te esperamos!"
                     );
                 } catch (\Exception $e) {
                     \Log::error("Error al enviar confirmación de WhatsApp: " . $e->getMessage());

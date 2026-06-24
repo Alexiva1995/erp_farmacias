@@ -119,7 +119,7 @@ class ReservationServices
         }
 
         $data['client_id'] = $clientId;
-        $data['status'] = 'pending';
+        $data['status'] = auth()->check() ? 'verified' : 'pending';
         
         $reservation = $this->reservationRepository->create($data);
 
