@@ -177,9 +177,9 @@ class ReservationServices
                     ->orderBy('start_time')
                     ->get();
 
-                // Convertir horas a formato 12 horas AM/PM
-                $formattedStart = \Carbon\Carbon::createFromFormat('H:i:s', $reservation->start_time)->format('g:i A');
-                $formattedEnd = \Carbon\Carbon::createFromFormat('H:i:s', $reservation->end_time)->format('g:i A');
+                // Convertir horas a formato 12 horas AM/PM de manera segura
+                $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
+                $formattedEnd = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
 
                 $msg = "⚽ *¡Nueva Reserva Registrada (Panel Admin)!* ⚽\n\n"
                      . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
@@ -198,8 +198,8 @@ class ReservationServices
                 } else {
                     foreach ($dailyReservations as $idx => $r) {
                         $num = $idx + 1;
-                        $rStart = \Carbon\Carbon::createFromFormat('H:i:s', $r->start_time)->format('g:i A');
-                        $rEnd = \Carbon\Carbon::createFromFormat('H:i:s', $r->end_time)->format('g:i A');
+                        $rStart = \Carbon\Carbon::parse($r->start_time)->format('g:i A');
+                        $rEnd = \Carbon\Carbon::parse($r->end_time)->format('g:i A');
                         $msg .= "{$num}. *{$r->court->name}* | {$rStart} a {$rEnd} - {$r->client_name}\n";
                     }
                 }
