@@ -201,12 +201,16 @@ const reservationForm = ref({
   client_whatsapp: '',
 })
 
-// Opciones de duración de 1 a 10 horas (de 0.5 en 0.5 horas)
+// Opciones de duración (medias horas hasta las 2 horas, luego horas enteras hasta las 10)
 const durationOptions = computed(() => {
-  const options = []
-  for (let d = 1; d <= 10; d += 0.5) {
+  const options = [
+    { title: '1 Hora', value: 1 },
+    { title: '1.5 Horas', value: 1.5 },
+    { title: '2 Horas', value: 2 }
+  ]
+  for (let d = 3; d <= 10; d++) {
     options.push({
-      title: d === 1 ? '1 Hora' : `${d} Horas`,
+      title: `${d} Horas`,
       value: d
     })
   }
