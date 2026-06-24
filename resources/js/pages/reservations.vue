@@ -550,60 +550,65 @@ const copyWeeklyReservations = async () => {
 </script>
 
 <template>
-  <VContainer class="py-6">
-    <VRow justify="space-between" align="center" class="mb-6">
-      <VCol cols="12" md="6">
-        <h1 class="text-h4 font-weight-bold text-primary">
-          ⚽ Reservas de Canchas - Gol Club
-        </h1>
-        <p class="text-subtitle-1 text-grey-darken-1">
-          Visualiza, agenda y gestiona la disponibilidad en tiempo real.
-        </p>
-      </VCol>
-      <VCol cols="12" md="4" class="text-right">
-        <!-- Selector de Fecha -->
-        <VTextField
-          v-model="store.selectedDate"
-          type="date"
-          label="Seleccionar Fecha"
-          prepend-inner-icon="tabler-calendar"
-          variant="outlined"
-          color="primary"
-          density="comfortable"
-        />
-      </VCol>
-    </VRow>
+    <!-- Navbar de Filtros y Cabecera Unificada -->
+    <VCard class="mb-6 px-4 py-3" elevation="1" border>
+      <div class="d-flex flex-wrap align-center justify-space-between gap-4">
+        <!-- Título y Subtítulo -->
+        <div class="d-flex align-center gap-3">
+          <h1 class="text-h5 font-weight-bold text-primary mb-0 d-flex align-center">
+            ⚽ <span class="ml-2">Reservas - Gol Club</span>
+          </h1>
+        </div>
 
-    <div class="mb-6 d-flex flex-wrap gap-4">
-      <VBtn
-        :color="showEarlierHours ? 'secondary' : 'primary'"
-        variant="tonal"
-        prepend-icon="tabler-clock"
-        @click="showEarlierHours = !showEarlierHours"
-        class="mr-3"
-      >
-        {{ showEarlierHours ? 'Ocultar horas de la mañana' : 'Ver horas más tempranas' }}
-      </VBtn>
+        <!-- Filtros y Acciones -->
+        <div class="d-flex flex-wrap align-center gap-3 ml-auto" style="flex: 1; justify-content: flex-end; min-width: 300px;">
+          <!-- Selector de Fecha -->
+          <div style="width: 200px;">
+            <VTextField
+              v-model="store.selectedDate"
+              type="date"
+              label="Seleccionar Fecha"
+              prepend-inner-icon="tabler-calendar"
+              variant="outlined"
+              color="primary"
+              density="compact"
+              hide-details
+            />
+          </div>
 
-      <VBtn
-        color="secondary"
-        variant="elevated"
-        prepend-icon="tabler-calendar-plus"
-        @click="openFixedScheduleDialog"
-        class="mr-3"
-      >
-        Configurar Horario Fijo
-      </VBtn>
+          <!-- Botones de Acción -->
+          <VBtn
+            :color="showEarlierHours ? 'secondary' : 'primary'"
+            variant="tonal"
+            density="comfortable"
+            prepend-icon="tabler-clock"
+            @click="showEarlierHours = !showEarlierHours"
+          >
+            {{ showEarlierHours ? 'Ocultar Mañana' : 'Ver Mañana' }}
+          </VBtn>
 
-      <VBtn
-        color="success"
-        variant="elevated"
-        prepend-icon="tabler-copy"
-        @click="copyWeeklyReservations"
-      >
-        Copiar Reservas Semanales
-      </VBtn>
-    </div>
+          <VBtn
+            color="secondary"
+            variant="elevated"
+            density="comfortable"
+            prepend-icon="tabler-calendar-plus"
+            @click="openFixedScheduleDialog"
+          >
+            Horario Fijo
+          </VBtn>
+
+          <VBtn
+            color="success"
+            variant="elevated"
+            density="comfortable"
+            prepend-icon="tabler-copy"
+            @click="copyWeeklyReservations"
+          >
+            Copiar Semana
+          </VBtn>
+        </div>
+      </div>
+    </VCard>
 
     <!-- Estado de carga -->
     <div v-if="store.loading && store.courtsData.length === 0" class="text-center my-12">
