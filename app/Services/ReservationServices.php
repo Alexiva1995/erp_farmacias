@@ -27,6 +27,27 @@ class ReservationServices
     }
 
     /**
+    /**
+     * Normalizar número de teléfono al formato venezolano (58...)
+     */
+    protected function normalizeVenezuelanPhone(string $phone): string
+    {
+        // Remover todo excepto números
+        $clean = preg_replace('/[^0-9]/', '', $phone);
+        
+        // Si empieza por 0, por ejemplo 04121234567, remover el 0 y anteponer 58
+        if (str_starts_with($clean, '0') && strlen($clean) === 11) {
+            $clean = '58' . substr($clean, 1);
+        }
+        // Si tiene 10 dígitos y empieza por 4, asumimos que le falta el código de país 58
+        elseif (strlen($clean) === 10 && str_starts_with($clean, '4')) {
+            $clean = '58' . $clean;
+        }
+        
+        return $clean;
+    }
+
+    /**
      * Crear una reserva pendiente.
      */
     public function createReservation(array $data): Reservation
@@ -42,15 +63,195 @@ class ReservationServices
             throw new Exception("El horario seleccionado no está disponible para esta cancha.");
         }
 
-        $data['status'] = 'pending';
+        // 1. Normalizar el número de teléfono
+        $normalizedPhone = $this->normalizeVenezuelanPhone($data['client_whatsapp']);
+        $data['client_whatsapp'] = $normalizedPhone;
+
+        // 2. Gestionar la creación o enlace automático del cliente
+        $clientId = $data['client_id'] ?? null;
+        $identification = $data['identification'] ?? null;
+
+        if (!$clientId && $identification) {
+            // Buscar por cédula en la tabla de clientes
+            $existingClient = \App\Models\Client::where('identification', $identification)->first();
+            if ($existingClient) {
+                $clientId = $existingClient->id;
+                // Si el cliente existente no tiene teléfono registrado o difiere, lo actualizamos
+                if (empty($existingClient->phone) || $existingClient->phone !== $normalizedPhone) {
+                    $existingClient->update(['phone' => $normalizedPhone]);
+                }
+            } else {
+                // Crear un nuevo cliente de manera transparente
+                // Separar nombre y apellido si es posible para mantener consistencia
+                $nameParts = explode(' ', $data['client_name'], 2);
+                $firstName = $nameParts[0];
+                $lastName = $nameParts[1] ?? '';
+
+                $newClient = \App\Models\Client::create([
+                    'name' => $firstName,
+                    'last_name' => $lastName,
+                    'identification_type' => 'V-', // Por defecto Cédula Venezolana
+                    'identification' => $identification,
+                    'phone' => $normalizedPhone,
+                    'client_type' => 'Ocasional',
+                ]);
+                $clientId = $newClient->id;
+            }
+        } elseif (!$clientId && !$identification) {
+            // Buscar por teléfono si no se envió cédula
+            $existingClientByPhone = \App\Models\Client::where('phone', $normalizedPhone)->first();
+            if ($existingClientByPhone) {
+                $clientId = $existingClientByPhone->id;
+            } else {
+                // Crear un cliente nuevo solo con Nombre y Teléfono
+                $nameParts = explode(' ', $data['client_name'], 2);
+                $firstName = $nameParts[0];
+                $lastName = $nameParts[1] ?? '';
+
+                $newClient = \App\Models\Client::create([
+                    'name' => $firstName,
+                    'last_name' => $lastName,
+                    'phone' => $normalizedPhone,
+                    'client_type' => 'Ocasional',
+                ]);
+                $clientId = $newClient->id;
+            }
+        }
+
+        $data['client_id'] = $clientId;
+        $data['status'] = auth()->check() ? 'verified' : 'pending';
+        
         $reservation = $this->reservationRepository->create($data);
+
+        // Asociar la visita actual (IP) para registrar la conversión exitosa
+        try {
+            $ipAddress = request()->ip();
+            $visit = \App\Models\BookingVisit::where('ip_address', $ipAddress)
+                ->where('converted', false)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($visit) {
+                $visit->update([
+                    'converted' => true,
+                    'reservation_id' => $reservation->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Error al registrar conversión de visita: " . $e->getMessage());
+        }
+
+        // Si solicita hora fija semanal, enviar notificación especial de inmediato
+        if ($reservation->request_weekly_fixed) {
+            try {
+                $telegram = resolve(\App\Services\TelegramService::class);
+                $weeklyMsg = "🔄 *¡Solicitud de Hora Fija Semanal!* 🔄\n\n"
+                           . "El cliente *{$reservation->client_name}* ({$reservation->identification}) "
+                           . "solicita que su horario de reserva sea *FIJO SEMANALMENTE*:\n"
+                           . "⚽ *Cancha:* {$reservation->court->name}\n"
+                           . "📅 *Fecha Solicitud:* {$reservation->date->format('d/m/Y')}\n"
+                           . "🕒 *Horario:* " . substr($reservation->start_time, 0, 5) . " a " . substr($reservation->end_time, 0, 5) . "\n"
+                           . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
+                           . "⚠️ _Requiere aprobación administrativa en el panel._";
+                $telegram->sendMessage($weeklyMsg);
+            } catch (\Exception $e) {
+                \Log::error("Error al enviar alerta de hora fija a Telegram: " . $e->getMessage());
+            }
+        }
 
         // Notificar en tiempo real
         broadcast(new ReservationUpdated($reservation))->toOthers();
 
         // Solo enviar notificaciones automáticas si el usuario está autenticado (Panel Admin)
         if (auth()->check()) {
-            // Enviar WhatsApp inicial de confirmación
+            // 1. Enviar notificación inmediata a Telegram del administrador (ya confirmada directo)
+            try {
+                $telegram = resolve(\App\Services\TelegramService::class);
+                
+                // Agenda consolidada del día (Reservas + Horarios Fijos activos)
+                $today = $reservation->date->toDateString();
+                $todayFormatted = $reservation->date->format('d/m/Y');
+                $carbonDate = \Carbon\Carbon::parse($today);
+                $dayOfWeek = $carbonDate->dayOfWeekIso;
+
+                // 1. Reservaciones confirmadas del día
+                $dailyReservations = \App\Models\Reservation::with('court')
+                    ->whereDate('date', $today)
+                    ->whereIn('status', ['verified', 'in_progress', 'completed'])
+                    ->get();
+
+                // 2. Horarios fijos del día de la semana (que no tengan excepciones hoy)
+                $dailyFixed = \App\Models\FixedSchedule::with('court')
+                    ->where('day_of_week', $dayOfWeek)
+                    ->whereDoesntHave('exceptions', function ($query) use ($today) {
+                        $query->where('date', $today);
+                    })
+                    ->get();
+
+                // Unificar agenda: reservas confirmadas + fijos
+                $agendaItems = collect();
+
+                foreach ($dailyReservations as $r) {
+                    $agendaItems->push([
+                        'court_name'  => $r->court->name,
+                        'start_time'  => $r->start_time,
+                        'end_time'    => $r->end_time,
+                        'client_name' => $r->client_name,
+                        'is_fixed'    => false,
+                    ]);
+                }
+
+                foreach ($dailyFixed as $f) {
+                    $agendaItems->push([
+                        'court_name'  => $f->court->name,
+                        'start_time'  => $f->start_time,
+                        'end_time'    => $f->end_time,
+                        'client_name' => $f->client_name,
+                        'is_fixed'    => true,
+                    ]);
+                }
+
+                // Convertir horas de la reserva a formato 12h AM/PM
+                $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
+                $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
+
+                // Cabecera del mensaje
+                $msg = "⚽ *¡Nueva Reserva Registrada (Tova cerebro operativo)!* ⚽\n\n"
+                     . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
+                     . "🏟️ *Lugar:* {$reservation->court->name}\n"
+                     . "📅 *Fecha:* {$todayFormatted}\n"
+                     . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
+                     . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
+
+                if ($reservation->request_weekly_fixed) {
+                    $msg .= "🔄 *[Solicita Horario Fijo Semanal]*\n";
+                }
+
+                // Agenda agrupada por cancha
+                $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
+
+                if ($agendaItems->isEmpty()) {
+                    $msg .= "_Ninguna reserva programada para hoy._";
+                } else {
+                    $grouped = $agendaItems->groupBy('court_name');
+                    foreach ($grouped as $courtName => $items) {
+                        $msg .= "\n*{$courtName}*\n";
+                        $sortedItems = $items->sortBy('start_time')->values();
+                        foreach ($sortedItems as $item) {
+                            $rStart   = \Carbon\Carbon::parse($item['start_time'])->format('g:i A');
+                            $rEnd     = \Carbon\Carbon::parse($item['end_time'])->format('g:i A');
+                            $fixedTag = $item['is_fixed'] ? ' 🔄' : '';
+                            $msg .= "{$rStart} a {$rEnd} - {$item['client_name']}{$fixedTag}\n";
+                        }
+                    }
+                }
+
+                $telegram->sendMessage($msg);
+            } catch (\Exception $e) {
+                \Log::error("Error al enviar notificación de reserva administrativa a Telegram: " . $e->getMessage());
+            }
+
+            // Enviar WhatsApp inicial de confirmación (si aplica)
             $this->sendWhatsAppConfirmationRequest($reservation);
 
             // Enviar email de confirmación y enlace

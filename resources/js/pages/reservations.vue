@@ -160,6 +160,24 @@ const getCourtSlots = (courtData) => {
     }
   }
 
+  // 3. Filtrar slots dinámicamente si la fecha seleccionada es HOY
+  const now = new Date()
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
+  
+  if (store.selectedDate === todayStr) {
+    const currentHour = now.getHours()
+    const currentMin = now.getMinutes()
+    const nowTotalMin = currentHour * 60 + currentMin
+
+    return slots.filter(slot => {
+      const slotStartMin = timeToMin(slot.start)
+      
+      // Si la hora de inicio del bloque ya pasó por más de 15 minutos con respecto a la hora real actual, se oculta.
+      // Permitimos ver bloques que inician en el futuro o que iniciaron hace menos de 15 minutos.
+      return (slotStartMin + 15) >= nowTotalMin
+    })
+  }
+
   return slots
 }
 
@@ -171,6 +189,7 @@ const getSlotStatus = (courtData, slot) => {
 // Modal y formulario de reserva
 const isDialogOpen = ref(false)
 const formRef = ref(null)
+const editingReservationId = ref(null)
 const reservationForm = ref({
   court_id: null,
   court_name: '',
@@ -178,8 +197,93 @@ const reservationForm = ref({
   start_time: '',
   end_time: '',
   duration: 1,
+  client_id: null,
+  identification: '',
   client_name: '',
   client_whatsapp: '',
+  request_weekly_fixed: false,
+})
+
+// Opciones de duración (medias horas hasta las 2 horas, luego horas enteras hasta las 10)
+const durationOptions = computed(() => {
+  const options = [
+    { title: '1 Hora', value: 1 },
+    { title: '1.5 Horas', value: 1.5 },
+    { title: '2 Horas', value: 2 }
+  ]
+  for (let d = 3; d <= 10; d++) {
+    options.push({
+      title: `${d} Horas`,
+      value: d
+    })
+  }
+  return options
+})
+
+// Normalizar teléfono venezolano sobre la marcha al escribir
+const normalizePhoneInput = (val) => {
+  if (!val) return ''
+  let clean = val.replace(/[^0-9]/g, '')
+  
+  if (clean.startsWith('0') && clean.length === 11) {
+    clean = '58' + clean.substring(1)
+  } else if (clean.length === 10 && clean.startsWith('4')) {
+    clean = '58' + clean
+  }
+  return clean
+}
+
+// Watcher para normalizar el telefono en tiempo real
+watch(() => reservationForm.value.client_whatsapp, (newVal) => {
+  if (newVal) {
+    const normalized = normalizePhoneInput(newVal)
+    if (normalized !== newVal && normalized.length >= 10) {
+      reservationForm.value.client_whatsapp = normalized
+    }
+  }
+})
+
+// Watcher para autocompletar cliente por Cédula/RIF
+let identificationTimer = null
+watch(() => reservationForm.value.identification, (newVal) => {
+  // Cancelar la consulta anterior si el usuario sigue escribiendo
+  clearTimeout(identificationTimer)
+
+  if (!newVal) return
+
+  const cleanCedula = newVal.replace(/[^0-9]/g, '')
+  if (cleanCedula.length < 6) return
+
+  // Esperar 600ms después de que el usuario deje de escribir
+  identificationTimer = setTimeout(async () => {
+    try {
+      // 1. Buscar cliente existente en BD local (ruta autenticada)
+      const localResponse = await axios.get(`/crm/clients/identification/${cleanCedula}`)
+      const client = localResponse.data?.data
+      if (client) {
+        reservationForm.value.client_id   = client.id
+        reservationForm.value.client_name = `${client.name || ''} ${client.last_name || ''}`.trim()
+        if (client.phone) {
+          reservationForm.value.client_whatsapp = client.phone
+        }
+        return
+      }
+    } catch (_) {
+      // Cliente no encontrado en BD local → intentar CNE
+    }
+
+    try {
+      // 2. Consultar CNE para traer nombre si es venezolano
+      const cneResponse = await axios.post('/crm/clients/cne-verify', { identification: cleanCedula })
+      const cne = cneResponse.data?.data
+      if (cne) {
+        reservationForm.value.client_name = `${cne.name || ''} ${cne.last_name || ''}`.trim()
+        reservationForm.value.client_id   = null // Se creará en el backend al guardar
+      }
+    } catch (_) {
+      // No encontrado en CNE, el usuario ingresa los datos manualmente
+    }
+  }, 600)
 })
 
 // Calcular hora de fin basado en inicio y duración
@@ -204,8 +308,8 @@ watch(() => reservationForm.value.duration, (newVal) => {
 const rules = {
   required: value => !!value || 'Este campo es obligatorio.',
   whatsapp: value => {
-    const pattern = /^\+?[0-9]{8,15}$/
-    return pattern.test(value) || 'WhatsApp no válido (debe tener entre 8 y 15 dígitos).'
+    // Al normalizar, el teléfono quedará de 12 dígitos (ej. 584121234567)
+    return value.length >= 10 || 'Ingresa un número de teléfono válido.'
   }
 }
 
@@ -225,8 +329,9 @@ watch(() => store.selectedDate, () => {
   store.fetchAvailability()
 })
 
-// Abrir diálogo de reserva
+// Abrir diálogo de reserva (Crear)
 const openBookingDialog = (court, slot) => {
+  editingReservationId.value = null
   reservationForm.value = {
     court_id: court.id,
     court_name: court.name,
@@ -234,31 +339,83 @@ const openBookingDialog = (court, slot) => {
     start_time: slot.start,
     duration: 1, // Por defecto 1 hora
     end_time: calculateEndTime(slot.start, 1),
+    client_id: null,
+    identification: '',
     client_name: '',
     client_whatsapp: '',
+    request_weekly_fixed: false,
   }
   isDialogOpen.value = true
 }
 
-// Guardar reserva
+// Abrir diálogo de reserva para edición
+const openEditReservationDialog = (reservation) => {
+  editingReservationId.value = reservation.id
+  const start = reservation.start_time.substring(0, 5)
+  const end = reservation.end_time.substring(0, 5)
+  
+  // Calcular duración actual en horas
+  let duration = 1
+  if (start && end) {
+    const [sH, sM] = start.split(':').map(Number)
+    let [eH, eM] = end.split(':').map(Number)
+    if (eH === 0 && eM === 0) eH = 24
+    const diffMin = (eH * 60 + eM) - (sH * 60 + sM)
+    duration = diffMin / 60
+  }
+
+  reservationForm.value = {
+    court_id: reservation.court_id,
+    court_name: reservation.court?.name || 'Cancha',
+    date: reservation.date,
+    start_time: start,
+    duration: duration,
+    end_time: end,
+    client_id: reservation.client_id,
+    identification: reservation.identification || '',
+    client_name: reservation.client_name,
+    client_whatsapp: reservation.client_whatsapp || '',
+    request_weekly_fixed: !!reservation.request_weekly_fixed,
+  }
+  isDialogOpen.value = true
+}
+
+// Guardar reserva (soporta crear y editar)
 const submitReservation = async () => {
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
+  let finalEndTime = reservationForm.value.end_time
+  if (finalEndTime === '24:00') {
+    finalEndTime = '00:00'
+  }
+
   try {
-    const response = await store.createReservation({
+    const payload = {
       court_id: reservationForm.value.court_id,
       date: reservationForm.value.date,
       start_time: reservationForm.value.start_time,
-      end_time: reservationForm.value.end_time,
+      end_time: finalEndTime,
       client_name: reservationForm.value.client_name,
       client_whatsapp: reservationForm.value.client_whatsapp,
-    })
+      client_id: reservationForm.value.client_id,
+      identification: reservationForm.value.identification,
+      request_weekly_fixed: reservationForm.value.request_weekly_fixed,
+    }
 
-    toast.success(response.message || 'Pre-reserva creada con éxito. Confirma desde WhatsApp.')
+    let response
+    if (editingReservationId.value) {
+      response = await axios.put(`/reservations/${editingReservationId.value}`, payload)
+      toast.success(response.data.message || 'Reserva actualizada correctamente.')
+      await store.fetchAvailability()
+    } else {
+      response = await store.createReservation(payload)
+      toast.success(response.message || 'Pre-reserva creada con éxito. Confirma desde WhatsApp.')
+    }
+
     isDialogOpen.value = false
   } catch (error) {
-    toast.error(error.message || 'Error al intentar crear la reserva.')
+    toast.error(error.message || 'Error al intentar guardar la reserva.')
   }
 }
 
@@ -282,6 +439,7 @@ const getWhatsAppLink = (reservation) => {
 const isFixedScheduleDialogOpen = ref(false)
 const fixedScheduleFormRef = ref(null)
 const editingFixedScheduleId = ref(null)
+const isApplyToAllWeeks = ref(true) // Determinar si la edicion/creacion del fijo se aplica permanentemente
 const fixedScheduleForm = ref({
   court_id: null,
   day_of_week: null,
@@ -314,6 +472,7 @@ const daysOptions = [
 
 const openFixedScheduleDialog = () => {
   editingFixedScheduleId.value = null
+  isApplyToAllWeeks.value = true
   fixedScheduleForm.value = {
     court_id: store.courtsData[0]?.court.id || null,
     day_of_week: 1,
@@ -327,42 +486,92 @@ const openFixedScheduleDialog = () => {
 }
 
 const openEditFixedScheduleDialog = (fixedSchedule) => {
-  editingFixedScheduleId.value = fixedSchedule.id
-  const start = fixedSchedule.start_time.substring(0, 5)
-  const end = fixedSchedule.end_time.substring(0, 5)
-  
-  // Determinar la duración en horas
-  let duration = 1
-  if (start && end) {
-    const [sH, sM] = start.split(':').map(Number)
-    let [eH, eM] = end.split(':').map(Number)
-    if (eH === 0 && eM === 0) eH = 24
-    const diffMin = (eH * 60 + eM) - (sH * 60 + sM)
-    duration = diffMin / 60
-  }
+  Swal.fire({
+    title: '¿Editar Horario Fijo?',
+    text: '¿Deseas editar este horario fijo para SIEMPRE (todas las semanas) o SOLO para esta semana específica?',
+    icon: 'question',
+    showCancelButton: true,
+    showDenyButton: true,
+    confirmButtonColor: '#e00073',
+    denyButtonColor: '#00bcd4',
+    cancelButtonColor: '#7a7a7a',
+    confirmButtonText: 'Para Siempre',
+    denyButtonText: 'Solo Esta Semana',
+    cancelButtonText: 'Cancelar'
+  }).then(async (result) => {
+    if (result.isDismissed) return
 
-  fixedScheduleForm.value = {
-    court_id: fixedSchedule.court_id,
-    day_of_week: fixedSchedule.day_of_week,
-    start_time: start,
-    end_time: end,
-    duration: duration,
-    client_name: fixedSchedule.client_name,
-    client_whatsapp: fixedSchedule.client_whatsapp || '',
-  }
-  isFixedScheduleDialogOpen.value = true
+    editingFixedScheduleId.value = fixedSchedule.id
+    const start = fixedSchedule.start_time.substring(0, 5)
+    const end = fixedSchedule.end_time.substring(0, 5)
+    
+    // Determinar la duración en horas
+    let duration = 1
+    if (start && end) {
+      const [sH, sM] = start.split(':').map(Number)
+      let [eH, eM] = end.split(':').map(Number)
+      if (eH === 0 && eM === 0) eH = 24
+      const diffMin = (eH * 60 + eM) - (sH * 60 + sM)
+      duration = diffMin / 60
+    }
+
+    fixedScheduleForm.value = {
+      court_id: fixedSchedule.court_id,
+      day_of_week: fixedSchedule.day_of_week,
+      start_time: start,
+      end_time: end,
+      duration: duration,
+      client_name: fixedSchedule.client_name,
+      client_whatsapp: fixedSchedule.client_whatsapp || '',
+    }
+
+    if (result.isConfirmed) {
+      // Para siempre: edicion regular del horario fijo
+      isApplyToAllWeeks.value = true
+      isFixedScheduleDialogOpen.value = true
+    } else if (result.isDenied) {
+      // Solo esta semana: se cancela (crea excepcion) esta semana en el fijo y se crea una reserva temporal para esta fecha
+      isApplyToAllWeeks.value = false
+      
+      // Abrir formulario de reserva convencional para esta fecha con los datos del fijo
+      editingReservationId.value = null
+      reservationForm.value = {
+        court_id: fixedSchedule.court_id,
+        court_name: store.courtsData.find(c => c.court.id === fixedSchedule.court_id)?.court.name || 'Cancha',
+        date: store.selectedDate,
+        start_time: start,
+        duration: duration,
+        end_time: end,
+        client_name: fixedSchedule.client_name,
+        client_whatsapp: fixedSchedule.client_whatsapp || '',
+      }
+      
+      // Creamos la excepcion para esta fecha en segundo plano antes de que el usuario confirme el cambio temporal
+      try {
+        await store.deleteFixedSchedule(fixedSchedule.id, store.selectedDate)
+        isDialogOpen.value = true
+      } catch (err) {
+        toast.error('Error al aislar el horario para esta semana.')
+      }
+    }
+  })
 }
 
 const submitFixedSchedule = async () => {
   const { valid } = await fixedScheduleFormRef.value.validate()
   if (!valid) return
 
+  let finalEndTime = fixedScheduleForm.value.end_time
+  if (finalEndTime === '24:00') {
+    finalEndTime = '00:00'
+  }
+
   try {
     const payload = {
       court_id: fixedScheduleForm.value.court_id,
       day_of_week: fixedScheduleForm.value.day_of_week,
       start_time: fixedScheduleForm.value.start_time,
-      end_time: fixedScheduleForm.value.end_time,
+      end_time: finalEndTime,
       client_name: fixedScheduleForm.value.client_name,
       client_whatsapp: fixedScheduleForm.value.client_whatsapp,
     }
@@ -384,19 +593,31 @@ const submitFixedSchedule = async () => {
 
 const confirmDeleteFixedSchedule = (id) => {
   Swal.fire({
-    title: '¿Cancelar Horario Fijo?',
-    text: 'Se cancelará el horario fijo únicamente para la fecha seleccionada. Si se cancela 4 veces, se eliminará permanentemente.',
+    title: '¿Eliminar Horario Fijo?',
+    text: '¿Deseas eliminar este horario fijo de forma PERMANENTE o SOLO cancelar su disponibilidad para esta semana?',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#e00073',
-    cancelButtonColor: '#7a7a7a',
-    confirmButtonText: 'Sí, cancelar',
-    cancelButtonText: 'No, mantener'
+    showDenyButton: true,
+    confirmButtonColor: '#d33',
+    denyButtonColor: '#7a7a7a',
+    cancelButtonColor: '#bcbcbc',
+    confirmButtonText: 'Eliminar Permanente',
+    denyButtonText: 'Solo Esta Semana',
+    cancelButtonText: 'Cancelar'
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
+        // Eliminar permanentemente (sin pasar fecha)
+        await store.deleteFixedSchedule(id, null);
+        toast.success('Horario fijo eliminado permanentemente.');
+      } catch (error) {
+        toast.error(error.message || 'Error al eliminar el horario fijo.');
+      }
+    } else if (result.isDenied) {
+      try {
+        // Cancelar solo esta semana (pasando fecha para crear excepcion)
         await store.deleteFixedSchedule(id, store.selectedDate);
-        toast.success('Horario fijo cancelado para esta semana.');
+        toast.success('Horario fijo cancelado únicamente para esta semana.');
       } catch (error) {
         toast.error(error.message || 'Error al cancelar el horario fijo.');
       }
@@ -523,59 +744,65 @@ const copyWeeklyReservations = async () => {
 
 <template>
   <VContainer class="py-6">
-    <VRow justify="space-between" align="center" class="mb-6">
-      <VCol cols="12" md="6">
-        <h1 class="text-h4 font-weight-bold text-primary">
-          ⚽ Reservas de Canchas - Gol Club
-        </h1>
-        <p class="text-subtitle-1 text-grey-darken-1">
-          Visualiza, agenda y gestiona la disponibilidad en tiempo real.
-        </p>
-      </VCol>
-      <VCol cols="12" md="4" class="text-right">
-        <!-- Selector de Fecha -->
-        <VTextField
-          v-model="store.selectedDate"
-          type="date"
-          label="Seleccionar Fecha"
-          prepend-inner-icon="tabler-calendar"
-          variant="outlined"
-          color="primary"
-          density="comfortable"
-        />
-      </VCol>
-    </VRow>
+    <!-- Navbar de Filtros y Cabecera Unificada -->
+    <VCard class="mb-6 px-4 py-3" elevation="1" border>
+      <div class="d-flex flex-wrap align-center justify-space-between gap-4">
+        <!-- Título y Subtítulo -->
+        <div class="d-flex align-center gap-3">
+          <h1 class="text-h5 font-weight-bold text-primary mb-0 d-flex align-center">
+            ⚽ <span class="ml-2">Reservas - Gol Club</span>
+          </h1>
+        </div>
 
-    <div class="mb-6 d-flex flex-wrap gap-4">
-      <VBtn
-        :color="showEarlierHours ? 'secondary' : 'primary'"
-        variant="tonal"
-        prepend-icon="tabler-clock"
-        @click="showEarlierHours = !showEarlierHours"
-        class="mr-3"
-      >
-        {{ showEarlierHours ? 'Ocultar horas de la mañana' : 'Ver horas más tempranas' }}
-      </VBtn>
+        <!-- Filtros y Acciones -->
+        <div class="d-flex flex-wrap align-center gap-3 ml-auto" style="flex: 1; justify-content: flex-end; min-width: 300px;">
+          <!-- Selector de Fecha -->
+          <div style="width: 200px;">
+            <VTextField
+              v-model="store.selectedDate"
+              type="date"
+              label="Seleccionar Fecha"
+              prepend-inner-icon="tabler-calendar"
+              variant="outlined"
+              color="primary"
+              density="compact"
+              hide-details
+            />
+          </div>
 
-      <VBtn
-        color="secondary"
-        variant="elevated"
-        prepend-icon="tabler-calendar-plus"
-        @click="openFixedScheduleDialog"
-        class="mr-3"
-      >
-        Configurar Horario Fijo
-      </VBtn>
+          <!-- Botones de Acción -->
+          <VBtn
+            :color="showEarlierHours ? 'secondary' : 'primary'"
+            variant="tonal"
+            density="comfortable"
+            prepend-icon="tabler-clock"
+            @click="showEarlierHours = !showEarlierHours"
+          >
+            {{ showEarlierHours ? 'Ocultar Mañana' : 'Ver Mañana' }}
+          </VBtn>
 
-      <VBtn
-        color="success"
-        variant="elevated"
-        prepend-icon="tabler-copy"
-        @click="copyWeeklyReservations"
-      >
-        Copiar Reservas Semanales
-      </VBtn>
-    </div>
+          <VBtn
+            color="secondary"
+            variant="elevated"
+            density="comfortable"
+            prepend-icon="tabler-calendar-plus"
+            @click="openFixedScheduleDialog"
+          >
+            Horario Fijo
+          </VBtn>
+
+          <VBtn
+            color="success"
+            variant="elevated"
+            density="comfortable"
+            prepend-icon="tabler-copy"
+            @click="copyWeeklyReservations"
+          >
+            Copiar Semana
+          </VBtn>
+        </div>
+      </div>
+    </VCard>
 
     <!-- Estado de carga -->
     <div v-if="store.loading && store.courtsData.length === 0" class="text-center my-12">
@@ -685,6 +912,16 @@ const copyWeeklyReservations = async () => {
                       {{ getSlotStatus(item, slot).label }}
                     </VChip>
                     <VBtn
+                      color="primary"
+                      size="x-small"
+                      icon="tabler-edit"
+                      variant="elevated"
+                      elevation="1"
+                      class="mr-2"
+                      title="Editar Reserva"
+                      @click="openEditReservationDialog(getSlotStatus(item, slot).reservation)"
+                    />
+                    <VBtn
                       color="error"
                       size="x-small"
                       icon="tabler-trash"
@@ -705,6 +942,16 @@ const copyWeeklyReservations = async () => {
                     >
                       {{ getSlotStatus(item, slot).label }}
                     </VChip>
+                    <VBtn
+                      color="primary"
+                      size="x-small"
+                      icon="tabler-edit"
+                      variant="elevated"
+                      elevation="1"
+                      class="mr-2"
+                      title="Editar Reserva"
+                      @click="openEditReservationDialog(getSlotStatus(item, slot).reservation)"
+                    />
                     <VBtn
                       color="success"
                       size="x-small"
@@ -738,7 +985,7 @@ const copyWeeklyReservations = async () => {
     <VDialog v-model="isDialogOpen" max-width="500px">
       <VCard>
         <VCardTitle class="bg-primary text-white py-4">
-          <span class="text-h6">🏟️ Nueva Reserva</span>
+          <span class="text-h6">🏟️ {{ editingReservationId ? 'Editar Reserva' : 'Nueva Reserva' }}</span>
         </VCardTitle>
 
         <VCardText class="py-6">
@@ -767,11 +1014,9 @@ const copyWeeklyReservations = async () => {
               <VCol cols="12" sm="6">
                 <VSelect
                   v-model="reservationForm.duration"
-                  :items="[
-                    { title: '1 Hora', value: 1 },
-                    { title: '1.5 Horas', value: 1.5 },
-                    { title: '2 Horas', value: 2 }
-                  ]"
+                  :items="durationOptions"
+                  item-title="title"
+                  item-value="value"
                   label="Duración"
                   variant="outlined"
                   density="comfortable"
@@ -785,6 +1030,18 @@ const copyWeeklyReservations = async () => {
                   disabled
                   variant="outlined"
                   density="comfortable"
+                />
+              </VCol>
+              <VCol cols="12">
+                <VTextField
+                  v-model="reservationForm.identification"
+                  label="Cédula de Identidad / RIF (opcional)"
+                  placeholder="Ej. 12345678"
+                  variant="outlined"
+                  color="primary"
+                  density="comfortable"
+                  hint="Ingresa la cédula para buscar al cliente o jalar datos del CNE automáticamente"
+                  persistent-hint
                 />
               </VCol>
               <VCol cols="12">
@@ -812,6 +1069,22 @@ const copyWeeklyReservations = async () => {
                   persistent-hint
                 />
               </VCol>
+              
+              <!-- Checkbox para solicitar Hora Fija Semanal en panel de control -->
+              <VCol cols="12" class="pt-0">
+                <VCheckbox
+                  v-model="reservationForm.request_weekly_fixed"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                >
+                  <template #label>
+                    <div class="text-caption text-grey-darken-3 font-weight-medium">
+                      🔄 ¿Marcar este horario como fijo semanalmente para el cliente?
+                    </div>
+                  </template>
+                </VCheckbox>
+              </VCol>
             </VRow>
           </VForm>
         </VCardText>
@@ -833,7 +1106,7 @@ const copyWeeklyReservations = async () => {
             :loading="store.loading"
             @click="submitReservation"
           >
-            Confirmar Reserva
+            {{ editingReservationId ? 'Guardar Cambios' : 'Confirmar Reserva' }}
           </VBtn>
         </VCardActions>
       </VCard>
@@ -889,11 +1162,9 @@ const copyWeeklyReservations = async () => {
                <VCol cols="12" sm="6">
                  <VSelect
                    v-model="fixedScheduleForm.duration"
-                   :items="[
-                     { title: '1 Hora', value: 1 },
-                     { title: '1.5 Horas', value: 1.5 },
-                     { title: '2 Horas', value: 2 }
-                   ]"
+                   :items="durationOptions"
+                   item-title="title"
+                   item-value="value"
                    label="Duración"
                    variant="outlined"
                    density="comfortable"

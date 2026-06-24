@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth'; // <-- 1. IMPORTA TU AUTH STORE
+import { useBrandingStore } from '@/stores/useBrandingStore';
 import { setupLayouts } from 'virtual:meta-layouts';
 import { createRouter, createWebHistory } from 'vue-router/auto';
 
@@ -155,6 +156,13 @@ router.beforeEach(async (to, from, next) => {
     
     if (to.path === '/login' && isAuthenticated) {
       console.log('[ROUTER] Redirigiendo según rol')
+      const brandingStore = useBrandingStore()
+      const isSportsRental = brandingStore.settings?.business_type === 'sports_rental'
+      
+      if (isSportsRental) {
+        return safeNext({ path: '/reservations' })
+      }
+      
       if (authStore.isAdmin) {
         return safeNext({ path: '/' })
       } else {
@@ -163,6 +171,13 @@ router.beforeEach(async (to, from, next) => {
     }
     
     if (to.path === '/' && isAuthenticated) {
+      const brandingStore = useBrandingStore()
+      const isSportsRental = brandingStore.settings?.business_type === 'sports_rental'
+      
+      if (isSportsRental) {
+        return safeNext({ path: '/reservations' })
+      }
+      
       if (!authStore.isAdmin) {
         return safeNext({ path: '/tpv/orderUser' })
       }

@@ -35,18 +35,89 @@ const reservationForm = ref({
   start_time: '',
   end_time: '',
   duration: 1,
+  client_id: null,
+  identification: '',
   client_name: '',
   client_whatsapp: '',
+})
+
+// Normalizar teléfono venezolano sobre la marcha al escribir
+const normalizePhoneInput = (val) => {
+  if (!val) return ''
+  let clean = val.replace(/[^0-9]/g, '')
+  
+  if (clean.startsWith('0') && clean.length === 11) {
+    clean = '58' + clean.substring(1)
+  } else if (clean.length === 10 && clean.startsWith('4')) {
+    clean = '58' + clean
+  }
+  return clean
+}
+
+// Watcher para normalizar el telefono en tiempo real
+watch(() => reservationForm.value.client_whatsapp, (newVal) => {
+  if (newVal) {
+    const normalized = normalizePhoneInput(newVal)
+    if (normalized !== newVal && normalized.length >= 10) {
+      reservationForm.value.client_whatsapp = normalized
+    }
+  }
+})
+
+// Watcher para autocompletar cliente por Cédula/RIF
+watch(() => reservationForm.value.identification, async (newVal) => {
+  if (!newVal) return
+  
+  const cleanCedula = newVal.replace(/[^0-9]/g, '')
+  if (cleanCedula.length >= 6) {
+    try {
+      const response = await axios.get(`/public/clients/identification/${cleanCedula}`)
+      if (response.data && response.data.data) {
+        const client = response.data.data
+        // Autocompletar nombre completo del cliente
+        const fullName = `${client.name || ''} ${client.last_name || ''}`.trim()
+        reservationForm.value.client_name = fullName
+        
+        // Autocompletar teléfono/whatsapp
+        if (client.phone) {
+          reservationForm.value.client_whatsapp = client.phone
+        }
+        
+        // Asociar el ID del cliente
+        reservationForm.value.client_id = client.id
+      }
+    } catch (e) {
+      // Si no se encuentra, resetear los campos del cliente para que escriba de nuevo o los ingrese por primera vez
+      reservationForm.value.client_name = ''
+      reservationForm.value.client_whatsapp = ''
+      reservationForm.value.client_id = null
+    }
+  }
 })
 
 // Reglas de validación
 const rules = {
   required: value => !!value || 'Este campo es obligatorio.',
   whatsapp: value => {
-    const pattern = /^\+?[0-9]{8,15}$/
-    return pattern.test(value) || 'WhatsApp no válido (debe tener entre 8 y 15 dígitos).'
+    return value.length >= 10 || 'Ingresa un número de teléfono válido.'
   }
 }
+
+// Opciones de duración (medias horas hasta las 2 horas, luego horas enteras hasta las 10)
+const durationOptions = computed(() => {
+  const options = [
+    { title: '1 Hora', value: 1 },
+    { title: '1.5 Horas', value: 1.5 },
+    { title: '2 Horas', value: 2 }
+  ]
+  for (let d = 3; d <= 10; d++) {
+    options.push({
+      title: `${d} Horas`,
+      value: d
+    })
+  }
+  return options
+})
 
 // Cargar disponibilidad desde la API pública
 const fetchAvailability = async () => {
@@ -69,9 +140,7 @@ watch(selectedDate, () => {
   fetchAvailability()
 })
 
-onMounted(() => {
-  fetchAvailability()
-})
+
 
 // Auxiliares de tiempo
 const timeToMin = (t) => {
@@ -174,7 +243,7 @@ const getCourtSlots = (courtData) => {
         } else {
           currentTime = minToTime(currentMin + 60)
         }
-      } else {
+    } else {
         const labelAmPm = `${formatAmPm(currentTime)} - ${formatAmPm(endTime)}`
         slots.push({
           label: labelAmPm,
@@ -186,6 +255,22 @@ const getCourtSlots = (courtData) => {
         currentTime = endTime
       }
     }
+  }
+
+  // Filtrar slots dinámicamente si la fecha seleccionada es HOY (según zona horaria local)
+  const now = new Date()
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
+  
+  if (selectedDate.value === todayStr) {
+    const currentHour = now.getHours()
+    const currentMin = now.getMinutes()
+    const nowTotalMin = currentHour * 60 + currentMin
+
+    return slots.filter(slot => {
+      const slotStartMin = timeToMin(slot.start)
+      // Ocultar si ya pasaron más de 15 minutos desde el inicio del bloque
+      return (slotStartMin + 15) >= nowTotalMin
+    })
   }
 
   return slots
@@ -200,8 +285,11 @@ const openBookingDialog = (court, slot) => {
     start_time: slot.start,
     duration: 1,
     end_time: calculateEndTime(slot.start, 1),
+    client_id: null,
+    identification: '',
     client_name: '',
     client_whatsapp: '',
+    request_weekly_fixed: false,
   }
   isDialogOpen.value = true
 }
@@ -210,6 +298,15 @@ const openBookingDialog = (court, slot) => {
 const isSuccessDialogOpen = ref(false)
 const confirmedReservationData = ref(null)
 
+// Registrar visita del usuario en la sección pública
+const recordVisit = async () => {
+  try {
+    await axios.post('/public/visits')
+  } catch (e) {
+    console.error('Error al registrar métricas de visita:', e)
+  }
+}
+
 const whatsappLink = computed(() => {
   if (!confirmedReservationData.value) return ''
   const court = confirmedReservationData.value.court_name
@@ -217,8 +314,9 @@ const whatsappLink = computed(() => {
   const time = `${formatAmPm(confirmedReservationData.value.start_time.substring(0, 5))} - ${formatAmPm(confirmedReservationData.value.end_time.substring(0, 5))}`
   const name = confirmedReservationData.value.client_name
   const whatsapp = confirmedReservationData.value.client_whatsapp
+  const fixedText = confirmedReservationData.value.request_weekly_fixed ? "\n🔄 Solicitud adicional: Hora Fija Semanal" : ""
   
-  const text = `Hola, quiero confirmar mi reserva:\n🏟️ Cancha: ${court}\n📅 Fecha: ${date}\n⏰ Horario: ${time}\n👤 Nombre: ${name}\n📱 Teléfono: ${whatsapp}`
+  const text = `Hola, quiero confirmar mi reserva:\n🏟️ Cancha: ${court}\n📅 Fecha: ${date}\n⏰ Horario: ${time}\n👤 Nombre: ${name}\n📱 Teléfono: ${whatsapp}${fixedText}`
   return `https://wa.me/584247423672?text=${encodeURIComponent(text)}`
 })
 
@@ -226,18 +324,29 @@ const submitReservation = async () => {
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
+  let finalEndTime = reservationForm.value.end_time
+  if (finalEndTime === '24:00') {
+    finalEndTime = '00:00'
+  }
+
   loading.value = true
   try {
     const response = await axios.post('/public/reservations', {
       court_id: reservationForm.value.court_id,
       date: reservationForm.value.date,
       start_time: reservationForm.value.start_time,
-      end_time: reservationForm.value.end_time,
+      end_time: finalEndTime,
       client_name: reservationForm.value.client_name,
       client_whatsapp: reservationForm.value.client_whatsapp,
+      client_id: reservationForm.value.client_id,
+      identification: reservationForm.value.identification,
+      request_weekly_fixed: reservationForm.value.request_weekly_fixed,
     })
 
-    confirmedReservationData.value = { ...reservationForm.value }
+    confirmedReservationData.value = { 
+      ...reservationForm.value,
+      id: response.data.data.id
+    }
     toast.success(response.data.message || 'Reserva creada exitosamente.')
     isDialogOpen.value = false
     isSuccessDialogOpen.value = true
@@ -248,6 +357,28 @@ const submitReservation = async () => {
     loading.value = false
   }
 }
+
+// Confirmar la reserva en base de datos públicamente al ir a WhatsApp
+const confirmAndGoToWhatsApp = async () => {
+  if (!confirmedReservationData.value || !confirmedReservationData.value.id) return
+  
+  try {
+    // Confirmar en el backend para disparar notificaciones de Telegram en tiempo real
+    await axios.patch(`/public/reservations/${confirmedReservationData.value.id}/confirm`)
+  } catch (e) {
+    console.error('Error al pre-confirmar reserva:', e)
+  }
+  
+  // Abrir enlace de WhatsApp en una nueva pestaña
+  window.open(whatsappLink.value, '_blank', 'noopener,noreferrer')
+  isSuccessDialogOpen.value = false
+}
+
+// Registrar visita del usuario cuando carga el sitio
+onMounted(() => {
+  fetchAvailability()
+  recordVisit()
+})
 
 const formatPrice = (value) => {
   if (!value) return '0'
@@ -421,11 +552,9 @@ const formatPrice = (value) => {
               <VCol cols="12" sm="6">
                 <VSelect
                   v-model="reservationForm.duration"
-                  :items="[
-                    { title: '1 Hora', value: 1 },
-                    { title: '1.5 Horas', value: 1.5 },
-                    { title: '2 Horas', value: 2 }
-                  ]"
+                  :items="durationOptions"
+                  item-title="title"
+                  item-value="value"
                   label="Duración"
                   variant="outlined"
                   density="comfortable"
@@ -439,6 +568,19 @@ const formatPrice = (value) => {
                   disabled
                   variant="outlined"
                   density="comfortable"
+                />
+              </VCol>
+              <VCol cols="12">
+                <VTextField
+                  v-model="reservationForm.identification"
+                  label="Cédula de Identidad / RIF"
+                  placeholder="Ej. 12345678"
+                  required
+                  :rules="[rules.required]"
+                  variant="outlined"
+                  density="comfortable"
+                  hint="Ingresa tu cédula para completar tus datos automáticamente"
+                  persistent-hint
                 />
               </VCol>
               <VCol cols="12">
@@ -463,6 +605,22 @@ const formatPrice = (value) => {
                   hint="Código de país sin el símbolo (+)"
                   persistent-hint
                 />
+              </VCol>
+              
+              <!-- Checkbox para solicitar Hora Fija Semanal -->
+              <VCol cols="12" class="pt-0">
+                <VCheckbox
+                  v-model="reservationForm.request_weekly_fixed"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                >
+                  <template #label>
+                    <div class="text-caption text-grey-darken-3 font-weight-medium">
+                      🔄 ¿Deseas solicitar este horario de forma fija todas las semanas?
+                    </div>
+                  </template>
+                </VCheckbox>
               </VCol>
             </VRow>
           </VForm>
@@ -511,25 +669,17 @@ const formatPrice = (value) => {
             <div class="text-caption"><span class="font-weight-bold">Horario:</span> {{ confirmedReservationData.start_time }} - {{ confirmedReservationData.end_time }}</div>
             <div class="text-caption"><span class="font-weight-bold">Cliente:</span> {{ confirmedReservationData.client_name }}</div>
             <div class="text-caption"><span class="font-weight-bold">Teléfono:</span> {{ confirmedReservationData.client_whatsapp }}</div>
+            <div v-if="confirmedReservationData.request_weekly_fixed" class="text-caption text-primary font-weight-bold mt-1">
+              🔄 Solicitando Horario Fijo Semanal
+            </div>
           </VCard>
 
-          <div class="d-flex gap-4 mt-4">
+          <div class="d-flex mt-4">
             <VBtn
-              variant="outlined"
-              color="grey"
-              class="flex-grow-1"
-              @click="isSuccessDialogOpen = false"
-            >
-              Cerrar
-            </VBtn>
-            <VBtn
-              :href="whatsappLink"
-              target="_blank"
-              rel="noopener noreferrer"
               color="success"
               prepend-icon="tabler-brand-whatsapp"
-              class="font-weight-bold flex-grow-1 text-truncate"
-              @click="isSuccessDialogOpen = false"
+              class="font-weight-bold flex-grow-1"
+              @click="confirmAndGoToWhatsApp"
             >
               Confirmar
             </VBtn>

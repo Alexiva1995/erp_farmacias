@@ -39,8 +39,9 @@ const selectedPack = ref(null);
 
 // --- Estado para Restaurante / Menú de Platos ---
 const isRestaurant = ref(false);
+const isSportsRental = ref(false);
 const defaultCurrency = computed(() => {
-  if (isRestaurant.value) return "COP";
+  if (isRestaurant.value || isSportsRental.value) return "COP";
   return brandingStore.settings?.default_currency || "COP";
 });
 const dishes = ref([]);
@@ -284,6 +285,7 @@ const fetchGeneralSettings = async () => {
     allForeignSalesSpe.value = !!settings.all_foreign_sales_spe;
     // Determinar si el negocio es restaurante para mostrar el menú de platos
     isRestaurant.value = settings.business_type === "restaurant";
+    isSportsRental.value = settings.business_type === "sports_rental";
     if (isRestaurant.value) {
       activeTab.value = "menu";
     }
@@ -932,6 +934,46 @@ const consultAllcomapanies = async () => {
 };
 
 const formatOrderItemForFrontend = (backendItem) => {
+  // --- Ítem de tipo CANCHA (sports_rental) ---
+  if (backendItem.product_type === "court" && backendItem.court) {
+    const court = backendItem.court;
+    const unitPrice = parseFloat(backendItem.price) || parseFloat(court.price) || 0;
+    return {
+      order_detail_id: backendItem.id,
+      product_id: null,
+      dish_id: null,
+      court_id: court.id,
+      title: court.name,
+      active_ingredient: "Cancha",
+      itemCode: null,
+      price: unitPrice,
+      price_before_discount: unitPrice,
+      price_bs: unitPrice,
+      price_cop: unitPrice,
+      base_price: unitPrice,
+      base_price_bs: unitPrice,
+      base_price_cop: unitPrice,
+      unitCost: 0,
+      basePrice: unitPrice,
+      original_price_usd: unitPrice,
+      original_price_bs: unitPrice,
+      original_price_cop: unitPrice,
+      availableQuantity: 9999,
+      selectedQuantity: parseFloat(backendItem.quantity) || 0,
+      laboratory: "Alquiler Deportivo",
+      taxRate: 0,
+      pack_id: null,
+      discount_percentage: 0,
+      discount_type: null,
+      discount_source_id: null,
+      original_pack_config: null,
+      has_pack_discount: false,
+      is_dish: false,
+      is_court: true,
+      notes: backendItem.notes || "",
+    };
+  }
+
   // --- Ítem de tipo PLATO (restaurante) ---
   if (backendItem.product_type === "dish" && backendItem.dish) {
     const dish = backendItem.dish;
@@ -1059,7 +1101,11 @@ const loadingPedidos = ref(false);
 const fetchPedidosList = async () => {
   try {
     const response = await axios.get('/tpv/orders/reserved-list');
-    pedidosList.value = response.data.orders || [];
+    if (response.data.is_sports_rental) {
+      pedidosList.value = response.data.reservations || [];
+    } else {
+      pedidosList.value = response.data.orders || [];
+    }
   } catch (error) {
     console.error("Error al cargar pedidos:", error);
   }
@@ -1075,6 +1121,84 @@ const openPedidosModal = async () => {
     toast.error("No se pudieron cargar los pedidos pendientes.");
   } finally {
     loadingPedidos.value = false;
+  }
+};
+
+const selectReservation = async (reservation) => {
+  try {
+    isLoadingInitialOrder.value = true;
+    
+    // 1. Obtener o crear una orden abierta para el vendedor
+    let activeOrder = null;
+    try {
+      const openOrderResponse = await axios.get("/tpv/order/seller/my-open-order");
+      if (openOrderResponse.data.data?.order?.pending_order) {
+        activeOrder = openOrderResponse.data.data.order.pending_order;
+      }
+    } catch (err) {
+      console.log("No se encontró orden abierta previa, se creará una nueva.");
+    }
+
+    // 2. Si no hay orden abierta o la orden abierta pertenece a otro cliente (solo si la reserva tiene cliente), evaluar si reutilizamos o creamos una nueva.
+    const clientId = reservation.client_id || null;
+    
+    // Si hay orden abierta pero está vacía (sin productos), podemos cambiarle el cliente o dejarla sin cliente directamente
+    if (activeOrder && orderItems.value.length === 0) {
+      // Reutilizar la orden abierta actualizando el cliente si es necesario
+      if (clientId && activeOrder.client_id !== clientId) {
+        activeOrder.client_id = clientId;
+        // Opcional: Podríamos hacer una petición para actualizar el cliente de la orden si el backend lo requiere,
+        // pero al agregar el item se asociará.
+      }
+    } else if (!activeOrder || (clientId && activeOrder.client_id !== clientId)) {
+      if (activeOrder) {
+        // Abandonamos o cerramos la orden con productos previa
+        try {
+          await axios.patch(`/tpv/orders/${activeOrder.id}/abandon`);
+        } catch (e) {}
+      }
+      activeOrder = await addOrden(clientId);
+    }
+
+    if (!activeOrder) {
+      toast.error("No se pudo iniciar la orden para facturar esta reservación.");
+      return;
+    }
+
+    // 3. Calcular la cantidad de horas (duración) de la reservación
+    const startParts = reservation.start_time.split(':').map(Number);
+    const endParts = reservation.end_time.split(':').map(Number);
+    const startHour = startParts[0] + (startParts[1] / 60);
+    const endHour = endParts[0] + (endParts[1] / 60);
+    let durationHours = endHour - startHour;
+    if (durationHours <= 0) durationHours = 1; // Salvaguarda
+
+    // 4. Obtener precio de la cancha (el precio en BD ya está guardado directamente en la moneda local COP, ej: 100,000.00 COP)
+    const priceInSelectedCurrency = parseFloat(reservation.court?.price) || 0;
+    
+    // Calcular el equivalente en USD para el backend
+    const rate = exchangeRates.value?.["USD"]?.["COP"] || 4000;
+    const priceUsd = priceInSelectedCurrency / rate;
+
+    const payload = {
+      court_id: reservation.court_id,
+      quantity: durationHours,
+      price_usd_unit: priceUsd,
+      price_at_product: priceInSelectedCurrency,
+      currency_at_order: selectedDisplayCurrency.value,
+    };
+
+    // 5. Agregar el ítem de cancha a la orden
+    await axios.post(`/tpv/orders/${activeOrder.id}/items`, payload);
+
+    // 6. Recargar y actualizar la vista
+    await fetchOpenOrder();
+    toast.success("Reservación precargada correctamente.");
+  } catch (error) {
+    console.error("Error al precargar reservación:", error);
+    toast.error("No se pudo precargar la reservación.");
+  } finally {
+    isLoadingInitialOrder.value = false;
   }
 };
 
@@ -1142,7 +1266,7 @@ const fetchOpenOrder = async () => {
     orderItems.value = [];
   } finally {
     isLoadingInitialOrder.value = false;
-    if (isRestaurant.value) {
+    if (isRestaurant.value || isSportsRental.value) {
       fetchPedidosList();
     }
   }
@@ -3326,7 +3450,7 @@ const finalizeAndCheckPending = () => {
   clientIdentification.value = "";
   reservedOrderData.value = null;
   //}
-  if (isRestaurant.value) {
+  if (isRestaurant.value || isSportsRental.value) {
     fetchPedidosList();
   }
 };
@@ -3384,7 +3508,15 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Listado de Pedidos Activos / Mesas en la parte superior -->
+    <!-- Barra Superior de Acceso Rápido a Reservas (Solo Alquiler Deportivo) -->
+    <div v-if="!isLoadingInitialOrder && isSportsRental" class="d-flex justify-space-between align-center mb-4 pa-2 bg-grey-lighten-4 rounded-lg border">
+      <div class="d-flex align-center gap-2">
+        <VIcon icon="tabler-ball-football" color="primary" />
+        <span class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis">Reservaciones del Día (Alquiler Deportivo)</span>
+      </div>
+    </div>
+
+    <!-- Listado de Pedidos Activos / Mesas en la parte superior (Restaurante) -->
     <div v-if="!isLoadingInitialOrder && isRestaurant && pedidosList.length > 0" class="mb-6">
       <VRow>
         <VCol v-for="pedido in pedidosList" :key="pedido.id" cols="12" sm="6" md="4" lg="3">
@@ -3412,6 +3544,48 @@ onUnmounted(() => {
               <div class="d-flex justify-space-between align-center text-caption mt-1">
                 <span class="font-weight-bold text-disabled">Monto Total:</span>
                 <span class="font-weight-black text-subtitle-2" style="color: #d81b60;">{{ formatCurrency(pedido.total_amount || 0, pedido.currency || 'USD') }}</span>
+              </div>
+            </VCardText>
+          </VCard>
+        </VCol>
+      </VRow>
+    </div>
+
+    <!-- Listado de Reservaciones en la parte superior (Alquiler Deportivo) -->
+    <div v-if="!isLoadingInitialOrder && isSportsRental && pedidosList.length > 0" class="mb-6">
+      <VRow>
+        <VCol v-for="reserva in pedidosList" :key="reserva.id" cols="12" sm="6" md="4" lg="3">
+          <VCard
+            variant="outlined"
+            class="rounded-lg cursor-pointer bg-white"
+            style="border: 1px solid #e0e0e0; transition: transform 0.2s, box-shadow 0.2s;"
+            @click="selectReservation(reserva)"
+            @mouseover="$event.currentTarget.style.transform = 'translateY(-2px)'"
+            @mouseleave="$event.currentTarget.style.transform = 'none'"
+          >
+            <div style="height: 4px;" :style="reserva.is_fixed ? 'background-color: #2196f3;' : 'background-color: #4caf50;'"></div>
+            <VCardText class="pa-3">
+              <div class="d-flex justify-space-between align-center mb-2">
+                <span class="font-weight-black text-subtitle-2" :style="reserva.is_fixed ? 'color: #2196f3;' : 'color: #4caf50;'">{{ reserva.court?.name || 'Cancha' }}</span>
+                <VChip :color="reserva.is_fixed ? 'info' : (reserva.status === 'verified' ? 'success' : 'warning')" size="x-small" variant="flat" class="font-weight-black rounded">
+                  {{ reserva.is_fixed ? 'FIJA' : (reserva.status === 'verified' ? 'VERIFICADA' : 'PENDIENTE') }}
+                </VChip>
+              </div>
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
+                Cliente: {{ reserva.client_name }}
+              </div>
+              <div class="text-caption font-weight-bold text-primary mb-1">
+                Horario: {{ reserva.start_time.substring(0, 5) }} - {{ reserva.end_time.substring(0, 5) }}
+              </div>
+              <div class="text-caption text-disabled mb-2">
+                Teléfono: {{ reserva.client_whatsapp }}
+              </div>
+              <VDivider class="my-2 border-opacity-10" />
+              <div class="d-flex justify-space-between align-center text-caption mt-1">
+                <span class="font-weight-bold text-disabled">Tarifa/Hora:</span>
+                <span class="font-weight-black text-subtitle-2" style="color: #4caf50;">
+                  {{ formatCurrency(parseFloat(reserva.court?.price || 0), 'COP') }}
+                </span>
               </div>
             </VCardText>
           </VCard>

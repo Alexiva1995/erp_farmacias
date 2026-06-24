@@ -74,7 +74,11 @@ const processedNavItems = computed(() => {
  
   // 2. Si es modo restaurante, ocultar Reservas para TODOS los roles
   if (isRestaurant) {
-    items = items.filter(item => item.title !== 'Reservas' && item.to !== 'reservations');
+    items = items.filter(item => {
+      const title = (item.title || '').toLowerCase();
+      const to = (item.to || '').toLowerCase();
+      return title !== 'reservas' && to !== 'reservations';
+    });
     
     // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
     // para que no requiera privilegios exclusivos de 'admin' en la evaluación de CASL del layout.
@@ -95,6 +99,29 @@ const processedNavItems = computed(() => {
       }
       return item;
     });
+  }
+ 
+  // 3. Si el negocio es de Alquiler de Canchas/Reservas (sports_rental),
+  // reordenamos el menú para colocar 'Reservas' en el primer lugar (arriba del Home)
+  const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
+  if (isSportsRental) {
+    const reservationsItem = items.find(item => {
+      const title = (item.title || '').toLowerCase();
+      const toVal = item.to;
+      let toStr = '';
+      if (typeof toVal === 'string') {
+        toStr = toVal.toLowerCase();
+      } else if (toVal && typeof toVal === 'object' && toVal.name) {
+        toStr = String(toVal.name).toLowerCase();
+      }
+      return title === 'reservas' || toStr === 'reservations';
+    });
+    if (reservationsItem) {
+      // Filtrar el ítem de su posición original
+      items = items.filter(item => item !== reservationsItem);
+      // Colocarlo al puro principio del array (arriba de Home)
+      items.unshift(reservationsItem);
+    }
   }
  
   // Solo procesar si el usuario está cargado

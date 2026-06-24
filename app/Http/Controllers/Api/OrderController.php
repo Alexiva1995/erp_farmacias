@@ -512,6 +512,55 @@ class OrderController extends Controller
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
 
+            $generalSettings = DB::table('general_settings')->first();
+            $isSportsRental = $generalSettings && $generalSettings->business_type === 'sports_rental';
+
+            if ($isSportsRental) {
+                // Para alquiler deportivo, obtenemos las reservaciones del día actual que no sean canceladas
+                $today = now()->format('Y-m-d');
+                $carbonToday = now();
+                $dayOfWeek = $carbonToday->dayOfWeekIso;
+
+                $reservations = \App\Models\Reservation::where('date', $today)
+                    ->whereIn('status', ['pending', 'verified'])
+                    ->with(['court', 'client'])
+                    ->get();
+
+                // Obtener los horarios fijos para este día de la semana que no tengan excepción
+                $fixedSchedules = \App\Models\FixedSchedule::where('day_of_week', $dayOfWeek)
+                    ->whereDoesntHave('exceptions', function ($query) use ($today) {
+                        $query->where('date', $today);
+                    })
+                    ->with(['court'])
+                    ->get();
+
+                // Mapear los horarios fijos para que tengan una estructura similar a las reservaciones
+                $mappedFixed = $fixedSchedules->map(function ($fixed) use ($today) {
+                    return [
+                        'id' => 'fixed_' . $fixed->id,
+                        'court_id' => $fixed->court_id,
+                        'date' => $today,
+                        'start_time' => $fixed->start_time,
+                        'end_time' => $fixed->end_time,
+                        'client_name' => $fixed->client_name,
+                        'client_whatsapp' => $fixed->client_whatsapp,
+                        'status' => 'verified', // Las fijas se consideran verificadas
+                        'is_fixed' => true,
+                        'court' => $fixed->court,
+                        'client' => null,
+                    ];
+                });
+
+                // Unificar y ordenar todo por start_time cronológicamente
+                $unified = $reservations->concat($mappedFixed)->sortBy('start_time')->values();
+
+                return response()->json([
+                    'success' => true,
+                    'is_sports_rental' => true,
+                    'reservations' => $unified
+                ]);
+            }
+
             $orders = Order::where('seller_id', $sellerId)
                 ->where('status', Order::RESERVED)
                 ->with(['client', 'details.product', 'details.dish'])
@@ -535,6 +584,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
+                'is_sports_rental' => false,
                 'orders' => $orders->fresh(['client', 'details.product', 'details.dish'])
             ]);
         } catch (\Exception $e) {

@@ -23,6 +23,7 @@ class ReservationResource extends JsonResource
             'client_name' => $this->client_name,
             'client_whatsapp' => $this->client_whatsapp,
             'status' => $this->status,
+            'request_weekly_fixed' => (bool)$this->request_weekly_fixed,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

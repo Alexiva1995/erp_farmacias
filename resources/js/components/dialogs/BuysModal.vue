@@ -1612,6 +1612,13 @@ const isPaymentMethodActive = (methodValue, currency) => {
 
 // Computed para verificar si un método ya fue agregado para una moneda (para deshabilitar)
 const isPaymentMethodAdded = (methodValue, currency) => {
+  // REGLA: Los métodos como transferencia (bank_transfer, bank_transfer_bs), pago móvil (mobile_payment) o Binance (binance)
+  // pueden agregarse múltiples veces con montos y referencias diferentes.
+  const multiPaymentMethods = ["bank_transfer", "bank_transfer_bs", "mobile_payment", "binance"];
+  if (multiPaymentMethods.includes(methodValue)) {
+    return false;
+  }
+
   return payments.value.some(
     (p) => p.method === methodValue && p.currency === currency,
   );
