@@ -27,6 +27,27 @@ class ReservationServices
     }
 
     /**
+    /**
+     * Normalizar número de teléfono al formato venezolano (58...)
+     */
+    protected function normalizeVenezuelanPhone(string $phone): string
+    {
+        // Remover todo excepto números
+        $clean = preg_replace('/[^0-9]/', '', $phone);
+        
+        // Si empieza por 0, por ejemplo 04121234567, remover el 0 y anteponer 58
+        if (str_starts_with($clean, '0') && strlen($clean) === 11) {
+            $clean = '58' . substr($clean, 1);
+        }
+        // Si tiene 10 dígitos y empieza por 4, asumimos que le falta el código de país 58
+        elseif (strlen($clean) === 10 && str_starts_with($clean, '4')) {
+            $clean = '58' . $clean;
+        }
+        
+        return $clean;
+    }
+
+    /**
      * Crear una reserva pendiente.
      */
     public function createReservation(array $data): Reservation
@@ -42,7 +63,64 @@ class ReservationServices
             throw new Exception("El horario seleccionado no está disponible para esta cancha.");
         }
 
+        // 1. Normalizar el número de teléfono
+        $normalizedPhone = $this->normalizeVenezuelanPhone($data['client_whatsapp']);
+        $data['client_whatsapp'] = $normalizedPhone;
+
+        // 2. Gestionar la creación o enlace automático del cliente
+        $clientId = $data['client_id'] ?? null;
+        $identification = $data['identification'] ?? null;
+
+        if (!$clientId && $identification) {
+            // Buscar por cédula en la tabla de clientes
+            $existingClient = \App\Models\Client::where('identification', $identification)->first();
+            if ($existingClient) {
+                $clientId = $existingClient->id;
+                // Si el cliente existente no tiene teléfono registrado o difiere, lo actualizamos
+                if (empty($existingClient->phone) || $existingClient->phone !== $normalizedPhone) {
+                    $existingClient->update(['phone' => $normalizedPhone]);
+                }
+            } else {
+                // Crear un nuevo cliente de manera transparente
+                // Separar nombre y apellido si es posible para mantener consistencia
+                $nameParts = explode(' ', $data['client_name'], 2);
+                $firstName = $nameParts[0];
+                $lastName = $nameParts[1] ?? '';
+
+                $newClient = \App\Models\Client::create([
+                    'name' => $firstName,
+                    'last_name' => $lastName,
+                    'identification_type' => 'V-', // Por defecto Cédula Venezolana
+                    'identification' => $identification,
+                    'phone' => $normalizedPhone,
+                    'client_type' => 'Ocasional',
+                ]);
+                $clientId = $newClient->id;
+            }
+        } elseif (!$clientId && !$identification) {
+            // Buscar por teléfono si no se envió cédula
+            $existingClientByPhone = \App\Models\Client::where('phone', $normalizedPhone)->first();
+            if ($existingClientByPhone) {
+                $clientId = $existingClientByPhone->id;
+            } else {
+                // Crear un cliente nuevo solo con Nombre y Teléfono
+                $nameParts = explode(' ', $data['client_name'], 2);
+                $firstName = $nameParts[0];
+                $lastName = $nameParts[1] ?? '';
+
+                $newClient = \App\Models\Client::create([
+                    'name' => $firstName,
+                    'last_name' => $lastName,
+                    'phone' => $normalizedPhone,
+                    'client_type' => 'Ocasional',
+                ]);
+                $clientId = $newClient->id;
+            }
+        }
+
+        $data['client_id'] = $clientId;
         $data['status'] = 'pending';
+        
         $reservation = $this->reservationRepository->create($data);
 
         // Notificar en tiempo real

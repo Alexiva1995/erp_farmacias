@@ -197,6 +197,8 @@ const reservationForm = ref({
   start_time: '',
   end_time: '',
   duration: 1,
+  client_id: null,
+  identification: '',
   client_name: '',
   client_whatsapp: '',
 })
@@ -215,6 +217,64 @@ const durationOptions = computed(() => {
     })
   }
   return options
+})
+
+// Normalizar teléfono venezolano sobre la marcha al escribir
+const normalizePhoneInput = (val) => {
+  if (!val) return ''
+  let clean = val.replace(/[^0-9]/g, '')
+  
+  if (clean.startsWith('0') && clean.length === 11) {
+    clean = '58' + clean.substring(1)
+  } else if (clean.length === 10 && clean.startsWith('4')) {
+    clean = '58' + clean
+  }
+  return clean
+}
+
+// Watcher para normalizar el telefono en tiempo real
+watch(() => reservationForm.value.client_whatsapp, (newVal) => {
+  if (newVal) {
+    const normalized = normalizePhoneInput(newVal)
+    if (normalized !== newVal && normalized.length >= 10) {
+      reservationForm.value.client_whatsapp = normalized
+    }
+  }
+})
+
+// Watcher para autocompletar cliente por Cédula/RIF
+watch(() => reservationForm.value.identification, async (newVal) => {
+  if (!newVal) return
+  
+  // Limpiar caracteres
+  const cleanCedula = newVal.replace(/[^0-9]/g, '')
+  if (cleanCedula.length >= 6) {
+    try {
+      // 1. Intentar consultar cliente existente en la base de datos local
+      const localResponse = await axios.get(`/identification/${cleanCedula}`)
+      if (localResponse.data?.data) {
+        const client = localResponse.data.data
+        reservationForm.value.client_id = client.id
+        reservationForm.value.client_name = `${client.name} ${client.last_name || ''}`.trim()
+        if (client.phone) {
+          reservationForm.value.client_whatsapp = client.phone
+        }
+        return
+      }
+    } catch (e) {
+      // Si no existe localmente, consultamos el CNE para jalar los datos
+      try {
+        const cneResponse = await axios.post('/cne-verify', { identification: cleanCedula })
+        if (cneResponse.data?.data) {
+          const cne = cneResponse.data.data
+          reservationForm.value.client_name = `${cne.name} ${cne.last_name || ''}`.trim()
+          reservationForm.value.client_id = null // Se creara en el backend al guardar
+        }
+      } catch (cneErr) {
+        // No se pudo encontrar en CNE, permitimos llenar manualmente
+      }
+    }
+  }
 })
 
 // Calcular hora de fin basado en inicio y duración
@@ -239,8 +299,8 @@ watch(() => reservationForm.value.duration, (newVal) => {
 const rules = {
   required: value => !!value || 'Este campo es obligatorio.',
   whatsapp: value => {
-    const pattern = /^\+?[0-9]{8,15}$/
-    return pattern.test(value) || 'WhatsApp no válido (debe tener entre 8 y 15 dígitos).'
+    // Al normalizar, el teléfono quedará de 12 dígitos (ej. 584121234567)
+    return value.length >= 10 || 'Ingresa un número de teléfono válido.'
   }
 }
 
@@ -270,6 +330,8 @@ const openBookingDialog = (court, slot) => {
     start_time: slot.start,
     duration: 1, // Por defecto 1 hora
     end_time: calculateEndTime(slot.start, 1),
+    client_id: null,
+    identification: '',
     client_name: '',
     client_whatsapp: '',
   }
@@ -299,6 +361,8 @@ const openEditReservationDialog = (reservation) => {
     start_time: start,
     duration: duration,
     end_time: end,
+    client_id: reservation.client_id,
+    identification: reservation.identification || '',
     client_name: reservation.client_name,
     client_whatsapp: reservation.client_whatsapp || '',
   }
@@ -323,12 +387,12 @@ const submitReservation = async () => {
       end_time: finalEndTime,
       client_name: reservationForm.value.client_name,
       client_whatsapp: reservationForm.value.client_whatsapp,
+      client_id: reservationForm.value.client_id,
+      identification: reservationForm.value.identification,
     }
 
     let response
     if (editingReservationId.value) {
-      // Usar endpoint PUT/POST en el store. Para evitar errores si no hay PUT directo en el router del backend
-      // creamos el endpoint utilizando axios directamente
       response = await axios.put(`/reservations/${editingReservationId.value}`, payload)
       toast.success(response.data.message || 'Reserva actualizada correctamente.')
       await store.fetchAvailability()
@@ -954,6 +1018,18 @@ const copyWeeklyReservations = async () => {
                   disabled
                   variant="outlined"
                   density="comfortable"
+                />
+              </VCol>
+              <VCol cols="12">
+                <VTextField
+                  v-model="reservationForm.identification"
+                  label="Cédula de Identidad / RIF (Opcional)"
+                  placeholder="Ej. 12345678"
+                  variant="outlined"
+                  color="primary"
+                  density="comfortable"
+                  hint="Ingresa la cédula para buscar al cliente o jalar datos del CNE"
+                  persistent-hint
                 />
               </VCol>
               <VCol cols="12">

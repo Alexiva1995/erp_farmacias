@@ -9,6 +9,8 @@ class Reservation extends Model
 {
     protected $fillable = [
         'court_id',
+        'client_id',
+        'identification',
         'date',
         'start_time',
         'end_time',
@@ -27,5 +29,13 @@ class Reservation extends Model
     public function court(): BelongsTo
     {
         return $this->belongsTo(Court::class);
+    }
+
+    /**
+     * Obtener el cliente asociado a la reserva.
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
     }
 }
