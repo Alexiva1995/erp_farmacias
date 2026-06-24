@@ -74,7 +74,11 @@ const processedNavItems = computed(() => {
  
   // 2. Si es modo restaurante, ocultar Reservas para TODOS los roles
   if (isRestaurant) {
-    items = items.filter(item => item.title !== 'Reservas' && item.to !== 'reservations');
+    items = items.filter(item => {
+      const title = (item.title || '').toLowerCase();
+      const to = (item.to || '').toLowerCase();
+      return title !== 'reservas' && to !== 'reservations';
+    });
     
     // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
     // para que no requiera privilegios exclusivos de 'admin' en la evaluación de CASL del layout.

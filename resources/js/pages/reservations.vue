@@ -160,6 +160,24 @@ const getCourtSlots = (courtData) => {
     }
   }
 
+  // 3. Filtrar slots dinámicamente si la fecha seleccionada es HOY
+  const now = new Date()
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
+  
+  if (store.selectedDate === todayStr) {
+    const currentHour = now.getHours()
+    const currentMin = now.getMinutes()
+    const nowTotalMin = currentHour * 60 + currentMin
+
+    return slots.filter(slot => {
+      const slotStartMin = timeToMin(slot.start)
+      
+      // Si la hora de inicio del bloque ya pasó por más de 15 minutos con respecto a la hora real actual, se oculta.
+      // Permitimos ver bloques que inician en el futuro o que iniciaron hace menos de 15 minutos.
+      return (slotStartMin + 15) >= nowTotalMin
+    })
+  }
+
   return slots
 }
 
@@ -245,12 +263,17 @@ const submitReservation = async () => {
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
+  let finalEndTime = reservationForm.value.end_time
+  if (finalEndTime === '24:00') {
+    finalEndTime = '00:00'
+  }
+
   try {
     const response = await store.createReservation({
       court_id: reservationForm.value.court_id,
       date: reservationForm.value.date,
       start_time: reservationForm.value.start_time,
-      end_time: reservationForm.value.end_time,
+      end_time: finalEndTime,
       client_name: reservationForm.value.client_name,
       client_whatsapp: reservationForm.value.client_whatsapp,
     })
@@ -357,12 +380,17 @@ const submitFixedSchedule = async () => {
   const { valid } = await fixedScheduleFormRef.value.validate()
   if (!valid) return
 
+  let finalEndTime = fixedScheduleForm.value.end_time
+  if (finalEndTime === '24:00') {
+    finalEndTime = '00:00'
+  }
+
   try {
     const payload = {
       court_id: fixedScheduleForm.value.court_id,
       day_of_week: fixedScheduleForm.value.day_of_week,
       start_time: fixedScheduleForm.value.start_time,
-      end_time: fixedScheduleForm.value.end_time,
+      end_time: finalEndTime,
       client_name: fixedScheduleForm.value.client_name,
       client_whatsapp: fixedScheduleForm.value.client_whatsapp,
     }
