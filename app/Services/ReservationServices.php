@@ -168,14 +168,50 @@ class ReservationServices
             try {
                 $telegram = resolve(\App\Services\TelegramService::class);
                 
-                // Agenda consolidada del día (filtrada sin fijos)
+                // Agenda consolidada del día (Reservas + Horarios Fijos activos)
                 $today = $reservation->date->toDateString();
                 $todayFormatted = $reservation->date->format('d/m/Y');
+                $carbonDate = \Carbon\Carbon::parse($today);
+                $dayOfWeek = $carbonDate->dayOfWeekIso;
+
+                // 1. Reservaciones confirmadas del día
                 $dailyReservations = \App\Models\Reservation::with('court')
                     ->whereDate('date', $today)
                     ->whereIn('status', ['verified', 'in_progress', 'completed'])
-                    ->orderBy('start_time')
                     ->get();
+
+                // 2. Horarios fijos del día de la semana (que no tengan excepciones hoy)
+                $dailyFixed = \App\Models\FixedSchedule::with('court')
+                    ->where('day_of_week', $dayOfWeek)
+                    ->whereDoesntHave('exceptions', function ($query) use ($today) {
+                        $query->where('date', $today);
+                    })
+                    ->get();
+
+                // Unificar y ordenar cronológicamente
+                $agenda = collect();
+
+                foreach ($dailyReservations as $r) {
+                    $agenda->push([
+                        'court_name' => $r->court->name,
+                        'start_time' => $r->start_time,
+                        'end_time' => $r->end_time,
+                        'client_name' => $r->client_name,
+                        'type_label' => ''
+                    ]);
+                }
+
+                foreach ($dailyFixed as $f) {
+                    $agenda->push([
+                        'court_name' => $f->court->name,
+                        'start_time' => $f->start_time,
+                        'end_time' => $f->end_time,
+                        'client_name' => $f->client_name,
+                        'type_label' => ' 🔄 (Fijo)'
+                    ]);
+                }
+
+                $agenda = $agenda->sortBy('start_time')->values();
 
                 // Convertir horas a formato 12 horas AM/PM de manera segura
                 $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
@@ -193,14 +229,14 @@ class ReservationServices
                 }
 
                 $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
-                if ($dailyReservations->isEmpty()) {
-                    $msg .= "_Ninguna otra reserva confirmada para hoy._";
+                if ($agenda->isEmpty()) {
+                    $msg .= "_Ninguna reserva o fijo programado para hoy._";
                 } else {
-                    foreach ($dailyReservations as $idx => $r) {
+                    foreach ($agenda as $idx => $item) {
                         $num = $idx + 1;
-                        $rStart = \Carbon\Carbon::parse($r->start_time)->format('g:i A');
-                        $rEnd = \Carbon\Carbon::parse($r->end_time)->format('g:i A');
-                        $msg .= "{$num}. *{$r->court->name}* | {$rStart} a {$rEnd} - {$r->client_name}\n";
+                        $rStart = \Carbon\Carbon::parse($item['start_time'])->format('g:i A');
+                        $rEnd = \Carbon\Carbon::parse($item['end_time'])->format('g:i A');
+                        $msg .= "{$num}. *{$item['court_name']}* | {$rStart} a {$rEnd} - {$item['client_name']}{$item['type_label']}\n";
                     }
                 }
 
