@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\FixedSchedule;
 use App\Models\Reservation;
 use App\Services\TelegramService;
 use Carbon\Carbon;
@@ -9,19 +10,8 @@ use Illuminate\Console\Command;
 
 class SendDailyReservationsTelegram extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'telegram:send-daily-reservations';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Envía un consolidado de las reservaciones del día en curso al canal de Telegram';
+    protected $description = 'Envía un consolidado de las reservaciones y horarios fijos del día al canal de Telegram';
 
     protected TelegramService $telegramService;
 
@@ -31,51 +21,73 @@ class SendDailyReservationsTelegram extends Command
         $this->telegramService = $telegramService;
     }
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
-        $today = Carbon::today()->toDateString();
+        $today          = Carbon::today()->toDateString();
         $todayFormatted = Carbon::today()->format('d/m/Y');
+        $dayOfWeek      = Carbon::today()->dayOfWeekIso;
 
-        // Consultar reservaciones activas (pending, verified, in_progress, completed) de hoy
+        // 1. Reservaciones confirmadas del día
         $reservations = Reservation::with('court')
             ->whereDate('date', $today)
-            ->whereIn('status', ['pending', 'verified', 'in_progress', 'completed'])
-            ->orderBy('start_time')
+            ->whereIn('status', ['verified', 'in_progress', 'completed'])
             ->get();
 
-        $message = "📅 *Agenda de Reservas - Hoy {$todayFormatted}*\n\n";
+        // 2. Horarios fijos activos para este día de la semana (sin excepciones hoy)
+        $fixedSchedules = FixedSchedule::with('court')
+            ->where('day_of_week', $dayOfWeek)
+            ->whereDoesntHave('exceptions', function ($query) use ($today) {
+                $query->where('date', $today);
+            })
+            ->get();
 
-        if ($reservations->isEmpty()) {
-            $message .= "No hay reservas registradas para el día de hoy. ⚽";
+        // Unificar en colección ordenada por cancha y hora
+        $agenda = collect();
+
+        foreach ($reservations as $r) {
+            $agenda->push([
+                'court_name'  => $r->court->name,
+                'start_time'  => $r->start_time,
+                'end_time'    => $r->end_time,
+                'client_name' => $r->client_name,
+                'is_fixed'    => false,
+            ]);
+        }
+
+        foreach ($fixedSchedules as $f) {
+            $agenda->push([
+                'court_name'  => $f->court->name,
+                'start_time'  => $f->start_time,
+                'end_time'    => $f->end_time,
+                'client_name' => $f->client_name,
+                'is_fixed'    => true,
+            ]);
+        }
+
+        // Cabecera del mensaje
+        $message = "📅 *Agenda del día - {$todayFormatted}*\n\n";
+
+        if ($agenda->isEmpty()) {
+            $message .= "_No hay reservas ni horarios fijos programados para hoy._";
         } else {
-            $message .= "Total de reservas programadas: *{$reservations->count()}*\n\n";
-            
-            foreach ($reservations as $index => $res) {
-                $num = $index + 1;
-                $statusEmoji = match($res->status) {
-                    'verified' => '✅ (Confirmada)',
-                    'in_progress' => '🏃 (En curso)',
-                    'completed' => '🏁 (Finalizada)',
-                    default => '⏳ (Pendiente)'
-                };
-                
-                $startTime = substr($res->start_time, 0, 5);
-                $endTime = substr($res->end_time, 0, 5);
-                $weeklyTag = $res->request_weekly_fixed ? " 🔄 *[Solicita Fijo Semanal]*" : "";
-                
-                $message .= "{$num}. *{$res->court->name}*\n";
-                $message .= "   🕒 *Hora:* {$startTime} a {$endTime}\n";
-                $message .= "   👤 *Cliente:* {$res->client_name} ({$res->identification})\n";
-                $message .= "   📞 *WhatsApp:* {$res->client_whatsapp}\n";
-                $message .= "   🏷️ *Estado:* {$statusEmoji}{$weeklyTag}\n\n";
+            // Agrupar por cancha y ordenar internamente por hora
+            $grouped = $agenda->groupBy('court_name')->sortKeys();
+
+            foreach ($grouped as $courtName => $items) {
+                $message .= "*{$courtName}*\n";
+                $sortedItems = $items->sortBy('start_time')->values();
+                foreach ($sortedItems as $item) {
+                    $rStart   = Carbon::parse($item['start_time'])->format('g:i A');
+                    $rEnd     = Carbon::parse($item['end_time'])->format('g:i A');
+                    $fixedTag = $item['is_fixed'] ? ' 🔄' : '';
+                    $message .= "{$rStart} a {$rEnd} - {$item['client_name']}{$fixedTag}\n";
+                }
+                $message .= "\n";
             }
         }
 
         $this->telegramService->sendMessage($message);
-        $this->info("Consolidado de reservas enviado a Telegram correctamente.");
+        $this->info("Agenda del día enviada a Telegram correctamente.");
 
         return Command::SUCCESS;
     }
