@@ -49,7 +49,8 @@ class StoreReservationRequest extends FormRequest
             'client_name' => 'required|string|max:255',
             'client_whatsapp' => 'required|string',
             'client_id' => 'nullable|integer|exists:clients,id',
-            'identification' => 'nullable|string|max:20',
+            'identification' => 'required|string|max:20',
+            'request_weekly_fixed' => 'nullable|boolean',
         ];
     }
 

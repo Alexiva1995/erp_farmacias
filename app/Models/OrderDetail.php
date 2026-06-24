@@ -11,6 +11,7 @@ class OrderDetail extends Model
         'order_id',
         'pack_id',
         'dish_id',
+        'court_id',
         'product_type',
         'product_id',
         'quantity',
@@ -50,5 +51,10 @@ class OrderDetail extends Model
     public function dish(): BelongsTo
     {
         return $this->belongsTo(Dish::class, 'dish_id');
+    }
+
+    public function court(): BelongsTo
+    {
+        return $this->belongsTo(Court::class, 'court_id');
     }
 }

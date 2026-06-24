@@ -1023,8 +1023,10 @@ const copyWeeklyReservations = async () => {
               <VCol cols="12">
                 <VTextField
                   v-model="reservationForm.identification"
-                  label="Cédula de Identidad / RIF (Opcional)"
+                  label="Cédula de Identidad / RIF"
                   placeholder="Ej. 12345678"
+                  required
+                  :rules="[rules.required]"
                   variant="outlined"
                   color="primary"
                   density="comfortable"

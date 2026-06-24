@@ -104,6 +104,9 @@ Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\Reservati
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
 Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
+Route::get("/public/clients/identification/{identification}", [\App\Http\Controllers\Api\ClientController::class, "consultByIdentification"]);
+Route::patch("/public/reservations/{id}/confirm", [\App\Http\Controllers\Api\ReservationController::class, "publicConfirm"]);
+Route::post("/public/visits", [\App\Http\Controllers\Api\BookingVisitController::class, "store"]);
 
 // Rutas de E-commerce TOVA
 Route::get("/public/ecommerce/products", [EcommerceController::class, "getProducts"]);
@@ -115,6 +118,7 @@ Route::get("/public/general-settings", [GeneralSettingController::class, "index"
 Route::middleware("auth:sanctum")->group(function () {
     Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
     Route::post('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'store']);
+    Route::patch('/reservations/{id}/status', [\App\Http\Controllers\Api\ReservationController::class, 'updateStatus']);
     Route::delete('/reservations/{id}', [\App\Http\Controllers\Api\ReservationController::class, 'destroy']);
     Route::post('/fixed-schedules', [\App\Http\Controllers\Api\FixedScheduleController::class, 'store']);
     Route::put('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'update']);

@@ -123,6 +123,42 @@ class ReservationServices
         
         $reservation = $this->reservationRepository->create($data);
 
+        // Asociar la visita actual (IP) para registrar la conversión exitosa
+        try {
+            $ipAddress = request()->ip();
+            $visit = \App\Models\BookingVisit::where('ip_address', $ipAddress)
+                ->where('converted', false)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($visit) {
+                $visit->update([
+                    'converted' => true,
+                    'reservation_id' => $reservation->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Error al registrar conversión de visita: " . $e->getMessage());
+        }
+
+        // Si solicita hora fija semanal, enviar notificación especial de inmediato
+        if ($reservation->request_weekly_fixed) {
+            try {
+                $telegram = resolve(\App\Services\TelegramService::class);
+                $weeklyMsg = "🔄 *¡Solicitud de Hora Fija Semanal!* 🔄\n\n"
+                           . "El cliente *{$reservation->client_name}* ({$reservation->identification}) "
+                           . "solicita que su horario de reserva sea *FIJO SEMANALMENTE*:\n"
+                           . "⚽ *Cancha:* {$reservation->court->name}\n"
+                           . "📅 *Fecha Solicitud:* {$reservation->date->format('d/m/Y')}\n"
+                           . "🕒 *Horario:* " . substr($reservation->start_time, 0, 5) . " a " . substr($reservation->end_time, 0, 5) . "\n"
+                           . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
+                           . "⚠️ _Requiere aprobación administrativa en el panel._";
+                $telegram->sendMessage($weeklyMsg);
+            } catch (\Exception $e) {
+                \Log::error("Error al enviar alerta de hora fija a Telegram: " . $e->getMessage());
+            }
+        }
+
         // Notificar en tiempo real
         broadcast(new ReservationUpdated($reservation))->toOthers();
 

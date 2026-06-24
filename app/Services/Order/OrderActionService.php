@@ -194,6 +194,40 @@ class OrderActionService
                 return $orderItem;
             }
 
+            // HANDLE COURTS (Only for sports_rental mode)
+            $courtId = $validatedData['court_id'] ?? null;
+            if ($courtId) {
+                $court = \App\Models\Court::findOrFail($courtId);
+                $requestedQuantity = (float)$validatedData['quantity'];
+                
+                $price_usd = (float)$validatedData['price_usd_unit'];
+                $unitPriceAtOrder = (float)$validatedData['price_at_product'];
+
+                // 1. Remove existing detail for this court
+                $order->details()->where('court_id', $courtId)->delete();
+
+                if ($requestedQuantity <= 0) {
+                    $order->updateTotals();
+                    DB::commit();
+                    return new OrderDetail(['court_id' => $courtId, 'quantity' => 0]);
+                }
+
+                // 2. Create detail
+                $orderItem = $order->details()->create([
+                    'court_id' => $courtId,
+                    'quantity' => $requestedQuantity,
+                    'price' => $unitPriceAtOrder,
+                    'unit_cost' => 0,
+                    'unit_price_usd' => $price_usd,
+                    'product_type' => 'court',
+                    'notes' => $validatedData['notes'] ?? null,
+                ]);
+
+                $order->updateTotals();
+                DB::commit();
+                return $orderItem->fresh(['court']);
+            }
+
             $product = Product::findOrFail($validatedData['product_id']);
             $product->loadSum('lots', 'quantity');
             $availableStock = (int) $product->lots_sum_quantity ?? 0;
@@ -669,6 +703,24 @@ class OrderActionService
                         'fiscal_history_id' => $fiscalHistory->id,
                         'product_id'        => null,
                         'product_name'      => $dish?->name ?? 'Plato',
+                        'quantity'          => $quantity,
+                        'vat_status'        => 0,
+                        'exempt_amount'     => $priceBs,
+                        'iva_amount'        => 0,
+                        'total_amount'      => $priceBs,
+                        'big_amount'        => $priceBs,
+                    ]);
+                    continue;
+                }
+
+                // Las canchas no tienen producto, tratar como exentas
+                if ($detail->product_type === 'court') {
+                    $court = $detail->court;
+                    $priceBs = $detail->price_bs ?? (float)$detail->price;
+                    FiscalHistoryDetail::create([
+                        'fiscal_history_id' => $fiscalHistory->id,
+                        'product_id'        => null,
+                        'product_name'      => 'Alquiler: ' . ($court?->name ?? 'Cancha'),
                         'quantity'          => $quantity,
                         'vat_status'        => 0,
                         'exempt_amount'     => $priceBs,

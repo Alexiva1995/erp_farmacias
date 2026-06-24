@@ -71,20 +71,27 @@ watch(() => reservationForm.value.identification, async (newVal) => {
   const cleanCedula = newVal.replace(/[^0-9]/g, '')
   if (cleanCedula.length >= 6) {
     try {
-      // 1. Intentar consultar cliente local
-      const localResponse = await axios.get(`/public/general-settings`) // Fallback de busqueda publica si aplica.
-      // Dado que es publico, consultamos directo el verify de CNE publico o consultamos endpoint publico
-      const cneResponse = await axios.post('/public/reservations/webhook', { cne_lookup: cleanCedula }) // endpoint de webhook o similar
-      // Para evitar fallas en endpoints publicos restringidos, jalamos los datos por CNE usando un endpoint de verificación inofensivo
+      const response = await axios.get(`/public/clients/identification/${cleanCedula}`)
+      if (response.data && response.data.data) {
+        const client = response.data.data
+        // Autocompletar nombre completo del cliente
+        const fullName = `${client.name || ''} ${client.last_name || ''}`.trim()
+        reservationForm.value.client_name = fullName
+        
+        // Autocompletar teléfono/whatsapp
+        if (client.phone) {
+          reservationForm.value.client_whatsapp = client.phone
+        }
+        
+        // Asociar el ID del cliente
+        reservationForm.value.client_id = client.id
+      }
     } catch (e) {
-      // Manejar error silenciosamente
+      // Si no se encuentra, resetear los campos del cliente para que escriba de nuevo o los ingrese por primera vez
+      reservationForm.value.client_name = ''
+      reservationForm.value.client_whatsapp = ''
+      reservationForm.value.client_id = null
     }
-    
-    // Al ser vista publica, consultamos al CNE usando el endpoint inofensivo /api/public/reservations si posee soporte
-    try {
-      // Usar la busqueda de identificacion si esta expuesta o jalar de CNE
-      const res = await axios.get(`/public/general-settings`) // validacion basica
-    } catch (err) {}
   }
 })
 
@@ -133,9 +140,7 @@ watch(selectedDate, () => {
   fetchAvailability()
 })
 
-onMounted(() => {
-  fetchAvailability()
-})
+
 
 // Auxiliares de tiempo
 const timeToMin = (t) => {
@@ -284,6 +289,7 @@ const openBookingDialog = (court, slot) => {
     identification: '',
     client_name: '',
     client_whatsapp: '',
+    request_weekly_fixed: false,
   }
   isDialogOpen.value = true
 }
@@ -292,6 +298,15 @@ const openBookingDialog = (court, slot) => {
 const isSuccessDialogOpen = ref(false)
 const confirmedReservationData = ref(null)
 
+// Registrar visita del usuario en la sección pública
+const recordVisit = async () => {
+  try {
+    await axios.post('/public/visits')
+  } catch (e) {
+    console.error('Error al registrar métricas de visita:', e)
+  }
+}
+
 const whatsappLink = computed(() => {
   if (!confirmedReservationData.value) return ''
   const court = confirmedReservationData.value.court_name
@@ -299,8 +314,9 @@ const whatsappLink = computed(() => {
   const time = `${formatAmPm(confirmedReservationData.value.start_time.substring(0, 5))} - ${formatAmPm(confirmedReservationData.value.end_time.substring(0, 5))}`
   const name = confirmedReservationData.value.client_name
   const whatsapp = confirmedReservationData.value.client_whatsapp
+  const fixedText = confirmedReservationData.value.request_weekly_fixed ? "\n🔄 Solicitud adicional: Hora Fija Semanal" : ""
   
-  const text = `Hola, quiero confirmar mi reserva:\n🏟️ Cancha: ${court}\n📅 Fecha: ${date}\n⏰ Horario: ${time}\n👤 Nombre: ${name}\n📱 Teléfono: ${whatsapp}`
+  const text = `Hola, quiero confirmar mi reserva:\n🏟️ Cancha: ${court}\n📅 Fecha: ${date}\n⏰ Horario: ${time}\n👤 Nombre: ${name}\n📱 Teléfono: ${whatsapp}${fixedText}`
   return `https://wa.me/584247423672?text=${encodeURIComponent(text)}`
 })
 
@@ -319,9 +335,13 @@ const submitReservation = async () => {
       client_whatsapp: reservationForm.value.client_whatsapp,
       client_id: reservationForm.value.client_id,
       identification: reservationForm.value.identification,
+      request_weekly_fixed: reservationForm.value.request_weekly_fixed,
     })
 
-    confirmedReservationData.value = { ...reservationForm.value }
+    confirmedReservationData.value = { 
+      ...reservationForm.value,
+      id: response.data.data.id
+    }
     toast.success(response.data.message || 'Reserva creada exitosamente.')
     isDialogOpen.value = false
     isSuccessDialogOpen.value = true
@@ -332,6 +352,28 @@ const submitReservation = async () => {
     loading.value = false
   }
 }
+
+// Confirmar la reserva en base de datos públicamente al ir a WhatsApp
+const confirmAndGoToWhatsApp = async () => {
+  if (!confirmedReservationData.value || !confirmedReservationData.value.id) return
+  
+  try {
+    // Confirmar en el backend para disparar notificaciones de Telegram en tiempo real
+    await axios.patch(`/public/reservations/${confirmedReservationData.value.id}/confirm`)
+  } catch (e) {
+    console.error('Error al pre-confirmar reserva:', e)
+  }
+  
+  // Abrir enlace de WhatsApp en una nueva pestaña
+  window.open(whatsappLink.value, '_blank', 'noopener,noreferrer')
+  isSuccessDialogOpen.value = false
+}
+
+// Registrar visita del usuario cuando carga el sitio
+onMounted(() => {
+  fetchAvailability()
+  recordVisit()
+})
 
 const formatPrice = (value) => {
   if (!value) return '0'
@@ -526,8 +568,10 @@ const formatPrice = (value) => {
               <VCol cols="12">
                 <VTextField
                   v-model="reservationForm.identification"
-                  label="Cédula de Identidad / RIF (Opcional)"
+                  label="Cédula de Identidad / RIF"
                   placeholder="Ej. 12345678"
+                  required
+                  :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
                   hint="Ingresa tu cédula para completar tus datos automáticamente"
@@ -556,6 +600,22 @@ const formatPrice = (value) => {
                   hint="Código de país sin el símbolo (+)"
                   persistent-hint
                 />
+              </VCol>
+              
+              <!-- Checkbox para solicitar Hora Fija Semanal -->
+              <VCol cols="12" class="pt-0">
+                <VCheckbox
+                  v-model="reservationForm.request_weekly_fixed"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                >
+                  <template #label>
+                    <div class="text-caption text-grey-darken-3 font-weight-medium">
+                      🔄 ¿Deseas solicitar este horario de forma fija todas las semanas?
+                    </div>
+                  </template>
+                </VCheckbox>
               </VCol>
             </VRow>
           </VForm>
@@ -604,25 +664,17 @@ const formatPrice = (value) => {
             <div class="text-caption"><span class="font-weight-bold">Horario:</span> {{ confirmedReservationData.start_time }} - {{ confirmedReservationData.end_time }}</div>
             <div class="text-caption"><span class="font-weight-bold">Cliente:</span> {{ confirmedReservationData.client_name }}</div>
             <div class="text-caption"><span class="font-weight-bold">Teléfono:</span> {{ confirmedReservationData.client_whatsapp }}</div>
+            <div v-if="confirmedReservationData.request_weekly_fixed" class="text-caption text-primary font-weight-bold mt-1">
+              🔄 Solicitando Horario Fijo Semanal
+            </div>
           </VCard>
 
-          <div class="d-flex gap-4 mt-4">
+          <div class="d-flex mt-4">
             <VBtn
-              variant="outlined"
-              color="grey"
-              class="flex-grow-1"
-              @click="isSuccessDialogOpen = false"
-            >
-              Cerrar
-            </VBtn>
-            <VBtn
-              :href="whatsappLink"
-              target="_blank"
-              rel="noopener noreferrer"
               color="success"
               prepend-icon="tabler-brand-whatsapp"
-              class="font-weight-bold flex-grow-1 text-truncate"
-              @click="isSuccessDialogOpen = false"
+              class="font-weight-bold flex-grow-1"
+              @click="confirmAndGoToWhatsApp"
             >
               Confirmar
             </VBtn>

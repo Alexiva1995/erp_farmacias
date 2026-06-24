@@ -17,10 +17,12 @@ class Reservation extends Model
         'client_name',
         'client_whatsapp',
         'status',
+        'request_weekly_fixed',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'request_weekly_fixed' => 'boolean',
     ];
 
     /**

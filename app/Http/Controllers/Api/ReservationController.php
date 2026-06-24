@@ -137,4 +137,115 @@ class ReservationController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * Confirmar reserva directamente desde el botón público de WhatsApp.
+     */
+    public function publicConfirm(int $id): JsonResponse
+    {
+        try {
+            $reservation = \App\Models\Reservation::findOrFail($id);
+            
+            // Si ya está verificada, omitimos repetir lógica
+            if ($reservation->status !== 'verified') {
+                $reservation->update(['status' => 'verified']);
+
+                // Notificar en tiempo real por WebSockets
+                broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
+
+                // 1. Notificar al administrador vía Telegram
+                try {
+                    $telegram = resolve(\App\Services\TelegramService::class);
+                    
+                    // Agenda del día consolidada
+                    $today = $reservation->date->toDateString();
+                    $todayFormatted = $reservation->date->format('d/m/Y');
+                    $dailyReservations = \App\Models\Reservation::with('court')
+                        ->whereDate('date', $today)
+                        ->whereIn('status', ['verified', 'in_progress', 'completed'])
+                        ->orderBy('start_time')
+                        ->get();
+
+                    $msg = "⚽ *¡Nueva Reserva Confirmada!* ⚽\n\n"
+                         . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
+                         . "🏟️ *Cancha:* {$reservation->court->name}\n"
+                         . "📅 *Fecha:* {$todayFormatted}\n"
+                         . "🕒 *Horario:* " . substr($reservation->start_time, 0, 5) . " a " . substr($reservation->end_time, 0, 5) . "\n"
+                         . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
+                         
+                    if ($reservation->request_weekly_fixed) {
+                        $msg .= "🔄 *[Solicita Horario Fijo Semanal]*\n";
+                    }
+
+                    $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
+                    if ($dailyReservations->isEmpty()) {
+                        $msg .= "_Ninguna otra reserva confirmada para hoy._";
+                    } else {
+                        foreach ($dailyReservations as $idx => $r) {
+                            $num = $idx + 1;
+                            $weeklyMark = $r->request_weekly_fixed ? " 🔄 (Fijo)" : "";
+                            $msg .= "{$num}. Cancha: *{$r->court->name}* | " . substr($r->start_time, 0, 5) . " a " . substr($r->end_time, 0, 5) . " - {$r->client_name}{$weeklyMark}\n";
+                        }
+                    }
+
+                    $telegram->sendMessage($msg);
+                } catch (\Exception $e) {
+                    \Log::error("Error al enviar notificación de confirmación pública a Telegram: " . $e->getMessage());
+                }
+
+                // 2. Intentar enviar confirmación por WhatsApp mediante Evolution API en segundo plano
+                try {
+                    $this->reservationServices->sendWhatsAppMessage(
+                        $reservation->client_whatsapp,
+                        "¡Excelente! Tu reserva para la cancha de '{$reservation->court->name}' el día {$reservation->date->format('d/m/Y')} a las " . substr($reservation->start_time, 0, 5) . " ha sido VERIFICADA exitosamente. ¡Te esperamos!"
+                    );
+                } catch (\Exception $e) {
+                    \Log::error("Error al enviar confirmación de WhatsApp: " . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Reserva confirmada exitosamente.',
+                'data' => new \App\Http\Resources\ReservationResource($reservation)
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Error al confirmar la reserva: ' . $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Actualizar el estado de una reservación (ej: iniciar, no asistió).
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        try {
+            $request->validate([
+                'status' => 'required|string|in:pending,verified,canceled,in_progress,no_show,completed'
+            ]);
+
+            $reservation = \App\Models\Reservation::findOrFail($id);
+            $newStatus = $request->input('status');
+            
+            // Si el estado es 'in_progress', guardar hora de inicio real si es necesario o simplemente el status
+            $reservation->update([
+                'status' => $newStatus
+            ]);
+
+            // Transmitir en tiempo real
+            broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de la reservación actualizado correctamente.',
+                'reservation' => $reservation
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
 }
