@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Credenciales API CedulaVzla (cedula.com.ve)
+    'cedula_vzla' => [
+        'app_id' => env('CEDULA_API_APP_ID'),
+        'token'  => env('CEDULA_API_TOKEN'),
+    ],
+
 ];
