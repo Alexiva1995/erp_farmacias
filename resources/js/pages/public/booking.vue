@@ -48,6 +48,22 @@ const rules = {
   }
 }
 
+// Opciones de duración (medias horas hasta las 2 horas, luego horas enteras hasta las 10)
+const durationOptions = computed(() => {
+  const options = [
+    { title: '1 Hora', value: 1 },
+    { title: '1.5 Horas', value: 1.5 },
+    { title: '2 Horas', value: 2 }
+  ]
+  for (let d = 3; d <= 10; d++) {
+    options.push({
+      title: `${d} Horas`,
+      value: d
+    })
+  }
+  return options
+})
+
 // Cargar disponibilidad desde la API pública
 const fetchAvailability = async () => {
   loading.value = true
@@ -174,7 +190,7 @@ const getCourtSlots = (courtData) => {
         } else {
           currentTime = minToTime(currentMin + 60)
         }
-      } else {
+    } else {
         const labelAmPm = `${formatAmPm(currentTime)} - ${formatAmPm(endTime)}`
         slots.push({
           label: labelAmPm,
@@ -186,6 +202,22 @@ const getCourtSlots = (courtData) => {
         currentTime = endTime
       }
     }
+  }
+
+  // Filtrar slots dinámicamente si la fecha seleccionada es HOY (según zona horaria local)
+  const now = new Date()
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
+  
+  if (selectedDate.value === todayStr) {
+    const currentHour = now.getHours()
+    const currentMin = now.getMinutes()
+    const nowTotalMin = currentHour * 60 + currentMin
+
+    return slots.filter(slot => {
+      const slotStartMin = timeToMin(slot.start)
+      // Ocultar si ya pasaron más de 15 minutos desde el inicio del bloque
+      return (slotStartMin + 15) >= nowTotalMin
+    })
   }
 
   return slots
@@ -421,11 +453,9 @@ const formatPrice = (value) => {
               <VCol cols="12" sm="6">
                 <VSelect
                   v-model="reservationForm.duration"
-                  :items="[
-                    { title: '1 Hora', value: 1 },
-                    { title: '1.5 Horas', value: 1.5 },
-                    { title: '2 Horas', value: 2 }
-                  ]"
+                  :items="durationOptions"
+                  item-title="title"
+                  item-value="value"
                   label="Duración"
                   variant="outlined"
                   density="comfortable"
