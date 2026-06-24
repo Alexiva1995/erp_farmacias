@@ -550,6 +550,7 @@ const copyWeeklyReservations = async () => {
 </script>
 
 <template>
+  <VContainer class="py-6">
     <!-- Navbar de Filtros y Cabecera Unificada -->
     <VCard class="mb-6 px-4 py-3" elevation="1" border>
       <div class="d-flex flex-wrap align-center justify-space-between gap-4">
