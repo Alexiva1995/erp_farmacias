@@ -164,7 +164,52 @@ class ReservationServices
 
         // Solo enviar notificaciones automáticas si el usuario está autenticado (Panel Admin)
         if (auth()->check()) {
-            // Enviar WhatsApp inicial de confirmación
+            // 1. Enviar notificación inmediata a Telegram del administrador (ya confirmada directo)
+            try {
+                $telegram = resolve(\App\Services\TelegramService::class);
+                
+                // Agenda consolidada del día (filtrada sin fijos)
+                $today = $reservation->date->toDateString();
+                $todayFormatted = $reservation->date->format('d/m/Y');
+                $dailyReservations = \App\Models\Reservation::with('court')
+                    ->whereDate('date', $today)
+                    ->whereIn('status', ['verified', 'in_progress', 'completed'])
+                    ->orderBy('start_time')
+                    ->get();
+
+                // Convertir horas a formato 12 horas AM/PM
+                $formattedStart = \Carbon\Carbon::createFromFormat('H:i:s', $reservation->start_time)->format('g:i A');
+                $formattedEnd = \Carbon\Carbon::createFromFormat('H:i:s', $reservation->end_time)->format('g:i A');
+
+                $msg = "⚽ *¡Nueva Reserva Registrada (Panel Admin)!* ⚽\n\n"
+                     . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
+                     . "🏟️ *Lugar:* {$reservation->court->name}\n"
+                     . "📅 *Fecha:* {$todayFormatted}\n"
+                     . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
+                     . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
+                     
+                if ($reservation->request_weekly_fixed) {
+                    $msg .= "🔄 *[Solicita Horario Fijo Semanal]*\n";
+                }
+
+                $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
+                if ($dailyReservations->isEmpty()) {
+                    $msg .= "_Ninguna otra reserva confirmada para hoy._";
+                } else {
+                    foreach ($dailyReservations as $idx => $r) {
+                        $num = $idx + 1;
+                        $rStart = \Carbon\Carbon::createFromFormat('H:i:s', $r->start_time)->format('g:i A');
+                        $rEnd = \Carbon\Carbon::createFromFormat('H:i:s', $r->end_time)->format('g:i A');
+                        $msg .= "{$num}. *{$r->court->name}* | {$rStart} a {$rEnd} - {$r->client_name}\n";
+                    }
+                }
+
+                $telegram->sendMessage($msg);
+            } catch (\Exception $e) {
+                \Log::error("Error al enviar notificación de reserva administrativa a Telegram: " . $e->getMessage());
+            }
+
+            // Enviar WhatsApp inicial de confirmación (si aplica)
             $this->sendWhatsAppConfirmationRequest($reservation);
 
             // Enviar email de confirmación y enlace

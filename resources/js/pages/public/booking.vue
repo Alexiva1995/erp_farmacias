@@ -324,13 +324,18 @@ const submitReservation = async () => {
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
+  let finalEndTime = reservationForm.value.end_time
+  if (finalEndTime === '24:00') {
+    finalEndTime = '00:00'
+  }
+
   loading.value = true
   try {
     const response = await axios.post('/public/reservations', {
       court_id: reservationForm.value.court_id,
       date: reservationForm.value.date,
       start_time: reservationForm.value.start_time,
-      end_time: reservationForm.value.end_time,
+      end_time: finalEndTime,
       client_name: reservationForm.value.client_name,
       client_whatsapp: reservationForm.value.client_whatsapp,
       client_id: reservationForm.value.client_id,

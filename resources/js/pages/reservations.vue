@@ -252,7 +252,7 @@ watch(() => reservationForm.value.identification, async (newVal) => {
   if (cleanCedula.length >= 6) {
     try {
       // 1. Intentar consultar cliente existente en la base de datos local
-      const localResponse = await axios.get(`/identification/${cleanCedula}`)
+      const localResponse = await axios.get(`/clients/identification/${cleanCedula}`)
       if (localResponse.data?.data) {
         const client = localResponse.data.data
         reservationForm.value.client_id = client.id
@@ -265,7 +265,7 @@ watch(() => reservationForm.value.identification, async (newVal) => {
     } catch (e) {
       // Si no existe localmente, consultamos el CNE para jalar los datos
       try {
-        const cneResponse = await axios.post('/cne-verify', { identification: cleanCedula })
+        const cneResponse = await axios.post('/clients/cne-verify', { identification: cleanCedula })
         if (cneResponse.data?.data) {
           const cne = cneResponse.data.data
           reservationForm.value.client_name = `${cne.name} ${cne.last_name || ''}`.trim()
