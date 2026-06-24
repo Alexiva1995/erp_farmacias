@@ -20,39 +20,49 @@ class CNEQueryService
         try {
             // Limpiar cédula (solo números)
             $cedula = preg_replace('/[^0-9]/', '', $cedula);
-            
-            $appId = env('CEDULA_API_APP_ID');
-            $token = env('CEDULA_API_TOKEN');
 
-            // Nueva fuente oficial según Wiki: api.cedula.com.ve
+            // Usar config() en vez de env() para que funcione con config cache
+            $appId = config('services.cedula_vzla.app_id');
+            $token = config('services.cedula_vzla.token');
+
+            if (!$appId || !$token) {
+                \Log::error("CNE: CEDULA_API_APP_ID o CEDULA_API_TOKEN no están configurados en .env");
+                return null;
+            }
+
             $url = "https://api.cedula.com.ve/api/v1?app_id={$appId}&token={$token}&cedula={$cedula}";
 
             $response = Http::timeout(10)->get($url);
 
             if ($response->failed()) {
-                \Log::warning("Falla en API oficial cedula.com.ve para CI {$cedula}: " . $response->status());
+                \Log::warning("CNE: Falla HTTP para CI {$cedula}: status=" . $response->status() . " body=" . $response->body());
                 return null;
             }
 
             $data = $response->json();
 
+            // Log para depuración: ver la respuesta completa de la API
+            \Log::info("CNE: Respuesta para CI {$cedula}: " . json_encode($data));
+
             // Verificar estructura oficial { error: false, data: { ... } }
             if (isset($data['error']) && !$data['error'] && isset($data['data']) && $data['data']) {
                 $elector = $data['data'];
-                
+
                 // Construir nombres según la estructura de la api oficial
-                $names = trim(($elector['primer_nombre'] ?? '') . ' ' . ($elector['segundo_nombre'] ?? ''));
+                $names    = trim(($elector['primer_nombre'] ?? '') . ' ' . ($elector['segundo_nombre'] ?? ''));
                 $lastNames = trim(($elector['primer_apellido'] ?? '') . ' ' . ($elector['segundo_apellido'] ?? ''));
 
                 return [
-                    'name' => mb_convert_case($names, MB_CASE_TITLE, "UTF-8"),
+                    'name'      => mb_convert_case($names, MB_CASE_TITLE, "UTF-8"),
                     'last_name' => mb_convert_case($lastNames, MB_CASE_TITLE, "UTF-8"),
                 ];
             }
 
+            \Log::warning("CNE: Estructura inesperada para CI {$cedula}: " . json_encode($data));
             return null;
+
         } catch (\Exception $e) {
-            \Log::error("Error consultando API Oficial para CI {$cedula}: " . $e->getMessage());
+            \Log::error("CNE: Error consultando API para CI {$cedula}: " . $e->getMessage());
             return null;
         }
     }
