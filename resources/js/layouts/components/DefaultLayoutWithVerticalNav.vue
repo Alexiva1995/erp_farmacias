@@ -101,6 +101,29 @@ const processedNavItems = computed(() => {
     });
   }
  
+  // 3. Si el negocio es de Alquiler de Canchas/Reservas (sports_rental),
+  // reordenamos el menú para colocar 'Reservas' en el primer lugar (arriba del Home)
+  const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
+  if (isSportsRental) {
+    const reservationsItem = items.find(item => {
+      const title = (item.title || '').toLowerCase();
+      const toVal = item.to;
+      let toStr = '';
+      if (typeof toVal === 'string') {
+        toStr = toVal.toLowerCase();
+      } else if (toVal && typeof toVal === 'object' && toVal.name) {
+        toStr = String(toVal.name).toLowerCase();
+      }
+      return title === 'reservas' || toStr === 'reservations';
+    });
+    if (reservationsItem) {
+      // Filtrar el ítem de su posición original
+      items = items.filter(item => item !== reservationsItem);
+      // Colocarlo al puro principio del array (arriba de Home)
+      items.unshift(reservationsItem);
+    }
+  }
+ 
   // Solo procesar si el usuario está cargado
   if (!authStore.isLoaded || !authStore.user) {
     return items;
