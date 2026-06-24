@@ -177,55 +177,65 @@ class ReservationController extends Controller
                         })
                         ->get();
 
-                    // Unificar y ordenar cronológicamente
+                    // Unificar agenda: reservas confirmadas + fijos
                     $agenda = collect();
 
                     foreach ($dailyReservations as $r) {
                         $agenda->push([
-                            'court_name' => $r->court->name,
-                            'start_time' => $r->start_time,
-                            'end_time' => $r->end_time,
+                            'court_name'  => $r->court->name,
+                            'start_time'  => $r->start_time,
+                            'end_time'    => $r->end_time,
                             'client_name' => $r->client_name,
-                            'type_label' => ''
+                            'is_fixed'    => false,
                         ]);
                     }
 
                     foreach ($dailyFixed as $f) {
                         $agenda->push([
-                            'court_name' => $f->court->name,
-                            'start_time' => $f->start_time,
-                            'end_time' => $f->end_time,
+                            'court_name'  => $f->court->name,
+                            'start_time'  => $f->start_time,
+                            'end_time'    => $f->end_time,
                             'client_name' => $f->client_name,
-                            'type_label' => ' 🔄 (Fijo)'
+                            'is_fixed'    => true,
                         ]);
                     }
 
-                    $agenda = $agenda->sortBy('start_time')->values();
+                    // Ordenar por cancha y luego por hora de inicio
+                    $agenda = $agenda->sortBy(['court_name', 'start_time'])->values();
 
-                    // Convertir horas a formato 12 horas AM/PM de manera segura
+                    // Convertir horas de la reserva a formato 12h AM/PM
                     $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
-                    $formattedEnd = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
+                    $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
 
-                    $msg = "⚽ *¡Nueva Reserva Confirmada!* ⚽\n\n"
+                    // Cabecera del mensaje
+                    $msg = "⚽ *¡Nueva Reserva Registrada (Tova cerebro operativo)!* ⚽\n\n"
                          . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
                          . "🏟️ *Lugar:* {$reservation->court->name}\n"
                          . "📅 *Fecha:* {$todayFormatted}\n"
                          . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
                          . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
-                         
+
                     if ($reservation->request_weekly_fixed) {
                         $msg .= "🔄 *[Solicita Horario Fijo Semanal]*\n";
                     }
 
+                    // Agenda agrupada por cancha
                     $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
+
                     if ($agenda->isEmpty()) {
-                        $msg .= "_Ninguna reserva o fijo programado para hoy._";
+                        $msg .= "_Ninguna reserva programada para hoy._";
                     } else {
-                        foreach ($agenda as $idx => $item) {
-                            $num = $idx + 1;
-                            $rStart = \Carbon\Carbon::parse($item['start_time'])->format('g:i A');
-                            $rEnd = \Carbon\Carbon::parse($item['end_time'])->format('g:i A');
-                            $msg .= "{$num}. *{$item['court_name']}* | {$rStart} a {$rEnd} - {$item['client_name']}{$item['type_label']}\n";
+                        $grouped = $agenda->groupBy('court_name');
+                        foreach ($grouped as $courtName => $items) {
+                            $msg .= "\n*{$courtName}*\n";
+                            // Ordenar ítems de esta cancha por hora
+                            $sortedItems = $items->sortBy('start_time')->values();
+                            foreach ($sortedItems as $item) {
+                                $rStart   = \Carbon\Carbon::parse($item['start_time'])->format('g:i A');
+                                $rEnd     = \Carbon\Carbon::parse($item['end_time'])->format('g:i A');
+                                $fixedTag = $item['is_fixed'] ? ' 🔄' : '';
+                                $msg .= "{$rStart} a {$rEnd} - {$item['client_name']}{$fixedTag}\n";
+                            }
                         }
                     }
 

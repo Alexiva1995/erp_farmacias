@@ -457,9 +457,9 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::prefix("clients")->group(function () {
             Route::post("/", [ClientController::class, "create"]);
             Route::get("/", [ClientController::class, "consultAll"]);
+            Route::get("/identification/{identification}", [ClientController::class, "consultByIdentification"]);
             Route::get("/{id}/stats", [ClientController::class, "stats"]);
             Route::get("/{id}", [ClientController::class, "consultById"]);
-            Route::get("/identification/{identification}", [ClientController::class, "consultByIdentification"]);
             Route::delete("/{id}", [ClientController::class, "deleteById"]);
             Route::post("/edit/{id}", [ClientController::class, "edit"]);
             Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);

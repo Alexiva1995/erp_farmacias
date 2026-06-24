@@ -244,38 +244,46 @@ watch(() => reservationForm.value.client_whatsapp, (newVal) => {
 })
 
 // Watcher para autocompletar cliente por Cédula/RIF
-watch(() => reservationForm.value.identification, async (newVal) => {
+let identificationTimer = null
+watch(() => reservationForm.value.identification, (newVal) => {
+  // Cancelar la consulta anterior si el usuario sigue escribiendo
+  clearTimeout(identificationTimer)
+
   if (!newVal) return
-  
-  // Limpiar caracteres
+
   const cleanCedula = newVal.replace(/[^0-9]/g, '')
-  if (cleanCedula.length >= 6) {
+  if (cleanCedula.length < 6) return
+
+  // Esperar 600ms después de que el usuario deje de escribir
+  identificationTimer = setTimeout(async () => {
     try {
-      // 1. Intentar consultar cliente existente en la base de datos local
-      const localResponse = await axios.get(`/clients/identification/${cleanCedula}`)
-      if (localResponse.data?.data) {
-        const client = localResponse.data.data
-        reservationForm.value.client_id = client.id
-        reservationForm.value.client_name = `${client.name} ${client.last_name || ''}`.trim()
+      // 1. Buscar cliente existente en BD local (ruta autenticada)
+      const localResponse = await axios.get(`/crm/clients/identification/${cleanCedula}`)
+      const client = localResponse.data?.data
+      if (client) {
+        reservationForm.value.client_id   = client.id
+        reservationForm.value.client_name = `${client.name || ''} ${client.last_name || ''}`.trim()
         if (client.phone) {
           reservationForm.value.client_whatsapp = client.phone
         }
         return
       }
-    } catch (e) {
-      // Si no existe localmente, consultamos el CNE para jalar los datos
-      try {
-        const cneResponse = await axios.post('/clients/cne-verify', { identification: cleanCedula })
-        if (cneResponse.data?.data) {
-          const cne = cneResponse.data.data
-          reservationForm.value.client_name = `${cne.name} ${cne.last_name || ''}`.trim()
-          reservationForm.value.client_id = null // Se creara en el backend al guardar
-        }
-      } catch (cneErr) {
-        // No se pudo encontrar en CNE, permitimos llenar manualmente
-      }
+    } catch (_) {
+      // Cliente no encontrado en BD local → intentar CNE
     }
-  }
+
+    try {
+      // 2. Consultar CNE para traer nombre si es venezolano
+      const cneResponse = await axios.post('/crm/clients/cne-verify', { identification: cleanCedula })
+      const cne = cneResponse.data?.data
+      if (cne) {
+        reservationForm.value.client_name = `${cne.name || ''} ${cne.last_name || ''}`.trim()
+        reservationForm.value.client_id   = null // Se creará en el backend al guardar
+      }
+    } catch (_) {
+      // No encontrado en CNE, el usuario ingresa los datos manualmente
+    }
+  }, 600)
 })
 
 // Calcular hora de fin basado en inicio y duración
@@ -1027,14 +1035,12 @@ const copyWeeklyReservations = async () => {
               <VCol cols="12">
                 <VTextField
                   v-model="reservationForm.identification"
-                  label="Cédula de Identidad / RIF"
+                  label="Cédula de Identidad / RIF (opcional)"
                   placeholder="Ej. 12345678"
-                  required
-                  :rules="[rules.required]"
                   variant="outlined"
                   color="primary"
                   density="comfortable"
-                  hint="Ingresa la cédula para buscar al cliente o jalar datos del CNE"
+                  hint="Ingresa la cédula para buscar al cliente o jalar datos del CNE automáticamente"
                   persistent-hint
                 />
               </VCol>
