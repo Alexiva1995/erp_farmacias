@@ -565,9 +565,8 @@ const submitForm = () => {
                         />
                       </VCol>
                     </VRow>
-                  </VForm>
-                </VCard>
-              </div>
+                  </VCard>
+                </div>
 
               <!-- Identificación y Multimedia -->
               <div class="d-flex flex-column gap-3">
