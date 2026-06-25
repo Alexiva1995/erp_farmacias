@@ -57,6 +57,14 @@ class StoreProductRequest extends FormRequest
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_ids' => ['sometimes', 'array'],
             'supplier_ids.*' => ['integer', 'exists:suppliers,id'],
+            
+            // Variantes cromáticas opcionales para cosméticos
+            'variants' => ['sometimes', 'array'],
+            'variants.*.id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            'variants.*.name' => ['required', 'string', 'max:255'],
+            'variants.*.color' => ['required', 'string', 'max:7'],
+            'variants.*.price_modifier' => ['nullable', 'numeric'],
+            'variants.*.stock' => ['nullable', 'integer', 'min:0'],
         ];
     }
 

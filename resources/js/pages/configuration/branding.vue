@@ -23,17 +23,23 @@ const form = ref({
   section2_subtitle: '',
   section2_tagline: '',
   section2_button_text: '',
+  section3_title: '',
+  section3_subtitle: '',
+  section3_tagline: '',
+  section3_button_text: '',
 })
 
 const logoFile = ref(null)
 const faviconFile = ref(null)
 const heroImageFile = ref(null)
 const section2ImageFile = ref(null)
+const section3ImageFile = ref(null)
 
 const logoPreview = ref('')
 const faviconPreview = ref('')
 const heroImagePreview = ref('')
 const section2ImagePreview = ref('')
+const section3ImagePreview = ref('')
 
 const handleLogoUpload = (e) => {
   const file = e.target.files[0]
@@ -67,6 +73,14 @@ const handleSection2ImageUpload = (e) => {
   }
 }
 
+const handleSection3ImageUpload = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    section3ImageFile.value = file
+    section3ImagePreview.value = URL.createObjectURL(file)
+  }
+}
+
 const saveBranding = async () => {
   isLoading.value = true
   
@@ -86,6 +100,10 @@ const saveBranding = async () => {
   formData.append('section2_subtitle', form.value.section2_subtitle || '')
   formData.append('section2_tagline', form.value.section2_tagline || '')
   formData.append('section2_button_text', form.value.section2_button_text || '')
+  formData.append('section3_title', form.value.section3_title || '')
+  formData.append('section3_subtitle', form.value.section3_subtitle || '')
+  formData.append('section3_tagline', form.value.section3_tagline || '')
+  formData.append('section3_button_text', form.value.section3_button_text || '')
   
   if (logoFile.value) {
     formData.append('app_logo', logoFile.value)
@@ -101,6 +119,10 @@ const saveBranding = async () => {
 
   if (section2ImageFile.value) {
     formData.append('section2_image', section2ImageFile.value)
+  }
+
+  if (section3ImageFile.value) {
+    formData.append('section3_image', section3ImageFile.value)
   }
 
   try {
@@ -120,8 +142,56 @@ const saveBranding = async () => {
   }
 }
 
+// ——— Métodos de Gestión de Pedidos de E-commerce ———
+const adminOrders = ref([])
+const actionLoadingId = ref(null)
+
+const fetchAdminOrders = async () => {
+  try {
+    const { data } = await axios.get('/ecommerce/admin/orders')
+    if (data.success) {
+      adminOrders.value = data.data
+    }
+  } catch (error) {
+    console.error('Error fetching admin orders:', error)
+  }
+}
+
+const approveOrder = async (orderId) => {
+  actionLoadingId.value = orderId
+  try {
+    const { data } = await axios.post(`/ecommerce/admin/orders/${orderId}/approve`)
+    if (data.success) {
+      toast.success('Pedido aprobado y marcado como pagado exitosamente')
+      await fetchAdminOrders()
+    }
+  } catch (error) {
+    console.error('Error approving order:', error)
+    toast.error('Error al aprobar el pedido')
+  } finally {
+    actionLoadingId.value = null
+  }
+}
+
+const cancelOrder = async (orderId) => {
+  actionLoadingId.value = orderId
+  try {
+    const { data } = await axios.post(`/ecommerce/admin/orders/${orderId}/cancel`)
+    if (data.success) {
+      toast.success('Pedido rechazado y stock devuelto exitosamente')
+      await fetchAdminOrders()
+    }
+  } catch (error) {
+    console.error('Error cancelling order:', error)
+    toast.error('Error al rechazar el pedido')
+  } finally {
+    actionLoadingId.value = null
+  }
+}
+
 onMounted(async () => {
   await brandingStore.fetchSettings()
+  fetchAdminOrders()
   form.value = {
     app_name: brandingStore.settings.app_name,
     app_rif: brandingStore.settings.app_rif,
@@ -138,11 +208,16 @@ onMounted(async () => {
     section2_subtitle: brandingStore.settings.section2_subtitle || '',
     section2_tagline: brandingStore.settings.section2_tagline || '',
     section2_button_text: brandingStore.settings.section2_button_text || '',
+    section3_title: brandingStore.settings.section3_title || '',
+    section3_subtitle: brandingStore.settings.section3_subtitle || '',
+    section3_tagline: brandingStore.settings.section3_tagline || '',
+    section3_button_text: brandingStore.settings.section3_button_text || '',
   }
   logoPreview.value = brandingStore.settings.app_logo
   faviconPreview.value = brandingStore.settings.app_favicon
   heroImagePreview.value = brandingStore.settings.hero_image
   section2ImagePreview.value = brandingStore.settings.section2_image
+  section3ImagePreview.value = brandingStore.settings.section3_image
 })
 </script>
 
@@ -160,307 +235,483 @@ onMounted(async () => {
         <VCardText class="px-0">
           <VForm @submit.prevent="saveBranding">
             <VRow>
-              <!-- Sección Izquierda: Campos e Información -->
-              <VCol cols="12" md="7" class="d-flex flex-column gap-6">
-                <!-- Información General -->
-                <div class="border pa-6 rounded-0">
-                  <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
-                    <VIcon icon="tabler-settings" size="18" class="text-primary" />
-                    Información de la Tienda
-                  </h3>
-                  <VRow>
-                    <VCol cols="12">
-                      <VTextField
-                        v-model="form.app_name"
-                        label="Nombre de la Tienda E-commerce"
-                        placeholder="Ej: TOVA Beauty & Gems"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="6">
-                      <VTextField
-                        v-model="form.app_rif"
-                        label="RIF de la Empresa"
-                        placeholder="Ej: J-12345678-9"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="6">
-                      <VSelect
-                        v-model="form.default_currency"
-                        :items="['COP', 'USD', 'BS']"
-                        label="Moneda del Sistema"
-                        placeholder="Selecciona moneda"
-                        variant="outlined"
-                        density="comfortable"
-                      />
-                    </VCol>
-                  </VRow>
-                </div>
+              <!-- Contenedor Único y Unificado de Configuración -->
+              <VCol cols="12">
+                <div class="border pa-6 rounded-0 bg-white d-flex flex-column gap-2">
+                  
+                  <!-- Información General -->
+                  <div>
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 10px;">
+                      <VIcon icon="tabler-settings" size="18" class="text-primary" />
+                      Información de la Tienda
+                    </h3>
+                    <VRow>
+                      <VCol cols="12" md="4">
+                        <VTextField
+                          v-model="form.app_name"
+                          label="Nombre de la Tienda E-commerce"
+                          placeholder="Ej: TOVA Beauty & Gems"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+                      </VCol>
+                      <VCol cols="12" sm="6" md="4">
+                        <VTextField
+                          v-model="form.app_rif"
+                          label="RIF de la Empresa"
+                          placeholder="Ej: J-12345678-9"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+                      </VCol>
+                      <VCol cols="12" sm="6" md="4">
+                        <VSelect
+                          v-model="form.default_currency"
+                          :items="['COP', 'USD', 'BS']"
+                          label="Moneda del Sistema"
+                          placeholder="Selecciona moneda"
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                      </VCol>
+                    </VRow>
+                  </div>
 
-                <!-- Paleta de Colores -->
-                <div class="border pa-6 rounded-0">
-                  <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
-                    <VIcon icon="tabler-palette" size="18" class="text-primary" />
-                    Paleta de Colores (Tienda)
-                  </h3>
-                  <VRow class="gap-y-4">
-                    <VCol cols="12" sm="4">
-                      <VLabel class="mb-2 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Color Primario</VLabel>
-                      <div class="d-flex align-center gap-2">
-                        <input
-                          v-model="form.primary_color"
-                          type="color"
-                          class="color-picker-premium"
-                        />
+                  <!-- Paleta de Colores -->
+                  <div style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 15px; margin-top: 15px;">
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 20px;">
+                      <VIcon icon="tabler-palette" size="18" class="text-primary" />
+                      Paleta de Colores (Tienda)
+                    </h3>
+                    <VRow>
+                      <VCol cols="12" sm="4">
                         <VTextField
                           v-model="form.primary_color"
-                          density="compact"
+                          label="Color Primario"
+                          density="comfortable"
                           variant="outlined"
-                          hide-details
                           class="font-mono text-uppercase"
-                        />
-                      </div>
-                    </VCol>
-                    <VCol cols="12" sm="4">
-                      <VLabel class="mb-2 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Color Secundario</VLabel>
-                      <div class="d-flex align-center gap-2">
-                        <input
-                          v-model="form.secondary_color"
-                          type="color"
-                          class="color-picker-premium"
-                        />
+                        >
+                          <template #prepend-inner>
+                            <input
+                              v-model="form.primary_color"
+                              type="color"
+                              style="width: 28px; height: 28px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; cursor: pointer; padding: 0; margin-right: 8px;"
+                            />
+                          </template>
+                        </VTextField>
+                      </VCol>
+                      <VCol cols="12" sm="4">
                         <VTextField
                           v-model="form.secondary_color"
-                          density="compact"
+                          label="Color Secundario"
+                          density="comfortable"
                           variant="outlined"
-                          hide-details
                           class="font-mono text-uppercase"
-                        />
-                      </div>
-                    </VCol>
-                    <VCol cols="12" sm="4">
-                      <VLabel class="mb-2 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Color Terciario</VLabel>
-                      <div class="d-flex align-center gap-2">
-                        <input
-                          v-model="form.tertiary_color"
-                          type="color"
-                          class="color-picker-premium"
-                        />
+                        >
+                          <template #prepend-inner>
+                            <input
+                              v-model="form.secondary_color"
+                              type="color"
+                              style="width: 28px; height: 28px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; cursor: pointer; padding: 0; margin-right: 8px;"
+                            />
+                          </template>
+                        </VTextField>
+                      </VCol>
+                      <VCol cols="12" sm="4">
                         <VTextField
                           v-model="form.tertiary_color"
-                          density="compact"
+                          label="Color Terciario"
+                          density="comfortable"
                           variant="outlined"
-                          hide-details
                           class="font-mono text-uppercase"
+                        >
+                          <template #prepend-inner>
+                            <input
+                              v-model="form.tertiary_color"
+                              type="color"
+                              style="width: 28px; height: 28px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; cursor: pointer; padding: 0; margin-right: 8px;"
+                            />
+                          </template>
+                        </VTextField>
+                      </VCol>
+                    </VRow>
+                  </div>
+
+                  <!-- Identidad Multimedia e Imagen Corporativa -->
+                  <div style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 15px; margin-top: 15px;">
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 20px;">
+                      <VIcon icon="tabler-photo" size="18" class="text-primary" />
+                      Identidad Multimedia e Imagen Corporativa
+                    </h3>
+                    
+                    <VRow class="mb-2">
+                      <!-- Logo de la Tienda -->
+                      <VCol cols="12" md="6">
+                        <div class="d-flex align-start gap-4">
+                          <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden; flex-shrink: 0;">
+                            <img v-if="logoPreview" :src="logoPreview" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                            <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Logo</span>
+                          </div>
+                          <div class="flex-grow-1">
+                            <VFileInput
+                              label="Logo de la Tienda"
+                              placeholder="Cargar nuevo logo"
+                              accept="image/*"
+                              density="comfortable"
+                              variant="outlined"
+                              hide-details
+                              prepend-icon=""
+                              prepend-inner-icon="tabler-upload"
+                              @change="handleLogoUpload"
+                            />
+                            <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: PNG, SVG transparentes.</span>
+                          </div>
+                        </div>
+                      </VCol>
+
+                      <!-- Favicon de la Tienda -->
+                      <VCol cols="12" md="6">
+                        <div class="d-flex align-start gap-4">
+                          <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 60px; height: 60px; overflow: hidden; flex-shrink: 0;">
+                            <img v-if="faviconPreview" :src="faviconPreview" style="max-width: 32px; max-height: 32px; object-fit: contain;" />
+                            <span v-else class="text-caption text-muted text-center text-xxs tracking-tighter">Sin Icono</span>
+                          </div>
+                          <div class="flex-grow-1">
+                            <VFileInput
+                              label="Favicon (Icono de pestaña)"
+                              placeholder="Cargar favicon"
+                              accept="image/*"
+                              density="comfortable"
+                              variant="outlined"
+                              hide-details
+                              prepend-icon=""
+                              prepend-inner-icon="tabler-upload"
+                              @change="handleFaviconUpload"
+                            />
+                            <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: ICO, PNG de 32x32px.</span>
+                          </div>
+                        </div>
+                      </VCol>
+                    </VRow>
+
+                    <!-- Banner del Hero (Campaña Editorial) -->
+                    <div class="border-top pt-6 mt-6">
+                      <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
+                        <VIcon icon="tabler-layout" size="18" class="text-primary" />
+                        Campaña Hero (Tienda)
+                      </h3>
+
+                      <div class="d-flex flex-column gap-4">
+                        <!-- Imagen de la Campaña -->
+                        <div>
+                          <div class="d-flex align-start gap-4">
+                            <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
+                              <img v-if="heroImagePreview" :src="heroImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
+                              <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
+                            </div>
+                            <div class="flex-grow-1">
+                              <VFileInput
+                                label="Imagen de Campaña (Derecha)"
+                                placeholder="Cargar imagen de campaña"
+                                accept="image/*"
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                prepend-icon=""
+                                prepend-inner-icon="tabler-upload"
+                                @change="handleHeroImageUpload"
+                              />
+                              <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textos de Campaña -->
+                        <VTextField
+                          v-model="form.hero_tagline"
+                          label="Etiqueta Superior (Tagline)"
+                          placeholder="Ej: NUEVA COLECCIÓN"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+
+                        <VTextField
+                          v-model="form.hero_title"
+                          label="Título de Campaña (Serif)"
+                          placeholder="Ej: YOUR NEW BOMB NUDES"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+
+                        <VTextarea
+                          v-model="form.hero_subtitle"
+                          label="Subtítulo / Descripción"
+                          placeholder="Describe breves de la colección..."
+                          variant="outlined"
+                          density="comfortable"
+                          rows="3"
+                          persistent-placeholder
+                        />
+
+                        <VTextField
+                          v-model="form.hero_button_text"
+                          label="Texto del Botón de Acción"
+                          placeholder="Ej: COMPRAR AHORA"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
                         />
                       </div>
-                    </VCol>
-                  </VRow>
+                    </div>
+
+                    <!-- Segunda Sección Híbrida (Sección 2) -->
+                    <div class="border-top pt-6 mt-6">
+                      <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
+                        <VIcon icon="tabler-layout" size="18" class="text-primary" />
+                        Segunda Sección Híbrida (Sección 2)
+                      </h3>
+
+                      <div class="d-flex flex-column gap-4">
+                        <!-- Imagen de la Sección 2 -->
+                        <div>
+                          <div class="d-flex align-start gap-4">
+                            <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
+                              <img v-if="section2ImagePreview" :src="section2ImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
+                              <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
+                            </div>
+                            <div class="flex-grow-1">
+                              <VFileInput
+                                label="Imagen Destacada (Izquierda) - Sección 2"
+                                placeholder="Cargar imagen destacada"
+                                accept="image/*"
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                prepend-icon=""
+                                prepend-inner-icon="tabler-upload"
+                                @change="handleSection2ImageUpload"
+                              />
+                              <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textos de la Sección 2 -->
+                        <VTextField
+                          v-model="form.section2_tagline"
+                          label="Etiqueta Superior (Tagline)"
+                          placeholder="Ej: PIEL RADIANTE"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+
+                        <VTextField
+                          v-model="form.section2_title"
+                          label="Título de la Sección (Serif)"
+                          placeholder="Ej: MEET YOUR DONE-IN-ONE TINTED MOISTURIZER"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+
+                        <VTextarea
+                          v-model="form.section2_subtitle"
+                          label="Subtítulo / Descripción"
+                          placeholder="Describe las virtudes de esta colección..."
+                          variant="outlined"
+                          density="comfortable"
+                          rows="3"
+                          persistent-placeholder
+                        />
+
+                        <VTextField
+                          v-model="form.section2_button_text"
+                          label="Texto del Botón de Acción"
+                          placeholder="Ej: DESCUBRIR TONOS"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Tercera Sección Híbrida (Sección 3) -->
+                    <div class="border-top pt-6 mt-6">
+                      <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
+                        <VIcon icon="tabler-layout" size="18" class="text-primary" />
+                        Tercera Sección Híbrida (Sección 3)
+                      </h3>
+
+                      <div class="d-flex flex-column gap-4">
+                        <!-- Imagen de la Sección 3 -->
+                        <div>
+                          <div class="d-flex align-start gap-4">
+                            <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
+                              <img v-if="section3ImagePreview" :src="section3ImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
+                              <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
+                            </div>
+                            <div class="flex-grow-1">
+                              <VFileInput
+                                label="Imagen Destacada (Derecha) - Sección 3"
+                                placeholder="Cargar imagen destacada"
+                                accept="image/*"
+                                density="comfortable"
+                                variant="outlined"
+                                hide-details
+                                prepend-icon=""
+                                prepend-inner-icon="tabler-upload"
+                                @change="handleSection3ImageUpload"
+                              />
+                              <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textos de la Sección 3 -->
+                        <VTextField
+                          v-model="form.section3_tagline"
+                          label="Etiqueta Superior (Tagline)"
+                          placeholder="Ej: EFECTO SOL"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+
+                        <VTextField
+                          v-model="form.section3_title"
+                          label="Título de la Sección (Serif)"
+                          placeholder="Ej: SUN STALK'R SOUFFLÉ PRESSED MOUSSE BRONZER"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+
+                        <VTextarea
+                          v-model="form.section3_subtitle"
+                          label="Subtítulo / Descripción"
+                          placeholder="Describe las virtudes de esta colección..."
+                          variant="outlined"
+                          density="comfortable"
+                          rows="3"
+                          persistent-placeholder
+                        />
+
+                        <VTextField
+                          v-model="form.section3_button_text"
+                          label="Texto del Botón de Acción"
+                          placeholder="Ej: COMPRAR BRONCEADOR"
+                          variant="outlined"
+                          density="comfortable"
+                          persistent-placeholder
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </VCol>
 
-              <!-- Sección Derecha: Multimedia / Identidad Visual -->
-              <VCol cols="12" md="5">
-                <div class="border pa-6 rounded-0 h-100">
-                  <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
-                    <VIcon icon="tabler-photo" size="18" class="text-primary" />
-                    Identidad Multimedia
-                  </h3>
-                  
-                  <!-- Logo de la Tienda -->
-                  <div class="mb-8">
-                    <VLabel class="mb-3 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Logo de la Tienda</VLabel>
-                    <div class="d-flex align-start gap-4">
-                      <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
-                        <img v-if="logoPreview" :src="logoPreview" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
-                        <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Logo</span>
-                      </div>
-                      <div class="flex-grow-1">
-                        <VFileInput
-                          label="Cargar nuevo logo"
-                          accept="image/*"
-                          density="comfortable"
-                          variant="outlined"
-                          hide-details
-                          prepend-icon=""
-                          prepend-inner-icon="tabler-upload"
-                          @change="handleLogoUpload"
-                        />
-                        <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: PNG, SVG transparentes.</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Favicon de la Tienda -->
-                  <div class="mb-8">
-                    <VLabel class="mb-3 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Favicon (Icono de pestaña)</VLabel>
-                    <div class="d-flex align-start gap-4">
-                      <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 60px; height: 60px; overflow: hidden;">
-                        <img v-if="faviconPreview" :src="faviconPreview" style="max-width: 32px; max-height: 32px; object-fit: contain;" />
-                        <span v-else class="text-caption text-muted text-center text-xxs tracking-tighter">Sin Icono</span>
-                      </div>
-                      <div class="flex-grow-1">
-                        <VFileInput
-                          label="Cargar favicon"
-                          accept="image/*"
-                          density="comfortable"
-                          variant="outlined"
-                          hide-details
-                          prepend-icon=""
-                          prepend-inner-icon="tabler-upload"
-                          @change="handleFaviconUpload"
-                        />
-                        <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: ICO, PNG de 32x32px.</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Banner del Hero (Campaña Editorial) -->
-                  <div class="border-top pt-6 mt-6">
-                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
-                      <VIcon icon="tabler-layout" size="18" class="text-primary" />
-                      Campaña Hero (Tienda)
+              <!-- Sección de Aprobación de Pedidos de E-commerce -->
+              <VCol cols="12" class="mt-8">
+                <div class="border pa-6 rounded-0 bg-white d-flex flex-column gap-4">
+                  <div>
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 5px;">
+                      <VIcon icon="tabler-shopping-cart" size="18" class="text-primary" />
+                      Aprobación de Pedidos E-commerce
                     </h3>
+                    <p class="text-muted text-caption mb-6">
+                      Listado de compras web en estado pendiente. Aquí puedes revisar los métodos de pago (Zelle, Pago Móvil a tasa Binance) y aprobar o rechazar para procesar el despacho.
+                    </p>
 
-                    <div class="d-flex flex-column gap-4">
-                      <!-- Imagen de la Campaña -->
-                      <div>
-                        <VLabel class="mb-3 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Imagen de Campaña (Derecha)</VLabel>
-                        <div class="d-flex align-start gap-4">
-                          <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
-                            <img v-if="heroImagePreview" :src="heroImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
-                            <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <VFileInput
-                              label="Cargar imagen de campaña"
-                              accept="image/*"
-                              density="comfortable"
-                              variant="outlined"
-                              hide-details
-                              prepend-icon=""
-                              prepend-inner-icon="tabler-upload"
-                              @change="handleHeroImageUpload"
-                            />
-                            <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Textos de Campaña -->
-                      <VTextField
-                        v-model="form.hero_tagline"
-                        label="Etiqueta Superior (Tagline)"
-                        placeholder="Ej: NUEVA COLECCIÓN"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
-
-                      <VTextField
-                        v-model="form.hero_title"
-                        label="Título de Campaña (Serif)"
-                        placeholder="Ej: YOUR NEW BOMB NUDES"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
-
-                      <VTextarea
-                        v-model="form.hero_subtitle"
-                        label="Subtítulo / Descripción"
-                        placeholder="Describe brevemente la colección..."
-                        variant="outlined"
-                        density="comfortable"
-                        rows="3"
-                        persistent-placeholder
-                      />
-
-                      <VTextField
-                        v-model="form.hero_button_text"
-                        label="Texto del Botón de Acción"
-                        placeholder="Ej: COMPRAR AHORA"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
+                    <!-- Tabla de pedidos -->
+                    <div v-if="adminOrders.length" class="border rounded-0 overflow-hidden">
+                      <v-table class="text-left" style="width: 100%;">
+                        <thead>
+                          <tr style="background-color: #FAFAFA; border-bottom: 2px solid #E8E8E8;">
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase">Pedido</th>
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase">Cliente</th>
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase">Contacto</th>
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase">Método</th>
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase text-right">Total</th>
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase">Estado</th>
+                            <th class="py-3 px-4 font-weight-bold text-xxs tracking-widest text-uppercase text-center">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template v-for="order in adminOrders" :key="order.id">
+                            <tr style="border-bottom: 1px solid #E8E8E8;">
+                              <td class="py-4 px-4 text-xs font-weight-bold">#{{ order.id }}</td>
+                              <td class="py-4 px-4 text-xs">
+                                <div class="font-weight-bold">{{ order.customer_name }}</div>
+                                <div class="text-xxs text-muted">{{ order.customer_email || 'Sin email' }}</div>
+                              </td>
+                              <td class="py-4 px-4 text-xs">
+                                <div>{{ order.customer_phone || '-' }}</div>
+                                <div class="text-xxs text-muted" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                  {{ order.shipping_address }}
+                                </div>
+                              </td>
+                              <td class="py-4 px-4 text-xs font-weight-bold text-uppercase">
+                                <span>{{ order.payment_method === 'pago_movil' ? 'Pago Móvil' : order.payment_method }}</span>
+                              </td>
+                              <td class="py-4 px-4 text-xs text-right font-weight-bold">${{ Number(order.total_amount).toFixed(2) }}</td>
+                              <td class="py-4 px-4 text-xs">
+                                <VChip
+                                  size="x-small"
+                                  variant="tonal"
+                                  class="rounded-0 text-uppercase"
+                                  :color="order.status === 'Paid' ? 'success' : (order.status === 'Cancelled' ? 'error' : 'warning')"
+                                >
+                                  {{ order.status === 'Pending' ? 'Pendiente' : (order.status === 'Paid' ? 'Aprobado' : 'Cancelado') }}
+                                </VChip>
+                              </td>
+                              <td class="py-4 px-4 text-center">
+                                <div v-if="order.status === 'Pending'" class="d-flex align-center justify-center gap-2">
+                                  <VBtn
+                                    size="x-small"
+                                    color="success"
+                                    variant="flat"
+                                    class="rounded-0"
+                                    :loading="actionLoadingId === order.id"
+                                    @click="approveOrder(order.id)"
+                                  >
+                                    Aprobar
+                                  </VBtn>
+                                  <VBtn
+                                    size="x-small"
+                                    color="error"
+                                    variant="outlined"
+                                    class="rounded-0"
+                                    :loading="actionLoadingId === order.id"
+                                    @click="cancelOrder(order.id)"
+                                  >
+                                    Rechazar
+                                  </VBtn>
+                                </div>
+                                <span v-else class="text-xxs text-muted font-weight-bold text-uppercase">Procesado</span>
+                              </td>
+                            </tr>
+                            <!-- Detalles de productos comprados en el pedido -->
+                            <tr style="background-color: #FCFCFC; border-bottom: 1px solid #E8E8E8;">
+                              <td colspan="7" class="py-2 px-6 text-xxs text-muted">
+                                <span class="font-weight-bold text-uppercase tracking-wider mr-2">Detalles:</span>
+                                <span v-for="(item, index) in order.items" :key="item.id">
+                                  {{ item.product_name }} <span v-if="item.variant_value">({{ item.variant_value }})</span> x{{ item.quantity }} (${{ Number(item.price).toFixed(2) }})<span v-if="index < order.items.length - 1">, </span>
+                                </span>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </v-table>
                     </div>
-                  </div>
-
-                  <!-- Segunda Sección Híbrida (Sección 2) -->
-                  <div class="border-top pt-6 mt-6">
-                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-6 d-flex align-center gap-2">
-                      <VIcon icon="tabler-layout-split" size="18" class="text-primary" />
-                      Segunda Sección Híbrida
-                    </h3>
-
-                    <div class="d-flex flex-column gap-4">
-                      <!-- Imagen de la Sección 2 -->
-                      <div>
-                        <VLabel class="mb-3 text-caption font-weight-bold text-muted text-uppercase tracking-wider">Imagen Destacada (Izquierda)</VLabel>
-                        <div class="d-flex align-start gap-4">
-                          <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
-                            <img v-if="section2ImagePreview" :src="section2ImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
-                            <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <VFileInput
-                              label="Cargar imagen destacada"
-                              accept="image/*"
-                              density="comfortable"
-                              variant="outlined"
-                              hide-details
-                              prepend-icon=""
-                              prepend-inner-icon="tabler-upload"
-                              @change="handleSection2ImageUpload"
-                            />
-                            <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Textos de la Sección 2 -->
-                      <VTextField
-                        v-model="form.section2_tagline"
-                        label="Etiqueta Superior (Tagline)"
-                        placeholder="Ej: PIEL RADIANTE"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
-
-                      <VTextField
-                        v-model="form.section2_title"
-                        label="Título de la Sección (Serif)"
-                        placeholder="Ej: MEET YOUR DONE-IN-ONE TINTED MOISTURIZER"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
-
-                      <VTextarea
-                        v-model="form.section2_subtitle"
-                        label="Subtítulo / Descripción"
-                        placeholder="Describe las virtudes de esta colección..."
-                        variant="outlined"
-                        density="comfortable"
-                        rows="3"
-                        persistent-placeholder
-                      />
-
-                      <VTextField
-                        v-model="form.section2_button_text"
-                        label="Texto del Botón de Acción"
-                        placeholder="Ej: DESCUBRIR TONOS"
-                        variant="outlined"
-                        density="comfortable"
-                        persistent-placeholder
-                      />
+                    <div v-else class="text-center py-8 border border-dashed rounded-0 bg-light">
+                      <span class="text-caption text-muted text-uppercase tracking-wider">No hay pedidos registrados en la tienda actualmente</span>
                     </div>
                   </div>
                 </div>

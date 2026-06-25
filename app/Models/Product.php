@@ -69,6 +69,7 @@ class Product extends Model
         'is_novaventa',
         'presentation',
         'unit_of_measure',
+        'is_favorite',
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'sale_price_cop', 'unit_cost_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -90,6 +91,7 @@ class Product extends Model
         'is_unified_group' => 'boolean',
         'no_pvp' => 'boolean',
         'stock' => 'float',
+        'is_favorite' => 'boolean',
     ];
 
 
@@ -122,7 +124,20 @@ class Product extends Model
     protected function photoUrl(): Attribute
     {
         return Attribute::make(
-            get: fn() => $this->attributes['photo_url'] ? Storage::url($this->attributes['photo_url']) : null,
+            get: function () {
+                $url = $this->attributes['photo_url'] ?? null;
+                if (!$url) return null;
+                if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                    return $url;
+                }
+                // Limpiar prefijo de storage si ya existe para evitar duplicación
+                if (str_starts_with($url, '/storage/')) {
+                    $url = substr($url, 9);
+                } elseif (str_starts_with($url, 'storage/')) {
+                    $url = substr($url, 8);
+                }
+                return \Illuminate\Support\Facades\Storage::url($url);
+            }
         );
     }
 

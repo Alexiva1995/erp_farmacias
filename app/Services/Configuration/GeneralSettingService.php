@@ -58,6 +58,10 @@ class GeneralSettingService
             $data['section2_image'] = $this->uploadFile($data['section2_image'], 'branding');
         }
 
+        if (isset($data['section3_image']) && $data['section3_image'] instanceof UploadedFile) {
+            $data['section3_image'] = $this->uploadFile($data['section3_image'], 'branding');
+        }
+
         return $this->repository->updateSettings($data);
     }
 

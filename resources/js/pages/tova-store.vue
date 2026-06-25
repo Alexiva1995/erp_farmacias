@@ -11,9 +11,16 @@ import axios from '@/plugins/axios'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const brandingStore = useBrandingStore()
+const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket')
+
+// ——— Estados de Carga de Imágenes ———
+const heroImageLoaded = ref(false)
+const section2ImageLoaded = ref(false)
+const section3ImageLoaded = ref(false)
 
 // ——— Estado principal ———
 const products = ref([])
+const favoriteProducts = ref([])
 const categories = ref([])
 const selectedCategory = ref(null)
 const searchQuery = ref('')
@@ -28,6 +35,10 @@ const mobileMenuOpen = ref(false)
 const orderSuccess = ref(false)
 const lastOrderId = ref(null)
 
+// ——— Paginación del catálogo ———
+const currentPage = ref(1)
+const lastPage = ref(1)
+
 // ——— Carrito ———
 const cart = ref([])
 
@@ -41,16 +52,19 @@ const cartTotalPrice = computed(() =>
 )
 
 // ——— Formulario de orden ———
+const binanceRate = ref(45.50) // Tasa de cambio Binance de referencia para VES
 const orderForm = ref({
   customer_name: '',
   customer_email: '',
   customer_phone: '',
   shipping_address: '',
   notes: '',
+  payment_method: '', // Métodos: 'pago_movil', 'zelle', 'contraentrega'
 })
 const orderFormValid = computed(() =>
   orderForm.value.customer_name.trim() &&
-  orderForm.value.customer_phone.trim()
+  orderForm.value.customer_phone.trim() &&
+  orderForm.value.payment_method
 )
 
 // ——— Fetch datos ———
@@ -63,16 +77,36 @@ const fetchCategories = async () => {
   }
 }
 
-const fetchProducts = async () => {
-  loading.value = true
+const fetchFavorites = async () => {
   try {
-    const params = {}
+    const { data } = await axios.get('/public/ecommerce/products', { params: { favorites_only: true } })
+    if (data.success) {
+      favoriteProducts.value = Array.isArray(data.data) ? data.data : (data.data?.data || [])
+    }
+  } catch (e) {
+    console.error('Error al obtener favoritos:', e)
+  }
+}
+
+const fetchProducts = async (page = 1) => {
+  loading.value = true
+  currentPage.value = page
+  try {
+    const params = { page }
     if (selectedCategory.value) params.category = selectedCategory.value
     if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
 
     const { data } = await axios.get('/public/ecommerce/products', { params })
     if (data.success) {
-      products.value = Array.isArray(data.data?.data) ? data.data.data : (Array.isArray(data.data) ? data.data : [])
+      if (data.data && data.data.data) {
+        products.value = data.data.data
+        currentPage.value = data.data.current_page
+        lastPage.value = data.data.last_page
+      } else {
+        products.value = Array.isArray(data.data) ? data.data : []
+        currentPage.value = 1
+        lastPage.value = 1
+      }
     }
   } catch (e) {
     console.error('Error al obtener productos:', e)
@@ -81,16 +115,54 @@ const fetchProducts = async () => {
   }
 }
 
+const toggleFavorite = async (product) => {
+  try {
+    const { data } = await axios.post(`/public/ecommerce/products/${product.id}/toggle-favorite`)
+    if (data.success) {
+      product.is_favorite = data.data.is_favorite
+      // Sincronizar el estado en ambas listas
+      const favProd = favoriteProducts.value.find(p => p.id === product.id)
+      if (favProd) {
+        favProd.is_favorite = data.data.is_favorite
+      }
+      const catProd = products.value.find(p => p.id === product.id)
+      if (catProd) {
+        catProd.is_favorite = data.data.is_favorite
+      }
+      // Recargar favoritos para mantener consistencia
+      await fetchFavorites()
+    }
+  } catch (e) {
+    console.error('Error al cambiar favorito:', e)
+  }
+}
+
+const handleImageError = (product) => {
+  product.image_failed = true
+}
+
+const carouselContainer = ref(null)
+
+const scrollCarousel = (direction) => {
+  if (!carouselContainer.value) return
+  const scrollAmount = 300
+  if (direction === 'left') {
+    carouselContainer.value.scrollBy({ left: -scrollAmount, behavior: 'smooth' })
+  } else {
+    carouselContainer.value.scrollBy({ left: scrollAmount, behavior: 'smooth' })
+  }
+}
+
 // Búsqueda con debounce
 let searchTimeout = null
 watch(searchQuery, () => {
   clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(fetchProducts, 400)
+  searchTimeout = setTimeout(() => fetchProducts(1), 400)
 })
 
 const selectCategory = (slug) => {
   selectedCategory.value = selectedCategory.value === slug ? null : slug
-  fetchProducts()
+  fetchProducts(1)
 }
 
 // ——— Carrito ———
@@ -161,7 +233,7 @@ const submitOrder = async () => {
       clearCart()
       orderDialog.value = false
       cartDrawer.value = false
-      orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', notes: '' }
+      orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', notes: '', payment_method: '' }
       await fetchProducts()
     }
   } catch (e) {
@@ -202,7 +274,23 @@ onMounted(async () => {
     // Silenciar fallos de branding
   }
   fetchCategories()
-  fetchProducts()
+  fetchFavorites()
+  fetchProducts(1)
+
+  // Intersection Observer para revelar secciones al hacer scroll
+  setTimeout(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('section-revealed')
+        }
+      })
+    }, { threshold: 0.05 })
+
+    document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+      observer.observe(el)
+    })
+  }, 50)
 })
 </script>
 
@@ -282,7 +370,7 @@ onMounted(async () => {
     <section class="editorial-hero">
       <div class="hero-split-layout">
         <!-- Bloque de Texto de Campaña -->
-        <div class="hero-text-block">
+        <div class="hero-text-block animate-fade-in-left">
           <div class="hero-text-content">
             <span class="hero-tagline">{{ brandingStore.settings.hero_tagline || 'NUEVA COLECCIÓN' }}</span>
             <h1 class="hero-heading-serif">{{ brandingStore.settings.hero_title || 'YOUR NEW BOMB NUDES' }}</h1>
@@ -295,25 +383,35 @@ onMounted(async () => {
           </div>
         </div>
         <!-- Bloque de Imagen de Campaña -->
-        <div class="hero-image-block">
+        <div class="hero-image-block animate-fade-in-right">
           <div class="hero-img-wrap">
             <img 
-              :src="brandingStore.settings.hero_image || '/resources/js/pages/tova_editorial_campaign_1782228591006.png'" 
-              alt="TOVA Campaign Model" 
-              class="hero-campaign-image"
+              v-if="brandingStore.settings.hero_image"
+              :src="brandingStore.settings.hero_image" 
+              alt="TOVA Campaña Hero" 
+              class="hero-campaign-image fade-image"
+              :class="{ 'image-visible': heroImageLoaded }"
+              @load="heroImageLoaded = true"
             />
+            <div v-else class="hero-image-fallback" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--editorial-grey-bg); color: var(--editorial-black); font-family: var(--editorial-font-serif); font-size: 40px; letter-spacing: 8px;">
+              <span>TOVA</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SECCIÓN DE CATEGORÍAS EDITORIALES -->
-    <section class="editorial-categories-section">
-      <div class="section-title-wrap">
+
+
+    <!-- 3. EXPLORAR TOVA & CATÁLOGO GENERAL EN GRILLA DE DOS FILAS (4x2) CON PAGINACIÓN -->
+    <section id="catalog" class="editorial-products-section reveal-on-scroll" style="padding: 80px 40px; background-color: var(--editorial-grey-bg); border-bottom: 1px solid var(--editorial-border);">
+      <div class="section-title-wrap" style="text-align: center; margin-bottom: 30px;">
         <h2 class="editorial-title-serif">EXPLORAR TOVA</h2>
         <div class="title-decor-line"></div>
       </div>
-      <div class="categories-editorial-flex">
+
+      <!-- Filtros por Categoría (Chips Minimalistas) -->
+      <div class="categories-editorial-flex" style="margin-bottom: 45px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
         <button
           v-for="cat in categories"
           :key="cat.id"
@@ -324,26 +422,123 @@ onMounted(async () => {
           {{ cat.name.toUpperCase() }}
         </button>
       </div>
+
+      <!-- Grid de Productos (Cargando inicial cuando está vacío) -->
+      <div v-if="loading && products.length === 0" class="editorial-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 30px;">
+        <div v-for="n in 8" :key="n" class="editorial-product-skeleton">
+          <div class="skeleton-img-flat"></div>
+          <div class="skeleton-text-flat line-1"></div>
+          <div class="skeleton-text-flat line-2"></div>
+        </div>
+      </div>
+
+      <!-- Grid de Productos (Catálogo Paginado / Transición de Opacidad) -->
+      <div v-else-if="products.length" class="editorial-grid" :class="{ 'grid-loading': loading }" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px;">
+        <div
+          v-for="product in products"
+          :key="product.id"
+          class="editorial-product-card"
+        >
+          <!-- Contenedor de Imagen -->
+          <div class="editorial-product-img-wrap" @click="openQuickView(product)">
+            <span v-if="isMinimarket && product.is_favorite" class="product-badge-editorial">FAVORITO</span>
+            <button
+              v-if="isMinimarket"
+              class="favorite-toggle-btn"
+              @click.stop="toggleFavorite(product)"
+              :class="{ 'is-active-fav': product.is_favorite }"
+              title="Marcar como favorito"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="heart-icon">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+              </svg>
+            </button>
+            <img
+              v-if="(product.photo_url || product.image_url) && !product.image_failed"
+              :src="product.photo_url || product.image_url"
+              :alt="product.name"
+              class="editorial-product-image fade-image"
+              loading="lazy"
+              @load="($event) => $event.target.classList.add('image-visible')"
+              @error="handleImageError(product)"
+            />
+            <div v-else class="editorial-product-image-fallback">
+              <span class="fallback-logo">VICTORIA DORE</span>
+              <span class="fallback-sub">NO DISPONIBLE</span>
+            </div>
+            <div class="editorial-card-hover-action">
+              <span class="hover-action-label">VISTA RÁPIDA</span>
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="editorial-product-info" style="margin-top: 15px;">
+            <h3 class="editorial-product-name" @click="openQuickView(product)" style="cursor: pointer; margin-bottom: 4px;">{{ product.name.toUpperCase() }}</h3>
+            <span class="editorial-product-brand" style="display: block; margin-bottom: 8px;">{{ product.brand || 'TOVA' }}</span>
+            <div class="editorial-product-footer" style="display: flex; justify-content: space-between; align-items: baseline;">
+              <span class="editorial-product-price" style="font-weight: 700;">{{ formatPrice(product.sale_price) }}</span>
+            </div>
+            <!-- Botón de Ancho Completo Táctil y Accesible (Estilo Premium Zara/Fenty) -->
+            <button class="editorial-add-bag-btn" @click.stop="openQuickView(product)" style="background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;">
+              + VER DETALLES
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado Vacío -->
+      <div v-else class="editorial-empty-state" style="text-align: center; padding: 60px 20px;">
+        <p class="empty-message-serif" style="font-size: 16px; letter-spacing: 2px; color: #888; margin-bottom: 20px;">No se encontraron productos con imagen configurada en esta categoría.</p>
+        <button class="editorial-btn-dark-outline" @click="selectedCategory = null; fetchProducts(1)">
+          VER TODA LA TIENDA
+        </button>
+      </div>
+
+      <!-- Paginación Elegante -->
+      <div v-if="lastPage > 1" class="editorial-pagination-wrap" style="display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 60px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 30px;">
+        <button 
+          class="editorial-btn-dark-outline" 
+          style="padding: 12px 28px; font-size: 11px; letter-spacing: 2px; border-width: 1px; font-weight: 700;"
+          :disabled="currentPage === 1" 
+          @click="fetchProducts(currentPage - 1); scrollToCatalog()"
+        >
+          ← ANTERIOR
+        </button>
+        <span class="pagination-info" style="font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;">
+          PÁGINA {{ currentPage }} DE {{ lastPage }}
+        </span>
+        <button 
+          class="editorial-btn-dark-outline" 
+          style="padding: 12px 28px; font-size: 11px; letter-spacing: 2px; border-width: 1px; font-weight: 700;"
+          :disabled="currentPage === lastPage" 
+          @click="fetchProducts(currentPage + 1); scrollToCatalog()"
+        >
+          SIGUIENTE →
+        </button>
+      </div>
     </section>
 
-    <!-- 2. HÍBRIDO 50/50: MEET YOUR MATCH (TINTED MOISTURIZER) -->
-    <section class="editorial-campaign-split">
+    <!-- 4. HÍBRIDO 50/50: MEET YOUR MATCH (TINTED MOISTURIZER) -->
+    <section class="editorial-campaign-split reveal-on-scroll">
       <div class="split-row">
-        <div class="split-col image-col">
+        <div class="split-col image-col animate-fade-in-left">
           <img 
-            :src="brandingStore.settings.section2_image || '/resources/js/pages/tova_product_tint_1782228603853.png'" 
+            v-if="brandingStore.settings.section2_image"
+            :src="brandingStore.settings.section2_image" 
             alt="TOVA Tinted Moisturizer" 
-            class="split-image"
+            class="split-image fade-image"
+            :class="{ 'image-visible': section2ImageLoaded }"
+            @load="section2ImageLoaded = true"
           />
         </div>
-        <div class="split-col text-col bg-nude-light">
+        <div class="split-col text-col bg-nude-light animate-fade-in-right">
           <div class="split-text-inner">
             <span class="split-eyebrow">{{ brandingStore.settings.section2_tagline || 'PIEL RADIANTE' }}</span>
             <h2 class="split-heading-serif">{{ brandingStore.settings.section2_title || 'MEET YOUR DONE-IN-ONE TINTED MOISTURIZER' }}</h2>
-            <p class="split-paragraph">
+            <p class="split-paragraph" style="color: #2E2523; font-weight: 500;">
               {{ brandingStore.settings.section2_subtitle || 'Nuestra fórmula ultraligera que unifica el tono de la piel, hidrata profundamente y aporta una luminosidad natural y fresca durante todo el día. Disponible en 25 tonos flexibles.' }}
             </p>
-            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'skin-care'; fetchProducts(); scrollToCatalog()">
+            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'skin-care'; fetchProducts(1); scrollToCatalog()">
               {{ brandingStore.settings.section2_button_text || 'DESCUBRIR TONOS' }}
             </button>
           </div>
@@ -351,128 +546,140 @@ onMounted(async () => {
       </div>
     </section>
 
-    <!-- 3. PRODUCT GRID: ESTÉTICA TOTALMENTE PLANA (REPLICANDO FENTY) -->
-    <section id="catalog" class="editorial-products-section">
-      <div class="catalog-header-editorial">
-        <h2 class="editorial-title-serif">
-          {{ selectedCategory ? categories.find(c => c.slug === selectedCategory)?.name.toUpperCase() || 'COLECCIÓN' : 'NUESTROS FAVORITOS' }}
-        </h2>
-        <span v-if="selectedCategory" class="editorial-clear-filter" @click="selectedCategory = null; fetchProducts()">
-          VER TODOS
-        </span>
-      </div>
-
-      <!-- Grid de Productos Estilo Editorial -->
-      <div v-if="loading" class="editorial-grid">
-        <div v-for="n in 4" :key="n" class="editorial-product-skeleton">
-          <div class="skeleton-img-flat"></div>
-          <div class="skeleton-text-flat line-1"></div>
-          <div class="skeleton-text-flat line-2"></div>
+    <!-- 2. NUESTROS FAVORITOS - DESLIZADOR HORIZONTAL EXCLUSIVO (ESTILO FENTY - ORIGINALMENTE EN MEDIO DE LAS HÍBRIDAS) -->
+    <section v-if="isMinimarket && favoriteProducts.length" class="editorial-products-section" style="padding: 80px 0; border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
+      <div class="catalog-header-editorial" style="padding: 0 40px; margin-bottom: 35px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--editorial-border); padding-bottom: 15px;">
+        <div style="display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap;">
+          <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">ICONIC PICKS FOR BOMB LIPS</h2>
+          <div class="fenty-sub-links d-none d-md-flex" style="display: flex; gap: 20px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #000;">
+            <span style="cursor: pointer; border-bottom: 2px solid #000; padding-bottom: 4px;">New + Best Sellers</span>
+            <span style="color: #666; cursor: pointer;">Makeup</span>
+            <span style="color: #666; cursor: pointer;">Skin</span>
+            <span style="color: #666; cursor: pointer;">Body</span>
+            <span style="color: #666; cursor: pointer;">Hair</span>
+            <span style="color: #666; cursor: pointer;">Sale</span>
+            <span style="color: #666; cursor: pointer;">Discover</span>
+          </div>
+        </div>
+        <div class="fenty-carousel-controls" style="display: flex; gap: 12px;">
+          <button class="carousel-control-circle-btn" @click="scrollCarousel('left')" title="Desplazar a la izquierda">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <button class="carousel-control-circle-btn" @click="scrollCarousel('right')" title="Desplazar a la derecha">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
         </div>
       </div>
 
-      <div v-else-if="products.length" class="editorial-grid">
+      <div ref="carouselContainer" class="fenty-horizontal-row" style="padding: 0 40px; display: flex; gap: 24px; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
         <div
-          v-for="product in products"
+          v-for="product in favoriteProducts"
           :key="product.id"
-          class="editorial-product-card"
-          @click="openQuickView(product)"
+          class="editorial-product-card fav-carousel-card"
+          style="flex: 0 0 23%; min-width: 260px; display: flex; flex-direction: column;"
         >
-          <!-- Contenedor de Imagen de Producto con fondo grisáceo suave y sin bordes redondos -->
-          <div class="editorial-product-img-wrap">
+          <!-- Contenedor de Imagen -->
+          <div class="editorial-product-img-wrap" @click="openQuickView(product)" style="aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative;">
+            <!-- Badges planos apilados como la referencia -->
+            <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
+              <span style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">BESTSELLER</span>
+              <span v-if="product.is_favorite" style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">TOVA'S FAVE</span>
+            </div>
+            <button
+              class="favorite-toggle-btn"
+              @click.stop="toggleFavorite(product)"
+              :class="{ 'is-active-fav': product.is_favorite }"
+              title="Marcar como favorito"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="heart-icon">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+              </svg>
+            </button>
             <img
-              v-if="product.photo_url || product.image_url"
+              v-if="(product.photo_url || product.image_url) && !product.image_failed"
               :src="product.photo_url || product.image_url"
               :alt="product.name"
-              class="editorial-product-image"
+              class="editorial-product-image fade-image"
               loading="lazy"
+              @load="($event) => $event.target.classList.add('image-visible')"
+              @error="handleImageError(product)"
+              style="width: 100%; height: 100%; object-fit: cover;"
             />
-            <div v-else class="editorial-product-image-fallback">
-              <span class="fallback-logo">TOVA</span>
+            <div v-else class="editorial-product-image-fallback" style="background-color: #ECECEC;">
+              <span class="fallback-logo">VICTORIA DORE</span>
+              <span class="fallback-sub">NO DISPONIBLE</span>
             </div>
-            
             <div class="editorial-card-hover-action">
               <span class="hover-action-label">VISTA RÁPIDA</span>
             </div>
           </div>
 
-          <!-- Información del Producto (Tipografías Refinadas y Alineación Limpia) -->
-          <div class="editorial-product-info">
-            <span class="editorial-product-brand">{{ product.brand || 'TOVA' }}</span>
-            <h3 class="editorial-product-name">{{ product.name.toUpperCase() }}</h3>
+          <!-- Información de Producto estilo Fenty exacto -->
+          <div class="editorial-product-info" style="padding-top: 15px; text-align: left; display: flex; flex-direction: column; flex-grow: 1;">
+            <h3 class="editorial-product-name" @click="openQuickView(product)" style="cursor: pointer; font-family: var(--editorial-font-sans); font-size: 14px; font-weight: 600; letter-spacing: 0.5px; color: #000000; margin-bottom: 4px; line-height: 1.4; text-transform: none;">
+              {{ product.name }}
+            </h3>
             
-            <div class="editorial-product-footer">
-              <span class="editorial-product-price">{{ formatPrice(product.sale_price) }}</span>
-              <span v-if="product.variants?.length" class="editorial-variants-indicator">
-                {{ product.variants.length }} TONOS
-              </span>
+            <!-- Valoración por Estrellas Estilo Fenty -->
+            <div class="product-rating-stars" style="display: flex; gap: 2px; color: #000000; font-size: 10px; margin-bottom: 4px;">
+              <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+              <span style="font-size: 10px; color: #888888; margin-left: 4px; font-weight: 500;">(4.8)</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Estado Vacío -->
-      <div v-else class="editorial-empty-state">
-        <p class="empty-message-serif">No se encontraron productos en esta categoría.</p>
-        <button class="editorial-btn-dark-outline" @click="selectedCategory = null; fetchProducts()">
-          VER TODA LA TIENDA
-        </button>
-      </div>
-    </section>
-
-    <!-- 4. HÍBRIDO 50/50: SUN STALKER BRONZER (INVERSIÓN DE BLOQUES) -->
-    <section class="editorial-campaign-split reverse-split">
-      <div class="split-row">
-        <div class="split-col text-col bg-terracotta-light">
-          <div class="split-text-inner">
-            <span class="split-eyebrow">EFECTO SOL</span>
-            <h2 class="split-heading-serif">SUN STALK'R SOUFFLÉ PRESSED MOUSSE BRONZER</h2>
-            <p class="split-paragraph">
-              El bronceador definitivo que aporta calidez instantánea a tu rostro con un acabado sedoso y de larga duración. Su textura mousse prensada se funde perfectamente sobre la piel sin esfuerzo.
-            </p>
-            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'maquillaje'; fetchProducts(); scrollToCatalog()">
-              COMPRAR BRONCEADOR
+            
+            <!-- Tonos / Marca -->
+            <div style="font-size: 12px; color: #555555; margin-bottom: 6px; font-weight: 500;">
+              <span style="margin-right: 10px; text-transform: uppercase; font-size: 10px; font-weight: 700; color: var(--editorial-nude-dark); letter-spacing: 1px;">{{ product.brand || 'TOVA' }}</span>
+              <span style="text-decoration: underline; cursor: pointer;">{{ product.variants_count || 23 }} Shades</span>
+            </div>
+            
+            <!-- Precio con empuje automático al fondo si es necesario -->
+            <div class="editorial-product-price" style="font-size: 16px; font-weight: 750; color: #000000; letter-spacing: 0.5px; margin-top: auto;">
+              {{ formatPrice(product.sale_price) }}
+            </div>
+            <!-- Botón de Ancho Completo Táctil y Accesible (Consistencia con catálogo) -->
+            <button class="editorial-add-bag-btn" @click.stop="openQuickView(product)" style="background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;">
+              + VER DETALLES
             </button>
           </div>
         </div>
-        <div class="split-col image-col">
+      </div>
+    </section>
+
+    <!-- 5. HÍBRIDO 50/50: SUN STALKER BRONZER (INVERSIÓN DE BLOQUES) -->
+    <section class="editorial-campaign-split reverse-split reveal-on-scroll">
+      <div class="split-row">
+        <div class="split-col text-col bg-terracotta-light animate-fade-in-left">
+          <div class="split-text-inner">
+            <span class="split-eyebrow">{{ brandingStore.settings.section3_tagline || 'EFECTO SOL' }}</span>
+            <h2 class="split-heading-serif">{{ brandingStore.settings.section3_title || 'SUN STALK\'R SOUFFLÉ PRESSED MOUSSE BRONZER' }}</h2>
+            <p class="split-paragraph" style="color: #2E2523; font-weight: 500;">
+              {{ brandingStore.settings.section3_subtitle || 'El bronceador definitivo que aporta calidez instantánea a tu rostro con un acabado sedoso y de larga duración. Su textura mousse prensada se funde perfectamente sobre la piel sin esfuerzo.' }}
+            </p>
+            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'maquillaje'; fetchProducts(1); scrollToCatalog()">
+              {{ brandingStore.settings.section3_button_text || 'COMPRAR BRONCEADOR' }}
+            </button>
+          </div>
+        </div>
+        <div class="split-col image-col animate-fade-in-right">
           <img 
-            src="/resources/js/pages/tova_product_bronzer_1782228617577.png" 
+            v-if="brandingStore.settings.section3_image"
+            :src="brandingStore.settings.section3_image" 
             alt="TOVA Bronzer Compact" 
-            class="split-image"
+            class="split-image fade-image"
+            :class="{ 'image-visible': section3ImageLoaded }"
+            @load="section3ImageLoaded = true"
           />
         </div>
       </div>
     </section>
 
     <!-- PIE DE PÁGINA EDITORIAL SOFISTICADO -->
-    <footer class="editorial-footer">
+    <footer class="editorial-footer" style="padding: 40px 20px;">
       <div class="footer-container">
-        <div class="footer-grid">
-          <div class="footer-brand-section">
-            <h2 class="footer-brand-logo">{{ brandingStore.settings.app_name ? brandingStore.settings.app_name.toUpperCase() : 'TOVA' }}</h2>
-            <p class="footer-brand-tagline">BEAUTY & GEMS</p>
-            <p class="footer-brand-desc">
-              Una estética editorial y fórmulas de lujo pensadas para redefinir el estándar de la cosmética moderna y la joyería de autor.
-            </p>
-          </div>
-          <div class="footer-links-section">
-            <h4 class="footer-section-title">SERVICIOS</h4>
-            <span class="footer-link">AYUDA Y SOPORTE</span>
-            <span class="footer-link">ENVÍOS Y DEVOLUCIONES</span>
-            <span class="footer-link">ENCUENTRA TU TONO</span>
-          </div>
-          <div class="footer-links-section">
-            <h4 class="footer-section-title">COMPAÑÍA</h4>
-            <span class="footer-link">SOBRE TOVA</span>
-            <span class="footer-link">NUESTRA FILOSOFÍA</span>
-            <span class="footer-link">CONTACTO</span>
-          </div>
-        </div>
-        <div class="footer-bottom-bar">
-          <p class="copyright-text">
+        <div class="footer-bottom-bar" style="padding-top: 0; text-align: center; justify-content: center; display: flex; width: 100%;">
+          <p class="copyright-text" style="color: #FFFFFF !important; opacity: 0.9; font-size: 13px; line-height: 1.6; letter-spacing: 1px;">
             © {{ new Date().getFullYear() }} {{ brandingStore.settings.app_name ? brandingStore.settings.app_name.toUpperCase() : 'TOVA' }}. Todos los derechos reservados | Diseñado y Desarrollado por 
-            <a href="https://tovaerp.com/" target="_blank" style="color: var(--editorial-nude-dark); text-decoration: none; font-weight: 600;">Tova tu Cerebro Operativo</a>
+            <a href="https://tovaerp.com/" target="_blank" style="color: var(--editorial-nude-dark) !important; text-decoration: none; font-weight: 700;">Tova</a>
           </p>
         </div>
       </div>
@@ -542,19 +749,35 @@ onMounted(async () => {
               <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes de la colección TOVA.' }}</p>
               <p class="qv-price-bold">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
 
-              <!-- Variantes de Tonos / Tamaños -->
+              <!-- Variantes de Tonos / Tamaños Cromáticas -->
               <div v-if="selectedProduct.variants?.length" class="qv-variants-editorial">
                 <p class="qv-variants-title">SELECCIONAR TONO / VARIANTE:</p>
-                <div class="qv-variants-editorial-flex">
+                <div class="qv-variants-editorial-flex" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                   <button
                     v-for="v in selectedProduct.variants"
                     :key="v.id"
                     class="qv-variant-editorial-chip"
                     :class="{ 'qv-chip-active': selectedVariant?.id === v.id }"
                     @click="selectedVariant = v"
+                    :style="{
+                      backgroundColor: parseVariantColor(v.attribute_value),
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      border: selectedVariant?.id === v.id ? '2px solid #000' : '1px solid rgba(0,0,0,0.1)',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      position: 'relative'
+                    }"
+                    :title="parseVariantName(v.attribute_value)"
                   >
-                    {{ v.attribute_value.toUpperCase() }}
+                    <!-- Indicador visual sutil de selección -->
+                    <span v-if="selectedVariant?.id === v.id" style="position: absolute; inset: 2px; border: 1.5px solid #fff; border-radius: 50%;"></span>
                   </button>
+                  
+                  <span v-if="selectedVariant" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #000; margin-left: 8px;">
+                    {{ parseVariantName(selectedVariant.attribute_value) }}
+                  </span>
                 </div>
               </div>
 
@@ -611,6 +834,53 @@ onMounted(async () => {
                 <textarea v-model="orderForm.notes" placeholder="Instrucciones especiales para la entrega..." rows="2"></textarea>
               </div>
             </div>
+          </div>
+
+          <div class="checkout-payment-methods" style="margin-top: 30px;">
+            <h3 class="checkout-section-title">MÉTODO DE PAGO *</h3>
+            <div class="payment-methods-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+              <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'pago_movil' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                <input type="radio" v-model="orderForm.payment_method" value="pago_movil" style="display: none;" />
+                <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">📱</span>
+                <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">PAGO MÓVIL / TRF</span>
+              </label>
+              
+              <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'zelle' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                <input type="radio" v-model="orderForm.payment_method" value="zelle" style="display: none;" />
+                <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">💵</span>
+                <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">ZELLE</span>
+              </label>
+              
+              <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'contraentrega' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                <input type="radio" v-model="orderForm.payment_method" value="contraentrega" style="display: none;" />
+                <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🤝</span>
+                <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">CONTRAENTREGA</span>
+              </label>
+            </div>
+
+            <!-- Detalles dinámicos según el método seleccionado -->
+            <transition name="drawer-fade">
+              <div v-if="orderForm.payment_method === 'pago_movil'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE TRANSFERENCIA / PAGO MÓVIL:</p>
+                <p><strong>Banco:</strong> Banesco (0134)</p>
+                <p><strong>Teléfono:</strong> +58 412 000 0000</p>
+                <p><strong>Cédula:</strong> V-12.345.678</p>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--editorial-border);">
+                  <p><strong>Tasa de cambio Binance:</strong> {{ binanceRate.toFixed(2) }} VES/USD</p>
+                  <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">Bs. {{ (cartTotalPrice * binanceRate).toFixed(2) }}</span></p>
+                </div>
+              </div>
+              <div v-else-if="orderForm.payment_method === 'zelle'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE PAGO ZELLE:</p>
+                <p><strong>Correo electrónico:</strong> pagos@tova.com</p>
+                <p><strong>Titular:</strong> Tova Beauty & Gems LLC</p>
+                <p style="margin-top: 8px; font-size: 10px; color: #666;">Por favor envíe el capture del pago con su nombre de referencia.</p>
+              </div>
+              <div v-else-if="orderForm.payment_method === 'contraentrega'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">MÉTODO CONTRAENTREGA:</p>
+                <p>Pague en efectivo (USD/VES) o Pago Móvil al momento de recibir su pedido en la dirección indicada.</p>
+              </div>
+            </transition>
           </div>
 
           <button
@@ -890,9 +1160,9 @@ onMounted(async () => {
 }
 .hero-description-light {
   font-size: 14px;
-  font-weight: 300;
+  font-weight: 500;
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.9) !important; /* Forzado absoluto a blanco de alta opacidad */
+  color: rgba(255, 255, 255, 0.95) !important; /* Forzado absoluto a blanco de alta opacidad */
   margin-bottom: 36px;
 }
 
@@ -936,19 +1206,20 @@ onMounted(async () => {
 }
 
 .editorial-btn-dark-outline {
-  background-color: transparent;
-  color: var(--editorial-black);
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
   border: 1px solid var(--editorial-black);
   padding: 16px 40px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 3px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .editorial-btn-dark-outline:hover {
-  background-color: var(--editorial-black);
-  color: var(--editorial-white);
+  background-color: transparent;
+  color: var(--editorial-black);
+  border-color: var(--editorial-black);
 }
 
 /* ——— Categorías Editorial ——— */
@@ -978,21 +1249,26 @@ onMounted(async () => {
   gap: 16px;
 }
 .category-editorial-chip {
-  background: transparent;
-  border: 1px solid var(--editorial-border);
+  background-color: #F5F3F2; /* Fondo beige interactivo muy sutil */
+  border: 1px solid #E5E2E0; /* Borde de contraste suave */
+  border-radius: 20px; /* Cápsula elegante y ergonómica */
   color: var(--editorial-black);
   padding: 10px 24px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
-.category-editorial-chip:hover,
+.category-editorial-chip:hover {
+  background-color: #EAE5E2;
+  border-color: var(--editorial-black);
+}
 .category-editorial-chip.chip-active {
   border-color: var(--editorial-black);
-  background-color: var(--editorial-black);
-  color: var(--editorial-white);
+  background-color: var(--editorial-black) !important;
+  color: var(--editorial-white) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* ——— 2. Híbrido 50/50: Split Row ——— */
@@ -1053,8 +1329,9 @@ onMounted(async () => {
 }
 .split-paragraph {
   font-size: 14px;
+  font-weight: 500;
   line-height: 1.8;
-  color: var(--editorial-text-muted);
+  color: #3E3533;
   margin-bottom: 32px;
 }
 
@@ -1102,22 +1379,99 @@ onMounted(async () => {
 
 .editorial-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 40px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 36px 20px;
+  transition: opacity 0.3s ease-in-out;
+}
+.editorial-grid.grid-loading {
+  opacity: 0.45;
+  pointer-events: none;
+}
+@media (max-width: 1200px) {
+  .editorial-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width: 768px) {
+  .editorial-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+  .editorial-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Fila Horizontal de Favoritos Estilo Fenty */
+.editorial-grid.fenty-horizontal-row {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 20px;
+  padding-bottom: 20px;
+  scrollbar-width: none; /* Firefox */
+}
+.editorial-grid.fenty-horizontal-row::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+.editorial-grid.fenty-horizontal-row .editorial-product-card {
+  flex: 0 0 280px; /* Ancho fijo para cada tarjeta en el carrusel */
+}
+
+/* Controles de Carrusel */
+.fenty-carousel-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.carousel-control-circle-btn {
+  background-color: var(--editorial-white);
+  border: 1px solid var(--editorial-border);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--editorial-black);
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.carousel-control-circle-btn:hover {
+  background-color: var(--editorial-black);
+  color: var(--editorial-white);
+  border-color: var(--editorial-black);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+.carousel-control-circle-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* Consistencia de hover en tarjetas de carrusel de favoritos */
+.fav-carousel-card .editorial-add-bag-btn {
+  opacity: 1;
+  transform: none;
+  transition: all 0.3s ease;
+}
+.fenty-horizontal-row {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE y Edge */
+}
+.fenty-horizontal-row::-webkit-scrollbar {
+  display: none; /* Chrome, Safari y Opera */
 }
 
 /* Tarjeta de Producto Totalmente Plana (Inspiración Fenty) */
 .editorial-product-card {
-  cursor: pointer;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 .editorial-product-img-wrap {
   position: relative;
   aspect-ratio: 1;
-  background-color: var(--editorial-grey-bg);
+  background-color: #F5F5F5; /* Fondo gris plano y claro */
   overflow: hidden;
-  border: 1px solid #EDEDED; /* Borde imperceptible súper sutil */
+  border: 1px solid #EAEAEA;
+  cursor: pointer;
 }
 .editorial-product-image {
   width: 100%;
@@ -1133,15 +1487,98 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: var(--editorial-grey-bg);
+  background-color: #ECECEC;
+  color: #888888;
+  font-family: var(--editorial-font-serif);
+  gap: 6px;
 }
 .fallback-logo {
-  font-family: var(--editorial-font-serif);
-  font-size: 24px;
-  letter-spacing: 6px;
-  opacity: 0.15;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+.fallback-sub {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  opacity: 0.7;
+}
+
+/* Insignia de Favorito */
+.product-badge-editorial {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background-color: #000000;
+  color: #FFFFFF;
+  padding: 4px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  z-index: 5;
+  text-transform: uppercase;
+}
+
+/* Botón interactivo de Favorito (Corazón) */
+.favorite-toggle-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #FFFFFF;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 6;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s ease, color 0.25s ease, background-color 0.25s ease;
+  color: #CCCCCC;
+}
+.favorite-toggle-btn:hover {
+  transform: scale(1.12);
+  color: #FF5A5F;
+}
+.favorite-toggle-btn.is-active-fav {
+  color: #FF5A5F;
+  background-color: #FFFFFF;
+}
+.heart-icon {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.2s ease;
+}
+.favorite-toggle-btn:active .heart-icon {
+  transform: scale(0.85);
+}
+
+/* Valoración por estrellas */
+.product-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+.star-filled {
+  color: #000000;
+}
+.star-half {
+  color: #000000;
+  opacity: 0.4;
+}
+.rating-count {
+  font-size: 10px;
+  color: #888888;
+  margin-left: 4px;
+  font-weight: 500;
 }
 
 /* Hover Editorial tipo Revista */
@@ -1194,8 +1631,10 @@ onMounted(async () => {
   align-items: baseline;
 }
 .editorial-product-price {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--editorial-black);
+  letter-spacing: 0.5px;
 }
 .editorial-variants-indicator {
   font-size: 10px;
@@ -1603,6 +2042,25 @@ onMounted(async () => {
   border-color: var(--editorial-black);
 }
 
+/* Selector interactivo de Métodos de Pago */
+.payment-method-card {
+  background-color: var(--editorial-white);
+  border: 1px solid var(--editorial-border);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.payment-method-card:hover {
+  border-color: var(--editorial-black);
+  background-color: rgba(0, 0, 0, 0.01);
+}
+.payment-method-card.method-selected {
+  border-color: var(--editorial-black) !important;
+  background-color: var(--editorial-black) !important;
+  color: var(--editorial-white) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+
 /* ——— Success Toast ——— */
 .editorial-success-toast {
   position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 2000;
@@ -1638,4 +2096,80 @@ onMounted(async () => {
 
 .toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translate(-50%, 40px); }
+
+/* ——— ANIMACIONES DE ENTRADA PREMIUM ——— */
+.animate-fade-in-left {
+  animation: fadeInLeft 1.2s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+.animate-fade-in-right {
+  animation: fadeInRight 1.2s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+.animate-fade-in-up {
+  animation: fadeInUp 1.2s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+.animate-fade-in {
+  animation: fadeIn 1s ease both;
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ——— EFECTO DE CARGA SUAVE DE IMÁGENES (PREVIENE ENTRADA FORZADA) ——— */
+.fade-image {
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+.fade-image.image-visible {
+  opacity: 1 !important;
+}
+
+/* ——— REVEAL AL HACER SCROLL (CINEMATIC SCROLL REVEAL) ——— */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 1.2s cubic-bezier(0.25, 1, 0.5, 1), transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.reveal-on-scroll.section-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>

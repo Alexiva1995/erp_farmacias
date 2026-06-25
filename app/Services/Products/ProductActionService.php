@@ -98,6 +98,36 @@ class ProductActionService
 
         $product = Product::create($validatedData);
 
+        // Registrar variantes de tonos y lotes si es minimarket y se envían
+        $isMinimarket = \App\Models\GeneralSetting::first()?->business_type === 'minimarket';
+        if ($isMinimarket && !empty($validatedData['variants'])) {
+            foreach ($validatedData['variants'] as $v) {
+                // Serializar nombre y color en attribute_value
+                $attributeValue = json_encode([
+                    'name' => $v['name'],
+                    'color' => $v['color']
+                ]);
+                $variant = $product->variants()->create([
+                    'sku' => $product->id . '-' . \Illuminate\Support\Str::slug($v['name']),
+                    'attribute_type' => 'shade',
+                    'attribute_value' => $attributeValue,
+                    'price_modifier' => $v['price_modifier'] ?? 0,
+                    'stock' => $v['stock'] ?? 0
+                ]);
+
+                // Si tiene stock inicial, crear un lote específico vinculado a esta variante
+                if (!empty($v['stock']) && $v['stock'] > 0) {
+                    $product->lots()->create([
+                        'lot_number' => 'LOTE-' . strtoupper(\Illuminate\Support\Str::slug($v['name'])),
+                        'expiration_date' => now()->addYears(2), // Lote por defecto
+                        'quantity' => $v['stock'],
+                        'location' => 'Exhibición',
+                        'unit_cost' => $product->unit_cost ?? 0,
+                    ]);
+                }
+            }
+        }
+
         if (!empty($supplierIds)) {
             foreach ($supplierIds as $supplierId) {
                 $product->productSuppliers()->create([
@@ -164,6 +194,48 @@ class ProductActionService
         }
 
         $product->update($validatedData);
+
+        // Sincronizar variantes de tonos si es minimarket
+        $isMinimarket = \App\Models\GeneralSetting::first()?->business_type === 'minimarket';
+        if ($isMinimarket && isset($validatedData['variants'])) {
+            $sentVariantIds = collect($validatedData['variants'])->pluck('id')->filter()->toArray();
+            
+            // Eliminar variantes que ya no se enviaron
+            $product->variants()->whereNotIn('id', $sentVariantIds)->delete();
+
+            foreach ($validatedData['variants'] as $v) {
+                $attributeValue = json_encode([
+                    'name' => $v['name'],
+                    'color' => $v['color']
+                ]);
+
+                if (!empty($v['id'])) {
+                    $product->variants()->where('id', $v['id'])->update([
+                        'attribute_value' => $attributeValue,
+                        'price_modifier' => $v['price_modifier'] ?? 0,
+                    ]);
+                } else {
+                    $product->variants()->create([
+                        'sku' => $product->id . '-' . \Illuminate\Support\Str::slug($v['name']),
+                        'attribute_type' => 'shade',
+                        'attribute_value' => $attributeValue,
+                        'price_modifier' => $v['price_modifier'] ?? 0,
+                        'stock' => $v['stock'] ?? 0
+                    ]);
+
+                    // Si tiene stock inicial, crear un lote específico vinculado a esta variante
+                    if (!empty($v['stock']) && $v['stock'] > 0) {
+                        $product->lots()->create([
+                            'lot_number' => 'LOTE-' . strtoupper(\Illuminate\Support\Str::slug($v['name'])),
+                            'expiration_date' => now()->addYears(2),
+                            'quantity' => $v['stock'],
+                            'location' => 'Exhibición',
+                            'unit_cost' => $product->unit_cost ?? 0,
+                        ]);
+                    }
+                }
+            }
+        }
 
         if ($supplierIds !== null) {
             $currentSupplierIds = $product->productSuppliers()->pluck('supplier_id')->toArray();

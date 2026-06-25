@@ -108,6 +108,10 @@ class ProductQueryService
             });
         }
 
+        if (!empty($filters['categoryId'])) {
+            $query->where('category_id', $filters['categoryId']);
+        }
+
         if (!empty($filters['laboratoryId'])) {
             $query->where('laboratory_id', $filters['laboratoryId']);
         }
@@ -317,6 +321,7 @@ class ProductQueryService
         $filters = [
             'q' => $request->q,
             'productId' => $request->productId ?? $request->product_id ?? $request->id,
+            'categoryId' => $request->categoryId ?? $request->category_id,
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'groupId' => $request->groupId,

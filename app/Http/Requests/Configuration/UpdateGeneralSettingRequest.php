@@ -47,6 +47,11 @@ class UpdateGeneralSettingRequest extends FormRequest
             'section2_tagline' => 'nullable|string|max:255',
             'section2_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
             'section2_button_text' => 'nullable|string|max:255',
+            'section3_title' => 'nullable|string|max:255',
+            'section3_subtitle' => 'nullable|string',
+            'section3_tagline' => 'nullable|string|max:255',
+            'section3_image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:4096',
+            'section3_button_text' => 'nullable|string|max:255',
         ];
     }
 }

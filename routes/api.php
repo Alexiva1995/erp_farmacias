@@ -112,7 +112,15 @@ Route::post("/public/visits", [\App\Http\Controllers\Api\BookingVisitController:
 Route::get("/public/ecommerce/products", [EcommerceController::class, "getProducts"]);
 Route::get("/public/ecommerce/categories", [EcommerceController::class, "getCategories"]);
 Route::post("/public/ecommerce/checkout", [EcommerceController::class, "checkout"]);
+Route::post("/public/ecommerce/products/{id}/toggle-favorite", [EcommerceController::class, "toggleFavorite"]);
 Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
+
+// Rutas de administración de órdenes de e-commerce (dentro del bloque auth:sanctum)
+Route::middleware("auth:sanctum")->group(function () {
+    Route::get("/ecommerce/admin/orders", [EcommerceController::class, "getAdminOrders"]);
+    Route::post("/ecommerce/admin/orders/{id}/approve", [EcommerceController::class, "approveOrder"]);
+    Route::post("/ecommerce/admin/orders/{id}/cancel", [EcommerceController::class, "cancelOrder"]);
+});
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware("auth:sanctum")->group(function () {

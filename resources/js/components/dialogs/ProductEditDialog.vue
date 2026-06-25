@@ -12,6 +12,7 @@ const { xs } = useDisplay();
 const brandingStore = useBrandingStore();
 
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMinimarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -162,9 +163,31 @@ watch(
       } else {
         clonedProduct.supplier_ids = [];
       }
-      clonedProduct.supplier_id = clonedProduct.supplier_id || null;
+      if (clonedProduct.variants && Array.isArray(clonedProduct.variants)) {
+        productVariants.value = clonedProduct.variants.map(v => {
+          let name = v.attribute_value;
+          let color = "#000000";
+          try {
+            if (v.attribute_value.startsWith('{')) {
+              const parsed = JSON.parse(v.attribute_value);
+              name = parsed.name || "";
+              color = parsed.color || "#000000";
+            }
+          } catch (e) {}
+          return {
+            id: v.id,
+            name: name,
+            color: color,
+            price_modifier: v.price_modifier || 0,
+            stock: v.stock || 0,
+          };
+        });
+      } else {
+        productVariants.value = [];
+      }
       formData.value = clonedProduct;
     } else {
+      productVariants.value = [];
       formData.value = {
         name: "",
         active_ingredient: "",
@@ -240,6 +263,21 @@ const lotHeaders = [
 
 // formatDate eliminado (ahora se importa)
 
+const productVariants = ref([]);
+
+const addVariantRow = () => {
+  productVariants.value.push({
+    name: "",
+    color: "#000000",
+    price_modifier: 0,
+    stock: 0,
+  });
+};
+
+const removeVariantRow = (idx) => {
+  productVariants.value.splice(idx, 1);
+};
+
 const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
@@ -299,6 +337,19 @@ const submitForm = () => {
   if (Array.isArray(formData.value.supplier_ids)) {
     formData.value.supplier_ids.forEach((id) => {
       payload.append("supplier_ids[]", id);
+    });
+  }
+
+  // Adjuntar variantes de tonos si es minimarket
+  if (isMinimarket.value && productVariants.value.length > 0) {
+    productVariants.value.forEach((v, idx) => {
+      if (v.id) {
+        payload.append(`variants[${idx}][id]`, v.id);
+      }
+      payload.append(`variants[${idx}][name]`, v.name);
+      payload.append(`variants[${idx}][color]`, v.color);
+      payload.append(`variants[${idx}][price_modifier]`, v.price_modifier || 0);
+      payload.append(`variants[${idx}][stock]`, v.stock || 0);
     });
   }
 
@@ -382,6 +433,10 @@ const submitForm = () => {
             <VIcon icon="tabler-info-circle" class="me-2" size="18" />
             General
           </VTab>
+          <VTab v-slot:default v-if="isMinimarket" :value="3" class="text-button font-weight-black">
+            <VIcon icon="tabler-palette" class="me-2" size="18" />
+            Variaciones
+          </VTab>
           <VTab :value="1" class="text-button font-weight-black">
             <VIcon icon="tabler-database" class="me-2" size="18" />
             Inventario
@@ -411,20 +466,19 @@ const submitForm = () => {
                   variant="flat"
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
-                  <VForm @submit.prevent="submitForm">
                     <VRow dense>
-                      <VCol cols="12" :md="isRestaurant ? 12 : 6">
+                      <VCol cols="12" :md="isRestaurant || isMinimarket ? 12 : 6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre del Producto</span>
                         <AppTextField
                           v-model="formData.name"
-                          placeholder="Ej: Ibuprofeno 400mg"
+                          placeholder="Ej: Labial Matte Rouge"
                           variant="outlined"
                           density="comfortable"
                           :error-messages="formErrors.name"
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol v-if="!isRestaurant" cols="12" md="6">
+                      <VCol v-if="!isRestaurant && !isMinimarket" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Principio Activo</span>
                         <AppTextField
                           v-model="formData.active_ingredient"
@@ -435,8 +489,8 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol cols="12" md="4">
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant ? 'Marca' : 'Laboratorio' }}</span>
+                      <VCol cols="12" :md="isRestaurant || isMinimarket ? 6 : 4">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant || isMinimarket ? 'Marca' : 'Laboratorio' }}</span>
                         <AppSelect
                           v-model="formData.laboratory_id"
                           placeholder="SELECCIONAR..."
@@ -462,7 +516,7 @@ const submitForm = () => {
                           </template>
                         </AppSelect>
                       </VCol>
-                      <VCol v-if="!isRestaurant" cols="12" md="4">
+                      <VCol v-if="!isRestaurant && !isMinimarket" cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Origen</span>
                         <AppSelect
                           v-model="formData.origin_id"
@@ -478,7 +532,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol cols="12" md="4">
+                      <VCol cols="12" :md="isRestaurant || isMinimarket ? 6 : 4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Categoría</span>
                         <AppSelect
                           v-model="formData.category_id"
@@ -494,7 +548,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol v-if="isRestaurant" cols="12" md="4">
+                      <VCol v-if="isRestaurant || isMinimarket" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Proveedor</span>
                         <AppSelect
                           v-model="formData.supplier_id"
@@ -506,41 +560,6 @@ const submitForm = () => {
                           density="comfortable"
                           clearable
                           :error-messages="formErrors.supplier_id"
-                          class="rounded-lg font-weight-black"
-                          hide-details="auto"
-                        />
-                      </VCol>
-
-                      <VCol v-if="isRestaurant" cols="12" md="6">
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Presentación</span>
-                        <AppTextField
-                          v-model="formData.presentation"
-                          placeholder="Ej: 30, 200, 1"
-                          type="number"
-                          step="any"
-                          variant="outlined"
-                          density="comfortable"
-                          :error-messages="formErrors.presentation"
-                          class="rounded-lg font-weight-black"
-                          hide-details="auto"
-                        />
-                      </VCol>
-                      <VCol v-if="isRestaurant" cols="12" md="6">
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Unidad de Medida</span>
-                        <AppSelect
-                          v-model="formData.unit_of_measure"
-                          placeholder="SELECCIONAR..."
-                          :items="[
-                            { title: 'Gramos (g)', value: 'g' },
-                            { title: 'Mililitros (ml)', value: 'ml' },
-                            { title: 'Unidades (und)', value: 'und' }
-                          ]"
-                          item-title="title"
-                          item-value="value"
-                          variant="outlined"
-                          density="comfortable"
-                          clearable
-                          :error-messages="formErrors.unit_of_measure"
                           class="rounded-lg font-weight-black"
                           hide-details="auto"
                         />
@@ -561,7 +580,7 @@ const submitForm = () => {
                   variant="flat"
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
-                  <VRow dense>
+                  <VRow dense class="align-center">
                     <VCol cols="12" md="6">
                       <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Código de Barras</span>
                       <AppTextField
@@ -576,21 +595,19 @@ const submitForm = () => {
                       />
                     </VCol>
                     <VCol cols="12" md="6">
-                      <div class="d-flex flex-column h-100">
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Imagen del Producto</span>
-                        <VFileInput
-                          v-model="imageFile"
-                          accept="image/*"
-                          variant="outlined"
-                          placeholder="ELEGIR ARCHIVO"
-                          prepend-inner-icon="tabler-camera"
-                          clearable
-                          :error-messages="formErrors.photo_url"
-                          density="comfortable"
-                          class="rounded-lg"
-                          hide-details="auto"
-                        />
-                      </div>
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Imagen del Producto</span>
+                      <VFileInput
+                        v-model="imageFile"
+                        accept="image/*"
+                        variant="outlined"
+                        placeholder="ELEGIR ARCHIVO"
+                        prepend-inner-icon="tabler-camera"
+                        clearable
+                        :error-messages="formErrors.photo_url"
+                        density="comfortable"
+                        class="rounded-lg"
+                        hide-details="auto"
+                      />
                     </VCol>
                     <VCol
                       v-if="imagePreviewUrl"
@@ -608,6 +625,112 @@ const submitForm = () => {
                       </div>
                     </VCol>
                   </VRow>
+                </VCard>
+              </div>
+            </div>
+          </VWindowItem>
+
+          <!-- Pestaña Variaciones (Solo para Minimarket) -->
+          <VWindowItem v-if="isMinimarket" :value="3" class="pa-2 pt-0">
+            <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
+              <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-center justify-space-between">
+                  <div class="d-flex align-center gap-2">
+                    <div class="header-indicator primary shadow-sm" />
+                    <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Variaciones de Tono y Lote</span>
+                  </div>
+                  <VBtn
+                    color="primary"
+                    prepend-icon="tabler-plus"
+                    size="small"
+                    variant="flat"
+                    class="font-weight-black rounded-lg"
+                    @click="addVariantRow"
+                  >
+                    Añadir Tono
+                  </VBtn>
+                </div>
+
+                <VCard variant="flat" :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']">
+                  <div v-if="!productVariants || productVariants.length === 0" class="text-center py-6 text-disabled">
+                    No hay tonos configurados para este producto. Agrega uno usando el botón superior.
+                  </div>
+                  <div v-else class="d-flex flex-column gap-4">
+                    <VRow v-for="(v, idx) in productVariants" :key="idx" dense class="align-center border-b pb-4">
+                      <!-- Nombre del Tono -->
+                      <VCol cols="12" md="4">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Nombre del Tono</span>
+                        <AppTextField
+                          v-model="v.name"
+                          placeholder="Ej: Creamy Cocoa"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details="auto"
+                          class="rounded-lg font-weight-black"
+                        />
+                      </VCol>
+                      <!-- Selector Cromático Hexadecimal -->
+                      <VCol cols="12" md="3">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Selector de Color</span>
+                        <div class="d-flex align-center gap-2">
+                          <input
+                            type="color"
+                            v-model="v.color"
+                            style="width: 40px; height: 40px; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; padding: 0; background: none;"
+                          />
+                          <AppTextField
+                            v-model="v.color"
+                            placeholder="#FFFFFF"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            class="rounded-lg font-weight-black flex-grow-1"
+                            maxlength="7"
+                          />
+                        </div>
+                      </VCol>
+                      <!-- Ajuste de Precio -->
+                      <VCol cols="12" md="2">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Modif. Precio</span>
+                        <AppTextField
+                          v-model="v.price_modifier"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          prefix="$"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details="auto"
+                          class="rounded-lg font-weight-black"
+                        />
+                      </VCol>
+                      <!-- Stock inicial / Lote -->
+                      <VCol cols="12" md="2">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Lote Inicial</span>
+                        <AppTextField
+                          v-model="v.stock"
+                          type="number"
+                          placeholder="Cantidad"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details="auto"
+                          class="rounded-lg font-weight-black"
+                          :disabled="!isNewProduct"
+                        />
+                      </VCol>
+                      <!-- Acción Eliminar -->
+                      <VCol cols="12" md="1" class="text-right mt-4 mt-md-0">
+                        <VBtn
+                          icon="tabler-trash"
+                          variant="tonal"
+                          color="error"
+                          size="small"
+                          class="rounded-lg"
+                          @click="removeVariantRow(idx)"
+                        />
+                      </VCol>
+                    </VRow>
+                  </div>
                 </VCard>
               </div>
             </div>
@@ -645,10 +768,8 @@ const submitForm = () => {
                             hide-details
                             class="font-weight-black scale-90"
                           />
-                        </VCard>
-
-                        <VCard
-                          v-if="!isRestaurant"
+                                <VCard
+                          v-if="!isRestaurant && !isMinimarket"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"
@@ -666,7 +787,7 @@ const submitForm = () => {
                         </VCard>
 
                         <VCard
-                          v-if="!isRestaurant"
+                          v-if="!isRestaurant && !isMinimarket"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"
@@ -684,7 +805,7 @@ const submitForm = () => {
                         </VCard>
 
                         <VCard
-                          v-if="!isRestaurant"
+                          v-if="!isRestaurant && !isMinimarket"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"
@@ -702,6 +823,7 @@ const submitForm = () => {
                         </VCard>
 
                         <VCard
+                          v-if="!isMinimarket"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"
@@ -719,6 +841,7 @@ const submitForm = () => {
                         </VCard>
 
                         <VCard
+                          v-if="!isMinimarket"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
                           style="min-width: 140px; max-width: 220px;"

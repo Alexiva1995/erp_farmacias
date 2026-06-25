@@ -5,10 +5,13 @@ import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { computed, ref } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMinimarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -180,6 +183,19 @@ const formatPriceWithCurrency = (price) => {
     maximumFractionDigits: 0,
   }).format(numPrice);
 };
+
+const toggleFavorite = async (item) => {
+  try {
+    const { data } = await axios.post(`/public/ecommerce/products/${item.id}/toggle-favorite`);
+    if (data.success) {
+      item.is_favorite = data.data.is_favorite;
+      toast.success(item.is_favorite ? "Producto marcado como favorito." : "Producto quitado de favoritos.");
+    }
+  } catch (error) {
+    console.error("Error al cambiar favorito:", error);
+    toast.error("No se pudo cambiar el estado de favorito.");
+  }
+};
 </script>
 
 <template>
@@ -217,6 +233,22 @@ const formatPriceWithCurrency = (price) => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3 py-2">
+            <!-- Corazón interactivo de favorito para administración (Solo en Minimarket) -->
+            <VBtn
+              v-if="isMinimarket"
+              icon
+              variant="text"
+              density="compact"
+              class="mr-1 flex-shrink-0"
+              :color="item.is_favorite ? 'error' : 'secondary'"
+              @click.stop="toggleFavorite(item)"
+            >
+              <VIcon :icon="item.is_favorite ? 'tabler-heart-filled' : 'tabler-heart'" size="18" />
+              <VTooltip activator="parent">
+                {{ item.is_favorite ? 'Quitar de favoritos' : 'Marcar como favorito' }}
+              </VTooltip>
+            </VBtn>
+            
             <div class="d-flex flex-column min-width-0">
               <span
                 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
@@ -365,6 +397,18 @@ const formatPriceWithCurrency = (price) => {
         >
           <div class="pa-3">
             <div class="d-flex gap-3 align-start">
+              <!-- Corazón interactivo de favorito para móvil (Solo en Minimarket) -->
+              <VBtn
+                v-if="isMinimarket"
+                icon
+                variant="text"
+                density="compact"
+                class="flex-shrink-0 mr-1"
+                :color="item.is_favorite ? 'error' : 'secondary'"
+                @click.stop="toggleFavorite(item)"
+              >
+                <VIcon :icon="item.is_favorite ? 'tabler-heart-filled' : 'tabler-heart'" size="18" />
+              </VBtn>
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
