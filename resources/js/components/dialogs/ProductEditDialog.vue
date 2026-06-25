@@ -767,7 +767,8 @@ const submitForm = () => {
                             hide-details
                             class="font-weight-black scale-90"
                           />
-                                <VCard
+                        </VCard>
+                        <VCard
                           v-if="!isRestaurant && !isMinimarket"
                           variant="flat"
                           class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
