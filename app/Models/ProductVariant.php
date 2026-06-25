@@ -17,6 +17,7 @@ class ProductVariant extends Model
         'sku',
         'attribute_type',
         'attribute_value',
+        'color_hex',
         'price_modifier',
         'stock',
     ];

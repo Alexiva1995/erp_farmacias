@@ -11,7 +11,6 @@ import { toast } from "@/plugins/sweetalert";
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
-const isMinimarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -233,9 +232,8 @@ const toggleFavorite = async (item) => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3 py-2">
-            <!-- Corazón interactivo de favorito para administración (Solo en Minimarket) -->
+            <!-- Corazón interactivo de favorito para administración -->
             <VBtn
-              v-if="isMinimarket"
               icon
               variant="text"
               density="compact"
@@ -397,9 +395,8 @@ const toggleFavorite = async (item) => {
         >
           <div class="pa-3">
             <div class="d-flex gap-3 align-start">
-              <!-- Corazón interactivo de favorito para móvil (Solo en Minimarket) -->
+              <!-- Corazón interactivo de favorito para móvil -->
               <VBtn
-                v-if="isMinimarket"
                 icon
                 variant="text"
                 density="compact"

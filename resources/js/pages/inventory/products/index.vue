@@ -26,8 +26,8 @@ const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const selectedGroup = ref(null);
-const selectedCategory = ref(null);
 const selectedSupplier = ref(null);
+const selectedCategory = ref(null);
 const stockStatusFilter = ref(null);
 const productTypeFilter = ref(null);
 const selectedRestaurantType = ref(null);
@@ -39,9 +39,9 @@ const onlyDeleted = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
-const groups = ref([]);
-const categories = ref([]);
 const suppliers = ref([]);
+const categories = ref([]);
+const groups = ref([]);
 
 const isEditDialogVisible = ref(false);
 const currentProduct = ref({});
@@ -50,9 +50,6 @@ const isStatsDialogVisible = ref(false);
 const selectedProductForStats = ref(null);
 
 const isLoadingFilters = ref(false);
-
-const brandingStore = useBrandingStore();
-const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -82,10 +79,10 @@ const fetchProducts = async () => {
   const params = {
     q: searchQuery.value,
     laboratoryId: selectedLaboratory.value,
-    originId: !isMinimarket.value ? selectedOrigin.value : null,
-    groupId: !isMinimarket.value ? selectedGroup.value : null,
-    categoryId: isMinimarket.value ? selectedCategory.value : null,
+    originId: selectedOrigin.value,
+    groupId: selectedGroup.value,
     supplierId: selectedSupplier.value,
+    categoryId: selectedCategory.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -96,8 +93,8 @@ const fetchProducts = async () => {
     startDate: startDate.value,
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
-    ...(!isMinimarket.value && productTypeFilter.value && { productType: productTypeFilter.value }),
-    ...(!isMinimarket.value && selectedRestaurantType.value && { restaurantType: selectedRestaurantType.value }),
+    ...(productTypeFilter.value && { productType: productTypeFilter.value }),
+    ...(selectedRestaurantType.value && { restaurantType: selectedRestaurantType.value }),
   };
   Object.keys(params).forEach(
     key => (params[key] === null || params[key] === "") && delete params[key],
@@ -115,6 +112,7 @@ const fetchProducts = async () => {
   }
 };
 
+let debounceTimer;
 watch(
   [
     page,
@@ -125,8 +123,8 @@ watch(
     selectedLaboratory,
     selectedOrigin,
     selectedGroup,
-    selectedCategory,
     selectedSupplier,
+    selectedCategory,
     stockStatusFilter,
     productTypeFilter,
     selectedRestaurantType,
@@ -142,7 +140,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedCategory, selectedSupplier, stockStatusFilter, productTypeFilter, selectedRestaurantType, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, selectedCategory, stockStatusFilter, productTypeFilter, selectedRestaurantType, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -286,9 +284,13 @@ const handleSaveProduct = async productFormData => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedLaboratory.value = null;
-  selectedCategory.value = null;
+  selectedOrigin.value = null;
+  selectedGroup.value = null;
   selectedSupplier.value = null;
+  selectedCategory.value = null;
   stockStatusFilter.value = null;
+  productTypeFilter.value = null;
+  selectedRestaurantType.value = null;
   startDate.value = null;
   endDate.value = null;
   isStrictSearch.value = false;
@@ -312,6 +314,7 @@ const handleExport = async format => {
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     groupId: selectedGroup.value,
+    categoryId: selectedCategory.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -370,15 +373,21 @@ const handleSort = sortOptions => {
     <ProductFilters
       v-model:searchQuery="searchQuery"
       v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedCategory="selectedCategory"
+      v-model:selectedOrigin="selectedOrigin"
+      v-model:selectedGroup="selectedGroup"
       v-model:selectedSupplier="selectedSupplier"
+      v-model:selectedCategory="selectedCategory"
       v-model:stockStatusFilter="stockStatusFilter"
+      v-model:productTypeFilter="productTypeFilter"
+      v-model:selectedRestaurantType="selectedRestaurantType"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:isStrictSearch="isStrictSearch"
       :laboratories="laboratories"
-      :categories="categories"
+      :origins="origins"
+      :groups="groups"
       :suppliers="suppliers"
+      :categories="categories"
       :loading="isLoadingFilters"
       :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"

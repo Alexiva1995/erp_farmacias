@@ -24,7 +24,7 @@ class EcommerceController extends Controller
      */
     public function getProducts(Request $request): JsonResponse
     {
-        $query = Product::with(['category'])
+        $query = Product::with(['category', 'variants'])
             ->where('is_active', true)
             ->where('is_deleted', false);
 

@@ -10,26 +10,26 @@ const props = defineProps({
   selectedLaboratory:     [Number, String, null],
   selectedOrigin:         [Number, String, null],
   selectedGroup:          [Number, String, null],
-  selectedCategory:       [Number, String, null],
   selectedSupplier:       [Number, String, null],
   stockStatusFilter:      [Boolean, null],
   productTypeFilter:      [String, null],
   selectedRestaurantType: [String, null],
+  selectedCategory:       [Number, String, null],
   startDate:              [String, null],
   endDate:                [String, null],
   laboratories:           { type: Array,   default: () => [] },
-  origins:                { type: Array,   default: () => [] },
-  groups:                 { type: Array,   default: () => [] },
-  categories:             { type: Array,   default: () => [] },
-  suppliers:              { type: Array,   default: () => [] },
-  loading:                { type: Boolean, default: false },
-  mode:                   { type: String,  default: "products" },
-  showAddButton:          { type: Boolean, default: true },
-  addButtonText:          { type: String,  default: "Añadir Producto" },
-  isStrictSearch:         Boolean,
-  isScarce:               Boolean,
-  onlyDeleted:            Boolean,
-  flat:                   { type: Boolean, default: false },
+  origins:            { type: Array,   default: () => [] },
+  groups:             { type: Array,   default: () => [] },
+  suppliers:          { type: Array,   default: () => [] },
+  categories:         { type: Array,   default: () => [] },
+  loading:            { type: Boolean, default: false },
+  mode:               { type: String,  default: "products" },
+  showAddButton:      { type: Boolean, default: true },
+  addButtonText:      { type: String,  default: "Añadir Producto" },
+  isStrictSearch:     Boolean,
+  isScarce:           Boolean,
+  onlyDeleted:        Boolean,
+  flat:               { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -37,8 +37,8 @@ const emit = defineEmits([
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:selectedGroup",
-  "update:selectedCategory",
   "update:selectedSupplier",
+  "update:selectedCategory",
   "update:stockStatusFilter",
   "update:productTypeFilter",
   "update:selectedRestaurantType",
@@ -85,7 +85,7 @@ const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
-const isMinimarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 
 const getStorageKey = () => `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
@@ -134,12 +134,12 @@ watch(() => props.sortData, (newVal) => {
 const hasAdvancedFilters = computed(() => {
   return !!(
     props.selectedLaboratory ||
-    (!isMinimarket.value && props.selectedOrigin) ||
-    (!isMinimarket.value && props.selectedGroup) ||
-    props.selectedCategory ||
+    props.selectedOrigin ||
+    props.selectedGroup ||
     props.selectedSupplier ||
+    props.selectedCategory ||
     props.stockStatusFilter !== null ||
-    (!isMinimarket.value && props.productTypeFilter) ||
+    props.productTypeFilter ||
     props.startDate ||
     props.endDate
   );
@@ -159,7 +159,7 @@ const showExport = computed(() => props.mode === 'products');
     :show-export="showExport"
     :show-add="canAdd"
     :add-button-text="props.addButtonText"
-    :search-placeholder="isRestaurant ? 'ID, Producto...' : (isMinimarket ? 'ID, Producto o Marca...' : 'ID, Producto, C. Activo...')"
+    :search-placeholder="isRestaurant || isMiniMarket ? 'ID, Producto...' : 'ID, Producto, C. Activo...'"
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
@@ -196,8 +196,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Tipo (Farmacia) -->
-      <VCol v-if="!isRestaurant && !isMinimarket" cols="12" sm="6" md="2">
+      <!-- Tipo (Farmacia, no Mini Market) -->
+      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.productTypeFilter"
           placeholder="Tipo de Producto"
@@ -210,13 +210,13 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Laboratorio / Marca -->
+      <!-- Laboratorio / Marca (Para restaurante y Mini Market es Marca) -->
       <VCol cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          :placeholder="isRestaurant || isMinimarket ? 'Marca' : 'Laboratorio'"
+          :placeholder="isRestaurant || isMiniMarket ? 'Marca' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable
@@ -227,42 +227,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Origen -->
-      <VCol v-if="!isRestaurant && !isMinimarket" cols="12" sm="6" md="2">
-        <VAutocomplete
-          :model-value="props.selectedOrigin"
-          :items="props.origins"
-          :loading="props.loading"
-          placeholder="Origen"
-          item-title="name"
-          item-value="id"
-          clearable
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-world"
-          @update:model-value="emit('update:selectedOrigin', $event)"
-        />
-      </VCol>
-
-      <!-- Grupo o Proveedor (si es restaurante) -->
-      <VCol v-if="!isRestaurant && !isMinimarket" cols="12" sm="6" md="2">
-        <VAutocomplete
-          :model-value="props.selectedGroup"
-          :items="props.groups"
-          :loading="props.loading"
-          placeholder="Grupo"
-          item-title="name"
-          item-value="id"
-          clearable
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-category-2"
-          @update:model-value="emit('update:selectedGroup', $event)"
-        />
-      </VCol>
-
-      <!-- Categorías (solo minimarket o restaurante) -->
-      <VCol v-if="isMinimarket" cols="12" sm="6" md="2">
+      <!-- Categorías (Solo Mini Market) -->
+      <VCol v-if="isMiniMarket" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedCategory"
           :items="props.categories"
@@ -278,7 +244,40 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <VCol v-if="isRestaurant || isMinimarket" cols="12" sm="6" md="2">
+      <!-- Origen (Oculto en Restaurante y Mini Market) -->
+      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
+        <VAutocomplete
+          :model-value="props.selectedOrigin"
+          :items="props.origins"
+          :loading="props.loading"
+          placeholder="Origen"
+          item-title="name"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-world"
+          @update:model-value="emit('update:selectedOrigin', $event)"
+        />
+      </VCol>
+
+      <!-- Grupo o Proveedor (si es restaurante o Mini Market) -->
+      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
+        <VAutocomplete
+          :model-value="props.selectedGroup"
+          :items="props.groups"
+          :loading="props.loading"
+          placeholder="Grupo"
+          item-title="name"
+          item-value="id"
+          clearable
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-category-2"
+          @update:model-value="emit('update:selectedGroup', $event)"
+        />
+      </VCol>
+      <VCol v-else-if="isRestaurant" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"

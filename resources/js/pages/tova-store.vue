@@ -11,7 +11,6 @@ import axios from '@/plugins/axios'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const brandingStore = useBrandingStore()
-const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket')
 
 // ——— Estados de Carga de Imágenes ———
 const heroImageLoaded = ref(false)
@@ -441,9 +440,8 @@ onMounted(async () => {
         >
           <!-- Contenedor de Imagen -->
           <div class="editorial-product-img-wrap" @click="openQuickView(product)">
-            <span v-if="isMinimarket && product.is_favorite" class="product-badge-editorial">FAVORITO</span>
+            <span v-if="product.is_favorite" class="product-badge-editorial">FAVORITO</span>
             <button
-              v-if="isMinimarket"
               class="favorite-toggle-btn"
               @click.stop="toggleFavorite(product)"
               :class="{ 'is-active-fav': product.is_favorite }"
@@ -547,7 +545,7 @@ onMounted(async () => {
     </section>
 
     <!-- 2. NUESTROS FAVORITOS - DESLIZADOR HORIZONTAL EXCLUSIVO (ESTILO FENTY - ORIGINALMENTE EN MEDIO DE LAS HÍBRIDAS) -->
-    <section v-if="isMinimarket && favoriteProducts.length" class="editorial-products-section" style="padding: 80px 0; border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
+    <section v-if="favoriteProducts.length" class="editorial-products-section" style="padding: 80px 0; border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
       <div class="catalog-header-editorial" style="padding: 0 40px; margin-bottom: 35px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--editorial-border); padding-bottom: 15px;">
         <div style="display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap;">
           <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">ICONIC PICKS FOR BOMB LIPS</h2>
@@ -749,35 +747,22 @@ onMounted(async () => {
               <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes de la colección TOVA.' }}</p>
               <p class="qv-price-bold">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
 
-              <!-- Variantes de Tonos / Tamaños Cromáticas -->
+               <!-- Variantes de Tonos / Tamaños con Círculos de Color Hexadecimal -->
               <div v-if="selectedProduct.variants?.length" class="qv-variants-editorial">
-                <p class="qv-variants-title">SELECCIONAR TONO / VARIANTE:</p>
-                <div class="qv-variants-editorial-flex" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <p class="qv-variants-title">SELECCIONAR TONO / VARIANTE: <span class="font-weight-bold text-dark ml-1" style="text-transform: uppercase; font-size: 11px;">{{ selectedVariant?.attribute_value }}</span></p>
+                <div class="qv-variants-editorial-flex" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
                   <button
                     v-for="v in selectedProduct.variants"
                     :key="v.id"
-                    class="qv-variant-editorial-chip"
-                    :class="{ 'qv-chip-active': selectedVariant?.id === v.id }"
+                    class="qv-variant-color-circle"
+                    :class="{ 'qv-circle-active': selectedVariant?.id === v.id }"
+                    :style="{ backgroundColor: v.color_hex || '#E20074' }"
+                    :title="v.attribute_value.toUpperCase()"
                     @click="selectedVariant = v"
-                    :style="{
-                      backgroundColor: parseVariantColor(v.attribute_value),
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      border: selectedVariant?.id === v.id ? '2px solid #000' : '1px solid rgba(0,0,0,0.1)',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      position: 'relative'
-                    }"
-                    :title="parseVariantName(v.attribute_value)"
+                    style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #FFF; box-shadow: 0 0 0 1px #E5E5E5; cursor: pointer; transition: all 0.2s ease; position: relative;"
                   >
-                    <!-- Indicador visual sutil de selección -->
-                    <span v-if="selectedVariant?.id === v.id" style="position: absolute; inset: 2px; border: 1.5px solid #fff; border-radius: 50%;"></span>
+                    <span v-if="selectedVariant?.id === v.id" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 12px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">✓</span>
                   </button>
-                  
-                  <span v-if="selectedVariant" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #000; margin-left: 8px;">
-                    {{ parseVariantName(selectedVariant.attribute_value) }}
-                  </span>
                 </div>
               </div>
 
@@ -1956,22 +1941,15 @@ onMounted(async () => {
   gap: 10px;
   margin-top: 10px;
 }
-.qv-variant-editorial-chip {
-  background-color: transparent;
-  border: 1px solid var(--editorial-border);
-  color: var(--editorial-black);
-  padding: 8px 18px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.3s;
+/* Variaciones en forma de círculos de color */
+.qv-variant-color-circle:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 1px var(--editorial-black), 0 4px 10px rgba(0,0,0,0.15) !important;
+  z-index: 2;
 }
-.qv-variant-editorial-chip:hover,
-.qv-variant-editorial-chip.qv-chip-active {
-  border-color: var(--editorial-black);
-  background-color: var(--editorial-black);
-  color: var(--editorial-white);
+.qv-variant-color-circle.qv-circle-active {
+  box-shadow: 0 0 0 2px var(--editorial-black) !important;
+  transform: scale(1.1);
 }
 
 /* Checkout Modal */
