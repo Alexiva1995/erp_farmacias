@@ -96,6 +96,9 @@ class ProductActionService
             $supplierIds = array_unique($supplierIds);
         }
 
+        // Extraer variantes antes de guardar
+        $variantsData = request()->input('variants') ? json_decode(request()->input('variants'), true) : [];
+
         $product = Product::create($validatedData);
 
         if (!empty($supplierIds)) {
@@ -108,7 +111,20 @@ class ProductActionService
             }
         }
 
-        $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers']);
+        // Crear/Guardar las variantes
+        if (!empty($variantsData)) {
+            foreach ($variantsData as $v) {
+                $product->variants()->create([
+                    'attribute_type' => 'shade',
+                    'attribute_value' => $v['attribute_value'],
+                    'color_hex' => $v['color_hex'] ?? '#E20074',
+                    'price_modifier' => (float)($v['price_modifier'] ?? 0),
+                    'stock' => (int)($v['stock'] ?? 0)
+                ]);
+            }
+        }
+
+        $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);
 
         return $product;
     }
@@ -163,6 +179,9 @@ class ProductActionService
             }
         }
 
+        // Extraer variantes antes de actualizar
+        $variantsData = request()->input('variants') ? json_decode(request()->input('variants'), true) : [];
+
         $product->update($validatedData);
 
         if ($supplierIds !== null) {
@@ -185,7 +204,38 @@ class ProductActionService
             }
         }
 
-        $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers']);
+        // Sincronizar las variantes
+        if (!empty($variantsData)) {
+            $keepVariantIds = [];
+            foreach ($variantsData as $v) {
+                if (!empty($v['id'])) {
+                    $variant = $product->variants()->find($v['id']);
+                    if ($variant) {
+                        $variant->update([
+                            'attribute_value' => $v['attribute_value'],
+                            'color_hex' => $v['color_hex'] ?? '#E20074',
+                            'price_modifier' => (float)($v['price_modifier'] ?? 0)
+                        ]);
+                        $keepVariantIds[] = $variant->id;
+                    }
+                } else {
+                    $newVariant = $product->variants()->create([
+                        'attribute_type' => 'shade',
+                        'attribute_value' => $v['attribute_value'],
+                        'color_hex' => $v['color_hex'] ?? '#E20074',
+                        'price_modifier' => (float)($v['price_modifier'] ?? 0),
+                        'stock' => 0
+                    ]);
+                    $keepVariantIds[] = $newVariant->id;
+                }
+            }
+            // Eliminar variantes viejas que ya no se pasaron en el payload
+            $product->variants()->whereNotIn('id', $keepVariantIds)->delete();
+        } else {
+            $product->variants()->delete();
+        }
+
+        $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);
 
         return $product;
     }

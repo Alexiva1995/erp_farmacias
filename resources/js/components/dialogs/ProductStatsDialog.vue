@@ -17,6 +17,7 @@ const { xs } = useDisplay();
 
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const loading = ref(false);
 const stats = ref(null);
@@ -131,7 +132,13 @@ const marketShareOptions = computed(() => ({
 }));
 
 const series = computed(() => {
-  const rawSeries = stats.value?.trend_chart?.series || [];
+  let rawSeries = stats.value?.trend_chart?.series || [];
+  
+  // En minimarket, ocultar competidores del grupo corporativo (solo dejar la serie principal)
+  if (isMiniMarket.value) {
+    rawSeries = rawSeries.filter(s => s.is_main === true);
+  }
+  
   if (!isIngredient.value) return rawSeries;
   
   const factor = (props.product?.unit_of_measure === 'g' || props.product?.unit_of_measure === 'ml') ? 1000 : 1;
@@ -169,6 +176,8 @@ watch(
 );
 
 const isIngredient = computed(() => {
+  // En minimarket NUNCA es ingrediente, siempre es producto final (se mide en unidades totales)
+  if (isMiniMarket.value) return false;
   return isRestaurant.value || props.product?.no_pvp === true || props.product?.no_pvp == 1 || props.product?.no_pvp === '1';
 });
 
@@ -298,10 +307,10 @@ const closeDialog = () => {
 
         <template v-if="stats">
           <VRow dense>
-            <!-- Lado Izquierdo: KPIs y Market Share -->
+            <!-- Lado Izquierdo: KPIs y Market Share o Estado del Producto -->
             <VCol cols="12" md="4" class="d-flex flex-column gap-2">
               <VCard variant="flat" class="pa-4 rounded-lg border shadow-sm bg-surface flex-grow-1 d-flex flex-column align-center justify-center">
-                <template v-if="!isIngredient">
+                <template v-if="!isIngredient && props.product?.group_id">
                   <div class="text-xs font-weight-black text-disabled uppercase mb-2">Preferencia de Compra</div>
                   <VueApexCharts
                     :key="props.product?.id"
@@ -315,7 +324,7 @@ const closeDialog = () => {
                   </div>
                 </template>
                 <template v-else>
-                  <div class="text-xs font-weight-black text-disabled uppercase mb-4">Estado del Ingrediente</div>
+                  <div class="text-xs font-weight-black text-disabled uppercase mb-4">{{ isMiniMarket ? 'Disponibilidad' : 'Estado del Ingrediente' }}</div>
                   <div class="d-flex flex-column align-center gap-2 py-4">
                     <VChip
                       :color="ingredientStatusColor"

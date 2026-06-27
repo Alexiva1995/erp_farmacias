@@ -8,8 +8,13 @@ import { toast } from "@/plugins/sweetalert"
 import Swal from "sweetalert2"
 import { useAbility } from "@casl/vue"
 
+import { useBrandingStore } from "@/stores/useBrandingStore"
+
 const { can } = useAbility()
 const router = useRouter()
+const brandingStore = useBrandingStore()
+
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket')
 
 // --- Estados ---
 const categories = ref([])
@@ -25,13 +30,20 @@ const isDialogOpen = ref(false)
 const categoryForm = ref({ id: null, name: '' })
 
 // Cabeceras de la tabla
-const headers = [
-  { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary', width: '80px' },
-  { title: "Categoría de Inventario", key: "name", sortable: true },
-  { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
-  { title: "Platos / Menú", key: "dishes_count", sortable: true, align: 'center', width: '140px' },
-  { title: "Acciones", key: "actions", sortable: false, align: 'right', width: '140px' }
-]
+const headers = computed(() => {
+  const list = [
+    { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary', width: '80px' },
+    { title: "Categoría de Inventario", key: "name", sortable: true },
+    { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
+  ]
+  
+  if (!isMiniMarket.value) {
+    list.push({ title: "Platos / Menú", key: "dishes_count", sortable: true, align: 'center', width: '140px' })
+  }
+  
+  list.push({ title: "Acciones", key: "actions", sortable: false, align: 'right', width: '140px' })
+  return list
+})
 
 // Obtener categorías paginadas
 const fetchCategories = async () => {
@@ -186,7 +198,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
               <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
                 <div class="d-flex gap-2">
                   <span class="text-xs font-weight-bold">Prod: <b>{{ item.products_count }}</b></span>
-                  <span class="text-xs font-weight-bold">Platos: <b>{{ item.dishes_count }}</b></span>
+                  <span v-if="!isMiniMarket" class="text-xs font-weight-bold">Platos: <b>{{ item.dishes_count }}</b></span>
                 </div>
                 <div class="d-flex gap-1">
                   <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openEdit(item)" />

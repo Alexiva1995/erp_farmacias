@@ -28,6 +28,8 @@ const processedNavItems = computed(() => {
   const isRestaurant = brandingStore.settings.business_type === 'restaurant';
   
   const filterRestaurantNav = (navItemsList) => {
+    const isMiniMarket = brandingStore.settings.business_type === 'minimarket';
+    
     return navItemsList.map((item) => {
       let copy = { ...item };
       
@@ -45,8 +47,25 @@ const processedNavItems = computed(() => {
         // Primero procesamos recursivamente los hijos
         let childs = filterRestaurantNav([...copy.children]);
         
-        if (!isRestaurant) {
+        if (!isRestaurant && !isMiniMarket) {
           childs = childs.filter((c) => c.to !== 'inventory-dishes');
+        } else if (isMiniMarket) {
+          // Si es minimarket, ocultar Optimización por completo, Origen, Grupo, Ubicaciones y filtrar platos de restaurante
+          childs = childs.filter((c) => 
+            c.title !== 'Optimización' && 
+            c.to !== 'inventory-dishes' &&
+            c.to !== 'inventory-lots-without-location' &&
+            c.to !== 'inventory-incomplete-products' &&
+            c.to !== 'inventory-products-without-group' &&
+            c.to !== 'inventory-lotificacion' &&
+            c.to !== 'inventory-locations'
+          );
+          childs = childs.map((c) => {
+            if (c.to === 'inventory-laboratories') {
+              return { ...c, title: 'Marcas' };
+            }
+            return { ...c };
+          });
         } else {
           childs = childs.filter((c) => 
             c.title !== 'Devoluciones' && 

@@ -1,8 +1,12 @@
-﻿<script setup>
+<script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -49,7 +53,7 @@ watch(
       const lotsArray = Array.isArray(props.lots) ? props.lots : [];
       distributedLots.value = lotsArray.map(lot => ({
         ...lot,
-        location: lot.location || "",
+        location: lot.location || (isMiniMarket.value ? "LOCAL" : ""),
         lot_number: lot.lot_number || "",
         expiration_date: lot.expiration_date ? formatDateForInput(lot.expiration_date) : "",
       }));
@@ -141,7 +145,7 @@ const handleAddNewLot = () => {
     isNew: true,
     lot_number: "",
     expiration_date: "",
-    location: "",
+    location: isMiniMarket.value ? "LOCAL" : "",
     quantity: 0,
   });
 };
@@ -375,7 +379,7 @@ const handleScan = (code) => {
             >
               <template #item.info="{ item }">
                 <VRow dense class="py-2">
-                  <VCol cols="4">
+                  <VCol :cols="isMiniMarket ? 6 : 4">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Lote</span>
                     <AppTextField
                       v-model="item.lot_number"
@@ -387,7 +391,7 @@ const handleScan = (code) => {
                       :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                     />
                   </VCol>
-                  <VCol cols="4">
+                  <VCol :cols="isMiniMarket ? 6 : 4">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Vencimiento</span>
                     <AppTextField
                       v-model="item.expiration_date"
@@ -399,7 +403,7 @@ const handleScan = (code) => {
                       :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
                     />
                   </VCol>
-                  <VCol cols="4">
+                  <VCol v-if="!isMiniMarket" cols="4">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Ubicación</span>
                     <VAutocomplete
                       v-model="item.location"
@@ -505,7 +509,7 @@ const handleScan = (code) => {
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
                   />
                 </VCol>
-                <VCol cols="6">
+                <VCol :cols="isMiniMarket ? 12 : 6">
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Vencimiento</span>
                   <AppTextField
                     v-model="item.expiration_date"
@@ -516,7 +520,7 @@ const handleScan = (code) => {
                     :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
                   />
                 </VCol>
-                <VCol cols="6">
+                <VCol v-if="!isMiniMarket" cols="6">
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Ubicación</span>
                   <VAutocomplete
                     v-model="item.location"

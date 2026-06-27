@@ -17,6 +17,7 @@ const props = defineProps({
 
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const isGroup = computed(() => props.viewType === "group");
 
@@ -44,6 +45,22 @@ const headers = computed(() => {
   list.push({ title: "Diferencia", key: "diferencia_product", sortable: true, align: 'center' });
   return list;
 });
+
+const formatPriceWithDecimals = (price) => {
+  const numPrice = Number(price);
+  if (isNaN(numPrice)) return "$ 0.00";
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numPrice);
+};
+
+const formatInteger = (val) => {
+  const num = Number(val || 0);
+  return Math.round(num).toString();
+};
 
 const getDiffColor = (val) => {
   const num = parseFloat(val);
@@ -99,7 +116,15 @@ const getDiffColor = (val) => {
         </template>
 
         <template #item.unit_cost="{ item }">
-          <span class="font-weight-black text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
+          <span class="font-weight-black text-high-emphasis">
+            {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
+          </span>
+        </template>
+
+        <template #item.total_sold_completed="{ item }">
+          <span class="font-weight-black text-medium-emphasis">
+            {{ isMiniMarket ? formatInteger(item.total_sold_completed) : item.total_sold_completed }}
+          </span>
         </template>
 
         <template #item.lote_quantity="{ item }">
@@ -110,7 +135,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black"
           >
-            {{ item.lote_quantity }}
+            {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
           </VChip>
         </template>
 
@@ -189,13 +214,15 @@ const getDiffColor = (val) => {
               <div class="text-left flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Stock</span>
                 <span class="text-sm font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                   {{ item.lote_quantity }}
+                   {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
                 </span>
               </div>
               <VDivider vertical class="mx-1" />
               <div class="text-center flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Costo</span>
-                <span class="text-sm font-weight-black text-high-emphasis">{{ formatPrice(item.unit_cost) }}</span>
+                <span class="text-sm font-weight-black text-high-emphasis">
+                  {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
+                </span>
               </div>
               <VDivider vertical class="mx-1" />
               <div class="text-right flex-1 px-1">

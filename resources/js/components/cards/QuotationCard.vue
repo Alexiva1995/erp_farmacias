@@ -198,11 +198,11 @@ const formattedTotalQuotation = computed(() => {
       
       <div class="total-section mt-4 pa-5 rounded-lg shadow-sm transition-all bg-primary">
         <div class="d-flex align-center justify-space-between text-white">
-          <div class="d-flex flex-column">
-            <span class="text-super-xs font-weight-bold uppercase letter-spacing-1 opacity-75">Total a Pagar</span>
-            <h4 class="text-h4 font-weight-black leading-none mt-1">Total</h4>
+          <div class="d-flex flex-column text-white">
+            <span class="text-super-xs font-weight-bold uppercase letter-spacing-1 opacity-75 text-white">Total a Pagar</span>
+            <h4 class="text-h4 font-weight-black leading-none mt-1 text-white">Total</h4>
           </div>
-          <div class="text-h3 font-weight-black">
+          <div class="text-h3 font-weight-black text-white">
             {{ formattedTotalQuotation }}
           </div>
         </div>

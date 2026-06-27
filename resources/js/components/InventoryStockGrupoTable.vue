@@ -16,6 +16,7 @@ const props = defineProps({
 
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const emit = defineEmits(["update:options"]);
 
@@ -30,6 +31,22 @@ const toggleGroup = (groupId) => {
 };
 
 const isExpanded = (groupId) => expandedGroupId.value === groupId;
+
+const formatPriceWithDecimals = (price) => {
+  const numPrice = Number(price);
+  if (isNaN(numPrice)) return "$ 0.00";
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numPrice);
+};
+
+const formatInteger = (val) => {
+  const num = Number(val || 0);
+  return Math.round(num).toString();
+};
 
 const getDiffColor = (val) => {
   const num = parseFloat(val);
@@ -93,7 +110,7 @@ const getDiffColor = (val) => {
             <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Stock</span>
               <span class="text-sm font-weight-black" :class="grupo.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                {{ grupo.lote_quantity }}
+                {{ isMiniMarket ? formatInteger(grupo.lote_quantity) : grupo.lote_quantity }}
               </span>
             </div>
             
@@ -102,7 +119,9 @@ const getDiffColor = (val) => {
             <!-- Ventas/Consumido -->
             <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">{{ isRestaurant ? 'Consumido' : 'Ventas' }}</span>
-              <span class="text-sm font-weight-black text-high-emphasis">{{ grupo.total_sold_completed }}</span>
+              <span class="text-sm font-weight-black text-high-emphasis">
+                {{ isMiniMarket ? formatInteger(grupo.total_sold_completed) : grupo.total_sold_completed }}
+              </span>
             </div>
 
             <VDivider vertical class="mx-0" />
@@ -161,11 +180,15 @@ const getDiffColor = (val) => {
                         </div>
                       </div>
                     </td>
-                    <td class="text-right text-xs font-weight-medium">{{ formatPrice(item.unit_cost) }}</td>
-                    <td class="text-center text-xs">{{ item.total_sold_completed }}</td>
+                    <td class="text-right text-xs font-weight-medium">
+                      {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
+                    </td>
+                    <td class="text-center text-xs">
+                      {{ isMiniMarket ? formatInteger(item.total_sold_completed) : item.total_sold_completed }}
+                    </td>
                     <td class="text-center text-xs">
                       <VChip :color="item.lote_quantity > 0 ? 'success' : 'error'" size="x-small" variant="tonal" class="font-weight-black">
-                        {{ item.lote_quantity }}
+                        {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
                       </VChip>
                     </td>
                     <td class="text-center text-xs font-weight-bold text-primary">
@@ -208,13 +231,15 @@ const getDiffColor = (val) => {
                 
                 <div class="d-flex align-center justify-space-between text-super-xs mb-2 text-disabled font-weight-bold">
                     <span class="truncate">{{ item.laboratory?.name || (isRestaurant ? 'SIN MARCA' : 'SIN LABORATORIO') }}</span>
-                   <span>Costo: {{ formatPrice(item.unit_cost) }}</span>
+                   <span>Costo: {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}</span>
                 </div>
 
                 <div class="d-flex align-center justify-space-between gap-1">
                   <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
                     <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Stock</span>
-                    <span class="text-xs font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">{{ item.lote_quantity }}</span>
+                    <span class="text-xs font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
+                      {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                    </span>
                   </div>
                   <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
                     <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Pref.</span>

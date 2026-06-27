@@ -70,12 +70,17 @@ class EcommerceOrderService
                 ];
             }
 
-            // 2. Crear la orden de e-commerce
+            // 2. Resolver el usuario 'tienda' para asociar el pedido
+            $tiendaUser = DB::table('users')->where('username', 'tienda')->first();
+            $tiendaUserId = $tiendaUser ? $tiendaUser->id : null;
+
+            // 3. Crear la orden de e-commerce
             $order = DB::table('ecommerce_orders')->insertGetId([
+                'user_id' => $tiendaUserId,
                 'customer_name' => $orderData['customer_name'],
                 'customer_email' => $orderData['customer_email'],
                 'customer_phone' => $orderData['customer_phone'] ?? null,
-                'shipping_address' => $orderData['shipping_address'],
+                'shipping_address' => $orderData['shipping_address'] ?? '',
                 'total_amount' => $totalAmount,
                 'status' => 'Pending',
                 'payment_method' => $orderData['payment_method'] ?? 'Simulated',

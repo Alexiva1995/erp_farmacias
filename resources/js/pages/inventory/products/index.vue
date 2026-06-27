@@ -27,6 +27,7 @@ const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const selectedGroup = ref(null);
 const selectedSupplier = ref(null);
+const selectedCategory = ref(null);
 const stockStatusFilter = ref(null);
 const productTypeFilter = ref(null);
 const selectedRestaurantType = ref(null);
@@ -81,6 +82,7 @@ const fetchProducts = async () => {
     originId: selectedOrigin.value,
     groupId: selectedGroup.value,
     supplierId: selectedSupplier.value,
+    categoryId: selectedCategory.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -122,6 +124,7 @@ watch(
     selectedOrigin,
     selectedGroup,
     selectedSupplier,
+    selectedCategory,
     stockStatusFilter,
     productTypeFilter,
     selectedRestaurantType,
@@ -137,7 +140,7 @@ watch(
 );
 
 watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, stockStatusFilter, productTypeFilter, selectedRestaurantType, startDate, endDate],
+  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, selectedCategory, stockStatusFilter, productTypeFilter, selectedRestaurantType, startDate, endDate],
   () => {
     page.value = 1;
   },
@@ -284,6 +287,7 @@ const handleClearFilters = () => {
   selectedOrigin.value = null;
   selectedGroup.value = null;
   selectedSupplier.value = null;
+  selectedCategory.value = null;
   stockStatusFilter.value = null;
   productTypeFilter.value = null;
   selectedRestaurantType.value = null;
@@ -310,6 +314,7 @@ const handleExport = async format => {
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     groupId: selectedGroup.value,
+    categoryId: selectedCategory.value,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -371,6 +376,7 @@ const handleSort = sortOptions => {
       v-model:selectedOrigin="selectedOrigin"
       v-model:selectedGroup="selectedGroup"
       v-model:selectedSupplier="selectedSupplier"
+      v-model:selectedCategory="selectedCategory"
       v-model:stockStatusFilter="stockStatusFilter"
       v-model:productTypeFilter="productTypeFilter"
       v-model:selectedRestaurantType="selectedRestaurantType"
@@ -381,6 +387,7 @@ const handleSort = sortOptions => {
       :origins="origins"
       :groups="groups"
       :suppliers="suppliers"
+      :categories="categories"
       :loading="isLoadingFilters"
       :showAddButton="authStore.isAdmin"
       @clear="handleClearFilters"

@@ -13,13 +13,27 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Usuario Administrador Único
-        User::create([
-            'username'      => 'admin',
-            'email'         => 'admin@golclubsc.com',
-            'password_hash' => Hash::make('12345678'),
-            'role_id'       => 1, // Rol Admin
-            'is_active'     => true,
-            'token_login'   => null, // Sin 2FA configurado inicialmente
-        ]);
+        User::updateOrCreate(
+            ['username' => 'admin'],
+            [
+                'email'         => 'admin@golclubsc.com',
+                'password_hash' => Hash::make('12345678'),
+                'role_id'       => 1, // Rol Admin
+                'is_active'     => true,
+                'token_login'   => null,
+            ]
+        );
+
+        // Usuario Cliente/Tienda de Compras E-commerce
+        User::updateOrCreate(
+            ['username' => 'tienda'],
+            [
+                'email'         => 'tienda@tova.com',
+                'password_hash' => Hash::make('tienda123'),
+                'role_id'       => 2, // Rol Cliente / Tienda
+                'is_active'     => true,
+                'token_login'   => null,
+            ]
+        );
     }
 }

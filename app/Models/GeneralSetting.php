@@ -36,6 +36,11 @@ class GeneralSetting extends Model
         'section2_tagline',
         'section2_image',
         'section2_button_text',
+        'section3_title',
+        'section3_subtitle',
+        'section3_tagline',
+        'section3_image',
+        'section3_button_text',
     ];
 
     protected $casts = [

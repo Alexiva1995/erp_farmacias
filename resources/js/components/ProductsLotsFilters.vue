@@ -60,6 +60,7 @@ const sortOptions = [
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 
@@ -102,7 +103,7 @@ watch(() => currentUser.value?.id, (newVal) => { if(newVal) loadSavedSort(); }, 
 const hasAdvancedFilters = computed(() => {
   return !!(
     props.selectedLaboratory ||
-    (!isRestaurant.value && props.selectedOrigin) ||
+    (!isRestaurant.value && !isMiniMarket.value && props.selectedOrigin) ||
     props.stockStatusFilter !== null ||
     props.startDate ||
     props.endDate
@@ -167,38 +168,38 @@ const hasAdvancedFilters = computed(() => {
     </template>
 
     <template #advanced-filters>
-       <!-- Laboratorio -->
-      <VCol cols="12" sm="6" md="2">
-        <VAutocomplete
-          :model-value="props.selectedLaboratory"
-          :items="props.laboratories"
-          :loading="props.loading"
-          :placeholder="isRestaurant ? 'Marca' : 'Laboratorio'"
-          item-title="name"
-          item-value="id"
-          clearable
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-flask"
-          @update:model-value="emit('update:selectedLaboratory', $event)"
-        />
-      </VCol>
+        <!-- Laboratorio / Marca -->
+       <VCol cols="12" sm="6" md="2">
+         <VAutocomplete
+           :model-value="props.selectedLaboratory"
+           :items="props.laboratories"
+           :loading="props.loading"
+           :placeholder="isRestaurant || isMiniMarket ? 'Marca' : 'Laboratorio'"
+           item-title="name"
+           item-value="id"
+           clearable
+           density="compact"
+           hide-details
+           prepend-inner-icon="tabler-flask"
+           @update:model-value="emit('update:selectedLaboratory', $event)"
+         />
+       </VCol>
 
-      <!-- Origen -->
-      <VCol v-if="!isRestaurant" cols="12" sm="6" md="2">
-        <VSelect
-          :model-value="props.selectedOrigin"
-          placeholder="Origen"
-          :items="props.origins"
-          item-title="name"
-          item-value="id"
-          clearable
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-world"
-          @update:model-value="emit('update:selectedOrigin', $event)"
-        />
-      </VCol>
+       <!-- Origen (Oculto en Restaurante y Mini Market) -->
+       <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
+         <VSelect
+           :model-value="props.selectedOrigin"
+           placeholder="Origen"
+           :items="props.origins"
+           item-title="name"
+           item-value="id"
+           clearable
+           density="compact"
+           hide-details
+           prepend-inner-icon="tabler-world"
+           @update:model-value="emit('update:selectedOrigin', $event)"
+         />
+       </VCol>
 
       <!-- Estado Stock -->
       <VCol cols="12" sm="6" md="2">
