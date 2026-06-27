@@ -41,4 +41,10 @@ return [
         'token'  => env('CEDULA_API_TOKEN'),
     ],
 
+    // Integración del Bot de Telegram para Reservas
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id'   => env('TELEGRAM_CHAT_ID'),
+    ],
+
 ];
