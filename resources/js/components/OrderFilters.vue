@@ -1,6 +1,10 @@
 <script setup>
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const props = defineProps({
   searchQuery: String,
@@ -148,7 +152,7 @@ const handleBack = () => {
         <VCol cols="12" sm="4">
           <VSelect
             :model-value="props.selectedLaboratory"
-            placeholder="Laboratorio"
+            :placeholder="isMiniMarket ? 'Marca' : 'Laboratorio'"
             :items="props.laboratories"
             item-title="name"
             item-value="id"
@@ -160,7 +164,22 @@ const handleBack = () => {
             @update:model-value="emit('update:selectedLaboratory', $event)"
           />
         </VCol>
-        <VCol cols="12" sm="4">
+        <VCol v-if="isMiniMarket" cols="12" sm="4">
+          <VSelect
+            :model-value="props.selectedCategory"
+            placeholder="Categoría"
+            :items="props.categories"
+            item-title="name"
+            item-value="id"
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+            prepend-inner-icon="tabler-category"
+            @update:model-value="emit('update:selectedCategory', $event)"
+          />
+        </VCol>
+        <VCol v-if="!isMiniMarket" cols="12" sm="4">
           <VSelect
             :model-value="props.selectedOrigin"
             placeholder="Origen"

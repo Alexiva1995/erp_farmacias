@@ -121,7 +121,7 @@ const imagePreviewUrl = computed(() => {
   if (imageFile.value) {
     return URL.createObjectURL(imageFile.value);
   }
-  if (formData.value.photo_url) {
+  if (formData.value.photo_url && typeof formData.value.photo_url === 'string' && formData.value.photo_url.trim() !== "" && formData.value.photo_url !== "/") {
     return formData.value.photo_url;
   }
   return null;
@@ -585,8 +585,8 @@ const submitForm = () => {
                   variant="flat"
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
-                  <VRow dense align="center">
-                    <VCol cols="12" md="6">
+                  <div class="d-flex flex-wrap gap-4">
+                    <div class="flex-grow-1 flex-shrink-0" style="min-width: 250px; flex-basis: calc(50% - 16px);">
                       <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Código de Barras</span>
                       <AppTextField
                         v-model="formData.barcode"
@@ -598,28 +598,25 @@ const submitForm = () => {
                         class="rounded-lg font-weight-black"
                         hide-details="auto"
                       />
-                    </VCol>
-                    <VCol cols="12" md="6">
-                      <div>
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Imagen del Producto</span>
-                        <VFileInput
-                          v-model="imageFile"
-                          accept="image/*"
-                          variant="outlined"
-                          placeholder="ELEGIR ARCHIVO"
-                          prepend-inner-icon="tabler-camera"
-                          clearable
-                          :error-messages="formErrors.photo_url"
-                          density="comfortable"
-                          class="rounded-lg"
-                          hide-details="auto"
-                        />
-                      </div>
-                    </VCol>
-                    <VCol
+                    </div>
+                    <div class="flex-grow-1 flex-shrink-0" style="min-width: 250px; flex-basis: calc(50% - 16px);">
+                      <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Imagen del Producto</span>
+                      <VFileInput
+                        v-model="imageFile"
+                        accept="image/*"
+                        variant="outlined"
+                        placeholder="ELEGIR ARCHIVO"
+                        prepend-inner-icon="tabler-camera"
+                        clearable
+                        :error-messages="formErrors.photo_url"
+                        density="comfortable"
+                        class="rounded-lg"
+                        hide-details="auto"
+                      />
+                    </div>
+                    <div
                       v-if="imagePreviewUrl"
-                      cols="12"
-                      class="d-flex justify-center mt-4"
+                      class="w-100 d-flex justify-center mt-4"
                     >
                       <div class="pa-1 bg-surface border rounded-xl shadow-sm elevation-1">
                         <VImg
@@ -630,8 +627,8 @@ const submitForm = () => {
                           class="rounded-lg"
                         />
                       </div>
-                    </VCol>
-                  </VRow>
+                    </div>
+                  </div>
                 </VCard>
               </div>
             </div>

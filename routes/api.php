@@ -120,6 +120,8 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/ecommerce/admin/orders", [EcommerceController::class, "getAdminOrders"]);
     Route::post("/ecommerce/admin/orders/{id}/approve", [EcommerceController::class, "approveOrder"]);
     Route::post("/ecommerce/admin/orders/{id}/cancel", [EcommerceController::class, "cancelOrder"]);
+    Route::post("/ecommerce/admin/orders/{id}/ship", [EcommerceController::class, "shipOrder"]);
+    Route::post("/ecommerce/admin/orders/{id}/complete", [EcommerceController::class, "completeOrder"]);
 });
 
 // Rutas protegidas que requieren autenticación (Sanctum)

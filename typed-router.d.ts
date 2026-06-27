@@ -121,6 +121,7 @@ declare module 'vue-router/auto-routes' {
     'tpv-company-offer': RouteRecordInfo<'tpv-company-offer', '/tpv/companyOffer', Record<never, never>, Record<never, never>>,
     'tpv-credit': RouteRecordInfo<'tpv-credit', '/tpv/credit', Record<never, never>, Record<never, never>>,
     'tpv-doctor-offer': RouteRecordInfo<'tpv-doctor-offer', '/tpv/doctorOffer', Record<never, never>, Record<never, never>>,
+    'tpv-ecommerce-orders': RouteRecordInfo<'tpv-ecommerce-orders', '/tpv/ecommerce-orders', Record<never, never>, Record<never, never>>,
     'tpv-expiration-offer': RouteRecordInfo<'tpv-expiration-offer', '/tpv/expirationOffer', Record<never, never>, Record<never, never>>,
     'tpv-general-offer': RouteRecordInfo<'tpv-general-offer', '/tpv/generalOffer', Record<never, never>, Record<never, never>>,
     'tpv-individual-offer': RouteRecordInfo<'tpv-individual-offer', '/tpv/individualOffer', Record<never, never>, Record<never, never>>,

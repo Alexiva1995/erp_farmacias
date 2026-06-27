@@ -24,6 +24,12 @@ export default [
         subject: 'admin',
       },
       {
+        title: 'Pedidos Eco',
+        to: 'tpv-ecommerce-orders',
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
         title: 'Creditos',
         to: 'tpv-credit',
       },

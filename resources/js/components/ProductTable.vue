@@ -11,6 +11,7 @@ import { toast } from "@/plugins/sweetalert";
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -331,7 +332,7 @@ const toggleFavorite = async (item) => {
                 <VTooltip activator="parent">Restaurar</VTooltip>
               </IconBtn>
               <IconBtn
-                v-if="authStore.isAdmin"
+                v-if="authStore.isAdmin && !isMiniMarket"
                 color="info"
                 size="small"
                 @click="openMergeModal(item)"
@@ -482,9 +483,9 @@ const toggleFavorite = async (item) => {
                 icon="tabler-rotate-clockwise" 
                 @click="emit('restore-product', item.id)"
               />
-              <VDivider vertical class="border-opacity-10" />
+              <VDivider v-if="authStore.isAdmin && !isMiniMarket" vertical class="border-opacity-10" />
               <VBtn 
-                v-if="authStore.isAdmin" 
+                v-if="authStore.isAdmin && !isMiniMarket" 
                 color="info" 
                 variant="text" 
                 class="flex-grow-1 rounded-0" 

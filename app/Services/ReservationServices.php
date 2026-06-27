@@ -119,7 +119,7 @@ class ReservationServices
         }
 
         $data['client_id'] = $clientId;
-        $data['status'] = auth()->check() ? 'verified' : 'pending';
+        $data['status'] = 'verified';
         
         $reservation = $this->reservationRepository->create($data);
 
@@ -162,99 +162,12 @@ class ReservationServices
         // Notificar en tiempo real
         broadcast(new ReservationUpdated($reservation))->toOthers();
 
-        // Solo enviar notificaciones automáticas si el usuario está autenticado (Panel Admin)
+        // 1. Enviar notificación inmediata a Telegram del administrador (siempre como confirmada)
+        $this->sendTelegramNotification($reservation, 'verified');
+
+        // 2. Si es creada desde el Panel Admin (Autenticado)
         if (auth()->check()) {
-            // 1. Enviar notificación inmediata a Telegram del administrador (ya confirmada directo)
-            try {
-                $telegram = resolve(\App\Services\TelegramService::class);
-                
-                // Agenda consolidada del día (Reservas + Horarios Fijos activos)
-                $today = $reservation->date->toDateString();
-                $todayFormatted = $reservation->date->format('d/m/Y');
-                $carbonDate = \Carbon\Carbon::parse($today);
-                $dayOfWeek = $carbonDate->dayOfWeekIso;
-
-                // 1. Reservaciones confirmadas del día
-                $dailyReservations = \App\Models\Reservation::with('court')
-                    ->whereDate('date', $today)
-                    ->whereIn('status', ['verified', 'in_progress', 'completed'])
-                    ->get();
-
-                // 2. Horarios fijos del día de la semana (que no tengan excepciones hoy)
-                $dailyFixed = \App\Models\FixedSchedule::with('court')
-                    ->where('day_of_week', $dayOfWeek)
-                    ->whereDoesntHave('exceptions', function ($query) use ($today) {
-                        $query->where('date', $today);
-                    })
-                    ->get();
-
-                // Unificar agenda: reservas confirmadas + fijos
-                $agendaItems = collect();
-
-                foreach ($dailyReservations as $r) {
-                    $agendaItems->push([
-                        'court_name'  => $r->court->name,
-                        'start_time'  => $r->start_time,
-                        'end_time'    => $r->end_time,
-                        'client_name' => $r->client_name,
-                        'is_fixed'    => false,
-                    ]);
-                }
-
-                foreach ($dailyFixed as $f) {
-                    $agendaItems->push([
-                        'court_name'  => $f->court->name,
-                        'start_time'  => $f->start_time,
-                        'end_time'    => $f->end_time,
-                        'client_name' => $f->client_name,
-                        'is_fixed'    => true,
-                    ]);
-                }
-
-                // Convertir horas de la reserva a formato 12h AM/PM
-                $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
-                $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
-
-                // Cabecera del mensaje
-                $msg = "⚽ *¡Nueva Reserva Registrada (Tova cerebro operativo)!* ⚽\n\n"
-                     . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
-                     . "🏟️ *Lugar:* {$reservation->court->name}\n"
-                     . "📅 *Fecha:* {$todayFormatted}\n"
-                     . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
-                     . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
-
-                if ($reservation->request_weekly_fixed) {
-                    $msg .= "🔄 *[Solicita Horario Fijo Semanal]*\n";
-                }
-
-                // Agenda agrupada por cancha
-                $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
-
-                if ($agendaItems->isEmpty()) {
-                    $msg .= "_Ninguna reserva programada para hoy._";
-                } else {
-                    $grouped = $agendaItems->groupBy('court_name');
-                    foreach ($grouped as $courtName => $items) {
-                        $msg .= "\n*{$courtName}*\n";
-                        $sortedItems = $items->sortBy('start_time')->values();
-                        foreach ($sortedItems as $item) {
-                            $rStart   = \Carbon\Carbon::parse($item['start_time'])->format('g:i A');
-                            $rEnd     = \Carbon\Carbon::parse($item['end_time'])->format('g:i A');
-                            $fixedTag = $item['is_fixed'] ? ' 🔄' : '';
-                            $msg .= "{$rStart} a {$rEnd} - {$item['client_name']}{$fixedTag}\n";
-                        }
-                    }
-                }
-
-                $telegram->sendMessage($msg);
-            } catch (\Exception $e) {
-                \Log::error("Error al enviar notificación de reserva administrativa a Telegram: " . $e->getMessage());
-            }
-
-            // Enviar WhatsApp inicial de confirmación (si aplica)
-            $this->sendWhatsAppConfirmationRequest($reservation);
-
-            // Enviar email de confirmación y enlace
+            // Enviar email de notificación al administrador
             try {
                 \Illuminate\Support\Facades\Mail::to('Alexisjsoeva95@gmail.com')
                     ->send(new \App\Mail\ReservationConfirmationMail($reservation));
@@ -281,6 +194,9 @@ class ReservationServices
                 // Notificar en tiempo real
                 broadcast(new ReservationUpdated($reservation))->toOthers();
 
+                // Notificar a Telegram de la confirmación
+                $this->sendTelegramNotification($reservation, 'verified');
+
                 // Notificar al cliente la confirmación exitosa
                 $this->sendWhatsAppMessage(
                     $reservation->client_whatsapp,
@@ -304,7 +220,115 @@ class ReservationServices
         // Notificar en tiempo real
         broadcast(new ReservationUpdated($updated))->toOthers();
 
+        // Notificar a Telegram de la cancelación
+        $this->sendTelegramNotification($updated, 'canceled');
+
         return $updated;
+    }
+
+    /**
+     * Enviar mensaje de notificación consolidada a Telegram.
+     */
+    public function sendTelegramNotification(Reservation $reservation, string $type = 'new'): void
+    {
+        try {
+            $telegram = resolve(\App\Services\TelegramService::class);
+            
+            $today = $reservation->date->toDateString();
+            $todayFormatted = $reservation->date->format('d/m/Y');
+            $carbonDate = \Carbon\Carbon::parse($today);
+            $dayOfWeek = $carbonDate->dayOfWeekIso;
+
+            // 1. Reservaciones confirmadas del día
+            $dailyReservations = \App\Models\Reservation::with('court')
+                ->whereDate('date', $today)
+                ->whereIn('status', ['verified', 'in_progress', 'completed'])
+                ->get();
+
+            // 2. Horarios fijos del día de la semana (que no tengan excepciones hoy)
+            $dailyFixed = \App\Models\FixedSchedule::with('court')
+                ->where('day_of_week', $dayOfWeek)
+                ->whereDoesntHave('exceptions', function ($query) use ($today) {
+                    $query->where('date', $today);
+                })
+                ->get();
+
+            // Unificar agenda: reservas confirmadas + fijos
+            $agendaItems = collect();
+
+            foreach ($dailyReservations as $r) {
+                $agendaItems->push([
+                    'court_name'  => $r->court->name,
+                    'start_time'  => $r->start_time,
+                    'end_time'    => $r->end_time,
+                    'client_name' => $r->client_name,
+                    'is_fixed'    => false,
+                ]);
+            }
+
+            foreach ($dailyFixed as $f) {
+                $agendaItems->push([
+                    'court_name'  => $f->court->name,
+                    'start_time'  => $f->start_time,
+                    'end_time'    => $f->end_time,
+                    'client_name' => $f->client_name,
+                    'is_fixed'    => true,
+                ]);
+            }
+
+            // Convertir horas de la reserva a formato 12h AM/PM
+            $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
+            $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
+
+            // Determinar etiqueta de estado
+            $statusText = "⏳ *[PRE-RESERVA PENDIENTE]*";
+            if ($reservation->status === 'verified') {
+                $statusText = "✅ *[VERIFICADA / CONFIRMADA]*";
+            } elseif ($reservation->status === 'canceled') {
+                $statusText = "❌ *[CANCELADA]*";
+            }
+
+            if ($type === 'verified') {
+                $statusText = "✅ *[VERIFICADA / CONFIRMADA]*";
+            } elseif ($type === 'canceled') {
+                $statusText = "❌ *[CANCELADA]*";
+            }
+
+            // Cabecera del mensaje
+            $msg = "⚽ *Alerta de Reserva ({$statusText})* ⚽\n\n"
+                 . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
+                 . "🏟️ *Lugar:* {$reservation->court->name}\n"
+                 . "📅 *Fecha:* {$todayFormatted}\n"
+                 . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
+                 . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n";
+
+            if ($reservation->request_weekly_fixed) {
+                $msg .= "🔄 *[Solicita Horario Fijo Semanal]*\n";
+            }
+
+            // Agenda agrupada por cancha
+            $msg .= "\n📋 *Agenda consolidada para hoy ({$todayFormatted}):*\n";
+
+            if ($agendaItems->isEmpty()) {
+                $msg .= "_Ninguna reserva programada para hoy._";
+            } else {
+                $grouped = $agendaItems->groupBy('court_name');
+                foreach ($grouped as $courtName => $items) {
+                    $msg .= "\n*{$courtName}*\n";
+                    $sortedItems = $items->sortBy('start_time')->values();
+                    foreach ($sortedItems as $item) {
+                        $rStart   = \Carbon\Carbon::parse($item['start_time'])->format('g:i A');
+                        $rEnd     = \Carbon\Carbon::parse($item['end_time'])->format('g:i A');
+                        $fixedTag = $item['is_fixed'] ? ' 🔄' : '';
+                        $msg .= "{$rStart} a {$rEnd} - {$item['client_name']}{$fixedTag}\n";
+                    }
+                }
+            }
+
+            $telegram->sendMessage($msg);
+        } catch (\Exception $e) {
+            \Log::error("Error al enviar notificación a Telegram: " . $e->getMessage());
+        }
     }
 
     /**

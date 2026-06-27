@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { formatDateSimple } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -14,6 +15,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "save"]);
+
+const brandingStore = useBrandingStore();
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const defaultLot = {
   product_id: null,
@@ -51,10 +55,13 @@ watch(
           quantity: props.lotToEdit.quantity,
           unit_cost: props.lotToEdit.unit_cost || null,
           expiration_date: formatDateForInput(props.lotToEdit.expiration_date),
-          location: props.lotToEdit.location || "",
+          location: props.lotToEdit.location || (isMiniMarket.value ? "LOCAL" : ""),
         };
       } else {
-        lotData.value = { ...defaultLot };
+        lotData.value = { 
+          ...defaultLot,
+          location: isMiniMarket.value ? "LOCAL" : "",
+        };
       }
     }
   },
@@ -70,7 +77,13 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
-const onSave = () => emit("save", lotData.value);
+const onSave = () => {
+  // Asegurar ubicación por defecto en Mini Market antes de guardar
+  if (isMiniMarket.value && !lotData.value.location) {
+    lotData.value.location = "LOCAL";
+  }
+  emit("save", lotData.value);
+};
 const onCancel = () => emit("update:modelValue", false);
 </script>
 
@@ -230,7 +243,7 @@ const onCancel = () => emit("update:modelValue", false);
                     />
                   </VCol>
 
-                  <VCol cols="12" sm="6">
+                  <VCol v-if="!isMiniMarket" cols="12" sm="6">
                     <AppAutocomplete
                       v-model="lotData.location"
                       label="Ubicación"

@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
@@ -300,7 +300,10 @@ const handleClose = () => {
                 v-if="difference !== null"
                 class="mt-2 pt-2 border-t border-dashed d-flex flex-column align-center gap-1 animate__animated animate__fadeIn"
               >
-                <div class="d-flex align-center gap-2 px-3 py-1 rounded-pill bg-opacity-10" :class="`bg-${differenceColor}`">
+                <div
+                  class="d-flex align-center gap-2 px-3 py-1 rounded-pill"
+                  :style="{ backgroundColor: `rgba(var(--v-theme-${differenceColor}), 0.15)` }"
+                >
                   <VIcon
                     :icon="differenceIcon"
                     size="14"

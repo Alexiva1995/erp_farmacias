@@ -166,7 +166,7 @@ const handleMobilePageChange = (newPage) => {
             variant="flat"
             class="font-weight-black px-2 shadow-sm"
           >
-            {{ item.valid_stock_sum }}
+            {{ Math.round(item.valid_stock_sum) }}
           </VChip>
         </template>
 
@@ -303,7 +303,7 @@ const handleMobilePageChange = (newPage) => {
                 variant="flat"
                 class="font-weight-black"
               >
-                STOCK: {{ item.valid_stock_sum }}
+                STOCK: {{ Math.round(item.valid_stock_sum) }}
               </VChip>
             </div>
 
