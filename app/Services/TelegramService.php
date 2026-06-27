@@ -21,7 +21,7 @@ class TelegramService
     /**
      * Enviar mensaje a Telegram (opcionalmente a un chat personalizado).
      */
-    public function sendMessage(string $message, ?string $customChatId = null): bool
+    public function sendMessage(string $message, ?string $customChatId = null, ?array $replyMarkup = null): bool
     {
         $targetChatId = $customChatId ?: $this->chatId;
 
@@ -32,11 +32,17 @@ class TelegramService
 
         try {
             $url = "https://api.telegram.org/bot{$this->token}/sendMessage";
-            $response = Http::post($url, [
+            $payload = [
                 'chat_id' => $targetChatId,
                 'text' => $message,
                 'parse_mode' => 'Markdown',
-            ]);
+            ];
+
+            if ($replyMarkup) {
+                $payload['reply_markup'] = $replyMarkup;
+            }
+
+            $response = Http::post($url, $payload);
 
             if ($response->successful()) {
                 return true;
@@ -53,8 +59,8 @@ class TelegramService
     /**
      * Enviar mensaje al chat personal del administrador.
      */
-    public function sendToAdmin(string $message): bool
+    public function sendToAdmin(string $message, ?array $replyMarkup = null): bool
     {
-        return $this->sendMessage($message, $this->adminChatId);
+        return $this->sendMessage($message, $this->adminChatId, $replyMarkup);
     }
 }
