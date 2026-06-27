@@ -6,7 +6,7 @@ import axios from '@/plugins/axios'
 
 const store = useReservationStore()
 
-const showEarlierHours = ref(true)
+const showEarlierHours = ref(false)
 
 const formatAmPm = (timeStr) => {
   if (timeStr === '24:00') return '12:00 AM'
@@ -158,24 +158,6 @@ const getCourtSlots = (courtData) => {
         currentTime = endTime
       }
     }
-  }
-
-  // 3. Filtrar slots dinámicamente si la fecha seleccionada es HOY
-  const now = new Date()
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
-  
-  if (store.selectedDate === todayStr) {
-    const currentHour = now.getHours()
-    const currentMin = now.getMinutes()
-    const nowTotalMin = currentHour * 60 + currentMin
-
-    return slots.filter(slot => {
-      const slotStartMin = timeToMin(slot.start)
-      
-      // Si la hora de inicio del bloque ya pasó por más de 15 minutos con respecto a la hora real actual, se oculta.
-      // Permitimos ver bloques que inician en el futuro o que iniciaron hace menos de 15 minutos.
-      return (slotStartMin + 15) >= nowTotalMin
-    })
   }
 
   return slots
@@ -775,6 +757,15 @@ const copyWeeklyReservations = async () => {
           </div>
 
           <!-- Botones de Acción -->
+          <VBtn
+            :color="showEarlierHours ? 'secondary' : 'primary'"
+            variant="tonal"
+            density="comfortable"
+            prepend-icon="tabler-clock"
+            @click="showEarlierHours = !showEarlierHours"
+          >
+            {{ showEarlierHours ? 'Ocultar Mañana' : 'Ver Mañana' }}
+          </VBtn>
 
           <VBtn
             color="secondary"
