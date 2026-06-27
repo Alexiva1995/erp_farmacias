@@ -104,6 +104,9 @@ Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\Reservati
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
 Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
+Route::get("/public/reservations/search-to-cancel", [\App\Http\Controllers\Api\ReservationController::class, "searchToCancel"]);
+Route::post("/public/reservations/{id}/request-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "requestCancellation"]);
+Route::get("/public/reservations/{id}/confirm-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "confirmCancellationByAdmin"]);
 Route::get("/public/clients/identification/{identification}", [\App\Http\Controllers\Api\ClientController::class, "consultByIdentification"]);
 Route::patch("/public/reservations/{id}/confirm", [\App\Http\Controllers\Api\ReservationController::class, "publicConfirm"]);
 Route::post("/public/visits", [\App\Http\Controllers\Api\BookingVisitController::class, "store"]);
