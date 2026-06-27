@@ -676,18 +676,20 @@ const formatDate = (dateStr) => {
               
               <!-- Checkbox para solicitar Hora Fija Semanal -->
               <VCol cols="12" class="pt-0">
-                <VCheckbox
-                  v-model="reservationForm.request_weekly_fixed"
-                  color="primary"
-                  hide-details
-                  density="compact"
-                >
-                  <template #label>
-                    <div class="text-caption text-grey-darken-3 font-weight-medium">
-                      🔄 ¿Deseas solicitar este horario de forma fija todas las semanas?
-                    </div>
-                  </template>
-                </VCheckbox>
+                <div class="pa-3 rounded-lg" style="border: 1px dashed rgba(var(--v-theme-primary), 0.3); background-color: rgba(var(--v-theme-primary), 0.05);">
+                  <VCheckbox
+                    v-model="reservationForm.request_weekly_fixed"
+                    color="primary"
+                    hide-details
+                    density="compact"
+                  >
+                    <template #label>
+                      <div class="text-body-2 text-primary font-weight-bold">
+                        🔄 ¿Deseas solicitar este horario de forma fija todas las semanas?
+                      </div>
+                    </template>
+                  </VCheckbox>
+                </div>
               </VCol>
             </VRow>
           </VForm>
