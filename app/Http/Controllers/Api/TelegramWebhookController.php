@@ -65,11 +65,8 @@ class TelegramWebhookController extends Controller
                         return response()->json(['status' => 'ok']);
                     }
 
-                    // Cancelar la reserva
-                    $reservation->update(['status' => 'canceled']);
-
-                    // Transmitir cambio en tiempo real por WebSockets
-                    broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
+                    // Cancelar la reserva a través del servicio para disparar la notificación al canal de Telegram
+                    $this->reservationServices->cancelReservation($reservation);
 
                     // Notificar éxito al usuario en Telegram (pop-up)
                     $this->answerCallback($callbackQueryId, '✅ Reserva cancelada y cancha liberada con éxito.');
