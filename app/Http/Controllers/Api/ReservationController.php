@@ -274,9 +274,10 @@ class ReservationController extends Controller
                  . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
                  . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
                  . "Para confirmar la cancelación y liberar el horario, haz clic en el siguiente enlace:\n"
-                 . "🔗 {$confirmUrl}";
+                 . "🔗 [CONFIRMAR CANCELACIÓN]({$confirmUrl})";
 
-            $this->reservationServices->sendWhatsAppMessage('584247423672', $msg);
+            $telegram = resolve(\App\Services\TelegramService::class);
+            $telegram->sendToAdmin($msg);
 
             return response()->json([
                 'message' => 'Solicitud de cancelación enviada correctamente al administrador. Será procesada a la brevedad.'

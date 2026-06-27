@@ -9,27 +9,31 @@ class TelegramService
 {
     protected ?string $token;
     protected ?string $chatId;
+    protected ?string $adminChatId;
 
     public function __construct()
     {
         $this->token = config('services.telegram.bot_token');
         $this->chatId = config('services.telegram.chat_id');
+        $this->adminChatId = config('services.telegram.admin_chat_id') ?: $this->chatId;
     }
 
     /**
-     * Enviar mensaje simple a Telegram.
+     * Enviar mensaje a Telegram (opcionalmente a un chat personalizado).
      */
-    public function sendMessage(string $message): bool
+    public function sendMessage(string $message, ?string $customChatId = null): bool
     {
-        if (empty($this->token) || empty($this->chatId)) {
-            Log::warning('[TelegramService] TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en el .env');
+        $targetChatId = $customChatId ?: $this->chatId;
+
+        if (empty($this->token) || empty($targetChatId)) {
+            Log::warning('[TelegramService] TELEGRAM_BOT_TOKEN o CHAT_ID no configurados');
             return false;
         }
 
         try {
             $url = "https://api.telegram.org/bot{$this->token}/sendMessage";
             $response = Http::post($url, [
-                'chat_id' => $this->chatId,
+                'chat_id' => $targetChatId,
                 'text' => $message,
                 'parse_mode' => 'Markdown',
             ]);
@@ -44,5 +48,13 @@ class TelegramService
             Log::error('[TelegramService] Excepción al enviar a Telegram: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Enviar mensaje al chat personal del administrador.
+     */
+    public function sendToAdmin(string $message): bool
+    {
+        return $this->sendMessage($message, $this->adminChatId);
     }
 }
