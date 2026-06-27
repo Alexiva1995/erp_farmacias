@@ -317,24 +317,8 @@ class ReservationController extends Controller
         // Transmitir en tiempo real
         broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
 
-        // Notificar en Telegram al administrador del éxito de la acción
-        try {
-            $telegram = resolve(\App\Services\TelegramService::class);
-            $todayFormatted = $reservation->date->format('d/m/Y');
-            $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
-            $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
-
-            $msg = "❌ *[RESERVA CANCELADA Y LIBERADA]* ❌\n\n"
-                 . "Se ha liberado la cancha exitosamente:\n\n"
-                 . "👤 *Cliente:* {$reservation->client_name}\n"
-                 . "🏟️ *Cancha:* {$reservation->court->name}\n"
-                 . "📅 *Fecha:* {$todayFormatted}\n"
-                 . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}";
-
-            $telegram->sendMessage($msg);
-        } catch (\Exception $e) {
-            \Log::error("Error al enviar confirmación de cancelación a Telegram: " . $e->getMessage());
-        }
+        // Notificar en Telegram al administrador del éxito de la acción (incluyendo la agenda de ese día)
+        $this->reservationServices->sendTelegramNotification($reservation, 'canceled');
 
         return response("
             <div style='font-family: Arial, sans-serif; text-align: center; margin-top: 50px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;'>

@@ -6,7 +6,7 @@ import axios from '@/plugins/axios'
 
 const store = useReservationStore()
 
-const showEarlierHours = ref(false)
+const showEarlierHours = ref(true)
 
 const formatAmPm = (timeStr) => {
   if (timeStr === '24:00') return '12:00 AM'
@@ -775,15 +775,6 @@ const copyWeeklyReservations = async () => {
           </div>
 
           <!-- Botones de Acción -->
-          <VBtn
-            :color="showEarlierHours ? 'secondary' : 'primary'"
-            variant="tonal"
-            density="comfortable"
-            prepend-icon="tabler-clock"
-            @click="showEarlierHours = !showEarlierHours"
-          >
-            {{ showEarlierHours ? 'Ocultar Mañana' : 'Ver Mañana' }}
-          </VBtn>
 
           <VBtn
             color="secondary"

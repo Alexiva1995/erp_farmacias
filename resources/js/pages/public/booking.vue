@@ -809,6 +809,7 @@ const formatDate = (dateStr) => {
                 </VListItemTitle>
                 <VListItemSubtitle class="text-caption">
                   📅 {{ formatDate(res.date) }} | ⏰ {{ formatAmPm(res.start_time.substring(0, 5)) }} a {{ formatAmPm(res.end_time.substring(0, 5)) }}
+                  <div class="mt-1">📞 Teléfono: {{ res.client_whatsapp }}</div>
                 </VListItemSubtitle>
                 
                 <template #append>
