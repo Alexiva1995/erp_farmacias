@@ -384,6 +384,60 @@ const formatPrice = (value) => {
   if (!value) return '0'
   return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(parseFloat(value))
 }
+
+// Lógica para cancelar reservas
+const isCancelDialogOpen = ref(false)
+const cancelSearchQuery = ref('')
+const searchingReservations = ref(false)
+const hasSearched = ref(false)
+const foundReservations = ref([])
+const requestingCancellationId = ref(null)
+
+const openCancelDialog = () => {
+  cancelSearchQuery.value = ''
+  foundReservations.value = []
+  hasSearched.value = false
+  isCancelDialogOpen.value = true
+}
+
+const searchClientReservations = async () => {
+  if (!cancelSearchQuery.value.trim()) {
+    toast.error('Por favor, ingresa tu cédula o teléfono.')
+    return
+  }
+
+  searchingReservations.value = true
+  hasSearched.value = true
+  try {
+    const response = await axios.get('/public/reservations/search-to-cancel', {
+      params: { query: cancelSearchQuery.value }
+    })
+    foundReservations.value = response.data.data
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Error al buscar las reservas.')
+  } finally {
+    searchingReservations.value = false
+  }
+}
+
+const requestCancellation = async (id) => {
+  requestingCancellationId.value = id
+  try {
+    const response = await axios.post(`/public/reservations/${id}/request-cancellation`)
+    toast.success(response.data.message || 'Solicitud enviada con éxito.')
+    foundReservations.value = foundReservations.value.filter(res => res.id !== id)
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Error al enviar la solicitud.')
+  } finally {
+    requestingCancellationId.value = null
+  }
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-')
+  return `${d}/${m}/${y}`
+}
 </script>
 
 <template>
@@ -417,6 +471,18 @@ const formatPrice = (value) => {
           class="rounded-pill mx-1"
         >
           Instagram
+        </VBtn>
+      </div>
+      <div class="d-flex justify-center mt-3">
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          size="small"
+          prepend-icon="tabler-calendar-off"
+          class="rounded-pill mx-1"
+          @click="openCancelDialog"
+        >
+          Cancelar Reserva
         </VBtn>
       </div>
     </div>
@@ -683,6 +749,81 @@ const formatPrice = (value) => {
             >
               Confirmar
             </VBtn>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <!-- Dialogo para Cancelar Reserva -->
+    <VDialog v-model="isCancelDialogOpen" max-width="500px">
+      <VCard>
+        <VCardTitle class="d-flex justify-space-between align-center pa-4">
+          <span class="text-h6 font-weight-bold">❌ Cancelar Reserva</span>
+          <VBtn icon="tabler-x" variant="text" size="small" @click="isCancelDialogOpen = false" />
+        </VCardTitle>
+        <VCardText class="pa-4 pt-0">
+          <p class="text-body-2 mb-4 text-secondary">
+            Ingresa tu número de cédula o teléfono de WhatsApp registrado para buscar tus reservas activas.
+          </p>
+          
+          <div class="d-flex gap-2 mb-4">
+            <VTextField
+              v-model="cancelSearchQuery"
+              label="Cédula o Teléfono"
+              placeholder="Ej. 12345678 o 58412..."
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              @keyup.enter="searchClientReservations"
+            />
+            <VBtn
+              color="primary"
+              :loading="searchingReservations"
+              @click="searchClientReservations"
+            >
+              Buscar
+            </VBtn>
+          </div>
+
+          <VDivider class="mb-4" />
+
+          <div v-if="searchingReservations" class="text-center py-4">
+            <VProgressCircular indeterminate color="primary" />
+          </div>
+          
+          <div v-else-if="hasSearched && foundReservations.length === 0" class="text-center py-4 text-secondary">
+            No se encontraron reservas activas para los datos ingresados.
+          </div>
+
+          <div v-else-if="foundReservations.length > 0">
+            <h3 class="text-subtitle-2 font-weight-bold mb-2">Tus Reservas Activas:</h3>
+            <VList lines="two" class="pa-0">
+              <VListItem
+                v-for="res in foundReservations"
+                :key="res.id"
+                border
+                class="rounded mb-2"
+              >
+                <VListItemTitle class="font-weight-bold text-body-2">
+                  🏟️ {{ res.court?.name || 'Cancha' }}
+                </VListItemTitle>
+                <VListItemSubtitle class="text-caption">
+                  📅 {{ formatDate(res.date) }} | ⏰ {{ formatAmPm(res.start_time.substring(0, 5)) }} a {{ formatAmPm(res.end_time.substring(0, 5)) }}
+                </VListItemSubtitle>
+                
+                <template #append>
+                  <VBtn
+                    color="error"
+                    variant="tonal"
+                    size="small"
+                    :loading="requestingCancellationId === res.id"
+                    @click="requestCancellation(res.id)"
+                  >
+                    Solicitar
+                  </VBtn>
+                </template>
+              </VListItem>
+            </VList>
           </div>
         </VCardText>
       </VCard>

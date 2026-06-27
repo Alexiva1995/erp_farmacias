@@ -214,4 +214,136 @@ class ReservationController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * Buscar reservas activas para cancelar por cédula o teléfono.
+     */
+    public function searchToCancel(Request $request): JsonResponse
+    {
+        $query = $request->query('query');
+
+        if (!$query) {
+            return response()->json(['message' => 'Debe ingresar su cédula o teléfono.'], 422);
+        }
+
+        $cleanQuery = preg_replace('/[^0-9]/', '', $query);
+
+        $reservations = \App\Models\Reservation::with('court')
+            ->where('status', 'verified')
+            ->where('date', '>=', now()->toDateString())
+            ->where(function ($q) use ($cleanQuery, $query) {
+                $q->where('identification', 'like', "%{$query}%")
+                  ->orWhere('client_whatsapp', 'like', "%{$cleanQuery}%");
+            })
+            ->orderBy('date', 'asc')
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        return response()->json([
+            'data' => $reservations
+        ]);
+    }
+
+    /**
+     * Solicitar cancelación de una reserva (envía Telegram al admin).
+     */
+    public function requestCancellation(int $id): JsonResponse
+    {
+        try {
+            $reservation = \App\Models\Reservation::with('court')->findOrFail($id);
+
+            if ($reservation->status !== 'verified') {
+                return response()->json(['message' => 'Esta reserva no se puede cancelar o ya fue cancelada.'], 422);
+            }
+
+            // Generar token seguro
+            $token = sha1($reservation->id . $reservation->created_at . config('app.key'));
+
+            // Enviar notificación a Telegram del administrador con botón/link de confirmación
+            $telegram = resolve(\App\Services\TelegramService::class);
+            $confirmUrl = url("/api/public/reservations/{$reservation->id}/confirm-cancellation?token={$token}");
+
+            $todayFormatted = $reservation->date->format('d/m/Y');
+            $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
+            $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
+
+            $msg = "⚠️ *[SOLICITUD DE CANCELACIÓN]* ⚠️\n\n"
+                 . "El cliente solicita la cancelación de la siguiente reserva:\n\n"
+                 . "👤 *Cliente:* {$reservation->client_name} ({$reservation->identification})\n"
+                 . "🏟️ *Lugar:* {$reservation->court->name}\n"
+                 . "📅 *Fecha:* {$todayFormatted}\n"
+                 . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
+                 . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
+                 . "Para confirmar la cancelación y liberar el horario, haz clic en el siguiente enlace:\n"
+                 . "🔗 [CONFIRMAR CANCELACIÓN Y LIBERAR CANCHA]({$confirmUrl})";
+
+            $telegram->sendMessage($msg);
+
+            return response()->json([
+                'message' => 'Solicitud de cancelación enviada correctamente al administrador. Será procesada a la brevedad.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al procesar la solicitud: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Confirmar la cancelación por el administrador (clic en Telegram).
+     */
+    public function confirmCancellationByAdmin(Request $request, int $id): \Illuminate\Http\Response
+    {
+        $reservation = \App\Models\Reservation::find($id);
+
+        if (!$reservation) {
+            return response("<div style='font-family: Arial, sans-serif; text-align: center; margin-top: 50px;'><h3>La reserva no existe.</h3></div>", 404);
+        }
+
+        $expectedToken = sha1($reservation->id . $reservation->created_at . config('app.key'));
+        if ($request->query('token') !== $expectedToken) {
+            return response("<div style='font-family: Arial, sans-serif; text-align: center; margin-top: 50px;'><h3>Acceso denegado. Token inválido.</h3></div>", 403);
+        }
+
+        if ($reservation->status === 'canceled') {
+            return response("
+                <div style='font-family: Arial, sans-serif; text-align: center; margin-top: 50px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;'>
+                    <h2 style='color: #E20074;'>⚠️ Reserva ya cancelada</h2>
+                    <p>Esta reserva ya ha sido cancelada y la cancha se encuentra disponible.</p>
+                </div>
+            ", 200);
+        }
+
+        $reservation->update(['status' => 'canceled']);
+
+        // Transmitir en tiempo real
+        broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
+
+        // Notificar en Telegram al administrador del éxito de la acción
+        try {
+            $telegram = resolve(\App\Services\TelegramService::class);
+            $todayFormatted = $reservation->date->format('d/m/Y');
+            $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
+            $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
+
+            $msg = "❌ *[RESERVA CANCELADA Y LIBERADA]* ❌\n\n"
+                 . "Se ha liberado la cancha exitosamente:\n\n"
+                 . "👤 *Cliente:* {$reservation->client_name}\n"
+                 . "🏟️ *Cancha:* {$reservation->court->name}\n"
+                 . "📅 *Fecha:* {$todayFormatted}\n"
+                 . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}";
+
+            $telegram->sendMessage($msg);
+        } catch (\Exception $e) {
+            \Log::error("Error al enviar confirmación de cancelación a Telegram: " . $e->getMessage());
+        }
+
+        return response("
+            <div style='font-family: Arial, sans-serif; text-align: center; margin-top: 50px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;'>
+                <h2 style='color: #E20074;'>✅ Cancha Liberada Exitosamente</h2>
+                <p>La reserva de <strong>{$reservation->client_name}</strong> ha sido cancelada en el sistema.</p>
+                <p>La cancha ahora se encuentra disponible para nuevas reservaciones.</p>
+                <br>
+                <button onclick='window.close()' style='background-color: #E20074; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;'>Cerrar Ventana</button>
+            </div>
+        ");
+    }
 }
