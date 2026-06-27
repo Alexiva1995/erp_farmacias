@@ -259,10 +259,6 @@ class ReservationController extends Controller
             // Generar token seguro
             $token = sha1($reservation->id . $reservation->created_at . config('app.key'));
 
-            // Enviar notificación a Telegram del administrador con botón/link de confirmación
-            $telegram = resolve(\App\Services\TelegramService::class);
-            $confirmUrl = url("/api/public/reservations/{$reservation->id}/confirm-cancellation?token={$token}");
-
             $todayFormatted = $reservation->date->format('d/m/Y');
             $formattedStart = \Carbon\Carbon::parse($reservation->start_time)->format('g:i A');
             $formattedEnd   = \Carbon\Carbon::parse($reservation->end_time)->format('g:i A');
@@ -274,10 +270,21 @@ class ReservationController extends Controller
                  . "📅 *Fecha:* {$todayFormatted}\n"
                  . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
                  . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
-                 . "Para confirmar la cancelación y liberar el horario, haz clic en el siguiente enlace:\n"
-                 . "🔗 [CONFIRMAR CANCELACIÓN Y LIBERAR CANCHA]({$confirmUrl})";
+                 . "¿Deseas confirmar la cancelación y liberar la cancha?";
 
-            $telegram->sendMessage($msg);
+            $replyMarkup = [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => '❌ Sí, Cancelar Reserva',
+                            'callback_data' => "cancel_res_{$reservation->id}_{$token}"
+                        ]
+                    ]
+                ]
+            ];
+
+            $telegram = resolve(\App\Services\TelegramService::class);
+            $telegram->sendToAdmin($msg, $replyMarkup);
 
             return response()->json([
                 'message' => 'Solicitud de cancelación enviada correctamente al administrador. Será procesada a la brevedad.'

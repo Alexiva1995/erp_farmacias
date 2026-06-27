@@ -435,7 +435,8 @@ const requestCancellation = async (id) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
-  const [y, m, d] = dateStr.split('-')
+  const cleanDate = dateStr.substring(0, 10)
+  const [y, m, d] = cleanDate.split('-')
   return `${d}/${m}/${y}`
 }
 </script>
