@@ -28,8 +28,67 @@ class TelegramWebhookController extends Controller
     {
         $update = $request->all();
 
-        // Registrar para depuración
-        Log::info('[TelegramWebhook] Recibido:', $update);
+        // Validar si es un mensaje de texto directo del administrador
+        if (isset($update['message'])) {
+            $message = $update['message'];
+            $text = $message['text'] ?? '';
+            $chatId = $message['chat']['id'] ?? null;
+            $fromId = $message['from']['id'] ?? null;
+
+            // Verificar que el mensaje venga del administrador autorizado
+            $adminChatId = config('services.telegram.admin_chat_id');
+            if ($adminChatId && (string)$fromId === (string)$adminChatId) {
+                // Analizar si el mensaje tiene el comando "cancelar reserva [query]"
+                if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
+                    $query = trim($matches[1]);
+                    $cleanQuery = preg_replace('/[^0-9]/', '', $query);
+
+                    // Buscar reservaciones activas (verified)
+                    $reservations = Reservation::with('court')
+                        ->where('status', 'verified')
+                        ->where('date', '>=', now()->toDateString())
+                        ->where(function ($q) use ($cleanQuery, $query) {
+                            $q->where('identification', 'like', "%{$query}%")
+                              ->orWhere('client_whatsapp', 'like', "%{$cleanQuery}%");
+                        })
+                        ->orderBy('date', 'asc')
+                        ->orderBy('start_time', 'asc')
+                        ->get();
+
+                    if ($reservations->isEmpty()) {
+                        $this->telegramService->sendMessage("🔍 No se encontraron reservas activas para: *{$query}*", $chatId);
+                    } else {
+                        $this->telegramService->sendMessage("📋 Se encontraron *" . $reservations->count() . "* reservas activas. Haz clic en el botón para confirmar la cancelación:", $chatId);
+
+                        foreach ($reservations as $res) {
+                            $todayFormatted = $res->date->format('d/m/Y');
+                            $formattedStart = \Carbon\Carbon::parse($res->start_time)->format('g:i A');
+                            $formattedEnd   = \Carbon\Carbon::parse($res->end_time)->format('g:i A');
+                            $token = sha1($res->id . $res->created_at . config('app.key'));
+
+                            $msg = "🏟️ *Cancha:* {$res->court->name}\n"
+                                 . "👤 *Cliente:* {$res->client_name} ({$res->identification})\n"
+                                 . "📅 *Fecha:* {$todayFormatted}\n"
+                                 . "🕒 *Horario:* {$formattedStart} a {$formattedEnd}\n"
+                                 . "📞 *WhatsApp:* {$res->client_whatsapp}";
+
+                            $replyMarkup = [
+                                'inline_keyboard' => [
+                                    [
+                                        [
+                                            'text' => '❌ Confirmar Cancelación',
+                                            'callback_data' => "cancel_res_{$res->id}_{$token}"
+                                        ]
+                                    ]
+                                ]
+                            ];
+
+                            $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+                        }
+                    }
+                }
+            }
+        }
 
         // Validar si es una consulta de botón (callback_query)
         if (isset($update['callback_query'])) {
