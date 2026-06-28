@@ -111,9 +111,10 @@ class ClientController extends Controller
         return ApiResponse::success($respuestaDB, "Operación exitosa", 200);
     }
 
-    public function consultByIdentification(Request $request)
+    public function consultByIdentification(Request $request, $identification = null)
     {
-        $respuestaDB = $this->client->consultByIdentification($request->identification);
+        $idVal = $identification ?: $request->route('identification') ?: $request->identification;
+        $respuestaDB = $this->client->consultByIdentification($idVal);
 
         if (!$respuestaDB) {
             return ApiResponse::error("El cliente no fue encontrado", 404);

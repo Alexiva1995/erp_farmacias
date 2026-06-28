@@ -42,7 +42,13 @@ class ClientRepository
 
     public function consultByIdentification(string $identification): ?Model
     {
-        return Client::query()->with("company")->where("identification", "=", $identification)->first();
+        $clean = preg_replace('/[^0-9]/', '', $identification);
+
+        return Client::query()->with("company")
+            ->where("identification", "=", $identification)
+            ->orWhere("identification", "=", $clean)
+            ->orWhere("identification", "like", "%{$clean}%")
+            ->first();
     }
 
     public function consultAll(): Collection
