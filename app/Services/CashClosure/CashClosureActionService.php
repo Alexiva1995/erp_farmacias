@@ -186,6 +186,27 @@ class CashClosureActionService
 
             $updateData['blind_mismatches'] = json_encode($mismatches);
             $updateData['blind_note'] = implode(' | ', $notes);
+
+            // Notificar descuadre por Telegram al administrador
+            if (!empty($mismatches)) {
+                try {
+                    $telegram = resolve(\App\Services\TelegramService::class);
+                    $sellerName = $cashClosure->seller?->username ?? "Cajero #{$cashClosure->seller_id}";
+                    
+                    $msg = "⚠️ *[DESCUADRE DE CAJA DETECTADO]* ⚠️\n\n"
+                         . "👤 *Cajero:* {$sellerName}\n"
+                         . "🆔 *Cierre ID:* #{$cashClosure->id}\n"
+                         . "📅 *Fecha:* " . now()->format('d/m/Y g:i A') . "\n\n"
+                         . "*Diferencias encontradas:*\n";
+                    foreach ($notes as $note) {
+                        $msg .= "• {$note}\n";
+                    }
+                    
+                    $telegram->sendToAdmin($msg);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('[TelegramNotify] Error al notificar descuadre: ' . $e->getMessage());
+                }
+            }
         }
 
         $cashClosure->update($updateData);
