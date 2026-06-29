@@ -1245,29 +1245,19 @@ class TelegramWebhookService
                         continue;
                     }
 
-                    // Si es indexada y la moneda de la factura es Bs, el monto en Bs se calcula con la tasa actual
-                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $bcvRate, 2);
-                    } else {
-                        $invoiceRemainingOriginal = $invoice->total_amount;
-                        if ($invoice->currency === 'Bs') {
-                            $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
-                            $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
-                        } elseif ($invoice->currency === 'COP') {
-                            $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
-                            $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
-                        } else {
-                            $invoiceRemainingOriginal = $invoiceRemainingUSD;
-                        }
-                    }
+                    // Convertir el saldo restante en USD a Bolívares (Bs) usando la tasa de cambio oficial
+                    $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate 
+                        ?? \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate 
+                        ?? 1.00;
+
+                    $invoiceRemainingBs = round($invoiceRemainingUSD * (float)$bcvRate, 2);
 
                     $formattedDate = $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m') : '-';
 
                     $invoicesList[] = [
                         'invoice_number' => $invoice->invoice_number,
-                        'remaining_amount' => $invoiceRemainingOriginal,
-                        'currency' => $invoice->currency,
+                        'remaining_amount' => $invoiceRemainingBs,
+                        'currency' => 'Bs',
                         'payment_date_formatted' => $formattedDate,
                     ];
                 }
