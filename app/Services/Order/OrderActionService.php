@@ -1462,7 +1462,7 @@ class OrderActionService
                     'invoice_id' => null,
                     'supplier_id' => null,
                     'order_id' => $order->id,
-                    'user_id' => Auth::id() ?? $order->seller_id,
+                    'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
                     'stock_before' => $stockBefore,
                     'stock_after' => $totalStock,
                     'movement_date' => now(),
