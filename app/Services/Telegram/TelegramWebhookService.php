@@ -1170,13 +1170,14 @@ class TelegramWebhookService
     protected function initPaymentsFlow($fromId, $chatId): void
     {
         try {
-            // Consultar facturas pendientes de pago (status_payment != 1 o nulo) en estado ordered (por pagar)
+            // Consultar facturas pendientes de pago (status_payment != 1 o nulo) en estado ordered (por pagar) y vencidas/venciendo al día de hoy
             $invoices = \App\Models\Invoice::with(['supplier'])
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
                       ->orWhere('status_payment', '!=', 1);
                 })
                 ->where('status', 'ordered')
+                ->whereDate('payment_date', '<=', now()->toDateString())
                 ->get();
 
             if ($invoices->isEmpty()) {
