@@ -90,17 +90,36 @@ class TelegramWebhookService
                 $this->processFastFruitInvoice(trim($text), $fromId, $chatId);
                 return;
             }
+            if ($stateData['state'] === 'waiting_for_payment_amount') {
+                $this->processUserProvidedPaymentAmount(trim($text), $fromId, $chatId, $stateData);
+                return;
+            }
+            if ($stateData['state'] === 'waiting_for_payment_photo') {
+                $lowerText = strtolower(trim($text));
+                if ($lowerText === 'saltar' || $lowerText === 'ninguno') {
+                    $this->skipPaymentPhoto($fromId, $chatId, $stateData);
+                } else {
+                    $this->telegramService->sendMessage("📸 Por favor envía la foto del comprobante de pago o escribe *saltar*.", $chatId);
+                }
+                return;
+            }
+            if ($stateData['state'] === 'waiting_for_payment_reference_manual') {
+                $this->processUserProvidedPaymentReference(trim($text), $fromId, $chatId, $stateData);
+                return;
+            }
         }
 
-        // Caso A: Se recibe una foto y se está esperando una factura
+        // Caso A: Se recibe una foto
         if (isset($message['photo'])) {
+            if ($stateData && is_array($stateData) && $stateData['state'] === 'waiting_for_payment_photo') {
+                $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
+                return;
+            }
             $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
             return;
         }
 
         // Caso B: Comando para iniciar el registro de facturas
-        // Formatos aceptados:
-        // registrar factura [informal] [COP|USD|Bs] [Nombre Proveedor]
         if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
             $isInformal = !empty($matches[1]);
             $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
@@ -137,6 +156,12 @@ class TelegramWebhookService
                 Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
                 $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
             }
+            return;
+        }
+
+        // Caso F: Comando para gestionar pagos pendientes
+        if ($cleanText === 'pagos' || $cleanText === '/pagos') {
+            $this->initPaymentsFlow($fromId, $chatId);
             return;
         }
     }
@@ -438,6 +463,45 @@ class TelegramWebhookService
         $messageId = $callbackQuery['message']['message_id'] ?? null;
         $chatId = $callbackQuery['message']['chat']['id'] ?? null;
         $fromId = $callbackQuery['from']['id'] ?? null;
+
+        if (str_starts_with($callbackData, 'pay_supplier_')) {
+            $supplierId = (int) substr($callbackData, strlen('pay_supplier_'));
+            $this->startPaymentForSupplier($supplierId, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'skip_supplier_')) {
+            $supplierId = (int) substr($callbackData, strlen('skip_supplier_'));
+            $this->skipSupplierInPaymentQueue($supplierId, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if ($callbackData === 'exit_payments') {
+            $this->exitPaymentsFlow($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'pay_curr_')) {
+            $currency = substr($callbackData, strlen('pay_curr_'));
+            $this->selectPaymentCurrency($currency, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'pay_method_')) {
+            $method = substr($callbackData, strlen('pay_method_'));
+            $this->selectPaymentMethod($method, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if ($callbackData === 'skip_payment_photo') {
+            $this->skipPaymentPhotoFromCallback($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if ($callbackData === 'confirm_payment_registration') {
+            $this->confirmPaymentRegistration($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
 
         if (str_starts_with($callbackData, 'approve_fruit_invoice_')) {
             $invoiceId = (int) substr($callbackData, strlen('approve_fruit_invoice_'));
@@ -1098,5 +1162,705 @@ class TelegramWebhookService
             'text' => $msg,
             'parse_mode' => 'Markdown',
         ]);
+    }
+
+    /**
+     * Inicializar el flujo de pagos consultando las deudas consolidadas.
+     */
+    protected function initPaymentsFlow($fromId, $chatId): void
+    {
+        try {
+            // Consultar facturas pendientes de pago (status_payment != 1 o nulo) en estado ordered (por pagar)
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->where('status', 'ordered')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes al día de hoy.", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor y consolidar deuda
+            $grouped = $invoices->groupBy('supplier_id');
+            $suppliersWithDebt = [];
+
+            foreach ($grouped as $supplierId => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+
+                // Calcular deuda restante restando pagos parciales
+                $totalAmountUSD = $group->sum('total_usd');
+                $invoiceIds = $group->pluck('id')->toArray();
+
+                $payments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
+                    $query->whereIn('id', $invoiceIds);
+                })->get();
+
+                $totalPaidUSD = 0;
+                foreach ($payments as $payment) {
+                    if ($payment->payment_method === 'USD') {
+                        $totalPaidUSD += $payment->amount;
+                    } else {
+                        $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                        if ($exchangeRate) {
+                            $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                        }
+                    }
+                }
+
+                $remainingAmountUSD = max(0, $totalAmountUSD - $totalPaidUSD);
+
+                if ($remainingAmountUSD <= 0.01) {
+                    continue; // Ya está pagado en la práctica
+                }
+
+                // Formatear monedas
+                $currency = $firstInvoice->currency;
+                $remainingOriginal = $group->sum('total_amount');
+
+                if ($currency === 'Bs') {
+                    $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
+                    $remainingOriginal = round($remainingAmountUSD * $rate, 2);
+                } elseif ($currency === 'COP') {
+                    $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
+                    $remainingOriginal = round($remainingAmountUSD * $rate, 2);
+                } else {
+                    $remainingOriginal = $remainingAmountUSD;
+                }
+
+                $formattedDebt = number_format($remainingOriginal, 2) . ' ' . $currency;
+                if ($currency !== 'USD') {
+                    $formattedDebt .= " (≈ " . number_format($remainingAmountUSD, 2) . " USD)";
+                }
+
+                $suppliersWithDebt[] = [
+                    'id' => $supplierId,
+                    'name' => $supplierName,
+                    'pending_amount_usd' => $remainingAmountUSD,
+                    'pending_amount_original' => $remainingOriginal,
+                    'currency' => $currency,
+                    'formatted_debt' => $formattedDebt,
+                    'invoice_ids' => $invoiceIds,
+                    'invoice_count' => $group->count()
+                ];
+            }
+
+            if (empty($suppliersWithDebt)) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes al día de hoy.", $chatId);
+                return;
+            }
+
+            // Guardar en la cola y empezar
+            Cache::put('telegram_payments_queue_' . $fromId, [
+                'suppliers' => $suppliersWithDebt,
+                'index' => 0
+            ], 1800);
+
+            $this->sendNextSupplierPaymentPrompt($fromId, $chatId);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al inicializar flujo de pagos: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al cargar las deudas pendientes: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Enviar el prompt del siguiente proveedor con deuda en la cola.
+     */
+    protected function sendNextSupplierPaymentPrompt($fromId, $chatId, ?int $editMessageId = null): void
+    {
+        $queue = Cache::get('telegram_payments_queue_' . $fromId);
+        if (!$queue || !isset($queue['suppliers']) || $queue['index'] >= count($queue['suppliers'])) {
+            $msg = "✅ *[PAGOS COMPLETADOS]*\n\nNo quedan más proveedores con deudas pendientes por revisar en tu cola actual.";
+            if ($editMessageId) {
+                $token = config('services.telegram.bot_token');
+                \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $editMessageId,
+                    'text' => $msg,
+                    'parse_mode' => 'Markdown',
+                ]);
+            } else {
+                $this->telegramService->sendMessage($msg, $chatId);
+            }
+            Cache::forget('telegram_payments_queue_' . $fromId);
+            Cache::forget('telegram_state_' . $fromId);
+            return;
+        }
+
+        $supplier = $queue['suppliers'][$queue['index']];
+        $msg = "💳 *[PAGO DE PROVEEDOR]*\n\n"
+             . "🏢 *Proveedor:* *{$supplier['name']}*\n"
+             . "💰 *Monto de Deuda:* `{$supplier['formatted_debt']}`\n"
+             . "📄 *Facturas Pendientes:* `{$supplier['invoice_count']}`\n\n"
+             . "¿Deseas registrar un pago para este proveedor ahora?";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '💳 Registrar Pago', 'callback_data' => "pay_supplier_{$supplier['id']}"],
+                    ['text' => '⏭️ Saltar', 'callback_data' => "skip_supplier_{$supplier['id']}"],
+                ],
+                [
+                    ['text' => '❌ Salir del Flujo', 'callback_data' => "exit_payments"]
+                ]
+            ]
+        ];
+
+        if ($editMessageId) {
+            $token = config('services.telegram.bot_token');
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $editMessageId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => json_encode($replyMarkup)
+            ]);
+        } else {
+            $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+        }
+    }
+
+    /**
+     * Iniciar el proceso de pago para el proveedor seleccionado.
+     */
+    protected function startPaymentForSupplier(int $supplierId, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $queue = Cache::get('telegram_payments_queue_' . $fromId);
+        if (!$queue) {
+            $this->answerCallback($callbackQueryId, 'Sesión expirada.');
+            return;
+        }
+
+        $supplier = $queue['suppliers'][$queue['index']];
+
+        // Guardar estado
+        Cache::put('telegram_state_' . $fromId, [
+            'state' => 'waiting_for_payment_currency',
+            'supplier_id' => $supplier['id'],
+            'supplier_name' => $supplier['name'],
+            'invoice_ids' => $supplier['invoice_ids'],
+            'total_debt' => $supplier['formatted_debt'],
+            'total_debt_usd' => $supplier['pending_amount_usd']
+        ], 600);
+
+        $this->answerCallback($callbackQueryId, 'Iniciando registro de pago.');
+
+        $msg = "💱 *[REGISTRAR PAGO - PASO 1]*\n\n"
+             . "🏢 *Proveedor:* {$supplier['name']}\n"
+             . "💰 *Deuda:* `{$supplier['formatted_debt']}`\n\n"
+             . "Selecciona la **moneda** con la que realizarás el pago:";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '💵 USD', 'callback_data' => 'pay_curr_USD'],
+                    ['text' => '🇨🇴 COP', 'callback_data' => 'pay_curr_COP'],
+                    ['text' => '🇻🇪 Bs (VES)', 'callback_data' => 'pay_curr_VES'],
+                ],
+                [
+                    ['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']
+                ]
+            ]
+        ];
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode($replyMarkup)
+        ]);
+    }
+
+    /**
+     * Saltar el proveedor actual.
+     */
+    protected function skipSupplierInPaymentQueue(int $supplierId, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $queue = Cache::get('telegram_payments_queue_' . $fromId);
+        if ($queue) {
+            $queue['index']++;
+            Cache::put('telegram_payments_queue_' . $fromId, $queue, 1800);
+            $this->answerCallback($callbackQueryId, 'Saltando proveedor.');
+            $this->sendNextSupplierPaymentPrompt($fromId, $chatId, $messageId);
+        } else {
+            $this->answerCallback($callbackQueryId, 'Sesión expirada.');
+        }
+    }
+
+    /**
+     * Salir del flujo de pagos.
+     */
+    protected function exitPaymentsFlow($fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        Cache::forget('telegram_payments_queue_' . $fromId);
+        Cache::forget('telegram_state_' . $fromId);
+        $this->answerCallback($callbackQueryId, 'Flujo cancelado.');
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => "❌ *[FLUJO DE PAGOS CANCELADO]*\n\nHas salido del gestor de pagos pendientes.",
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Al seleccionar la moneda del pago.
+     */
+    protected function selectPaymentCurrency(string $currency, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_payment_currency') {
+            $this->answerCallback($callbackQueryId, 'Sesión de pago inválida.');
+            return;
+        }
+
+        $stateData['payment_currency'] = $currency;
+        $stateData['state'] = 'waiting_for_payment_method';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, "Moneda: {$currency}");
+
+        $msg = "💳 *[REGISTRAR PAGO - PASO 2]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Deuda:* `{$stateData['total_debt']}`\n"
+             . "💱 *Moneda seleccionada:* `{$currency}`\n\n"
+             . "Selecciona el **método de pago**:";
+
+        // Generar botones según la moneda (idéntico al sistema)
+        $buttons = [];
+        if ($currency === 'USD') {
+            $buttons[] = [['text' => '💵 Efectivo (CASH)', 'callback_data' => 'pay_method_CASH']];
+            $buttons[] = [['text' => '🔸 Binance (BINANCE)', 'callback_data' => 'pay_method_BINANCE']];
+            $buttons[] = [['text' => '🔵 PayPal (PAYPAL)', 'callback_data' => 'pay_method_PAYPAL']];
+            $buttons[] = [['text' => '📊 Crédito (CREDIT)', 'callback_data' => 'pay_method_CREDIT']];
+        } elseif ($currency === 'COP') {
+            $buttons[] = [['text' => '💵 Efectivo COP (CASH)', 'callback_data' => 'pay_method_CASH']];
+            $buttons[] = [['text' => '🏛️ Transferencia (TRANSFER)', 'callback_data' => 'pay_method_TRANSFER']];
+        } else { // VES / Bs
+            $buttons[] = [['text' => '💵 Efectivo Bs (CASH)', 'callback_data' => 'pay_method_CASH']];
+            $buttons[] = [['text' => '💳 Tarjeta (CARD)', 'callback_data' => 'pay_method_CARD']];
+            $buttons[] = [['text' => '📱 Pago Móvil (MOBILE)', 'callback_data' => 'pay_method_MOBILE']];
+            $buttons[] = [['text' => '🏛️ Transferencia (TRANSFER)', 'callback_data' => 'pay_method_TRANSFER']];
+        }
+        $buttons[] = [['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']];
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode(['inline_keyboard' => $buttons])
+        ]);
+    }
+
+    /**
+     * Al seleccionar el método de pago.
+     */
+    protected function selectPaymentMethod(string $method, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_payment_method') {
+            $this->answerCallback($callbackQueryId, 'Sesión de pago inválida.');
+            return;
+        }
+
+        $stateData['payment_method'] = $method;
+        $stateData['state'] = 'waiting_for_payment_amount';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, "Método: {$method}");
+
+        $msg = "💰 *[REGISTRAR PAGO - PASO 3]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Deuda:* `{$stateData['total_debt']}`\n"
+             . "💱 *Moneda:* `{$stateData['payment_currency']}`\n"
+             . "💳 *Método:* `{$method}`\n\n"
+             . "Por favor, escribe el **monto a pagar** (envíalo como mensaje de texto, ej: `150` o `150.50`):";
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Procesar el monto escrito por el usuario.
+     */
+    protected function processUserProvidedPaymentAmount(string $text, $fromId, $chatId, array $stateData): void
+    {
+        // Limpiar precio
+        $priceStr = str_replace(['$', ' ', ','], ['', '', '.'], $text);
+        if (!is_numeric($priceStr) || (float) $priceStr <= 0) {
+            $this->telegramService->sendMessage("❌ El monto ingresado no es válido. Por favor ingresa un número mayor a 0 (ej: `120` o `120.50`):", $chatId);
+            return;
+        }
+
+        $amount = (float) $priceStr;
+        $stateData['payment_amount'] = $amount;
+        $stateData['state'] = 'waiting_for_payment_photo';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $msg = "📸 *[REGISTRAR PAGO - PASO 4]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Monto a Pagar:* " . number_format($amount, 2) . " {$stateData['payment_currency']}\n\n"
+             . "Por favor, envía la **foto del comprobante de pago** (capture de pantalla de la transferencia, Zelle, etc.).\n\n"
+             . "_Si no tienes foto o prefieres no subirla, escribe *saltar* o presiona el botón de abajo._";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '⏭️ Saltar Foto', 'callback_data' => 'skip_payment_photo']
+                ],
+                [
+                    ['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']
+                ]
+            ]
+        ];
+
+        $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+    }
+
+    /**
+     * Saltar foto desde texto.
+     */
+    protected function skipPaymentPhoto($fromId, $chatId, array $stateData): void
+    {
+        $stateData['photo_url'] = null;
+        $stateData['state'] = 'waiting_for_payment_reference_manual';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $msg = "📝 *[REFERENCIA DE TRANSACCIÓN]*\n\n"
+             . "Por favor, escribe el **número de referencia** de la transacción (o escribe `ninguno` si no aplica):";
+
+        $this->telegramService->sendMessage($msg, $chatId);
+    }
+
+    /**
+     * Saltar foto desde callback.
+     */
+    protected function skipPaymentPhotoFromCallback($fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_payment_photo') {
+            $this->answerCallback($callbackQueryId, 'Sesión inválida.');
+            return;
+        }
+
+        $stateData['photo_url'] = null;
+        $stateData['state'] = 'waiting_for_payment_reference_manual';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, 'Foto saltada.');
+
+        $msg = "📝 *[REFERENCIA DE TRANSACCIÓN]*\n\n"
+             . "Por favor, escribe el **número de referencia** de la transacción (o escribe `ninguno` si no aplica):";
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Procesar la foto enviada por el usuario.
+     */
+    protected function processPaymentPhoto(array $photoArray, $fromId, $chatId, array $stateData): void
+    {
+        $this->telegramService->sendMessage("⚡ *[PROCESANDO COMPROBANTE]*\n\nAnalizando la imagen con Inteligencia Artificial para extraer el número de referencia...", $chatId);
+
+        try {
+            // Obtener archivo de Telegram
+            $largestPhoto = end($photoArray);
+            $fileId = $largestPhoto['file_id'];
+            $fileUrl = $this->telegramService->getFileUrl($fileId);
+
+            if (!$fileUrl) {
+                throw new \Exception('No se pudo obtener la URL de descarga de la foto de Telegram.');
+            }
+
+            // Guardar archivo temporalmente
+            $tempDir = storage_path('app/temp_payments');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+
+            $extension = pathinfo(parse_url($fileUrl, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg';
+            $tempPath = $tempDir . '/' . uniqid('pay_') . '.' . $extension;
+            file_put_contents($tempPath, file_get_contents($fileUrl));
+
+            // Llamar a Gemini para extraer la referencia
+            $geminiService = app(\App\Services\GeminiService::class);
+            $reference = $geminiService->extractPaymentReference($tempPath);
+
+            // Guardar la foto en la carpeta pública del ERP
+            $publicPaymentsDir = public_path('uploads/payments');
+            if (!file_exists($publicPaymentsDir)) {
+                mkdir($publicPaymentsDir, 0755, true);
+            }
+            $finalFileName = uniqid('pay_img_') . '.' . $extension;
+            $finalPath = $publicPaymentsDir . '/' . $finalFileName;
+            rename($tempPath, $finalPath);
+
+            $stateData['photo_url'] = '/uploads/payments/' . $finalFileName;
+
+            if (!empty($reference)) {
+                $stateData['reference'] = $reference;
+                $stateData['state'] = 'waiting_for_payment_reference_confirm';
+                Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+                $msg = "🔍 *[REFERENCIA DETECTADA]*\n\n"
+                     . "Se ha extraído el número de referencia:\n"
+                     . "👉 `{$reference}`\n\n"
+                     . "¿Es correcto? Si es correcto presiona el botón. Si no es correcto, simplemente escribe el número de referencia correcto:";
+
+                $replyMarkup = [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '✅ Sí, Confirmar y Registrar', 'callback_data' => 'confirm_payment_registration']
+                        ]
+                    ]
+                ];
+                $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+            } else {
+                // No se pudo detectar, pedir manual
+                $stateData['state'] = 'waiting_for_payment_reference_manual';
+                Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+                $msg = "⚠️ *[REFERENCIA NO DETECTADA]*\n\n"
+                     . "No se pudo extraer de forma automática el número de referencia del comprobante.\n\n"
+                     . "Por favor, escribe el **número de referencia** manualmente para completar el pago:";
+                $this->telegramService->sendMessage($msg, $chatId);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al procesar comprobante de pago: ' . $e->getMessage());
+            $stateData['state'] = 'waiting_for_payment_reference_manual';
+            Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+            $this->telegramService->sendMessage("⚠️ Ocurrió un inconveniente al analizar el comprobante. Por favor, escribe el **número de referencia** manualmente:", $chatId);
+        }
+    }
+
+    /**
+     * Procesar la referencia escrita manualmente.
+     */
+    protected function processUserProvidedPaymentReference(string $text, $fromId, $chatId, array $stateData): void
+    {
+        $ref = trim($text);
+        $stateData['reference'] = (strtolower($ref) === 'ninguno') ? null : $ref;
+        
+        // Ejecutar el pago inmediatamente
+        $this->executeTelegramPayment($fromId, $chatId, $stateData);
+    }
+
+    /**
+     * Confirmar el pago cuando el OCR fue correcto y el usuario presionó el botón de confirmar.
+     */
+    protected function confirmPaymentRegistration($fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData) {
+            $this->answerCallback($callbackQueryId, 'Sesión inválida.');
+            return;
+        }
+
+        $this->answerCallback($callbackQueryId, 'Registrando pago...');
+        $this->executeTelegramPayment($fromId, $chatId, $stateData);
+    }
+
+    /**
+     * Registrar el pago en la base de datos siguiendo la arquitectura del ERP.
+     */
+    protected function executeTelegramPayment($fromId, $chatId, array $stateData): void
+    {
+        $adminId = \App\Models\User::first()?->id ?? 1;
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            // Autenticar temporalmente para evitar problemas de auditoría
+            \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
+            $invoiceIds = $stateData['invoice_ids'];
+            $paymentCurrency = $stateData['payment_currency'];
+            $paymentAmount = $stateData['payment_amount'];
+            $paymentMethod = $stateData['payment_method'];
+            $reference = $stateData['reference'] ?? null;
+            $photoUrl = $stateData['photo_url'] ?? null;
+
+            // 1. Obtener facturas y calcular monto total de la deuda
+            $invoices = \App\Models\Invoice::whereIn('id', $invoiceIds)->get();
+            
+            // Tasa de cambio de la moneda del pago
+            $normalizedCurrency = ($paymentCurrency === 'Bs') ? 'VES' : $paymentCurrency;
+            $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $normalizedCurrency)->first();
+            $rateValue = $exchangeRate ? (float) $exchangeRate->rate : 1.0000;
+
+            // Calcular monto equivalente en USD
+            if ($paymentCurrency === 'USD') {
+                $amountUSD = $paymentAmount;
+            } else {
+                $amountUSD = round($paymentAmount / $rateValue, 2);
+            }
+
+            // Calcular deuda total restante en USD de estas facturas antes de este pago
+            $totalInvoiceDebtUSD = 0;
+            foreach ($invoices as $invoice) {
+                $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                    $query->where('id', $invoice->id);
+                })->get();
+
+                $totalPaidUSD = 0;
+                foreach ($invoicePayments as $p) {
+                    if ($p->payment_method === 'USD') {
+                        $totalPaidUSD += $p->amount;
+                    } else {
+                        $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                        if ($exRate) {
+                            $totalPaidUSD += round($p->amount / $exRate->rate, 2);
+                        }
+                    }
+                }
+                $totalInvoiceDebtUSD += max(0, $invoice->total_usd - $totalPaidUSD);
+            }
+
+            // 2. Registrar el pago en invoice_payments
+            $payment = \App\Models\InvoicePayment::create([
+                'payment_date' => now()->toDateString(),
+                'amount' => $paymentAmount,
+                'payment_method' => $normalizedCurrency,
+                'reference' => $reference,
+                'status' => 'paid',
+                'payment_by' => $adminId,
+                'photo_url' => $photoUrl,
+                'method' => $paymentMethod
+            ]);
+
+            // 3. Crear relaciones pivot
+            foreach ($invoiceIds as $invoiceId) {
+                \Illuminate\Support\Facades\DB::table('invoice_payment_invoice')->insert([
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoiceId,
+                ]);
+            }
+
+            // 4. Determinar estado de pago (Completo si cubre el total con tolerancia)
+            $tolerance = 0.05;
+            $isFullPayment = ($amountUSD >= ($totalInvoiceDebtUSD - $tolerance));
+            $paymentStatus = $isFullPayment ? 1 : 0; // 1 = Pagado, 0 = Pendiente (pago parcial)
+
+            // Actualizar facturas
+            $updateData = [
+                'status' => 'ordered',
+                'status_payment' => $paymentStatus,
+                'updated_at' => now(),
+            ];
+            if ($isFullPayment) {
+                $updateData['payment_date'] = now()->toDateString();
+            }
+            \App\Models\Invoice::whereIn('id', $invoiceIds)->update($updateData);
+
+            // 5. Crear registro de Gasto (Expense)
+            $category = \App\Models\ExpenseCategory::firstOrCreate(['name' => 'Pagos de Facturas']);
+            $firstInvoice = $invoices->first();
+
+            $mapping = [
+                'CASH' => 'Efectivo',
+                'CARD' => 'Tarjeta',
+                'MOBILE' => 'Pago Móvil',
+                'TRANSFER' => 'Transferencia',
+                'BINANCE' => 'Binance',
+                'PAYPAL' => 'PayPal',
+                'CREDIT' => 'Crédito',
+            ];
+            $countValue = $mapping[$paymentMethod] ?? 'Efectivo';
+
+            $expenseRate = $firstInvoice->is_indexed ? $rateValue : ($firstInvoice->currency === 'USD' ? 1.0000 : $firstInvoice->exchange_rate);
+            $taxAmount = $firstInvoice->is_indexed ? ($firstInvoice->tax_amount / $firstInvoice->exchange_rate) * $expenseRate ?? 0 : ($firstInvoice->tax_amount ?? 0);
+
+            \App\Models\Expense::create([
+                'name' => "Pago Factura # {$firstInvoice->invoice_number} - Proveedor: {$firstInvoice->supplier->name}",
+                'category_id' => $category->id,
+                'amount' => $paymentAmount,
+                'conversion_rate' => $rateValue,
+                'currency' => $normalizedCurrency,
+                'expense_date' => $payment->payment_date,
+                'user_id' => $adminId,
+                'has_invoice' => true,
+                'is_deductible' => true,
+                'tax_amount' => $taxAmount,
+                'total_usd' => $amountUSD,
+                'invoice_number' => $firstInvoice->invoice_number,
+                'invoice_date' => $firstInvoice->created_invoice_date,
+                'control_number' => $firstInvoice->control_number,
+                'type_of_expense' => 'Normal',
+                'count' => $countValue,
+            ]);
+
+            // 6. Registrar Transacción de caja
+            \App\Models\Transaction::create([
+                'user_id' => $adminId,
+                'category_id' => $category->id,
+                'exchange_rate' => $rateValue,
+                'description' => substr("Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$firstInvoice->supplier->name}", 0, 1000),
+                'currency' => $normalizedCurrency,
+                'type' => $paymentMethod,
+                'amount' => $paymentAmount,
+                'movement_type' => 'OUT',
+                'transaction_date' => $payment->payment_date,
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            // 7. Responder con éxito y continuar con la cola
+            $statusText = $isFullPayment ? 'Pago Completo (Liquidado) 🟩' : 'Pago Parcial (Saldo Restante) 🟨';
+            $remainingText = $isFullPayment ? '0.00 USD' : number_format(max(0, $totalInvoiceDebtUSD - $amountUSD), 2) . ' USD';
+
+            $msg = "✅ *[PAGO PROCESADO EXITOSAMENTE]*\n\n"
+                 . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+                 . "💰 *Monto Pagado:* " . number_format($paymentAmount, 2) . " {$paymentCurrency}\n"
+                 . "📈 *Estatus del Pago:* `{$statusText}`\n"
+                 . "💵 *Monto en USD:* " . number_format($amountUSD, 2) . " USD\n"
+                 . "📝 *Referencia:* " . ($reference ?: 'Ninguna') . "\n"
+                 . "⚖️ *Saldo Restante:* `{$remainingText}`\n\n"
+                 . "_El pago ha quedado asentado en el histórico, egresos y cierre de caja del ERP._";
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+            // Avanzar en la cola de proveedores
+            $queue = Cache::get('telegram_payments_queue_' . $fromId);
+            if ($queue) {
+                $queue['index']++;
+                Cache::put('telegram_payments_queue_' . $fromId, $queue, 1800);
+            }
+
+            // Limpiar estado temporal de este pago
+            Cache::forget('telegram_state_' . $fromId);
+
+            // Presentar el siguiente proveedor
+            $this->sendNextSupplierPaymentPrompt($fromId, $chatId);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Log::error('[TelegramWebhook] Error al procesar pago: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->telegramService->sendMessage("❌ Error al registrar el pago en la base de datos: " . $e->getMessage(), $chatId);
+            Cache::forget('telegram_state_' . $fromId);
+        }
     }
 }
