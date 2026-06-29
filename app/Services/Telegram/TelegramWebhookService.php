@@ -474,7 +474,7 @@ class TelegramWebhookService
                     'name' => $invoiceData['supplier_name'],
                     'social_reason' => $invoiceData['supplier_name'],
                     'rif' => $invoiceData['supplier_rif'] ?? 'S/R',
-                    'type' => \App\Enums\SupplierType::OTHER ?? 'other',
+                    'type' => \App\Enums\SupplierType::EXTERNO,
                 ]);
 
                 $invoiceData['supplier_id'] = $supplier->id;
