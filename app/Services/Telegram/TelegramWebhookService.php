@@ -1658,24 +1658,16 @@ class TelegramWebhookService
         $this->telegramService->sendMessage("⚡ *[PROCESANDO COMPROBANTE]*\n\nAnalizando la imagen con Inteligencia Artificial para extraer el número de referencia...", $chatId);
 
         try {
-            // Obtener archivo de Telegram
+            // Obtener y descargar archivo de Telegram usando el servicio existente
             $largestPhoto = end($photoArray);
             $fileId = $largestPhoto['file_id'];
-            $fileUrl = $this->telegramService->getFileUrl($fileId);
+            $tempPath = $this->telegramService->downloadFile($fileId);
 
-            if (!$fileUrl) {
-                throw new \Exception('No se pudo obtener la URL de descarga de la foto de Telegram.');
+            if (!$tempPath || !file_exists($tempPath)) {
+                throw new \Exception('No se pudo descargar el archivo del comprobante de Telegram.');
             }
 
-            // Guardar archivo temporalmente
-            $tempDir = storage_path('app/temp_payments');
-            if (!file_exists($tempDir)) {
-                mkdir($tempDir, 0755, true);
-            }
-
-            $extension = pathinfo(parse_url($fileUrl, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg';
-            $tempPath = $tempDir . '/' . uniqid('pay_') . '.' . $extension;
-            file_put_contents($tempPath, file_get_contents($fileUrl));
+            $extension = pathinfo($tempPath, PATHINFO_EXTENSION) ?: 'jpg';
 
             // Llamar a Gemini para extraer la referencia
             $geminiService = app(\App\Services\GeminiService::class);
