@@ -1245,23 +1245,29 @@ class TelegramWebhookService
                         continue;
                     }
 
-                    // Obtener saldo restante en la moneda original de la factura
-                    if ($invoice->currency === 'Bs') {
-                        if ($invoice->is_indexed) {
-                            $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
-                        } else {
-                            $rate = $invoice->exchange_rate ?? 1.00;
-                        }
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * (float)$rate, 2);
-                    } elseif ($invoice->currency === 'COP') {
-                        if ($invoice->is_indexed) {
-                            $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1.00;
-                        } else {
-                            $rate = $invoice->exchange_rate ?? 1.00;
-                        }
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * (float)$rate, 2);
+                    // Replicar exactamente la lógica de /finances/pending-payments
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
                     } else {
-                        $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        if ($invoicePaidUSD > 0) {
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
                     }
 
                     $formattedDate = $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m') : '-';
