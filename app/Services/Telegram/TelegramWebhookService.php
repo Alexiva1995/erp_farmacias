@@ -82,6 +82,10 @@ class TelegramWebhookService
                 $this->processUserProvidedSupplierName(trim($text), $fromId, $chatId, $stateData);
                 return;
             }
+            if ($stateData['state'] === 'waiting_for_products_list') {
+                $this->processProductsList(trim($text), $fromId, $chatId);
+                return;
+            }
         }
 
         // Caso A: Se recibe una foto y se está esperando una factura
@@ -107,6 +111,19 @@ class TelegramWebhookService
             $this->processReservationCancellation(trim($matches[1]), $chatId);
             return;
         }
+
+        // Caso D: Comando para registrar productos rápidamente
+        if (preg_match('/^(?:registrar\s+productos?|\/registrar_productos?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+            $productsList = isset($matches[1]) ? trim($matches[1]) : null;
+            if ($productsList) {
+                $this->processProductsList($productsList, $fromId, $chatId);
+            } else {
+                Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
+                $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
+            }
+            return;
+        }
+    }
     }
 
     /**
@@ -678,5 +695,74 @@ class TelegramWebhookService
             'text' => $msg,
             'parse_mode' => 'Markdown',
         ]);
+    }
+
+    /**
+     * Procesar y registrar una lista de productos en la base de datos.
+     */
+    protected function processProductsList(string $text, $fromId, $chatId): void
+    {
+        if (empty($text)) {
+            $this->telegramService->sendMessage("⚠️ La lista de productos está vacía. Inténtalo de nuevo o escribe `cancelar`.", $chatId);
+            return;
+        }
+
+        // Separar por salto de línea o por comas
+        $lines = preg_split('/[\n,]+/', $text);
+        $created = [];
+        $skipped = [];
+
+        foreach ($lines as $line) {
+            $name = trim($line);
+            if (empty($name)) {
+                continue;
+            }
+
+            // Verificar si ya existe
+            $exists = \App\Models\Product::where('name', 'like', $name)->exists();
+            if ($exists) {
+                $skipped[] = $name;
+                continue;
+            }
+
+            // Crear el producto con valores mínimos
+            \App\Models\Product::create([
+                'name' => $name,
+                'unit_cost' => 0,
+                'sale_price' => 0,
+                'presentation' => 1,
+                'unit_of_measure' => 'und',
+                'stock' => 0,
+            ]);
+
+            $created[] = $name;
+        }
+
+        // Limpiar el estado
+        Cache::forget('telegram_state_' . $fromId);
+
+        // Armar mensaje de respuesta
+        $msg = "🏁 *[REGISTRO DE PRODUCTOS COMPLETADO]*\n\n";
+        
+        if (!empty($created)) {
+            $msg .= "✅ *Creados con éxito (" . count($created) . "):*\n";
+            foreach ($created as $p) {
+                $msg .= "• {$p}\n";
+            }
+            $msg .= "\n";
+        }
+
+        if (!empty($skipped)) {
+            $msg .= "⚠️ *Omitidos porque ya existían (" . count($skipped) . "):*\n";
+            foreach ($skipped as $p) {
+                $msg .= "• {$p}\n";
+            }
+        }
+
+        if (empty($created) && empty($skipped)) {
+            $msg .= "❌ No se pudo procesar ningún nombre válido de la lista.";
+        }
+
+        $this->telegramService->sendMessage($msg, $chatId);
     }
 }
