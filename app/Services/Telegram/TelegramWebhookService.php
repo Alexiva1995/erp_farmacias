@@ -419,6 +419,9 @@ class TelegramWebhookService
             try {
                 $isInformal = !empty($stateData['is_informal']);
                 
+                // Obtener un usuario administrador para asociarlo al registro automático de la factura
+                $adminId = \App\Models\User::where('is_admin', true)->first()?->id ?? 1;
+
                 $payload = [
                     'supplier_id' => $invoiceData['supplier_id'],
                     'invoice_number' => $invoiceData['invoice_number'],
@@ -432,6 +435,8 @@ class TelegramWebhookService
                     'tax_amount' => $isInformal ? 0 : ($invoiceData['tax_amount'] ?? 0),
                     'total_amount' => $invoiceData['total_amount'],
                     'exchange_rate' => 1,
+                    'registered_by' => $adminId,
+                    'uploaded_by' => $adminId,
                 ];
 
                 $this->invoiceActionService->createInvoice($payload);
