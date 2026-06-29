@@ -56,6 +56,7 @@ class CashClosing extends Model
         'usd_binance_payment_credit',
         'daily_closure_id',
         'declared_cop',
+        'declared_cop_transfer',
         'declared_usd',
         'declared_credit',
         'declared_bs_mobile',

@@ -20,6 +20,7 @@ const dialogVisible = computed({
 const sobranteCop = ref(0);
 
 const declaredCop = ref("");
+const declaredCopTransfer = ref("");
 const declaredUsd = ref("");
 const declaredCredit = ref("");
 const declaredBsMobile = ref("");
@@ -110,6 +111,7 @@ const completeClosure = () => {
       entregar_efectivo_cop: copDelivered + calcSobrante,
       is_blind: true,
       declared_cop: decCop,
+      declared_cop_transfer: parseFloat(declaredCopTransfer.value) || 0,
       declared_usd: parseFloat(declaredUsd.value) || 0,
       declared_credit: parseFloat(declaredCredit.value) || 0,
       declared_bs_mobile: parseFloat(declaredBsMobile.value) || 0,
@@ -167,6 +169,12 @@ const completeClosure = () => {
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en COP (Efectivo)</div>
                 <VTextField v-model="declaredCop" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              </VCard>
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en COP (Transferencia / Bancolombia)</div>
+                <VTextField v-model="declaredCopTransfer" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
             <VCol cols="12" sm="6">

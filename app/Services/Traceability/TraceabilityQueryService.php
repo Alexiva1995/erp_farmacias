@@ -24,7 +24,8 @@ class TraceabilityQueryService
             'order',
             'invoice.supplier',
             'supplier',
-            'product'
+            'product',
+            'dish'
         ]);
 
         if ($request->filled('q')) {
@@ -95,7 +96,8 @@ class TraceabilityQueryService
             'order',
             'invoice.supplier',
             'supplier',
-            'product'
+            'product',
+            'dish'
         ]);
 
         if ($request->filled('q')) {

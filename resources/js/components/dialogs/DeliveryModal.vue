@@ -186,6 +186,7 @@ const groupedCardTotals = computed(() => {
         seller_id: sellerId,
         seller_name: sellerName,
         declared_cop: closing.declared_cop,
+        declared_cop_transfer: closing.declared_cop_transfer,
         declared_usd: closing.declared_usd,
         declared_credit: closing.declared_credit,
         declared_bs_mobile: closing.declared_bs_mobile,
@@ -375,6 +376,7 @@ const editForm = ref({
   seller_name: "",
   declared_usd: 0,
   declared_cop: 0,
+  declared_cop_transfer: 0,
   declared_bs_mobile: 0,
   declared_bs_card: 0,
   declared_credit: 0,
@@ -386,6 +388,7 @@ const openEditDialog = (seller) => {
     seller_name: seller.seller_name,
     declared_usd: seller.declared_usd || 0,
     declared_cop: seller.declared_cop || 0,
+    declared_cop_transfer: seller.declared_cop_transfer || 0,
     declared_bs_mobile: seller.declared_bs_mobile || 0,
     declared_bs_card: seller.declared_bs_card || 0,
     declared_credit: seller.declared_credit || 0,
@@ -397,9 +400,10 @@ const saveEdit = async () => {
   if (!editForm.value.closing_id) return;
   isSavingEdit.value = true;
   try {
-    const response = await axios.patch("/cash-closures/update-blind-amounts", {
+    const response = await axios.patch("/cash-closure/update-blind-amounts", {
       id: editForm.value.closing_id,
       declared_cop: editForm.value.declared_cop,
+      declared_cop_transfer: editForm.value.declared_cop_transfer,
       declared_usd: editForm.value.declared_usd,
       declared_credit: editForm.value.declared_credit,
       declared_bs_mobile: editForm.value.declared_bs_mobile,
@@ -653,6 +657,7 @@ defineExpose({ printReport });
                     <tr v-if="seller.total_cop_transfer > 0">
                       <td class="font-weight-black text-disabled uppercase pl-6 py-2">Transferencia (COP):</td>
                       <td class="text-right py-2 pr-6 text-info font-weight-bold">
+                        <span v-if="seller.blind_mismatches?.has('cop_transfer')" class="text-error font-weight-black mr-1" title="Diferencia en Cierre Ciego">*</span>
                         {{ formatCurrency(seller.total_cop_transfer, 'COP') }}
                       </td>
                     </tr>
@@ -1060,6 +1065,16 @@ defineExpose({ printReport });
             <VTextField
               v-model.number="editForm.declared_cop"
               label="Efectivo COP"
+              type="number"
+              prefix="COP"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+          <VCol cols="12" md="6">
+            <VTextField
+              v-model.number="editForm.declared_cop_transfer"
+              label="Transf. COP (Bancolombia)"
               type="number"
               prefix="COP"
               variant="outlined"

@@ -16,6 +16,7 @@ class InventoryMovement extends Model
         'invoice_id',
         'supplier_id',
         'order_id',
+        'dish_id',
         'user_id',
         'stock_before',
         'stock_after',
@@ -65,6 +66,11 @@ class InventoryMovement extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function dish(): BelongsTo
+    {
+        return $this->belongsTo(Dish::class);
     }
 
     public function user(): BelongsTo
