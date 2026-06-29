@@ -1219,6 +1219,50 @@ class TelegramWebhookService
                     continue; // Ya está pagado en la práctica
                 }
 
+                // Recopilar la lista de facturas individuales con su saldo pendiente
+                $invoicesList = [];
+                foreach ($group as $invoice) {
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                        } else {
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    $invoiceRemainingOriginal = $invoice->total_amount;
+                    if ($invoice->currency === 'Bs') {
+                        $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                    } elseif ($invoice->currency === 'COP') {
+                        $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                    }
+
+                    $invoicesList[] = [
+                        'invoice_number' => $invoice->invoice_number,
+                        'remaining_amount' => $invoiceRemainingOriginal,
+                        'currency' => $invoice->currency,
+                        'remaining_usd' => $invoiceRemainingUSD,
+                    ];
+                }
+
                 // Formatear monedas
                 $currency = $firstInvoice->currency;
                 $remainingOriginal = $group->sum('total_amount');
@@ -1246,7 +1290,8 @@ class TelegramWebhookService
                     'currency' => $currency,
                     'formatted_debt' => $formattedDebt,
                     'invoice_ids' => $invoiceIds,
-                    'invoice_count' => $group->count()
+                    'invoices' => $invoicesList,
+                    'invoice_count' => count($invoicesList)
                 ];
             }
 
@@ -1294,10 +1339,22 @@ class TelegramWebhookService
         }
 
         $supplier = $queue['suppliers'][$queue['index']];
+
+        // Construir el listado detallado de facturas
+        $invoicesText = "";
+        foreach ($supplier['invoices'] as $inv) {
+            $invoicesText .= "• *Factura # {$inv['invoice_number']}:* " . number_format($inv['remaining_amount'], 2) . " {$inv['currency']}";
+            if ($inv['currency'] !== 'USD') {
+                $invoicesText .= " (≈ " . number_format($inv['remaining_usd'], 2) . " USD)";
+            }
+            $invoicesText .= "\n";
+        }
+
         $msg = "💳 *[PAGO DE PROVEEDOR]*\n\n"
              . "🏢 *Proveedor:* *{$supplier['name']}*\n"
-             . "💰 *Monto de Deuda:* `{$supplier['formatted_debt']}`\n"
-             . "📄 *Facturas Pendientes:* `{$supplier['invoice_count']}`\n\n"
+             . "💰 *Monto de Deuda Total:* `{$supplier['formatted_debt']}`\n\n"
+             . "📄 *Facturas Pendientes (al día de hoy):*\n"
+             . $invoicesText . "\n"
              . "¿Deseas registrar un pago para este proveedor ahora?";
 
         $replyMarkup = [
