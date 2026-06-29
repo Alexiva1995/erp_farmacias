@@ -1267,8 +1267,8 @@ class TelegramWebhookService
                 foreach ($payments as $payment) {
                     if ($payment->payment_method === 'USD') {
                         $totalPaidUSD += $payment->amount;
-                    } else {
-                        $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                        $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                        $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
                         if ($exchangeRate) {
                             $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
                         }
@@ -1292,8 +1292,8 @@ class TelegramWebhookService
                     foreach ($invoicePayments as $p) {
                         if ($p->payment_method === 'USD') {
                             $invoicePaidUSD += $p->amount;
-                        } else {
-                            $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
                             if ($exRate) {
                                 $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
                             }
@@ -1321,7 +1321,7 @@ class TelegramWebhookService
                                     $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                                 }
                             } elseif ($invoice->currency === 'COP') {
-                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first();
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
                                 if ($exchangeRate) {
                                     $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                                 }
@@ -1832,7 +1832,8 @@ class TelegramWebhookService
             
             // Tasa de cambio de la moneda del pago
             $normalizedCurrency = ($paymentCurrency === 'Bs' || $paymentCurrency === 'VES') ? 'BS' : $paymentCurrency;
-            $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $normalizedCurrency)->first();
+            $rateCurrency = ($normalizedCurrency === 'COP') ? 'COPC' : $normalizedCurrency;
+            $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
             $rateValue = $exchangeRate ? (float) $exchangeRate->rate : 1.0000;
 
             // Calcular monto equivalente en USD
@@ -1853,8 +1854,8 @@ class TelegramWebhookService
                 foreach ($invoicePayments as $p) {
                     if ($p->payment_method === 'USD') {
                         $totalPaidUSD += $p->amount;
-                    } else {
-                        $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                        $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                        $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
                         if ($exRate) {
                             $totalPaidUSD += round($p->amount / $exRate->rate, 2);
                         }
@@ -2036,8 +2037,8 @@ class TelegramWebhookService
                     foreach ($invoicePayments as $p) {
                         if ($p->payment_method === 'USD') {
                             $invoicePaidUSD += $p->amount;
-                        } else {
-                            $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
                             if ($exRate) {
                                 $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
                             }
@@ -2065,7 +2066,7 @@ class TelegramWebhookService
                                     $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                                 }
                             } elseif ($invoice->currency === 'COP') {
-                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first();
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
                                 if ($exchangeRate) {
                                     $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                                 }
@@ -2167,8 +2168,8 @@ class TelegramWebhookService
                     foreach ($invoicePayments as $p) {
                         if ($p->payment_method === 'USD') {
                             $invoicePaidUSD += $p->amount;
-                        } else {
-                            $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
                             if ($exRate) {
                                 $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
                             }
@@ -2205,7 +2206,7 @@ class TelegramWebhookService
                                     $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                                 }
                             } elseif ($invoice->currency === 'COP') {
-                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first();
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
                                 if ($exchangeRate) {
                                     $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                                 }
