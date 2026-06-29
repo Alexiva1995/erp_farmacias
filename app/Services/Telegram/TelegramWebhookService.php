@@ -895,7 +895,7 @@ class TelegramWebhookService
             // Autenticar temporalmente para evitar que falle en observadores o servicios
             \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
 
-            // Crear cabecera de la factura en el ERP
+            // Crear cabecera de la factura en el ERP en estado pendiente
             $invoice = \App\Models\Invoice::create([
                 'supplier_id' => $supplier->id,
                 'invoice_number' => $invoiceNumber,
@@ -912,11 +912,11 @@ class TelegramWebhookService
                 'exchange_rate' => $exchangeRate,
                 'registered_by' => $adminId,
                 'uploaded_by' => $adminId,
-                'status' => 'loaded', // Directamente cargada ya que insertamos sus detalles
+                'status' => 'pending',
                 'status_payment' => 0,
             ]);
 
-            // 3. Crear los detalles de la factura
+            // Crear los detalles de la factura
             foreach ($parsedItems as $index => $item) {
                 $invoice->details()->create([
                     'product_id' => $item['product']->id,
@@ -931,15 +931,35 @@ class TelegramWebhookService
                 ]);
             }
 
+            // Instanciar el servicio para transicionar los estados de forma idéntica al sistema
+            $invoiceActionService = app(\App\Services\Invoices\InvoiceActionService::class);
+
+            // 1. Finalizar carga (pasa a 'loaded')
+            $invoice = $invoiceActionService->finalizeInvoice($invoice);
+
+            // 2. Aprobar factura (pasa a 'to_order' y genera trazabilidad/lotes)
+            $invoice = $invoiceActionService->approveInvoice($invoice, ['payment_rule_id' => null]);
+
+            // 3. Consolidar/ordenar (pasa a 'ordered' con ubicación inicial)
+            $locationsData = [];
+            foreach ($invoice->details as $detail) {
+                $locationsData[] = [
+                    'id' => $detail->id,
+                    'location' => 'Por Asignar',
+                ];
+            }
+            $invoice = $invoiceActionService->updateInvoiceLocations($invoice, ['details' => $locationsData]);
+
             // Limpiar estado
             Cache::forget('telegram_state_' . $fromId);
 
             // Responder con éxito
-            $msg = "✅ *[FACTURA DE FRUTAS REGISTRADA]*\n\n"
+            $msg = "✅ *[FACTURA DE FRUTAS REGISTRADA Y PROCESADA]*\n\n"
                  . "🏢 *Proveedor:* {$supplier->name}\n"
                  . "🔢 *Factura Nº:* `{$invoiceNumber}`\n"
                  . "💰 *Monto Total:* " . number_format($totalAmount, 2) . " {$currency}\n"
-                 . "📅 *Vencimiento y Pago:* {$expDate}\n\n"
+                 . "📅 *Vencimiento y Pago:* {$expDate}\n"
+                 . "📈 *Estado actual:* `Procesada y Ordenada (Consolidada)`\n\n"
                  . "📦 *Detalles registrados:*\n";
 
             foreach ($parsedItems as $item) {
@@ -949,7 +969,7 @@ class TelegramWebhookService
             $this->telegramService->sendMessage($msg, $chatId);
 
         } catch (\Exception $e) {
-            Log::error('[TelegramWebhook] Error en registro rápido de frutas: ' . $e->getMessage());
+            \Log::error('[TelegramWebhook] Error en registro rápido de frutas: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->telegramService->sendMessage("❌ Error al registrar la factura de frutas: " . $e->getMessage(), $chatId);
         }
     }
