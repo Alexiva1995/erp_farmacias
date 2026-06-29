@@ -1925,11 +1925,12 @@ const detailsHeaders = computed(() => {
                   v-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.quantity"
                   type="number"
+                  step="any"
                   density="compact"
                   hide-details
                   variant="outlined"
                   class="editable-cell"
-                  min="1"
+                  min="0"
                 /><span
                   v-else
                   :class="{ 'returned-item': isItemReturned(item) }"
