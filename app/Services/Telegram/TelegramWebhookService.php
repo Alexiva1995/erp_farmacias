@@ -439,6 +439,18 @@ class TelegramWebhookService
         $chatId = $callbackQuery['message']['chat']['id'] ?? null;
         $fromId = $callbackQuery['from']['id'] ?? null;
 
+        if (str_starts_with($callbackData, 'approve_fruit_invoice_')) {
+            $invoiceId = (int) substr($callbackData, strlen('approve_fruit_invoice_'));
+            $this->approveFruitInvoiceFromCallback($invoiceId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'keep_loaded_fruit_invoice_')) {
+            $invoiceId = (int) substr($callbackData, strlen('keep_loaded_fruit_invoice_'));
+            $this->keepLoadedFruitInvoiceFromCallback($invoiceId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
         // 1. Confirmar Registro de Factura
         if ($callbackData === "confirm_invoice_{$fromId}") {
             $invoiceData = Cache::get('telegram_pending_invoice_' . $fromId);
@@ -937,40 +949,114 @@ class TelegramWebhookService
             // 1. Finalizar carga (pasa a 'loaded')
             $invoice = $invoiceActionService->finalizeInvoice($invoice);
 
-            // 2. Aprobar factura (pasa a 'to_order' y genera trazabilidad/lotes)
-            $invoice = $invoiceActionService->approveInvoice($invoice, ['payment_rule_id' => null]);
-
-            // 3. Consolidar/ordenar (pasa a 'ordered' con ubicación inicial)
-            $locationsData = [];
-            foreach ($invoice->details as $detail) {
-                $locationsData[] = [
-                    'id' => $detail->id,
-                    'location' => 'Por Asignar',
-                ];
-            }
-            $invoice = $invoiceActionService->updateInvoiceLocations($invoice, ['details' => $locationsData]);
-
             // Limpiar estado
             Cache::forget('telegram_state_' . $fromId);
 
-            // Responder con éxito
-            $msg = "✅ *[FACTURA DE FRUTAS REGISTRADA Y PROCESADA]*\n\n"
+            // Enviar mensaje con botones interactivos de aprobación
+            $token = config('services.telegram.bot_token');
+            $msg = "✅ *[FACTURA DE FRUTAS CARGADA]*\n\n"
                  . "🏢 *Proveedor:* {$supplier->name}\n"
                  . "🔢 *Factura Nº:* `{$invoiceNumber}`\n"
                  . "💰 *Monto Total:* " . number_format($totalAmount, 2) . " {$currency}\n"
                  . "📅 *Vencimiento y Pago:* {$expDate}\n"
-                 . "📈 *Estado actual:* `Procesada y Ordenada (Consolidada)`\n\n"
+                 . "📈 *Estado actual:* `Cargada (loaded)`\n\n"
                  . "📦 *Detalles registrados:*\n";
 
             foreach ($parsedItems as $item) {
                 $msg .= "• *{$item['product']->name}*: {$item['quantity']} und / total: " . number_format($item['total_cost'], 2) . " {$currency} (Lote: `{$item['lot_number']}`)\n";
             }
 
-            $this->telegramService->sendMessage($msg, $chatId);
+            $msg .= "\n¿Deseas aprobar esta factura ahora para generar los movimientos de inventario y lotes?";
+
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '✅ Sí, Aprobar', 'callback_data' => "approve_fruit_invoice_{$invoice->id}"],
+                            ['text' => '📁 No, Dejar Cargada', 'callback_data' => "keep_loaded_fruit_invoice_{$invoice->id}"],
+                        ]
+                    ]
+                ])
+            ]);
 
         } catch (\Exception $e) {
             \Log::error('[TelegramWebhook] Error en registro rápido de frutas: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->telegramService->sendMessage("❌ Error al registrar la factura de frutas: " . $e->getMessage(), $chatId);
         }
+    }
+
+    /**
+     * Callback para aprobar la factura de frutas (llevar a to_order y generar inventario).
+     */
+    protected function approveFruitInvoiceFromCallback(int $invoiceId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::find($invoiceId);
+        if (!$invoice) {
+            $this->answerCallback($callbackQueryId, 'La factura no existe.');
+            return;
+        }
+
+        try {
+            $adminId = \App\Models\User::first()?->id ?? 1;
+            \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
+            $invoiceActionService = app(\App\Services\Invoices\InvoiceActionService::class);
+            $invoice = $invoiceActionService->approveInvoice($invoice, ['payment_rule_id' => null]);
+
+            $this->answerCallback($callbackQueryId, 'Factura aprobada con éxito.');
+
+            $token = config('services.telegram.bot_token');
+            $msg = "✅ *[FACTURA DE FRUTAS APROBADA]*\n\n"
+                 . "🏢 *Proveedor:* {$invoice->supplier->name}\n"
+                 . "🔢 *Factura Nº:* `{$invoice->invoice_number}`\n"
+                 . "💰 *Monto Total:* " . number_format($invoice->total_amount, 2) . " {$invoice->currency}\n"
+                 . "📅 *Vencimiento y Pago:* {$invoice->exp_date}\n"
+                 . "📈 *Estado actual:* `Por Ordenar (to_order)`\n\n"
+                 . "🚀 *Los movimientos de inventario y lotes físicos han sido generados exitosamente. La factura está lista para ser ordenada.*";
+
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al aprobar factura desde botón: ' . $e->getMessage());
+            $this->answerCallback($callbackQueryId, 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Callback para mantener la factura en estado cargada (loaded).
+     */
+    protected function keepLoadedFruitInvoiceFromCallback(int $invoiceId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::find($invoiceId);
+        if (!$invoice) {
+            $this->answerCallback($callbackQueryId, 'La factura no existe.');
+            return;
+        }
+
+        $this->answerCallback($callbackQueryId, 'Se conservó en estado cargada.');
+
+        $token = config('services.telegram.bot_token');
+        $msg = "📁 *[FACTURA CONSERVADA EN CARGADA]*\n\n"
+             . "🏢 *Proveedor:* {$invoice->supplier->name}\n"
+             . "🔢 *Factura Nº:* `{$invoice->invoice_number}`\n"
+             . "💰 *Monto Total:* " . number_format($invoice->total_amount, 2) . " {$invoice->currency}\n"
+             . "📅 *Vencimiento y Pago:* {$invoice->exp_date}\n"
+             . "📈 *Estado actual:* `Cargada (loaded)`\n\n"
+             . "ℹ️ *La factura se mantiene en estado cargada. Puedes aprobarla y gestionarla desde el panel web.*";
+
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+        ]);
     }
 }
