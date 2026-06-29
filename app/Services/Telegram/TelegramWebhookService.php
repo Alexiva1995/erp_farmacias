@@ -854,33 +854,53 @@ class TelegramWebhookService
                     }
                 }
                 $totalCost = (float) $priceStr;
-                $unitCost = $quantity > 0 ? $totalCost / $quantity : 0;
 
-                // Buscar o crear el producto en la base de datos
-                $product = \App\Models\Product::firstOrCreate(
-                    ['name' => $productName],
-                    [
-                        'unit_cost' => 0,
-                        'sale_price' => 0,
-                        'presentation' => 1,
-                        'unit_of_measure' => 'und',
-                        'stock' => 0,
-                    ]
-                );
+                // Buscar o crear el producto en la base de datos con IDs específicos si aplican
+                $productNameLower = strtolower($productName);
+                $productId = null;
+                if (str_contains($productNameLower, 'fresa')) {
+                    $productId = 1058;
+                } elseif (str_contains($productNameLower, 'cambur')) {
+                    $productId = 1059;
+                } elseif (str_contains($productNameLower, 'kiwi')) {
+                    $productId = 1060;
+                }
 
-                // Generar número de lote automático correlativo
-                $lotCount = $product->lots()->count() + 1;
-                $lotNumber = 'L-' . date('Ymd') . '-' . $lotCount;
-                $expirationDate = now()->addDays(7)->toDateString();
+                if ($productId) {
+                    $product = \App\Models\Product::find($productId);
+                } else {
+                    $product = \App\Models\Product::firstOrCreate(
+                        ['name' => $productName],
+                        [
+                            'unit_cost' => 0,
+                            'sale_price' => 0,
+                            'presentation' => 1,
+                            'unit_of_measure' => 'und',
+                            'stock' => 0,
+                        ]
+                    );
+                }
 
-                $parsedItems[] = [
-                    'product' => $product,
-                    'quantity' => $quantity,
-                    'total_cost' => $totalCost,
-                    'unit_cost' => $unitCost,
-                    'lot_number' => $lotNumber,
-                    'expiration_date' => $expirationDate,
-                ];
+                if ($product) {
+                    // Ajustar cantidad según la presentación del producto (para no registrar 3000 paquetes sino 3 paquetes de 1000g)
+                    $presentation = (float) ($product->presentation ?? 1);
+                    $finalQty = $presentation > 0 ? $quantity / $presentation : $quantity;
+                    $unitCost = $finalQty > 0 ? $totalCost / $finalQty : 0;
+
+                    // Generar número de lote automático correlativo
+                    $lotCount = $product->lots()->count() + 1;
+                    $lotNumber = 'L-' . date('Ymd') . '-' . $lotCount;
+                    $expirationDate = now()->addDays(7)->toDateString();
+
+                    $parsedItems[] = [
+                        'product' => $product,
+                        'quantity' => $finalQty,
+                        'total_cost' => $totalCost,
+                        'unit_cost' => $unitCost,
+                        'lot_number' => $lotNumber,
+                        'expiration_date' => $expirationDate,
+                    ];
+                }
             }
         }
 
@@ -892,10 +912,11 @@ class TelegramWebhookService
         // 2. Calcular total de la factura
         $totalAmount = array_sum(array_column($parsedItems, 'total_cost'));
 
-        // Obtener tasa de cambio
+        // Obtener tasa de cambio (si es COP, se usa la tasa COPC que es la configurada para vueltos/efectivo)
         $exchangeRate = 1;
         if ($currency !== 'USD') {
-            $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($currency) ?? 1;
+            $rateCurrency = $currency === 'COP' ? 'COPC' : $currency;
+            $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($rateCurrency) ?? 1;
         }
 
         // Obtener usuario administrador para el registro de auditoría
