@@ -1245,19 +1245,24 @@ class TelegramWebhookService
                         continue;
                     }
 
-                    // Convertir el saldo restante en USD a Bolívares (Bs) usando la tasa de cambio oficial
-                    $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate 
-                        ?? \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate 
-                        ?? 1.00;
-
-                    $invoiceRemainingBs = round($invoiceRemainingUSD * (float)$bcvRate, 2);
+                    // Obtener saldo restante en la moneda original de la factura
+                    $invoiceRemainingOriginal = $invoice->total_amount;
+                    if ($invoice->currency === 'Bs') {
+                        $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                    } elseif ($invoice->currency === 'COP') {
+                        $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                    }
 
                     $formattedDate = $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m') : '-';
 
                     $invoicesList[] = [
                         'invoice_number' => $invoice->invoice_number,
-                        'remaining_amount' => $invoiceRemainingBs,
-                        'currency' => 'Bs',
+                        'remaining_amount' => $invoiceRemainingOriginal,
+                        'currency' => $invoice->currency,
                         'payment_date_formatted' => $formattedDate,
                     ];
                 }
