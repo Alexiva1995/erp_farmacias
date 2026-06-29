@@ -86,6 +86,10 @@ class TelegramWebhookService
                 $this->processProductsList(trim($text), $fromId, $chatId);
                 return;
             }
+            if ($stateData['state'] === 'waiting_for_fast_fruit_invoice') {
+                $this->processFastFruitInvoice(trim($text), $fromId, $chatId);
+                return;
+            }
         }
 
         // Caso A: Se recibe una foto y se está esperando una factura
@@ -120,6 +124,18 @@ class TelegramWebhookService
             } else {
                 Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
                 $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
+            }
+            return;
+        }
+
+        // Caso E: Comando para registro ultra rápido de facturas de frutas
+        if (preg_match('/^(?:registrar\s+frutas?|\/registrar_frutas?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+            $fruitsText = isset($matches[1]) ? trim($matches[1]) : null;
+            if ($fruitsText) {
+                $this->processFastFruitInvoice($fruitsText, $fromId, $chatId);
+            } else {
+                Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
+                $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
             }
             return;
         }
@@ -764,5 +780,178 @@ class TelegramWebhookService
         }
 
         $this->telegramService->sendMessage($msg, $chatId);
+    }
+
+    /**
+     * Procesar y registrar una factura rápida de frutas desde el bot de Telegram.
+     */
+    protected function processFastFruitInvoice(string $text, $fromId, $chatId): void
+    {
+        if (empty($text)) {
+            $this->telegramService->sendMessage("⚠️ La lista de frutas está vacía. Inténtalo de nuevo o escribe `cancelar`.", $chatId);
+            return;
+        }
+
+        // 1. Buscar o crear el proveedor "Frutas"
+        $supplier = Supplier::firstOrCreate(
+            ['name' => 'Frutas'],
+            [
+                'social_reason' => 'Frutas',
+                'rif' => 'V-FRUTAS-01',
+                'type' => \App\Enums\SupplierType::EXTERNO,
+                'dispatch_days' => [],
+                'order_days' => [],
+            ]
+        );
+
+        // Separar por salto de línea o por guiones " - "
+        $itemsRaw = preg_split('/[\n\-]+/', $text);
+        $parsedItems = [];
+        $currency = 'COP'; // Valor por defecto
+
+        foreach ($itemsRaw as $itemRaw) {
+            $itemRaw = trim($itemRaw);
+            if (empty($itemRaw)) {
+                continue;
+            }
+
+            // Expresión regular para casar: [Nombre] [Cantidad] [Monto] [Moneda]
+            // Ejemplo: Fresa 2000g 18.000 COP  o  kiwi 320 1560
+            if (preg_match('/^([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)\s+(\d+)(?:g|gr|kg|und)?\s+([\d\.,]+)(?:\s*(COP|USD|Bs))?/i', $itemRaw, $matches)) {
+                $productName = trim($matches[1]);
+                $quantity = (float) $matches[2];
+                $priceStr = trim($matches[3]);
+                $itemCurrency = !empty($matches[4]) ? strtoupper($matches[4]) : null;
+
+                if ($itemCurrency) {
+                    $currency = $itemCurrency;
+                }
+
+                // Limpiar el separador de miles del precio
+                if (strpos($priceStr, '.') !== false && strpos($priceStr, ',') !== false) {
+                    $priceStr = str_replace('.', '', $priceStr);
+                    $priceStr = str_replace(',', '.', $priceStr);
+                } else if (strpos($priceStr, ',') !== false) {
+                    if (preg_match('/,\d{3}$/', $priceStr)) {
+                        $priceStr = str_replace(',', '', $priceStr);
+                    } else {
+                        $priceStr = str_replace(',', '.', $priceStr);
+                    }
+                } else if (strpos($priceStr, '.') !== false) {
+                    if (preg_match('/\.\d{3}$/', $priceStr)) {
+                        $priceStr = str_replace('.', '', $priceStr);
+                    }
+                }
+                $totalCost = (float) $priceStr;
+                $unitCost = $quantity > 0 ? $totalCost / $quantity : 0;
+
+                // Buscar o crear el producto en la base de datos
+                $product = Product::firstOrCreate(
+                    ['name' => $productName],
+                    [
+                        'unit_cost' => 0,
+                        'sale_price' => 0,
+                        'presentation' => 1,
+                        'unit_of_measure' => 'und',
+                        'stock' => 0,
+                    ]
+                );
+
+                // Generar número de lote automático correlativo
+                $lotCount = $product->lots()->count() + 1;
+                $lotNumber = 'L-' . date('Ymd') . '-' . $lotCount;
+                $expirationDate = now()->addDays(7)->toDateString();
+
+                $parsedItems[] = [
+                    'product' => $product,
+                    'quantity' => $quantity,
+                    'total_cost' => $totalCost,
+                    'unit_cost' => $unitCost,
+                    'lot_number' => $lotNumber,
+                    'expiration_date' => $expirationDate,
+                ];
+            }
+        }
+
+        if (empty($parsedItems)) {
+            $this->telegramService->sendMessage("❌ No se pudo procesar ningún producto válido. Asegúrate de usar el formato correcto:\n`Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP`", $chatId);
+            return;
+        }
+
+        // 2. Calcular total de la factura
+        $totalAmount = array_sum(array_column($parsedItems, 'total_cost'));
+
+        // Obtener tasa de cambio
+        $exchangeRate = 1;
+        if ($currency !== 'USD') {
+            $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($currency) ?? 1;
+        }
+
+        // Obtener usuario administrador para el registro de auditoría
+        $adminId = \App\Models\User::first()?->id ?? 1;
+        $invoiceNumber = 'FRUTA-' . date('YmdHis');
+        $expDate = now()->addDays(7)->toDateString();
+
+        try {
+            // Autenticar temporalmente para evitar que falle en observadores o servicios
+            \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
+            // Crear cabecera de la factura en el ERP
+            $invoice = \App\Models\Invoice::create([
+                'supplier_id' => $supplier->id,
+                'invoice_number' => $invoiceNumber,
+                'control_number' => $invoiceNumber,
+                'currency' => $currency,
+                'exp_date' => $expDate,
+                'payment_date' => $expDate,
+                'received_date' => now()->toDateString(),
+                'created_invoice_date' => now()->toDateString(),
+                'exempt_amount' => $totalAmount,
+                'taxable_base' => 0,
+                'tax_amount' => 0,
+                'total_amount' => $totalAmount,
+                'exchange_rate' => $exchangeRate,
+                'registered_by' => $adminId,
+                'uploaded_by' => $adminId,
+                'status' => 'loaded', // Directamente cargada ya que insertamos sus detalles
+                'status_payment' => 0,
+            ]);
+
+            // 3. Crear los detalles de la factura
+            foreach ($parsedItems as $index => $item) {
+                $invoice->details()->create([
+                    'product_id' => $item['product']->id,
+                    'lot_number' => $item['lot_number'],
+                    'expiration_date' => $item['expiration_date'],
+                    'quantity' => $item['quantity'],
+                    'unit_cost' => $item['unit_cost'],
+                    'total_cost' => $item['total_cost'],
+                    'location' => 'Por Asignar',
+                    'tax_enabled' => false,
+                    'display_order' => $index,
+                ]);
+            }
+
+            // Limpiar estado
+            Cache::forget('telegram_state_' . $fromId);
+
+            // Responder con éxito
+            $msg = "✅ *[FACTURA DE FRUTAS REGISTRADA]*\n\n"
+                 . "🏢 *Proveedor:* {$supplier->name}\n"
+                 . "🔢 *Factura Nº:* `{$invoiceNumber}`\n"
+                 . "💰 *Monto Total:* " . number_format($totalAmount, 2) . " {$currency}\n"
+                 . "📅 *Vencimiento y Pago:* {$expDate}\n\n"
+                 . "📦 *Detalles registrados:*\n";
+
+            foreach ($parsedItems as $item) {
+                $msg .= "• *{$item['product']->name}*: {$item['quantity']} und / total: " . number_format($item['total_cost'], 2) . " {$currency} (Lote: `{$item['lot_number']}`)\n";
+            }
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+        } catch (\Exception $e) {
+            Log::error('[TelegramWebhook] Error en registro rápido de frutas: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al registrar la factura de frutas: " . $e->getMessage(), $chatId);
+        }
     }
 }
