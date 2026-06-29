@@ -1826,20 +1826,17 @@ class TelegramWebhookService
                 ]);
             }
 
-            // 4. Determinar estado de pago (Completo si cubre el total con tolerancia)
-            $tolerance = 0.05;
-            $isFullPayment = ($amountUSD >= ($totalInvoiceDebtUSD - $tolerance));
-            $paymentStatus = $isFullPayment ? 1 : 0; // 1 = Pagado, 0 = Pendiente (pago parcial)
+            // 4. Determinar estado de pago (El bot siempre liquida las facturas seleccionadas como pago completo)
+            $isFullPayment = true;
+            $paymentStatus = 1; // 1 = Pagado (Liquidado)
 
             // Actualizar facturas
             $updateData = [
                 'status' => 'ordered',
                 'status_payment' => $paymentStatus,
                 'updated_at' => now(),
+                'payment_date' => now()->toDateString(),
             ];
-            if ($isFullPayment) {
-                $updateData['payment_date'] = now()->toDateString();
-            }
             \App\Models\Invoice::whereIn('id', $invoiceIds)->update($updateData);
 
             // 5. Crear registro de Gasto (Expense)
