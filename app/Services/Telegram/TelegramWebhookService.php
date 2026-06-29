@@ -140,7 +140,6 @@ class TelegramWebhookService
             return;
         }
     }
-    }
 
     /**
      * Inicializar el flujo de registro de facturas.
