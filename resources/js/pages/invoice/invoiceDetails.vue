@@ -939,6 +939,33 @@ const startEditingDetail = async (detail) => {
   editingDetailId.value = detail.id;
 };
 
+const recalculateTotalFromUnit = () => {
+  const qty = Number(editedDetailData.value.quantity) || 0;
+  const unit = Number(editedDetailData.value.unit_cost) || 0;
+  if (editedDetailData.value.tax_enabled) {
+    editedDetailData.value.total_cost_input = Number((unit * 1.16 * qty).toFixed(2));
+  } else {
+    editedDetailData.value.total_cost_input = Number((unit * qty).toFixed(2));
+  }
+};
+
+const recalculateUnitFromTotal = () => {
+  const qty = Number(editedDetailData.value.quantity) || 1;
+  const total = Number(editedDetailData.value.total_cost_input) || 0;
+  if (editedDetailData.value.tax_enabled) {
+    const baseTotal = total / 1.16;
+    editedDetailData.value.unit_cost = Number((baseTotal / qty).toFixed(6));
+  } else {
+    editedDetailData.value.unit_cost = Number((total / qty).toFixed(6));
+  }
+};
+
+watch(() => editedDetailData.value.quantity, () => {
+  if (editingDetailId.value) {
+    recalculateTotalFromUnit();
+  }
+});
+
 const saveEditingDetail = () => {
   if (
     !editedDetailData.value.quantity ||
@@ -949,21 +976,12 @@ const saveEditingDetail = () => {
     return;
   }
 
-  // Si es restaurante, calculamos el costo unitario basado en el costo total ingresado
-  if (isRestaurant.value) {
-    const totalCostInput = Number(editedDetailData.value.total_cost_input);
-    if (isNaN(totalCostInput) || totalCostInput < 0 || editedDetailData.value.total_cost_input === null || editedDetailData.value.total_cost_input === '') {
-      toast.error("El costo total debe ser 0 o mayor");
-      return;
-    }
-    const qty = Number(editedDetailData.value.quantity) || 1;
-    // Si tax_enabled está activo, el costo total incluye el 16% de IVA, por lo que deducimos el IVA para obtener el costo base
-    if (editedDetailData.value.tax_enabled) {
-      const baseTotal = totalCostInput / 1.16;
-      editedDetailData.value.unit_cost = Number((baseTotal / qty).toFixed(6));
-    } else {
-      editedDetailData.value.unit_cost = Number((totalCostInput / qty).toFixed(6));
-    }
+  // Sincronizar costos al guardar
+  const qty = Number(editedDetailData.value.quantity) || 1;
+  if (editedDetailData.value.total_cost_input !== null && editedDetailData.value.total_cost_input !== undefined && editedDetailData.value.total_cost_input !== '') {
+    recalculateUnitFromTotal();
+  } else if (editedDetailData.value.unit_cost !== null && editedDetailData.value.unit_cost !== undefined) {
+    recalculateTotalFromUnit();
   }
 
   if (
@@ -975,23 +993,12 @@ const saveEditingDetail = () => {
     return;
   }
 
+  // Lote y fecha de vencimiento ahora son completamente opcionales
   if (!editedDetailData.value.lot_number?.trim()) {
-    const itemType = editedDetailData.value.is_return
-      ? "devolución"
-      : "producto";
-
-    toast.error(`El número de lote es obligatorio para este ${itemType}`);
-
-    return;
+    editedDetailData.value.lot_number = null;
   }
   if (!editedDetailData.value.expiration_date) {
-    const itemType = editedDetailData.value.is_return
-      ? "devolución"
-      : "producto";
-
-    toast.error(`La fecha de vencimiento es obligatoria para este ${itemType}`);
-
-    return;
+    editedDetailData.value.expiration_date = null;
   }
 
   const originalDetail = invoiceDetails.value.find(
@@ -1912,31 +1919,32 @@ const detailsHeaders = computed(() => {
               </template>
 
               <template #item.unit_cost="{ item }">
-                <VTextField
-                  v-if="isEditableMode && item.id === editingDetailId && isRestaurant"
-                  v-model.number="editedDetailData.total_cost_input"
-                  type="number"
-                  step="0.01"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="editable-cell"
-                  min="0"
-                  :prefix="getCurrencySymbol()"
-                  placeholder="Costo Total"
-                />
-                <VTextField
-                  v-else-if="isEditableMode && item.id === editingDetailId"
-                  v-model.number="editedDetailData.unit_cost"
-                  type="number"
-                  step="0.01"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="editable-cell"
-                  min="0"
-                  :prefix="getCurrencySymbol()"
-                />
+                <div v-if="isEditableMode && item.id === editingDetailId" class="d-flex flex-column gap-1 my-1" style="min-width: 140px;">
+                  <VTextField
+                    v-model.number="editedDetailData.unit_cost"
+                    @input="recalculateTotalFromUnit"
+                    type="number"
+                    step="0.01"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    placeholder="Unitario"
+                    label="Unitario"
+                    :prefix="getCurrencySymbol()"
+                  />
+                  <VTextField
+                    v-model.number="editedDetailData.total_cost_input"
+                    @input="recalculateUnitFromTotal"
+                    type="number"
+                    step="0.01"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    placeholder="Total"
+                    label="Total"
+                    :prefix="getCurrencySymbol()"
+                  />
+                </div>
                 <VTooltip
                   v-else-if="
                     isApprovalMode &&
@@ -2217,28 +2225,31 @@ const detailsHeaders = computed(() => {
                         <span v-else class="value">{{ item.quantity }}</span>
                       </div>
                       <div class="detail-item">
-                        <span class="label">{{ isRestaurant ? 'Costo Total' : 'Costo ' + invoice.currency }}</span>
-                        <VTextField
-                          v-if="isEditableMode && item.id === editingDetailId && isRestaurant"
-                          v-model.number="editedDetailData.total_cost_input"
-                          type="number"
-                          step="0.01"
-                          density="compact"
-                          hide-details
-                          variant="outlined"
-                          class="mt-1"
-                          placeholder="Costo Total"
-                        />
-                        <VTextField
-                          v-else-if="isEditableMode && item.id === editingDetailId"
-                          v-model.number="editedDetailData.unit_cost"
-                          type="number"
-                          step="0.01"
-                          density="compact"
-                          hide-details
-                          variant="outlined"
-                          class="mt-1"
-                        />
+                        <span class="label">Costo ({{ invoice.currency }})</span>
+                        <div v-if="isEditableMode && item.id === editingDetailId" class="d-flex flex-column gap-1 mt-1">
+                          <VTextField
+                            v-model.number="editedDetailData.unit_cost"
+                            @input="recalculateTotalFromUnit"
+                            type="number"
+                            step="0.01"
+                            density="compact"
+                            hide-details
+                            variant="outlined"
+                            placeholder="Costo Unitario"
+                            label="Unitario"
+                          />
+                          <VTextField
+                            v-model.number="editedDetailData.total_cost_input"
+                            @input="recalculateUnitFromTotal"
+                            type="number"
+                            step="0.01"
+                            density="compact"
+                            hide-details
+                            variant="outlined"
+                            placeholder="Costo Total"
+                            label="Total"
+                          />
+                        </div>
                         <div v-else class="d-flex flex-column align-start">
                           <div class="d-flex align-center gap-1">
                             <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
