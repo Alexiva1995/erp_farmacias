@@ -2259,7 +2259,17 @@ class TelegramWebhookService
                 return;
             }
 
-            Cache::put('telegram_debts_queue_' . $fromId, $suppliersList, 600);
+            // Calcular totales globales consolidados de todos los proveedores combinados
+            $globalUSD = collect($suppliersList)->sum('total_usd');
+            $globalBS = collect($suppliersList)->sum('total_bs');
+
+            $cacheData = [
+                'global_usd' => $globalUSD,
+                'global_bs' => $globalBS,
+                'suppliers' => $suppliersList
+            ];
+
+            Cache::put('telegram_debts_queue_' . $fromId, $cacheData, 600);
             $this->sendSupplierDebtPrompt($fromId, $chatId, 0);
 
         } catch (\Exception $e) {
@@ -2269,23 +2279,29 @@ class TelegramWebhookService
     }
 
     /**
-     * Enviar mensaje de deuda del proveedor actual por su índice.
+     * Enviar mensaje de deudas con totales globales y paginación por proveedor.
      */
     public function sendSupplierDebtPrompt($fromId, $chatId, int $index, ?int $messageId = null): void
     {
-        $queue = Cache::get('telegram_debts_queue_' . $fromId);
-        if (!$queue || !isset($queue[$index])) {
+        $data = Cache::get('telegram_debts_queue_' . $fromId);
+        if (!$data || !isset($data['suppliers'][$index])) {
             $this->telegramService->sendMessage("❌ No se pudo cargar el listado de deudas.", $chatId);
             return;
         }
 
-        $supplier = $queue[$index];
-        $totalCount = count($queue);
+        $globalUSD = $data['global_usd'] ?? 0;
+        $globalBS = $data['global_bs'] ?? 0;
+        $supplier = $data['suppliers'][$index];
+        $totalCount = count($data['suppliers']);
         $currentIndexNum = $index + 1;
 
-        $msg = "📊 *[ESTADO DE DEUDAS - {$currentIndexNum}/{$totalCount}]*\n\n"
-             . "🏢 *Proveedor:* {$supplier['supplier_name']}\n"
-             . "💰 *Deuda Consolidada:*\n"
+        $msg = "🌍 *[DEUDA GLOBAL ACUMULADA]*\n"
+             . "  • `💵 " . number_format($globalUSD, 2) . " USD`\n"
+             . "  • `🇻🇪 " . number_format($globalBS, 2) . " Bs`\n"
+             . "───────────────────\n\n"
+             . "📊 *[PROVEEDOR - {$currentIndexNum}/{$totalCount}]*\n"
+             . "🏢 *Nombre:* {$supplier['supplier_name']}\n"
+             . "💰 *Deuda del Proveedor:*\n"
              . "  • `" . number_format($supplier['total_bs'], 2) . " Bs`\n"
              . "  • `" . number_format($supplier['total_usd'], 2) . " USD`\n\n"
              . "───────────────────\n";
