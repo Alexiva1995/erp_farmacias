@@ -792,7 +792,7 @@ class TelegramWebhookService
         }
 
         // 1. Buscar o crear el proveedor "Frutas"
-        $supplier = Supplier::firstOrCreate(
+        $supplier = \App\Models\Supplier::firstOrCreate(
             ['name' => 'Frutas'],
             [
                 'social_reason' => 'Frutas',
@@ -845,7 +845,7 @@ class TelegramWebhookService
                 $unitCost = $quantity > 0 ? $totalCost / $quantity : 0;
 
                 // Buscar o crear el producto en la base de datos
-                $product = Product::firstOrCreate(
+                $product = \App\Models\Product::firstOrCreate(
                     ['name' => $productName],
                     [
                         'unit_cost' => 0,
