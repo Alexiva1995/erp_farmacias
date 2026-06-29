@@ -940,6 +940,7 @@ class TelegramWebhookService
                     'expiration_date' => $item['expiration_date'],
                     'tax_enabled' => false,
                     'is_return' => false,
+                    'location' => null,
                     'display_order' => $index,
                 ];
             }
