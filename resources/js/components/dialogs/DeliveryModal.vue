@@ -397,7 +397,7 @@ const saveEdit = async () => {
   if (!editForm.value.closing_id) return;
   isSavingEdit.value = true;
   try {
-    const response = await axios.patch("/cash-closures/update-blind-amounts", {
+    const response = await axios.patch("/cash-closure/update-blind-amounts", {
       id: editForm.value.closing_id,
       declared_cop: editForm.value.declared_cop,
       declared_usd: editForm.value.declared_usd,
