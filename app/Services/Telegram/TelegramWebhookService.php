@@ -62,6 +62,17 @@ class TelegramWebhookService
             return;
         }
 
+        // Interceptar fotos de inmediato antes de validar estados de texto
+        if (isset($message['photo'])) {
+            $stateData = Cache::get('telegram_state_' . $fromId);
+            if ($stateData && is_array($stateData) && $stateData['state'] === 'waiting_for_payment_photo') {
+                $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
+                return;
+            }
+            $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
+            return;
+        }
+
         // Permite al usuario abortar cualquier flujo activo (ej: registro de facturas) escribiendo 'cancelar'
         $cleanText = strtolower(trim($text));
         if ($cleanText === 'cancelar' || $cleanText === '/cancelar') {
@@ -109,15 +120,7 @@ class TelegramWebhookService
             }
         }
 
-        // Caso A: Se recibe una foto
-        if (isset($message['photo'])) {
-            if ($stateData && is_array($stateData) && $stateData['state'] === 'waiting_for_payment_photo') {
-                $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
-                return;
-            }
-            $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
-            return;
-        }
+        // (La foto ya fue procesada al inicio del método si existía)
 
         // Caso B: Comando para iniciar el registro de facturas
         if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
