@@ -62,6 +62,19 @@ class TelegramWebhookService
             return;
         }
 
+        // 1. Verificar si el usuario está en un estado conversacional esperando un dato específico
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if ($stateData && is_array($stateData)) {
+            if ($stateData['state'] === 'waiting_for_invoice_total') {
+                $this->processUserProvidedTotal(trim($text), $fromId, $chatId, $stateData);
+                return;
+            }
+            if ($stateData['state'] === 'waiting_for_invoice_supplier_name') {
+                $this->processUserProvidedSupplierName(trim($text), $fromId, $chatId, $stateData);
+                return;
+            }
+        }
+
         // Caso A: Se recibe una foto y se está esperando una factura
         if (isset($message['photo'])) {
             $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
@@ -144,10 +157,16 @@ class TelegramWebhookService
             unlink($localPath);
         }
 
-        if (!$extractedData || !isset($extractedData['total_amount'])) {
-            $this->telegramService->sendMessage("❌ No se pudo extraer la información de la factura. Asegúrate de que la imagen sea legible e inténtalo de nuevo con el comando `/registrar_factura`.", $chatId);
-            Cache::forget('telegram_state_' . $fromId);
-            return;
+        if (!$extractedData) {
+            $extractedData = [];
+        }
+
+        // Forzar valores por defecto para que no falle por campos vacíos
+        if (empty($extractedData['invoice_number'])) {
+            $extractedData['invoice_number'] = 'F-' . date('YmdHis');
+        }
+        if (empty($extractedData['invoice_date'])) {
+            $extractedData['invoice_date'] = date('Y-m-d');
         }
 
         // Forzar moneda si se indicó en el comando
@@ -155,21 +174,109 @@ class TelegramWebhookService
             $extractedData['currency'] = $stateData['forced_currency'];
         }
 
+        // 1. Si falta el nombre del proveedor y no fue predefinido en el comando
+        if (empty($extractedData['supplier_name']) && empty($stateData['supplier_name']) && empty($stateData['suggested_supplier_name'])) {
+            Cache::put('telegram_state_' . $fromId, [
+                'state' => 'waiting_for_invoice_supplier_name',
+                'pending_data' => $extractedData,
+                'original_state' => $stateData
+            ], 300);
+            $this->telegramService->sendMessage("⚠️ No logré detectar el nombre del proveedor en la factura. Por favor, escribe el **Nombre del Proveedor**:", $chatId);
+            return;
+        }
+
+        // 2. Si falta el monto total de la factura
+        if (empty($extractedData['total_amount']) || $extractedData['total_amount'] <= 0) {
+            Cache::put('telegram_state_' . $fromId, [
+                'state' => 'waiting_for_invoice_total',
+                'pending_data' => $extractedData,
+                'original_state' => $stateData
+            ], 300);
+            $this->telegramService->sendMessage("💰 No logré detectar el Monto Total en la factura. Por favor, escribe el **Monto Total** (solo números, ej: `150000`):", $chatId);
+            return;
+        }
+
+        // Evaluar proveedor y mostrar resumen de confirmación
+        $this->evaluateSupplierAndShowSummary($extractedData, $stateData, $fromId, $chatId);
+    }
+
+    /**
+     * Procesar la respuesta del usuario para el Monto Total.
+     */
+    protected function processUserProvidedTotal(string $text, $fromId, $chatId, array $stateData): void
+    {
+        $cleanNumber = str_replace([',', ' '], ['', ''], $text);
+        if (!is_numeric($cleanNumber)) {
+            $this->telegramService->sendMessage("⚠️ Por favor, ingresa un número válido para el total (ej: `150000` o `85.50`):", $chatId);
+            return;
+        }
+
+        $totalAmount = (float) $cleanNumber;
+        $extractedData = $stateData['pending_data'] ?? [];
+        $extractedData['total_amount'] = $totalAmount;
+
+        $originalState = $stateData['original_state'] ?? [];
+
+        // Evaluar proveedor y mostrar resumen
+        $this->evaluateSupplierAndShowSummary($extractedData, $originalState, $fromId, $chatId);
+    }
+
+    /**
+     * Procesar la respuesta del usuario para el Nombre del Proveedor.
+     */
+    protected function processUserProvidedSupplierName(string $text, $fromId, $chatId, array $stateData): void
+    {
+        if (empty($text)) {
+            $this->telegramService->sendMessage("⚠️ Por favor, ingresa un nombre de proveedor válido:", $chatId);
+            return;
+        }
+
+        $extractedData = $stateData['pending_data'] ?? [];
+        $extractedData['supplier_name'] = $text;
+
+        $originalState = $stateData['original_state'] ?? [];
+
+        // Si todavía falta el total, preguntarlo ahora
+        if (empty($extractedData['total_amount']) || $extractedData['total_amount'] <= 0) {
+            Cache::put('telegram_state_' . $fromId, [
+                'state' => 'waiting_for_invoice_total',
+                'pending_data' => $extractedData,
+                'original_state' => $originalState
+            ], 300);
+            $this->telegramService->sendMessage("💰 Nombre del proveedor guardado. Ahora, por favor ingresa el **Monto Total** de la factura:", $chatId);
+            return;
+        }
+
+        // Evaluar proveedor y mostrar resumen
+        $this->evaluateSupplierAndShowSummary($extractedData, $originalState, $fromId, $chatId);
+    }
+
+    /**
+     * Evaluar la existencia del proveedor y mostrar el resumen final interactivo.
+     */
+    protected function evaluateSupplierAndShowSummary(array $extractedData, array $stateData, $fromId, $chatId): void
+    {
         Cache::put('telegram_pending_invoice_' . $fromId, $extractedData, 600);
 
         $supplier = null;
         if (!empty($stateData['supplier_id'])) {
             $supplier = Supplier::find($stateData['supplier_id']);
         } else {
-            if (!empty($extractedData['supplier_rif'])) {
-                $supplier = Supplier::where('rif', 'like', '%' . $extractedData['supplier_rif'] . '%')->first();
+            $rif = $extractedData['supplier_rif'] ?? '';
+            $name = $stateData['suggested_supplier_name'] ?? ($extractedData['supplier_name'] ?? '');
+
+            if (!empty($rif)) {
+                $supplier = Supplier::where('rif', 'like', '%' . $rif . '%')->first();
             }
-            if (!$supplier && !empty($extractedData['supplier_name'])) {
-                $supplier = Supplier::where('name', 'like', '%' . $extractedData['supplier_name'] . '%')->first();
+            if (!$supplier && !empty($name)) {
+                $supplier = Supplier::where('name', 'like', '%' . $name . '%')->first();
             }
         }
 
         $typeInfo = !empty($stateData['is_informal']) ? " [Informal 📝]" : "";
+
+        // Guardar el estado final corregido para asegurar que la confirmación tenga los flags
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
 
         if ($supplier) {
             $extractedData['supplier_id'] = $supplier->id;
@@ -200,7 +307,7 @@ class TelegramWebhookService
 
             $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
         } else {
-            $nameToUse = $stateData['suggested_supplier_name'] ?? $extractedData['supplier_name'];
+            $nameToUse = $stateData['suggested_supplier_name'] ?? ($extractedData['supplier_name'] ?? 'Proveedor Desconocido');
             $rifToUse = $extractedData['supplier_rif'] ?? 'S/R';
 
             $extractedData['supplier_name'] = $nameToUse;
@@ -347,6 +454,7 @@ class TelegramWebhookService
         // 2. Crear Proveedor Creado en Caliente
         if ($callbackData === "create_supplier_{$fromId}") {
             $invoiceData = Cache::get('telegram_pending_invoice_' . $fromId);
+            $stateData = Cache::get('telegram_state_' . $fromId);
             if (!$invoiceData) {
                 $this->answerCallback($callbackQueryId, 'La sesión ha expirado.');
                 return;
