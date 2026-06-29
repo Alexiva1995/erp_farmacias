@@ -257,6 +257,7 @@ class CashClosureController extends Controller
         $request->validate([
             'id' => 'required|exists:cash_closing,id',
             'declared_cop' => 'nullable|numeric',
+            'declared_cop_transfer' => 'nullable|numeric',
             'declared_usd' => 'nullable|numeric',
             'declared_credit' => 'nullable|numeric',
             'declared_bs_mobile' => 'nullable|numeric',
@@ -266,6 +267,7 @@ class CashClosureController extends Controller
         $cashClosing = \App\Models\CashClosing::findOrFail($request->id);
 
         $decCop = (float) ($request->declared_cop ?? 0);
+        $decCopTransfer = (float) ($request->declared_cop_transfer ?? 0);
         $decUsd = (float) ($request->declared_usd ?? 0);
         $decCredit = (float) ($request->declared_credit ?? 0);
         $decBsMobile = (float) ($request->declared_bs_mobile ?? 0);
@@ -273,23 +275,23 @@ class CashClosureController extends Controller
 
         // Recalcular discrepancias con el sistema actual
         $sysCop = (float) $cashClosing->cop_delivered;
+        $sysCopTransfer = (float) $cashClosing->cop_transfer;
         $sysUsd = (float) $cashClosing->usd_delivered;
         $sysCredit = (float) $cashClosing->usd_credit;
         $sysBsMobile = (float) ($cashClosing->bs_transfer + $cashClosing->bs_mobile);
         $sysBsCard = (float) ($cashClosing->bs_card_debito + $cashClosing->bs_card_credit);
 
         // Si se editó COP, el sobrante y totales en COP podrían cambiar.
-        // Volvemos a realizar el cálculo que se hace al cerrar.
         $sobrante = max(0, $decCop - $sysCop);
         
         $updateData = [
             'declared_cop' => $decCop,
+            'declared_cop_transfer' => $decCopTransfer,
             'declared_usd' => $decUsd,
             'declared_credit' => $decCredit,
             'declared_bs_mobile' => $decBsMobile,
             'declared_bs_card' => $decBsCard,
             'cop_spare' => $sobrante,
-            // cop_delivered = valor real que debería haber + sobrante
             'cop_delivered' => $sysCop + $sobrante,
         ];
 
@@ -299,6 +301,10 @@ class CashClosureController extends Controller
         if (round($decCop, 2) != round($sysCop, 2)) {
             $mismatches[] = 'cop';
             $notes[] = "COP Físico: Declarado " . number_format($decCop, 2) . " / Sistema " . number_format($sysCop, 2);
+        }
+        if (round($decCopTransfer, 2) != round($sysCopTransfer, 2)) {
+            $mismatches[] = 'cop_transfer';
+            $notes[] = "Transf. COP (Bancolombia): Declarado " . number_format($decCopTransfer, 2) . " / Sistema " . number_format($sysCopTransfer, 2);
         }
         if (round($decUsd, 2) != round($sysUsd, 2)) {
             $mismatches[] = 'usd';

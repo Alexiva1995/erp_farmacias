@@ -30,6 +30,7 @@ class CloseCashClosureRequest extends FormRequest
             'history_html' => 'required|string',
             'is_blind' => 'nullable|boolean',
             'declared_cop' => 'nullable|numeric',
+            'declared_cop_transfer' => 'nullable|numeric',
             'declared_usd' => 'nullable|numeric',
             'declared_credit' => 'nullable|numeric',
             'declared_bs_mobile' => 'nullable|numeric',

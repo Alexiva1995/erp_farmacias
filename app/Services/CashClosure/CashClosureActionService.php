@@ -136,12 +136,14 @@ class CashClosureActionService
 
         if (!empty($validatedData['is_blind'])) {
             $decCop = (float) ($validatedData['declared_cop'] ?? 0);
+            $decCopTransfer = (float) ($validatedData['declared_cop_transfer'] ?? 0);
             $decUsd = (float) ($validatedData['declared_usd'] ?? 0);
             $decCredit = (float) ($validatedData['declared_credit'] ?? 0);
             $decBsMobile = (float) ($validatedData['declared_bs_mobile'] ?? 0);
             $decBsCard = (float) ($validatedData['declared_bs_card'] ?? 0);
 
             $sysCop = (float) $cashClosure->cop_delivered;
+            $sysCopTransfer = (float) $cashClosure->cop_transfer;
             $sysUsd = (float) $cashClosure->usd_delivered;
             $sysCredit = (float) $cashClosure->usd_credit;
             $sysBsMobile = (float) ($cashClosure->bs_transfer + $cashClosure->bs_mobile);
@@ -155,6 +157,7 @@ class CashClosureActionService
             $updateData['total_cop'] = $origTotalCop + $sobrante;
 
             $updateData['declared_cop'] = $decCop;
+            $updateData['declared_cop_transfer'] = $decCopTransfer;
             $updateData['declared_usd'] = $decUsd;
             $updateData['declared_credit'] = $decCredit;
             $updateData['declared_bs_mobile'] = $decBsMobile;
@@ -166,6 +169,10 @@ class CashClosureActionService
             if (round($decCop, 2) != round($sysCop, 2)) {
                 $mismatches[] = 'cop';
                 $notes[] = "COP Físico: Declarado " . number_format($decCop, 2) . " / Sistema " . number_format($sysCop, 2);
+            }
+            if (round($decCopTransfer, 2) != round($sysCopTransfer, 2)) {
+                $mismatches[] = 'cop_transfer';
+                $notes[] = "Transf. COP (Bancolombia): Declarado " . number_format($decCopTransfer, 2) . " / Sistema " . number_format($sysCopTransfer, 2);
             }
             if (round($decUsd, 2) != round($sysUsd, 2)) {
                 $mismatches[] = 'usd';
