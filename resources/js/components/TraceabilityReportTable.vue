@@ -16,6 +16,27 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
+const formatStockValue = (val, product) => {
+  if (val === undefined || val === null) return "0";
+  const numVal = parseFloat(val);
+  if (isRestaurant.value && product && (product.unit_of_measure === 'g' || product.unit_of_measure === 'ml') && product.presentation > 0) {
+    const totalQty = Math.round(numVal * product.presentation);
+    return `${totalQty} ${product.unit_of_measure}`;
+  }
+  return numVal.toString();
+};
+
+const formatQuantityValue = (val, product) => {
+  if (val === undefined || val === null) return "0";
+  const numVal = parseFloat(val);
+  const sign = numVal > 0 ? "+" : "";
+  if (isRestaurant.value && product && (product.unit_of_measure === 'g' || product.unit_of_measure === 'ml') && product.presentation > 0) {
+    const totalQty = Math.round(numVal * product.presentation);
+    return `${sign}${totalQty} ${product.unit_of_measure}`;
+  }
+  return `${sign}${numVal}`;
+};
+
 const emit = defineEmits(["update:options"]);
 
 const showDetailsDialog = ref(false);
@@ -109,6 +130,7 @@ const headers = [
                 :class="{ 'text-warning': item.product?.psychotropic }"
               >
                 {{ item.product?.name || 'N/A' }}
+                <span v-if="item.dish" class="text-primary font-weight-black text-none"> - {{ item.dish.name }}</span>
                 <span v-if="item.product?.iva"> (G)</span>
                 <span v-if="item.product?.is_colombian_origin"> (COL)</span>
               </span>
@@ -123,6 +145,14 @@ const headers = [
               </div>
             </div>
           </div>
+        </template>
+
+        <template #item.stock_before="{ item }">
+          <span class="text-body-2 font-weight-bold">{{ formatStockValue(item.stock_before, item.product) }}</span>
+        </template>
+
+        <template #item.stock_after="{ item }">
+          <span class="text-body-2 font-weight-bold">{{ formatStockValue(item.stock_after, item.product) }}</span>
         </template>
 
         <template #item.movement_date="{ item }">
@@ -141,7 +171,7 @@ const headers = [
             variant="tonal"
             class="font-weight-bold"
           >
-            {{ item.quantity > 0 ? `+${item.quantity}` : item.quantity }}
+            {{ formatQuantityValue(item.quantity, item.product) }}
           </VChip>
         </template>
 
@@ -200,6 +230,7 @@ const headers = [
                   </a>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.product?.name || 'S/N' }}
+                  <span v-if="item.dish" class="text-primary font-weight-black text-none"> - {{ item.dish.name }}</span>
                 </h3>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
                   <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
@@ -217,7 +248,7 @@ const headers = [
               <div class="d-flex flex-column text-center">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Ant</span>
                 <span class="text-base font-weight-black text-medium-emphasis">
-                  {{ item.stock_before }}
+                  {{ formatStockValue(item.stock_before, item.product) }}
                 </span>
               </div>
               <div class="d-flex flex-column align-center">
@@ -227,13 +258,13 @@ const headers = [
                   size="20"
                 />
                 <span :class="item.quantity > 0 ? 'text-success' : 'text-error'" class="text-sm font-weight-black">
-                   {{ item.quantity > 0 ? `+${item.quantity}` : item.quantity }}
+                   {{ formatQuantityValue(item.quantity, item.product) }}
                 </span>
               </div>
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Fin</span>
                 <span class="text-base font-weight-black" :class="item.stock_after > 0 ? 'text-primary' : 'text-error'">
-                  {{ item.stock_after }}
+                  {{ formatStockValue(item.stock_after, item.product) }}
                 </span>
               </div>
             </div>
