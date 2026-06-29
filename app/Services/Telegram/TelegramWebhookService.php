@@ -1248,7 +1248,7 @@ class TelegramWebhookService
                     // Obtener saldo restante en la moneda original de la factura
                     $invoiceRemainingOriginal = $invoice->total_amount;
                     if ($invoice->currency === 'Bs') {
-                        $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
+                        $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1;
                         $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
                     } elseif ($invoice->currency === 'COP') {
                         $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
@@ -1272,7 +1272,7 @@ class TelegramWebhookService
                 $remainingOriginal = $group->sum('total_amount');
 
                 if ($currency === 'Bs') {
-                    $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
+                    $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1;
                     $remainingOriginal = round($remainingAmountUSD * $rate, 2);
                 } elseif ($currency === 'COP') {
                     $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
@@ -1427,7 +1427,7 @@ class TelegramWebhookService
                 [
                     ['text' => '💵 USD', 'callback_data' => 'pay_curr_USD'],
                     ['text' => '🇨🇴 COP', 'callback_data' => 'pay_curr_COP'],
-                    ['text' => '🇻🇪 Bs (VES)', 'callback_data' => 'pay_curr_VES'],
+                    ['text' => '🇻🇪 Bs (BS)', 'callback_data' => 'pay_curr_BS'],
                 ],
                 [
                     ['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']
@@ -1775,7 +1775,7 @@ class TelegramWebhookService
             $invoices = \App\Models\Invoice::whereIn('id', $invoiceIds)->get();
             
             // Tasa de cambio de la moneda del pago
-            $normalizedCurrency = ($paymentCurrency === 'Bs') ? 'VES' : $paymentCurrency;
+            $normalizedCurrency = ($paymentCurrency === 'Bs' || $paymentCurrency === 'VES') ? 'BS' : $paymentCurrency;
             $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $normalizedCurrency)->first();
             $rateValue = $exchangeRate ? (float) $exchangeRate->rate : 1.0000;
 
