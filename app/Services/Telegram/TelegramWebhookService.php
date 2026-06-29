@@ -195,6 +195,12 @@ class TelegramWebhookService
                 $this->sendUpcoming7DaysPayments($chatId);
                 return;
             }
+
+            // Caso I: Comando para consultar el listado detallado de deudas por proveedor
+            if ($cleanText === 'deudas' || $cleanText === '/deudas') {
+                $this->initDebtsFlow($fromId, $chatId);
+                return;
+            }
         }
     }
 
@@ -510,6 +516,28 @@ class TelegramWebhookService
 
         if ($callbackData === 'exit_payments') {
             $this->exitPaymentsFlow($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'show_debt_')) {
+            $index = (int) substr($callbackData, strlen('show_debt_'));
+            $this->answerCallback($callbackQueryId);
+            $this->sendSupplierDebtPrompt($fromId, $chatId, $index, $messageId);
+            return;
+        }
+
+        if ($callbackData === 'exit_debts') {
+            $this->answerCallback($callbackQueryId);
+            Cache::forget('telegram_debts_queue_' . $fromId);
+            if ($messageId) {
+                $token = config('services.telegram.bot_token');
+                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => "❌ *[VISTA DE DEUDAS CERRADA]*\n\nHas salido de la consulta detallada de deudas.",
+                    'parse_mode' => 'Markdown'
+                ]);
+            }
             return;
         }
 
@@ -2093,5 +2121,237 @@ class TelegramWebhookService
 
         // Permitir todo si no se puede determinar
         return 'all';
+    }
+
+    /**
+     * Inicializar el flujo de deudas detallado, dividiendo en indexadas y no indexadas.
+     */
+    public function initDebtsFlow($fromId, $chatId): void
+    {
+        try {
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->where('status', 'ordered')
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes.", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor
+            $grouped = $invoices->groupBy('supplier_id');
+            $suppliersList = [];
+
+            foreach ($grouped as $supplierId => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+
+                $indexedInvoices = [];
+                $nonIndexedInvoices = [];
+                
+                $totalUSD = 0;
+                $totalBS = 0;
+
+                foreach ($group as $invoice) {
+                    // Calcular abonos
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                        } else {
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    // Determinar monto original en la moneda correspondiente
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                        
+                        $totalUSD += $invoiceRemainingUSD;
+                        $totalBS += $invoiceRemainingOriginal;
+                        
+                        $indexedInvoices[] = [
+                            'number' => $invoice->invoice_number,
+                            'date' => $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m/Y') : 'Sin Fecha',
+                            'amount_original' => $invoiceRemainingOriginal,
+                            'currency' => $invoice->currency,
+                            'amount_usd' => $invoiceRemainingUSD,
+                        ];
+                    } else {
+                        // No indexada (o en otra moneda)
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+                        if ($invoicePaidUSD > 0) {
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+
+                        // Sumar a los totales correspondientes
+                        if ($invoice->currency === 'Bs') {
+                            $totalBS += $invoiceRemainingOriginal;
+                            $totalUSD += $invoiceRemainingUSD;
+                        } elseif ($invoice->currency === 'USD') {
+                            $totalUSD += $invoiceRemainingOriginal;
+                            // Convertir de forma referencial a Bs para el total consolidado
+                            $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                            $totalBS += round($invoiceRemainingOriginal * $bcvRate, 2);
+                        } else {
+                            // COP u otros
+                            $totalUSD += $invoiceRemainingUSD;
+                            $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                            $totalBS += round($invoiceRemainingUSD * $bcvRate, 2);
+                        }
+
+                        $nonIndexedInvoices[] = [
+                            'number' => $invoice->invoice_number,
+                            'date' => $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m/Y') : 'Sin Fecha',
+                            'amount_original' => $invoiceRemainingOriginal,
+                            'currency' => $invoice->currency,
+                            'amount_usd' => $invoiceRemainingUSD,
+                        ];
+                    }
+                }
+
+                if (empty($indexedInvoices) && empty($nonIndexedInvoices)) {
+                    continue;
+                }
+
+                $suppliersList[] = [
+                    'supplier_id' => $supplierId,
+                    'supplier_name' => $supplierName,
+                    'total_usd' => $totalUSD,
+                    'total_bs' => $totalBS,
+                    'indexed' => $indexedInvoices,
+                    'non_indexed' => $nonIndexedInvoices,
+                ];
+            }
+
+            if (empty($suppliersList)) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes deudas pendientes.", $chatId);
+                return;
+            }
+
+            Cache::put('telegram_debts_queue_' . $fromId, $suppliersList, 600);
+            $this->sendSupplierDebtPrompt($fromId, $chatId, 0);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al iniciar flujo de deudas: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al cargar las deudas: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Enviar mensaje de deuda del proveedor actual por su índice.
+     */
+    public function sendSupplierDebtPrompt($fromId, $chatId, int $index, ?int $messageId = null): void
+    {
+        $queue = Cache::get('telegram_debts_queue_' . $fromId);
+        if (!$queue || !isset($queue[$index])) {
+            $this->telegramService->sendMessage("❌ No se pudo cargar el listado de deudas.", $chatId);
+            return;
+        }
+
+        $supplier = $queue[$index];
+        $totalCount = count($queue);
+        $currentIndexNum = $index + 1;
+
+        $msg = "📊 *[ESTADO DE DEUDAS - {$currentIndexNum}/{$totalCount}]*\n\n"
+             . "🏢 *Proveedor:* {$supplier['supplier_name']}\n"
+             . "💰 *Deuda Consolidada:*\n"
+             . "  • `" . number_format($supplier['total_bs'], 2) . " Bs`\n"
+             . "  • `" . number_format($supplier['total_usd'], 2) . " USD`\n\n"
+             . "───────────────────\n";
+
+        // Bloque de Facturas Indexadas
+        $msg .= "📈 *FACTURAS INDEXADAS:*\n";
+        if (empty($supplier['indexed'])) {
+            $msg .= "  _Ninguna_\n";
+        } else {
+            foreach ($supplier['indexed'] as $inv) {
+                $msg .= "  • `#{$inv['number']}` (Pago: `{$inv['date']}`)\n"
+                      . "    *Monto:* `" . number_format($inv['amount_original'], 2) . " {$inv['currency']}` (≈ " . number_format($inv['amount_usd'], 2) . " USD)\n";
+            }
+        }
+
+        $msg .= "\n📌 *FACTURAS NO INDEXADAS:*\n";
+        if (empty($supplier['non_indexed'])) {
+            $msg .= "  _Ninguna_\n";
+        } else {
+            foreach ($supplier['non_indexed'] as $inv) {
+                $msg .= "  • `#{$inv['number']}` (Pago: `{$inv['date']}`)\n"
+                      . "    *Monto:* `" . number_format($inv['amount_original'], 2) . " {$inv['currency']}`";
+                if ($inv['currency'] !== 'USD') {
+                    $msg .= " (≈ " . number_format($inv['amount_usd'], 2) . " USD)";
+                }
+                $msg .= "\n";
+            }
+        }
+
+        // Crear botones de navegación
+        $buttons = [];
+        $navRow = [];
+        if ($index > 0) {
+            $navRow[] = ['text' => '⬅️ Anterior', 'callback_data' => 'show_debt_' . ($index - 1)];
+        }
+        if ($index < $totalCount - 1) {
+            $navRow[] = ['text' => 'Siguiente ➡️', 'callback_data' => 'show_debt_' . ($index + 1)];
+        }
+        if (!empty($navRow)) {
+            $buttons[] = $navRow;
+        }
+
+        // Botón para registrar pago y botón de salir
+        $buttons[] = [
+            ['text' => '💳 Registrar Pago', 'callback_data' => 'pay_supplier_' . $supplier['supplier_id']],
+            ['text' => '❌ Salir', 'callback_data' => 'exit_debts']
+        ];
+
+        $replyMarkup = ['inline_keyboard' => $buttons];
+
+        $token = config('services.telegram.bot_token');
+        if ($messageId) {
+            Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => $replyMarkup,
+            ]);
+        } else {
+            Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => $replyMarkup,
+            ]);
+        }
     }
 }
