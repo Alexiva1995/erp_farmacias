@@ -422,11 +422,17 @@ class TelegramWebhookService
                 // Obtener el primer usuario disponible en el sistema para asociarlo al registro automático de la factura
                 $adminId = \App\Models\User::first()?->id ?? 1;
 
+                $currency = $invoiceData['currency'] ?? 'USD';
+                $exchangeRate = 1;
+                if ($currency !== 'USD') {
+                    $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($currency) ?? 1;
+                }
+
                 $payload = [
                     'supplier_id' => $invoiceData['supplier_id'],
                     'invoice_number' => $invoiceData['invoice_number'],
                     'control_number' => $invoiceData['control_number'] ?? $invoiceData['invoice_number'],
-                    'currency' => $invoiceData['currency'] ?? 'USD',
+                    'currency' => $currency,
                     'exp_date' => now()->addDays(30)->toDateString(),
                     'received_date' => now()->toDateString(),
                     'created_invoice_date' => $invoiceData['invoice_date'] ?? now()->toDateString(),
@@ -434,7 +440,7 @@ class TelegramWebhookService
                     'taxable_base' => $isInformal ? 0 : ($invoiceData['taxable_base'] ?? 0),
                     'tax_amount' => $isInformal ? 0 : ($invoiceData['tax_amount'] ?? 0),
                     'total_amount' => $invoiceData['total_amount'],
-                    'exchange_rate' => 1,
+                    'exchange_rate' => $exchangeRate,
                     'registered_by' => $adminId,
                     'uploaded_by' => $adminId,
                 ];
