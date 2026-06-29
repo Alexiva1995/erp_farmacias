@@ -1,9 +1,10 @@
-﻿<script setup>
+<script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed, defineEmits, defineProps, nextTick } from "vue";
+import { computed, defineEmits, defineProps, nextTick, ref } from "vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
@@ -19,7 +20,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible"]);
+const emit = defineEmits(["update:isDialogVisible", "refresh"]);
 
 const dialogVisible = computed({
   get() {
@@ -181,8 +182,14 @@ const groupedCardTotals = computed(() => {
 
     if (!acc[sellerId]) {
       acc[sellerId] = {
+        closing_id: closing.id,
         seller_id: sellerId,
         seller_name: sellerName,
+        declared_cop: closing.declared_cop,
+        declared_usd: closing.declared_usd,
+        declared_credit: closing.declared_credit,
+        declared_bs_mobile: closing.declared_bs_mobile,
+        declared_bs_card: closing.declared_bs_card,
          total_bs_card_debito: 0,
          total_bs_card_credito: 0,
          total_bs_transfer: 0,
@@ -361,6 +368,68 @@ const getCurrentTime = () => {
   return new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 };
 
+const isEditDialogVisible = ref(false);
+const isSavingEdit = ref(false);
+const editForm = ref({
+  closing_id: null,
+  seller_name: "",
+  declared_usd: 0,
+  declared_cop: 0,
+  declared_bs_mobile: 0,
+  declared_bs_card: 0,
+  declared_credit: 0,
+});
+
+const openEditDialog = (seller) => {
+  editForm.value = {
+    closing_id: seller.closing_id,
+    seller_name: seller.seller_name,
+    declared_usd: seller.declared_usd || 0,
+    declared_cop: seller.declared_cop || 0,
+    declared_bs_mobile: seller.declared_bs_mobile || 0,
+    declared_bs_card: seller.declared_bs_card || 0,
+    declared_credit: seller.declared_credit || 0,
+  };
+  isEditDialogVisible.value = true;
+};
+
+const saveEdit = async () => {
+  if (!editForm.value.closing_id) return;
+  isSavingEdit.value = true;
+  try {
+    const response = await axios.patch("/cash-closures/update-blind-amounts", {
+      id: editForm.value.closing_id,
+      declared_cop: editForm.value.declared_cop,
+      declared_usd: editForm.value.declared_usd,
+      declared_credit: editForm.value.declared_credit,
+      declared_bs_mobile: editForm.value.declared_bs_mobile,
+      declared_bs_card: editForm.value.declared_bs_card,
+    });
+
+    if (response.data.status === "success") {
+      toast.fire({
+        icon: "success",
+        title: "Declaración actualizada correctamente.",
+      });
+      isEditDialogVisible.value = false;
+      emit("refresh");
+    } else {
+      toast.fire({
+        icon: "error",
+        title: response.data.message || "Error al actualizar.",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    toast.fire({
+      icon: "error",
+      title: error.response?.data?.message || "Error al actualizar la declaración.",
+    });
+  } finally {
+    isSavingEdit.value = false;
+  }
+};
+
 defineExpose({ printReport });
 </script>
 <template>
@@ -535,8 +604,18 @@ defineExpose({ printReport });
                     {{ seller.seller_name?.substring(0,2).toUpperCase() }}
                   </VAvatar>
                   <div class="leading-none">
-                    <h5 class="text-subtitle-2 font-weight-black mb-1 text-capitalize">
+                    <h5 class="text-subtitle-2 font-weight-black mb-1 text-capitalize d-flex align-center gap-1">
                       {{ seller.seller_name }}
+                      <VBtn
+                        icon="tabler-edit"
+                        variant="text"
+                        density="compact"
+                        size="small"
+                        color="primary"
+                        class="mt-n1"
+                        title="Editar Declaración"
+                        @click="openEditDialog(seller)"
+                      />
                     </h5>
                     <span class="text-super-xs text-disabled font-weight-bold uppercase">Cajero #{{ seller.seller_id }}</span>
                   </div>
@@ -956,6 +1035,81 @@ defineExpose({ printReport });
       </VCardActions>
     </VCard>
   </VDialog>
+
+  <!-- Dialogo para editar declaración del cajero (Cierre Ciego) -->
+  <VDialog v-model="isEditDialogVisible" max-width="500px">
+    <VCard class="rounded-xl">
+      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4">
+        <span class="text-h6 font-weight-bold">Editar Declaración: {{ editForm.seller_name }}</span>
+        <VBtn icon="tabler-x" variant="text" density="compact" @click="isEditDialogVisible = false" />
+      </VCardTitle>
+      <VDivider />
+      <VCardText class="px-6 py-4">
+        <VRow>
+          <VCol cols="12" md="6">
+            <VTextField
+              v-model.number="editForm.declared_usd"
+              label="Efectivo USD"
+              type="number"
+              prefix="$"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+          <VCol cols="12" md="6">
+            <VTextField
+              v-model.number="editForm.declared_cop"
+              label="Efectivo COP"
+              type="number"
+              prefix="COP"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+          <VCol cols="12" md="6">
+            <VTextField
+              v-model.number="editForm.declared_bs_mobile"
+              label="Pago Móvil / Transf. BS"
+              type="number"
+              prefix="Bs"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+          <VCol cols="12" md="6">
+            <VTextField
+              v-model.number="editForm.declared_bs_card"
+              label="Tarjetas BS"
+              type="number"
+              prefix="Bs"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+          <VCol cols="12">
+            <VTextField
+              v-model.number="editForm.declared_credit"
+              label="Créditos USD"
+              type="number"
+              prefix="$"
+              variant="outlined"
+              density="comfortable"
+            />
+          </VCol>
+        </VRow>
+      </VCardText>
+      <VDivider />
+      <VCardActions class="px-6 py-4">
+        <VSpacer />
+        <VBtn color="grey-darken-1" variant="outlined" @click="isEditDialogVisible = false">
+          Cancelar
+        </VBtn>
+        <VBtn color="primary" variant="flat" :loading="isSavingEdit" @click="saveEdit">
+          Guardar Cambios
+            </VBtn>
+          </VCardActions>
+        </VCard>
+      </VDialog>
 </template>
 
 <style scoped>
