@@ -697,18 +697,19 @@ class TelegramWebhookService
         }
     }
 
-    /**
-     * Responder a la consulta de callback de Telegram.
-     */
-    protected function answerCallback(string $callbackQueryId, string $text): void
+    protected function answerCallback(string $callbackQueryId, ?string $text = null, bool $showAlert = false): void
     {
         $token = config('services.telegram.bot_token');
         if ($token) {
-            Http::post("https://api.telegram.org/bot{$token}/answerCallbackQuery", [
+            $payload = [
                 'callback_query_id' => $callbackQueryId,
-                'text' => $text,
-                'show_alert' => true,
-            ]);
+            ];
+            // Solo enviar el texto a Telegram si se requiere mostrar una alerta/popup explícito
+            if ($text !== null && $showAlert) {
+                $payload['text'] = $text;
+                $payload['show_alert'] = true;
+            }
+            Http::post("https://api.telegram.org/bot{$token}/answerCallbackQuery", $payload);
         }
     }
 
