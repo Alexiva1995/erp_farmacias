@@ -64,7 +64,6 @@ class OrderActionService
 
                 $order = Order::create($data);
                 $order->load('seller', 'client');
-                Log::info("Orden {$order->id} creada por vendedor {$data['seller_id']}");
                 return $order;
             });
 

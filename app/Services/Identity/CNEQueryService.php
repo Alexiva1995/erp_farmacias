@@ -41,8 +41,7 @@ class CNEQueryService
 
             $data = $response->json();
 
-            // Log para depuración: ver la respuesta completa de la API
-            \Log::info("CNE: Respuesta para CI {$cedula}: " . json_encode($data));
+
 
             // Verificar estructura oficial { error: false, data: { ... } }
             if (isset($data['error']) && !$data['error'] && isset($data['data']) && $data['data']) {
@@ -58,7 +57,6 @@ class CNEQueryService
                 ];
             }
 
-            \Log::warning("CNE: Estructura inesperada para CI {$cedula}: " . json_encode($data));
             return null;
 
         } catch (\Exception $e) {

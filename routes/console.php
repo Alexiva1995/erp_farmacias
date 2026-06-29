@@ -60,10 +60,7 @@ Schedule::call(function () {
             'status' => 'Pendiente',
             'updated_at' => now()
         ]);
-        $renewedCount++;
     }
-
-    \Log::info("Ejecuciones renovadas automáticamente: {$renewedCount}");
 })
     ->hourly()
     ->name('mark-overdue-executions')

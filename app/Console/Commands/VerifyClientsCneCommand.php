@@ -33,7 +33,5 @@ class VerifyClientsCneCommand extends Command
         $this->info("Proceso completado.");
         $this->info("Actualizados: {$results['updated']}");
         $this->info("No encontrados: {$results['not_found']}");
-
-        \Log::info("Cron CNE completado: {$results['updated']} actualizados, {$results['not_found']} no encontrados.");
     }
 }
