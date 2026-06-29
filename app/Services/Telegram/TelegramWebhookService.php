@@ -62,14 +62,21 @@ class TelegramWebhookService
             return;
         }
 
+        $botType = $this->getBotType();
+
         // Interceptar fotos de inmediato antes de validar estados de texto
         if (isset($message['photo'])) {
             $stateData = Cache::get('telegram_state_' . $fromId);
             if ($stateData && is_array($stateData) && $stateData['state'] === 'waiting_for_payment_photo') {
-                $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
+                if ($botType === 'farmacia' || $botType === 'all') {
+                    $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
+                    return;
+                }
+            }
+            if ($botType === 'restaurante' || $botType === 'all') {
+                $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
                 return;
             }
-            $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
             return;
         }
 
@@ -78,100 +85,116 @@ class TelegramWebhookService
         if ($cleanText === 'cancelar' || $cleanText === '/cancelar') {
             Cache::forget('telegram_state_' . $fromId);
             Cache::forget('telegram_pending_invoice_' . $fromId);
-            $this->telegramService->sendMessage("❌ *[PROCESO CANCELADO]*\n\nSe ha cancelado el registro de la factura actual y limpiado tu estado.", $chatId);
+            $this->telegramService->sendMessage("❌ *[PROCESO CANCELADO]*\n\nSe ha cancelado el flujo activo y limpiado tu estado.", $chatId);
             return;
         }
 
         // 1. Verificar si el usuario está en un estado conversacional esperando un dato específico
         $stateData = Cache::get('telegram_state_' . $fromId);
         if ($stateData && is_array($stateData)) {
-            if ($stateData['state'] === 'waiting_for_invoice_total') {
-                $this->processUserProvidedTotal(trim($text), $fromId, $chatId, $stateData);
-                return;
-            }
-            if ($stateData['state'] === 'waiting_for_invoice_supplier_name') {
-                $this->processUserProvidedSupplierName(trim($text), $fromId, $chatId, $stateData);
-                return;
-            }
-            if ($stateData['state'] === 'waiting_for_products_list') {
-                $this->processProductsList(trim($text), $fromId, $chatId);
-                return;
-            }
-            if ($stateData['state'] === 'waiting_for_fast_fruit_invoice') {
-                $this->processFastFruitInvoice(trim($text), $fromId, $chatId);
-                return;
-            }
-            if ($stateData['state'] === 'waiting_for_payment_amount') {
-                $this->processUserProvidedPaymentAmount(trim($text), $fromId, $chatId, $stateData);
-                return;
-            }
-            if ($stateData['state'] === 'waiting_for_payment_photo') {
-                $lowerText = strtolower(trim($text));
-                if ($lowerText === 'saltar' || $lowerText === 'ninguno') {
-                    $this->skipPaymentPhoto($fromId, $chatId, $stateData);
-                } else {
-                    $this->telegramService->sendMessage("📸 Por favor envía la foto del comprobante de pago o escribe *saltar*.", $chatId);
+            // Flujo de Registro de Facturas (Solo Restaurante/All)
+            if ($botType === 'restaurante' || $botType === 'all') {
+                if ($stateData['state'] === 'waiting_for_invoice_total') {
+                    $this->processUserProvidedTotal(trim($text), $fromId, $chatId, $stateData);
+                    return;
                 }
-                return;
+                if ($stateData['state'] === 'waiting_for_invoice_supplier_name') {
+                    $this->processUserProvidedSupplierName(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_products_list') {
+                    $this->processProductsList(trim($text), $fromId, $chatId);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_fast_fruit_invoice') {
+                    $this->processFastFruitInvoice(trim($text), $fromId, $chatId);
+                    return;
+                }
             }
-            if ($stateData['state'] === 'waiting_for_payment_reference_manual') {
-                $this->processUserProvidedPaymentReference(trim($text), $fromId, $chatId, $stateData);
-                return;
+
+            // Flujo de Pagos (Solo Farmacia/All)
+            if ($botType === 'farmacia' || $botType === 'all') {
+                if ($stateData['state'] === 'waiting_for_payment_amount') {
+                    $this->processUserProvidedPaymentAmount(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_payment_photo') {
+                    $lowerText = strtolower(trim($text));
+                    if ($lowerText === 'saltar' || $lowerText === 'ninguno') {
+                        $this->skipPaymentPhoto($fromId, $chatId, $stateData);
+                    } else {
+                        $this->telegramService->sendMessage("📸 Por favor envía la foto del comprobante de pago o escribe *saltar*.", $chatId);
+                    }
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_payment_reference_manual') {
+                    $this->processUserProvidedPaymentReference(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
             }
         }
 
         // (La foto ya fue procesada al inicio del método si existía)
 
-        // Caso B: Comando para iniciar el registro de facturas
-        if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
-            $isInformal = !empty($matches[1]);
-            $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
-            $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
+        // ==================== COMANDOS DE RESTAURANTE / MINIMARKET ====================
+        if ($botType === 'restaurante' || $botType === 'all') {
+            // Caso B: Comando para iniciar el registro de facturas
+            if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
+                $isInformal = !empty($matches[1]);
+                $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
+                $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
 
-            $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
-            return;
-        }
-
-        // Caso C: Comando para cancelar reservas
-        if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
-            $this->processReservationCancellation(trim($matches[1]), $chatId);
-            return;
-        }
-
-        // Caso D: Comando para registrar productos rápidamente
-        if (preg_match('/^(?:registrar\s+productos?|\/registrar_productos?)(?:\s+(.+))?$/i', trim($text), $matches)) {
-            $productsList = isset($matches[1]) ? trim($matches[1]) : null;
-            if ($productsList) {
-                $this->processProductsList($productsList, $fromId, $chatId);
-            } else {
-                Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
-                $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
+                $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
+                return;
             }
-            return;
-        }
 
-        // Caso E: Comando para registro ultra rápido de facturas de frutas
-        if (preg_match('/^(?:registrar\s+frutas?|\/registrar_frutas?)(?:\s+(.+))?$/i', trim($text), $matches)) {
-            $fruitsText = isset($matches[1]) ? trim($matches[1]) : null;
-            if ($fruitsText) {
-                $this->processFastFruitInvoice($fruitsText, $fromId, $chatId);
-            } else {
-                Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
-                $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
+            // Caso D: Comando para registrar productos rápidamente
+            if (preg_match('/^(?:registrar\s+productos?|\/registrar_productos?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+                $productsList = isset($matches[1]) ? trim($matches[1]) : null;
+                if ($productsList) {
+                    $this->processProductsList($productsList, $fromId, $chatId);
+                } else {
+                    Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
+                    $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
+                }
+                return;
             }
-            return;
+
+            // Caso E: Comando para registro ultra rápido de facturas de frutas
+            if (preg_match('/^(?:registrar\s+frutas?|\/registrar_frutas?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+                $fruitsText = isset($matches[1]) ? trim($matches[1]) : null;
+                if ($fruitsText) {
+                    $this->processFastFruitInvoice($fruitsText, $fromId, $chatId);
+                } else {
+                    Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
+                    $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
+                }
+                return;
+            }
         }
 
-        // Caso F: Comando para gestionar pagos pendientes
-        if ($cleanText === 'pagos' || $cleanText === '/pagos') {
-            $this->initPaymentsFlow($fromId, $chatId);
-            return;
+        // ==================== COMANDOS DE CANCHAS / RESERVAS ====================
+        if ($botType === 'canchas' || $botType === 'all') {
+            // Caso C: Comando para cancelar reservas
+            if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
+                $this->processReservationCancellation(trim($matches[1]), $chatId);
+                return;
+            }
         }
 
-        // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
-        if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
-            $this->sendUpcoming7DaysPayments($chatId);
-            return;
+        // ==================== COMANDOS DE FARMACIA ====================
+        if ($botType === 'farmacia' || $botType === 'all') {
+            // Caso F: Comando para gestionar pagos pendientes
+            if ($cleanText === 'pagos' || $cleanText === '/pagos') {
+                $this->initPaymentsFlow($fromId, $chatId);
+                return;
+            }
+
+            // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
+            if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
+                $this->sendUpcoming7DaysPayments($chatId);
+                return;
+            }
         }
     }
 
@@ -2043,5 +2066,32 @@ class TelegramWebhookService
             \Log::error('[TelegramWebhook] Error al enviar pagos de 7 días: ' . $e->getMessage());
             $this->telegramService->sendMessage("❌ Error al obtener los pagos de los próximos 7 días: " . $e->getMessage(), $chatId);
         }
+    }
+
+    /**
+     * Obtener el tipo de bot activo basado en la variable de entorno o autodetectando la base de datos conectada.
+     */
+    protected function getBotType(): string
+    {
+        // 1. Prioridad: Variable de entorno explícita en el .env de cada despliegue
+        $envType = env('TELEGRAM_BOT_TYPE');
+        if ($envType) {
+            return strtolower(trim($envType));
+        }
+
+        // 2. Detección automática por nombre de base de datos activa
+        $dbName = config('database.connections.mysql.database');
+        if (str_contains($dbName, 'farmacia')) {
+            return 'farmacia';
+        }
+        if (str_contains($dbName, 'toffle') || str_contains($dbName, 'minimarket') || str_contains($dbName, 'restaurant')) {
+            return 'restaurante';
+        }
+        if (str_contains($dbName, 'golclub') || str_contains($dbName, 'cancha') || str_contains($dbName, 'reserva')) {
+            return 'canchas';
+        }
+
+        // Permitir todo si no se puede determinar
+        return 'all';
     }
 }
