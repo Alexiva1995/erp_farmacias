@@ -1936,7 +1936,7 @@ class TelegramWebhookService
     /**
      * Consultar y listar deudas agrupadas por proveedor y día para los próximos 7 días (Meramente informativo).
      */
-    protected function sendUpcoming7DaysPayments($chatId): void
+    public function sendUpcoming7DaysPayments($chatId): void
     {
         try {
             $startDate = \Carbon\Carbon::today()->toDateString();
