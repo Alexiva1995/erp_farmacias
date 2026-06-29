@@ -170,7 +170,7 @@ class InvoiceActionService
 
                 $productId = $detail['product']['id'];
                 Log::info('Processing detail', ['product_id' => $productId, 'quantity' => $detail['quantity']]);
-                $quantity = (int) $detail['quantity'];
+                $quantity = (float) $detail['quantity'];
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
                 $displayOrder = isset($detail['display_order']) ? (int) $detail['display_order'] : $index;

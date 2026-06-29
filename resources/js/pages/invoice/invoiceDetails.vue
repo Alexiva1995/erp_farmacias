@@ -1125,16 +1125,18 @@ const handleSaveLocations = async () => {
 };
 
 const formatNumber = (value) => {
-  if (typeof value !== "number") return value;
+  const numValue = typeof value === "string" ? parseFloat(value) : value;
+  if (typeof numValue !== "number" || isNaN(numValue)) return value;
 
   return new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(numValue);
 };
 
 const formatCurrency = (value, currency = null) => {
-  if (typeof value !== "number") return value;
+  const numValue = typeof value === "string" ? parseFloat(value) : value;
+  if (typeof numValue !== "number" || isNaN(numValue)) return value;
   const targetCurrency = currency || invoice.value?.currency;
   const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
   const mappedCurrency = currencyMap[targetCurrency] || "VES";
@@ -1142,7 +1144,7 @@ const formatCurrency = (value, currency = null) => {
     style: "currency",
     currency: mappedCurrency,
     minimumFractionDigits: 2,
-  }).format(value);
+  }).format(numValue);
 };
 
 const getCurrencySymbol = () => {
