@@ -167,6 +167,12 @@ class TelegramWebhookService
             $this->initPaymentsFlow($fromId, $chatId);
             return;
         }
+
+        // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
+        if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
+            $this->sendUpcoming7DaysPayments($chatId);
+            return;
+        }
     }
 
     /**
@@ -1924,6 +1930,118 @@ class TelegramWebhookService
             \Log::error('[TelegramWebhook] Error al procesar pago: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->telegramService->sendMessage("❌ Error al registrar el pago en la base de datos: " . $e->getMessage(), $chatId);
             Cache::forget('telegram_state_' . $fromId);
+        }
+    }
+
+    /**
+     * Consultar y listar deudas agrupadas por proveedor y día para los próximos 7 días (Meramente informativo).
+     */
+    protected function sendUpcoming7DaysPayments($chatId): void
+    {
+        try {
+            $startDate = \Carbon\Carbon::today()->toDateString();
+            $endDate = \Carbon\Carbon::today()->addDays(7)->toDateString();
+
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->where('status', 'ordered')
+                ->whereBetween('payment_date', [$startDate, $endDate])
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("📅 *[PAGOS PRÓXIMOS 7 DÍAS]*\n\nNo hay pagos programados desde hoy hasta el " . \Carbon\Carbon::today()->addDays(7)->format('d/m/Y') . ".", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor_id y fecha de pago (igual que en /finances/pending-payments)
+            $grouped = $invoices->groupBy(function ($invoice) {
+                return $invoice->supplier_id . '_' . $invoice->payment_date;
+            });
+
+            $msg = "📅 *[PAGOS PROGRAMADOS - PRÓXIMOS 7 DÍAS]*\n\n";
+
+            foreach ($grouped as $key => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+                $paymentDateFormatted = $firstInvoice->payment_date ? \Carbon\Carbon::parse($firstInvoice->payment_date)->format('d/m/Y') : 'Sin Fecha';
+                
+                $msg .= "🏢 *{$supplierName}*\n📅 *Fecha de Pago:* `{$paymentDateFormatted}`\n";
+
+                $groupInvoicesText = "";
+                $groupTotalOriginal = 0;
+                $currency = $firstInvoice->currency;
+
+                foreach ($group as $invoice) {
+                    // Calcular el saldo restante en su moneda original (replicando la lógica de la vista)
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                        } else {
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    // Replicar exactamente la lógica de /finances/pending-payments
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        if ($invoicePaidUSD > 0) {
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+                    }
+
+                    $groupInvoicesText .= "  • `{$invoice->invoice_number}`: " . number_format($invoiceRemainingOriginal, 2) . " {$invoice->currency}\n";
+                    $groupTotalOriginal += $invoiceRemainingOriginal;
+                }
+
+                if (empty($groupInvoicesText)) {
+                    continue;
+                }
+
+                $msg .= $groupInvoicesText;
+                $msg .= "💰 *Total del día:* `" . number_format($groupTotalOriginal, 2) . " {$currency}`\n";
+                $msg .= "───────────────────\n";
+            }
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al enviar pagos de 7 días: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al obtener los pagos de los próximos 7 días: " . $e->getMessage(), $chatId);
         }
     }
 }
