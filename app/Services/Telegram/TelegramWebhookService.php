@@ -1246,13 +1246,20 @@ class TelegramWebhookService
                     }
 
                     // Obtener saldo restante en la moneda original de la factura
-                    $invoiceRemainingOriginal = $invoice->total_amount;
                     if ($invoice->currency === 'Bs') {
-                        $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1;
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                        if ($invoice->is_indexed) {
+                            $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        } else {
+                            $rate = $invoice->exchange_rate ?? 1.00;
+                        }
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * (float)$rate, 2);
                     } elseif ($invoice->currency === 'COP') {
-                        $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                        if ($invoice->is_indexed) {
+                            $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1.00;
+                        } else {
+                            $rate = $invoice->exchange_rate ?? 1.00;
+                        }
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * (float)$rate, 2);
                     } else {
                         $invoiceRemainingOriginal = $invoiceRemainingUSD;
                     }
@@ -1269,17 +1276,7 @@ class TelegramWebhookService
 
                 // Formatear monedas
                 $currency = $firstInvoice->currency;
-                $remainingOriginal = $group->sum('total_amount');
-
-                if ($currency === 'Bs') {
-                    $rate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1;
-                    $remainingOriginal = round($remainingAmountUSD * $rate, 2);
-                } elseif ($currency === 'COP') {
-                    $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
-                    $remainingOriginal = round($remainingAmountUSD * $rate, 2);
-                } else {
-                    $remainingOriginal = $remainingAmountUSD;
-                }
+                $remainingOriginal = collect($invoicesList)->sum('remaining_amount');
 
                 $formattedDebt = number_format($remainingOriginal, 2) . ' ' . $currency;
                 if ($currency !== 'USD') {
