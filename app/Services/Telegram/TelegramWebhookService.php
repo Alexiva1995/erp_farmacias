@@ -62,6 +62,15 @@ class TelegramWebhookService
             return;
         }
 
+        // Permite al usuario abortar cualquier flujo activo (ej: registro de facturas) escribiendo 'cancelar'
+        $cleanText = strtolower(trim($text));
+        if ($cleanText === 'cancelar' || $cleanText === '/cancelar') {
+            Cache::forget('telegram_state_' . $fromId);
+            Cache::forget('telegram_pending_invoice_' . $fromId);
+            $this->telegramService->sendMessage("❌ *[PROCESO CANCELADO]*\n\nSe ha cancelado el registro de la factura actual y limpiado tu estado.", $chatId);
+            return;
+        }
+
         // 1. Verificar si el usuario está en un estado conversacional esperando un dato específico
         $stateData = Cache::get('telegram_state_' . $fromId);
         if ($stateData && is_array($stateData)) {
