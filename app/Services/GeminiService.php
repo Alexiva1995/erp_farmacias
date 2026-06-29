@@ -45,6 +45,7 @@ class GeminiService
                 . "- taxable_base: Base imponible (número decimal o 0).\n"
                 . "- tax_amount: Monto del impuesto/IVA (número decimal o 0).\n"
                 . "- total_amount: Monto total de la factura (número decimal).\n"
+                . "IMPORTANTE: Si el final de la factura está cortado o no se visualiza el bloque de totales, calcula el total sumando los precios de todos los artículos visibles y asígnalo a 'total_amount'.\n"
                 . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin markdown block de tipo ```json, solo el objeto plano.";
 
             $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
