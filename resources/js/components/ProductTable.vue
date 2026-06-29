@@ -235,6 +235,7 @@ const toggleFavorite = async (item) => {
           <div class="d-flex align-center gap-x-3 py-2">
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
+              v-if="!isRestaurant"
               icon
               variant="text"
               density="compact"
@@ -332,7 +333,7 @@ const toggleFavorite = async (item) => {
                 <VTooltip activator="parent">Restaurar</VTooltip>
               </IconBtn>
               <IconBtn
-                v-if="authStore.isAdmin && !isMiniMarket"
+                v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant"
                 color="info"
                 size="small"
                 @click="openMergeModal(item)"
@@ -398,6 +399,7 @@ const toggleFavorite = async (item) => {
             <div class="d-flex gap-3 align-start">
               <!-- Corazón interactivo de favorito para móvil -->
               <VBtn
+                v-if="!isRestaurant"
                 icon
                 variant="text"
                 density="compact"
