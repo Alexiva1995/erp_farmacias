@@ -459,7 +459,7 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol cols="12" :md="isRestaurant || isMiniMarket ? 6 : 4">
+                      <VCol cols="12" :md="isRestaurant ? 4 : (isMiniMarket ? 6 : 4)">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant || isMiniMarket ? 'Marca' : 'Laboratorio' }}</span>
                         <AppSelect
                           v-model="formData.laboratory_id"
