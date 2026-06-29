@@ -9,8 +9,10 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { useAuthStore } from "@/stores/auth";
 
 const brandingStore = useBrandingStore();
+const authStore = useAuthStore();
 const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
 const props = defineProps({
@@ -993,12 +995,27 @@ const saveEditingDetail = () => {
     return;
   }
 
-  // Lote y fecha de vencimiento ahora son completamente opcionales
-  if (!editedDetailData.value.lot_number?.trim()) {
-    editedDetailData.value.lot_number = null;
-  }
-  if (!editedDetailData.value.expiration_date) {
-    editedDetailData.value.expiration_date = null;
+  // Lote y fecha de vencimiento son opcionales SOLO para administradores.
+  // Para usuarios normales, se obliga a ingresarlos.
+  if (!authStore.isAdmin) {
+    if (!editedDetailData.value.lot_number?.trim()) {
+      const itemType = editedDetailData.value.is_return ? "devolución" : "producto";
+      toast.error(`El número de lote es obligatorio para este ${itemType}`);
+      return;
+    }
+    if (!editedDetailData.value.expiration_date) {
+      const itemType = editedDetailData.value.is_return ? "devolución" : "producto";
+      toast.error(`La fecha de vencimiento es obligatoria para este ${itemType}`);
+      return;
+    }
+  } else {
+    // Si es administrador y los dejó vacíos, se guardan como null
+    if (!editedDetailData.value.lot_number?.trim()) {
+      editedDetailData.value.lot_number = null;
+    }
+    if (!editedDetailData.value.expiration_date) {
+      editedDetailData.value.expiration_date = null;
+    }
   }
 
   const originalDetail = invoiceDetails.value.find(
