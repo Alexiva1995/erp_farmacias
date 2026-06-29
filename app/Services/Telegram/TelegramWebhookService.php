@@ -907,8 +907,11 @@ class TelegramWebhookService
             // Autenticar temporalmente para evitar que falle en observadores o servicios
             \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
 
-            // Crear cabecera de la factura en el ERP en estado pendiente
-            $invoice = \App\Models\Invoice::create([
+            // Instanciar el servicio para transicionar los estados de forma idéntica al sistema
+            $invoiceActionService = app(\App\Services\Invoices\InvoiceActionService::class);
+
+            // Crear la factura usando el servicio
+            $invoice = $invoiceActionService->createInvoice([
                 'supplier_id' => $supplier->id,
                 'invoice_number' => $invoiceNumber,
                 'control_number' => $invoiceNumber,
@@ -924,27 +927,42 @@ class TelegramWebhookService
                 'exchange_rate' => $exchangeRate,
                 'registered_by' => $adminId,
                 'uploaded_by' => $adminId,
-                'status' => 'pending',
-                'status_payment' => 0,
             ]);
 
-            // Crear los detalles de la factura
+            // Formatear detalles para el servicio
+            $detailsPayload = [];
             foreach ($parsedItems as $index => $item) {
-                $invoice->details()->create([
-                    'product_id' => $item['product']->id,
-                    'lot_number' => $item['lot_number'],
-                    'expiration_date' => $item['expiration_date'],
+                $detailsPayload[] = [
+                    'product' => ['id' => $item['product']->id],
                     'quantity' => $item['quantity'],
                     'unit_cost' => $item['unit_cost'],
-                    'total_cost' => $item['total_cost'],
-                    'location' => 'Por Asignar',
+                    'lot_number' => $item['lot_number'],
+                    'expiration_date' => $item['expiration_date'],
                     'tax_enabled' => false,
+                    'is_return' => false,
                     'display_order' => $index,
-                ]);
+                ];
             }
 
-            // Instanciar el servicio para transicionar los estados de forma idéntica al sistema
-            $invoiceActionService = app(\App\Services\Invoices\InvoiceActionService::class);
+            // Guardar detalles usando el servicio
+            $invoice = $invoiceActionService->saveInvoiceDetails($invoice, [
+                'invoice' => [
+                    'supplier_id' => $supplier->id,
+                    'invoice_number' => $invoiceNumber,
+                    'control_number' => $invoiceNumber,
+                    'currency' => $currency,
+                    'exp_date' => $expDate,
+                    'payment_date' => $expDate,
+                    'received_date' => now()->toDateString(),
+                    'created_invoice_date' => now()->toDateString(),
+                    'exempt_amount' => $totalAmount,
+                    'taxable_base' => 0,
+                    'tax_amount' => 0,
+                    'total_amount' => $totalAmount,
+                    'exchange_rate' => $exchangeRate,
+                ],
+                'details' => $detailsPayload,
+            ]);
 
             // 1. Finalizar carga (pasa a 'loaded')
             $invoice = $invoiceActionService->finalizeInvoice($invoice);
