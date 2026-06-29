@@ -1170,7 +1170,7 @@ class TelegramWebhookService
     protected function initPaymentsFlow($fromId, $chatId): void
     {
         try {
-            // Consultar facturas pendientes de pago (status_payment != 1 o nulo) en estado ordered (por pagar) y vencidas/venciendo al día de hoy
+            // Consultar facturas pendientes de pago (status_payment != 1 o nulo) en estado ordered (por pagar) y vencidas/venciendo al día de hoy, ordenadas por fecha de pago
             $invoices = \App\Models\Invoice::with(['supplier'])
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
@@ -1178,6 +1178,7 @@ class TelegramWebhookService
                 })
                 ->where('status', 'ordered')
                 ->whereDate('payment_date', '<=', now()->toDateString())
+                ->orderBy('payment_date', 'asc')
                 ->get();
 
             if ($invoices->isEmpty()) {
@@ -1244,22 +1245,30 @@ class TelegramWebhookService
                         continue;
                     }
 
-                    $invoiceRemainingOriginal = $invoice->total_amount;
-                    if ($invoice->currency === 'Bs') {
-                        $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
-                    } elseif ($invoice->currency === 'COP') {
-                        $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                    // Si es indexada y la moneda de la factura es Bs, el monto en Bs se calcula con la tasa actual
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $bcvRate, 2);
                     } else {
-                        $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+                        if ($invoice->currency === 'Bs') {
+                            $rate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first()?->rate ?? 1;
+                            $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                        } elseif ($invoice->currency === 'COP') {
+                            $rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->first()?->rate ?? 1;
+                            $invoiceRemainingOriginal = round($invoiceRemainingUSD * $rate, 2);
+                        } else {
+                            $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                        }
                     }
+
+                    $formattedDate = $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m') : '-';
 
                     $invoicesList[] = [
                         'invoice_number' => $invoice->invoice_number,
                         'remaining_amount' => $invoiceRemainingOriginal,
                         'currency' => $invoice->currency,
-                        'remaining_usd' => $invoiceRemainingUSD,
+                        'payment_date_formatted' => $formattedDate,
                     ];
                 }
 
@@ -1282,6 +1291,9 @@ class TelegramWebhookService
                     $formattedDebt .= " (≈ " . number_format($remainingAmountUSD, 2) . " USD)";
                 }
 
+                // Obtener la fecha de pago más antigua de este grupo de facturas
+                $earliestPaymentDate = $group->min('payment_date') ?? '9999-12-31';
+
                 $suppliersWithDebt[] = [
                     'id' => $supplierId,
                     'name' => $supplierName,
@@ -1291,7 +1303,8 @@ class TelegramWebhookService
                     'formatted_debt' => $formattedDebt,
                     'invoice_ids' => $invoiceIds,
                     'invoices' => $invoicesList,
-                    'invoice_count' => count($invoicesList)
+                    'invoice_count' => count($invoicesList),
+                    'earliest_payment_date' => $earliestPaymentDate
                 ];
             }
 
@@ -1299,6 +1312,11 @@ class TelegramWebhookService
                 $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes al día de hoy.", $chatId);
                 return;
             }
+
+            // Ordenar proveedores por la fecha de pago más antigua (los que vencen antes van primero)
+            usort($suppliersWithDebt, function ($a, $b) {
+                return strcmp($a['earliest_payment_date'], $b['earliest_payment_date']);
+            });
 
             // Guardar en la cola y empezar
             Cache::put('telegram_payments_queue_' . $fromId, [
@@ -1343,11 +1361,7 @@ class TelegramWebhookService
         // Construir el listado detallado de facturas
         $invoicesText = "";
         foreach ($supplier['invoices'] as $inv) {
-            $invoicesText .= "• *Factura # {$inv['invoice_number']}:* " . number_format($inv['remaining_amount'], 2) . " {$inv['currency']}";
-            if ($inv['currency'] !== 'USD') {
-                $invoicesText .= " (≈ " . number_format($inv['remaining_usd'], 2) . " USD)";
-            }
-            $invoicesText .= "\n";
+            $invoicesText .= "• `{$inv['invoice_number']}` - {$inv['payment_date_formatted']} - " . number_format($inv['remaining_amount'], 2) . " {$inv['currency']}\n";
         }
 
         $msg = "💳 *[PAGO DE PROVEEDOR]*\n\n"
