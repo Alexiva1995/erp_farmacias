@@ -428,12 +428,15 @@ class TelegramWebhookService
                     $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($currency) ?? 1;
                 }
 
+                $expDate = now()->addDays(30)->toDateString();
+
                 $payload = [
                     'supplier_id' => $invoiceData['supplier_id'],
                     'invoice_number' => $invoiceData['invoice_number'],
                     'control_number' => $invoiceData['control_number'] ?? $invoiceData['invoice_number'],
                     'currency' => $currency,
-                    'exp_date' => now()->addDays(30)->toDateString(),
+                    'exp_date' => $expDate,
+                    'payment_date' => $expDate,
                     'received_date' => now()->toDateString(),
                     'created_invoice_date' => $invoiceData['invoice_date'] ?? now()->toDateString(),
                     'exempt_amount' => $isInformal ? $invoiceData['total_amount'] : ($invoiceData['exempt_amount'] ?? 0),
