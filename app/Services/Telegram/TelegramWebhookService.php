@@ -69,8 +69,14 @@ class TelegramWebhookService
         }
 
         // Caso B: Comando para iniciar el registro de facturas
-        if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(.+))?$/i', trim($text), $matches)) {
-            $this->initInvoiceRegistration(isset($matches[1]) ? trim($matches[1]) : null, $fromId, $chatId);
+        // Formatos aceptados:
+        // registrar factura [informal] [COP|USD|Bs] [Nombre Proveedor]
+        if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
+            $isInformal = !empty($matches[1]);
+            $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
+            $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
+
+            $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
             return;
         }
 
@@ -84,27 +90,31 @@ class TelegramWebhookService
     /**
      * Inicializar el flujo de registro de facturas.
      */
-    protected function initInvoiceRegistration(?string $supplierName, $fromId, $chatId): void
+    protected function initInvoiceRegistration(?string $supplierName, bool $isInformal, ?string $forcedCurrency, $fromId, $chatId): void
     {
+        $state = [
+            'state' => 'waiting_for_invoice_photo',
+            'is_informal' => $isInformal,
+            'forced_currency' => $forcedCurrency
+        ];
+
+        $info = ($isInformal ? "Informal 📝 " : "") . ($forcedCurrency ? "({$forcedCurrency}) " : "");
+
         if ($supplierName) {
             $supplier = Supplier::where('name', 'like', "%{$supplierName}%")->first();
             if ($supplier) {
-                Cache::put('telegram_state_' . $fromId, [
-                    'state' => 'waiting_for_invoice_photo',
-                    'supplier_id' => $supplier->id,
-                    'supplier_name' => $supplier->name
-                ], 300);
-                $this->telegramService->sendMessage("🎯 Asociado al proveedor: *{$supplier->name}*.\n\nPor favor, envía la **foto de la factura** para procesarla.", $chatId);
+                $state['supplier_id'] = $supplier->id;
+                $state['supplier_name'] = $supplier->name;
+                Cache::put('telegram_state_' . $fromId, $state, 300);
+                $this->telegramService->sendMessage("🎯 Asociado al proveedor: *{$supplier->name}* {$info}.\n\nPor favor, envía la **foto de la factura** para procesarla.", $chatId);
             } else {
-                Cache::put('telegram_state_' . $fromId, [
-                    'state' => 'waiting_for_invoice_photo',
-                    'suggested_supplier_name' => $supplierName
-                ], 300);
-                $this->telegramService->sendMessage("⚠️ El proveedor *{$supplierName}* no existe. Si continúas, te daré la opción de crearlo automáticamente.\n\nPor favor, envía la **foto de la factura**.", $chatId);
+                $state['suggested_supplier_name'] = $supplierName;
+                Cache::put('telegram_state_' . $fromId, $state, 300);
+                $this->telegramService->sendMessage("⚠️ El proveedor *{$supplierName}* no existe {$info}. Si continúas, te daré la opción de crearlo automáticamente.\n\nPor favor, envía la **foto de la factura**.", $chatId);
             }
         } else {
-            Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_invoice_photo'], 300);
-            $this->telegramService->sendMessage("📸 Por favor, envía la **foto de la factura** que deseas registrar.", $chatId);
+            Cache::put('telegram_state_' . $fromId, $state, 300);
+            $this->telegramService->sendMessage("📸 Por favor, envía la **foto de la factura** {$info}que deseas registrar.", $chatId);
         }
     }
 
@@ -140,6 +150,11 @@ class TelegramWebhookService
             return;
         }
 
+        // Forzar moneda si se indicó en el comando
+        if (!empty($stateData['forced_currency'])) {
+            $extractedData['currency'] = $stateData['forced_currency'];
+        }
+
         Cache::put('telegram_pending_invoice_' . $fromId, $extractedData, 600);
 
         $supplier = null;
@@ -154,12 +169,14 @@ class TelegramWebhookService
             }
         }
 
+        $typeInfo = !empty($stateData['is_informal']) ? " [Informal 📝]" : "";
+
         if ($supplier) {
             $extractedData['supplier_id'] = $supplier->id;
             $extractedData['supplier_name'] = $supplier->name;
             Cache::put('telegram_pending_invoice_' . $fromId, $extractedData, 600);
 
-            $msg = "📄 *Factura Detectada con Éxito*\n\n"
+            $msg = "📄 *Factura Detectada con Éxito*{$typeInfo}\n\n"
                  . "🏢 *Proveedor:* {$supplier->name}\n"
                  . "🔢 *Nº Factura:* {$extractedData['invoice_number']}\n"
                  . "📅 *Fecha Emisión:* {$extractedData['invoice_date']}\n"
@@ -189,7 +206,7 @@ class TelegramWebhookService
             $extractedData['supplier_name'] = $nameToUse;
             Cache::put('telegram_pending_invoice_' . $fromId, $extractedData, 600);
 
-            $msg = "🔍 *Proveedor no Registrado*\n\n"
+            $msg = "🔍 *Proveedor no Registrado*{$typeInfo}\n\n"
                  . "El proveedor *{$nameToUse}* (RIF/NIT: `{$rifToUse}`) no existe en tu sistema.\n\n"
                  . "¿Deseas crear automáticamente este proveedor y luego registrar la factura?";
 
@@ -277,12 +294,15 @@ class TelegramWebhookService
         // 1. Confirmar Registro de Factura
         if ($callbackData === "confirm_invoice_{$fromId}") {
             $invoiceData = Cache::get('telegram_pending_invoice_' . $fromId);
+            $stateData = Cache::get('telegram_state_' . $fromId);
             if (!$invoiceData) {
                 $this->answerCallback($callbackQueryId, 'La sesión de la factura ha expirado.');
                 return;
             }
 
             try {
+                $isInformal = !empty($stateData['is_informal']);
+                
                 $payload = [
                     'supplier_id' => $invoiceData['supplier_id'],
                     'invoice_number' => $invoiceData['invoice_number'],
@@ -291,9 +311,9 @@ class TelegramWebhookService
                     'exp_date' => now()->addDays(30)->toDateString(),
                     'received_date' => now()->toDateString(),
                     'created_invoice_date' => $invoiceData['invoice_date'] ?? now()->toDateString(),
-                    'exempt_amount' => $invoiceData['exempt_amount'] ?? 0,
-                    'taxable_base' => $invoiceData['taxable_base'] ?? 0,
-                    'tax_amount' => $invoiceData['tax_amount'] ?? 0,
+                    'exempt_amount' => $isInformal ? $invoiceData['total_amount'] : ($invoiceData['exempt_amount'] ?? 0),
+                    'taxable_base' => $isInformal ? 0 : ($invoiceData['taxable_base'] ?? 0),
+                    'tax_amount' => $isInformal ? 0 : ($invoiceData['tax_amount'] ?? 0),
                     'total_amount' => $invoiceData['total_amount'],
                     'exchange_rate' => 1,
                 ];
@@ -301,10 +321,12 @@ class TelegramWebhookService
                 $this->invoiceActionService->createInvoice($payload);
                 $this->answerCallback($callbackQueryId, '✅ Factura registrada con éxito en el ERP.');
                 
+                $typeInfo = $isInformal ? " [Informal 📝]" : "";
+                
                 Http::post("https://api.telegram.org/bot" . config('services.telegram.bot_token') . "/editMessageText", [
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
-                    'text' => "✅ *[FACTURA REGISTRADA]*\n\n"
+                    'text' => "✅ *[FACTURA REGISTRADA]*{$typeInfo}\n\n"
                          . "🏢 *Proveedor:* {$invoiceData['supplier_name']}\n"
                          . "🔢 *Factura Nº:* `{$invoiceData['invoice_number']}`\n"
                          . "💰 *Total:* " . number_format($invoiceData['total_amount'], 2) . " {$invoiceData['currency']}\n\n"
