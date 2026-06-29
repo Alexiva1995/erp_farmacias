@@ -49,8 +49,8 @@ class InvoiceActionService
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'pending',
-                'registered_by' => Auth::id(),
-                'uploaded_by' => Auth::id(),
+                'registered_by' => Auth::id() ?? $data['registered_by'] ?? null,
+                'uploaded_by' => Auth::id() ?? $data['uploaded_by'] ?? null,
                 'status_payment' => 0,
             ];
             return Invoice::create($invoiceData);

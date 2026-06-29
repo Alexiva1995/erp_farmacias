@@ -439,6 +439,9 @@ class TelegramWebhookService
                     'uploaded_by' => $adminId,
                 ];
 
+                // Autenticar temporalmente al usuario en la sesión del request para el servicio y observadores
+                \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
                 $this->invoiceActionService->createInvoice($payload);
                 $this->answerCallback($callbackQueryId, '✅ Factura registrada con éxito en el ERP.');
                 
