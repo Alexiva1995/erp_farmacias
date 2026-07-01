@@ -114,6 +114,8 @@ class ProductRepository
                 DB::raw('SUM(' . $subqueryAO . ') as totalQuantityInAutoOrder'),
                 DB::raw('MAX(products.unit_cost) as unit_cost'),
                 DB::raw('MAX(products.laboratory_id) as laboratory_id'),
+                DB::raw('MAX(products.presentation) as presentation'),
+                DB::raw('MAX(products.unit_of_measure) as unit_of_measure'),
             ];
         } else {
             $columnas = [
@@ -125,6 +127,8 @@ class ProductRepository
                 'products.unit_cost',
                 'products.active_ingredient',
                 'products.is_colombian_origin',
+                'products.presentation',
+                'products.unit_of_measure',
                 DB::raw($subqueryStockLotes . ' AS lote_quantity'),
                 DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
                 DB::raw($prefPorcentajeSql . ' AS preferencia_product'),

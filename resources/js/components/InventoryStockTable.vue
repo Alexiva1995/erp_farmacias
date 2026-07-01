@@ -36,9 +36,11 @@ const headers = computed(() => {
     { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
     { title: isRestaurant.value ? "Vent/Cons" : "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
     { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
-    { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
-    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
   ];
+  if (!isRestaurant.value) {
+    list.push({ title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' });
+  }
+  list.push({ title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' });
   if (!isRestaurant.value) {
     list.push({ title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' });
   }
@@ -62,14 +64,21 @@ const formatInteger = (val) => {
   return Math.round(num).toString();
 };
 
-const formatQuantity = (val) => {
+const formatQuantity = (val, item) => {
   const num = parseFloat(val || 0);
   if (isNaN(num)) return '0';
   if (isRestaurant.value) {
-    if (num % 1 !== 0) {
+    const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
+    if (unit === 'g' || unit === 'gramos') {
+      return `${num.toFixed(0)}g`;
+    }
+    if (unit === 'ml' || unit === 'mililitros') {
+      return `${num.toFixed(0)}ml`;
+    }
+    if (unit === 'kg' || unit === 'kilogramos' || (num % 1 !== 0 && !unit)) {
       return `${(num * 1000).toFixed(0)}g`;
     }
-    return num.toString();
+    return `${num}${unit ? ' ' + unit : ''}`;
   }
   return isMiniMarket.value ? formatInteger(val) : val;
 };
@@ -135,7 +144,7 @@ const getDiffColor = (val) => {
 
         <template #item.total_sold_completed="{ item }">
           <span class="font-weight-black text-medium-emphasis">
-            {{ formatQuantity(item.total_sold_completed) }}
+            {{ formatQuantity(item.total_sold_completed, item) }}
           </span>
         </template>
 
@@ -147,7 +156,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black"
           >
-            {{ formatQuantity(item.lote_quantity) }}
+            {{ formatQuantity(item.lote_quantity, item) }}
           </VChip>
         </template>
 
@@ -226,7 +235,7 @@ const getDiffColor = (val) => {
               <div class="text-left flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Stock</span>
                 <span class="text-sm font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                   {{ formatQuantity(item.lote_quantity) }}
+                   {{ formatQuantity(item.lote_quantity, item) }}
                 </span>
               </div>
               <VDivider vertical class="mx-1" />
