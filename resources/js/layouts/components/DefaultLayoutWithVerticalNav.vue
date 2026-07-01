@@ -91,12 +91,12 @@ const processedNavItems = computed(() => {
  
   items = filterRestaurantNav(items);
  
-  // 2. Si es modo restaurante, ocultar Reservas para TODOS los roles
+  // 2. Si es modo restaurante, ocultar Reservas y E-commerce para TODOS los roles
   if (isRestaurant) {
     items = items.filter(item => {
       const title = (item.title || '').toLowerCase();
       const to = (item.to || '').toLowerCase();
-      return title !== 'reservas' && to !== 'reservations';
+      return title !== 'reservas' && to !== 'reservations' && title !== 'e-commerce' && to !== 'tova-store';
     });
     
     // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
