@@ -1,3 +1,5 @@
+import { formatCurrency } from './currencyFormatter';
+
 /**
  * Formatea una fecha a YYYY-MM-DD (UTC).
  * @param {string|Date} dateString 
@@ -18,19 +20,12 @@ export const formatDateSimple = (dateString) => {
 };
 
 /**
- * Formatea un precio a formato moneda bolivares/dólares (VE).
+ * Formatea un precio a formato moneda bolivares/dólares/pesos.
  * @param {number} price 
  * @returns {string}
  */
 export const formatPrice = (price) => {
-  const numPrice = Number(price);
-  if (isNaN(numPrice)) return "$ 0";
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(numPrice);
+  return formatCurrency(price, 'USD');
 };
 
 /**
