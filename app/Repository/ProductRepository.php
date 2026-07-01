@@ -88,16 +88,26 @@ class ProductRepository
         $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
         if (!is_string($lapso)) $lapso = $lapso . " days";
 
-        if (str_contains($lapso, "7")) {
-            $promedioCalculadoSql = 'products.sales_average / 4';
-        } elseif (str_contains($lapso, "15")) {
-            $promedioCalculadoSql = 'products.sales_average / 2';
-        } elseif (str_contains($lapso, "60")) {
-            $promedioCalculadoSql = 'products.sales_average * 2';
-        } elseif (str_contains($lapso, "90")) {
-            $promedioCalculadoSql = 'products.sales_average * 3';
+        if ($isRestaurant) {
+            $baseAverage = '(SELECT COALESCE(ABS(SUM(im_avg.quantity)), 0) / 12 
+                            FROM inventory_movements im_avg 
+                            WHERE im_avg.product_id = products.id 
+                            AND im_avg.quantity < 0 
+                            AND im_avg.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH))';
         } else {
-            $promedioCalculadoSql = 'products.sales_average';
+            $baseAverage = 'products.sales_average';
+        }
+
+        if (str_contains($lapso, "7")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') / 4';
+        } elseif (str_contains($lapso, "15")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') / 2';
+        } elseif (str_contains($lapso, "60")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') * 2';
+        } elseif (str_contains($lapso, "90")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') * 3';
+        } else {
+            $promedioCalculadoSql = $baseAverage;
         }
 
         // Definición de Columnas
