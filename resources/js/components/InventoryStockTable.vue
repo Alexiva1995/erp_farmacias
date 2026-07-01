@@ -69,16 +69,27 @@ const formatQuantity = (val, item) => {
   if (isNaN(num)) return '0';
   if (isRestaurant.value) {
     const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
-    if (unit === 'g' || unit === 'gramos') {
-      return `${num.toFixed(0)}g`;
-    }
-    if (unit === 'ml' || unit === 'mililitros') {
-      return `${num.toFixed(0)}ml`;
-    }
+    
     if (unit === 'kg' || unit === 'kilogramos' || (num % 1 !== 0 && !unit)) {
-      return `${(num * 1000).toFixed(0)}g`;
+      const grams = Math.round(num * 1000);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(grams);
+      return `${formatted}g`;
     }
-    return `${num}${unit ? ' ' + unit : ''}`;
+    
+    if (unit === 'g' || unit === 'gramos') {
+      const rounded = Math.round(num);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(rounded);
+      return `${formatted}g`;
+    }
+    
+    if (unit === 'ml' || unit === 'mililitros') {
+      const rounded = Math.round(num);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(rounded);
+      return `${formatted}ml`;
+    }
+    
+    const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true }).format(num);
+    return `${formatted}${unit ? ' ' + unit : ''}`;
   }
   return isMiniMarket.value ? formatInteger(val) : val;
 };
