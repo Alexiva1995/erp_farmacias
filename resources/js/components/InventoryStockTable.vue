@@ -88,6 +88,15 @@ const getDiffColor = (val) => {
   if (isNaN(num) || num === 0) return 'secondary';
   return num > 0 ? 'success' : 'error';
 };
+
+const formatDifference = (val, item) => {
+  const num = parseFloat(val);
+  if (isNaN(num) || num === 0) return '0';
+  
+  const sign = num > 0 ? '+' : '';
+  const formattedVal = formatQuantity(Math.abs(num), item);
+  return `${sign}${formattedVal}`;
+};
 </script>
 
 <template>
@@ -176,7 +185,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black px-2 shadow-sm"
           >
-            {{ parseFloat(item.diferencia_product) > 0 ? "+" : "" }}{{ Math.ceil(parseFloat(item.diferencia_product)) }}
+            {{ formatDifference(item.diferencia_product, item) }}
           </VChip>
           <span v-else class="text-disabled font-weight-bold">0</span>
         </template>
@@ -255,7 +264,7 @@ const getDiffColor = (val) => {
                   density="compact"
                   class="font-weight-black text-super-xs px-1"
                 >
-                  {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product || 0)) }}
+                  {{ formatDifference(item.diferencia_product, item) }}
                 </VChip>
               </div>
             </div>
