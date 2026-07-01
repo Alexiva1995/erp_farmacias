@@ -34,7 +34,7 @@ const headers = computed(() => {
     { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
     { title: "Producto / Grupo", key: "name", sortable: true, width: "400px" },
     { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
-    { title: isRestaurant.value ? "Consumido" : "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
+    { title: isRestaurant.value ? "Vent/Cons" : "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
     { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
     { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
     { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
@@ -60,6 +60,18 @@ const formatPriceWithDecimals = (price) => {
 const formatInteger = (val) => {
   const num = Number(val || 0);
   return Math.round(num).toString();
+};
+
+const formatQuantity = (val) => {
+  const num = parseFloat(val || 0);
+  if (isNaN(num)) return '0';
+  if (isRestaurant.value) {
+    if (num % 1 !== 0) {
+      return `${(num * 1000).toFixed(0)}g`;
+    }
+    return num.toString();
+  }
+  return isMiniMarket.value ? formatInteger(val) : val;
 };
 
 const getDiffColor = (val) => {
@@ -123,7 +135,7 @@ const getDiffColor = (val) => {
 
         <template #item.total_sold_completed="{ item }">
           <span class="font-weight-black text-medium-emphasis">
-            {{ isMiniMarket ? formatInteger(item.total_sold_completed) : item.total_sold_completed }}
+            {{ formatQuantity(item.total_sold_completed) }}
           </span>
         </template>
 
@@ -135,7 +147,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black"
           >
-            {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+            {{ formatQuantity(item.lote_quantity) }}
           </VChip>
         </template>
 
@@ -214,7 +226,7 @@ const getDiffColor = (val) => {
               <div class="text-left flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Stock</span>
                 <span class="text-sm font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                   {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                   {{ formatQuantity(item.lote_quantity) }}
                 </span>
               </div>
               <VDivider vertical class="mx-1" />
