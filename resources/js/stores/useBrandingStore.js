@@ -32,12 +32,21 @@ export const useBrandingStore = defineStore('branding', () => {
   })
 
   const isLoading = ref(false)
+  const exchangeRates = ref([])
 
   const fetchSettings = async () => {
     isLoading.value = true
     try {
       const response = await axios.get('/public/general-settings')
       settings.value = { ...settings.value, ...response.data.data }
+
+      // Obtener tasas de cambio desde el API público
+      try {
+        const ratesResponse = await axios.get('/public/exchange-rates')
+        exchangeRates.value = ratesResponse.data
+      } catch (e) {
+        console.warn('Error fetching exchange rates in branding store:', e)
+      }
 
       // Aplicar colores dinámicamente al DOM
       applyThemeColors()
@@ -97,6 +106,7 @@ export const useBrandingStore = defineStore('branding', () => {
 
   return {
     settings,
+    exchangeRates,
     isLoading,
     fetchSettings,
     hexToRgb,
