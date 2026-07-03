@@ -131,5 +131,6 @@ onMounted(() => {
         class="mt-2"
         @update:model-value="updateSettings"
       />
+    </VCardItem>
   </VCard>
 </template>
