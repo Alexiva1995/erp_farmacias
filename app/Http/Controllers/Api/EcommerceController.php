@@ -199,24 +199,36 @@ class EcommerceController extends Controller
     /**
      * Aprobar una orden de e-commerce (cambiar estado a Paid).
      */
+    /**
+     * Aprobar una orden de e-commerce (cambiar estado a Paid y consolidar venta).
+     */
     public function approveOrder(int $id): JsonResponse
     {
         try {
-            $updated = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                ->where('id', $id)
-                ->update([
-                    'status' => 'Paid',
-                    'updated_at' => now()
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $id)
+                    ->first();
+
+                if (!$ecommerceOrder) {
+                    throw new \Exception("La orden no fue encontrada.");
+                }
+
+                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $id)
+                    ->update([
+                        'status' => 'Paid',
+                        'updated_at' => now()
+                    ]);
+
+                // Consolidar en ventas/caja
+                $this->consolidateOrder($ecommerceOrder);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'La orden ha sido aprobada y consolidada en ventas con éxito.',
                 ]);
-
-            if (!$updated) {
-                throw new \Exception("La orden no fue encontrada o ya está en ese estado.");
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'La orden ha sido aprobada con éxito.',
-            ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -268,26 +280,35 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Marcar pedido como enviado.
+     * Marcar pedido como enviado (y consolidar venta si no se consolidó antes).
      */
     public function shipOrder(int $id): JsonResponse
     {
         try {
-            $updated = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                ->where('id', $id)
-                ->update([
-                    'status' => 'Shipped',
-                    'updated_at' => now()
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $id)
+                    ->first();
+
+                if (!$ecommerceOrder) {
+                    throw new \Exception("La orden no fue encontrada.");
+                }
+
+                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $id)
+                    ->update([
+                        'status' => 'Shipped',
+                        'updated_at' => now()
+                    ]);
+
+                // Consolidar en ventas/caja
+                $this->consolidateOrder($ecommerceOrder);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'La orden ha sido marcada como enviada y consolidada en ventas.',
                 ]);
-
-            if (!$updated) {
-                throw new \Exception("La orden no fue encontrada o ya está en ese estado.");
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'La orden ha sido marcada como enviada con éxito.',
-            ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -297,7 +318,7 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Completar pedido y consolidarlo en el sistema de facturación/caja.
+     * Completar pedido y consolidarlo en el sistema de facturación/caja si no se ha hecho antes.
      */
     public function completeOrder(int $id): JsonResponse
     {
@@ -319,93 +340,8 @@ class EcommerceController extends Controller
                     throw new \Exception("Una orden cancelada no se puede completar.");
                 }
 
-                // Resolver cliente
-                $client = null;
-                if (!empty($ecommerceOrder->customer_phone)) {
-                    $client = \App\Models\Client::where('phone', $ecommerceOrder->customer_phone)->first();
-                }
-                if (!$client && !empty($ecommerceOrder->customer_email)) {
-                    $client = \App\Models\Client::where('email', $ecommerceOrder->customer_email)->first();
-                }
-                if (!$client) {
-                    $client = \App\Models\Client::create([
-                        'name' => $ecommerceOrder->customer_name,
-                        'phone' => $ecommerceOrder->customer_phone ?? 'N/A',
-                        'email' => $ecommerceOrder->customer_email ?? null,
-                        'identification_type' => 'V',
-                        'identification' => 'ECO-' . $ecommerceOrder->id,
-                    ]);
-                }
-
-                // Resolver usuario / cajero
-                $userId = $ecommerceOrder->user_id ?? \Illuminate\Support\Facades\Auth::id();
-                if (!$userId) {
-                    $tiendaUser = \Illuminate\Support\Facades\DB::table('users')->where('username', 'tienda')->first()
-                        ?? \Illuminate\Support\Facades\DB::table('users')->first();
-                    $userId = $tiendaUser ? $tiendaUser->id : null;
-                }
-
-                // Abrir o buscar caja
-                $cashClosing = \App\Models\CashClosing::where('seller_id', $userId)
-                    ->where('status', \App\Models\CashClosing::OPEN)
-                    ->first();
-
-                if (!$cashClosing) {
-                    $cashClosing = \App\Models\CashClosing::create([
-                        'seller_id' => $userId,
-                        'status' => \App\Models\CashClosing::OPEN,
-                        'opening_date' => now(),
-                    ]);
-                }
-
-                // Obtener ítems
-                $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
-                    ->where('ecommerce_order_id', $id)
-                    ->get();
-
-                $totalCost = 0;
-                foreach ($items as $item) {
-                    $product = \App\Models\Product::find($item->product_id);
-                    $unitCost = $product ? ($product->cost ?? 0) : 0;
-                    $totalCost += $unitCost * $item->quantity;
-                }
-
-                $paymentMethods = [
-                    [
-                        'method' => $ecommerceOrder->payment_method ?? 'Transferencia',
-                        'amount' => (float)$ecommerceOrder->total_amount,
-                        'reference' => 'ECO-' . $id
-                    ]
-                ];
-
-                // Crear orden principal
-                $order = \App\Models\Order::create([
-                    'client_id' => $client->id,
-                    'seller_id' => $userId,
-                    'cash_closing_id' => $cashClosing->id,
-                    'total_amount' => $ecommerceOrder->total_amount,
-                    'currency' => 'COP',
-                    'total_cost' => $totalCost,
-                    'taxable_base' => $ecommerceOrder->total_amount,
-                    'order_date' => now(),
-                    'status' => 'closed',
-                    'payment_methods' => $paymentMethods,
-                ]);
-
-                // Crear detalles
-                foreach ($items as $item) {
-                    $product = \App\Models\Product::find($item->product_id);
-                    $unitCost = $product ? ($product->cost ?? 0) : 0;
-
-                    \App\Models\OrderDetail::create([
-                        'order_id' => $order->id,
-                        'product_id' => $item->product_id,
-                        'quantity' => $item->quantity,
-                        'price' => $item->price,
-                        'unit_cost' => $unitCost,
-                        'product_type' => 'App\Models\Product',
-                    ]);
-                }
+                // Consolidar en ventas/caja
+                $orderId = $this->consolidateOrder($ecommerceOrder);
 
                 // Actualizar ecommerce order
                 \Illuminate\Support\Facades\DB::table('ecommerce_orders')
@@ -418,7 +354,7 @@ class EcommerceController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'La orden ha sido completada y consolidada en ventas con éxito.',
-                    'order_id' => $order->id
+                    'order_id' => $orderId
                 ]);
             });
         } catch (\Exception $e) {
@@ -427,5 +363,109 @@ class EcommerceController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * Lógica privada para consolidar un pedido e-commerce en la tabla general orders.
+     */
+    private function consolidateOrder(object $ecommerceOrder): int
+    {
+        $id = $ecommerceOrder->id;
+
+        // Evitar duplicar la consolidación
+        $existingOrder = \App\Models\Order::whereJsonContains('payment_methods', ['reference' => 'ECO-' . $id])->first();
+        if ($existingOrder) {
+            return $existingOrder->id;
+        }
+
+        // Resolver cliente
+        $client = null;
+        if (!empty($ecommerceOrder->customer_phone)) {
+            $client = \App\Models\Client::where('phone', $ecommerceOrder->customer_phone)->first();
+        }
+        if (!$client && !empty($ecommerceOrder->customer_email)) {
+            $client = \App\Models\Client::where('email', $ecommerceOrder->customer_email)->first();
+        }
+        if (!$client) {
+            $client = \App\Models\Client::create([
+                'name' => $ecommerceOrder->customer_name,
+                'phone' => $ecommerceOrder->customer_phone ?? 'N/A',
+                'email' => $ecommerceOrder->customer_email ?? null,
+                'identification_type' => 'V-',
+                'identification' => 'ECO-' . $id,
+            ]);
+        }
+
+        // Resolver usuario / cajero
+        $userId = $ecommerceOrder->user_id ?? \Illuminate\Support\Facades\Auth::id();
+        if (!$userId) {
+            $tiendaUser = \Illuminate\Support\Facades\DB::table('users')->where('username', 'tienda')->first()
+                ?? \Illuminate\Support\Facades\DB::table('users')->first();
+            $userId = $tiendaUser ? $tiendaUser->id : null;
+        }
+
+        // Abrir o buscar caja
+        $cashClosing = \App\Models\CashClosing::where('seller_id', $userId)
+            ->where('status', \App\Models\CashClosing::OPEN)
+            ->first();
+
+        if (!$cashClosing) {
+            $cashClosing = \App\Models\CashClosing::create([
+                'seller_id' => $userId,
+                'status' => \App\Models\CashClosing::OPEN,
+                'opening_date' => now(),
+            ]);
+        }
+
+        // Obtener ítems
+        $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
+            ->where('ecommerce_order_id', $id)
+            ->get();
+
+        $totalCost = 0;
+        foreach ($items as $item) {
+            $product = \App\Models\Product::find($item->product_id);
+            $unitCost = $product ? ($product->cost ?? 0) : 0;
+            $totalCost += $unitCost * $item->quantity;
+        }
+
+        $paymentMethods = [
+            [
+                'method' => $ecommerceOrder->payment_method ?? 'Transferencia',
+                'amount' => (float)$ecommerceOrder->total_amount,
+                'reference' => 'ECO-' . $id
+            ]
+        ];
+
+        // Crear orden principal
+        $order = \App\Models\Order::create([
+            'client_id' => $client->id,
+            'seller_id' => $userId,
+            'cash_closing_id' => $cashClosing->id,
+            'total_amount' => $ecommerceOrder->total_amount,
+            'currency' => 'COP',
+            'total_cost' => $totalCost,
+            'taxable_base' => $ecommerceOrder->total_amount,
+            'order_date' => now(),
+            'status' => 'closed',
+            'payment_methods' => $paymentMethods,
+        ]);
+
+        // Crear detalles
+        foreach ($items as $item) {
+            $product = \App\Models\Product::find($item->product_id);
+            $unitCost = $product ? ($product->cost ?? 0) : 0;
+
+            \App\Models\OrderDetail::create([
+                'order_id' => $order->id,
+                'product_id' => $item->product_id,
+                'quantity' => $item->quantity,
+                'price' => $item->price,
+                'unit_cost' => $unitCost,
+                'product_type' => 'App\Models\Product',
+            ]);
+        }
+
+        return $order->id;
     }
 }
