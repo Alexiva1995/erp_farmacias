@@ -5,7 +5,6 @@ import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateSimple } from "@/utils/formatters";
 import AppFilterBase from "@/components/AppFilterBase.vue";
-import AppDateTimePicker from "@core/components/AppDateTimePicker.vue";
 
 const orders = ref([]);
 const loading = ref(false);
