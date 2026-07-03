@@ -1,27 +1,89 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateSimple } from "@/utils/formatters";
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import AppDateTimePicker from "@core/components/AppDateTimePicker.vue";
 
 const orders = ref([]);
 const loading = ref(false);
-const searchQuery = ref("");
-const statusFilter = ref(null);
+const processingAction = ref(false);
+
+const activeTab = ref(0);
+const isAdvancedFiltersVisible = ref(false);
+
+// Filtros inteligentes
+const filterSearchQuery = ref("");
+const filterSearchQueryId = ref("");
+const statusFilterAll = ref(null);
+
+// Rango de fechas global
+const toDateString = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const getToday = () => toDateString(new Date());
+const getFirstDayOfMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+};
+
+const globalStartDate = ref(getFirstDayOfMonth());
+const globalEndDate = ref(getToday());
+
+const setDateRange = (start, end) => {
+  globalStartDate.value = start;
+  globalEndDate.value = end;
+};
+const setDateHoy = () => {
+  const t = new Date();
+  setDateRange(toDateString(t), toDateString(t));
+};
+const setDateAyer = () => {
+  const a = new Date();
+  a.setDate(a.getDate() - 1);
+  const s = toDateString(a);
+  setDateRange(s, s);
+};
+const setDateSemana = () => {
+  const h = new Date();
+  const inicio = new Date(h);
+  const dia = inicio.getDay();
+  const diff = inicio.getDate() - dia + (dia === 0 ? -6 : 1);
+  inicio.setDate(diff);
+  setDateRange(toDateString(inicio), toDateString(h));
+};
+const setDateMes = () => {
+  const h = new Date();
+  setDateRange(getFirstDayOfMonth(), toDateString(h));
+};
+const setDateAno = () => {
+  const h = new Date();
+  const inicio = `${h.getFullYear()}-01-01`;
+  setDateRange(inicio, toDateString(h));
+};
+
+const handleClearFilters = () => {
+  filterSearchQuery.value = "";
+  filterSearchQueryId.value = "";
+  statusFilterAll.value = null;
+  setDateHoy();
+};
 
 const selectedOrder = ref(null);
 const isDetailOpen = ref(false);
-const processingAction = ref(false);
 
-// Filtro de estados para Vuetify VSelect
-const statusOptions = [
-  { title: "Todos", value: null },
-  { title: "Pendiente", value: "Pending" },
-  { title: "Aprobado / Pagado", value: "Paid" },
-  { title: "Enviado", value: "Shipped" },
-  { title: "Completado", value: "Completed" },
-  { title: "Cancelado", value: "Cancelled" },
+// Opciones de cabecera de la tabla
+const headers = [
+  { title: 'Pedido ID', key: 'id', sortable: true, width: '110px' },
+  { title: 'Cliente', key: 'customer_name', sortable: true },
+  { title: 'Contacto / Teléfono', key: 'customer_phone', sortable: false },
+  { title: 'Fecha de Compra', key: 'created_at', sortable: true },
+  { title: 'Método Pago', key: 'payment_method', sortable: true },
+  { title: 'Total del Pedido', key: 'total_amount', sortable: true, align: 'end' },
+  { title: 'Estado Despacho', key: 'status', sortable: true, align: 'center', width: '140px' },
+  { title: 'Detalles', key: 'actions', sortable: false, align: 'center', width: '90px' },
 ];
 
 const fetchOrders = async () => {
@@ -39,15 +101,10 @@ const fetchOrders = async () => {
   }
 };
 
-const filteredOrders = computed(() => {
-  let list = orders.value;
-
-  if (statusFilter.value) {
-    list = list.filter((o) => o.status === statusFilter.value);
-  }
-
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
+// Filtrado de las órdenes en memoria según filtros y rango de fechas
+const applyFilters = (list) => {
+  if (filterSearchQuery.value) {
+    const q = filterSearchQuery.value.toLowerCase();
     list = list.filter(
       (o) =>
         o.id.toString().includes(q) ||
@@ -57,49 +114,83 @@ const filteredOrders = computed(() => {
     );
   }
 
+  if (filterSearchQueryId.value) {
+    const idQ = filterSearchQueryId.value.trim();
+    list = list.filter((o) => o.id.toString() === idQ);
+  }
+
+  if (globalStartDate.value) {
+    const start = new Date(globalStartDate.value + "T00:00:00");
+    list = list.filter((o) => new Date(o.created_at) >= start);
+  }
+
+  if (globalEndDate.value) {
+    const end = new Date(globalEndDate.value + "T23:59:59");
+    list = list.filter((o) => new Date(o.created_at) <= end);
+  }
+
   return list;
+};
+
+// Listas Computadas por Pestaña
+const ordersPending = computed(() => applyFilters(orders.value.filter(o => o.status === 'Pending')));
+const ordersPaid = computed(() => applyFilters(orders.value.filter(o => o.status === 'Paid')));
+const ordersShipped = computed(() => applyFilters(orders.value.filter(o => o.status === 'Shipped')));
+const ordersCompleted = computed(() => applyFilters(orders.value.filter(o => o.status === 'Completed')));
+const ordersCancelled = computed(() => applyFilters(orders.value.filter(o => o.status === 'Cancelled')));
+const ordersAll = computed(() => {
+  let list = orders.value;
+  if (statusFilterAll.value) {
+    list = list.filter(o => o.status === statusFilterAll.value);
+  }
+  return applyFilters(list);
 });
+
+// Conteos Totales (ignoran los filtros de texto/fechas para los badges de las pestañas)
+const countPending = computed(() => orders.value.filter(o => o.status === 'Pending').length);
+const countPaid = computed(() => orders.value.filter(o => o.status === 'Paid').length);
+const countShipped = computed(() => orders.value.filter(o => o.status === 'Shipped').length);
+const countCompleted = computed(() => orders.value.filter(o => o.status === 'Completed').length);
+const countCancelled = computed(() => orders.value.filter(o => o.status === 'Cancelled').length);
+const countAll = computed(() => orders.value.length);
 
 const getStatusColor = (status) => {
   switch (status) {
-    case "Pending":
-      return "warning";
-    case "Paid":
-      return "info";
-    case "Shipped":
-      return "secondary";
-    case "Completed":
-      return "success";
-    case "Cancelled":
-      return "error";
-    default:
-      return "grey";
+    case "Pending": return "warning";
+    case "Paid": return "info";
+    case "Shipped": return "secondary";
+    case "Completed": return "success";
+    case "Cancelled": return "error";
+    default: return "grey";
   }
 };
 
 const getStatusLabel = (status) => {
   switch (status) {
-    case "Pending":
-      return "Pendiente";
-    case "Paid":
-      return "Aprobado";
-    case "Shipped":
-      return "Enviado";
-    case "Completed":
-      return "Completado";
-    case "Cancelled":
-      return "Cancelado";
-    default:
-      return status;
+    case "Pending": return "Pendiente";
+    case "Paid": return "Aprobado";
+    case "Shipped": return "Enviado";
+    case "Completed": return "Completado";
+    case "Cancelled": return "Cancelado";
+    default: return status;
   }
 };
+
+const statusOptions = [
+  { title: "Todos", value: null },
+  { title: "Pendiente", value: "Pending" },
+  { title: "Aprobado / Pagado", value: "Paid" },
+  { title: "Enviado", value: "Shipped" },
+  { title: "Completado", value: "Completed" },
+  { title: "Cancelado", value: "Cancelled" },
+];
 
 const openDetails = (order) => {
   selectedOrder.value = order;
   isDetailOpen.value = true;
 };
 
-// Acciones de la máquina de estados
+// Acciones del flujo
 const handleApprove = async (orderId) => {
   processingAction.value = true;
   try {
@@ -107,7 +198,6 @@ const handleApprove = async (orderId) => {
     if (response.data.success) {
       toast.success("Pago del pedido aprobado con éxito.");
       await fetchOrders();
-      // Actualizar la orden seleccionada si el panel sigue abierto
       if (selectedOrder.value && selectedOrder.value.id === orderId) {
         selectedOrder.value.status = "Paid";
       }
@@ -181,150 +271,202 @@ onMounted(() => {
 </script>
 
 <template>
-  <VContainer fluid class="ecommerce-orders-page pa-4">
-    <!-- Encabezado de Página -->
-    <VRow class="mb-4">
-      <VCol cols="12" class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" variant="flat" size="48" class="elevation-2 rounded-xl">
-            <VIcon icon="tabler-truck-delivery" size="28" color="white" />
-          </VAvatar>
-          <div>
-            <h1 class="text-h5 font-weight-black text-high-emphasis mb-0 uppercase leading-none">
-              Pedidos Eco
-            </h1>
-            <span class="text-xs text-disabled font-weight-bold uppercase letter-spacing-1 mt-1 d-inline-block">
-              Gestión y Despacho de Pedidos E-commerce
-            </span>
-          </div>
+  <div>
+    <!-- Contenedor Estándar de Filtros -->
+    <AppFilterBase
+      :search="filterSearchQuery"
+      :has-advanced-filters="isAdvancedFiltersVisible || !!(filterSearchQueryId || statusFilterAll)"
+      :show-export="false"
+      search-placeholder="Buscar por ID, Cliente, Teléfono o Correo..."
+      class="py-1"
+      @update:search="filterSearchQuery = $event"
+      @clear="handleClearFilters"
+    >
+      <!-- Slot extra: Rango Rápido de Fechas -->
+      <template #search-extra>
+        <div class="d-none d-lg-flex align-center gap-2 ms-4 border-s ps-4">
+          <span class="text-caption font-weight-bold text-uppercase text-disabled me-1">Rango:</span>
+          <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateHoy">Hoy</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateAyer">Ayer</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateSemana">Semana</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateMes">Mes</VBtn>
+          <VBtn color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateAno">Año</VBtn>
         </div>
-        <VBtn
-          color="primary"
-          prepend-icon="tabler-refresh"
-          variant="flat"
-          class="rounded-lg font-weight-bold"
-          :loading="loading"
-          @click="fetchOrders"
-        >
-          Sincronizar
-        </VBtn>
-      </VCol>
-    </VRow>
+      </template>
 
-    <!-- Filtros Inteligentes -->
-    <VCard variant="flat" border class="pa-4 rounded-xl mb-6 shadow-sm bg-surface">
-      <VRow dense align="center">
-        <VCol cols="12" sm="6" md="4">
-          <VTextField
-            v-model="searchQuery"
-            placeholder="Buscar por ID, Cliente, Teléfono..."
-            density="compact"
-            variant="outlined"
-            prepend-inner-icon="tabler-search"
+      <!-- Slot Filtros Avanzados -->
+      <template #advanced-filters>
+        <VCol cols="12" sm="3" md="2">
+          <AppDateTimePicker
+            v-model="globalStartDate"
+            placeholder="Fecha Inicial"
+            prepend-inner-icon="tabler-calendar"
             clearable
             hide-details
-            class="rounded-lg"
+            density="compact"
+            :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            v-model="statusFilter"
-            :items="statusOptions"
-            placeholder="Filtrar por Estado"
+        <VCol cols="12" sm="3" md="2">
+          <AppDateTimePicker
+            v-model="globalEndDate"
+            placeholder="Fecha Final"
+            prepend-inner-icon="tabler-calendar"
+            clearable
+            hide-details
+            density="compact"
+            :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+          />
+        </VCol>
+        <VCol cols="12" sm="3" md="2">
+          <VTextField
+            v-model="filterSearchQueryId"
+            placeholder="ID Pedido"
+            prepend-inner-icon="tabler-hash"
+            clearable
+            hide-details
             density="compact"
             variant="outlined"
-            prepend-inner-icon="tabler-adjustments-horizontal"
-            hide-details
-            class="rounded-lg"
           />
         </VCol>
-      </VRow>
-    </VCard>
-
-    <!-- Listado Principal de Pedidos -->
-    <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm bg-surface">
-      <VDataTable
-        :headers="[
-          { title: 'Pedido ID', key: 'id', sortable: true, width: '110px' },
-          { title: 'Cliente', key: 'customer_name', sortable: true },
-          { title: 'Contacto / Teléfono', key: 'customer_phone', sortable: false },
-          { title: 'Fecha de Compra', key: 'created_at', sortable: true },
-          { title: 'Método Pago', key: 'payment_method', sortable: true },
-          { title: 'Total del Pedido', key: 'total_amount', sortable: true, align: 'end' },
-          { title: 'Estado Despacho', key: 'status', sortable: true, align: 'center', width: '140px' },
-          { title: 'Detalles', key: 'actions', sortable: false, align: 'center', width: '90px' },
-        ]"
-        :items="filteredOrders"
-        :loading="loading"
-        density="comfortable"
-        class="orders-table"
-        no-data-text="No se encontraron pedidos registrados"
-      >
-        <!-- Formateo ID -->
-        <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">#{{ item.id }}</span>
-        </template>
-
-        <!-- Formateo Cliente -->
-        <template #item.customer_name="{ item }">
-          <div class="d-flex flex-column">
-            <span class="font-weight-black text-high-emphasis leading-tight">{{ item.customer_name }}</span>
-            <span class="text-super-xs text-disabled truncate" style="max-inline-size: 180px;">{{ item.customer_email || 'Sin correo electrónico' }}</span>
-          </div>
-        </template>
-
-        <!-- Formateo Teléfono -->
-        <template #item.customer_phone="{ item }">
-          <span class="font-weight-bold text-medium-emphasis">{{ item.customer_phone || '—' }}</span>
-        </template>
-
-        <!-- Formateo Fecha -->
-        <template #item.created_at="{ item }">
-          <span class="text-subtitle-2 font-weight-medium text-medium-emphasis">
-            {{ formatDateSimple(item.created_at) }}
-          </span>
-        </template>
-
-        <!-- Formateo Pago -->
-        <template #item.payment_method="{ item }">
-          <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold rounded-lg text-uppercase">
-            {{ item.payment_method || 'Web' }}
-          </VChip>
-        </template>
-
-        <!-- Formateo Total -->
-        <template #item.total_amount="{ item }">
-          <span class="font-weight-black text-subtitle-2 text-primary">
-            {{ formatCurrency(item.total_amount, 'COP') }}
-          </span>
-        </template>
-
-        <!-- Formateo Estado -->
-        <template #item.status="{ item }">
-          <VChip
-            :color="getStatusColor(item.status)"
-            size="small"
-            variant="flat"
-            class="font-weight-black uppercase px-3 shadow-sm rounded-lg"
-            style="min-inline-size: 100px; text-align: center; justify-content: center;"
-          >
-            {{ getStatusLabel(item.status) }}
-          </VChip>
-        </template>
-
-        <!-- Acciones -->
-        <template #item.actions="{ item }">
-          <VBtn
-            icon="tabler-eye"
-            color="primary"
-            variant="tonal"
-            size="small"
-            class="rounded-lg"
-            @click="openDetails(item)"
+        <VCol v-if="activeTab === 5" cols="12" sm="3" md="2">
+          <VSelect
+            v-model="statusFilterAll"
+            placeholder="Estado Despacho"
+            prepend-inner-icon="tabler-adjustments-horizontal"
+            :items="statusOptions"
+            clearable
+            hide-details
+            density="compact"
+            variant="outlined"
           />
-        </template>
-      </VDataTable>
-    </VCard>
+        </VCol>
+      </template>
+    </AppFilterBase>
+
+    <!-- Pestañas con badge de cantidad -->
+    <VTabs v-model="activeTab" class="mb-4 orders-tabs" density="comfortable">
+      <VTab :value="0" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Pendientes
+          <VChip size="x-small" variant="tonal" color="warning" class="tab-count">
+            {{ countPending }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="1" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Aprobados
+          <VChip size="x-small" variant="tonal" color="info" class="tab-count">
+            {{ countPaid }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="2" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Enviados
+          <VChip size="x-small" variant="tonal" color="secondary" class="tab-count">
+            {{ countShipped }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="3" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Completados
+          <VChip size="x-small" variant="tonal" color="success" class="tab-count">
+            {{ countCompleted }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="4" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Cancelados
+          <VChip size="x-small" variant="tonal" color="error" class="tab-count">
+            {{ countCancelled }}
+          </VChip>
+        </span>
+      </VTab>
+      <VTab :value="5" class="tab-with-badge">
+        <span class="d-inline-flex align-center gap-2">
+          Todos
+          <VChip size="x-small" variant="tonal" color="primary" class="tab-count">
+            {{ countAll }}
+          </VChip>
+        </span>
+      </VTab>
+    </VTabs>
+
+    <VWindow v-model="activeTab" class="orders-window">
+      <!-- Helper Macro Component para renderizar tablas réplicas -->
+      <VWindowItem v-for="(tabItems, tabIdx) in [ordersPending, ordersPaid, ordersShipped, ordersCompleted, ordersCancelled, ordersAll]" :key="tabIdx" :value="tabIdx">
+        <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm bg-surface">
+          <VDataTable
+            :headers="headers"
+            :items="tabItems"
+            :loading="loading"
+            density="comfortable"
+            class="orders-table"
+            no-data-text="No se encontraron pedidos registrados"
+          >
+            <template #item.id="{ item }">
+              <span class="font-weight-black text-primary">#{{ item.id }}</span>
+            </template>
+
+            <template #item.customer_name="{ item }">
+              <div class="d-flex flex-column">
+                <span class="font-weight-black text-high-emphasis leading-tight">{{ item.customer_name }}</span>
+                <span class="text-super-xs text-disabled truncate" style="max-inline-size: 200px;">{{ item.customer_email || 'Sin correo' }}</span>
+              </div>
+            </template>
+
+            <template #item.customer_phone="{ item }">
+              <span class="font-weight-bold text-medium-emphasis">{{ item.customer_phone || '—' }}</span>
+            </template>
+
+            <template #item.created_at="{ item }">
+              <span class="text-subtitle-2 font-weight-medium text-medium-emphasis">
+                {{ formatDateSimple(item.created_at) }}
+              </span>
+            </template>
+
+            <template #item.payment_method="{ item }">
+              <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold rounded-lg text-uppercase">
+                {{ item.payment_method || 'Web' }}
+              </VChip>
+            </template>
+
+            <template #item.total_amount="{ item }">
+              <span class="font-weight-black text-subtitle-2 text-primary">
+                {{ formatCurrency(item.total_amount, 'COP') }}
+              </span>
+            </template>
+
+            <template #item.status="{ item }">
+              <VChip
+                :color="getStatusColor(item.status)"
+                size="small"
+                variant="flat"
+                class="font-weight-black uppercase px-3 shadow-sm rounded-lg"
+                style="min-inline-size: 100px; text-align: center; justify-content: center;"
+              >
+                {{ getStatusLabel(item.status) }}
+              </VChip>
+            </template>
+
+            <template #item.actions="{ item }">
+              <VBtn
+                icon="tabler-eye"
+                color="primary"
+                variant="tonal"
+                size="small"
+                class="rounded-lg"
+                @click="openDetails(item)"
+              />
+            </template>
+          </VDataTable>
+        </VCard>
+      </VWindowItem>
+    </VWindow>
 
     <!-- Modal Lateral de Detalles Premium -->
     <VNavigationDrawer
@@ -497,7 +639,7 @@ onMounted(() => {
               Marcar como Enviado
             </VBtn>
 
-            <!-- Caso Shipped: Completar entrega y consolidar -->
+            <!-- Caso Shipped: Completar entrega -->
             <VBtn
               v-if="selectedOrder.status === 'Shipped'"
               color="success"
@@ -530,7 +672,7 @@ onMounted(() => {
         </div>
       </div>
     </VNavigationDrawer>
-  </VContainer>
+  </div>
 </template>
 
 <style scoped>
@@ -581,6 +723,22 @@ onMounted(() => {
   line-height: 1.25 !important;
 }
 
+.orders-tabs {
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+}
+
+.tab-with-badge .tab-count {
+  font-size: 0.7rem;
+  justify-content: center;
+  font-weight: 600;
+  min-inline-size: 1.5rem;
+  padding-inline: 6px;
+}
+
+.orders-window {
+  overflow: visible;
+}
+
 .orders-table :deep(.v-data-table-header) {
   background-color: #f1f5f9;
 }
@@ -608,4 +766,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 </style>
