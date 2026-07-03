@@ -103,14 +103,22 @@ class ReservationServices
             if ($existingClientByPhone) {
                 $clientId = $existingClientByPhone->id;
             } else {
-                // Crear un cliente nuevo solo con Nombre y Teléfono
+                // Crear un cliente nuevo con Nombre y Teléfono, generando una identificación temporal
                 $nameParts = explode(' ', $data['client_name'], 2);
                 $firstName = $nameParts[0];
                 $lastName = $nameParts[1] ?? '';
 
+                // Generar identificación temporal para evitar la restricción NOT NULL y UNIQUE de la BD
+                $tempId = 'TEMP-' . preg_replace('/[^0-9]/', '', $normalizedPhone);
+                if (\App\Models\Client::where('identification', $tempId)->exists()) {
+                    $tempId .= '-' . time();
+                }
+
                 $newClient = \App\Models\Client::create([
                     'name' => $firstName,
                     'last_name' => $lastName,
+                    'identification_type' => 'V-',
+                    'identification' => $tempId,
                     'phone' => $normalizedPhone,
                     'client_type' => 'Ocasional',
                 ]);

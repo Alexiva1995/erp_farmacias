@@ -77,21 +77,21 @@ const formatQuantity = (val, item) => {
     }
     
     if (unit === 'g' || unit === 'gramos') {
-      const rounded = Math.round(num);
-      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(rounded);
+      const grams = Math.round(num * 1000);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(grams);
       return `${formatted}g`;
     }
     
     if (unit === 'ml' || unit === 'mililitros') {
-      const rounded = Math.round(num);
-      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(rounded);
+      const milliliters = Math.round(num * 1000);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(milliliters);
       return `${formatted}ml`;
     }
     
     const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true }).format(num);
     return `${formatted}${unit ? ' ' + unit : ''}`;
   }
-  return isMiniMarket.value ? formatInteger(val) : val;
+  return formatInteger(val);
 };
 
 const getDiffColor = (val) => {
@@ -102,7 +102,43 @@ const getDiffColor = (val) => {
 
 const formatDifference = (val, item) => {
   const num = parseFloat(val);
-  if (isNaN(num) || num === 0) return '0';
+  if (isNaN(num)) return '0';
+  
+  if (isRestaurant.value) {
+    if (num === 0) {
+      const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
+      return `0${unit === 'g' || unit === 'gramos' ? 'g' : (unit === 'ml' || unit === 'mililitros' ? 'ml' : ' und')}`;
+    }
+    
+    const sign = num > 0 ? '+' : '-';
+    const absUnits = Math.abs(num);
+    const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
+    
+    if (unit === 'g' || unit === 'gramos') {
+      const grams = absUnits * 1000;
+      if (grams >= 1000) {
+        const kg = Math.ceil(grams / 1000);
+        return `${sign}${kg} kg`;
+      } else {
+        const roundedGrams = Math.ceil(grams);
+        return `${sign}${roundedGrams}g`;
+      }
+    }
+    
+    if (unit === 'ml' || unit === 'mililitros') {
+      const milliliters = absUnits * 1000;
+      if (milliliters >= 1000) {
+        const liters = Math.ceil(milliliters / 1000);
+        return `${sign}${liters} L`;
+      } else {
+        const roundedMl = Math.ceil(milliliters);
+        return `${sign}${roundedMl}ml`;
+      }
+    }
+    
+    const roundedUnits = Math.ceil(absUnits);
+    return `${sign}${roundedUnits} ${unit ? unit : 'und'}`;
+  }
   
   const sign = num > 0 ? '+' : '';
   const formattedVal = formatQuantity(Math.abs(num), item);
@@ -185,7 +221,7 @@ const formatDifference = (val, item) => {
         </template>
 
         <template #item.promedio_calculado="{ item }">
-          <span class="font-weight-bold text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}</span>
+          <span class="font-weight-bold text-disabled">{{ formatQuantity(item.promedio_calculado, item) }}</span>
         </template>
 
         <template #item.diferencia_product="{ item }">
@@ -289,7 +325,7 @@ const formatDifference = (val, item) => {
                   </div>
                   <div class="d-flex flex-column align-center">
                     <span class="text-super-xs text-disabled uppercase font-weight-black">Prom.</span>
-                    <span class="text-xs font-weight-black">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</span>
+                    <span class="text-xs font-weight-black">{{ formatQuantity(item.promedio_calculado, item) }}</span>
                   </div>
                </div>
                <div v-if="!isRestaurant" class="d-flex flex-column align-end">

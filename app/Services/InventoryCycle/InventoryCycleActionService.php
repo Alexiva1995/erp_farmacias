@@ -60,9 +60,10 @@ class InventoryCycleActionService
                     $data['discrepancy'] = $expectedDiscrepancy;
                 }
 
-                // Si no hay discrepancia, aprobar automáticamente sin supervisor
+                // Si no hay discrepancia y no es simple, aprobar automáticamente sin supervisor
+                $isSimple = \App\Models\GeneralSetting::first()?->cyclic_inventory_mode === 'simple';
                 $finalDiscrepancy = $data['discrepancy'];
-                $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
+                $status = ($finalDiscrepancy == 0 && !$isSimple) ? 'approved' : 'pending';
                 $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
 
                 $productCount = ProductCount::create([
@@ -207,6 +208,34 @@ class InventoryCycleActionService
         $productCount->system_quantity = $realCurrentStock;
 
         $distributionsCreated = false;
+
+        $enableLots = \App\Models\GeneralSetting::first()?->enable_lots ?? true;
+        if (!$enableLots) {
+            $uniqueLot = ProductLot::where('product_id', $product->id)
+                ->where('lot_number', 'LOTE-UNICO')
+                ->first();
+
+            if (!$uniqueLot) {
+                $uniqueLot = ProductLot::create([
+                    'product_id'      => $product->id,
+                    'lot_number'      => 'LOTE-UNICO',
+                    'expiration_date' => '2050-12-31',
+                    'quantity'        => $finalQuantity,
+                    'unit_cost'       => $product->unit_cost ?? 0,
+                    'location'        => 'PRINCIPAL',
+                    'supplier_id'     => null,
+                ]);
+            } else {
+                $uniqueLot->update(['quantity' => $finalQuantity]);
+            }
+
+            ProductDistribution::create([
+                'product_count_id' => $productCount->id,
+                'product_lot_id'   => $uniqueLot->id,
+                'quantity'         => $finalQuantity,
+            ]);
+            $distributionsCreated = true;
+        }
 
         if (!empty($data['updated_lots'])) {
             foreach ($data['updated_lots'] as $lotData) {

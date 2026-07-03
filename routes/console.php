@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
+Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
 Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');

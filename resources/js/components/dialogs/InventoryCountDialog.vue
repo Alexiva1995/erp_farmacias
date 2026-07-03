@@ -12,6 +12,16 @@ const headerGradient = computed(() => {
   return `linear-gradient(135deg, ${start} 0%, ${end} 100%)`;
 });
 
+// Si la configuración global no requiere código de barras, el modo manual es el predeterminado
+const barcodeRequiredGlobal = computed(
+  () => brandingStore.settings?.cyclic_inventory_barcode_required ?? true
+);
+
+// Modo restaurante: se muestra el conteo dual (paquetes + destapado)
+const isRestaurantMode = computed(
+  () => brandingStore.settings?.business_type === 'restaurant'
+);
+
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   product: { type: Object, required: true },
@@ -30,7 +40,30 @@ const isScannerVisible = ref(false);
 const barcodeError = ref("");
 const allowWithoutBarcode = ref(false);
 
+// Variables para el modo de conteo dual (restaurante)
+const packagesCount = ref("");
+const openedQuantity = ref("");
+
+// Contenido por envase del producto (presentation) y unidad de medida
+const productPresentation = computed(() => Number(props.product?.presentation) || 0);
+const productUnit = computed(() => props.product?.unit_of_measure || 'und');
+
+// Total calculado en modo restaurante
+const dualTotalQuantity = computed(() => {
+  const pkgs = Number(packagesCount.value) || 0;
+  const opened = Number(openedQuantity.value) || 0;
+  return pkgs * productPresentation.value + opened;
+});
+
 const canSave = computed(() => {
+  // En modo restaurante se valida el modo dual
+  if (isRestaurantMode.value) {
+    const hasValidDual = dualTotalQuantity.value >= 0 &&
+      (packagesCount.value !== "" || openedQuantity.value !== "");
+    if (allowWithoutBarcode.value) return hasValidDual;
+    return barcodeInput.value.trim() !== "" && hasValidDual && !barcodeError.value;
+  }
+
   const isQuantityValid =
     countedQuantity.value !== "" &&
     !isNaN(Number(countedQuantity.value)) &&
@@ -48,9 +81,12 @@ const canSave = computed(() => {
 const resetForm = () => {
   barcodeInput.value = "";
   countedQuantity.value = "";
+  packagesCount.value = "";
+  openedQuantity.value = "";
   barcodeError.value = "";
   isScannerVisible.value = false;
-  allowWithoutBarcode.value = false;
+  // Si la configuración global no requiere barcode, el modo manual es el predeterminado
+  allowWithoutBarcode.value = !barcodeRequiredGlobal.value;
 };
 
 const handleCancel = () => {
@@ -61,10 +97,16 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
+      // Sincronizar el modo al abrir según la configuración global
+      allowWithoutBarcode.value = !barcodeRequiredGlobal.value;
       nextTick(() => {
-        const barcodeInputElement = document.querySelector("#barcode-input");
-        if (barcodeInputElement) {
-          barcodeInputElement.focus();
+        // Si no se requiere barcode, enfocar directamente el campo de cantidad
+        if (!barcodeRequiredGlobal.value) {
+          const quantityInput = document.querySelector("#quantity-input");
+          if (quantityInput) quantityInput.focus();
+        } else {
+          const barcodeInputElement = document.querySelector("#barcode-input");
+          if (barcodeInputElement) barcodeInputElement.focus();
         }
       });
     } else {
@@ -131,11 +173,18 @@ const onBarcodeScanned = (scannedBarcode) => {
 const handleSave = async () => {
   if (!canSave.value) return;
 
-  const quantity = Number(countedQuantity.value);
+  // En modo restaurante el total se calcula del modo dual
+  const quantity = isRestaurantMode.value
+    ? dualTotalQuantity.value
+    : Number(countedQuantity.value);
+
+  const confirmText = isRestaurantMode.value
+    ? `${Number(packagesCount.value) || 0} paquete(s) completo(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) = ${quantity} ${productUnit.value} en total`
+    : `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`;
 
   const result = await Swal.fire({
     title: "Confirmar Conteo",
-    text: `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`,
+    text: confirmText,
     icon: "question",
     showCancelButton: true,
     confirmButtonText: "Confirmar",
@@ -213,8 +262,9 @@ const handleSave = async () => {
         </div>
 
         <VForm @submit.prevent="handleSave">
-          <!-- Modo de Ingreso Compacto -->
+          <!-- Modo de Ingreso Compacto (solo visible si el escaneo es requerido por configuración) -->
           <div
+            v-if="barcodeRequiredGlobal"
             class="pa-2 mb-2 rounded-lg border shadow-xs d-flex align-center justify-space-between"
             :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
           >
@@ -236,8 +286,8 @@ const handleSave = async () => {
             />
           </div>
 
-          <!-- Campo de Escaneo Ultra Compacto -->
-          <div v-if="!allowWithoutBarcode" class="mb-2">
+          <!-- Campo de Escaneo Ultra Compacto (solo si la config global lo requiere y el usuario no eligió ingreso manual) -->
+          <div v-if="barcodeRequiredGlobal && !allowWithoutBarcode" class="mb-2">
             <AppTextField
               id="barcode-input"
               v-model="barcodeInput"
@@ -263,29 +313,95 @@ const handleSave = async () => {
             </AppTextField>
           </div>
 
-          <!-- Cantidad Auditada Compacta -->
+          <!-- Cantidad Auditada -->
           <div class="pa-2 rounded-lg bg-white border shadow-xs">
             <div class="d-flex align-center gap-2 mb-1">
               <div class="header-indicator secondary" style="block-size: 10px;" />
               <span class="text-super-xs font-weight-black text-high-emphasis uppercase">Auditado</span>
             </div>
 
-            <div class="bg-light rounded border-dashed-2">
-              <AppTextField
-                id="quantity-input"
-                v-model.number="countedQuantity"
-                type="number"
-                min="0"
-                step="any"
-                placeholder="0"
-                variant="plain"
-                class="audit-huge-input font-weight-black"
-                density="compact"
-                hide-details
-                :disabled="!allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
-                @keyup.enter="handleSave"
-              />
-            </div>
+            <!-- Modo Dual (Restaurante): Paquetes Completos + Contenido Destapado -->
+            <template v-if="isRestaurantMode && productPresentation > 0">
+              <div class="d-flex flex-column gap-2">
+                <!-- Paquetes completos sin destapar -->
+                <div class="bg-light rounded border-dashed-2 pa-1">
+                  <div class="d-flex align-center gap-1 mb-1 px-1">
+                    <VIcon icon="tabler-package" size="14" color="primary" />
+                    <span class="text-super-xs font-weight-black text-primary uppercase">
+                      Paquetes completos ({{ productPresentation }} {{ productUnit }} c/u)
+                    </span>
+                  </div>
+                  <AppTextField
+                    id="packages-input"
+                    v-model.number="packagesCount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    variant="plain"
+                    class="audit-huge-input font-weight-black"
+                    density="compact"
+                    hide-details
+                    :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
+                    @keyup.enter="$el.querySelector('#opened-input')?.focus()"
+                  />
+                </div>
+
+                <!-- Contenido ya destapado -->
+                <div class="bg-light rounded border-dashed-2 pa-1">
+                  <div class="d-flex align-center gap-1 mb-1 px-1">
+                    <VIcon icon="tabler-box-seam" size="14" color="warning" />
+                    <span class="text-super-xs font-weight-black text-warning uppercase">
+                      Contenido destapado / parcial ({{ productUnit }})
+                    </span>
+                  </div>
+                  <AppTextField
+                    id="opened-input"
+                    v-model.number="openedQuantity"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0"
+                    variant="plain"
+                    class="audit-huge-input font-weight-black"
+                    density="compact"
+                    hide-details
+                    :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
+                    @keyup.enter="handleSave"
+                  />
+                </div>
+
+                <!-- Total calculado -->
+                <div v-if="packagesCount !== '' || openedQuantity !== ''"
+                  class="d-flex align-center justify-space-between rounded pa-2 bg-primary-lighten-5 border"
+                >
+                  <span class="text-super-xs font-weight-black text-primary uppercase">Total calculado</span>
+                  <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+                    {{ dualTotalQuantity }} {{ productUnit }}
+                  </VChip>
+                </div>
+              </div>
+            </template>
+
+            <!-- Modo Normal: Un solo campo -->
+            <template v-else>
+              <div class="bg-light rounded border-dashed-2">
+                <AppTextField
+                  id="quantity-input"
+                  v-model.number="countedQuantity"
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0"
+                  variant="plain"
+                  class="audit-huge-input font-weight-black"
+                  density="compact"
+                  hide-details
+                  :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
+                  @keyup.enter="handleSave"
+                />
+              </div>
+            </template>
           </div>
         </VForm>
       </VCardText>

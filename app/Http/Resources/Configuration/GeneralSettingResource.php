@@ -46,6 +46,10 @@ class GeneralSettingResource extends JsonResource
             'section3_tagline' => $this->section3_tagline ?? 'EFECTO SOL',
             'section3_image' => $this->section3_image ?? '/tova_product_bronzer_1782228617577.png',
             'section3_button_text' => $this->section3_button_text ?? 'COMPRAR BRONCEADOR',
+            'cyclic_inventory_mode' => $this->cyclic_inventory_mode ?? 'double',
+            'cyclic_inventory_barcode_required' => $this->cyclic_inventory_barcode_required ?? true,
+            'enable_lots' => (bool) ($this->enable_lots ?? true),
+            'tpv_mode' => $this->tpv_mode ?? 'complete',
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

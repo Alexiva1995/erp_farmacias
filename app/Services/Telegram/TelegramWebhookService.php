@@ -131,13 +131,17 @@ class TelegramWebhookService
                     $this->processUserProvidedPaymentReference(trim($text), $fromId, $chatId, $stateData);
                     return;
                 }
+                if ($stateData['state'] === 'waiting_for_stockout_qty') {
+                    $this->processUserProvidedStockoutQty(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
             }
         }
 
         // (La foto ya fue procesada al inicio del método si existía)
 
         // ==================== COMANDOS DE RESTAURANTE / MINIMARKET ====================
-        if ($botType === 'restaurante' || $botType === 'all') {
+        if ($botType === 'restaurante' || $botType === 'canchas' || $botType === 'all') {
             // Caso B: Comando para iniciar el registro de facturas
             if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
                 $isInformal = !empty($matches[1]);
@@ -180,6 +184,12 @@ class TelegramWebhookService
                 $this->processReservationCancellation(trim($matches[1]), $chatId);
                 return;
             }
+
+            // Caso D: Comando para consultar los horarios fijos de hoy
+            if ($cleanText === 'fijos' || $cleanText === '/fijos') {
+                $this->sendDailyFixedSchedules($chatId);
+                return;
+            }
         }
 
         // ==================== COMANDOS DE FARMACIA ====================
@@ -199,6 +209,12 @@ class TelegramWebhookService
             // Caso I: Comando para consultar el listado detallado de deudas por proveedor
             if ($cleanText === 'deudas' || $cleanText === '/deudas') {
                 $this->initDebtsFlow($fromId, $chatId);
+                return;
+            }
+
+            // Caso J: Comando de Pedido Automático Inteligente
+            if ($cleanText === 'pedido' || $cleanText === '/pedido') {
+                $this->processAutomaticOrderFromTelegram($chatId);
                 return;
             }
         }
@@ -502,6 +518,16 @@ class TelegramWebhookService
         $chatId = $callbackQuery['message']['chat']['id'] ?? null;
         $fromId = $callbackQuery['from']['id'] ?? null;
 
+        if (str_starts_with($callbackData, 'stockout_auto_')) {
+            $this->handleStockoutAutoCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'stockout_edit_')) {
+            $this->handleStockoutEditCallback($callbackData, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
         if (str_starts_with($callbackData, 'pay_supplier_')) {
             $supplierId = (int) substr($callbackData, strlen('pay_supplier_'));
             $this->startPaymentForSupplier($supplierId, $fromId, $callbackQueryId, $messageId, $chatId);
@@ -751,6 +777,12 @@ class TelegramWebhookService
                 $this->answerCallback($callbackQueryId, '✅ Reserva cancelada y cancha liberada con éxito.');
                 $this->updateMessageToCanceled($chatId, $messageId, $reservation);
             }
+        }
+
+        // 5. Gestión de Horarios Fijos (Gol Club)
+        if (str_starts_with($callbackData, 'skip_fixed_') || str_starts_with($callbackData, 'restore_fixed_') || str_starts_with($callbackData, 'delete_fixed_')) {
+            $this->handleFixedScheduleCallback($callbackData, $chatId, $messageId, $callbackQueryId);
+            return;
         }
     }
 
@@ -1237,7 +1269,6 @@ class TelegramWebhookService
                     $q->whereNull('status_payment')
                       ->orWhere('status_payment', '!=', 1);
                 })
-                ->where('status', 'ordered')
                 ->whereDate('payment_date', '<=', now()->toDateString())
                 ->orderBy('payment_date', 'asc')
                 ->get();
@@ -1999,7 +2030,6 @@ class TelegramWebhookService
                     $q->whereNull('status_payment')
                       ->orWhere('status_payment', '!=', 1);
                 })
-                ->where('status', 'ordered')
                 ->whereBetween('payment_date', [$startDate, $endDate])
                 ->orderBy('payment_date', 'asc')
                 ->get();
@@ -2135,7 +2165,6 @@ class TelegramWebhookService
                     $q->whereNull('status_payment')
                       ->orWhere('status_payment', '!=', 1);
                 })
-                ->where('status', 'ordered')
                 ->orderBy('payment_date', 'asc')
                 ->get();
 
@@ -2369,6 +2398,567 @@ class TelegramWebhookService
                 'parse_mode' => 'Markdown',
                 'reply_markup' => $replyMarkup,
             ]);
+        }
+    }
+
+    /**
+     * Enviar la lista de horarios fijos configurados para el día actual.
+     */
+    protected function sendDailyFixedSchedules($chatId): void
+    {
+        $dayOfWeek = \Carbon\Carbon::now()->dayOfWeekIso; // 1 = Lunes, ..., 7 = Domingo
+        $todayStr = \Carbon\Carbon::now()->toDateString();
+        
+        $fixedSchedules = \App\Models\FixedSchedule::with(['court', 'exceptions' => function($q) use ($todayStr) {
+            $q->where('date', $todayStr);
+        }])
+        ->where('day_of_week', $dayOfWeek)
+        ->orderBy('start_time')
+        ->get();
+
+        if ($fixedSchedules->isEmpty()) {
+            $this->telegramService->sendMessage("📅 *[HORARIOS FIJOS - HOY]*\n\nNo tienes ningún horario fijo programado para el día de hoy.", $chatId);
+            return;
+        }
+
+        $this->telegramService->sendMessage("📅 *[HORARIOS FIJOS - HOY]*\n\nListando los horarios fijos de hoy:", $chatId);
+
+        foreach ($fixedSchedules as $fijo) {
+            $isSaltado = $fijo->exceptions->isNotEmpty();
+            $statusText = $isSaltado ? "🚫 *[SALTADO HOY]*" : "✅ *[ACTIVO]*";
+            $formattedStart = \Carbon\Carbon::parse($fijo->start_time)->format('g:i A');
+            $formattedEnd = \Carbon\Carbon::parse($fijo->end_time)->format('g:i A');
+            
+            $msg = "📌 *Cancha:* {$fijo->court->name}\n"
+                 . "⏰ *Horario:* {$formattedStart} - {$formattedEnd}\n"
+                 . "👤 *Cliente:* {$fijo->client_name}\n"
+                 . "📱 *WhatsApp:* +{$fijo->client_whatsapp}\n"
+                 . "Estado: {$statusText}";
+                 
+            $buttons = [];
+            if (!$isSaltado) {
+                $buttons[] = [
+                    [
+                        'text' => '⏭️ Saltar Hoy',
+                        'callback_data' => "skip_fixed_{$fijo->id}_{$todayStr}"
+                    ]
+                ];
+            } else {
+                $buttons[] = [
+                    [
+                        'text' => '🔄 Restaurar Hoy',
+                        'callback_data' => "restore_fixed_{$fijo->id}_{$todayStr}"
+                    ]
+                ];
+            }
+
+            $buttons[] = [
+                [
+                    'text' => '🗑️ Borrar Permanente',
+                    'callback_data' => "delete_fixed_{$fijo->id}"
+                ]
+            ];
+
+            $replyMarkup = ['inline_keyboard' => $buttons];
+            
+            $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+        }
+    }
+
+    /**
+     * Procesar los callbacks relacionados con la gestión de horarios fijos.
+     */
+    protected function handleFixedScheduleCallback(string $callbackData, $chatId, $messageId, string $callbackQueryId): void
+    {
+        $parts = explode('_', $callbackData);
+        $action = $parts[0] . '_' . $parts[1]; // 'skip_fixed', 'restore_fixed', 'delete_fixed'
+        $id = (int)$parts[2];
+        $dateParam = $parts[3] ?? null;
+
+        $fixedSchedule = \App\Models\FixedSchedule::with(['court'])->find($id);
+
+        if (!$fixedSchedule) {
+            $this->answerCallback($callbackQueryId, 'El horario fijo ya no existe.');
+            return;
+        }
+
+        if ($action === 'skip_fixed') {
+            \App\Models\FixedScheduleException::firstOrCreate([
+                'fixed_schedule_id' => $id,
+                'date' => $dateParam
+            ]);
+
+            $this->answerCallback($callbackQueryId, '⏭️ Horario fijo saltado únicamente por hoy.');
+        } elseif ($action === 'restore_fixed') {
+            \App\Models\FixedScheduleException::where('fixed_schedule_id', $id)
+                ->where('date', $dateParam)
+                ->delete();
+
+            $this->answerCallback($callbackQueryId, '🔄 Horario fijo restaurado para hoy.');
+        } elseif ($action === 'delete_fixed') {
+            $fixedSchedule->delete();
+            $this->answerCallback($callbackQueryId, '🗑️ Horario fijo eliminado permanentemente.');
+            
+            // Editar mensaje para reflejar la eliminación
+            $token = config('services.telegram.bot_token');
+            Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => "🗑️ *[ELIMINADO PERMANENTEMENTE]*\n\nEl horario fijo de *{$fixedSchedule->client_name}* ha sido eliminado por completo.",
+                'parse_mode' => 'Markdown',
+            ]);
+            return;
+        }
+
+        // Si fue saltado o restaurado, actualizamos el mensaje original para mostrar el nuevo estado
+        $todayStr = \Carbon\Carbon::now()->toDateString();
+        $isSaltado = \App\Models\FixedScheduleException::where('fixed_schedule_id', $id)
+            ->where('date', $todayStr)
+            ->exists();
+
+        $statusText = $isSaltado ? "🚫 *[SALTADO HOY]*" : "✅ *[ACTIVO]*";
+        $formattedStart = \Carbon\Carbon::parse($fixedSchedule->start_time)->format('g:i A');
+        $formattedEnd = \Carbon\Carbon::parse($fixedSchedule->end_time)->format('g:i A');
+
+        $msg = "📌 *Cancha:* {$fixedSchedule->court->name}\n"
+             . "⏰ *Horario:* {$formattedStart} - {$formattedEnd}\n"
+             . "👤 *Cliente:* {$fixedSchedule->client_name}\n"
+             . "📱 *WhatsApp:* +{$fixedSchedule->client_whatsapp}\n"
+             . "Estado: {$statusText}";
+
+        $buttons = [];
+        if (!$isSaltado) {
+            $buttons[] = [
+                [
+                    'text' => '⏭️ Saltar Hoy',
+                    'callback_data' => "skip_fixed_{$fixedSchedule->id}_{$todayStr}"
+                ]
+            ];
+        } else {
+            $buttons[] = [
+                [
+                    'text' => '🔄 Restaurar Hoy',
+                    'callback_data' => "restore_fixed_{$fixedSchedule->id}_{$todayStr}"
+                ]
+            ];
+        }
+
+        $buttons[] = [
+            [
+                'text' => '🗑️ Borrar Permanente',
+                'callback_data' => "delete_fixed_{$fixedSchedule->id}"
+            ]
+        ];
+
+        $replyMarkup = ['inline_keyboard' => $buttons];
+        $token = config('services.telegram.bot_token');
+
+        Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode($replyMarkup),
+        ]);
+    }
+
+    /**
+     * Procesar el pedido automático de la IA evaluando el precio más bajo
+     * y descartando si supera el 20% del costo base del producto.
+     */
+    protected function processAutomaticOrderFromTelegram($chatId): void
+    {
+        $this->telegramService->sendMessage("🤖 *[ASISTENTE IA]*\n\nIniciando análisis de fallas y comparación de precios con proveedores. Por favor, espera...", $chatId);
+
+        try {
+            $iaReportService = app(\App\Services\Reports\IaAssistantReportService::class);
+            
+            // Traer el reporte total de reabastecimiento (Fallas)
+            $report = $iaReportService->getReplenishReportAll([
+                'tipo_filtracion' => 'average',
+                'lapso_de_tiempo' => '30 days',
+                'stock' => 'fallas',
+                'with_suppliers' => true
+            ]);
+
+            // Consolidar todos los productos a reponer
+            $productosAReponer = array_merge(
+                $report['increased'] ?? [],
+                $report['decreased'] ?? [],
+                $report['stable'] ?? []
+            );
+
+            if (empty($productosAReponer)) {
+                $this->telegramService->sendMessage("✅ *[ASISTENTE IA]*\n\nNo se encontraron productos con faltantes o fallas pendientes para reponer hoy.", $chatId);
+                return;
+            }
+
+            $ordersToUpdate = [];
+            $productosPedidos = [];
+            $productosDescartados = []; // Exceden el 20%
+            $sinProveedor = [];
+
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            foreach ($productosAReponer as $item) {
+                // $item es un objeto hydrated por el repository
+                $productId = $item->id;
+                $productName = $item->name;
+                $qtyToOrder = abs((float)($item->solicitar ?? 1)); // Cantidad recomendada por IA
+
+                if ($qtyToOrder <= 0) {
+                    continue;
+                }
+
+                $product = \App\Models\Product::find($productId);
+                if (!$product) {
+                    continue;
+                }
+
+                // Costo base actual registrado en la base de datos
+                $costoBase = (float)($product->unit_cost ?? 0);
+
+                // Obtener proveedores y sus precios vinculados a este producto
+                $bestSupplier = $item->best_supplier ?? null;
+                
+                if (!$bestSupplier || !isset($bestSupplier['id'])) {
+                    $sinProveedor[] = $productName;
+                    continue;
+                }
+
+                $bestSupplierId = $bestSupplier['id'];
+                $productSupplierId = $bestSupplier['product_suppliers_id'] ?? null;
+                $costoProveedor = (float)($item->best_supplier_price ?? 0);
+
+                if ($costoProveedor <= 0) {
+                    $sinProveedor[] = $productName;
+                    continue;
+                }
+
+                // VALIDACIÓN: No pedir si supera el 20% del costo base actual (siempre que el costo base sea mayor a 0)
+                if ($costoBase > 0 && $costoProveedor > ($costoBase * 1.20)) {
+                    $pctExceso = round((($costoProveedor - $costoBase) / $costoBase) * 100, 2);
+                    $productosDescartados[] = "⚠️ *{$productName}*:\n  • Costo base: {$costoBase} USD\n  • Ofrecido: {$costoProveedor} USD (+{$pctExceso}%)";
+                    continue;
+                }
+
+                // Buscar o crear la AutoOrder para este proveedor
+                $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                    [
+                        'supplier_id' => $bestSupplierId,
+                        'status' => \App\Enums\AutoOrderStatus::PENDING,
+                    ],
+                    [
+                        'order_date' => now(),
+                        'total_items' => 0,
+                        'total_quantity' => 0,
+                        'total_amount' => 0,
+                    ]
+                );
+
+                $ordersToUpdate[$autoOrder->id] = $autoOrder;
+
+                // Añadir o actualizar detalle
+                $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                    ->where('product_id', $productId)
+                    ->first();
+
+                if ($detail) {
+                    $detail->quantity += $qtyToOrder;
+                    $detail->unit_cost = $costoProveedor;
+                    $detail->subtotal = (float) $detail->quantity * $costoProveedor;
+                    if ($productSupplierId) {
+                        $detail->product_suppliers_id = $productSupplierId;
+                    }
+                    $detail->save();
+                } else {
+                    \App\Models\AutoOrderDetail::create([
+                        'order_id' => $autoOrder->id,
+                        'product_id' => $productId,
+                        'product_suppliers_id' => $productSupplierId,
+                        'quantity' => $qtyToOrder,
+                        'unit_cost' => $costoProveedor,
+                        'subtotal' => $qtyToOrder * $costoProveedor,
+                    ]);
+                }
+
+                $product->update(['manual_solicitar' => null]);
+                $productosPedidos[$autoOrder->id][] = "• {$productName} (x{$qtyToOrder}) - {$costoProveedor} USD";
+            }
+
+            // Actualizar totales de todas las órdenes modificadas
+            $controller = app(\App\Http\Controllers\Api\IaAssistantActionController::class);
+            foreach ($ordersToUpdate as $order) {
+                // Usamos reflexión o llamamos al método privado si estuviera disponible, o calculamos manualmente los totales:
+                $details = \App\Models\AutoOrderDetail::where('order_id', $order->id)->get();
+                $order->update([
+                    'total_items' => $details->count(),
+                    'total_quantity' => $details->sum('quantity'),
+                    'total_amount' => $details->sum('subtotal'),
+                ]);
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            // CONSTRUIR MENSAJE DE RETORNO
+            $msg = "📝 *[PEDIDO DE IA GENERADO]*\n\n";
+
+            if (!empty($ordersToUpdate)) {
+                $msg .= "🛒 *Órdenes creadas/actualizadas:*\n";
+                foreach ($ordersToUpdate as $orderId => $order) {
+                    $supplierName = $order->supplier->name ?? "Proveedor #{$order->supplier_id}";
+                    $totalAmount = number_format($order->total_amount, 2);
+                    $msg .= "\n🏢 *{$supplierName}* (Total: {$totalAmount} USD):\n";
+                    $msg .= implode("\n", $productosPedidos[$order->id]) . "\n";
+                }
+            } else {
+                $msg .= "❌ No se generaron nuevos pedidos.\n";
+            }
+
+            if (!empty($productosDescartados)) {
+                $msg .= "\n⛔ *Productos Omitidos (Exceden +20% del costo):*\n";
+                $msg .= implode("\n", $productosDescartados) . "\n";
+            }
+
+            if (!empty($sinProveedor)) {
+                $msg .= "\n❓ *Fallas sin proveedor o precio registrado:*\n";
+                $msg .= "• " . implode("\n• ", array_slice($sinProveedor, 0, 15));
+                if (count($sinProveedor) > 15) {
+                    $msg .= "\n... y " . (count($sinProveedor) - 15) . " más.";
+                }
+                $msg .= "\n";
+            }
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error procesando pedido automático desde Telegram: " . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al procesar el pedido automático: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Procesar callback de compra automática recomendada.
+     */
+    protected function handleStockoutAutoCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        // Formato: stockout_auto_{productId}_{supplierId}_{qty}_{productSupplierId}
+        $parts = explode('_', $callbackData);
+        $productId = (int)$parts[2];
+        $supplierId = (int)$parts[3];
+        $qty = (float)$parts[4];
+        $productSupplierId = isset($parts[5]) ? (int)$parts[5] : null;
+
+        $product = \App\Models\Product::find($productId);
+        $supplier = \App\Models\Supplier::find($supplierId);
+
+        if (!$product || !$supplier) {
+            $this->answerCallback($callbackQueryId, 'Producto o Proveedor no encontrado.');
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $offer = \App\Models\ProductSupplier::find($productSupplierId);
+            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+
+            // Crear o buscar la AutoOrder pendiente
+            $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                [
+                    'supplier_id' => $supplierId,
+                    'status' => \App\Enums\AutoOrderStatus::PENDING,
+                ],
+                [
+                    'order_date' => now(),
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                    'total_amount' => 0,
+                ]
+            );
+
+            // Crear o actualizar detalle
+            $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $qty;
+                $detail->unit_cost = $costoProveedor;
+                $detail->subtotal = (float)$detail->quantity * $costoProveedor;
+                if ($productSupplierId) {
+                    $detail->product_suppliers_id = $productSupplierId;
+                }
+                $detail->save();
+            } else {
+                \App\Models\AutoOrderDetail::create([
+                    'order_id' => $autoOrder->id,
+                    'product_id' => $productId,
+                    'product_suppliers_id' => $productSupplierId,
+                    'quantity' => $qty,
+                    'unit_cost' => $costoProveedor,
+                    'subtotal' => $qty * $costoProveedor,
+                ]);
+            }
+
+            // Recalcular totales de la orden
+            $details = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)->get();
+            $autoOrder->update([
+                'total_items' => $details->count(),
+                'total_quantity' => $details->sum('quantity'),
+                'total_amount' => $details->sum('subtotal'),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            $this->answerCallback($callbackQueryId, '🛒 Pedido confirmado exitosamente.');
+
+            if ($messageId) {
+                $token = config('services.telegram.bot_token');
+                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => "✅ *[PEDIDO DE AGOTADO CONFIRMADO]*\n\n📦 *Producto:* {$product->name}\n🏢 *Proveedor:* {$supplier->name}\n🔢 *Cantidad:* {$qty} unidades\n💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\nEl pedido se ha agregado exitosamente a la orden de compra en el ERP.",
+                    'parse_mode' => 'Markdown',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error procesando stockout auto callback: " . $e->getMessage());
+            $this->answerCallback($callbackQueryId, '❌ Error al procesar el pedido.');
+        }
+    }
+
+    /**
+     * Activar flujo conversacional para editar la cantidad a pedir.
+     */
+    protected function handleStockoutEditCallback(string $callbackData, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        // Formato: stockout_edit_{productId}_{supplierId}_{productSupplierId}
+        $parts = explode('_', $callbackData);
+        $productId = (int)$parts[2];
+        $supplierId = (int)$parts[3];
+        $productSupplierId = isset($parts[4]) ? (int)$parts[4] : null;
+
+        $product = \App\Models\Product::find($productId);
+        if (!$product) {
+            $this->answerCallback($callbackQueryId, 'Producto no encontrado.');
+            return;
+        }
+
+        Cache::put('telegram_state_' . $fromId, [
+            'state' => 'waiting_for_stockout_qty',
+            'product_id' => $productId,
+            'supplier_id' => $supplierId,
+            'product_supplier_id' => $productSupplierId,
+            'message_id' => $messageId,
+        ], 300);
+
+        $this->answerCallback($callbackQueryId);
+        $this->telegramService->sendMessage("✏️ *[MODIFICAR CANTIDAD]*\n\nEscribe la cantidad de unidades que deseas pedir para *{$product->name}*:", $chatId);
+    }
+
+    /**
+     * Procesar la cantidad ingresada por el usuario para el pedido de stockout.
+     */
+    protected function processUserProvidedStockoutQty(string $text, $fromId, $chatId, array $stateData): void
+    {
+        $qty = (float)$text;
+        if ($qty <= 0) {
+            $this->telegramService->sendMessage("⚠️ Por favor ingresa un número válido mayor a 0.", $chatId);
+            return;
+        }
+
+        $productId = $stateData['product_id'];
+        $supplierId = $stateData['supplier_id'];
+        $productSupplierId = $stateData['product_supplier_id'];
+        $originalMessageId = $stateData['message_id'];
+
+        $product = \App\Models\Product::find($productId);
+        $supplier = \App\Models\Supplier::find($supplierId);
+
+        if (!$product || !$supplier) {
+            $this->telegramService->sendMessage("❌ Producto o Proveedor no encontrado en el sistema.", $chatId);
+            Cache::forget('telegram_state_' . $fromId);
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $offer = \App\Models\ProductSupplier::find($productSupplierId);
+            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+
+            // Crear o buscar la AutoOrder
+            $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                [
+                    'supplier_id' => $supplierId,
+                    'status' => \App\Enums\AutoOrderStatus::PENDING,
+                ],
+                [
+                    'order_date' => now(),
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                    'total_amount' => 0,
+                ]
+            );
+
+            // Crear o actualizar detalle
+            $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $qty;
+                $detail->unit_cost = $costoProveedor;
+                $detail->subtotal = (float)$detail->quantity * $costoProveedor;
+                if ($productSupplierId) {
+                    $detail->product_suppliers_id = $productSupplierId;
+                }
+                $detail->save();
+            } else {
+                \App\Models\AutoOrderDetail::create([
+                    'order_id' => $autoOrder->id,
+                    'product_id' => $productId,
+                    'product_suppliers_id' => $productSupplierId,
+                    'quantity' => $qty,
+                    'unit_cost' => $costoProveedor,
+                    'subtotal' => $qty * $costoProveedor,
+                ]);
+            }
+
+            // Recalcular totales de la orden
+            $details = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)->get();
+            $autoOrder->update([
+                'total_items' => $details->count(),
+                'total_quantity' => $details->sum('quantity'),
+                'total_amount' => $details->sum('subtotal'),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            Cache::forget('telegram_state_' . $fromId);
+
+            $this->telegramService->sendMessage("✅ *[PEDIDO DE AGOTADO REGISTRADO]*\n\n📦 *Producto:* {$product->name}\n🏢 *Proveedor:* {$supplier->name}\n🔢 *Cantidad:* {$qty} unidades\n💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\nEl pedido personalizado se ha agregado a la orden de compra del ERP.", $chatId);
+
+            // Limpiar o actualizar mensaje original si es posible
+            if ($originalMessageId) {
+                try {
+                    $token = config('services.telegram.bot_token');
+                    Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                        'chat_id' => $chatId,
+                        'message_id' => $originalMessageId,
+                        'text' => "✅ *[PEDIDO PROCESADO]*\n\nSe ha solicitado la compra personalizada de {$qty} unidades para *{$product->name}* al proveedor *{$supplier->name}*.",
+                        'parse_mode' => 'Markdown',
+                    ]);
+                } catch (\Exception $ex) {
+                    // Ignorar si el mensaje original no se puede editar
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error al procesar unidades personalizadas de stockout: " . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al registrar el pedido personalizado: " . $e->getMessage(), $chatId);
         }
     }
 }

@@ -12,6 +12,7 @@ const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -61,7 +62,7 @@ const headers = computed(() => [
     cellClass: 'd-none d-md-table-cell',
     headerClass: 'd-none d-md-table-cell'
   },
-  { title: "Exp.", key: "next_expiration", sortable: true, visible: true },
+  { title: "Exp.", key: "next_expiration", sortable: true, visible: brandingStore.settings.enable_lots !== false },
   {
     title: "STOCK",
     key: "stock_calculado",
@@ -147,12 +148,35 @@ const handleMobilePageChange = (newPage) => {
 
 const formatStock = (item) => {
   const stock = Number(item.stock_calculado ?? 0);
+  if (isSportsRental.value) {
+    return Math.round(stock).toString();
+  }
   if (!isRestaurant.value) {
     return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace('.', ',');
   }
   if (!item.unit_of_measure) {
     const formatted = stock.toString().replace('.', ',');
     return `${formatted} UNDS`;
+  }
+  // Modo dual: paquetes completos + gramos/ml restantes
+  const presentation = Number(item.presentation) || 0;
+  if (presentation > 0 && (item.unit_of_measure === 'g' || item.unit_of_measure === 'ml')) {
+    const unit = item.unit_of_measure;
+    // stock almacenado en kg → convertir a g/ml
+    const totalUnits = Math.round(stock * 1000);
+    if (totalUnits < 0) {
+      // Stock negativo: mostrar solo el total con signo
+      return `${totalUnits} ${unit}`;
+    }
+    const fullPackages = Math.floor(totalUnits / presentation);
+    const remainder = totalUnits % presentation;
+    if (fullPackages > 0 && remainder > 0) {
+      return `${fullPackages} paq + ${remainder} ${unit}`;
+    } else if (fullPackages > 0) {
+      return `${fullPackages} paq`;
+    } else {
+      return `${remainder} ${unit}`;
+    }
   }
   if (item.unit_of_measure === 'g') {
     const val = Math.round(stock * 1000);
@@ -235,7 +259,7 @@ const toggleFavorite = async (item) => {
           <div class="d-flex align-center gap-x-3 py-2">
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
-              v-if="!isRestaurant"
+              v-if="!isRestaurant && !isSportsRental"
               icon
               variant="text"
               density="compact"
@@ -333,7 +357,7 @@ const toggleFavorite = async (item) => {
                 <VTooltip activator="parent">Restaurar</VTooltip>
               </IconBtn>
               <IconBtn
-                v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant"
+                v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant && !isSportsRental"
                 color="info"
                 size="small"
                 @click="openMergeModal(item)"
@@ -399,7 +423,7 @@ const toggleFavorite = async (item) => {
             <div class="d-flex gap-3 align-start">
               <!-- Corazón interactivo de favorito para móvil -->
               <VBtn
-                v-if="!isRestaurant"
+                v-if="!isRestaurant && !isSportsRental"
                 icon
                 variant="text"
                 density="compact"
@@ -485,9 +509,9 @@ const toggleFavorite = async (item) => {
                 icon="tabler-rotate-clockwise" 
                 @click="emit('restore-product', item.id)"
               />
-              <VDivider v-if="authStore.isAdmin && !isMiniMarket" vertical class="border-opacity-10" />
+              <VDivider v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant && !isSportsRental" vertical class="border-opacity-10" />
               <VBtn 
-                v-if="authStore.isAdmin && !isMiniMarket" 
+                v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant && !isSportsRental" 
                 color="info" 
                 variant="text" 
                 class="flex-grow-1 rounded-0" 

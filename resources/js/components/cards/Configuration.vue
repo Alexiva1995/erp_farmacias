@@ -8,6 +8,7 @@ const specialStatus = ref('')
 const allForeignSalesSpe = ref(false)
 const blindCashClosure = ref(false)
 const businessType = ref('pharmacy')
+const tpvMode = ref('complete')
 
 const configFiscal = [
   { label: "Demo", value: "demo" },
@@ -35,6 +36,7 @@ const fetchSettings = async () => {
     allForeignSalesSpe.value = !!settings.all_foreign_sales_spe
     blindCashClosure.value = !!settings.blind_cash_closure
     businessType.value = settings.business_type || 'pharmacy'
+    tpvMode.value = settings.tpv_mode || 'complete'
   } catch (error) {
     console.error("Error cargando configuración:", error)
     toast.success("Error al cargar la configuración")
@@ -48,7 +50,8 @@ const updateSettings = async () => {
       special_taxpayer_status: specialStatus.value,
       all_foreign_sales_spe: allForeignSalesSpe.value,
       blind_cash_closure: blindCashClosure.value,
-      business_type: businessType.value
+      business_type: businessType.value,
+      tpv_mode: tpvMode.value
     })
     toast.success("Configuración actualizada existosamente")
   } catch (error) {
@@ -128,6 +131,5 @@ onMounted(() => {
         class="mt-2"
         @update:model-value="updateSettings"
       />
-    </VCardItem>
   </VCard>
 </template>

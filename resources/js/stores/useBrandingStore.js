@@ -29,6 +29,8 @@ export const useBrandingStore = defineStore('branding', () => {
     section3_tagline: 'EFECTO SOL',
     section3_image: null,
     section3_button_text: 'COMPRAR BRONCEADOR',
+    cyclic_inventory_mode: 'double',
+    cyclic_inventory_barcode_required: true,
   })
 
   const isLoading = ref(false)

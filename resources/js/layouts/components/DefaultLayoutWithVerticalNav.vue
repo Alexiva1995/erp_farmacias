@@ -26,6 +26,9 @@ const processedNavItems = computed(() => {
   let items = [...navItems];
   
   const isRestaurant = brandingStore.settings.business_type === 'restaurant';
+  const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
+  const isSimpleCyclic = brandingStore.settings.cyclic_inventory_mode === 'simple';
+  const enableLots = brandingStore.settings.enable_lots ?? true;
   
   const filterRestaurantNav = (navItemsList) => {
     const isMiniMarket = brandingStore.settings.business_type === 'minimarket';
@@ -46,6 +49,11 @@ const processedNavItems = computed(() => {
       if (copy.children && Array.isArray(copy.children)) {
         // Primero procesamos recursivamente los hijos
         let childs = filterRestaurantNav([...copy.children]);
+        
+        // Ocultar Pendientes en modo simple
+        if (isSimpleCyclic) {
+          childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
+        }
         
         if (!isRestaurant && !isMiniMarket) {
           childs = childs.filter((c) => c.to !== 'inventory-dishes');
@@ -83,6 +91,44 @@ const processedNavItems = computed(() => {
             return { ...c };
           });
         }
+        if (isSportsRental) {
+          childs = childs.filter((c) => 
+            c.to !== 'tpv-ecommerce-orders' && 
+            c.title !== 'Pedidos Eco' &&
+            c.title !== 'Optimización' &&
+            c.to !== 'inventory-group-products' &&
+            c.to !== 'inventory-locations' &&
+            c.to !== 'tpv-quotation'
+          );
+          childs = childs.map((c) => {
+            if (c.to === 'inventory-laboratories') {
+              return { ...c, title: 'Marcas' };
+            }
+            return { ...c };
+          });
+        }
+
+        if (!enableLots) {
+          childs = childs.filter((c) => 
+            c.to !== 'lot-list' &&
+            c.to !== 'inventory-expirations' &&
+            c.to !== 'inventory-lotificacion' &&
+            c.to !== 'inventory-lots-without-location'
+          );
+          childs = childs.map((c) => {
+            if (c.children && Array.isArray(c.children)) {
+              return {
+                ...c,
+                children: c.children.filter((sub) => 
+                  sub.to !== 'inventory-lotificacion' &&
+                  sub.to !== 'inventory-lots-without-location'
+                )
+              };
+            }
+            return c;
+          });
+        }
+
         copy.children = childs;
       }
       return copy;
@@ -91,14 +137,21 @@ const processedNavItems = computed(() => {
  
   items = filterRestaurantNav(items);
  
-  // 2. Si es modo restaurante, ocultar Reservas y E-commerce para TODOS los roles
-  if (isRestaurant) {
-    items = items.filter(item => {
-      const title = (item.title || '').toLowerCase();
-      const to = (item.to || '').toLowerCase();
-      return title !== 'reservas' && to !== 'reservations' && title !== 'e-commerce' && to !== 'tova-store';
-    });
+  // 2. Si es modo restaurante o alquiler deportivo, ocultar E-commerce
+  items = items.filter(item => {
+    const title = (item.title || '').toLowerCase();
+    const to = (item.to || '').toLowerCase();
     
+    if (isRestaurant) {
+      return title !== 'reservas' && to !== 'reservations' && title !== 'e-commerce' && title !== 'ecommerce' && to !== 'tova-store';
+    }
+    if (isSportsRental) {
+      return title !== 'e-commerce' && title !== 'ecommerce' && to !== 'tova-store';
+    }
+    return true;
+  });
+
+  if (isRestaurant) {
     // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
     // para que no requiera privilegios exclusivos de 'admin' en la evaluación de CASL del layout.
     items = items.map(item => {
@@ -122,7 +175,6 @@ const processedNavItems = computed(() => {
  
   // 3. Si el negocio es de Alquiler de Canchas/Reservas (sports_rental),
   // reordenamos el menú para colocar 'Reservas' en el primer lugar (arriba del Home)
-  const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
   if (isSportsRental) {
     const reservationsItem = items.find(item => {
       const title = (item.title || '').toLowerCase();

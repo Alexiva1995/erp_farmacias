@@ -13,6 +13,7 @@ const brandingStore = useBrandingStore();
 
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -52,7 +53,7 @@ const createLaboratory = async () => {
       name: newLabName.value,
     });
 
-    toast.success(isRestaurant.value || isMiniMarket.value ? "Marca creada con éxito" : "Laboratorio creado con éxito");
+    toast.success(isRestaurant.value || isMiniMarket.value || isSportsRental.value ? "Marca creada con éxito" : "Laboratorio creado con éxito");
     emit("laboratory-created", response.data.laboratory);
     formData.value.laboratory_id = response.data.laboratory.id;
     isLabDialogVisible.value = false;
@@ -63,7 +64,7 @@ const createLaboratory = async () => {
         error.response.data.errors?.name?.[0] || "Error de validación",
       );
     } else {
-      toast.error(isRestaurant.value || isMiniMarket.value ? "Error al crear la marca" : "Error al crear el laboratorio");
+      toast.error(isRestaurant.value || isMiniMarket.value || isSportsRental.value ? "Error al crear la marca" : "Error al crear el laboratorio");
     }
   } finally {
     isSavingLab.value = false;
@@ -129,7 +130,7 @@ const imagePreviewUrl = computed(() => {
 
 const groupProductsHeaders = computed(() => [
   { title: "Nombre", key: "name", sortable: false },
-  { title: isRestaurant.value || isMiniMarket.value ? "Marca" : "Laboratorio", key: "laboratory.name", sortable: false },
+  { title: isRestaurant.value || isMiniMarket.value || isSportsRental.value ? "Marca" : "Laboratorio", key: "laboratory.name", sortable: false },
   { title: "Stock", key: "lots", sortable: false },
 ]);
 
@@ -437,7 +438,7 @@ const submitForm = () => {
                 >
                   <VForm @submit.prevent="submitForm">
                     <VRow dense>
-                      <VCol cols="12" :md="isRestaurant || isMiniMarket ? 12 : 6">
+                      <VCol cols="12" :md="isRestaurant || isMiniMarket || isSportsRental ? 12 : 6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre del Producto</span>
                         <AppTextField
                           v-model="formData.name"
@@ -448,7 +449,7 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" md="6">
+                      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Principio Activo</span>
                         <AppTextField
                           v-model="formData.active_ingredient"
@@ -459,8 +460,8 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
-                      <VCol cols="12" :md="isRestaurant ? 4 : (isMiniMarket ? 6 : 4)">
-                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant || isMiniMarket ? 'Marca' : 'Laboratorio' }}</span>
+                      <VCol cols="12" :md="isRestaurant || isSportsRental ? 4 : (isMiniMarket ? 6 : 4)">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant || isMiniMarket || isSportsRental ? 'Marca' : 'Laboratorio' }}</span>
                         <AppSelect
                           v-model="formData.laboratory_id"
                           placeholder="SELECCIONAR..."
@@ -486,7 +487,7 @@ const submitForm = () => {
                           </template>
                         </AppSelect>
                       </VCol>
-                      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" md="4">
+                      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Origen</span>
                         <AppSelect
                           v-model="formData.origin_id"
@@ -518,7 +519,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol v-if="isRestaurant" cols="12" md="4">
+                      <VCol v-if="isRestaurant || isSportsRental" cols="12" md="4">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Proveedor</span>
                         <AppSelect
                           v-model="formData.supplier_id"
@@ -637,9 +638,8 @@ const submitForm = () => {
           <!-- Pestaña Inventario -->
           <VWindowItem :value="1" class="pa-2 pt-0">
             <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
-              <!-- Configuración Logística -->
               <div class="d-flex flex-column gap-3">
-                <div class="d-flex align-center gap-2">
+                <div v-if="!isSportsRental" class="d-flex align-center gap-2">
                   <div class="header-indicator primary shadow-sm" />
                   <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Configuración Logística</span>
                 </div>
@@ -649,7 +649,7 @@ const submitForm = () => {
                   :class="[xs ? 'pa-3' : 'pa-5', 'bg-surface rounded-xl border shadow-sm']"
                 >
                   <VRow dense>
-                    <VCol cols="12">
+                    <VCol v-if="!isSportsRental" cols="12">
                       <div class="d-flex flex-wrap gap-3 w-100 mb-2">
                         <VCard
                           variant="flat"

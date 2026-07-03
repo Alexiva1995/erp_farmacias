@@ -86,6 +86,7 @@ const selectedSort = ref(null);
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const getStorageKey = () => `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
@@ -196,8 +197,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Tipo (Farmacia, no Mini Market) -->
-      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
+      <!-- Tipo (Farmacia, no Mini Market y no Sports Rental) -->
+      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.productTypeFilter"
           placeholder="Tipo de Producto"
@@ -210,13 +211,13 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Laboratorio / Marca (Para restaurante y Mini Market es Marca) -->
+      <!-- Laboratorio / Marca (Para restaurante, Mini Market y Sports Rental es Marca) -->
       <VCol cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          :placeholder="isRestaurant || isMiniMarket ? 'Marca' : 'Laboratorio'"
+          :placeholder="isRestaurant || isMiniMarket || isSportsRental ? 'Marca' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable
@@ -244,8 +245,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Origen (Oculto en Restaurante y Mini Market) -->
-      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
+      <!-- Origen (Oculto en Restaurante, Mini Market y Sports Rental) -->
+      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedOrigin"
           :items="props.origins"
@@ -261,8 +262,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Grupo o Proveedor (si es restaurante o Mini Market) -->
-      <VCol v-if="!isRestaurant && !isMiniMarket" cols="12" sm="6" md="2">
+      <!-- Grupo o Proveedor (si es restaurante, Mini Market o Sports Rental) -->
+      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedGroup"
           :items="props.groups"
@@ -277,7 +278,7 @@ const showExport = computed(() => props.mode === 'products');
           @update:model-value="emit('update:selectedGroup', $event)"
         />
       </VCol>
-      <VCol v-else-if="isRestaurant" cols="12" sm="6" md="2">
+      <VCol v-else-if="isRestaurant || isSportsRental" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"

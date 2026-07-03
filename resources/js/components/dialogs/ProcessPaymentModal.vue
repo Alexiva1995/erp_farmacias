@@ -43,6 +43,21 @@ const uploading = ref(false);
 const exchangeRates = ref({});
 const errors = ref({});
 
+watch(() => form.value.payment_method, (newMethod) => {
+  if (newMethod === 'cash') {
+    const dateStr = form.value.payment_date || new Date().toISOString().split("T")[0];
+    form.value.reference = `EFECTIVO-${dateStr}`;
+  } else if (form.value.reference.startsWith('EFECTIVO-')) {
+    form.value.reference = '';
+  }
+});
+
+watch(() => form.value.payment_date, (newDate) => {
+  if (form.value.payment_method === 'cash') {
+    form.value.reference = `EFECTIVO-${newDate}`;
+  }
+});
+
 const availablePaymentMethods = computed(() => {
   const currency = form.value.payment_currency;
   const methodMap = {
@@ -73,6 +88,11 @@ const isFormValid = computed(() => {
          validatePaymentAmount(form.value.payment_amount).length === 0 && 
          form.value.payment_date && 
          form.value.payment_method;
+
+  // Si el método es efectivo (cash), no es obligatoria la referencia con comprobante
+  if (form.value.payment_method === 'cash') {
+    return basicValidation && !uploading.value;
+  }
 
   // Si hay referencia, DEBE haber foto (comprobante)
   const referenceValidation = !form.value.reference || (form.value.reference && form.value.photo_url);
@@ -427,8 +447,8 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                     class="premium-input"
                     prepend-icon="tabler-camera"
                     placeholder="Adjuntar recibo..."
-                    :error="form.reference && !form.photo_url"
-                    :error-messages="form.reference && !form.photo_url ? ['Si hay referencia, el comprobante es obligatorio'] : []"
+                    :error="form.payment_method !== 'cash' && form.reference && !form.photo_url"
+                    :error-messages="form.payment_method !== 'cash' && form.reference && !form.photo_url ? ['Si hay referencia, el comprobante es obligatorio'] : []"
                     hide-details="auto"
                     :loading="uploading"
                     @update:model-value="handleFileUpload"

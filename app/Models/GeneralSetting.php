@@ -41,11 +41,18 @@ class GeneralSetting extends Model
         'section3_tagline',
         'section3_image',
         'section3_button_text',
+        'cyclic_inventory_mode',
+        'cyclic_inventory_barcode_required',
+        'enable_lots',
+        'tpv_mode',
     ];
 
     protected $casts = [
         'all_foreign_sales_spe' => 'boolean',
         'blind_cash_closure' => 'boolean',
         'ecommerce_menu' => 'array',
+        'cyclic_inventory_barcode_required' => 'boolean',
+        'enable_lots' => 'boolean',
+        'tpv_mode' => 'string',
     ];
 }

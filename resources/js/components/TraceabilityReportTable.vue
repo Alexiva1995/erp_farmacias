@@ -148,11 +148,15 @@ const headers = [
         </template>
 
         <template #item.stock_before="{ item }">
-          <span class="text-body-2 font-weight-bold">{{ formatStockValue(item.stock_before, item.product) }}</span>
+          <span class="text-body-2 font-weight-bold">
+            {{ formatStockValue(item.global_stock_before !== undefined ? item.global_stock_before : item.stock_before, item.product) }}
+          </span>
         </template>
 
         <template #item.stock_after="{ item }">
-          <span class="text-body-2 font-weight-bold">{{ formatStockValue(item.stock_after, item.product) }}</span>
+          <span class="text-body-2 font-weight-bold">
+            {{ formatStockValue(item.global_stock_after !== undefined ? item.global_stock_after : item.stock_after, item.product) }}
+          </span>
         </template>
 
         <template #item.movement_date="{ item }">
@@ -243,12 +247,11 @@ const headers = [
             </div>
  
             <VDivider class="my-2 border-opacity-10" />
- 
             <div class="d-flex justify-space-between align-center bg-var-theme-background-light px-3 py-2 rounded border-dashed-thin mb-2">
               <div class="d-flex flex-column text-center">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Ant</span>
                 <span class="text-base font-weight-black text-medium-emphasis">
-                  {{ formatStockValue(item.stock_before, item.product) }}
+                  {{ formatStockValue(item.global_stock_before !== undefined ? item.global_stock_before : item.stock_before, item.product) }}
                 </span>
               </div>
               <div class="d-flex flex-column align-center">
@@ -263,8 +266,8 @@ const headers = [
               </div>
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock Fin</span>
-                <span class="text-base font-weight-black" :class="item.stock_after > 0 ? 'text-primary' : 'text-error'">
-                  {{ formatStockValue(item.stock_after, item.product) }}
+                <span class="text-base font-weight-black" :class="(item.global_stock_after !== undefined ? item.global_stock_after : item.stock_after) > 0 ? 'text-primary' : 'text-error'">
+                  {{ formatStockValue(item.global_stock_after !== undefined ? item.global_stock_after : item.stock_after, item.product) }}
                 </span>
               </div>
             </div>

@@ -20,7 +20,30 @@ class ProductObserver
     {
         if ($product->isDirty('stock')) {
             $newStock = $product->stock ?? 0;
+            $oldStock = $product->getOriginal('stock') ?? 0;
             \App\Services\Inventory\StockoutService::syncStockout($product, $newStock);
+
+            if ($newStock == 0 && $oldStock > 0) {
+                self::notifyStockoutToTelegram($product);
+            }
+
+            $enableLots = \App\Models\GeneralSetting::first()?->enable_lots ?? true;
+            if (!$enableLots) {
+                $uniqueLot = $product->lots()->first();
+                if (!$uniqueLot) {
+                    \App\Models\ProductLot::create([
+                        'product_id' => $product->id,
+                        'lot_number' => 'LOTE-UNICO',
+                        'quantity' => $newStock,
+                        'expiration_date' => '2050-12-31',
+                        'unit_cost' => $product->unit_cost ?? 0,
+                        'location' => 'PRINCIPAL',
+                    ]);
+                } else {
+                    $uniqueLot->update(['quantity' => $newStock]);
+                }
+                return;
+            }
 
             if (!$product->lots()->exists()) {
                 $originalStock = $product->getOriginal('stock') ?? 0;
@@ -81,6 +104,10 @@ class ProductObserver
             });
 
             \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
+
+            if ($stockAfter == 0 && $stockBefore > 0) {
+                self::notifyStockoutToTelegram($product);
+            }
 
             InventoryMovement::create([
                 'product_id' => $product->id,
@@ -215,5 +242,109 @@ class ProductObserver
             'movement_date' => now(),
         ]);
 
+    }
+
+    /**
+     * Notificar stock 0 a Telegram con análisis de costo de proveedores.
+     */
+    public static function notifyStockoutToTelegram(Product $product): void
+    {
+        try {
+            $adminChatId = config('services.telegram.admin_chat_id');
+            $botToken = config('services.telegram.bot_token');
+
+            if (!$adminChatId || !$botToken) {
+                return;
+            }
+
+            // Buscar ofertas de proveedores para este producto
+            $offers = \App\Models\ProductSupplier::where('product_id', $product->id)
+                ->with('supplier')
+                ->get();
+
+            $costoBase = (float)($product->unit_cost ?? 0);
+            $msg = "🚨 *[ALERTA DE INVENTARIO AGOTADO]*\n\n";
+            $msg .= "📦 *Producto:* {$product->name}\n";
+            $msg .= "💵 *Costo Base:* " . number_format($costoBase, 2) . " USD\n\n";
+
+            // Unidades recomendadas a pedir (por defecto 10, o según sugeridos)
+            $qtyToRecommend = 10;
+            if ($product->sales_average && $product->sales_average > 0) {
+                $qtyToRecommend = max(5, (int)round($product->sales_average * 1.5));
+            }
+
+            $bestOffer = null;
+            $bestPrice = null;
+            $buttons = [];
+
+            if ($offers->isNotEmpty()) {
+                $msg .= "🔍 *Análisis de Proveedores:*\n";
+                foreach ($offers as $offer) {
+                    $supplierPrice = (float)($offer->unit_cost_usd_with_discount > 0 
+                        ? $offer->unit_cost_usd_with_discount 
+                        : ($offer->unit_cost_usd > 0 ? $offer->unit_cost_usd : 0));
+
+                    if ($supplierPrice <= 0) continue;
+
+                    $diffText = "";
+                    if ($costoBase > 0) {
+                        $diffPercent = round((($supplierPrice - $costoBase) / $costoBase) * 100, 2);
+                        if ($diffPercent < 0) {
+                            $diffText = "📉 *Ahorra " . abs($diffPercent) . "%*";
+                        } elseif ($diffPercent > 0) {
+                            $diffText = "📈 Encarece +{$diffPercent}%";
+                        } else {
+                            $diffText = "⚖️ Mismo costo";
+                        }
+                    } else {
+                        $diffText = "💰 Nuevo costo";
+                    }
+
+                    $msg .= "• *{$offer->supplier->name}*:\n  • Costo: " . number_format($supplierPrice, 2) . " USD ({$diffText})\n";
+
+                    if ($bestPrice === null || $supplierPrice < $bestPrice) {
+                        $bestPrice = $supplierPrice;
+                        $bestOffer = $offer;
+                    }
+                }
+            } else {
+                $msg .= "⚠️ *No hay proveedores asociados registrados para este producto.*";
+            }
+
+            // Si hay un mejor proveedor, agregamos botones interactivos
+            if ($bestOffer) {
+                $msg .= "\n💡 *Recomendación:* Pedir *{$qtyToRecommend}* unidades a *{$bestOffer->supplier->name}*.";
+                
+                $buttons = [
+                    [
+                        [
+                            'text' => "🛒 Pedir {$qtyToRecommend} unid.",
+                            'callback_data' => "stockout_auto_{$product->id}_{$bestOffer->supplier_id}_{$qtyToRecommend}_{$bestOffer->id}"
+                        ]
+                    ],
+                    [
+                        [
+                            'text' => "✏️ Cambiar unidades",
+                            'callback_data' => "stockout_edit_{$product->id}_{$bestOffer->supplier_id}_{$bestOffer->id}"
+                        ]
+                    ]
+                ];
+            }
+
+            $payload = [
+                'chat_id' => $adminChatId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+            ];
+
+            if (!empty($buttons)) {
+                $payload['reply_markup'] = json_encode(['inline_keyboard' => $buttons]);
+            }
+
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", $payload);
+
+        } catch (\Exception $e) {
+            \Log::error("Error en notificar stockout: " . $e->getMessage());
+        }
     }
 }

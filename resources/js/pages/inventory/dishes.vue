@@ -30,6 +30,15 @@ const statusOptions = [
   { title: "Base", value: 3 },
 ];
 
+const statusOptionsWithoutBase = [
+  { title: "Inactivo", value: 0 },
+  { title: "Activo", value: 1 },
+  { title: "En Revisión", value: 2 },
+];
+
+const isBaseDish = ref(false);
+const dishStatus = ref(1);
+
 // Diálogo de edición / creación
 const isEditDialogVisible = ref(false);
 const currentDish = ref({
@@ -314,6 +323,8 @@ const handleAddDish = () => {
     status: 1,
     ingredients: [],
   };
+  isBaseDish.value = false;
+  dishStatus.value = 1;
   formErrors.value = {};
   isEditDialogVisible.value = true;
 };
@@ -343,6 +354,8 @@ const handleEditDish = async (dish) => {
         cpv_deductible: false, // Opcional
       })),
     };
+    isBaseDish.value = details.status === 3;
+    dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
     isEditDialogVisible.value = true;
   } catch (error) {
@@ -357,6 +370,7 @@ const handleSaveDish = async () => {
     return;
   }
 
+  currentDish.value.status = isBaseDish.value ? 3 : dishStatus.value;
   isSaving.value = true;
   formErrors.value = {};
 
@@ -697,12 +711,19 @@ onMounted(() => {
                   />
 
                   <VSelect
-                    v-model="currentDish.status"
-                    :items="statusOptions"
+                    v-model="dishStatus"
+                    :items="statusOptionsWithoutBase"
                     label="Estado"
                     placeholder="Selecciona Estado"
+                    :disabled="isBaseDish"
                     :error-messages="formErrors.status"
                     required
+                  />
+
+                  <VCheckbox
+                    v-model="isBaseDish"
+                    label="Base"
+                    class="mt-2"
                   />
                 </VCard>
               </div>

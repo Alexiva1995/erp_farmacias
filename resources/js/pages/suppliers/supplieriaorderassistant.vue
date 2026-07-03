@@ -352,7 +352,7 @@ async function pedirTodoAhorro() {
 
     toast.info("Procesando solicitudes...");
     
-    const sendResp = await axios.post("/api/suppliers-ia-order-assistant/add-multiple-to-order", {
+    const sendResp = await axios.post("/suppliers-ia-order-assistant/add-multiple-to-order", {
       items: itemsPayload
     });
 
@@ -477,7 +477,7 @@ const handleSendToAutoOrder = async ({ id, quantity, item }) => {
 
       if (isConfirmed) {
         try {
-          await axios.post(`/api/suppliers-ia-order-assistant/products/${comparatorProduct.value.id}/update-barcode`, {
+          await axios.post(`/suppliers-ia-order-assistant/products/${comparatorProduct.value.id}/update-barcode`, {
             barcode: listadoBarcode
           });
           toast.success("Código de barras actualizado correctamente.");
@@ -496,7 +496,7 @@ const handleSendToAutoOrder = async ({ id, quantity, item }) => {
             });
             if (confirmForce) {
               try {
-                await axios.post(`/api/suppliers-ia-order-assistant/products/${comparatorProduct.value.id}/update-barcode`, {
+                await axios.post(`/suppliers-ia-order-assistant/products/${comparatorProduct.value.id}/update-barcode`, {
                   barcode: listadoBarcode,
                   force: true
                 });

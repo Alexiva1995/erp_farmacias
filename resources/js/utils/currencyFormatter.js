@@ -3,12 +3,13 @@
 /**
  * Formatea un valor numérico como una cantidad de moneda.
  * El símbolo de la moneda se coloca después del monto.
+ * La conversión entre monedas debe hacerse en la capa de cálculo,
+ * no aquí; esta función solo aplica formato y símbolo.
  *
  * @param {number} value - El valor numérico a formatear.
  * @param {string} currency - El código de la moneda ('USD', 'VES', 'COP').
  * @returns {string} El valor formateado con el símbolo de la moneda.
  */
-import { useBrandingStore } from '@/stores/useBrandingStore';
 
 /** Locale con miles en . y decimales en , (ej. 1.234.567,89) */
 const LOCALE_NUMBERS = 'es-ES';
@@ -20,24 +21,8 @@ export const formatCurrency = (value, currency) => {
     return '0,00';
   }
 
-  let val = numericValue;
-  let activeCurrency = currency;
-
-  try {
-    const brandingStore = useBrandingStore();
-    const defaultCurrency = brandingStore.settings?.default_currency;
-    
-    if (defaultCurrency === 'COP') {
-      if (activeCurrency === 'USD' || !activeCurrency) {
-        const copRateObj = brandingStore.exchangeRates?.find(r => r.currency_code === 'COP');
-        const rate = copRateObj ? parseFloat(copRateObj.rate) : 4000;
-        val = numericValue * rate;
-        activeCurrency = 'COP';
-      }
-    }
-  } catch (e) {
-    // Si se llama fuera de un contexto activo de Pinia / Vue
-  }
+  const activeCurrency = currency;
+  const val = numericValue;
 
   let currencySymbol = '';
   let digital = 2;
@@ -76,21 +61,8 @@ export const formatAmountOnly = (value, currency) => {
     return '0,00';
   }
 
-  let val = numericValue;
-  let activeCurrency = currency;
-
-  try {
-    const brandingStore = useBrandingStore();
-    const defaultCurrency = brandingStore.settings?.default_currency;
-    if (defaultCurrency === 'COP') {
-      if (activeCurrency === 'USD' || !activeCurrency) {
-        const copRateObj = brandingStore.exchangeRates?.find(r => r.currency_code === 'COP');
-        const rate = copRateObj ? parseFloat(copRateObj.rate) : 4000;
-        val = numericValue * rate;
-        activeCurrency = 'COP';
-      }
-    }
-  } catch (e) {}
+  const val = numericValue;
+  const activeCurrency = currency;
 
   let digital = 2;
   if (activeCurrency === 'COP') {

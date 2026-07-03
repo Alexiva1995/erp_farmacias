@@ -89,7 +89,7 @@ class ProductRepository
         if (!is_string($lapso)) $lapso = $lapso . " days";
 
         if ($isRestaurant) {
-            $baseAverage = '(SELECT COALESCE(ABS(SUM(im_avg.quantity)), 0) / 12 
+            $baseAverage = '(SELECT COALESCE(ABS(SUM(im_avg.quantity)), 0) / COALESCE(LEAST(12.0, GREATEST(1.0, TIMESTAMPDIFF(DAY, (SELECT MIN(created_at) FROM daily_closures), NOW()) / 30.0)), 1.0) 
                             FROM inventory_movements im_avg 
                             WHERE im_avg.product_id = products.id 
                             AND im_avg.quantity < 0 

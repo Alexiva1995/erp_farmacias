@@ -398,7 +398,7 @@ const nextExpirationDate = (product) => {
             variant="flat"
             class="font-weight-black"
           >
-            {{ item.stock_calculado || 0 }} UNDS
+            {{ item.stock_calculado !== null && item.stock_calculado !== undefined ? Math.round(item.stock_calculado) : 0 }} UNDS
           </VChip>
         </template>
 
@@ -528,7 +528,7 @@ const nextExpirationDate = (product) => {
                   variant="flat"
                   class="font-weight-black mt-1"
                 >
-                  {{ item.stock_calculado || 0 }} UNDS
+                  {{ item.stock_calculado !== null && item.stock_calculado !== undefined ? Math.round(item.stock_calculado) : 0 }} UNDS
                 </VChip>
               </div>
               <div class="d-flex flex-column text-right">

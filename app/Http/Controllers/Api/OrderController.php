@@ -90,7 +90,7 @@ class OrderController extends Controller
     public function getMyOpenOrder(Request $request)
     {
         try {
-            $sellerId = Auth::id();
+            $sellerId = $request->query('seller_id') ?: Auth::id();
             if (!$sellerId) {
                 return ApiResponse::error('Vendedor no autenticado.', 401);
             }
@@ -285,7 +285,7 @@ class OrderController extends Controller
 
     public function getCPrintOrder(int $orderId)
     {
-        $order = Order::with('details.product.laboratory', 'details.dish', 'client', 'seller')->find($orderId);
+        $order = Order::with('details.product.laboratory', 'details.dish', 'details.court', 'client', 'seller')->find($orderId);
         if (!$order) {
             return ApiResponse::error('Orden no encontrada.', 404);
         }

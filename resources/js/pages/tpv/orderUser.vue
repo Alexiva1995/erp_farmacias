@@ -40,6 +40,7 @@ const selectedPack = ref(null);
 // --- Estado para Restaurante / Menú de Platos ---
 const isRestaurant = ref(false);
 const isSportsRental = ref(false);
+const isSimpleTpv = computed(() => brandingStore.settings?.tpv_mode === 'simple');
 const defaultCurrency = computed(() => {
   if (isRestaurant.value || isSportsRental.value) return "COP";
   return brandingStore.settings?.default_currency || "COP";
@@ -112,6 +113,7 @@ const isFinishingOrder = ref(false);
 
 const ratesLoaded = ref(false);
 const isCurrencyChanging = ref(false);
+const activeReservationId = ref(null);
 
 const fetchExchangeRates = async () => {
   ratesLoaded.value = false;
@@ -150,9 +152,9 @@ const fetchExchangeRates = async () => {
 
     // Override BS with BINANCE for restaurants, and EUR for pharmacies
     if (formattedRates["USD"]) {
-      if (isRestaurant.value && formattedRates["USD"]["BINANCE"]) {
+      if ((isRestaurant.value || isSportsRental.value) && formattedRates["USD"]["BINANCE"]) {
         formattedRates["USD"]["BS"] = formattedRates["USD"]["BINANCE"];
-      } else if (!isRestaurant.value && formattedRates["USD"]["EUR"]) {
+      } else if (!(isRestaurant.value || isSportsRental.value) && formattedRates["USD"]["EUR"]) {
         formattedRates["USD"]["BS"] = formattedRates["USD"]["EUR"];
       }
 
@@ -937,7 +939,26 @@ const formatOrderItemForFrontend = (backendItem) => {
   // --- Ítem de tipo CANCHA (sports_rental) ---
   if (backendItem.product_type === "court" && backendItem.court) {
     const court = backendItem.court;
-    const unitPrice = parseFloat(backendItem.price) || parseFloat(court.price) || 0;
+
+    // Tasas de cambio reales (USD → COP y USD → BS)
+    const rateCop = getEffectiveRate("USD", "COP") || 1;
+    const rateBs  = getEffectiveRate("USD", "BS")  || 1;
+
+    // Fuente de verdad: el backend guarda unit_price_usd en USD.
+    // Si no existe, asumimos que court.price está en COP y lo convertimos.
+    let priceUsd;
+    if (backendItem.unit_price_usd && parseFloat(backendItem.unit_price_usd) > 0) {
+      priceUsd = parseFloat(backendItem.unit_price_usd);
+    } else if (court.price && parseFloat(court.price) > 0) {
+      // court.price está en COP → convertir a USD con la tasa real
+      priceUsd = parseFloat(court.price) / rateCop;
+    } else {
+      priceUsd = 0;
+    }
+
+    const priceCop = Math.round(priceUsd * rateCop);
+    const priceBs  = parseFloat((priceUsd * rateBs).toFixed(2));
+
     return {
       order_detail_id: backendItem.id,
       product_id: null,
@@ -946,18 +967,18 @@ const formatOrderItemForFrontend = (backendItem) => {
       title: court.name,
       active_ingredient: "Cancha",
       itemCode: null,
-      price: unitPrice,
-      price_before_discount: unitPrice,
-      price_bs: unitPrice,
-      price_cop: unitPrice,
-      base_price: unitPrice,
-      base_price_bs: unitPrice,
-      base_price_cop: unitPrice,
+      price: priceUsd,
+      price_before_discount: priceUsd,
+      price_bs: priceBs,
+      price_cop: priceCop,
+      base_price: priceUsd,
+      base_price_bs: priceBs,
+      base_price_cop: priceCop,
       unitCost: 0,
-      basePrice: unitPrice,
-      original_price_usd: unitPrice,
-      original_price_bs: unitPrice,
-      original_price_cop: unitPrice,
+      basePrice: priceUsd,
+      original_price_usd: priceUsd,
+      original_price_bs: priceBs,
+      original_price_cop: priceCop,
       availableQuantity: 9999,
       selectedQuantity: parseFloat(backendItem.quantity) || 0,
       laboratory: "Alquiler Deportivo",
@@ -1128,10 +1149,14 @@ const selectReservation = async (reservation) => {
   try {
     isLoadingInitialOrder.value = true;
     
+    // Guardar la reservación que se está pagando
+    activeReservationId.value = reservation.id || null;
+    
     // 1. Obtener o crear una orden abierta para el vendedor
     let activeOrder = null;
     try {
-      const openOrderResponse = await axios.get("/tpv/order/seller/my-open-order");
+      const sellerId = currentUser.value?.id || '';
+      const openOrderResponse = await axios.get(`/tpv/order/seller/my-open-order?seller_id=${sellerId}`);
       if (openOrderResponse.data.data?.order?.pending_order) {
         activeOrder = openOrderResponse.data.data.order.pending_order;
       }
@@ -1140,7 +1165,7 @@ const selectReservation = async (reservation) => {
     }
 
     // 2. Si no hay orden abierta o la orden abierta pertenece a otro cliente (solo si la reserva tiene cliente), evaluar si reutilizamos o creamos una nueva.
-    const clientId = reservation.client_id || null;
+    let clientId = reservation.client_id || 3;
     
     // Si hay orden abierta pero está vacía (sin productos), podemos cambiarle el cliente o dejarla sin cliente directamente
     if (activeOrder && orderItems.value.length === 0) {
@@ -1157,7 +1182,8 @@ const selectReservation = async (reservation) => {
           await axios.patch(`/tpv/orders/${activeOrder.id}/abandon`);
         } catch (e) {}
       }
-      activeOrder = await addOrden(clientId);
+      selectedDisplayCurrency.value = 'COP';
+      activeOrder = await addOrden(clientId, 'COP');
     }
 
     if (!activeOrder) {
@@ -1173,19 +1199,26 @@ const selectReservation = async (reservation) => {
     let durationHours = endHour - startHour;
     if (durationHours <= 0) durationHours = 1; // Salvaguarda
 
-    // 4. Obtener precio de la cancha (el precio en BD ya está guardado directamente en la moneda local COP, ej: 100,000.00 COP)
-    const priceInSelectedCurrency = parseFloat(reservation.court?.price) || 0;
-    
-    // Calcular el equivalente en USD para el backend
-    const rate = exchangeRates.value?.["USD"]?.["COP"] || 4000;
-    const priceUsd = priceInSelectedCurrency / rate;
+    // 4. Obtener precio de la cancha (en COP) y convertirlo según la moneda de la orden
+    const priceCop = parseFloat(reservation.court?.price) || 0;
+    const rateCop = getEffectiveRate("USD", "COP") || 1;
+    const priceUsd = priceCop / rateCop;
+
+    const orderCurrency = activeOrder.currency?.toUpperCase() || selectedDisplayCurrency.value;
+    let priceInOrderCurrency = priceCop;
+    if (orderCurrency === 'USD') {
+      priceInOrderCurrency = priceUsd;
+    } else if (orderCurrency === 'BS') {
+      const rateBs = getEffectiveRate("USD", "BS") || 1;
+      priceInOrderCurrency = priceUsd * rateBs;
+    }
 
     const payload = {
       court_id: reservation.court_id,
       quantity: durationHours,
       price_usd_unit: priceUsd,
-      price_at_product: priceInSelectedCurrency,
-      currency_at_order: selectedDisplayCurrency.value,
+      price_at_product: priceInOrderCurrency,
+      currency_at_order: orderCurrency,
     };
 
     // 5. Agregar el ítem de cancha a la orden
@@ -1197,6 +1230,20 @@ const selectReservation = async (reservation) => {
   } catch (error) {
     console.error("Error al precargar reservación:", error);
     toast.error("No se pudo precargar la reservación.");
+  } finally {
+    isLoadingInitialOrder.value = false;
+  }
+};
+
+const handleNoShow = async (reserva) => {
+  try {
+    isLoadingInitialOrder.value = true;
+    await axios.patch(`/reservations/${reserva.id}/status`, { status: 'no_show' });
+    toast.success("Estado de la reserva actualizado a: Faltó.");
+    await fetchPedidosList(); // Recargar reservaciones
+  } catch (error) {
+    console.error("Error al registrar inasistencia:", error);
+    toast.error("No se pudo registrar la inasistencia.");
   } finally {
     isLoadingInitialOrder.value = false;
   }
@@ -1220,7 +1267,8 @@ const fetchOpenOrder = async () => {
     console.log(
       "[ORDER_USER] Haciendo petición a /tpv/order/seller/my-open-order",
     );
-    const response = await axios.get("/tpv/order/seller/my-open-order");
+    const sellerId = currentUser.value?.id || '';
+    const response = await axios.get(`/tpv/order/seller/my-open-order?seller_id=${sellerId}`);
     console.log("[ORDER_USER] Respuesta recibida:", response.data);
     if (response.data.data && response.data.data.order) {
       if (response.data.data.order.pending_order) {
@@ -1229,8 +1277,10 @@ const fetchOpenOrder = async () => {
         selectedClient.value = response.data.data.order.pending_order.client;
         hasOpenOrder.value = true;
         if (openOrderData.value.currency) {
-          selectedDisplayCurrency.value =
-            openOrderData.value.currency.toUpperCase();
+          // En modo alquiler deportivo siempre mostrar COP
+          selectedDisplayCurrency.value = isSportsRental.value
+            ? "COP"
+            : openOrderData.value.currency.toUpperCase();
         }
         if (openOrderData.value.details) {
           orderItems.value = openOrderData.value.details.map((item) =>
@@ -1244,7 +1294,7 @@ const fetchOpenOrder = async () => {
         openOrderData.value = null;
         reservedOrderData.value = null;
         selectedClient.value = null;
-        selectedDisplayCurrency.value = defaultCurrency.value; // Por defecto
+        selectedDisplayCurrency.value = defaultCurrency.value; // COP para deportivo, default para otros
         orderItems.value = [];
       }
       foreignOrdersCount.value = response.data.data.foreign_orders_count || 0;
@@ -1310,13 +1360,24 @@ onMounted(async () => {
     // Usar nextTick para asegurar que el componente esté completamente montado
     console.log("[ORDER_USER] Preparando carga de orden abierta...");
     nextTick(async () => {
+      selectedDisplayCurrency.value = defaultCurrency.value;
       console.log("[ORDER_USER] nextTick ejecutado, cargando orden abierta...");
       try {
         await fetchOpenOrder();
-        console.log(
-          "[ORDER_USER] Orden abierta cargada, selectedClient:",
-          selectedClient.value,
-        );
+        
+        const isSimpleTpv = brandingStore.settings?.tpv_mode === 'simple';
+        if (isSimpleTpv && !hasOpenOrder.value) {
+          try {
+            const checkClientResp = await axios.get('/tpv/order/client/99999999');
+            let genericClientId = 3;
+            if (checkClientResp.data?.data?.client?.id) {
+              genericClientId = checkClientResp.data.data.client.id;
+            }
+            await addOrden(genericClientId);
+          } catch (err) {
+            console.error("Error al iniciar orden automática en onMounted simple mode:", err);
+          }
+        }
         // Después de cargar la orden, cargar ofertas de empresa si hay cliente con company_id
         await nextTick(); // Esperar a que selectedClient se actualice
         console.log(
@@ -1647,11 +1708,11 @@ const reservedOrderCliente = async () => {
   }
 };
 
-const addOrden = async (id) => {
+const addOrden = async (id, forceCurrency = null) => {
   const params = {
     client_id: id,
     seller_id: currentUser.value?.id || 3,
-    currency: selectedDisplayCurrency.value,
+    currency: forceCurrency || selectedDisplayCurrency.value,
   };
   try {
     
@@ -2296,8 +2357,28 @@ const addProductToOrder = async ({
   }
 
   if (!hasOpenOrder.value || !openOrderData.value || !openOrderData.value.id) {
-    toast.error("Debe haber una orden abierta para agregar productos.");
-    return;
+    const isSimpleTpv = brandingStore.settings?.tpv_mode === 'simple';
+    if (isSimpleTpv) {
+      try {
+        const checkClientResp = await axios.get('/tpv/order/client/99999999');
+        let genericClientId = 3;
+        if (checkClientResp.data?.data?.client?.id) {
+          genericClientId = checkClientResp.data.data.client.id;
+        }
+        const newOrder = await addOrden(genericClientId);
+        if (!newOrder) {
+          toast.error("No se pudo iniciar la orden automática en modo simple.");
+          return;
+        }
+      } catch (err) {
+        console.error("Error iniciando orden automática en modo simple:", err);
+        toast.error("Debe haber una orden abierta para agregar productos.");
+        return;
+      }
+    } else {
+      toast.error("Debe haber una orden abierta para agregar productos.");
+      return;
+    }
   }
 
   try {
@@ -2575,6 +2656,10 @@ const openBuysModal = () => {
     );
     return;
   }
+  // Forzar COP al abrir el modal en modo alquiler deportivo (canchas)
+  if (isSportsRental.value && selectedDisplayCurrency.value !== "COP") {
+    selectedDisplayCurrency.value = "COP";
+  }
   showBuysModal.value = true;
 };
 
@@ -2600,6 +2685,44 @@ const printFiscalPNP = async (order) => {
   } catch (error) {
     console.error("Error al encolar impresión fiscal:", error);
     toast.error(error.response?.data?.error || "Error al conectar con el servidor.");
+  }
+};
+
+const handleFlashCheckout = async ({ method, currency }) => {
+  if (!openOrderData.value || !openOrderData.value.id) {
+    toast.error("No hay ninguna orden activa para cobrar.");
+    return;
+  }
+
+  try {
+    isFinishingOrder.value = true;
+    const total = totalOrderAmountWithspecialTaxAmount.value;
+    const paymentsData = [
+      {
+        method: method,
+        amount: total,
+        currency: currency,
+      }
+    ];
+    const switchStates = {
+      invoice_switch: false,
+      generate_invoice: false,
+      spe: false,
+      spe_surcharge_rate: 0,
+    };
+    await handleBuysCompletion(
+      openOrderData.value.id,
+      paymentsData,
+      false,
+      0,
+      0,
+      switchStates,
+      0
+    );
+  } catch (error) {
+    console.error("Error en cobro rápido flash:", error);
+  } finally {
+    isFinishingOrder.value = false;
   }
 };
 
@@ -2854,7 +2977,25 @@ const handleBuysCompletion = async (
         );
       });
 
-      
+      // Limpiar estados de la orden activa en el frontend tras completar la compra
+      hasOpenOrder.value = false;
+      openOrderData.value = null;
+      orderItems.value = [];
+      reservedOrderData.value = null;
+
+      // Si había una reservación asociada, marcarla como pagada
+      if (activeReservationId.value) {
+        try {
+          await axios.patch(`/reservations/${activeReservationId.value}/status`, { status: 'pagada' });
+        } catch (e) {
+          console.error("Error al actualizar estado de la reservación:", e);
+        }
+        activeReservationId.value = null;
+      }
+
+      if (isRestaurant.value || isSportsRental.value) {
+        fetchPedidosList();
+      }
     }
   } catch (error) {
     console.error("Error al finalizar la compra:", error);
@@ -3509,7 +3650,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Barra Superior de Acceso Rápido a Reservas (Solo Alquiler Deportivo) -->
-    <div v-if="!isLoadingInitialOrder && isSportsRental" class="d-flex justify-space-between align-center mb-4 pa-2 bg-grey-lighten-4 rounded-lg border">
+    <div v-if="isSportsRental" class="d-flex justify-space-between align-center mb-4 pa-2 bg-grey-lighten-4 rounded-lg border">
       <div class="d-flex align-center gap-2">
         <VIcon icon="tabler-ball-football" color="primary" />
         <span class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis">Reservaciones del Día (Alquiler Deportivo)</span>
@@ -3552,14 +3693,13 @@ onUnmounted(() => {
     </div>
 
     <!-- Listado de Reservaciones en la parte superior (Alquiler Deportivo) -->
-    <div v-if="!isLoadingInitialOrder && isSportsRental && pedidosList.length > 0" class="mb-6">
+    <div v-if="isSportsRental && pedidosList.length > 0" class="mb-6">
       <VRow>
         <VCol v-for="reserva in pedidosList" :key="reserva.id" cols="12" sm="6" md="4" lg="3">
           <VCard
             variant="outlined"
-            class="rounded-lg cursor-pointer bg-white"
+            class="rounded-lg bg-white"
             style="border: 1px solid #e0e0e0; transition: transform 0.2s, box-shadow 0.2s;"
-            @click="selectReservation(reserva)"
             @mouseover="$event.currentTarget.style.transform = 'translateY(-2px)'"
             @mouseleave="$event.currentTarget.style.transform = 'none'"
           >
@@ -3577,15 +3717,34 @@ onUnmounted(() => {
               <div class="text-caption font-weight-bold text-primary mb-1">
                 Horario: {{ reserva.start_time.substring(0, 5) }} - {{ reserva.end_time.substring(0, 5) }}
               </div>
-              <div class="text-caption text-disabled mb-2">
+              <div class="text-caption text-disabled mb-1">
                 Teléfono: {{ reserva.client_whatsapp }}
               </div>
-              <VDivider class="my-2 border-opacity-10" />
-              <div class="d-flex justify-space-between align-center text-caption mt-1">
+              <div class="d-flex justify-space-between align-center text-caption mb-2">
                 <span class="font-weight-bold text-disabled">Tarifa/Hora:</span>
                 <span class="font-weight-black text-subtitle-2" style="color: #4caf50;">
                   {{ formatCurrency(parseFloat(reserva.court?.price || 0), 'COP') }}
                 </span>
+              </div>
+              <VDivider class="my-2 border-opacity-10" />
+              <div class="d-flex gap-2 mt-2">
+                <VBtn
+                  color="success"
+                  size="small"
+                  class="flex-grow-1 font-weight-black text-uppercase"
+                  @click.stop="selectReservation(reserva)"
+                >
+                  Pagar
+                </VBtn>
+                <VBtn
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                  class="flex-grow-1 font-weight-black text-uppercase"
+                  @click.stop="handleNoShow(reserva)"
+                >
+                  Faltó
+                </VBtn>
               </div>
             </VCardText>
           </VCard>
@@ -3636,9 +3795,11 @@ onUnmounted(() => {
         @add-note="handleSaveOrderItemNote"
         :is-special-taxpayer="isSpecialTaxpayer || false"
         :is-restaurant="isRestaurant"
+        :is-sports-rental="isSportsRental"
+        @flash-checkout="handleFlashCheckout"
       />
     </div>
-    <div v-else>
+    <div v-else-if="!isSimpleTpv">
 
       <OrderClienteCard
         v-model="clientIdentification"

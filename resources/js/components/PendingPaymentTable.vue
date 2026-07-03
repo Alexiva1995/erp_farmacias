@@ -69,14 +69,12 @@ const formatDate = (date) => {
 const formatDueDate = (paymentDate) => {
   if (!paymentDate) return "N/A";
   const dueDate = new Date(paymentDate);
-  dueDate.setDate(dueDate.getDate() - 1);
   return dueDate.toLocaleDateString("es-VE");
 };
 
 const isOverdue = (paymentDate) => {
   if (!paymentDate) return false;
   const dueDate = new Date(paymentDate);
-  dueDate.setDate(dueDate.getDate() - 1);
   return dueDate < new Date();
 };
 

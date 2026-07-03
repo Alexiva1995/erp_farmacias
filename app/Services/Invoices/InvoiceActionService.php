@@ -373,6 +373,31 @@ class InvoiceActionService
 
     private function createProductLot($detail, float $finalUnitCost, Invoice $invoice): ProductLot
     {
+        $enableLots = \App\Models\GeneralSetting::first()?->enable_lots ?? true;
+        if (!$enableLots) {
+            $uniqueLot = ProductLot::where('product_id', $detail->product_id)
+                ->where('lot_number', 'LOTE-UNICO')
+                ->first();
+
+            if ($uniqueLot) {
+                $uniqueLot->update([
+                    'quantity' => $uniqueLot->quantity + $detail->quantity,
+                    'unit_cost' => $finalUnitCost,
+                ]);
+                return $uniqueLot;
+            }
+
+            return ProductLot::create([
+                'product_id' => $detail->product_id,
+                'supplier_id' => $invoice->supplier_id,
+                'lot_number' => 'LOTE-UNICO',
+                'expiration_date' => '2050-12-31',
+                'quantity' => $detail->quantity,
+                'location' => 'PRINCIPAL',
+                'unit_cost' => $finalUnitCost,
+            ]);
+        }
+
         return ProductLot::create([
             'product_id' => $detail->product_id,
             'supplier_id' => $invoice->supplier_id,

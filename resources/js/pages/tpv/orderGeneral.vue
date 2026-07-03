@@ -726,12 +726,13 @@ const handleViewOrder = async (orderId) => {
       orderData.value = response.data.data.order;
       currency.value = response.data.data.order.currency.toUpperCase();
       orderItems.value = response.data.data.order.details.map((detail) => ({
-        id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
+        id: detail.product?.id ?? detail.dish?.id ?? detail.court?.id ?? detail.product_id ?? detail.dish_id ?? detail.court_id,
         product_id: detail.product_id ?? detail.product?.id,
         dish_id: detail.dish_id ?? detail.dish?.id,
-        title: detail.product?.name ?? detail.dish?.name ?? '—',
-        active_ingredient: detail.product?.active_ingredient || null,
-        laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null,
+        court_id: detail.court_id ?? detail.court?.id,
+        title: detail.product?.name ?? detail.dish?.name ?? detail.court?.name ?? '—',
+        active_ingredient: detail.court ? 'Cancha' : (detail.product?.active_ingredient || null),
+        laboratory: detail.court ? 'Alquiler Deportivo' : (detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null),
         selectedQuantity: detail.quantity,
         taxRate: 0, // Seteamos a 0 porque el unit_price ya incluye impuestos
         unit_price: detail.quantity > 0 ? parseFloat(detail.price) / detail.quantity : parseFloat(detail.price),

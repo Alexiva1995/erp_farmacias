@@ -3,6 +3,10 @@ import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import axios from "@/plugins/axios";
 import { computed, ref, watch, onMounted } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const isSportsRental = computed(() => brandingStore.settings?.business_type === 'sports_rental');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -267,7 +271,7 @@ const getRowClass = (item) => {
           variant="flat"
           class="font-weight-black shadow-sm px-2"
         >
-          {{ item.valid_stock_sum }}
+          {{ Math.floor(item.valid_stock_sum) }}
         </VChip>
       </template>
 
@@ -305,9 +309,9 @@ const getRowClass = (item) => {
             :class="item.item_type === 'pack' ? 'd-flex flex-column' : 'd-flex align-center'"
             style="white-space: pre-wrap;"
           >
-            <span class="text-disabled font-weight-medium text-uppercase">{{ item.active_ingredient || '—' }}</span>
+            <span v-if="!isSportsRental" class="text-disabled font-weight-medium text-uppercase">{{ item.active_ingredient || '—' }}</span>
             <template v-if="item.item_type !== 'pack'">
-              <span class="text-disabled mx-1">|</span>
+              <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
               <span 
                 class="text-primary font-weight-black text-uppercase"
                 :class="{ 'bg-purple-lighten-4 pa-1 rounded text-purple-darken-3': internalAssignedLaboratoryIds.some(id => Number(id) === Number(item.laboratory_id)) }"
@@ -460,7 +464,7 @@ const getRowClass = (item) => {
                 variant="flat"
                 class="font-weight-black"
               >
-                STOCK: {{ item.valid_stock_sum }}
+                STOCK: {{ Math.floor(item.valid_stock_sum) }}
               </VChip>
             </div>
 
@@ -473,9 +477,9 @@ const getRowClass = (item) => {
               :class="item.item_type === 'pack' ? 'd-flex flex-column gap-1' : 'd-flex align-center'"
               style="white-space: pre-wrap;"
             >
-              <span class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
+              <span v-if="!isSportsRental" class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
               <template v-if="item.item_type !== 'pack'">
-                <span class="text-disabled mx-1">|</span>
+                <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                   {{ item.laboratory_name || 'Genérico' }}
                 </span>
