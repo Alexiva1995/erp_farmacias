@@ -309,6 +309,9 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Rutas de TPV
     Route::prefix("tpv")->group(function () {
+        Route::get("/courts/all", function () {
+            return response()->json(\App\Models\Court::all());
+        });
         Route::get("/quotation", [QuotationController::class, "index"]);
         Route::get("/quotation/{product}", [QuotationController::class, "show"]);
         Route::get("/quotations/list", [QuotationController::class, "list"]);

@@ -146,6 +146,14 @@ router.beforeEach(async (to, from, next) => {
     
     clearTimeout(safetyTimeout)
     
+    if (to.path === '/tova-store') {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings?.business_type === 'restaurant') {
+        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a Home')
+        return safeNext({ path: '/' })
+      }
+    }
+
     const isAuthenticated = authStore.isAuthenticated
     console.log('[ROUTER] Verificación:', { isAuthenticated, requiresAuth })
     

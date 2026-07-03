@@ -28,6 +28,11 @@ class ClearExpiredReservations extends Command
      */
     public function handle(ReservationRepositoryInterface $reservationRepository, ReservationServices $reservationServices): int
     {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('reservations')) {
+            $this->info('La tabla de reservas no existe en este tipo de negocio. Saltando...');
+            return 0;
+        }
+
         $expiredReservations = $reservationRepository->getExpiredPendingReservations(15);
 
         if ($expiredReservations->isEmpty()) {

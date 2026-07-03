@@ -22,16 +22,26 @@ const emit = defineEmits(["update:options", "delete", "refresh"]);
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
 
-const headers = [
-  { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
-  { title: "Producto", key: "product.name", sortable: true, width: "320px" },
-  { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
-  { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
-  { title: "Usuario", key: "user.name", sortable: true },
-  { title: "Supervisión", key: "supervisor.name", sortable: true },
-  { title: "Monto", key: "amount", align: "end", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
-];
+const headers = computed(() => {
+  const list = [
+    { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
+    { title: "Producto", key: "product.name", sortable: true, width: "320px" },
+    { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
+    { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
+    { title: "Usuario", key: "user.name", sortable: true },
+  ];
+
+  const enableLots = brandingStore.settings?.enable_lots ?? true;
+  if (enableLots) {
+    list.push({ title: "Supervisión", key: "supervisor.name", sortable: true });
+  }
+
+  list.push(
+    { title: "Monto", key: "amount", align: "end", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false, align: "center" }
+  );
+  return list;
+});
 
 const editingId = ref(null);
 const editingValue = ref(0);

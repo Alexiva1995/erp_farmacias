@@ -88,16 +88,26 @@ class ProductRepository
         $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
         if (!is_string($lapso)) $lapso = $lapso . " days";
 
-        if (str_contains($lapso, "7")) {
-            $promedioCalculadoSql = 'products.sales_average / 4';
-        } elseif (str_contains($lapso, "15")) {
-            $promedioCalculadoSql = 'products.sales_average / 2';
-        } elseif (str_contains($lapso, "60")) {
-            $promedioCalculadoSql = 'products.sales_average * 2';
-        } elseif (str_contains($lapso, "90")) {
-            $promedioCalculadoSql = 'products.sales_average * 3';
+        if ($isRestaurant) {
+            $baseAverage = '(SELECT COALESCE(ABS(SUM(im_avg.quantity)), 0) / COALESCE(LEAST(12.0, GREATEST(1.0, TIMESTAMPDIFF(DAY, (SELECT MIN(created_at) FROM daily_closures), NOW()) / 30.0)), 1.0) 
+                            FROM inventory_movements im_avg 
+                            WHERE im_avg.product_id = products.id 
+                            AND im_avg.quantity < 0 
+                            AND im_avg.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH))';
         } else {
-            $promedioCalculadoSql = 'products.sales_average';
+            $baseAverage = 'products.sales_average';
+        }
+
+        if (str_contains($lapso, "7")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') / 4';
+        } elseif (str_contains($lapso, "15")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') / 2';
+        } elseif (str_contains($lapso, "60")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') * 2';
+        } elseif (str_contains($lapso, "90")) {
+            $promedioCalculadoSql = '(' . $baseAverage . ') * 3';
+        } else {
+            $promedioCalculadoSql = $baseAverage;
         }
 
         // Definición de Columnas
@@ -114,6 +124,8 @@ class ProductRepository
                 DB::raw('SUM(' . $subqueryAO . ') as totalQuantityInAutoOrder'),
                 DB::raw('MAX(products.unit_cost) as unit_cost'),
                 DB::raw('MAX(products.laboratory_id) as laboratory_id'),
+                DB::raw('MAX(products.presentation) as presentation'),
+                DB::raw('MAX(products.unit_of_measure) as unit_of_measure'),
             ];
         } else {
             $columnas = [
@@ -125,6 +137,8 @@ class ProductRepository
                 'products.unit_cost',
                 'products.active_ingredient',
                 'products.is_colombian_origin',
+                'products.presentation',
+                'products.unit_of_measure',
                 DB::raw($subqueryStockLotes . ' AS lote_quantity'),
                 DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
                 DB::raw($prefPorcentajeSql . ' AS preferencia_product'),

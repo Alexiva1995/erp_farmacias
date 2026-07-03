@@ -34,11 +34,13 @@ const headers = computed(() => {
     { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary" },
     { title: "Producto / Grupo", key: "name", sortable: true, width: "400px" },
     { title: "Costo", key: "unit_cost", sortable: true, align: 'end' },
-    { title: isRestaurant.value ? "Consumido" : "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
+    { title: isRestaurant.value ? "Vent/Cons" : "Ventas", key: "total_sold_completed", sortable: true, align: 'center' },
     { title: "Stock", key: "lote_quantity", sortable: true, align: 'center' },
-    { title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' },
-    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' },
   ];
+  if (!isRestaurant.value) {
+    list.push({ title: "Pref.", key: "preferencia_product", sortable: true, align: 'center' });
+  }
+  list.push({ title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center' });
   if (!isRestaurant.value) {
     list.push({ title: "AO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center' });
   }
@@ -62,10 +64,85 @@ const formatInteger = (val) => {
   return Math.round(num).toString();
 };
 
+const formatQuantity = (val, item) => {
+  const num = parseFloat(val || 0);
+  if (isNaN(num)) return '0';
+  if (isRestaurant.value) {
+    const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
+    
+    if (unit === 'kg' || unit === 'kilogramos' || (num % 1 !== 0 && !unit)) {
+      const grams = Math.round(num * 1000);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(grams);
+      return `${formatted}g`;
+    }
+    
+    if (unit === 'g' || unit === 'gramos') {
+      const grams = Math.round(num * 1000);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(grams);
+      return `${formatted}g`;
+    }
+    
+    if (unit === 'ml' || unit === 'mililitros') {
+      const milliliters = Math.round(num * 1000);
+      const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 0 }).format(milliliters);
+      return `${formatted}ml`;
+    }
+    
+    const formatted = new Intl.NumberFormat('es-ES', { useGrouping: true }).format(num);
+    return `${formatted}${unit ? ' ' + unit : ''}`;
+  }
+  return formatInteger(val);
+};
+
 const getDiffColor = (val) => {
   const num = parseFloat(val);
   if (isNaN(num) || num === 0) return 'secondary';
   return num > 0 ? 'success' : 'error';
+};
+
+const formatDifference = (val, item) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return '0';
+  
+  if (isRestaurant.value) {
+    if (num === 0) {
+      const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
+      return `0${unit === 'g' || unit === 'gramos' ? 'g' : (unit === 'ml' || unit === 'mililitros' ? 'ml' : ' und')}`;
+    }
+    
+    const sign = num > 0 ? '+' : '-';
+    const absUnits = Math.abs(num);
+    const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
+    
+    if (unit === 'g' || unit === 'gramos') {
+      const grams = absUnits * 1000;
+      if (grams >= 1000) {
+        const kg = Math.ceil(grams / 1000);
+        return `${sign}${kg} kg`;
+      } else {
+        const roundedGrams = Math.ceil(grams);
+        return `${sign}${roundedGrams}g`;
+      }
+    }
+    
+    if (unit === 'ml' || unit === 'mililitros') {
+      const milliliters = absUnits * 1000;
+      if (milliliters >= 1000) {
+        const liters = Math.ceil(milliliters / 1000);
+        return `${sign}${liters} L`;
+      } else {
+        const roundedMl = Math.ceil(milliliters);
+        return `${sign}${roundedMl}ml`;
+      }
+    }
+    
+    const roundedUnits = Math.ceil(absUnits);
+    return `${sign}${roundedUnits} ${unit ? unit : 'und'}`;
+  }
+  
+  const sign = num > 0 ? '+' : '';
+  const formattedVal = formatQuantity(Math.abs(num), item);
+  return `${sign}${formattedVal}`;
 };
 </script>
 
@@ -123,7 +200,7 @@ const getDiffColor = (val) => {
 
         <template #item.total_sold_completed="{ item }">
           <span class="font-weight-black text-medium-emphasis">
-            {{ isMiniMarket ? formatInteger(item.total_sold_completed) : item.total_sold_completed }}
+            {{ formatQuantity(item.total_sold_completed, item) }}
           </span>
         </template>
 
@@ -135,7 +212,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black"
           >
-            {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+            {{ formatQuantity(item.lote_quantity, item) }}
           </VChip>
         </template>
 
@@ -144,7 +221,7 @@ const getDiffColor = (val) => {
         </template>
 
         <template #item.promedio_calculado="{ item }">
-          <span class="font-weight-bold text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}</span>
+          <span class="font-weight-bold text-disabled">{{ formatQuantity(item.promedio_calculado, item) }}</span>
         </template>
 
         <template #item.diferencia_product="{ item }">
@@ -155,7 +232,7 @@ const getDiffColor = (val) => {
             variant="flat"
             class="font-weight-black px-2 shadow-sm"
           >
-            {{ parseFloat(item.diferencia_product) > 0 ? "+" : "" }}{{ Math.ceil(parseFloat(item.diferencia_product)) }}
+            {{ formatDifference(item.diferencia_product, item) }}
           </VChip>
           <span v-else class="text-disabled font-weight-bold">0</span>
         </template>
@@ -214,7 +291,7 @@ const getDiffColor = (val) => {
               <div class="text-left flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Stock</span>
                 <span class="text-sm font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                   {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                   {{ formatQuantity(item.lote_quantity, item) }}
                 </span>
               </div>
               <VDivider vertical class="mx-1" />
@@ -234,7 +311,7 @@ const getDiffColor = (val) => {
                   density="compact"
                   class="font-weight-black text-super-xs px-1"
                 >
-                  {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product || 0)) }}
+                  {{ formatDifference(item.diferencia_product, item) }}
                 </VChip>
               </div>
             </div>
@@ -248,7 +325,7 @@ const getDiffColor = (val) => {
                   </div>
                   <div class="d-flex flex-column align-center">
                     <span class="text-super-xs text-disabled uppercase font-weight-black">Prom.</span>
-                    <span class="text-xs font-weight-black">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</span>
+                    <span class="text-xs font-weight-black">{{ formatQuantity(item.promedio_calculado, item) }}</span>
                   </div>
                </div>
                <div v-if="!isRestaurant" class="d-flex flex-column align-end">

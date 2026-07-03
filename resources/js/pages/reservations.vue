@@ -49,7 +49,7 @@ const getCourtSlots = (courtData) => {
       type: 'fixed',
       start: fs.start_time.substring(0, 5),
       end: fs.end_time.substring(0, 5) === '00:00' ? '24:00' : fs.end_time.substring(0, 5),
-      label: `Fijo: ${fs.client_name}`,
+      label: fs.client_name,
       raw: fs
     })
   })
@@ -59,7 +59,7 @@ const getCourtSlots = (courtData) => {
       type: res.status,
       start: res.start_time.substring(0, 5),
       end: res.end_time.substring(0, 5) === '00:00' ? '24:00' : res.end_time.substring(0, 5),
-      label: res.status === 'verified' ? `Reservado: ${res.client_name}` : `Pendiente: ${res.client_name}`,
+      label: res.client_name,
       raw: res
     })
   })
@@ -279,12 +279,15 @@ const calculateEndTime = (startTimeStr, durationHours) => {
   return `${pad(endH)}:${pad(endM)}`
 }
 
-// Watcher para calcular hora de fin al cambiar duración
-watch(() => reservationForm.value.duration, (newVal) => {
-  if (reservationForm.value.start_time) {
-    reservationForm.value.end_time = calculateEndTime(reservationForm.value.start_time, parseFloat(newVal))
+// Watcher para calcular hora de fin al cambiar hora de inicio o duración
+watch(
+  () => [reservationForm.value.start_time, reservationForm.value.duration],
+  ([start, duration]) => {
+    if (start) {
+      reservationForm.value.end_time = calculateEndTime(start, parseFloat(duration))
+    }
   }
-})
+)
 
 // Reglas de validación
 const rules = {
@@ -410,12 +413,16 @@ const formatPrice = (value) => {
 
 const getWhatsAppLink = (reservation) => {
   if (!reservation) return '#'
-  const courtName = reservation.court_name || 'Cancha'
-  const dateStr = reservation.date || ''
-  const timeStr = `${reservation.start_time} - ${reservation.end_time}`
-  const baseConfirmUrl = `${window.location.origin}/api/public/reservations/confirm-direct/${reservation.id}`
-  const text = `Hola ${reservation.client_name}, confirma tu reserva para la cancha '${courtName}' el día ${dateStr} de ${timeStr} ingresando aquí: ${baseConfirmUrl}`
+  const timeStr = reservation.start_time ? reservation.start_time.substring(0, 5) : ''
+  const text = `Hola ${reservation.client_name}, te escribo para confirmar tu reserva de las ${timeStr}`
   return `https://wa.me/${reservation.client_whatsapp}?text=${encodeURIComponent(text)}`
+}
+
+const getWhatsAppFixedLink = (fixedSchedule) => {
+  if (!fixedSchedule) return '#'
+  const timeStr = fixedSchedule.start_time ? fixedSchedule.start_time.substring(0, 5) : ''
+  const text = `Hola ${fixedSchedule.client_name}, te escribo para confirmar tu reserva fija de las ${timeStr}`
+  return `https://wa.me/${fixedSchedule.client_whatsapp}?text=${encodeURIComponent(text)}`
 }
 
 const isFixedScheduleDialogOpen = ref(false)
@@ -685,7 +692,7 @@ const copyWeeklyReservations = async () => {
           combinedList.push({
             start: fixed.start_time.substring(0, 5),
             end: fixed.end_time.substring(0, 5),
-            label: `Fijo: ${fixed.client_name}`
+            label: fixed.client_name
           })
         })
 
@@ -877,6 +884,17 @@ const copyWeeklyReservations = async () => {
                       @click="openEditFixedScheduleDialog(getSlotStatus(item, slot).fixedSchedule)"
                     />
                     <VBtn
+                      color="success"
+                      size="x-small"
+                      icon="tabler-brand-whatsapp"
+                      variant="elevated"
+                      elevation="1"
+                      title="Enviar mensaje por WhatsApp"
+                      class="mr-2"
+                      :href="getWhatsAppFixedLink(getSlotStatus(item, slot).fixedSchedule)"
+                      target="_blank"
+                    />
+                    <VBtn
                       color="error"
                       size="x-small"
                       icon="tabler-trash"
@@ -906,6 +924,17 @@ const copyWeeklyReservations = async () => {
                       class="mr-2"
                       title="Editar Reserva"
                       @click="openEditReservationDialog(getSlotStatus(item, slot).reservation)"
+                    />
+                    <VBtn
+                      color="success"
+                      size="x-small"
+                      icon="tabler-brand-whatsapp"
+                      variant="elevated"
+                      elevation="1"
+                      title="Enviar mensaje por WhatsApp"
+                      class="mr-2"
+                      :href="getWhatsAppLink(getSlotStatus(item, slot).reservation)"
+                      target="_blank"
                     />
                     <VBtn
                       color="error"
@@ -1009,9 +1038,24 @@ const copyWeeklyReservations = async () => {
                 />
               </VCol>
               <VCol cols="12" sm="6">
+                <VSelect
+                  v-model="reservationForm.start_time"
+                  :items="[
+                    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+                    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+                    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+                    '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00'
+                  ]"
+                  label="Hora Inicio"
+                  variant="outlined"
+                  density="comfortable"
+                  :rules="[rules.required]"
+                />
+              </VCol>
+              <VCol cols="12" sm="6">
                 <VTextField
-                  :model-value="`${reservationForm.start_time} - ${reservationForm.end_time}`"
-                  label="Horario Reservado"
+                  :model-value="reservationForm.end_time"
+                  label="Hora Fin"
                   readonly
                   disabled
                   variant="outlined"

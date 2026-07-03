@@ -94,4 +94,74 @@ class GeminiService
             return null;
         }
     }
+
+    /**
+     * Extraer el número de referencia bancaria o número de transacción de una imagen de comprobante de pago.
+     */
+    public function extractPaymentReference(string $imagePath): ?string
+    {
+        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        if (empty($key)) {
+            Log::error('[GeminiService] GEMINI_API_KEY no está configurado.');
+            return null;
+        }
+
+        if (!file_exists($imagePath)) {
+            Log::error("[GeminiService] El archivo de imagen no existe en la ruta: {$imagePath}");
+            return null;
+        }
+
+        try {
+            $imageData = base64_encode(file_get_contents($imagePath));
+            $mimeType = mime_content_type($imagePath) ?: 'image/jpeg';
+
+            $prompt = "Analiza esta imagen que corresponde a un comprobante de pago o capture de transferencia bancaria / móvil. "
+                . "Busca y extrae el número de referencia, número de transacción, número de operación, número de aprobación, o cualquier identificador único de la transacción. "
+                . "Devuelve estrictamente un objeto JSON con el siguiente formato:\n"
+                . "{\n"
+                . "  \"reference\": \"NÚMERO_DE_REFERENCIA_DETECTADO\" o null si no se detecta ninguno claro\n"
+                . "}\n"
+                . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin bloques de código, solo el objeto plano.";
+
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
+
+            $response = Http::timeout(20)->post($url, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt],
+                            [
+                                'inlineData' => [
+                                    'mimeType' => $mimeType,
+                                    'data' => $imageData
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'responseMimeType' => 'application/json'
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                
+                $textResponse = preg_replace('/^```json\s*/i', '', trim($textResponse));
+                $textResponse = preg_replace('/```$/', '', trim($textResponse));
+
+                $data = json_decode($textResponse, true);
+                if (json_last_error() === JSON_ERROR_NONE && !empty($data['reference'])) {
+                    return trim($data['reference']);
+                }
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('[GeminiService] Excepción al extraer referencia de pago: ' . $e->getMessage());
+            return null;
+        }
+    }
 }

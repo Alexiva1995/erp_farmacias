@@ -56,15 +56,25 @@ class CalculateProductSalesAverage extends Command
                     // Fecha de inicio de la ventana de 12 meses
                     $windowStart = $now->copy()->subMonths($windowMonths);
 
-                    // Total de unidades vendidas en los últimos 12 meses (órdenes completadas)
-                    $totalSold = DB::table('order_details')
-                        ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                        ->where('order_details.product_id', $product->id)
-                        ->where('orders.status', 'Completed')
-                        ->where('orders.created_at', '>=', $windowStart)
-                        ->sum('order_details.quantity');
+                    // Total de unidades vendidas o consumidas en los últimos 12 meses
+                    $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+                    if ($isRestaurant) {
+                        $totalSoldRaw = DB::table('inventory_movements')
+                            ->where('product_id', $product->id)
+                            ->where('quantity', '<', 0)
+                            ->where('created_at', '>=', $windowStart)
+                            ->sum('quantity');
+                        $totalSold = $totalSoldRaw ? abs($totalSoldRaw) : 0;
+                    } else {
+                        $totalSold = DB::table('order_details')
+                            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                            ->where('order_details.product_id', $product->id)
+                            ->where('orders.status', 'Completed')
+                            ->where('orders.created_at', '>=', $windowStart)
+                            ->sum('order_details.quantity');
+                    }
 
-                    // Si no hay ventas en la ventana, establecer sales_average en 0
+                    // Si no hay ventas/consumo en la ventana, establecer sales_average en 0
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
                     } else {

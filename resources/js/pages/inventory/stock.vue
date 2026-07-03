@@ -5,8 +5,9 @@ import InventoryStockGrupoTable from "@/components/InventoryStockGrupoTable.vue"
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
-import { onMounted, reactive, watch, ref } from 'vue';
+import { onMounted, reactive, watch, ref, computed } from 'vue';
 import { useRouter } from "vue-router";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const route = useRouter();
 
@@ -25,15 +26,18 @@ let requestId = 0;
 let debounceTimer = null;
 let skipPaginationWatch = false;
 
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
 const stockStatusFilter = ref(null);
 const viewType = ref("individual");
 const days = ref(30);
-const stock = ref("all");
+const stock = ref(isRestaurant.value ? "fallas" : "all");
 const expProd = ref(false);
 const isStrictSearch = ref(false);
-const tipoFiltracion = ref("average");
+const tipoFiltracion = ref(isRestaurant.value ? "sales" : "average");
 const isColombian = ref(false);
 
 const loading = ref(false);
@@ -99,11 +103,11 @@ const handleClearFilters = () => {
   selectedLaboratory.value = null;
   stockStatusFilter.value = null;
   viewType.value = "individual";
-  stock.value = "all";
+  stock.value = isRestaurant.value ? "fallas" : "all";
   days.value = 30;
   expProd.value = false;
   isStrictSearch.value = false;
-  tipoFiltracion.value = "average";
+  tipoFiltracion.value = isRestaurant.value ? "sales" : "average";
   isColombian.value = false;
 };
 

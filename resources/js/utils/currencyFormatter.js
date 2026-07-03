@@ -3,11 +3,14 @@
 /**
  * Formatea un valor numérico como una cantidad de moneda.
  * El símbolo de la moneda se coloca después del monto.
+ * La conversión entre monedas debe hacerse en la capa de cálculo,
+ * no aquí; esta función solo aplica formato y símbolo.
  *
  * @param {number} value - El valor numérico a formatear.
  * @param {string} currency - El código de la moneda ('USD', 'VES', 'COP').
  * @returns {string} El valor formateado con el símbolo de la moneda.
  */
+
 /** Locale con miles en . y decimales en , (ej. 1.234.567,89) */
 const LOCALE_NUMBERS = 'es-ES';
 
@@ -18,17 +21,18 @@ export const formatCurrency = (value, currency) => {
     return '0,00';
   }
 
-  let val = numericValue;
+  const activeCurrency = currency;
+  const val = numericValue;
 
   let currencySymbol = '';
   let digital = 2;
 
-  if (currency === 'BS' || currency === 'Bs') {
+  if (activeCurrency === 'BS' || activeCurrency === 'Bs') {
     currencySymbol = ' Bs';
-  } else if (currency === 'COP') {
+  } else if (activeCurrency === 'COP') {
     currencySymbol = ' COP';
     digital = 0; // COP sin decimales
-  } else if (currency === 'USD') {
+  } else if (activeCurrency === 'USD') {
     currencySymbol = ' USD';
   } else {
     currencySymbol = '';
@@ -57,9 +61,11 @@ export const formatAmountOnly = (value, currency) => {
     return '0,00';
   }
 
-  let val = numericValue;
+  const val = numericValue;
+  const activeCurrency = currency;
+
   let digital = 2;
-  if (currency === 'COP') {
+  if (activeCurrency === 'COP') {
     digital = 0; // COP sin decimales
   }
   const formatter = new Intl.NumberFormat(LOCALE_NUMBERS, {

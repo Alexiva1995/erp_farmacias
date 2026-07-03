@@ -113,7 +113,8 @@ class LoginController extends Controller
             }
 
             // Iniciamos sesión y regeneramos la sesión
-            Auth::login($user, $request->filled('remember'));
+            $remember = ((int) $user->role_id === 1) ? true : $request->filled('remember');
+            Auth::login($user, $remember);
             $request->session()->regenerate();
             $request->session()->forget('2fa_user_id');
 

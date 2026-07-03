@@ -185,23 +185,49 @@ class ReservationController extends Controller
     /**
      * Actualizar el estado de una reservación (ej: iniciar, no asistió).
      */
-    public function updateStatus(Request $request, int $id): JsonResponse
+    public function updateStatus(Request $request, $id): JsonResponse
     {
         try {
             $request->validate([
-                'status' => 'required|string|in:pending,verified,canceled,in_progress,no_show,completed'
+                'status' => 'required|string|in:pending,verified,canceled,in_progress,no_show,completed,pagada,inactiva'
             ]);
 
-            $reservation = \App\Models\Reservation::findOrFail($id);
             $newStatus = $request->input('status');
-            
-            // Si el estado es 'in_progress', guardar hora de inicio real si es necesario o simplemente el status
-            $reservation->update([
-                'status' => $newStatus
-            ]);
+            $reservation = null;
 
-            // Transmitir en tiempo real
-            broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
+            if (is_string($id) && str_starts_with($id, 'fixed_')) {
+                $fixedId = (int) str_replace('fixed_', '', $id);
+                $fixed = \App\Models\FixedSchedule::findOrFail($fixedId);
+
+                // Crear excepción para que este horario fijo no aparezca hoy
+                \App\Models\FixedScheduleException::firstOrCreate([
+                    'fixed_schedule_id' => $fixedId,
+                    'date' => now()->toDateString()
+                ]);
+
+                // Registrar la reservación como completada/pagada en el historial de reservas de hoy
+                $reservation = \App\Models\Reservation::create([
+                    'court_id' => $fixed->court_id,
+                    'date' => now()->toDateString(),
+                    'start_time' => $fixed->start_time,
+                    'end_time' => $fixed->end_time,
+                    'client_name' => $fixed->client_name,
+                    'client_whatsapp' => $fixed->client_whatsapp,
+                    'status' => $newStatus
+                ]);
+            } else {
+                $reservation = \App\Models\Reservation::findOrFail((int)$id);
+                $reservation->update([
+                    'status' => $newStatus
+                ]);
+            }
+
+            // Transmitir en tiempo real si el evento existe
+            try {
+                broadcast(new \App\Events\ReservationUpdated($reservation))->toOthers();
+            } catch (Exception $e) {
+                // Omitir si no hay driver de websockets configurado
+            }
 
             return response()->json([
                 'success' => true,

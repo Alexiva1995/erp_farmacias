@@ -4,10 +4,12 @@ import InvoiceToCountTable from "@/components/InvoiceToCountTable.vue";
 import SalesToCountTable from "@/components/SalesToCountTable.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
+import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
 import { useDataTable } from "@/composables/useDataTable";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const filters = reactive({
   q: "",
@@ -48,6 +50,7 @@ const {
 
 const laboratories = ref([]);
 const origins = ref([]);
+const locations = ref([]);
 const isLoadingFilters = ref(false);
 
 const isCountDialogVisible = ref(false);
@@ -55,17 +58,28 @@ const currentProduct = ref({});
 const hasActiveCycle = ref(false);
 const countType = ref("product");
 
+// Variables para el modal de lotes en Verificación Simple
+const showLotDistributionModal = ref(false);
+const itemForLotDistribution = ref(null);
+const targetQuantityForDistribution = ref(0);
+const pendingCountData = ref(null);
+
+const brandingStore = useBrandingStore();
+const isSimpleMode = computed(() => brandingStore.settings?.cyclic_inventory_mode === 'simple');
+
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse, cycleResponse] = await Promise.all([
+    const [labResponse, originResponse, cycleResponse, locationResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/inventory/cycle/active"),
+      axios.get("/locations"),
     ]);
 
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
+    locations.value = locationResponse.data.data || locationResponse.data || [];
 
     if (cycleResponse.data.success) {
       hasActiveCycle.value = cycleResponse.data.has_active_cycle;
@@ -103,33 +117,8 @@ const handleCountProduct = (product, type) => {
   isCountDialogVisible.value = true;
 };
 
-const handleSaveCount = async (countData) => {
-  const productId = currentProduct.value.id;
-  const endpoint =
-    countType.value === "invoice"
-      ? `/inventory/count/invoice-count/${productId}`
-      : countType.value === "sales"
-        ? `/inventory/count/sales-count/${productId}`
-        : `/inventory/count/${productId}`;
-
-  // Calcular system_quantity y discrepancy
-  const systemQuantity = Number(currentProduct.value.stock_calculado || currentProduct.value.stock || 0);
-  const discrepancy = countData.countedQuantity - systemQuantity;
-
+const sendCountRequest = async (endpoint, payload) => {
   try {
-    const payload = {
-      counted_quantity: countData.countedQuantity,
-      system_quantity: systemQuantity,
-      discrepancy: discrepancy,
-    };
-
-    // Solo incluir barcode si no se permite sin código de barras
-    if (!countData.allowWithoutBarcode) {
-      payload.barcode = countData.barcode;
-    } else {
-      payload.allow_without_barcode = true;
-    }
-
     const response = await axios.post(endpoint, payload);
 
     if (response.data.success) {
@@ -138,7 +127,7 @@ const handleSaveCount = async (countData) => {
 
       if (countType.value === "invoice") {
         await fetchInvoiceProductsToCount();
-      }else if (countType.value === "sales") {
+      } else if (countType.value === "sales") {
         await fetchSalesProductsToCount();
       } else {
         await fetchProducts();
@@ -157,6 +146,70 @@ const handleSaveCount = async (countData) => {
     } else {
       toast.error("Hubo un error al registrar el conteo.");
     }
+  }
+};
+
+const handleSaveCount = async (countData) => {
+  const productId = currentProduct.value.id;
+  const endpoint =
+    countType.value === "invoice"
+      ? `/inventory/count/invoice-count/${productId}`
+      : countType.value === "sales"
+        ? `/inventory/count/sales-count/${productId}`
+        : `/inventory/count/${productId}`;
+
+  // Calcular system_quantity y discrepancy
+  const systemQuantity = Number(currentProduct.value.stock_calculado || currentProduct.value.stock || 0);
+  const discrepancy = countData.countedQuantity - systemQuantity;
+
+  const payload = {
+    counted_quantity: countData.countedQuantity,
+    system_quantity: systemQuantity,
+    discrepancy: discrepancy,
+  };
+
+  // Solo incluir barcode si no se permite sin código de barras
+  if (!countData.allowWithoutBarcode) {
+    payload.barcode = countData.barcode;
+  } else {
+    payload.allow_without_barcode = true;
+  }
+
+  // Si es modo simple, tipo de conteo producto y los lotes están activos, desviar al modal de lotes
+  const enableLots = brandingStore.settings?.enable_lots ?? true;
+  if (enableLots && isSimpleMode.value && countType.value === "product") {
+    isCountDialogVisible.value = false;
+    pendingCountData.value = {
+      endpoint,
+      payload
+    };
+    itemForLotDistribution.value = currentProduct.value;
+    targetQuantityForDistribution.value = countData.countedQuantity;
+    showLotDistributionModal.value = true;
+    return;
+  }
+
+  await sendCountRequest(endpoint, payload);
+};
+
+const handleLotsDistributed = async (distributionData) => {
+  if (!pendingCountData.value) {
+    toast.error("Error: no hay datos de conteo pendientes.");
+    return;
+  }
+  const { endpoint, payload } = pendingCountData.value;
+  const finalPayload = {
+    ...payload,
+    updated_lots: distributionData.updatedLots,
+    new_lots: distributionData.newLots,
+  };
+
+  try {
+    await sendCountRequest(endpoint, finalPayload);
+  } finally {
+    showLotDistributionModal.value = false;
+    itemForLotDistribution.value = null;
+    pendingCountData.value = null;
   }
 };
 
@@ -251,6 +304,16 @@ const handleSort = (sortData) => {
       v-model="isCountDialogVisible"
       :product="currentProduct"
       @save="handleSaveCount"
+    />
+
+    <LotDistributionModal
+      v-model="showLotDistributionModal"
+      :product-name="itemForLotDistribution?.name || 'Producto'"
+      :lots="itemForLotDistribution?.lots || []"
+      :target-quantity="targetQuantityForDistribution"
+      :locations="locations"
+      mode="adjustment"
+      @save="handleLotsDistributed"
     />
   </div>
 </template>

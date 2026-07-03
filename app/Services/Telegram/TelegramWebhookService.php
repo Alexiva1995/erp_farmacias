@@ -62,50 +62,161 @@ class TelegramWebhookService
             return;
         }
 
+        $botType = $this->getBotType();
+
+        // Interceptar fotos de inmediato antes de validar estados de texto
+        if (isset($message['photo'])) {
+            $stateData = Cache::get('telegram_state_' . $fromId);
+            if ($stateData && is_array($stateData) && $stateData['state'] === 'waiting_for_payment_photo') {
+                if ($botType === 'farmacia' || $botType === 'all') {
+                    $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
+                    return;
+                }
+            }
+            if ($botType === 'restaurante' || $botType === 'all') {
+                $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
+                return;
+            }
+            return;
+        }
+
         // Permite al usuario abortar cualquier flujo activo (ej: registro de facturas) escribiendo 'cancelar'
         $cleanText = strtolower(trim($text));
         if ($cleanText === 'cancelar' || $cleanText === '/cancelar') {
             Cache::forget('telegram_state_' . $fromId);
             Cache::forget('telegram_pending_invoice_' . $fromId);
-            $this->telegramService->sendMessage("❌ *[PROCESO CANCELADO]*\n\nSe ha cancelado el registro de la factura actual y limpiado tu estado.", $chatId);
+            $this->telegramService->sendMessage("❌ *[PROCESO CANCELADO]*\n\nSe ha cancelado el flujo activo y limpiado tu estado.", $chatId);
             return;
         }
 
         // 1. Verificar si el usuario está en un estado conversacional esperando un dato específico
         $stateData = Cache::get('telegram_state_' . $fromId);
         if ($stateData && is_array($stateData)) {
-            if ($stateData['state'] === 'waiting_for_invoice_total') {
-                $this->processUserProvidedTotal(trim($text), $fromId, $chatId, $stateData);
+            // Flujo de Registro de Facturas (Solo Restaurante/All)
+            if ($botType === 'restaurante' || $botType === 'all') {
+                if ($stateData['state'] === 'waiting_for_invoice_total') {
+                    $this->processUserProvidedTotal(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_invoice_supplier_name') {
+                    $this->processUserProvidedSupplierName(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_products_list') {
+                    $this->processProductsList(trim($text), $fromId, $chatId);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_fast_fruit_invoice') {
+                    $this->processFastFruitInvoice(trim($text), $fromId, $chatId);
+                    return;
+                }
+            }
+
+            // Flujo de Pagos (Solo Farmacia/All)
+            if ($botType === 'farmacia' || $botType === 'all') {
+                if ($stateData['state'] === 'waiting_for_payment_amount') {
+                    $this->processUserProvidedPaymentAmount(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_payment_photo') {
+                    $lowerText = strtolower(trim($text));
+                    if ($lowerText === 'saltar' || $lowerText === 'ninguno') {
+                        $this->skipPaymentPhoto($fromId, $chatId, $stateData);
+                    } else {
+                        $this->telegramService->sendMessage("📸 Por favor envía la foto del comprobante de pago o escribe *saltar*.", $chatId);
+                    }
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_payment_reference_manual') {
+                    $this->processUserProvidedPaymentReference(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+                if ($stateData['state'] === 'waiting_for_stockout_qty') {
+                    $this->processUserProvidedStockoutQty(trim($text), $fromId, $chatId, $stateData);
+                    return;
+                }
+            }
+        }
+
+        // (La foto ya fue procesada al inicio del método si existía)
+
+        // ==================== COMANDOS DE RESTAURANTE / MINIMARKET ====================
+        if ($botType === 'restaurante' || $botType === 'canchas' || $botType === 'all') {
+            // Caso B: Comando para iniciar el registro de facturas
+            if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
+                $isInformal = !empty($matches[1]);
+                $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
+                $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
+
+                $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
                 return;
             }
-            if ($stateData['state'] === 'waiting_for_invoice_supplier_name') {
-                $this->processUserProvidedSupplierName(trim($text), $fromId, $chatId, $stateData);
+
+            // Caso D: Comando para registrar productos rápidamente
+            if (preg_match('/^(?:registrar\s+productos?|\/registrar_productos?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+                $productsList = isset($matches[1]) ? trim($matches[1]) : null;
+                if ($productsList) {
+                    $this->processProductsList($productsList, $fromId, $chatId);
+                } else {
+                    Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
+                    $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
+                }
+                return;
+            }
+
+            // Caso E: Comando para registro ultra rápido de facturas de frutas
+            if (preg_match('/^(?:registrar\s+frutas?|\/registrar_frutas?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+                $fruitsText = isset($matches[1]) ? trim($matches[1]) : null;
+                if ($fruitsText) {
+                    $this->processFastFruitInvoice($fruitsText, $fromId, $chatId);
+                } else {
+                    Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
+                    $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
+                }
                 return;
             }
         }
 
-        // Caso A: Se recibe una foto y se está esperando una factura
-        if (isset($message['photo'])) {
-            $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
-            return;
+        // ==================== COMANDOS DE CANCHAS / RESERVAS ====================
+        if ($botType === 'canchas' || $botType === 'all') {
+            // Caso C: Comando para cancelar reservas
+            if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
+                $this->processReservationCancellation(trim($matches[1]), $chatId);
+                return;
+            }
+
+            // Caso D: Comando para consultar los horarios fijos de hoy
+            if ($cleanText === 'fijos' || $cleanText === '/fijos') {
+                $this->sendDailyFixedSchedules($chatId);
+                return;
+            }
         }
 
-        // Caso B: Comando para iniciar el registro de facturas
-        // Formatos aceptados:
-        // registrar factura [informal] [COP|USD|Bs] [Nombre Proveedor]
-        if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
-            $isInformal = !empty($matches[1]);
-            $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
-            $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
+        // ==================== COMANDOS DE FARMACIA ====================
+        if ($botType === 'farmacia' || $botType === 'all') {
+            // Caso F: Comando para gestionar pagos pendientes
+            if ($cleanText === 'pagos' || $cleanText === '/pagos') {
+                $this->initPaymentsFlow($fromId, $chatId);
+                return;
+            }
 
-            $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
-            return;
-        }
+            // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
+            if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
+                $this->sendUpcoming7DaysPayments($chatId);
+                return;
+            }
 
-        // Caso C: Comando para cancelar reservas
-        if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
-            $this->processReservationCancellation(trim($matches[1]), $chatId);
-            return;
+            // Caso I: Comando para consultar el listado detallado de deudas por proveedor
+            if ($cleanText === 'deudas' || $cleanText === '/deudas') {
+                $this->initDebtsFlow($fromId, $chatId);
+                return;
+            }
+
+            // Caso J: Comando de Pedido Automático Inteligente
+            if ($cleanText === 'pedido' || $cleanText === '/pedido') {
+                $this->processAutomaticOrderFromTelegram($chatId);
+                return;
+            }
         }
     }
 
@@ -407,6 +518,89 @@ class TelegramWebhookService
         $chatId = $callbackQuery['message']['chat']['id'] ?? null;
         $fromId = $callbackQuery['from']['id'] ?? null;
 
+        if (str_starts_with($callbackData, 'stockout_auto_')) {
+            $this->handleStockoutAutoCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'stockout_edit_')) {
+            $this->handleStockoutEditCallback($callbackData, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'pay_supplier_')) {
+            $supplierId = (int) substr($callbackData, strlen('pay_supplier_'));
+            $this->startPaymentForSupplier($supplierId, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'skip_supplier_')) {
+            $supplierId = (int) substr($callbackData, strlen('skip_supplier_'));
+            $this->skipSupplierInPaymentQueue($supplierId, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if ($callbackData === 'exit_payments') {
+            $this->exitPaymentsFlow($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'show_debt_')) {
+            $index = (int) substr($callbackData, strlen('show_debt_'));
+            $this->answerCallback($callbackQueryId);
+            $this->sendSupplierDebtPrompt($fromId, $chatId, $index, $messageId);
+            return;
+        }
+
+        if ($callbackData === 'exit_debts') {
+            $this->answerCallback($callbackQueryId);
+            Cache::forget('telegram_debts_queue_' . $fromId);
+            if ($messageId) {
+                $token = config('services.telegram.bot_token');
+                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => "❌ *[VISTA DE DEUDAS CERRADA]*\n\nHas salido de la consulta detallada de deudas.",
+                    'parse_mode' => 'Markdown'
+                ]);
+            }
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'pay_curr_')) {
+            $currency = substr($callbackData, strlen('pay_curr_'));
+            $this->selectPaymentCurrency($currency, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'pay_method_')) {
+            $method = substr($callbackData, strlen('pay_method_'));
+            $this->selectPaymentMethod($method, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if ($callbackData === 'skip_payment_photo') {
+            $this->skipPaymentPhotoFromCallback($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if ($callbackData === 'confirm_payment_registration') {
+            $this->confirmPaymentRegistration($fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'approve_fruit_invoice_')) {
+            $invoiceId = (int) substr($callbackData, strlen('approve_fruit_invoice_'));
+            $this->approveFruitInvoiceFromCallback($invoiceId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'keep_loaded_fruit_invoice_')) {
+            $invoiceId = (int) substr($callbackData, strlen('keep_loaded_fruit_invoice_'));
+            $this->keepLoadedFruitInvoiceFromCallback($invoiceId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
         // 1. Confirmar Registro de Factura
         if ($callbackData === "confirm_invoice_{$fromId}") {
             $invoiceData = Cache::get('telegram_pending_invoice_' . $fromId);
@@ -419,20 +613,37 @@ class TelegramWebhookService
             try {
                 $isInformal = !empty($stateData['is_informal']);
                 
+                // Obtener el primer usuario disponible en el sistema para asociarlo al registro automático de la factura
+                $adminId = \App\Models\User::first()?->id ?? 1;
+
+                $currency = $invoiceData['currency'] ?? 'USD';
+                $exchangeRate = 1;
+                if ($currency !== 'USD') {
+                    $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($currency) ?? 1;
+                }
+
+                $expDate = now()->addDays(30)->toDateString();
+
                 $payload = [
                     'supplier_id' => $invoiceData['supplier_id'],
                     'invoice_number' => $invoiceData['invoice_number'],
                     'control_number' => $invoiceData['control_number'] ?? $invoiceData['invoice_number'],
-                    'currency' => $invoiceData['currency'] ?? 'USD',
-                    'exp_date' => now()->addDays(30)->toDateString(),
+                    'currency' => $currency,
+                    'exp_date' => $expDate,
+                    'payment_date' => $expDate,
                     'received_date' => now()->toDateString(),
                     'created_invoice_date' => $invoiceData['invoice_date'] ?? now()->toDateString(),
                     'exempt_amount' => $isInformal ? $invoiceData['total_amount'] : ($invoiceData['exempt_amount'] ?? 0),
                     'taxable_base' => $isInformal ? 0 : ($invoiceData['taxable_base'] ?? 0),
                     'tax_amount' => $isInformal ? 0 : ($invoiceData['tax_amount'] ?? 0),
                     'total_amount' => $invoiceData['total_amount'],
-                    'exchange_rate' => 1,
+                    'exchange_rate' => $exchangeRate,
+                    'registered_by' => $adminId,
+                    'uploaded_by' => $adminId,
                 ];
+
+                // Autenticar temporalmente al usuario en la sesión del request para el servicio y observadores
+                \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
 
                 $this->invoiceActionService->createInvoice($payload);
                 $this->answerCallback($callbackQueryId, '✅ Factura registrada con éxito en el ERP.');
@@ -567,20 +778,27 @@ class TelegramWebhookService
                 $this->updateMessageToCanceled($chatId, $messageId, $reservation);
             }
         }
+
+        // 5. Gestión de Horarios Fijos (Gol Club)
+        if (str_starts_with($callbackData, 'skip_fixed_') || str_starts_with($callbackData, 'restore_fixed_') || str_starts_with($callbackData, 'delete_fixed_')) {
+            $this->handleFixedScheduleCallback($callbackData, $chatId, $messageId, $callbackQueryId);
+            return;
+        }
     }
 
-    /**
-     * Responder a la consulta de callback de Telegram.
-     */
-    protected function answerCallback(string $callbackQueryId, string $text): void
+    protected function answerCallback(string $callbackQueryId, ?string $text = null, bool $showAlert = false): void
     {
         $token = config('services.telegram.bot_token');
         if ($token) {
-            Http::post("https://api.telegram.org/bot{$token}/answerCallbackQuery", [
+            $payload = [
                 'callback_query_id' => $callbackQueryId,
-                'text' => $text,
-                'show_alert' => true,
-            ]);
+            ];
+            // Solo enviar el texto a Telegram si se requiere mostrar una alerta/popup explícito
+            if ($text !== null && $showAlert) {
+                $payload['text'] = $text;
+                $payload['show_alert'] = true;
+            }
+            Http::post("https://api.telegram.org/bot{$token}/answerCallbackQuery", $payload);
         }
     }
 
@@ -661,5 +879,2086 @@ class TelegramWebhookService
             'text' => $msg,
             'parse_mode' => 'Markdown',
         ]);
+    }
+
+    /**
+     * Procesar y registrar una lista de productos en la base de datos.
+     */
+    protected function processProductsList(string $text, $fromId, $chatId): void
+    {
+        if (empty($text)) {
+            $this->telegramService->sendMessage("⚠️ La lista de productos está vacía. Inténtalo de nuevo o escribe `cancelar`.", $chatId);
+            return;
+        }
+
+        // Separar por salto de línea o por comas
+        $lines = preg_split('/[\n,]+/', $text);
+        $created = [];
+        $skipped = [];
+
+        foreach ($lines as $line) {
+            $name = trim($line);
+            if (empty($name)) {
+                continue;
+            }
+
+            // Verificar si ya existe
+            $exists = \App\Models\Product::where('name', 'like', $name)->exists();
+            if ($exists) {
+                $skipped[] = $name;
+                continue;
+            }
+
+            // Crear el producto con valores mínimos
+            \App\Models\Product::create([
+                'name' => $name,
+                'unit_cost' => 0,
+                'sale_price' => 0,
+                'presentation' => 1,
+                'unit_of_measure' => 'und',
+                'stock' => 0,
+            ]);
+
+            $created[] = $name;
+        }
+
+        // Limpiar el estado
+        Cache::forget('telegram_state_' . $fromId);
+
+        // Armar mensaje de respuesta
+        $msg = "🏁 *[REGISTRO DE PRODUCTOS COMPLETADO]*\n\n";
+        
+        if (!empty($created)) {
+            $msg .= "✅ *Creados con éxito (" . count($created) . "):*\n";
+            foreach ($created as $p) {
+                $msg .= "• {$p}\n";
+            }
+            $msg .= "\n";
+        }
+
+        if (!empty($skipped)) {
+            $msg .= "⚠️ *Omitidos porque ya existían (" . count($skipped) . "):*\n";
+            foreach ($skipped as $p) {
+                $msg .= "• {$p}\n";
+            }
+        }
+
+        if (empty($created) && empty($skipped)) {
+            $msg .= "❌ No se pudo procesar ningún nombre válido de la lista.";
+        }
+
+        $this->telegramService->sendMessage($msg, $chatId);
+    }
+
+    /**
+     * Procesar y registrar una factura rápida de frutas desde el bot de Telegram.
+     */
+    protected function processFastFruitInvoice(string $text, $fromId, $chatId): void
+    {
+        if (empty($text)) {
+            $this->telegramService->sendMessage("⚠️ La lista de frutas está vacía. Inténtalo de nuevo o escribe `cancelar`.", $chatId);
+            return;
+        }
+
+        // 1. Buscar o crear el proveedor "Frutas"
+        $supplier = \App\Models\Supplier::firstOrCreate(
+            ['name' => 'Frutas'],
+            [
+                'social_reason' => 'Frutas',
+                'rif' => 'V-FRUTAS-01',
+                'type' => \App\Enums\SupplierType::EXTERNO,
+                'dispatch_days' => [],
+                'order_days' => [],
+            ]
+        );
+
+        // Separar por salto de línea o por guiones " - "
+        $itemsRaw = preg_split('/[\n\-]+/', $text);
+        $parsedItems = [];
+        $currency = 'COP'; // Valor por defecto
+
+        foreach ($itemsRaw as $itemRaw) {
+            $itemRaw = trim($itemRaw);
+            if (empty($itemRaw)) {
+                continue;
+            }
+
+            // Expresión regular para casar: [Nombre] [Cantidad] [Monto] [Moneda]
+            // Ejemplo: Fresa 2000g 18.000 COP  o  kiwi 320 1560
+            if (preg_match('/^([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)\s+(\d+)(?:g|gr|kg|und)?\s+([\d\.,]+)(?:\s*(COP|USD|Bs))?/i', $itemRaw, $matches)) {
+                $productName = trim($matches[1]);
+                $quantity = (float) $matches[2];
+                $priceStr = trim($matches[3]);
+                $itemCurrency = !empty($matches[4]) ? strtoupper($matches[4]) : null;
+
+                if ($itemCurrency) {
+                    $currency = $itemCurrency;
+                }
+
+                // Limpiar el separador de miles del precio
+                if (strpos($priceStr, '.') !== false && strpos($priceStr, ',') !== false) {
+                    $priceStr = str_replace('.', '', $priceStr);
+                    $priceStr = str_replace(',', '.', $priceStr);
+                } else if (strpos($priceStr, ',') !== false) {
+                    if (preg_match('/,\d{3}$/', $priceStr)) {
+                        $priceStr = str_replace(',', '', $priceStr);
+                    } else {
+                        $priceStr = str_replace(',', '.', $priceStr);
+                    }
+                } else if (strpos($priceStr, '.') !== false) {
+                    if (preg_match('/\.\d{3}$/', $priceStr)) {
+                        $priceStr = str_replace('.', '', $priceStr);
+                    }
+                }
+                $totalCost = (float) $priceStr;
+
+                // Buscar o crear el producto en la base de datos con IDs específicos si aplican
+                $productNameLower = strtolower($productName);
+                $productId = null;
+                if (str_contains($productNameLower, 'fresa')) {
+                    $productId = 1058;
+                } elseif (str_contains($productNameLower, 'cambur')) {
+                    $productId = 1059;
+                } elseif (str_contains($productNameLower, 'kiwi')) {
+                    $productId = 1060;
+                }
+
+                if ($productId) {
+                    $product = \App\Models\Product::find($productId);
+                } else {
+                    $product = \App\Models\Product::firstOrCreate(
+                        ['name' => $productName],
+                        [
+                            'unit_cost' => 0,
+                            'sale_price' => 0,
+                            'presentation' => 1,
+                            'unit_of_measure' => 'und',
+                            'stock' => 0,
+                        ]
+                    );
+                }
+
+                if ($product) {
+                    // Ajustar cantidad según la presentación del producto (para no registrar 3000 paquetes sino 3 paquetes de 1000g)
+                    $presentation = (float) ($product->presentation ?? 1);
+                    $finalQty = $presentation > 0 ? $quantity / $presentation : $quantity;
+                    $unitCost = $finalQty > 0 ? $totalCost / $finalQty : 0;
+
+                    // Generar número de lote automático correlativo
+                    $lotCount = $product->lots()->count() + 1;
+                    $lotNumber = 'L-' . date('Ymd') . '-' . $lotCount;
+                    $expirationDate = now()->addDays(7)->toDateString();
+
+                    $parsedItems[] = [
+                        'product' => $product,
+                        'quantity' => $finalQty,
+                        'total_cost' => $totalCost,
+                        'unit_cost' => $unitCost,
+                        'lot_number' => $lotNumber,
+                        'expiration_date' => $expirationDate,
+                    ];
+                }
+            }
+        }
+
+        if (empty($parsedItems)) {
+            $this->telegramService->sendMessage("❌ No se pudo procesar ningún producto válido. Asegúrate de usar el formato correcto:\n`Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP`", $chatId);
+            return;
+        }
+
+        // 2. Calcular total de la factura
+        $totalAmount = array_sum(array_column($parsedItems, 'total_cost'));
+
+        // Obtener tasa de cambio (si es COP, se usa la tasa COPC que es la configurada para vueltos/efectivo)
+        $exchangeRate = 1;
+        if ($currency !== 'USD') {
+            $rateCurrency = $currency === 'COP' ? 'COPC' : $currency;
+            $exchangeRate = app(\App\Services\Resources\ResourceService::class)->getExchangeRate($rateCurrency) ?? 1;
+        }
+
+        // Obtener usuario administrador para el registro de auditoría
+        $adminId = \App\Models\User::first()?->id ?? 1;
+        $invoiceNumber = 'FRUTA-' . date('YmdHis');
+        $expDate = now()->addDays(7)->toDateString();
+
+        try {
+            // Autenticar temporalmente para evitar que falle en observadores o servicios
+            \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
+            // Instanciar el servicio para transicionar los estados de forma idéntica al sistema
+            $invoiceActionService = app(\App\Services\Invoices\InvoiceActionService::class);
+
+            // Crear la factura usando el servicio
+            $invoice = $invoiceActionService->createInvoice([
+                'supplier_id' => $supplier->id,
+                'invoice_number' => $invoiceNumber,
+                'control_number' => $invoiceNumber,
+                'currency' => $currency,
+                'exp_date' => $expDate,
+                'payment_date' => $expDate,
+                'received_date' => now()->toDateString(),
+                'created_invoice_date' => now()->toDateString(),
+                'exempt_amount' => $totalAmount,
+                'taxable_base' => 0,
+                'tax_amount' => 0,
+                'total_amount' => $totalAmount,
+                'exchange_rate' => $exchangeRate,
+                'registered_by' => $adminId,
+                'uploaded_by' => $adminId,
+            ]);
+
+            // Formatear detalles para el servicio
+            $detailsPayload = [];
+            foreach ($parsedItems as $index => $item) {
+                $detailsPayload[] = [
+                    'product' => ['id' => $item['product']->id],
+                    'quantity' => $item['quantity'],
+                    'unit_cost' => $item['unit_cost'],
+                    'lot_number' => $item['lot_number'],
+                    'expiration_date' => $item['expiration_date'],
+                    'tax_enabled' => false,
+                    'is_return' => false,
+                    'location' => null,
+                    'display_order' => $index,
+                ];
+            }
+
+            // Guardar detalles usando el servicio
+            $invoice = $invoiceActionService->saveInvoiceDetails($invoice, [
+                'invoice' => [
+                    'supplier_id' => $supplier->id,
+                    'invoice_number' => $invoiceNumber,
+                    'control_number' => $invoiceNumber,
+                    'currency' => $currency,
+                    'exp_date' => $expDate,
+                    'payment_date' => $expDate,
+                    'received_date' => now()->toDateString(),
+                    'created_invoice_date' => now()->toDateString(),
+                    'exempt_amount' => $totalAmount,
+                    'taxable_base' => 0,
+                    'tax_amount' => 0,
+                    'total_amount' => $totalAmount,
+                    'exchange_rate' => $exchangeRate,
+                ],
+                'details' => $detailsPayload,
+            ]);
+
+            // 1. Finalizar carga (pasa a 'loaded')
+            $invoice = $invoiceActionService->finalizeInvoice($invoice);
+
+            // Limpiar estado
+            Cache::forget('telegram_state_' . $fromId);
+
+            // Enviar mensaje con botones interactivos de aprobación
+            $token = config('services.telegram.bot_token');
+            $msg = "✅ *[FACTURA DE FRUTAS CARGADA]*\n\n"
+                 . "🏢 *Proveedor:* {$supplier->name}\n"
+                 . "🔢 *Factura Nº:* `{$invoiceNumber}`\n"
+                 . "💰 *Monto Total:* " . number_format($totalAmount, 2) . " {$currency}\n"
+                 . "📅 *Vencimiento y Pago:* {$expDate}\n"
+                 . "📈 *Estado actual:* `Cargada (loaded)`\n\n"
+                 . "📦 *Detalles registrados:*\n";
+
+            foreach ($parsedItems as $item) {
+                $msg .= "• *{$item['product']->name}*: {$item['quantity']} und / total: " . number_format($item['total_cost'], 2) . " {$currency} (Lote: `{$item['lot_number']}`)\n";
+            }
+
+            $msg .= "\n¿Deseas aprobar esta factura ahora para generar los movimientos de inventario y lotes?";
+
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '✅ Sí, Aprobar', 'callback_data' => "approve_fruit_invoice_{$invoice->id}"],
+                            ['text' => '📁 No, Dejar Cargada', 'callback_data' => "keep_loaded_fruit_invoice_{$invoice->id}"],
+                        ]
+                    ]
+                ])
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error en registro rápido de frutas: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->telegramService->sendMessage("❌ Error al registrar la factura de frutas: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Callback para aprobar la factura de frutas (llevar a to_order y generar inventario).
+     */
+    protected function approveFruitInvoiceFromCallback(int $invoiceId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::find($invoiceId);
+        if (!$invoice) {
+            $this->answerCallback($callbackQueryId, 'La factura no existe.');
+            return;
+        }
+
+        try {
+            $adminId = \App\Models\User::first()?->id ?? 1;
+            \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
+            $invoiceActionService = app(\App\Services\Invoices\InvoiceActionService::class);
+            $invoice = $invoiceActionService->approveInvoice($invoice, ['payment_rule_id' => null]);
+
+            $this->answerCallback($callbackQueryId, 'Factura aprobada con éxito.');
+
+            $token = config('services.telegram.bot_token');
+            $msg = "✅ *[FACTURA DE FRUTAS APROBADA]*\n\n"
+                 . "🏢 *Proveedor:* {$invoice->supplier->name}\n"
+                 . "🔢 *Factura Nº:* `{$invoice->invoice_number}`\n"
+                 . "💰 *Monto Total:* " . number_format($invoice->total_amount, 2) . " {$invoice->currency}\n"
+                 . "📅 *Vencimiento y Pago:* {$invoice->exp_date}\n"
+                 . "📈 *Estado actual:* `Por Ordenar (to_order)`\n\n"
+                 . "🚀 *Los movimientos de inventario y lotes físicos han sido generados exitosamente. La factura está lista para ser ordenada.*";
+
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al aprobar factura desde botón: ' . $e->getMessage());
+            $this->answerCallback($callbackQueryId, 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Callback para mantener la factura en estado cargada (loaded).
+     */
+    protected function keepLoadedFruitInvoiceFromCallback(int $invoiceId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::find($invoiceId);
+        if (!$invoice) {
+            $this->answerCallback($callbackQueryId, 'La factura no existe.');
+            return;
+        }
+
+        $this->answerCallback($callbackQueryId, 'Se conservó en estado cargada.');
+
+        $token = config('services.telegram.bot_token');
+        $msg = "📁 *[FACTURA CONSERVADA EN CARGADA]*\n\n"
+             . "🏢 *Proveedor:* {$invoice->supplier->name}\n"
+             . "🔢 *Factura Nº:* `{$invoice->invoice_number}`\n"
+             . "💰 *Monto Total:* " . number_format($invoice->total_amount, 2) . " {$invoice->currency}\n"
+             . "📅 *Vencimiento y Pago:* {$invoice->exp_date}\n"
+             . "📈 *Estado actual:* `Cargada (loaded)`\n\n"
+             . "ℹ️ *La factura se mantiene en estado cargada. Puedes aprobarla y gestionarla desde el panel web.*";
+
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Inicializar el flujo de pagos consultando las deudas consolidadas.
+     */
+    protected function initPaymentsFlow($fromId, $chatId): void
+    {
+        try {
+            // Consultar facturas pendientes de pago (status_payment != 1 o nulo) en estado ordered (por pagar) y vencidas/venciendo al día de hoy, ordenadas por fecha de pago
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->whereDate('payment_date', '<=', now()->toDateString())
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes al día de hoy.", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor y consolidar deuda
+            $grouped = $invoices->groupBy('supplier_id');
+            $suppliersWithDebt = [];
+
+            foreach ($grouped as $supplierId => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+
+                // Calcular deuda restante restando pagos parciales
+                $totalAmountUSD = $group->sum('total_usd');
+                $invoiceIds = $group->pluck('id')->toArray();
+
+                $payments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
+                    $query->whereIn('id', $invoiceIds);
+                })->get();
+
+                $totalPaidUSD = 0;
+                foreach ($payments as $payment) {
+                    if ($payment->payment_method === 'USD') {
+                        $totalPaidUSD += $payment->amount;
+                        $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                        $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                        if ($exchangeRate) {
+                            $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                        }
+                    }
+                }
+
+                $remainingAmountUSD = max(0, $totalAmountUSD - $totalPaidUSD);
+
+                if ($remainingAmountUSD <= 0.01) {
+                    continue; // Ya está pagado en la práctica
+                }
+
+                // Recopilar la lista de facturas individuales con su saldo pendiente
+                $invoicesList = [];
+                foreach ($group as $invoice) {
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    // Replicar exactamente la lógica de /finances/pending-payments
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        if ($invoicePaidUSD > 0) {
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+                    }
+
+                    $formattedDate = $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m') : '-';
+
+                    $invoicesList[] = [
+                        'invoice_number' => $invoice->invoice_number,
+                        'remaining_amount' => $invoiceRemainingOriginal,
+                        'currency' => $invoice->currency,
+                        'payment_date_formatted' => $formattedDate,
+                    ];
+                }
+
+                // Formatear monedas
+                $currency = $firstInvoice->currency;
+                $remainingOriginal = collect($invoicesList)->sum('remaining_amount');
+
+                $formattedDebt = number_format($remainingOriginal, 2) . ' ' . $currency;
+                if ($currency !== 'USD') {
+                    $formattedDebt .= " (≈ " . number_format($remainingAmountUSD, 2) . " USD)";
+                }
+
+                // Obtener la fecha de pago más antigua de este grupo de facturas
+                $earliestPaymentDate = $group->min('payment_date') ?? '9999-12-31';
+
+                $suppliersWithDebt[] = [
+                    'id' => $supplierId,
+                    'name' => $supplierName,
+                    'pending_amount_usd' => $remainingAmountUSD,
+                    'pending_amount_original' => $remainingOriginal,
+                    'currency' => $currency,
+                    'formatted_debt' => $formattedDebt,
+                    'invoice_ids' => $invoiceIds,
+                    'invoices' => $invoicesList,
+                    'invoice_count' => count($invoicesList),
+                    'earliest_payment_date' => $earliestPaymentDate
+                ];
+            }
+
+            if (empty($suppliersWithDebt)) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes al día de hoy.", $chatId);
+                return;
+            }
+
+            // Ordenar proveedores por la fecha de pago más antigua (los que vencen antes van primero)
+            usort($suppliersWithDebt, function ($a, $b) {
+                return strcmp($a['earliest_payment_date'], $b['earliest_payment_date']);
+            });
+
+            // Guardar en la cola y empezar
+            Cache::put('telegram_payments_queue_' . $fromId, [
+                'suppliers' => $suppliersWithDebt,
+                'index' => 0
+            ], 1800);
+
+            $this->sendNextSupplierPaymentPrompt($fromId, $chatId);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al inicializar flujo de pagos: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al cargar las deudas pendientes: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Enviar el prompt del siguiente proveedor con deuda en la cola.
+     */
+    protected function sendNextSupplierPaymentPrompt($fromId, $chatId, ?int $editMessageId = null): void
+    {
+        $queue = Cache::get('telegram_payments_queue_' . $fromId);
+        if (!$queue || !isset($queue['suppliers']) || $queue['index'] >= count($queue['suppliers'])) {
+            $msg = "✅ *[PAGOS COMPLETADOS]*\n\nNo quedan más proveedores con deudas pendientes por revisar en tu cola actual.";
+            if ($editMessageId) {
+                $token = config('services.telegram.bot_token');
+                \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $editMessageId,
+                    'text' => $msg,
+                    'parse_mode' => 'Markdown',
+                ]);
+            } else {
+                $this->telegramService->sendMessage($msg, $chatId);
+            }
+            Cache::forget('telegram_payments_queue_' . $fromId);
+            Cache::forget('telegram_state_' . $fromId);
+            return;
+        }
+
+        $supplier = $queue['suppliers'][$queue['index']];
+
+        // Construir el listado detallado de facturas
+        $invoicesText = "";
+        foreach ($supplier['invoices'] as $inv) {
+            $invoicesText .= "• `{$inv['invoice_number']}` - {$inv['payment_date_formatted']} - " . number_format($inv['remaining_amount'], 2) . " {$inv['currency']}\n";
+        }
+
+        $msg = "💳 *[PAGO DE PROVEEDOR]*\n\n"
+             . "🏢 *Proveedor:* *{$supplier['name']}*\n"
+             . "💰 *Monto de Deuda Total:* `{$supplier['formatted_debt']}`\n\n"
+             . "📄 *Facturas Pendientes (al día de hoy):*\n"
+             . $invoicesText . "\n"
+             . "¿Deseas registrar un pago para este proveedor ahora?";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '💳 Registrar Pago', 'callback_data' => "pay_supplier_{$supplier['id']}"],
+                    ['text' => '⏭️ Saltar', 'callback_data' => "skip_supplier_{$supplier['id']}"],
+                ],
+                [
+                    ['text' => '❌ Salir del Flujo', 'callback_data' => "exit_payments"]
+                ]
+            ]
+        ];
+
+        if ($editMessageId) {
+            $token = config('services.telegram.bot_token');
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $editMessageId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => json_encode($replyMarkup)
+            ]);
+        } else {
+            $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+        }
+    }
+
+    /**
+     * Iniciar el proceso de pago para el proveedor seleccionado.
+     */
+    protected function startPaymentForSupplier(int $supplierId, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $queue = Cache::get('telegram_payments_queue_' . $fromId);
+        if (!$queue) {
+            $this->answerCallback($callbackQueryId, 'Sesión expirada.');
+            return;
+        }
+
+        $supplier = $queue['suppliers'][$queue['index']];
+
+        // Guardar estado
+        Cache::put('telegram_state_' . $fromId, [
+            'state' => 'waiting_for_payment_currency',
+            'supplier_id' => $supplier['id'],
+            'supplier_name' => $supplier['name'],
+            'invoice_ids' => $supplier['invoice_ids'],
+            'total_debt' => $supplier['formatted_debt'],
+            'total_debt_usd' => $supplier['pending_amount_usd']
+        ], 600);
+
+        $this->answerCallback($callbackQueryId, 'Iniciando registro de pago.');
+
+        $msg = "💱 *[REGISTRAR PAGO - PASO 1]*\n\n"
+             . "🏢 *Proveedor:* {$supplier['name']}\n"
+             . "💰 *Deuda:* `{$supplier['formatted_debt']}`\n\n"
+             . "Selecciona la **moneda** con la que realizarás el pago:";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '💵 USD', 'callback_data' => 'pay_curr_USD'],
+                    ['text' => '🇨🇴 COP', 'callback_data' => 'pay_curr_COP'],
+                    ['text' => '🇻🇪 Bs (BS)', 'callback_data' => 'pay_curr_BS'],
+                ],
+                [
+                    ['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']
+                ]
+            ]
+        ];
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode($replyMarkup)
+        ]);
+    }
+
+    /**
+     * Saltar el proveedor actual.
+     */
+    protected function skipSupplierInPaymentQueue(int $supplierId, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $queue = Cache::get('telegram_payments_queue_' . $fromId);
+        if ($queue) {
+            $queue['index']++;
+            Cache::put('telegram_payments_queue_' . $fromId, $queue, 1800);
+            $this->answerCallback($callbackQueryId, 'Saltando proveedor.');
+            $this->sendNextSupplierPaymentPrompt($fromId, $chatId, $messageId);
+        } else {
+            $this->answerCallback($callbackQueryId, 'Sesión expirada.');
+        }
+    }
+
+    /**
+     * Salir del flujo de pagos.
+     */
+    protected function exitPaymentsFlow($fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        Cache::forget('telegram_payments_queue_' . $fromId);
+        Cache::forget('telegram_state_' . $fromId);
+        $this->answerCallback($callbackQueryId, 'Flujo cancelado.');
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => "❌ *[FLUJO DE PAGOS CANCELADO]*\n\nHas salido del gestor de pagos pendientes.",
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Al seleccionar la moneda del pago.
+     */
+    protected function selectPaymentCurrency(string $currency, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_payment_currency') {
+            $this->answerCallback($callbackQueryId, 'Sesión de pago inválida.');
+            return;
+        }
+
+        $stateData['payment_currency'] = $currency;
+        $stateData['state'] = 'waiting_for_payment_method';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, "Moneda: {$currency}");
+
+        $msg = "💳 *[REGISTRAR PAGO - PASO 2]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Deuda:* `{$stateData['total_debt']}`\n"
+             . "💱 *Moneda seleccionada:* `{$currency}`\n\n"
+             . "Selecciona el **método de pago**:";
+
+        // Generar botones según la moneda (idéntico al sistema)
+        $buttons = [];
+        if ($currency === 'USD') {
+            $buttons[] = [['text' => '💵 Efectivo (CASH)', 'callback_data' => 'pay_method_CASH']];
+            $buttons[] = [['text' => '🔸 Binance (BINANCE)', 'callback_data' => 'pay_method_BINANCE']];
+            $buttons[] = [['text' => '🔵 PayPal (PAYPAL)', 'callback_data' => 'pay_method_PAYPAL']];
+            $buttons[] = [['text' => '📊 Crédito (CREDIT)', 'callback_data' => 'pay_method_CREDIT']];
+        } elseif ($currency === 'COP') {
+            $buttons[] = [['text' => '💵 Efectivo COP (CASH)', 'callback_data' => 'pay_method_CASH']];
+            $buttons[] = [['text' => '🏛️ Transferencia (TRANSFER)', 'callback_data' => 'pay_method_TRANSFER']];
+        } else { // VES / Bs
+            $buttons[] = [['text' => '💵 Efectivo Bs (CASH)', 'callback_data' => 'pay_method_CASH']];
+            $buttons[] = [['text' => '💳 Tarjeta (CARD)', 'callback_data' => 'pay_method_CARD']];
+            $buttons[] = [['text' => '📱 Pago Móvil (MOBILE)', 'callback_data' => 'pay_method_MOBILE']];
+            $buttons[] = [['text' => '🏛️ Transferencia (TRANSFER)', 'callback_data' => 'pay_method_TRANSFER']];
+        }
+        $buttons[] = [['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']];
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode(['inline_keyboard' => $buttons])
+        ]);
+    }
+
+    /**
+     * Al seleccionar el método de pago.
+     */
+    protected function selectPaymentMethod(string $method, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_payment_method') {
+            $this->answerCallback($callbackQueryId, 'Sesión de pago inválida.');
+            return;
+        }
+
+        $stateData['payment_method'] = $method;
+        $stateData['state'] = 'waiting_for_payment_amount';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, "Método: {$method}");
+
+        $msg = "💰 *[REGISTRAR PAGO - PASO 3]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Deuda:* `{$stateData['total_debt']}`\n"
+             . "💱 *Moneda:* `{$stateData['payment_currency']}`\n"
+             . "💳 *Método:* `{$method}`\n\n"
+             . "Por favor, escribe el **monto a pagar** (envíalo como mensaje de texto, ej: `150` o `150.50`):";
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Procesar el monto escrito por el usuario.
+     */
+    protected function processUserProvidedPaymentAmount(string $text, $fromId, $chatId, array $stateData): void
+    {
+        // Limpiar precio
+        $priceStr = str_replace(['$', ' ', ','], ['', '', '.'], $text);
+        if (!is_numeric($priceStr) || (float) $priceStr <= 0) {
+            $this->telegramService->sendMessage("❌ El monto ingresado no es válido. Por favor ingresa un número mayor a 0 (ej: `120` o `120.50`):", $chatId);
+            return;
+        }
+
+        $amount = (float) $priceStr;
+        $stateData['payment_amount'] = $amount;
+        $stateData['state'] = 'waiting_for_payment_photo';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $msg = "📸 *[REGISTRAR PAGO - PASO 4]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Monto a Pagar:* " . number_format($amount, 2) . " {$stateData['payment_currency']}\n\n"
+             . "Por favor, envía la **foto del comprobante de pago** (capture de pantalla de la transferencia, Zelle, etc.).\n\n"
+             . "_Si no tienes foto o prefieres no subirla, escribe *saltar* o presiona el botón de abajo._";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '⏭️ Saltar Foto', 'callback_data' => 'skip_payment_photo']
+                ],
+                [
+                    ['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']
+                ]
+            ]
+        ];
+
+        $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+    }
+
+    /**
+     * Saltar foto desde texto.
+     */
+    protected function skipPaymentPhoto($fromId, $chatId, array $stateData): void
+    {
+        $stateData['photo_url'] = null;
+        $stateData['state'] = 'waiting_for_payment_reference_manual';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $msg = "📝 *[REFERENCIA DE TRANSACCIÓN]*\n\n"
+             . "Por favor, escribe el **número de referencia** de la transacción (o escribe `ninguno` si no aplica):";
+
+        $this->telegramService->sendMessage($msg, $chatId);
+    }
+
+    /**
+     * Saltar foto desde callback.
+     */
+    protected function skipPaymentPhotoFromCallback($fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_payment_photo') {
+            $this->answerCallback($callbackQueryId, 'Sesión inválida.');
+            return;
+        }
+
+        $stateData['photo_url'] = null;
+        $stateData['state'] = 'waiting_for_payment_reference_manual';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, 'Foto saltada.');
+
+        $msg = "📝 *[REFERENCIA DE TRANSACCIÓN]*\n\n"
+             . "Por favor, escribe el **número de referencia** de la transacción (o escribe `ninguno` si no aplica):";
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+        ]);
+    }
+
+    /**
+     * Procesar la foto enviada por el usuario.
+     */
+    protected function processPaymentPhoto(array $photoArray, $fromId, $chatId, array $stateData): void
+    {
+        $this->telegramService->sendMessage("⚡ *[PROCESANDO COMPROBANTE]*\n\nAnalizando la imagen con Inteligencia Artificial para extraer el número de referencia...", $chatId);
+
+        try {
+            // Obtener y descargar archivo de Telegram usando el servicio existente
+            $largestPhoto = end($photoArray);
+            $fileId = $largestPhoto['file_id'];
+            $tempPath = $this->telegramService->downloadFile($fileId);
+
+            if (!$tempPath || !file_exists($tempPath)) {
+                throw new \Exception('No se pudo descargar el archivo del comprobante de Telegram.');
+            }
+
+            $extension = pathinfo($tempPath, PATHINFO_EXTENSION) ?: 'jpg';
+
+            // Llamar a Gemini para extraer la referencia
+            $geminiService = app(\App\Services\GeminiService::class);
+            $reference = $geminiService->extractPaymentReference($tempPath);
+
+            // Guardar la foto en la carpeta pública del ERP
+            $publicPaymentsDir = public_path('uploads/payments');
+            if (!file_exists($publicPaymentsDir)) {
+                mkdir($publicPaymentsDir, 0755, true);
+            }
+            $finalFileName = uniqid('pay_img_') . '.' . $extension;
+            $finalPath = $publicPaymentsDir . '/' . $finalFileName;
+            rename($tempPath, $finalPath);
+
+            $stateData['photo_url'] = '/uploads/payments/' . $finalFileName;
+
+            if (!empty($reference)) {
+                $stateData['reference'] = $reference;
+                $stateData['state'] = 'waiting_for_payment_reference_confirm';
+                Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+                $msg = "🔍 *[REFERENCIA DETECTADA]*\n\n"
+                     . "Se ha extraído el número de referencia:\n"
+                     . "👉 `{$reference}`\n\n"
+                     . "¿Es correcto? Si es correcto presiona el botón. Si no es correcto, simplemente escribe el número de referencia correcto:";
+
+                $replyMarkup = [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '✅ Sí, Confirmar y Registrar', 'callback_data' => 'confirm_payment_registration']
+                        ]
+                    ]
+                ];
+                $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+            } else {
+                // No se pudo detectar, pedir manual
+                $stateData['state'] = 'waiting_for_payment_reference_manual';
+                Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+                $msg = "⚠️ *[REFERENCIA NO DETECTADA]*\n\n"
+                     . "No se pudo extraer de forma automática el número de referencia del comprobante.\n\n"
+                     . "Por favor, escribe el **número de referencia** manualmente para completar el pago:";
+                $this->telegramService->sendMessage($msg, $chatId);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al procesar comprobante de pago: ' . $e->getMessage());
+            $stateData['state'] = 'waiting_for_payment_reference_manual';
+            Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+            $this->telegramService->sendMessage("⚠️ Ocurrió un inconveniente al analizar el comprobante. Por favor, escribe el **número de referencia** manualmente:", $chatId);
+        }
+    }
+
+    /**
+     * Procesar la referencia escrita manualmente.
+     */
+    protected function processUserProvidedPaymentReference(string $text, $fromId, $chatId, array $stateData): void
+    {
+        $ref = trim($text);
+        $stateData['reference'] = (strtolower($ref) === 'ninguno') ? null : $ref;
+        
+        // Ejecutar el pago inmediatamente
+        $this->executeTelegramPayment($fromId, $chatId, $stateData);
+    }
+
+    /**
+     * Confirmar el pago cuando el OCR fue correcto y el usuario presionó el botón de confirmar.
+     */
+    protected function confirmPaymentRegistration($fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData) {
+            $this->answerCallback($callbackQueryId, 'Sesión inválida.');
+            return;
+        }
+
+        $this->answerCallback($callbackQueryId, 'Registrando pago...');
+        $this->executeTelegramPayment($fromId, $chatId, $stateData);
+    }
+
+    /**
+     * Registrar el pago en la base de datos siguiendo la arquitectura del ERP.
+     */
+    protected function executeTelegramPayment($fromId, $chatId, array $stateData): void
+    {
+        $adminId = \App\Models\User::first()?->id ?? 1;
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            // Autenticar temporalmente para evitar problemas de auditoría
+            \Illuminate\Support\Facades\Auth::loginUsingId($adminId);
+
+            $invoiceIds = $stateData['invoice_ids'];
+            $paymentCurrency = $stateData['payment_currency'];
+            $paymentAmount = $stateData['payment_amount'];
+            $paymentMethod = $stateData['payment_method'];
+            $reference = $stateData['reference'] ?? null;
+            $photoUrl = $stateData['photo_url'] ?? null;
+
+            // 1. Obtener facturas y calcular monto total de la deuda
+            $invoices = \App\Models\Invoice::whereIn('id', $invoiceIds)->get();
+            
+            // Tasa de cambio de la moneda del pago
+            $normalizedCurrency = ($paymentCurrency === 'Bs' || $paymentCurrency === 'VES') ? 'BS' : $paymentCurrency;
+            $rateCurrency = ($normalizedCurrency === 'COP') ? 'COPC' : $normalizedCurrency;
+            $exchangeRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+            $rateValue = $exchangeRate ? (float) $exchangeRate->rate : 1.0000;
+
+            // Calcular monto equivalente en USD
+            if ($paymentCurrency === 'USD') {
+                $amountUSD = $paymentAmount;
+            } else {
+                $amountUSD = round($paymentAmount / $rateValue, 2);
+            }
+
+            // Calcular deuda total restante en USD de estas facturas antes de este pago
+            $totalInvoiceDebtUSD = 0;
+            foreach ($invoices as $invoice) {
+                $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                    $query->where('id', $invoice->id);
+                })->get();
+
+                $totalPaidUSD = 0;
+                foreach ($invoicePayments as $p) {
+                    if ($p->payment_method === 'USD') {
+                        $totalPaidUSD += $p->amount;
+                        $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                        $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                        if ($exRate) {
+                            $totalPaidUSD += round($p->amount / $exRate->rate, 2);
+                        }
+                    }
+                }
+                $totalInvoiceDebtUSD += max(0, $invoice->total_usd - $totalPaidUSD);
+            }
+
+            // 2. Registrar el pago en invoice_payments
+            $payment = \App\Models\InvoicePayment::create([
+                'payment_date' => now()->toDateString(),
+                'amount' => $paymentAmount,
+                'payment_method' => $normalizedCurrency,
+                'reference' => $reference,
+                'status' => 'paid',
+                'payment_by' => $adminId,
+                'photo_url' => $photoUrl,
+                'method' => $paymentMethod
+            ]);
+
+            // 3. Crear relaciones pivot
+            foreach ($invoiceIds as $invoiceId) {
+                \Illuminate\Support\Facades\DB::table('invoice_payment_invoice')->insert([
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoiceId,
+                ]);
+            }
+
+            // 4. Determinar estado de pago (El bot siempre liquida las facturas seleccionadas como pago completo)
+            $isFullPayment = true;
+            $paymentStatus = 1; // 1 = Pagado (Liquidado)
+
+            // Actualizar facturas
+            $updateData = [
+                'status' => 'ordered',
+                'status_payment' => $paymentStatus,
+                'updated_at' => now(),
+                'payment_date' => now()->toDateString(),
+            ];
+            \App\Models\Invoice::whereIn('id', $invoiceIds)->update($updateData);
+
+            // 5. Crear registro de Gasto (Expense)
+            $category = \App\Models\ExpenseCategory::firstOrCreate(['name' => 'Pagos de Facturas']);
+            $firstInvoice = $invoices->first();
+
+            $mapping = [
+                'CASH' => 'Efectivo',
+                'CARD' => 'Tarjeta',
+                'MOBILE' => 'Pago Móvil',
+                'TRANSFER' => 'Transferencia',
+                'BINANCE' => 'Binance',
+                'PAYPAL' => 'PayPal',
+                'CREDIT' => 'Crédito',
+            ];
+            $countValue = $mapping[$paymentMethod] ?? 'Efectivo';
+
+            $expenseRate = $firstInvoice->is_indexed ? $rateValue : ($firstInvoice->currency === 'USD' ? 1.0000 : $firstInvoice->exchange_rate);
+            $taxAmount = $firstInvoice->is_indexed ? ($firstInvoice->tax_amount / $firstInvoice->exchange_rate) * $expenseRate ?? 0 : ($firstInvoice->tax_amount ?? 0);
+
+            \App\Models\Expense::create([
+                'name' => "Pago Factura # {$firstInvoice->invoice_number} - Proveedor: {$firstInvoice->supplier->name}",
+                'category_id' => $category->id,
+                'amount' => $paymentAmount,
+                'conversion_rate' => $rateValue,
+                'currency' => $normalizedCurrency,
+                'expense_date' => $payment->payment_date,
+                'user_id' => $adminId,
+                'has_invoice' => true,
+                'is_deductible' => true,
+                'tax_amount' => $taxAmount,
+                'total_usd' => $amountUSD,
+                'invoice_number' => $firstInvoice->invoice_number,
+                'invoice_date' => $firstInvoice->created_invoice_date,
+                'control_number' => $firstInvoice->control_number,
+                'type_of_expense' => 'Normal',
+                'count' => $countValue,
+            ]);
+
+            // 6. Registrar Transacción de caja
+            \App\Models\Transaction::create([
+                'user_id' => $adminId,
+                'category_id' => $category->id,
+                'exchange_rate' => $rateValue,
+                'description' => substr("Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$firstInvoice->supplier->name}", 0, 1000),
+                'currency' => $normalizedCurrency,
+                'type' => $paymentMethod,
+                'amount' => $paymentAmount,
+                'movement_type' => 'OUT',
+                'transaction_date' => $payment->payment_date,
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            // 7. Responder con éxito y continuar con la cola
+            $statusText = $isFullPayment ? 'Pago Completo (Liquidado) 🟩' : 'Pago Parcial (Saldo Restante) 🟨';
+            $remainingText = $isFullPayment ? '0.00 USD' : number_format(max(0, $totalInvoiceDebtUSD - $amountUSD), 2) . ' USD';
+
+            $msg = "✅ *[PAGO PROCESADO EXITOSAMENTE]*\n\n"
+                 . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+                 . "💰 *Monto Pagado:* " . number_format($paymentAmount, 2) . " {$paymentCurrency}\n"
+                 . "📈 *Estatus del Pago:* `{$statusText}`\n"
+                 . "💵 *Monto en USD:* " . number_format($amountUSD, 2) . " USD\n"
+                 . "📝 *Referencia:* " . ($reference ?: 'Ninguna') . "\n"
+                 . "⚖️ *Saldo Restante:* `{$remainingText}`\n\n"
+                 . "_El pago ha quedado asentado en el histórico, egresos y cierre de caja del ERP._";
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+            // Avanzar en la cola de proveedores
+            $queue = Cache::get('telegram_payments_queue_' . $fromId);
+            if ($queue) {
+                $queue['index']++;
+                Cache::put('telegram_payments_queue_' . $fromId, $queue, 1800);
+            }
+
+            // Limpiar estado temporal de este pago
+            Cache::forget('telegram_state_' . $fromId);
+
+            // Presentar el siguiente proveedor
+            $this->sendNextSupplierPaymentPrompt($fromId, $chatId);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Log::error('[TelegramWebhook] Error al procesar pago: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->telegramService->sendMessage("❌ Error al registrar el pago en la base de datos: " . $e->getMessage(), $chatId);
+            Cache::forget('telegram_state_' . $fromId);
+        }
+    }
+
+    /**
+     * Consultar y listar deudas agrupadas por proveedor y día para los próximos 7 días (Meramente informativo).
+     */
+    public function sendUpcoming7DaysPayments($chatId): void
+    {
+        try {
+            $startDate = \Carbon\Carbon::today()->toDateString();
+            $endDate = \Carbon\Carbon::today()->addDays(7)->toDateString();
+
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->whereBetween('payment_date', [$startDate, $endDate])
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("📅 *[PAGOS PRÓXIMOS 7 DÍAS]*\n\nNo hay pagos programados desde hoy hasta el " . \Carbon\Carbon::today()->addDays(7)->format('d/m/Y') . ".", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor_id y fecha de pago (igual que en /finances/pending-payments)
+            $grouped = $invoices->groupBy(function ($invoice) {
+                return $invoice->supplier_id . '_' . $invoice->payment_date;
+            });
+
+            $msg = "📅 *[PAGOS PROGRAMADOS - PRÓXIMOS 7 DÍAS]*\n\n";
+
+            foreach ($grouped as $key => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+                $paymentDateFormatted = $firstInvoice->payment_date ? \Carbon\Carbon::parse($firstInvoice->payment_date)->format('d/m/Y') : 'Sin Fecha';
+                
+                $msg .= "🏢 *{$supplierName}*\n📅 *Fecha de Pago:* `{$paymentDateFormatted}`\n";
+
+                $groupInvoicesText = "";
+                $groupTotalOriginal = 0;
+                $currency = $firstInvoice->currency;
+
+                foreach ($group as $invoice) {
+                    // Calcular el saldo restante en su moneda original (replicando la lógica de la vista)
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    // Replicar exactamente la lógica de /finances/pending-payments
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        if ($invoicePaidUSD > 0) {
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+                    }
+
+                    $groupInvoicesText .= "  • `{$invoice->invoice_number}`: " . number_format($invoiceRemainingOriginal, 2) . " {$invoice->currency}\n";
+                    $groupTotalOriginal += $invoiceRemainingOriginal;
+                }
+
+                if (empty($groupInvoicesText)) {
+                    continue;
+                }
+
+                $msg .= $groupInvoicesText;
+                $msg .= "💰 *Total del día:* `" . number_format($groupTotalOriginal, 2) . " {$currency}`\n";
+                $msg .= "───────────────────\n";
+            }
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al enviar pagos de 7 días: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al obtener los pagos de los próximos 7 días: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Obtener el tipo de bot activo basado en la variable de entorno o autodetectando la base de datos conectada.
+     */
+    protected function getBotType(): string
+    {
+        // 1. Prioridad: Variable de entorno explícita en el .env de cada despliegue
+        $envType = env('TELEGRAM_BOT_TYPE');
+        if ($envType) {
+            return strtolower(trim($envType));
+        }
+
+        // 2. Detección automática por nombre de base de datos activa
+        $dbName = config('database.connections.mysql.database');
+        if (str_contains($dbName, 'farmacia')) {
+            return 'farmacia';
+        }
+        if (str_contains($dbName, 'toffle') || str_contains($dbName, 'minimarket') || str_contains($dbName, 'restaurant')) {
+            return 'restaurante';
+        }
+        if (str_contains($dbName, 'golclub') || str_contains($dbName, 'cancha') || str_contains($dbName, 'reserva')) {
+            return 'canchas';
+        }
+
+        // Permitir todo si no se puede determinar
+        return 'all';
+    }
+
+    /**
+     * Inicializar el flujo de deudas detallado, dividiendo en indexadas y no indexadas.
+     */
+    public function initDebtsFlow($fromId, $chatId): void
+    {
+        try {
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes proveedores con deudas pendientes.", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor
+            $grouped = $invoices->groupBy('supplier_id');
+            $suppliersList = [];
+
+            foreach ($grouped as $supplierId => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+
+                $indexedInvoices = [];
+                $nonIndexedInvoices = [];
+                
+                $totalUSD = 0;
+                $totalBS = 0;
+
+                foreach ($group as $invoice) {
+                    // Calcular abonos
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    // Determinar monto original en la moneda correspondiente
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                        
+                        $totalUSD += $invoiceRemainingUSD;
+                        $totalBS += $invoiceRemainingOriginal;
+                        
+                        $indexedInvoices[] = [
+                            'number' => $invoice->invoice_number,
+                            'date' => $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m/Y') : 'Sin Fecha',
+                            'amount_original' => $invoiceRemainingOriginal,
+                            'currency' => $invoice->currency,
+                            'amount_usd' => $invoiceRemainingUSD,
+                        ];
+                    } else {
+                        // No indexada (o en otra moneda)
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+                        if ($invoicePaidUSD > 0) {
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+
+                        // Sumar a los totales correspondientes
+                        if ($invoice->currency === 'Bs') {
+                            $totalBS += $invoiceRemainingOriginal;
+                            $totalUSD += $invoiceRemainingUSD;
+                        } elseif ($invoice->currency === 'USD') {
+                            $totalUSD += $invoiceRemainingOriginal;
+                            // Convertir de forma referencial a Bs para el total consolidado
+                            $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                            $totalBS += round($invoiceRemainingOriginal * $bcvRate, 2);
+                        } else {
+                            // COP u otros
+                            $totalUSD += $invoiceRemainingUSD;
+                            $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                            $totalBS += round($invoiceRemainingUSD * $bcvRate, 2);
+                        }
+
+                        $nonIndexedInvoices[] = [
+                            'number' => $invoice->invoice_number,
+                            'date' => $invoice->payment_date ? \Carbon\Carbon::parse($invoice->payment_date)->format('d/m/Y') : 'Sin Fecha',
+                            'amount_original' => $invoiceRemainingOriginal,
+                            'currency' => $invoice->currency,
+                            'amount_usd' => $invoiceRemainingUSD,
+                        ];
+                    }
+                }
+
+                if (empty($indexedInvoices) && empty($nonIndexedInvoices)) {
+                    continue;
+                }
+
+                $suppliersList[] = [
+                    'supplier_id' => $supplierId,
+                    'supplier_name' => $supplierName,
+                    'total_usd' => $totalUSD,
+                    'total_bs' => $totalBS,
+                    'indexed' => $indexedInvoices,
+                    'non_indexed' => $nonIndexedInvoices,
+                ];
+            }
+
+            if (empty($suppliersList)) {
+                $this->telegramService->sendMessage("🎉 *[EXCELENTE]*\n\nNo tienes deudas pendientes.", $chatId);
+                return;
+            }
+
+            // Calcular totales globales consolidados de todos los proveedores combinados
+            $globalUSD = collect($suppliersList)->sum('total_usd');
+            $globalBS = collect($suppliersList)->sum('total_bs');
+
+            $cacheData = [
+                'global_usd' => $globalUSD,
+                'global_bs' => $globalBS,
+                'suppliers' => $suppliersList
+            ];
+
+            Cache::put('telegram_debts_queue_' . $fromId, $cacheData, 600);
+            $this->sendSupplierDebtPrompt($fromId, $chatId, 0);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al iniciar flujo de deudas: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al cargar las deudas: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Enviar mensaje de deudas con totales globales y paginación por proveedor.
+     */
+    public function sendSupplierDebtPrompt($fromId, $chatId, int $index, ?int $messageId = null): void
+    {
+        $data = Cache::get('telegram_debts_queue_' . $fromId);
+        if (!$data || !isset($data['suppliers'][$index])) {
+            $this->telegramService->sendMessage("❌ No se pudo cargar el listado de deudas.", $chatId);
+            return;
+        }
+
+        $globalUSD = $data['global_usd'] ?? 0;
+        $globalBS = $data['global_bs'] ?? 0;
+        $supplier = $data['suppliers'][$index];
+        $totalCount = count($data['suppliers']);
+        $currentIndexNum = $index + 1;
+
+        $msg = "🌍 *[DEUDA GLOBAL ACUMULADA]*\n"
+             . "  • `💵 " . number_format($globalUSD, 2) . " USD`\n"
+             . "  • `🇻🇪 " . number_format($globalBS, 2) . " Bs`\n"
+             . "───────────────────\n\n"
+             . "📊 *[PROVEEDOR - {$currentIndexNum}/{$totalCount}]*\n"
+             . "🏢 *Nombre:* {$supplier['supplier_name']}\n"
+             . "💰 *Deuda del Proveedor:*\n"
+             . "  • `" . number_format($supplier['total_bs'], 2) . " Bs`\n"
+             . "  • `" . number_format($supplier['total_usd'], 2) . " USD`\n\n"
+             . "───────────────────\n";
+
+        // Bloque de Facturas Indexadas
+        $msg .= "📈 *FACTURAS INDEXADAS:*\n";
+        if (empty($supplier['indexed'])) {
+            $msg .= "  _Ninguna_\n";
+        } else {
+            foreach ($supplier['indexed'] as $inv) {
+                $msg .= "  • `#{$inv['number']}` (Pago: `{$inv['date']}`)\n"
+                      . "    *Monto:* `" . number_format($inv['amount_original'], 2) . " {$inv['currency']}` (≈ " . number_format($inv['amount_usd'], 2) . " USD)\n";
+            }
+        }
+
+        $msg .= "\n📌 *FACTURAS NO INDEXADAS:*\n";
+        if (empty($supplier['non_indexed'])) {
+            $msg .= "  _Ninguna_\n";
+        } else {
+            foreach ($supplier['non_indexed'] as $inv) {
+                $msg .= "  • `#{$inv['number']}` (Pago: `{$inv['date']}`)\n"
+                      . "    *Monto:* `" . number_format($inv['amount_original'], 2) . " {$inv['currency']}`";
+                if ($inv['currency'] !== 'USD') {
+                    $msg .= " (≈ " . number_format($inv['amount_usd'], 2) . " USD)";
+                }
+                $msg .= "\n";
+            }
+        }
+
+        // Crear botones de navegación
+        $buttons = [];
+        $navRow = [];
+        if ($index > 0) {
+            $navRow[] = ['text' => '⬅️ Anterior', 'callback_data' => 'show_debt_' . ($index - 1)];
+        }
+        if ($index < $totalCount - 1) {
+            $navRow[] = ['text' => 'Siguiente ➡️', 'callback_data' => 'show_debt_' . ($index + 1)];
+        }
+        if (!empty($navRow)) {
+            $buttons[] = $navRow;
+        }
+
+        // Botón para registrar pago y botón de salir
+        $buttons[] = [
+            ['text' => '💳 Registrar Pago', 'callback_data' => 'pay_supplier_' . $supplier['supplier_id']],
+            ['text' => '❌ Salir', 'callback_data' => 'exit_debts']
+        ];
+
+        $replyMarkup = ['inline_keyboard' => $buttons];
+
+        $token = config('services.telegram.bot_token');
+        if ($messageId) {
+            Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => $replyMarkup,
+            ]);
+        } else {
+            Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $msg,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => $replyMarkup,
+            ]);
+        }
+    }
+
+    /**
+     * Enviar la lista de horarios fijos configurados para el día actual.
+     */
+    protected function sendDailyFixedSchedules($chatId): void
+    {
+        $dayOfWeek = \Carbon\Carbon::now()->dayOfWeekIso; // 1 = Lunes, ..., 7 = Domingo
+        $todayStr = \Carbon\Carbon::now()->toDateString();
+        
+        $fixedSchedules = \App\Models\FixedSchedule::with(['court', 'exceptions' => function($q) use ($todayStr) {
+            $q->where('date', $todayStr);
+        }])
+        ->where('day_of_week', $dayOfWeek)
+        ->orderBy('start_time')
+        ->get();
+
+        if ($fixedSchedules->isEmpty()) {
+            $this->telegramService->sendMessage("📅 *[HORARIOS FIJOS - HOY]*\n\nNo tienes ningún horario fijo programado para el día de hoy.", $chatId);
+            return;
+        }
+
+        $this->telegramService->sendMessage("📅 *[HORARIOS FIJOS - HOY]*\n\nListando los horarios fijos de hoy:", $chatId);
+
+        foreach ($fixedSchedules as $fijo) {
+            $isSaltado = $fijo->exceptions->isNotEmpty();
+            $statusText = $isSaltado ? "🚫 *[SALTADO HOY]*" : "✅ *[ACTIVO]*";
+            $formattedStart = \Carbon\Carbon::parse($fijo->start_time)->format('g:i A');
+            $formattedEnd = \Carbon\Carbon::parse($fijo->end_time)->format('g:i A');
+            
+            $msg = "📌 *Cancha:* {$fijo->court->name}\n"
+                 . "⏰ *Horario:* {$formattedStart} - {$formattedEnd}\n"
+                 . "👤 *Cliente:* {$fijo->client_name}\n"
+                 . "📱 *WhatsApp:* +{$fijo->client_whatsapp}\n"
+                 . "Estado: {$statusText}";
+                 
+            $buttons = [];
+            if (!$isSaltado) {
+                $buttons[] = [
+                    [
+                        'text' => '⏭️ Saltar Hoy',
+                        'callback_data' => "skip_fixed_{$fijo->id}_{$todayStr}"
+                    ]
+                ];
+            } else {
+                $buttons[] = [
+                    [
+                        'text' => '🔄 Restaurar Hoy',
+                        'callback_data' => "restore_fixed_{$fijo->id}_{$todayStr}"
+                    ]
+                ];
+            }
+
+            $buttons[] = [
+                [
+                    'text' => '🗑️ Borrar Permanente',
+                    'callback_data' => "delete_fixed_{$fijo->id}"
+                ]
+            ];
+
+            $replyMarkup = ['inline_keyboard' => $buttons];
+            
+            $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
+        }
+    }
+
+    /**
+     * Procesar los callbacks relacionados con la gestión de horarios fijos.
+     */
+    protected function handleFixedScheduleCallback(string $callbackData, $chatId, $messageId, string $callbackQueryId): void
+    {
+        $parts = explode('_', $callbackData);
+        $action = $parts[0] . '_' . $parts[1]; // 'skip_fixed', 'restore_fixed', 'delete_fixed'
+        $id = (int)$parts[2];
+        $dateParam = $parts[3] ?? null;
+
+        $fixedSchedule = \App\Models\FixedSchedule::with(['court'])->find($id);
+
+        if (!$fixedSchedule) {
+            $this->answerCallback($callbackQueryId, 'El horario fijo ya no existe.');
+            return;
+        }
+
+        if ($action === 'skip_fixed') {
+            \App\Models\FixedScheduleException::firstOrCreate([
+                'fixed_schedule_id' => $id,
+                'date' => $dateParam
+            ]);
+
+            $this->answerCallback($callbackQueryId, '⏭️ Horario fijo saltado únicamente por hoy.');
+        } elseif ($action === 'restore_fixed') {
+            \App\Models\FixedScheduleException::where('fixed_schedule_id', $id)
+                ->where('date', $dateParam)
+                ->delete();
+
+            $this->answerCallback($callbackQueryId, '🔄 Horario fijo restaurado para hoy.');
+        } elseif ($action === 'delete_fixed') {
+            $fixedSchedule->delete();
+            $this->answerCallback($callbackQueryId, '🗑️ Horario fijo eliminado permanentemente.');
+            
+            // Editar mensaje para reflejar la eliminación
+            $token = config('services.telegram.bot_token');
+            Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => "🗑️ *[ELIMINADO PERMANENTEMENTE]*\n\nEl horario fijo de *{$fixedSchedule->client_name}* ha sido eliminado por completo.",
+                'parse_mode' => 'Markdown',
+            ]);
+            return;
+        }
+
+        // Si fue saltado o restaurado, actualizamos el mensaje original para mostrar el nuevo estado
+        $todayStr = \Carbon\Carbon::now()->toDateString();
+        $isSaltado = \App\Models\FixedScheduleException::where('fixed_schedule_id', $id)
+            ->where('date', $todayStr)
+            ->exists();
+
+        $statusText = $isSaltado ? "🚫 *[SALTADO HOY]*" : "✅ *[ACTIVO]*";
+        $formattedStart = \Carbon\Carbon::parse($fixedSchedule->start_time)->format('g:i A');
+        $formattedEnd = \Carbon\Carbon::parse($fixedSchedule->end_time)->format('g:i A');
+
+        $msg = "📌 *Cancha:* {$fixedSchedule->court->name}\n"
+             . "⏰ *Horario:* {$formattedStart} - {$formattedEnd}\n"
+             . "👤 *Cliente:* {$fixedSchedule->client_name}\n"
+             . "📱 *WhatsApp:* +{$fixedSchedule->client_whatsapp}\n"
+             . "Estado: {$statusText}";
+
+        $buttons = [];
+        if (!$isSaltado) {
+            $buttons[] = [
+                [
+                    'text' => '⏭️ Saltar Hoy',
+                    'callback_data' => "skip_fixed_{$fixedSchedule->id}_{$todayStr}"
+                ]
+            ];
+        } else {
+            $buttons[] = [
+                [
+                    'text' => '🔄 Restaurar Hoy',
+                    'callback_data' => "restore_fixed_{$fixedSchedule->id}_{$todayStr}"
+                ]
+            ];
+        }
+
+        $buttons[] = [
+            [
+                'text' => '🗑️ Borrar Permanente',
+                'callback_data' => "delete_fixed_{$fixedSchedule->id}"
+            ]
+        ];
+
+        $replyMarkup = ['inline_keyboard' => $buttons];
+        $token = config('services.telegram.bot_token');
+
+        Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode($replyMarkup),
+        ]);
+    }
+
+    /**
+     * Procesar el pedido automático de la IA evaluando el precio más bajo
+     * y descartando si supera el 20% del costo base del producto.
+     */
+    protected function processAutomaticOrderFromTelegram($chatId): void
+    {
+        $this->telegramService->sendMessage("🤖 *[ASISTENTE IA]*\n\nIniciando análisis de fallas y comparación de precios con proveedores. Por favor, espera...", $chatId);
+
+        try {
+            $iaReportService = app(\App\Services\Reports\IaAssistantReportService::class);
+            
+            // Traer el reporte total de reabastecimiento (Fallas)
+            $report = $iaReportService->getReplenishReportAll([
+                'tipo_filtracion' => 'average',
+                'lapso_de_tiempo' => '30 days',
+                'stock' => 'fallas',
+                'with_suppliers' => true
+            ]);
+
+            // Consolidar todos los productos a reponer
+            $productosAReponer = array_merge(
+                $report['increased'] ?? [],
+                $report['decreased'] ?? [],
+                $report['stable'] ?? []
+            );
+
+            if (empty($productosAReponer)) {
+                $this->telegramService->sendMessage("✅ *[ASISTENTE IA]*\n\nNo se encontraron productos con faltantes o fallas pendientes para reponer hoy.", $chatId);
+                return;
+            }
+
+            $ordersToUpdate = [];
+            $productosPedidos = [];
+            $productosDescartados = []; // Exceden el 20%
+            $sinProveedor = [];
+
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            foreach ($productosAReponer as $item) {
+                // $item es un objeto hydrated por el repository
+                $productId = $item->id;
+                $productName = $item->name;
+                $qtyToOrder = abs((float)($item->solicitar ?? 1)); // Cantidad recomendada por IA
+
+                if ($qtyToOrder <= 0) {
+                    continue;
+                }
+
+                $product = \App\Models\Product::find($productId);
+                if (!$product) {
+                    continue;
+                }
+
+                // Costo base actual registrado en la base de datos
+                $costoBase = (float)($product->unit_cost ?? 0);
+
+                // Obtener proveedores y sus precios vinculados a este producto
+                $bestSupplier = $item->best_supplier ?? null;
+                
+                if (!$bestSupplier || !isset($bestSupplier['id'])) {
+                    $sinProveedor[] = $productName;
+                    continue;
+                }
+
+                $bestSupplierId = $bestSupplier['id'];
+                $productSupplierId = $bestSupplier['product_suppliers_id'] ?? null;
+                $costoProveedor = (float)($item->best_supplier_price ?? 0);
+
+                if ($costoProveedor <= 0) {
+                    $sinProveedor[] = $productName;
+                    continue;
+                }
+
+                // VALIDACIÓN: No pedir si supera el 20% del costo base actual (siempre que el costo base sea mayor a 0)
+                if ($costoBase > 0 && $costoProveedor > ($costoBase * 1.20)) {
+                    $pctExceso = round((($costoProveedor - $costoBase) / $costoBase) * 100, 2);
+                    $productosDescartados[] = "⚠️ *{$productName}*:\n  • Costo base: {$costoBase} USD\n  • Ofrecido: {$costoProveedor} USD (+{$pctExceso}%)";
+                    continue;
+                }
+
+                // Buscar o crear la AutoOrder para este proveedor
+                $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                    [
+                        'supplier_id' => $bestSupplierId,
+                        'status' => \App\Enums\AutoOrderStatus::PENDING,
+                    ],
+                    [
+                        'order_date' => now(),
+                        'total_items' => 0,
+                        'total_quantity' => 0,
+                        'total_amount' => 0,
+                    ]
+                );
+
+                $ordersToUpdate[$autoOrder->id] = $autoOrder;
+
+                // Añadir o actualizar detalle
+                $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                    ->where('product_id', $productId)
+                    ->first();
+
+                if ($detail) {
+                    $detail->quantity += $qtyToOrder;
+                    $detail->unit_cost = $costoProveedor;
+                    $detail->subtotal = (float) $detail->quantity * $costoProveedor;
+                    if ($productSupplierId) {
+                        $detail->product_suppliers_id = $productSupplierId;
+                    }
+                    $detail->save();
+                } else {
+                    \App\Models\AutoOrderDetail::create([
+                        'order_id' => $autoOrder->id,
+                        'product_id' => $productId,
+                        'product_suppliers_id' => $productSupplierId,
+                        'quantity' => $qtyToOrder,
+                        'unit_cost' => $costoProveedor,
+                        'subtotal' => $qtyToOrder * $costoProveedor,
+                    ]);
+                }
+
+                $product->update(['manual_solicitar' => null]);
+                $productosPedidos[$autoOrder->id][] = "• {$productName} (x{$qtyToOrder}) - {$costoProveedor} USD";
+            }
+
+            // Actualizar totales de todas las órdenes modificadas
+            $controller = app(\App\Http\Controllers\Api\IaAssistantActionController::class);
+            foreach ($ordersToUpdate as $order) {
+                // Usamos reflexión o llamamos al método privado si estuviera disponible, o calculamos manualmente los totales:
+                $details = \App\Models\AutoOrderDetail::where('order_id', $order->id)->get();
+                $order->update([
+                    'total_items' => $details->count(),
+                    'total_quantity' => $details->sum('quantity'),
+                    'total_amount' => $details->sum('subtotal'),
+                ]);
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            // CONSTRUIR MENSAJE DE RETORNO
+            $msg = "📝 *[PEDIDO DE IA GENERADO]*\n\n";
+
+            if (!empty($ordersToUpdate)) {
+                $msg .= "🛒 *Órdenes creadas/actualizadas:*\n";
+                foreach ($ordersToUpdate as $orderId => $order) {
+                    $supplierName = $order->supplier->name ?? "Proveedor #{$order->supplier_id}";
+                    $totalAmount = number_format($order->total_amount, 2);
+                    $msg .= "\n🏢 *{$supplierName}* (Total: {$totalAmount} USD):\n";
+                    $msg .= implode("\n", $productosPedidos[$order->id]) . "\n";
+                }
+            } else {
+                $msg .= "❌ No se generaron nuevos pedidos.\n";
+            }
+
+            if (!empty($productosDescartados)) {
+                $msg .= "\n⛔ *Productos Omitidos (Exceden +20% del costo):*\n";
+                $msg .= implode("\n", $productosDescartados) . "\n";
+            }
+
+            if (!empty($sinProveedor)) {
+                $msg .= "\n❓ *Fallas sin proveedor o precio registrado:*\n";
+                $msg .= "• " . implode("\n• ", array_slice($sinProveedor, 0, 15));
+                if (count($sinProveedor) > 15) {
+                    $msg .= "\n... y " . (count($sinProveedor) - 15) . " más.";
+                }
+                $msg .= "\n";
+            }
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error procesando pedido automático desde Telegram: " . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al procesar el pedido automático: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Procesar callback de compra automática recomendada.
+     */
+    protected function handleStockoutAutoCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        // Formato: stockout_auto_{productId}_{supplierId}_{qty}_{productSupplierId}
+        $parts = explode('_', $callbackData);
+        $productId = (int)$parts[2];
+        $supplierId = (int)$parts[3];
+        $qty = (float)$parts[4];
+        $productSupplierId = isset($parts[5]) ? (int)$parts[5] : null;
+
+        $product = \App\Models\Product::find($productId);
+        $supplier = \App\Models\Supplier::find($supplierId);
+
+        if (!$product || !$supplier) {
+            $this->answerCallback($callbackQueryId, 'Producto o Proveedor no encontrado.');
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $offer = \App\Models\ProductSupplier::find($productSupplierId);
+            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+
+            // Crear o buscar la AutoOrder pendiente
+            $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                [
+                    'supplier_id' => $supplierId,
+                    'status' => \App\Enums\AutoOrderStatus::PENDING,
+                ],
+                [
+                    'order_date' => now(),
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                    'total_amount' => 0,
+                ]
+            );
+
+            // Crear o actualizar detalle
+            $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $qty;
+                $detail->unit_cost = $costoProveedor;
+                $detail->subtotal = (float)$detail->quantity * $costoProveedor;
+                if ($productSupplierId) {
+                    $detail->product_suppliers_id = $productSupplierId;
+                }
+                $detail->save();
+            } else {
+                \App\Models\AutoOrderDetail::create([
+                    'order_id' => $autoOrder->id,
+                    'product_id' => $productId,
+                    'product_suppliers_id' => $productSupplierId,
+                    'quantity' => $qty,
+                    'unit_cost' => $costoProveedor,
+                    'subtotal' => $qty * $costoProveedor,
+                ]);
+            }
+
+            // Recalcular totales de la orden
+            $details = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)->get();
+            $autoOrder->update([
+                'total_items' => $details->count(),
+                'total_quantity' => $details->sum('quantity'),
+                'total_amount' => $details->sum('subtotal'),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            $this->answerCallback($callbackQueryId, '🛒 Pedido confirmado exitosamente.');
+
+            if ($messageId) {
+                $token = config('services.telegram.bot_token');
+                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => "✅ *[PEDIDO DE AGOTADO CONFIRMADO]*\n\n📦 *Producto:* {$product->name}\n🏢 *Proveedor:* {$supplier->name}\n🔢 *Cantidad:* {$qty} unidades\n💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\nEl pedido se ha agregado exitosamente a la orden de compra en el ERP.",
+                    'parse_mode' => 'Markdown',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error procesando stockout auto callback: " . $e->getMessage());
+            $this->answerCallback($callbackQueryId, '❌ Error al procesar el pedido.');
+        }
+    }
+
+    /**
+     * Activar flujo conversacional para editar la cantidad a pedir.
+     */
+    protected function handleStockoutEditCallback(string $callbackData, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        // Formato: stockout_edit_{productId}_{supplierId}_{productSupplierId}
+        $parts = explode('_', $callbackData);
+        $productId = (int)$parts[2];
+        $supplierId = (int)$parts[3];
+        $productSupplierId = isset($parts[4]) ? (int)$parts[4] : null;
+
+        $product = \App\Models\Product::find($productId);
+        if (!$product) {
+            $this->answerCallback($callbackQueryId, 'Producto no encontrado.');
+            return;
+        }
+
+        Cache::put('telegram_state_' . $fromId, [
+            'state' => 'waiting_for_stockout_qty',
+            'product_id' => $productId,
+            'supplier_id' => $supplierId,
+            'product_supplier_id' => $productSupplierId,
+            'message_id' => $messageId,
+        ], 300);
+
+        $this->answerCallback($callbackQueryId);
+        $this->telegramService->sendMessage("✏️ *[MODIFICAR CANTIDAD]*\n\nEscribe la cantidad de unidades que deseas pedir para *{$product->name}*:", $chatId);
+    }
+
+    /**
+     * Procesar la cantidad ingresada por el usuario para el pedido de stockout.
+     */
+    protected function processUserProvidedStockoutQty(string $text, $fromId, $chatId, array $stateData): void
+    {
+        $qty = (float)$text;
+        if ($qty <= 0) {
+            $this->telegramService->sendMessage("⚠️ Por favor ingresa un número válido mayor a 0.", $chatId);
+            return;
+        }
+
+        $productId = $stateData['product_id'];
+        $supplierId = $stateData['supplier_id'];
+        $productSupplierId = $stateData['product_supplier_id'];
+        $originalMessageId = $stateData['message_id'];
+
+        $product = \App\Models\Product::find($productId);
+        $supplier = \App\Models\Supplier::find($supplierId);
+
+        if (!$product || !$supplier) {
+            $this->telegramService->sendMessage("❌ Producto o Proveedor no encontrado en el sistema.", $chatId);
+            Cache::forget('telegram_state_' . $fromId);
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $offer = \App\Models\ProductSupplier::find($productSupplierId);
+            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+
+            // Crear o buscar la AutoOrder
+            $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                [
+                    'supplier_id' => $supplierId,
+                    'status' => \App\Enums\AutoOrderStatus::PENDING,
+                ],
+                [
+                    'order_date' => now(),
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                    'total_amount' => 0,
+                ]
+            );
+
+            // Crear o actualizar detalle
+            $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $qty;
+                $detail->unit_cost = $costoProveedor;
+                $detail->subtotal = (float)$detail->quantity * $costoProveedor;
+                if ($productSupplierId) {
+                    $detail->product_suppliers_id = $productSupplierId;
+                }
+                $detail->save();
+            } else {
+                \App\Models\AutoOrderDetail::create([
+                    'order_id' => $autoOrder->id,
+                    'product_id' => $productId,
+                    'product_suppliers_id' => $productSupplierId,
+                    'quantity' => $qty,
+                    'unit_cost' => $costoProveedor,
+                    'subtotal' => $qty * $costoProveedor,
+                ]);
+            }
+
+            // Recalcular totales de la orden
+            $details = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)->get();
+            $autoOrder->update([
+                'total_items' => $details->count(),
+                'total_quantity' => $details->sum('quantity'),
+                'total_amount' => $details->sum('subtotal'),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            Cache::forget('telegram_state_' . $fromId);
+
+            $this->telegramService->sendMessage("✅ *[PEDIDO DE AGOTADO REGISTRADO]*\n\n📦 *Producto:* {$product->name}\n🏢 *Proveedor:* {$supplier->name}\n🔢 *Cantidad:* {$qty} unidades\n💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\nEl pedido personalizado se ha agregado a la orden de compra del ERP.", $chatId);
+
+            // Limpiar o actualizar mensaje original si es posible
+            if ($originalMessageId) {
+                try {
+                    $token = config('services.telegram.bot_token');
+                    Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                        'chat_id' => $chatId,
+                        'message_id' => $originalMessageId,
+                        'text' => "✅ *[PEDIDO PROCESADO]*\n\nSe ha solicitado la compra personalizada de {$qty} unidades para *{$product->name}* al proveedor *{$supplier->name}*.",
+                        'parse_mode' => 'Markdown',
+                    ]);
+                } catch (\Exception $ex) {
+                    // Ignorar si el mensaje original no se puede editar
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error al procesar unidades personalizadas de stockout: " . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al registrar el pedido personalizado: " . $e->getMessage(), $chatId);
+        }
     }
 }

@@ -86,6 +86,7 @@ class InventoryCycleController extends Controller
     public function storeProductCount(Request $request, $productId)
     {
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
+        $isSimple = \App\Models\GeneralSetting::first()?->cyclic_inventory_mode === 'simple';
 
         $validationRules = [
             'counted_quantity' => 'required|numeric|min:0',
@@ -96,6 +97,17 @@ class InventoryCycleController extends Controller
         // Solo requerir barcode si no se permite sin código de barras
         if (!$allowWithoutBarcode) {
             $validationRules['barcode'] = 'required|string';
+        }
+
+        // Si es verificación simple, validar distribución de lotes
+        if ($isSimple) {
+            $validationRules['updated_lots'] = 'nullable|array';
+            $validationRules['updated_lots.*.id'] = 'required_with:updated_lots|integer|exists:product_lots,id';
+            $validationRules['updated_lots.*.quantity'] = 'required_with:updated_lots|numeric|min:0';
+            $validationRules['new_lots'] = 'nullable|array';
+            $validationRules['new_lots.*.lot_number'] = 'required_with:new_lots|string|max:255';
+            $validationRules['new_lots.*.expiration_date'] = 'required_with:new_lots|date';
+            $validationRules['new_lots.*.quantity'] = 'required_with:new_lots|numeric|min:0';
         }
 
         $request->validate($validationRules);
@@ -116,6 +128,29 @@ class InventoryCycleController extends Controller
             $result = $this->inventoryCycleActionService->createProductCount($productId, $data);
 
             if ($result['success']) {
+                if ($isSimple) {
+                    $productCount = $result['data'];
+                    $approveData = [
+                        'updated_lots' => $request->input('updated_lots', []),
+                        'new_lots' => $request->input('new_lots', [])
+                    ];
+                    
+                    $approveResult = $this->inventoryCycleActionService->processAction($productCount, 'approve', $approveData);
+                    
+                    if (!$approveResult['success']) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Error al procesar la aprobación automática del inventario: ' . $approveResult['message']
+                        ], 400);
+                    }
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Conteo registrado y procesado exitosamente (Verificación Simple).',
+                        'data' => $approveResult['data']
+                    ], 201);
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => $result['message'],

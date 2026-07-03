@@ -9,6 +9,7 @@ use App\Models\Credit;
 use App\Models\FiscalHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Models\CashClosing;
 use Exception;
 use App\Exceptions\InsufficientStockException;
@@ -27,13 +28,16 @@ class OrderActionService
         // DB::beginTransaction();
         try {
             return DB::transaction(function () use ($data) {
-                $pendingOrder = Order::where('seller_id', $data['seller_id'])
+                $sellerId = Auth::id() ?: $data['seller_id'];
+                $data['seller_id'] = $sellerId;
+
+                $pendingOrder = Order::where('seller_id', $sellerId)
                     ->where('status', Order::PENDING)
                     ->withCount('details')
                     ->first();
 
                 if ($pendingOrder && $pendingOrder->details_count > 0) {
-                    throw new \Exception('Ya tienes una orden abierta con productos. Procesa esa orden o resérvala antes de crear una nueva.');
+                    return $pendingOrder;
                 }
 
                 // Si hay una orden pendiente pero está vacía, la eliminamos antes de crear la nueva
@@ -64,7 +68,6 @@ class OrderActionService
 
                 $order = Order::create($data);
                 $order->load('seller', 'client');
-                Log::info("Orden {$order->id} creada por vendedor {$data['seller_id']}");
                 return $order;
             });
 
@@ -109,6 +112,8 @@ class OrderActionService
                         'dish' => function ($q) {
                             $q->with('category');
                         },
+                        // Cargar relación de cancha para alquiler deportivo
+                        'court',
                     ]);
                 }
             ];
@@ -155,7 +160,7 @@ class OrderActionService
                 } elseif ($targetCurrency === 'COP') {
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
                     $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
-                    $unitPriceAtOrder = ceil(($price_usd * $tasaCop) / 100) * 100;
+                    $unitPriceAtOrder = ceil(round($price_usd * $tasaCop) / 100) * 100;
                 } elseif ($targetCurrency === 'BS') {
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
                     $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
@@ -505,7 +510,7 @@ class OrderActionService
             $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
 
             foreach ($order->details as $item) {
-                if ($item->dish_id) {
+                if ($item->dish_id || $item->court_id) {
                     $usdPrice = $item->unit_price_usd;
                     if ($targetCurrency === 'USD') {
                         $priceToSet = $usdPrice;
@@ -513,7 +518,7 @@ class OrderActionService
                         $resourceService = app(\App\Services\Resources\ResourceService::class);
                         $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
                         $rawCop = $usdPrice * $tasaCop;
-                        $priceToSet = ceil($rawCop / 100) * 100;
+                         $priceToSet = ceil(round($rawCop) / 100) * 100;
                     } elseif ($targetCurrency === 'BS') {
                         $resourceService = app(\App\Services\Resources\ResourceService::class);
                         $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
@@ -774,7 +779,20 @@ class OrderActionService
         $resourceService = app(ResourceService::class);
         $orderCurrency = strtoupper($order->currency ?? 'USD');
         $orderTotal = (float) $order->total_amount;
-        $tolerance = ($orderCurrency === 'COP') ? 100.0 : 0.5; // Tolerancia permitida para discrepancias menores (centavos o redondeos COP)
+        $isMulticurrency = false;
+        if (count($payments) > 1) {
+            $currencies = collect($payments)->pluck('currency')->map(fn($c) => strtoupper($c))->unique();
+            if ($currencies->count() > 1) {
+                $isMulticurrency = true;
+            }
+        }
+
+        if ($isMulticurrency) {
+            $bcvRate = $rates['BS'] ?? 1.0;
+            $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Equivalente a 3 USD de margen para absorber diferencias de tasa cruzada
+        } else {
+            $tolerance = ($orderCurrency === 'COP') ? 100.0 : 0.5;
+        }
 
         $rates = [
             'USD' => $resourceService->getExchangeRate('USD') ?: 1,
@@ -910,7 +928,7 @@ class OrderActionService
             // Bloqueo anti-overselling: cargar y bloquear los lotes de los productos de la orden
             // También cargamos la relación dish para los ítems de tipo plato (restaurante)
             $orderId->load(['details.product', 'details.dish']);
-            $productIds = $orderId->details->where('product_type', '!=', 'dish')->pluck('product_id')->unique()->filter()->values()->all();
+            $productIds = $orderId->details->whereNotIn('product_type', ['dish', 'court'])->pluck('product_id')->unique()->filter()->values()->all();
             
             // Si hay platos, extraer todos los product_id de sus ingredientes
             $dishDetails = $orderId->details->where('product_type', 'dish');
@@ -935,6 +953,11 @@ class OrderActionService
             }
 
             foreach ($orderId->details as $detail) {
+                // Las canchas son servicios sin inventario — omitir descuento de stock
+                if ($detail->product_type === 'court') {
+                    continue;
+                }
+
                 if ($detail->product_type === 'dish') {
                     $dish = \App\Models\Dish::with('ingredients')->findOrFail($detail->dish_id);
                     foreach ($dish->ingredients as $ingredient) {
@@ -1462,7 +1485,7 @@ class OrderActionService
                     'invoice_id' => null,
                     'supplier_id' => null,
                     'order_id' => $order->id,
-                    'user_id' => Auth::id() ?? $order->seller_id,
+                    'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
                     'stock_before' => $stockBefore,
                     'stock_after' => $totalStock,
                     'movement_date' => now(),

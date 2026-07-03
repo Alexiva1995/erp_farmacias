@@ -15,6 +15,7 @@ const router = useRouter()
 const brandingStore = useBrandingStore()
 
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket')
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental')
 
 // --- Estados ---
 const categories = ref([])
@@ -37,7 +38,7 @@ const headers = computed(() => {
     { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
   ]
   
-  if (!isMiniMarket.value) {
+  if (!isMiniMarket.value && !isSportsRental.value) {
     list.push({ title: "Platos / Menú", key: "dishes_count", sortable: true, align: 'center', width: '140px' })
   }
   

@@ -11,9 +11,11 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
+Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
 Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
+Schedule::command('telegram:send-upcoming-payments')->dailyAt('09:30');
 Schedule::job(new GeneratePayslipJob())->monthlyOn(15, '00:00');
 Schedule::job(new GeneratePayslipJob())->lastDayOfMonth('00:00');
 Schedule::command("app:execute-recurring-expenses")->daily();
@@ -59,10 +61,7 @@ Schedule::call(function () {
             'status' => 'Pendiente',
             'updated_at' => now()
         ]);
-        $renewedCount++;
     }
-
-    \Log::info("Ejecuciones renovadas automáticamente: {$renewedCount}");
 })
     ->hourly()
     ->name('mark-overdue-executions')

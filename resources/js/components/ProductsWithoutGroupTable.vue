@@ -48,7 +48,7 @@ const headers = computed(() => [
     visible: true,
     sortable: true,
     value: (item) => {
-      return item.stock_calculado;
+      return item.stock_calculado !== null && item.stock_calculado !== undefined ? Math.round(item.stock_calculado) : 0;
     },
     cellClass: "d-none d-lg-table-cell",
     headerClass: "d-none d-lg-table-cell"
@@ -252,7 +252,7 @@ const nextExpirationDate = (product) => {
         </template>
 
         <template #item.valid_stock="{ item }">
-          <span class="font-weight-medium">{{ item.stock_calculado || 0 }}</span>
+          <span class="font-weight-medium">{{ item.stock_calculado !== null && item.stock_calculado !== undefined ? Math.round(item.stock_calculado) : 0 }}</span>
         </template>
 
         <template #item.next_expiration="{ item }">
@@ -331,7 +331,7 @@ const nextExpirationDate = (product) => {
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock</span>
                 <span class="text-xs font-weight-black" :class="item.stock_calculado > 0 ? 'text-success' : 'text-error'">
-                  {{ item.stock_calculado || 0 }} <small>UNDS</small>
+                  {{ item.stock_calculado !== null && item.stock_calculado !== undefined ? Math.round(item.stock_calculado) : 0 }} <small>UNDS</small>
                 </span>
               </div>
               <div class="d-flex flex-column text-right">

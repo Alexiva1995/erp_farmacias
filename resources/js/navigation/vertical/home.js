@@ -2,7 +2,7 @@ export default [
   {
     title: 'Home',
     icon: { icon: 'tabler-home' },
-    to: 'index',
+    to: '/',
     action: 'manage',
     subject: 'admin',
   },

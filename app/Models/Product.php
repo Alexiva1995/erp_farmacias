@@ -72,6 +72,15 @@ class Product extends Model
         'is_favorite',
     ];
 
+    /**
+     * Los valores por defecto de los atributos del modelo.
+     *
+     * @var array
+     */
+    protected $attributes = [
+        'stock' => 0,
+    ];
+
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'sale_price_cop', 'unit_cost_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
 
     /**

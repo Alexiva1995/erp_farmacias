@@ -24,6 +24,14 @@ export default [
         to: 'configuration',
       },
       {
+        title: 'Inventario',
+        to: 'configuration-inventory',
+      },
+      {
+        title: 'TPV',
+        to: 'configuration-tpv',
+      },
+      {
         title: 'Importar Datos',
         to: 'configuration-import',
       },

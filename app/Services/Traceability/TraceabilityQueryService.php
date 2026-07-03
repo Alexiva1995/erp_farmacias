@@ -18,15 +18,19 @@ class TraceabilityQueryService
     public function getFilteredQuery(Request $request): Builder
     {
 
-        $query = InventoryMovement::query()->with([
-            'user.employee',
-            'order.seller.employee',
-            'order',
-            'invoice.supplier',
-            'supplier',
-            'product',
-            'dish'
-        ]);
+        $query = InventoryMovement::query()
+            ->select('inventory_movements.*')
+            ->selectRaw('SUM(inventory_movements.quantity) OVER (PARTITION BY inventory_movements.product_id ORDER BY inventory_movements.id ASC) as global_stock_after')
+            ->selectRaw('(SUM(inventory_movements.quantity) OVER (PARTITION BY inventory_movements.product_id ORDER BY inventory_movements.id ASC) - inventory_movements.quantity) as global_stock_before')
+            ->with([
+                'user.employee',
+                'order.seller.employee',
+                'order',
+                'invoice.supplier',
+                'supplier',
+                'product',
+                'dish'
+            ]);
 
         if ($request->filled('q')) {
             $searchTerm = "%{$request->input('q')}%";

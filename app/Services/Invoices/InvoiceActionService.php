@@ -49,8 +49,8 @@ class InvoiceActionService
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'status' => 'pending',
-                'registered_by' => Auth::id(),
-                'uploaded_by' => Auth::id(),
+                'registered_by' => Auth::id() ?? $data['registered_by'] ?? null,
+                'uploaded_by' => Auth::id() ?? $data['uploaded_by'] ?? null,
                 'status_payment' => 0,
             ];
             return Invoice::create($invoiceData);
@@ -170,7 +170,7 @@ class InvoiceActionService
 
                 $productId = $detail['product']['id'];
                 Log::info('Processing detail', ['product_id' => $productId, 'quantity' => $detail['quantity']]);
-                $quantity = (int) $detail['quantity'];
+                $quantity = (float) $detail['quantity'];
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
                 $displayOrder = isset($detail['display_order']) ? (int) $detail['display_order'] : $index;
@@ -373,6 +373,31 @@ class InvoiceActionService
 
     private function createProductLot($detail, float $finalUnitCost, Invoice $invoice): ProductLot
     {
+        $enableLots = \App\Models\GeneralSetting::first()?->enable_lots ?? true;
+        if (!$enableLots) {
+            $uniqueLot = ProductLot::where('product_id', $detail->product_id)
+                ->where('lot_number', 'LOTE-UNICO')
+                ->first();
+
+            if ($uniqueLot) {
+                $uniqueLot->update([
+                    'quantity' => $uniqueLot->quantity + $detail->quantity,
+                    'unit_cost' => $finalUnitCost,
+                ]);
+                return $uniqueLot;
+            }
+
+            return ProductLot::create([
+                'product_id' => $detail->product_id,
+                'supplier_id' => $invoice->supplier_id,
+                'lot_number' => 'LOTE-UNICO',
+                'expiration_date' => '2050-12-31',
+                'quantity' => $detail->quantity,
+                'location' => 'PRINCIPAL',
+                'unit_cost' => $finalUnitCost,
+            ]);
+        }
+
         return ProductLot::create([
             'product_id' => $detail->product_id,
             'supplier_id' => $invoice->supplier_id,

@@ -277,7 +277,17 @@ watch(
           formData.value.invoice_number = seq;
           formData.value.control_number = seq;
         } catch (e) {
-          console.error("Error al obtener la secuencia correlativa informal", e);
+          console.error("Error al obtener la secuencia correlativa informal, autogenerando en frontend", e);
+          const nowObj = new Date();
+          const yyyy = nowObj.getFullYear();
+          const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
+          const dd = String(nowObj.getDate()).padStart(2, '0');
+          const hh = String(nowObj.getHours()).padStart(2, '0');
+          const min = String(nowObj.getMinutes()).padStart(2, '0');
+          const ss = String(nowObj.getSeconds()).padStart(2, '0');
+          const seq = `INF-${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+          formData.value.invoice_number = seq;
+          formData.value.control_number = seq;
         }
       }
     } else {
@@ -307,6 +317,17 @@ watch(
     }
     await nextTick();
     calculatePaymentDate();
+
+    if (isInformalSupplier.value && newDate) {
+      const formattedDate = newDate.replace(/-/g, "");
+      const nowObj = new Date();
+      const hh = String(nowObj.getHours()).padStart(2, '0');
+      const min = String(nowObj.getMinutes()).padStart(2, '0');
+      const ss = String(nowObj.getSeconds()).padStart(2, '0');
+      const seq = `INF-${formattedDate}-${hh}${min}${ss}`;
+      formData.value.invoice_number = seq;
+      formData.value.control_number = seq;
+    }
   },
 );
 

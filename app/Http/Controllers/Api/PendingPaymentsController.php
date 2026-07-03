@@ -162,7 +162,8 @@ class PendingPaymentsController extends Controller
                         if ($payment->payment_method === 'USD') {
                             $totalPaidUSD += $payment->amount;
                         } else {
-                            $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                            $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                            $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
                             if ($exchangeRate) {
                                 $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
                             }
@@ -235,7 +236,8 @@ class PendingPaymentsController extends Controller
                                     if ($payment->payment_method === 'USD') {
                                         $totalPaidUSD += $payment->amount;
                                     } else {
-                                        $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                                        $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                                        $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
                                         if ($exchangeRate) {
                                             $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
                                         }
@@ -482,7 +484,8 @@ class PendingPaymentsController extends Controller
 
             // 2. Normalizar código de moneda y obtener tasa de cambio
             $normalizedCurrency = $this->normalizeCurrencyCode($request->payment_currency);
-            $exchangeRate = ExchangeRate::where('currency_code', $normalizedCurrency)->first();
+            $rateCurrency = ($normalizedCurrency === 'COP') ? 'COPC' : $normalizedCurrency;
+            $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
             if (!$exchangeRate && $normalizedCurrency !== 'USD') {
                 return ApiResponse::error('No se encontró tasa de cambio para la moneda seleccionada', 400);
             }
@@ -502,16 +505,7 @@ class PendingPaymentsController extends Controller
                 $amountUSD = round($request->payment_amount / $exchangeRate->rate, 2);
             }
 
-            // LOG TEMPORAL PARA DEBUGGING
-            Log::info('ProcessPayment Debug:', [
-                'payment_currency' => $request->payment_currency,
-                'normalized_currency' => $normalizedCurrency,
-                'payment_amount' => $request->payment_amount,
-                'amountUSD' => $amountUSD,
-                'totalInvoiceAmount' => $totalInvoiceAmount,
-                'payment_type' => $request->payment_type,
-                'exchange_rate' => $exchangeRate->rate ?? 'N/A'
-            ]);
+
 
             // CORRECCIÓN ISSUE #2: Validaciones flexibles para montos
             // El usuario puede pagar cualquier monto (más o menos que el total)
@@ -977,13 +971,7 @@ class PendingPaymentsController extends Controller
             $totalUSD = round((float) $payment->amount / (float) $conversionRate, 2);
         }
 
-        // DEBUG: Ver qué se está guardando
-        \Log::info('Guardando expense con:', [
-            'conversion_rate' => $conversionRate,
-            'payment_method' => $payment->payment_method,
-            'currencyCode' => $currencyCode ?? 'USD',
-            'countValue' => $countValue
-        ]);
+
 
         $exchangeRate = $invoice->is_indexed ? $conversionRate : ($invoice->currency === 'USD' ? 1.0000 : $invoice->exchange_rate);
         $exemptAmount = $invoice->is_indexed ? ($invoice->exempt_amount / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->exempt_amount ?? 0);
@@ -1512,7 +1500,8 @@ class PendingPaymentsController extends Controller
             if ($payment->payment_method === 'USD') {
                 $totalPaidUSD += $payment->amount;
             } else {
-                $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
                 if ($exchangeRate) {
                     $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
                 }
@@ -1553,7 +1542,8 @@ class PendingPaymentsController extends Controller
             if ($payment->payment_method === 'USD') {
                 $totalPaidUSD += $payment->amount;
             } else {
-                $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
+                $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
                 if ($exchangeRate) {
                     $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
                 }

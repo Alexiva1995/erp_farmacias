@@ -23,6 +23,20 @@ class SendDailyReservationsTelegram extends Command
 
     public function handle(): int
     {
+        // Solo ejecutar en bases de datos de alquiler de canchas / reservas
+        $dbName = config('database.connections.mysql.database');
+        $botType = env('TELEGRAM_BOT_TYPE');
+        
+        $isCanchas = str_contains($dbName, 'golclub') || 
+                     str_contains($dbName, 'cancha') || 
+                     str_contains($dbName, 'reserva') || 
+                     $botType === 'canchas';
+
+        if (!$isCanchas) {
+            $this->info('Comando omitido: Este entorno no es de alquiler de canchas/reservas.');
+            return Command::SUCCESS;
+        }
+
         $today          = Carbon::today()->toDateString();
         $todayFormatted = Carbon::today()->format('d/m/Y');
         $dayOfWeek      = Carbon::today()->dayOfWeekIso;

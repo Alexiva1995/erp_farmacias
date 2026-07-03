@@ -104,6 +104,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isSportsRental: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -123,7 +127,39 @@ const emit = defineEmits([
   "add-pack",
   "edit-cliente",
   "add-note",
+  "flash-checkout",
 ]);
+
+const paymentMethodsByCurrency = {
+  COP: [
+    { label: 'Efectivo', value: 'cash' }
+  ],
+  USD: [
+    { label: 'Efectivo', value: 'cash' },
+    { label: 'Binance', value: 'binance' }
+  ],
+  BS: [
+    { label: 'Pago Móvil', value: 'mobile_payment' }
+  ]
+};
+
+const selectedPaymentMethod = ref('cash');
+
+watch(() => props.selectedDisplayCurrency, (newCurrency) => {
+  const methods = paymentMethodsByCurrency[newCurrency] || [];
+  if (methods.length > 0) {
+    selectedPaymentMethod.value = methods[0].value;
+  } else {
+    selectedPaymentMethod.value = 'cash';
+  }
+}, { immediate: true });
+
+const handleFlashCheckout = () => {
+  emit('flash-checkout', {
+    method: selectedPaymentMethod.value,
+    currency: props.selectedDisplayCurrency
+  });
+};
 
 const discountOptions = computed(() => {
   const options = ["Medico", "Recipe"];
@@ -316,6 +352,8 @@ const getOriginalBasePrice = (product, currency) => {
 
 // Precio unitario con descuento e IVA para mostrar "c/u"
 const getPricePerUnit = (product, currency) => {
+  // Para USD, usar original_price_usd como fuente de verdad (product.price puede ser COP en canchas)
+  const usdBase = product.original_price_usd ?? product.base_price ?? product.price ?? 0;
   let basePrice = 0;
   if (product.discountApplied) {
     basePrice =
@@ -323,7 +361,7 @@ const getPricePerUnit = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : getDynamicPrice(product, product.price, "USD");
+          : getDynamicPrice(product, usdBase, "USD");
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice =
       getOriginalBasePrice(product, currency) * getDiscountFactor(product);
@@ -333,7 +371,7 @@ const getPricePerUnit = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : getDynamicPrice(product, product.price, "USD");
+          : getDynamicPrice(product, usdBase, "USD");
   }
   const taxRate = product.taxRate || 0;
   let price = basePrice * (1 + taxRate);
@@ -344,6 +382,8 @@ const getPricePerUnit = (product, currency) => {
 };
 
 const getProductPriceSinIva = (product, currency) => {
+  // Para USD, usar original_price_usd como fuente de verdad
+  const usdBase = product.original_price_usd ?? product.base_price ?? product.price ?? 0;
   let basePrice = 0;
   if (product.discountApplied) {
     basePrice =
@@ -351,7 +391,7 @@ const getProductPriceSinIva = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : getDynamicPrice(product, product.price, "USD");
+          : getDynamicPrice(product, usdBase, "USD");
   } else if (activeDiscountDisplay.value != null && !product.pack_id) {
     basePrice =
       getOriginalBasePrice(product, currency) * getDiscountFactor(product);
@@ -361,7 +401,7 @@ const getProductPriceSinIva = (product, currency) => {
         ? product.price_bs || 0
         : currency === "COP"
           ? product.price_cop || 0
-          : getDynamicPrice(product, product.price, "USD");
+          : getDynamicPrice(product, usdBase, "USD");
   }
   let priceSinIva = basePrice * product.selectedQuantity;
   if (currency === "COP") {
@@ -742,7 +782,7 @@ const getIva = (product, currency) => {
 
         <div class="d-flex align-center gap-1 gap-sm-2 flex-shrink-0 ms-auto">
           <!-- Selector de Descuento (VMenu Style) -->
-          <VMenu>
+          <VMenu v-if="!props.isSportsRental">
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
@@ -775,6 +815,23 @@ const getIva = (product, currency) => {
               </VListItem>
             </VList>
           </VMenu>
+
+          <!-- Métodos de Pago Rápidos para la moneda activa -->
+          <div class="d-flex align-center gap-1 border rounded-lg pa-1 bg-white shadow-sm me-1 me-sm-2 flex-wrap">
+            <span class="text-super-xs font-weight-black text-uppercase text-disabled px-1">Pago:</span>
+            <VBtn
+              v-for="method in (paymentMethodsByCurrency[props.selectedDisplayCurrency] || [])"
+              :key="method.value"
+              :color="selectedPaymentMethod === method.value ? 'primary' : 'grey-lighten-3'"
+              :variant="selectedPaymentMethod === method.value ? 'flat' : 'text'"
+              size="x-small"
+              class="rounded-md font-weight-black text-uppercase px-2"
+              height="24"
+              @click="selectedPaymentMethod = method.value"
+            >
+              {{ method.label }}
+            </VBtn>
+          </div>
 
           <!-- Selector de Moneda (VMenu Style) -->
           <VMenu>
@@ -954,12 +1011,12 @@ const getIva = (product, currency) => {
                     {{ (product.title || '').toUpperCase() }}
                   </h3>
                   <div 
-                    class="d-flex flex-column text-super-xs mt-1"
+                    class="d-flex align-center gap-1 text-super-xs flex-wrap"
                     style="white-space: pre-wrap;"
                   >
                     <span class="text-disabled">{{ product.active_ingredient || '—' }}</span>
                     <template v-if="!product.pack_id && !product.is_dish">
-                      <span class="text-disabled mx-1">|</span>
+                      <span class="text-disabled">|</span>
                       <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                         {{ product.laboratory && product.laboratory !== 'N/A' ? product.laboratory : 'Genérico' }}
                       </span>
@@ -1110,6 +1167,21 @@ const getIva = (product, currency) => {
                   <VIcon icon="tabler-circle-check" size="18" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">COBRAR / CERRAR</span>
                 </VBtn>
+                <VTooltip text="Cobro Rápido Flash (Método seleccionado)" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <VBtn
+                      v-bind="tooltipProps"
+                      color="warning"
+                      variant="flat"
+                      height="40"
+                      class="rounded-lg px-3 elevation-2 ms-2 font-weight-black"
+                      @click="handleFlashCheckout"
+                    >
+                      <VIcon icon="tabler-bolt" size="18" />
+                      <span class="d-none d-sm-inline ms-1">FLASH</span>
+                    </VBtn>
+                  </template>
+                </VTooltip>
               </template>
               <template v-else>
                 <VBtn
@@ -1136,6 +1208,21 @@ const getIva = (product, currency) => {
                   <VIcon icon="tabler-circle-check" size="20" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">COBRAR AHORA</span>
                 </VBtn>
+                <VTooltip text="Cobro Rápido Flash (Método seleccionado)" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <VBtn
+                      v-bind="tooltipProps"
+                      color="warning"
+                      variant="flat"
+                      height="40"
+                      class="rounded-lg px-3 elevation-2 ms-2 font-weight-black"
+                      @click="handleFlashCheckout"
+                    >
+                      <VIcon icon="tabler-bolt" size="18" />
+                      <span class="d-none d-sm-inline ms-1">FLASH</span>
+                    </VBtn>
+                  </template>
+                </VTooltip>
               </template>
            </div>
         </div>
