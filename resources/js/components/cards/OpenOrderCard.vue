@@ -817,7 +817,7 @@ const getIva = (product, currency) => {
           </VMenu>
 
           <!-- Métodos de Pago Rápidos para la moneda activa -->
-          <div class="d-flex align-center gap-1 border rounded-lg pa-1 bg-white shadow-sm me-1 me-sm-2 flex-wrap">
+          <div v-if="props.isSportsRental" class="d-flex align-center gap-1 border rounded-lg pa-1 bg-white shadow-sm me-1 me-sm-2 flex-wrap">
             <span class="text-super-xs font-weight-black text-uppercase text-disabled px-1">Pago:</span>
             <VBtn
               v-for="method in (paymentMethodsByCurrency[props.selectedDisplayCurrency] || [])"
