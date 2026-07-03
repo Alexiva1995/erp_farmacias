@@ -738,23 +738,7 @@ onMounted(() => {
   overflow: visible;
 }
 
-.orders-table :deep(.v-data-table-header) {
-  background-color: #f1f5f9;
-}
 
-.orders-table :deep(.v-data-table-header th) {
-  color: #64748b !important;
-  font-size: 0.65rem !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-bottom: 2px solid #e2e8f0 !important;
-}
-
-.orders-table :deep(td) {
-  padding-block: 12px !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.05) !important;
-}
 
 .uppercase {
   text-transform: uppercase;
