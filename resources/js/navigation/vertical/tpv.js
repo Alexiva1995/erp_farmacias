@@ -38,6 +38,34 @@ export default [
             title: 'Individual',
             to: 'tpv-individual-offer',
           },
+          {
+            title: 'Packs',
+            to: 'tpv-pack-offer',
+          },
+          {
+            title: 'Categorías',
+            to: 'tpv-category-offer',
+          },
+          {
+            title: 'Empresas',
+            to: 'tpv-company-offer',
+          },
+          {
+            title: 'Médicos',
+            to: 'tpv-doctor-offer',
+          },
+          {
+            title: 'Recetas',
+            to: 'tpv-prescription-offer',
+          },
+          {
+            title: 'Vencimientos',
+            to: 'tpv-expiration-offer',
+          },
+          {
+            title: 'Generales',
+            to: 'tpv-general-offer',
+          },
         ],
       },
     ],

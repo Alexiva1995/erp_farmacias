@@ -50,6 +50,11 @@ const processedNavItems = computed(() => {
         // Primero procesamos recursivamente los hijos
         let childs = filterRestaurantNav([...copy.children]);
         
+        // Si es Alquiler Deportivo, filtrar los submenús de la sección "Promociones" para dejar únicamente 'Individual'
+        if (isSportsRental && copy.title === 'Promociones') {
+          childs = childs.filter((c) => c.title === 'Individual');
+        }
+        
         // Ocultar Pendientes en modo simple
         if (isSimpleCyclic) {
           childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
@@ -98,8 +103,7 @@ const processedNavItems = computed(() => {
             c.title !== 'Optimización' &&
             c.to !== 'inventory-group-products' &&
             c.to !== 'inventory-locations' &&
-            c.to !== 'tpv-quotation' &&
-            c.title !== 'Promociones'
+            c.to !== 'tpv-quotation'
           );
           childs = childs.map((c) => {
             if (c.to === 'inventory-laboratories') {
