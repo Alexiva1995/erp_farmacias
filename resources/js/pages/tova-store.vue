@@ -880,15 +880,23 @@ onMounted(async () => {
       </div>
     </transition>
 
-    <!-- ====== SUCCESS MESSAGE (TOAST EDITORIAL) ====== -->
-    <transition name="toast-fade">
-      <div v-if="orderSuccess" class="editorial-success-toast">
-        <span class="toast-sparkle">✦</span>
-        <div class="toast-content">
-          <p class="toast-title">¡PEDIDO CONFIRMADO!</p>
-          <p class="toast-desc">La orden #{{ lastOrderId }} ha sido procesada con éxito.</p>
+    <!-- ====== SUCCESS MESSAGE (MODAL EDITORIAL) ====== -->
+    <transition name="drawer-fade">
+      <div v-if="orderSuccess" class="editorial-modal-overlay" style="z-index: 99999;" @click="orderSuccess = false">
+        <div class="editorial-success-modal" @click.stop>
+          <span class="modal-success-sparkle">✦</span>
+          <h2 class="modal-success-title">¡PEDIDO CONFIRMADO!</h2>
+          <div class="modal-success-line"></div>
+          <p class="modal-success-desc">
+            Tu orden <span style="font-weight: 750;">#{{ lastOrderId }}</span> ha sido procesada con éxito.
+          </p>
+          <p class="modal-success-subdesc">
+            Pronto nos pondremos en contacto contigo para coordinar la entrega y los detalles del pago.
+          </p>
+          <button class="editorial-btn-dark py-3 px-6 mt-4 w-100" @click="orderSuccess = false">
+            SEGUIR COMPRANDO
+          </button>
         </div>
-        <button class="toast-close" @click="orderSuccess = false">✕</button>
       </div>
     </transition>
   </div>
@@ -2039,24 +2047,79 @@ onMounted(async () => {
 }
 
 
-/* ——— Success Toast ——— */
-.editorial-success-toast {
-  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 2000;
-  background-color: var(--editorial-black); color: var(--editorial-white);
-  padding: 20px 30px; display: flex; align-items: center; gap: 20px;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.3); min-width: 320px; max-width: 520px;
+/* ——— Success Modal ——— */
+.editorial-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(30, 22, 20, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
-.toast-sparkle {
-  font-size: 24px; color: var(--editorial-nude-dark);
+
+.editorial-success-modal {
+  background-color: var(--editorial-white);
+  color: var(--editorial-black);
+  border: 1px solid var(--editorial-border);
+  padding: 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
+  position: relative;
+  animation: modalScaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.toast-title {
-  font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 4px;
+
+.modal-success-sparkle {
+  font-size: 32px;
+  color: var(--editorial-nude-dark);
+  display: block;
+  margin-bottom: 12px;
 }
-.toast-desc {
-  font-size: 12px; opacity: 0.8;
+
+.modal-success-title {
+  font-family: var(--editorial-font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
 }
-.toast-close {
-  background: none; border: none; color: #888; font-size: 16px; cursor: pointer; margin-left: auto;
+
+.modal-success-line {
+  width: 40px;
+  height: 1px;
+  background-color: var(--editorial-black);
+  margin: 0 auto 20px auto;
+}
+
+.modal-success-desc {
+  font-size: 15px;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.modal-success-subdesc {
+  font-size: 12px;
+  color: var(--editorial-text-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ——— TRANSITIONS ——— */
