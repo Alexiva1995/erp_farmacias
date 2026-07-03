@@ -1167,7 +1167,7 @@ const getIva = (product, currency) => {
                   <VIcon icon="tabler-circle-check" size="18" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">COBRAR / CERRAR</span>
                 </VBtn>
-                <VTooltip text="Cobro Rápido Flash (Método seleccionado)" location="top">
+                <VTooltip v-if="props.isSportsRental" text="Cobro Rápido Flash (Método seleccionado)" location="top">
                   <template #activator="{ props: tooltipProps }">
                     <VBtn
                       v-bind="tooltipProps"
@@ -1208,7 +1208,7 @@ const getIva = (product, currency) => {
                   <VIcon icon="tabler-circle-check" size="20" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">COBRAR AHORA</span>
                 </VBtn>
-                <VTooltip text="Cobro Rápido Flash (Método seleccionado)" location="top">
+                <VTooltip v-if="props.isSportsRental" text="Cobro Rápido Flash (Método seleccionado)" location="top">
                   <template #activator="{ props: tooltipProps }">
                     <VBtn
                       v-bind="tooltipProps"

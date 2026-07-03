@@ -98,7 +98,8 @@ const processedNavItems = computed(() => {
             c.title !== 'Optimización' &&
             c.to !== 'inventory-group-products' &&
             c.to !== 'inventory-locations' &&
-            c.to !== 'tpv-quotation'
+            c.to !== 'tpv-quotation' &&
+            c.title !== 'Promociones'
           );
           childs = childs.map((c) => {
             if (c.to === 'inventory-laboratories') {
