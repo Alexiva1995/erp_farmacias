@@ -24,7 +24,7 @@ const headers = [
   { title: "ID", key: "employee_id", sortable: true },
   { title: "EMPLEADO", key: "employee_name", sortable: true, width: "25%" },
   { title: "IDENTIFICACIÓN", key: "identification", sortable: false },
-  { title: "LABORATORIOS ASIGNADOS", key: "laboratories", sortable: false, width: "35%", align: "center" },
+  { title: "MARCAS ASIGNADAS", key: "laboratories", sortable: false, width: "35%", align: "center" },
   { title: "TOTAL", key: "laboratories_count", sortable: true, align: "center" },
   { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
 ];
@@ -99,7 +99,7 @@ const getAvatarColor = (index) => {
           >
             {{ lab.name }}
           </VChip>
-          <span v-if="item.laboratories.length === 0" class="text-super-xs text-disabled font-weight-black uppercase italic">Sin laboratorios</span>
+          <span v-if="item.laboratories.length === 0" class="text-super-xs text-disabled font-weight-black uppercase italic">Sin marcas</span>
         </div>
       </template>
 
@@ -239,7 +239,7 @@ const getAvatarColor = (index) => {
 
                 <div>
                   <div class="text-super-xs font-weight-black text-disabled text-uppercase mb-2 d-flex justify-space-between align-center">
-                    <span>LABORATORIOS ASIGNADOS</span>
+                    <span>MARCAS ASIGNADAS</span>
                     <VChip size="x-small" color="success" variant="tonal" class="rounded px-2 font-weight-black uppercase">
                       {{ item.laboratories_count }}
                     </VChip>
@@ -256,7 +256,7 @@ const getAvatarColor = (index) => {
                       {{ lab.name }}
                     </VChip>
                     <div v-if="item.laboratories.length === 0" class="text-super-xs text-disabled italic font-weight-black uppercase">
-                      Sin laboratorios asignados
+                      Sin marcas asignadas
                     </div>
                   </div>
                 </div>

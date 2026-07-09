@@ -93,8 +93,8 @@ Route::prefix('fiscal')->group(function () {
 */
 
 // Rutas de autenticación
-Route::post("/login", [LoginController::class, "login"]);
-Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
+Route::post("/login", [LoginController::class, "login"])->middleware('throttle:login');
+Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"])->middleware('throttle:login');
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
@@ -117,10 +117,12 @@ Route::get("/public/ecommerce/products", [EcommerceController::class, "getProduc
 Route::get("/public/ecommerce/categories", [EcommerceController::class, "getCategories"]);
 Route::post("/public/ecommerce/checkout", [EcommerceController::class, "checkout"]);
 Route::post("/public/ecommerce/products/{id}/toggle-favorite", [EcommerceController::class, "toggleFavorite"]);
+// Consulta CNE pública para autocompletar datos del cliente en la tienda virtual
+Route::post("/public/clients/cne-verify", [\App\Http\Controllers\Api\ClientController::class, "verifyCne"]);
 Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
 
 // Rutas de administración de órdenes de e-commerce (dentro del bloque auth:sanctum)
-Route::middleware("auth:sanctum")->group(function () {
+Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get("/ecommerce/admin/orders", [EcommerceController::class, "getAdminOrders"]);
     Route::post("/ecommerce/admin/orders/{id}/approve", [EcommerceController::class, "approveOrder"]);
     Route::post("/ecommerce/admin/orders/{id}/cancel", [EcommerceController::class, "cancelOrder"]);
@@ -129,7 +131,7 @@ Route::middleware("auth:sanctum")->group(function () {
 });
 
 // Rutas protegidas que requieren autenticación (Sanctum)
-Route::middleware("auth:sanctum")->group(function () {
+Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
     Route::post('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'store']);
     Route::patch('/reservations/{id}/status', [\App\Http\Controllers\Api\ReservationController::class, 'updateStatus']);

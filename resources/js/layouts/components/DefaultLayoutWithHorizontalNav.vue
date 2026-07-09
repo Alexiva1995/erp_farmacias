@@ -16,7 +16,7 @@ const brandingStore = useBrandingStore()
 
 const processedNavItems = computed(() => {
   let items = [...navItems]
-  const isRestaurant = brandingStore.settings.business_type === 'restaurant'
+  const isRestaurant = (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket')
   if (!isRestaurant) {
     items = items.map((item) => {
       if (item.children && Array.isArray(item.children)) {

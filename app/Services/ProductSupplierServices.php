@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\ProductSupplier;
 use App\Models\Product;
 use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
-use App\Repository\ProductLotsRepository;
-use App\Repository\ProductSupplierRepository;
+use App\Repositories\ProductLotsRepository;
+use App\Repositories\ProductSupplierRepository;
 use DateTime;
 use Illuminate\Database\Eloquent\Collection;
 

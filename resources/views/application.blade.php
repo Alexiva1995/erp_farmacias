@@ -14,7 +14,20 @@
   <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png') }}" />
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Tova - Cerebro Operativo</title>
+  <title>{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}</title>
+  <meta name="description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}" />
+  <meta property="og:description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
+  <meta property="og:image" content="{{ asset('favicon-512x512.png') }}" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:title" content="{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}" />
+  <meta property="twitter:description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
+  <meta property="twitter:image" content="{{ asset('favicon-512x512.png') }}" />
   <style>
     html {
       touch-action: manipulation;

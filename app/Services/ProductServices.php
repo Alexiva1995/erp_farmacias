@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Product;
@@ -7,9 +9,9 @@ use App\Contracts\ProductSupplier;
 use App\Exports\AssistantReportProductExport;
 use App\Exports\StockProductExport;
 use App\Models\Product as ModelsProduct;
-use App\Repository\AutoOrderDetailsRepository;
-use App\Repository\ProductRepository;
-use App\Repository\ProductSupplierRepository;
+use App\Repositories\AutoOrderDetailsRepository;
+use App\Repositories\ProductRepository;
+use App\Repositories\ProductSupplierRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 

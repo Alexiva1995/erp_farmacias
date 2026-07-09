@@ -14,7 +14,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const { mobile } = useDisplay();

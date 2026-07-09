@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
 
 namespace App\Services;
 
 use App\Contracts\Order;
-use App\Repository\OrderRepository;
+use App\Repositories\OrderRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class OrderServices implements Order

@@ -52,18 +52,99 @@ const cartTotalPrice = computed(() =>
 
 // ——— Formulario de orden ———
 const binanceRate = ref(45.50) // Tasa de cambio Binance de referencia para VES
+const copRate = ref(4000.00) // Tasa de cambio COP de referencia
+const selectedCurrency = ref('') // Moneda seleccionada por el usuario (VES, USD, COP)
+const paymentProof = ref(null) // Archivo de comprobante de pago (solo transferencias)
 const orderForm = ref({
   customer_name: '',
   customer_email: '',
   customer_phone: '',
   shipping_address: '',
   notes: '',
-  payment_method: '', // Métodos: 'pago_movil', 'zelle', 'contraentrega'
+  payment_method: '', // Métodos: 'pago_movil', 'zelle', 'contraentrega', 'binance', 'transferencia'
+  customer_document_type: 'V-',
+  customer_document_number: '',
 })
 const orderFormValid = computed(() =>
   orderForm.value.customer_name.trim() &&
   orderForm.value.customer_phone.trim() &&
+  orderForm.value.customer_document_number.trim() &&
+  selectedCurrency.value &&
   orderForm.value.payment_method
+)
+
+// ——— Búsqueda de cliente por cédula ———
+const clientLookupState = ref('idle') // 'idle' | 'searching' | 'found' | 'new' | 'error'
+const clientLookupMessage = ref('')
+let _documentDebounceTimer = null
+
+/**
+ * Busca el cliente primero en la BD (silencioso).
+ * Solo si no existe y es venezolano, consulta api.cedula.com.ve mostrando feedback.
+ */
+const lookupClientByDocument = async (docNumber) => {
+  const num = (docNumber || '').trim()
+  if (!num || num.length < 4) {
+    clientLookupState.value = 'idle'
+    clientLookupMessage.value = ''
+    return
+  }
+
+  // 1️⃣ Buscar en BD — silencioso, sin mensaje visible al usuario
+  clientLookupState.value = 'idle'
+  clientLookupMessage.value = ''
+
+  try {
+    const { data } = await axios.get(`/public/clients/identification/${num}`)
+    if (data.success && data.data) {
+      const c = data.data
+      orderForm.value.customer_name = `${c.name || ''} ${c.last_name || ''}`.trim()
+      orderForm.value.customer_phone = c.phone || orderForm.value.customer_phone
+      orderForm.value.customer_email = c.email || orderForm.value.customer_email
+      orderForm.value.customer_document_type = c.identification_type || orderForm.value.customer_document_type
+      clientLookupState.value = 'found'
+      clientLookupMessage.value = `✓ Cliente encontrado: ${orderForm.value.customer_name}`
+      return
+    }
+  } catch (err) {
+    // 404 → cliente no existe en BD, continuamos al CNE
+    if (!err.response || err.response.status !== 404) {
+      // Error inesperado — no bloqueamos, solo continuamos al CNE
+      console.warn('[TOVA] Error BD:', err)
+    }
+  }
+
+  // 2️⃣ No encontrado en BD → mostrar "buscando en CNE" solo a partir de aquí
+  if (orderForm.value.customer_document_type === 'V-') {
+    clientLookupState.value = 'searching'
+    clientLookupMessage.value = 'Buscando en api.cedula.com.ve...'
+    try {
+      const cneResp = await axios.post('/public/clients/cne-verify', { identification: num })
+      if (cneResp.data && cneResp.data.data) {
+        const cne = cneResp.data.data
+        orderForm.value.customer_name = `${cne.name || ''} ${cne.last_name || ''}`.trim()
+        clientLookupState.value = 'new'
+        clientLookupMessage.value = `Datos obtenidos del CNE: ${orderForm.value.customer_name} — se registrará como cliente nuevo`
+        return
+      }
+    } catch (cneErr) {
+      console.log('[TOVA] CNE sin resultados:', cneErr)
+    }
+  }
+
+  clientLookupState.value = 'new'
+  clientLookupMessage.value = 'Documento no encontrado. Se registrará como cliente nuevo.'
+}
+
+// Disparar la búsqueda con debounce de 600ms al cambiar el número de documento
+watch(
+  () => orderForm.value.customer_document_number,
+  (val) => {
+    clearTimeout(_documentDebounceTimer)
+    clientLookupState.value = 'idle'
+    clientLookupMessage.value = ''
+    _documentDebounceTimer = setTimeout(() => lookupClientByDocument(val), 600)
+  }
 )
 
 // ——— Fetch datos ———
@@ -73,6 +154,24 @@ const fetchCategories = async () => {
     if (data.success) categories.value = data.data
   } catch (e) {
     console.error('Error al obtener categorías:', e)
+  }
+}
+
+const fetchExchangeRates = async () => {
+  try {
+    const { data } = await axios.get('/public/exchange-rates')
+    if (Array.isArray(data)) {
+      const binance = data.find(r => r.currency_code === 'BINANCE')
+      if (binance && binance.rate) {
+        binanceRate.value = parseFloat(binance.rate)
+      }
+      const cop = data.find(r => r.currency_code === 'COP')
+      if (cop && cop.rate) {
+        copRate.value = parseFloat(cop.rate)
+      }
+    }
+  } catch (e) {
+    console.error('Error al obtener tasas de cambio:', e)
   }
 }
 
@@ -217,22 +316,41 @@ const submitOrder = async () => {
   if (!cart.value.length || !orderFormValid.value) return
   orderSubmitting.value = true
   try {
-    const payload = {
-      ...orderForm.value,
-      items: cart.value.map(i => ({
-        product_id: i.product.id,
-        variant_id: i.variant ? i.variant.id : null,
-        quantity: i.quantity,
-      })),
+    // Si hay comprobante adjunto, enviar como multipart/form-data
+    let data
+    if (paymentProof.value) {
+      const fd = new FormData()
+      Object.entries(orderForm.value).forEach(([k, v]) => fd.append(k, v ?? ''))
+      cart.value.forEach((i, idx) => {
+        fd.append(`items[${idx}][product_id]`, i.product.id)
+        fd.append(`items[${idx}][variant_id]`, i.variant ? i.variant.id : '')
+        fd.append(`items[${idx}][quantity]`, i.quantity)
+      })
+      fd.append('payment_proof', paymentProof.value)
+      ;({ data } = await axios.post('/public/ecommerce/checkout', fd, { headers: { 'Content-Type': 'multipart/form-data' } }))
+    } else {
+      const payload = {
+        ...orderForm.value,
+        items: cart.value.map(i => ({
+          product_id: i.product.id,
+          variant_id: i.variant ? i.variant.id : null,
+          quantity: i.quantity,
+        })),
+      }
+      ;({ data } = await axios.post('/public/ecommerce/checkout', payload))
     }
-    const { data } = await axios.post('/public/ecommerce/checkout', payload)
-    if (data.success) {
-      lastOrderId.value = data.order_id
+    const fakeResp = { data }
+    if (fakeResp.data.success) {
+      lastOrderId.value = fakeResp.data.order_id
       orderSuccess.value = true
       clearCart()
       orderDialog.value = false
       cartDrawer.value = false
-      orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', notes: '', payment_method: '' }
+      orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', notes: '', payment_method: '', customer_document_type: 'V-', customer_document_number: '' }
+      selectedCurrency.value = ''
+      paymentProof.value = null
+      clientLookupState.value = 'idle'
+      clientLookupMessage.value = ''
       await fetchProducts()
     }
   } catch (e) {
@@ -272,6 +390,7 @@ onMounted(async () => {
   } catch (e) {
     // Silenciar fallos de branding
   }
+  fetchExchangeRates()
   fetchCategories()
   fetchFavorites()
   fetchProducts(1)
@@ -799,6 +918,36 @@ onMounted(async () => {
             <h3 class="checkout-section-title">INFORMACIÓN DE ENTREGA</h3>
             <div class="editorial-form-grid">
               <div class="form-input-group">
+                <label>DOCUMENTO DE IDENTIDAD *</label>
+                <div style="display: flex; gap: 8px;">
+                  <select v-model="orderForm.customer_document_type" style="width: 80px; padding: 12px; border: 1px solid var(--editorial-border); background-color: var(--editorial-grey-bg); font-size: 13px; font-family: inherit; outline: none; border-radius: 0;">
+                    <option value="V-">V</option>
+                    <option value="E-">E</option>
+                    <option value="J-">J</option>
+                    <option value="G-">G</option>
+                  </select>
+                  <div style="flex: 1; position: relative;">
+                    <input
+                      v-model="orderForm.customer_document_number"
+                      type="text"
+                      placeholder="12345678"
+                      style="width: 100%; box-sizing: border-box;"
+                      required
+                    />
+                    <!-- Indicador de carga -->
+                    <span v-if="clientLookupState === 'searching'" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #888;">⏳</span>
+                    <span v-else-if="clientLookupState === 'found'" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #22c55e;">✓</span>
+                    <span v-else-if="clientLookupState === 'new'" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #f59e0b;">★</span>
+                  </div>
+                </div>
+                <!-- Mensaje de estado debajo del campo -->
+                <p v-if="clientLookupMessage" :style="{
+                  fontSize: '11px',
+                  marginTop: '4px',
+                  color: clientLookupState === 'found' ? '#22c55e' : clientLookupState === 'error' ? '#ef4444' : '#888'
+                }">{{ clientLookupMessage }}</p>
+              </div>
+              <div class="form-input-group">
                 <label>NOMBRE COMPLETO *</label>
                 <input v-model="orderForm.customer_name" type="text" placeholder="María García" required />
               </div>
@@ -823,30 +972,84 @@ onMounted(async () => {
 
           <div class="checkout-payment-methods" style="margin-top: 30px;">
             <h3 class="checkout-section-title">MÉTODO DE PAGO *</h3>
-            <div class="payment-methods-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
-              <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'pago_movil' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
-                <input type="radio" v-model="orderForm.payment_method" value="pago_movil" style="display: none;" />
-                <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">📱</span>
-                <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">PAGO MÓVIL / TRF</span>
-              </label>
-              
-              <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'zelle' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
-                <input type="radio" v-model="orderForm.payment_method" value="zelle" style="display: none;" />
-                <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">💵</span>
-                <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">ZELLE</span>
-              </label>
-              
-              <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'contraentrega' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
-                <input type="radio" v-model="orderForm.payment_method" value="contraentrega" style="display: none;" />
-                <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🤝</span>
-                <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">CONTRAENTREGA</span>
-              </label>
+            
+            <!-- Selección de Moneda -->
+            <div class="form-input-group" style="margin-bottom: 20px;">
+              <label style="font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; display: block;">MONEDA DE PAGO *</label>
+              <select v-model="selectedCurrency" style="width: 100%; padding: 12px; border: 1px solid var(--editorial-border); background-color: var(--editorial-grey-bg); font-size: 13px; font-family: inherit; font-weight: 500; outline: none; border-radius: 0;" @change="orderForm.payment_method = ''">
+                <option value="" disabled selected>Seleccione la moneda...</option>
+                <option value="VES">VES - Bolívares</option>
+                <option value="USD">USD - Dólares</option>
+                <option value="COP">COP - Pesos Colombianos</option>
+              </select>
             </div>
 
-            <!-- Detalles dinámicos según el método seleccionado -->
+            <!-- Métodos según Moneda -->
+            <div v-if="selectedCurrency" class="payment-methods-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+              
+              <!-- VES Methods -->
+              <template v-if="selectedCurrency === 'VES'">
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'mobile_payment' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="mobile_payment" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">📱</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">PAGO MÓVIL</span>
+                </label>
+
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'bank_transfer_bs' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="bank_transfer_bs" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🏦</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">TRANSFERENCIA</span>
+                </label>
+                
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'cash_bs' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="cash_bs" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🤝</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">CONTRAENTREGA</span>
+                </label>
+              </template>
+
+              <!-- USD Methods -->
+              <template v-else-if="selectedCurrency === 'USD'">
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'binance' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="binance" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🪙</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">BINANCE PAY</span>
+                </label>
+
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'paypal' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="paypal" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">💳</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">PAYPAL</span>
+                </label>
+                
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'cash_usd' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="cash_usd" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🤝</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">CONTRAENTREGA</span>
+                </label>
+              </template>
+
+              <!-- COP Methods -->
+              <template v-else-if="selectedCurrency === 'COP'">
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'bank_transfer' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="bank_transfer" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🏦</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">TRANSFERENCIA</span>
+                </label>
+                
+                <label class="payment-method-card" :class="{ 'method-selected': orderForm.payment_method === 'cash_cop' }" style="border: 1px solid var(--editorial-border); padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                  <input type="radio" v-model="orderForm.payment_method" value="cash_cop" style="display: none;" />
+                  <span class="method-icon" style="font-size: 18px; margin-bottom: 6px;">🤝</span>
+                  <span class="method-title" style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">CONTRAENTREGA</span>
+                </label>
+              </template>
+
+            </div>
+
+            <!-- Detalles dinámicos según el método y moneda seleccionada -->
             <transition name="drawer-fade">
-              <div v-if="orderForm.payment_method === 'pago_movil'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
-                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE TRANSFERENCIA / PAGO MÓVIL:</p>
+              <div v-if="selectedCurrency === 'VES' && orderForm.payment_method === 'mobile_payment'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE PAGO MÓVIL (VES) [EJEMPLO]:</p>
                 <p><strong>Banco:</strong> Banesco (0134)</p>
                 <p><strong>Teléfono:</strong> +58 412 000 0000</p>
                 <p><strong>Cédula:</strong> V-12.345.678</p>
@@ -855,15 +1058,72 @@ onMounted(async () => {
                   <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">Bs. {{ (cartTotalPrice * binanceRate).toFixed(2) }}</span></p>
                 </div>
               </div>
-              <div v-else-if="orderForm.payment_method === 'zelle'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
-                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE PAGO ZELLE:</p>
-                <p><strong>Correo electrónico:</strong> pagos@tova.com</p>
+              <div v-else-if="selectedCurrency === 'VES' && orderForm.payment_method === 'bank_transfer_bs'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE TRANSFERENCIA (VES) [EJEMPLO]:</p>
+                <p><strong>Banco:</strong> Banesco (0134)</p>
+                <p><strong>Cuenta Corriente:</strong> 0134-1234-56-1234567890</p>
+                <p><strong>Rif:</strong> J-12345678-9</p>
+                <p><strong>Titular:</strong> Tova Belleza y Joyería C.A.</p>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--editorial-border);">
+                  <p><strong>Tasa de cambio Binance:</strong> {{ binanceRate.toFixed(2) }} VES/USD</p>
+                  <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">Bs. {{ (cartTotalPrice * binanceRate).toFixed(2) }}</span></p>
+                </div>
+                <!-- Upload comprobante de transferencia -->
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--editorial-border);">
+                  <p style="font-weight: 700; letter-spacing: 1px; margin-bottom: 8px;">ADJUNTAR COMPROBANTE DE PAGO:</p>
+                  <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; border: 1px dashed var(--editorial-border); padding: 10px; background: #fff;">
+                    <span style="font-size: 18px;">📎</span>
+                    <span style="font-size: 11px;">{{ paymentProof ? paymentProof.name : 'Seleccionar imagen o PDF...' }}</span>
+                    <input type="file" accept="image/*,application/pdf" style="display:none;" @change="e => paymentProof = e.target.files[0] || null" />
+                  </label>
+                </div>
+              </div>
+              <div v-else-if="selectedCurrency === 'VES' && orderForm.payment_method === 'cash_bs'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">CONTRAENTREGA (EFECTIVO VES):</p>
+                <p>Pague en efectivo Bolívares (VES) al recibir su pedido.</p>
+                <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">Bs. {{ (cartTotalPrice * binanceRate).toFixed(2) }}</span></p>
+              </div>
+              <div v-else-if="selectedCurrency === 'USD' && orderForm.payment_method === 'paypal'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE PAGO PAYPAL (USD) [EJEMPLO]:</p>
+                <p><strong>Correo electrónico PayPal:</strong> pagos@tova.com</p>
                 <p><strong>Titular:</strong> Tova Beauty & Gems LLC</p>
+                <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">$ {{ cartTotalPrice.toFixed(2) }}</span></p>
                 <p style="margin-top: 8px; font-size: 10px; color: #666;">Por favor envíe el capture del pago con su nombre de referencia.</p>
               </div>
-              <div v-else-if="orderForm.payment_method === 'contraentrega'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
-                <p style="margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">MÉTODO CONTRAENTREGA:</p>
-                <p>Pague en efectivo (USD/VES) o Pago Móvil al momento de recibir su pedido en la dirección indicada.</p>
+              <div v-else-if="selectedCurrency === 'USD' && orderForm.payment_method === 'binance'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE BINANCE PAY (USD) [EJEMPLO]:</p>
+                <p><strong>Pay ID:</strong> 987654321</p>
+                <p><strong>Titular:</strong> Tova Store Pay</p>
+                <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">USDT {{ cartTotalPrice.toFixed(2) }}</span></p>
+              </div>
+              <div v-else-if="selectedCurrency === 'USD' && orderForm.payment_method === 'cash_usd'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">CONTRAENTREGA (EFECTIVO USD):</p>
+                <p>Pague en efectivo Dólares (USD) al recibir su pedido.</p>
+                <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">$ {{ cartTotalPrice.toFixed(2) }}</span></p>
+              </div>
+              <div v-else-if="selectedCurrency === 'COP' && orderForm.payment_method === 'bank_transfer'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">DATOS DE TRANSFERENCIA (COP) [EJEMPLO]:</p>
+                <p><strong>Banco:</strong> Bancolombia</p>
+                <p><strong>Cuenta de Ahorros:</strong> 123-456789-01</p>
+                <p><strong>Titular:</strong> Inversiones Tova S.A.S</p>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--editorial-border);">
+                  <p><strong>Tasa de cambio COP:</strong> {{ copRate.toFixed(2) }} COP/USD</p>
+                  <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">COP {{ (cartTotalPrice * copRate).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span></p>
+                </div>
+                <!-- Upload comprobante de transferencia -->
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--editorial-border);">
+                  <p style="font-weight: 700; letter-spacing: 1px; margin-bottom: 8px;">ADJUNTAR COMPROBANTE DE PAGO:</p>
+                  <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; border: 1px dashed var(--editorial-border); padding: 10px; background: #fff;">
+                    <span style="font-size: 18px;">📎</span>
+                    <span style="font-size: 11px;">{{ paymentProof ? paymentProof.name : 'Seleccionar imagen o PDF...' }}</span>
+                    <input type="file" accept="image/*,application/pdf" style="display:none;" @change="e => paymentProof = e.target.files[0] || null" />
+                  </label>
+                </div>
+              </div>
+              <div v-else-if="selectedCurrency === 'COP' && orderForm.payment_method === 'cash_cop'" class="payment-details-box" style="background-color: var(--editorial-grey-bg); border: 1px solid var(--editorial-border); padding: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">
+                <p style="margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black);">CONTRAENTREGA (EFECTIVO COP):</p>
+                <p>Pague en efectivo Pesos Colombianos (COP) al recibir su pedido.</p>
+                <p style="font-size: 14px; color: var(--editorial-black); margin-top: 4px;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 750;">COP {{ (cartTotalPrice * copRate).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span></p>
               </div>
             </transition>
           </div>

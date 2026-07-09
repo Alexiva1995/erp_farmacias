@@ -11,7 +11,7 @@ const authStore = useAuthStore();
 const { xs } = useDisplay();
 const brandingStore = useBrandingStore();
 
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 

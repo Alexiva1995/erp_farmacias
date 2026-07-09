@@ -10,7 +10,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const { mobile } = useDisplay();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 // Estados reactivos para las cards de resumen
 const debitoFiscal = ref(0);

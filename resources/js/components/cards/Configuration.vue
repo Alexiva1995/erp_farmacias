@@ -67,7 +67,7 @@ onMounted(() => {
 
 <template>
   <VCard class="mb-6">
-    <VCardItem class="py-2">
+    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
       <VCardTitle class="text-h6"> Tipo de Negocio </VCardTitle>
       <VRadioGroup
         v-model="businessType"
@@ -83,7 +83,7 @@ onMounted(() => {
       </VRadioGroup>
     </VCardItem>
 
-    <VCardItem class="py-2">
+    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
       <VCardTitle class="text-h6"> Configuración Fiscal </VCardTitle>
       <VRadioGroup
         v-model="fiscalMode"
@@ -99,7 +99,7 @@ onMounted(() => {
       </VRadioGroup>
     </VCardItem>
 
-    <VCardItem class="py-2">
+    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
       <VCardTitle class="text-h6">Sujeto pasivo especial </VCardTitle>
       <VRadioGroup
         v-model="specialStatus"
@@ -114,7 +114,7 @@ onMounted(() => {
         />
       </VRadioGroup>
     </VCardItem>
-    <VCardItem class="py-2">
+    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
       <VCardTitle class="text-h6"> Recargo SPE Global </VCardTitle>
       <VSwitch
         v-model="allForeignSalesSpe"

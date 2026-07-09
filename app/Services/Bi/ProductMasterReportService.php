@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Bi;
 
 use App\Contracts\Repositories\ProductMasterReportRepositoryInterface;

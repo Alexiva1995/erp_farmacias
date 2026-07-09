@@ -24,7 +24,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store']
+    const publicRoutes = ['/', '/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -148,7 +148,7 @@ router.beforeEach(async (to, from, next) => {
     
     if (to.path === '/tova-store') {
       const brandingStore = useBrandingStore()
-      if (brandingStore.settings?.business_type === 'restaurant') {
+      if (brandingStore.settings.business_type === 'restaurant') {
         console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a Home')
         return safeNext({ path: '/' })
       }
@@ -172,7 +172,7 @@ router.beforeEach(async (to, from, next) => {
       }
       
       if (authStore.isAdmin) {
-        return safeNext({ path: '/' })
+        return safeNext({ path: '/dashboard' })
       } else {
         return safeNext({ path: '/tpv/orderUser' })
       }
@@ -186,7 +186,9 @@ router.beforeEach(async (to, from, next) => {
         return safeNext({ path: '/reservations' })
       }
       
-      if (!authStore.isAdmin) {
+      if (authStore.isAdmin) {
+        return safeNext({ path: '/dashboard' })
+      } else {
         return safeNext({ path: '/tpv/orderUser' })
       }
     }
@@ -194,6 +196,24 @@ router.beforeEach(async (to, from, next) => {
     if ((to.path.startsWith('/finances/pending-payments') || to.path.startsWith('/finances/cashout')) && authStore.isVendedor) {
       console.log('[ROUTER] Empleado intentó acceder a sección financiera restringida, redirigiendo')
       return safeNext({ path: '/invoice/invoices' })
+    }
+    
+    const isMiniMarket = brandingStore.settings?.business_type === 'minimarket'
+    if (isMiniMarket) {
+      const path = to.path.toLowerCase()
+      if (
+        path.startsWith('/fiscal') ||
+        path.startsWith('/iva') ||
+        path.startsWith('/islr') ||
+        path.startsWith('/restaurant') ||
+        path.includes('-offer') ||
+        path === '/bi/discounts' ||
+        path === '/crm/doctors' ||
+        path === '/crm/companies'
+      ) {
+        console.log('[ROUTER] Ruta no disponible para minimarket, redirigiendo a Home')
+        return safeNext({ path: '/' })
+      }
     }
     
     console.log('[ROUTER] Permitiendo navegación')

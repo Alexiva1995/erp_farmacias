@@ -32,7 +32,7 @@ export default [
         to: 'bi-report-expiry',
       },
       {
-        title: 'Laboratorios',
+        title: 'Marcas',
         to: 'bi-report-laboratories',
       },
       {
@@ -42,10 +42,6 @@ export default [
       {
         title: 'Análisis Cíclico',
         to: 'bi-inventory-cyclic',
-      },
-      {
-        title: 'Promociones y Descuentos',
-        to: 'bi-discounts',
       },
       {
         title: 'Analítica de Clientes',

@@ -10,7 +10,7 @@ import { toast } from "@/plugins/sweetalert";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
@@ -148,7 +148,7 @@ const handleMobilePageChange = (newPage) => {
 
 const formatStock = (item) => {
   const stock = Number(item.stock_calculado ?? 0);
-  if (isSportsRental.value) {
+  if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
   }
   if (!isRestaurant.value) {

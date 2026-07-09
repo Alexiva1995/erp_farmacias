@@ -8,7 +8,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const props = defineProps({
   grupos: { type: Array, required: true },         // Array de { group_id, group_name, productos }

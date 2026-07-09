@@ -99,40 +99,80 @@ class EcommerceController extends Controller
 
     /**
      * Procesar la compra/orden del e-commerce.
+     * Crea la ecommerce_order, sube el comprobante y genera la orden TPV inmediatamente.
      */
     public function checkout(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'customer_name'    => 'required|string|max:255',
-            'customer_email'   => 'nullable|email|max:255',
-            'customer_phone'   => 'required|string|max:30',
-            'shipping_address' => 'nullable|string|max:500',
-            'notes'            => 'nullable|string|max:1000',
-            'payment_method'   => 'nullable|string|max:50',
-            'items'            => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.variant_id' => 'nullable|integer|exists:product_variants,id',
-            'items.*.quantity'   => 'required|integer|min:1',
+            'customer_name'            => 'required|string|max:255',
+            'customer_email'           => 'nullable|email|max:255',
+            'customer_phone'           => 'required|string|max:30',
+            'shipping_address'         => 'nullable|string|max:500',
+            'notes'                    => 'nullable|string|max:1000',
+            'payment_method'           => 'nullable|string|max:50',
+            'payment_currency'         => 'nullable|string|max:10',  // Moneda elegida por el cliente
+            'customer_document_type'   => 'nullable|string|max:5',
+            'customer_document_number' => 'nullable|string|max:50',
+            'payment_proof'            => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'items'                    => 'required|array|min:1',
+            'items.*.product_id'       => 'required|integer|exists:products,id',
+            'items.*.variant_id'       => 'nullable|integer|exists:product_variants,id',
+            'items.*.quantity'         => 'required|integer|min:1',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
         try {
+            // 1. Crear la orden de e-commerce con moneda y monto en moneda del cliente
             $result = $this->orderService->createOrder(
-                $request->only(['customer_name', 'customer_email', 'customer_phone', 'shipping_address', 'payment_method']),
+                $request->only([
+                    'customer_name', 'customer_email', 'customer_phone',
+                    'shipping_address', 'notes', 'payment_method',
+                    'payment_currency', 'customer_document_type', 'customer_document_number',
+                ]),
                 $request->input('items')
             );
 
+            $ecommerceOrderId = $result['order_id'];
+
+            // 2. Guardar comprobante de pago si fue adjuntado
+            $proofPath = null;
+            if ($request->hasFile('payment_proof')) {
+                $proofPath = $request->file('payment_proof')
+                    ->store('payment_proofs', 'public');
+
+                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $ecommerceOrderId)
+                    ->update(['payment_proof_path' => $proofPath]);
+            }
+
+            // 3. Crear la orden TPV inmediatamente (status: pending)
+            $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                ->where('id', $ecommerceOrderId)
+                ->first();
+
+            $tpvOrderId = $this->consolidateOrder($ecommerceOrder);
+
+            // 4. Vincular la orden TPV al registro e-commerce
+            if ($tpvOrderId) {
+                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $ecommerceOrderId)
+                    ->update(['tpv_order_id' => $tpvOrderId]);
+            }
+
             return response()->json([
-                'success' => true,
-                'message' => 'Pedido registrado con éxito.',
-                'order_id' => $result['order_id'],
-                'total_amount' => $result['total_amount'],
+                'success'          => true,
+                'message'          => 'Pedido registrado con éxito.',
+                'order_id'         => $ecommerceOrderId,
+                'tpv_order_id'     => $tpvOrderId,
+                'total_amount'     => $result['total_amount'],
+                'currency'         => $result['currency'],
+                'total_in_currency' => $result['total_in_currency'],
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -197,10 +237,8 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Aprobar una orden de e-commerce (cambiar estado a Paid).
-     */
-    /**
-     * Aprobar una orden de e-commerce (cambiar estado a Paid y consolidar venta).
+     * Aprobar una orden de e-commerce (el pago fue confirmado).
+     * La orden TPV ya fue creada al checkout — solo se actualiza el estado.
      */
     public function approveOrder(int $id): JsonResponse
     {
@@ -211,22 +249,27 @@ class EcommerceController extends Controller
                     ->first();
 
                 if (!$ecommerceOrder) {
-                    throw new \Exception("La orden no fue encontrada.");
+                    throw new \Exception('La orden no fue encontrada.');
                 }
 
+                if ($ecommerceOrder->status !== 'Pending') {
+                    throw new \Exception('Solo se pueden aprobar órdenes en estado Pendiente.');
+                }
+
+                // Marcar la ecommerce_order como Pagada
                 \Illuminate\Support\Facades\DB::table('ecommerce_orders')
                     ->where('id', $id)
-                    ->update([
-                        'status' => 'Paid',
-                        'updated_at' => now()
-                    ]);
+                    ->update(['status' => 'Paid', 'updated_at' => now()]);
 
-                // Consolidar en ventas/caja
-                $this->consolidateOrder($ecommerceOrder);
+                // Marcar la orden TPV vinculada como cerrada (venta confirmada)
+                if (!empty($ecommerceOrder->tpv_order_id)) {
+                    \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+                        ->update(['status' => 'closed']);
+                }
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'La orden ha sido aprobada y consolidada en ventas con éxito.',
+                    'message' => 'La orden ha sido aprobada. Pago confirmado.',
                 ]);
             });
         } catch (\Exception $e) {
@@ -238,39 +281,54 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Cancelar una orden de e-commerce (cambiar estado a Cancelled).
+     * Cancelar una orden de e-commerce.
+     * Devuelve el stock y cancela también la orden TPV vinculada.
      */
     public function cancelOrder(int $id): JsonResponse
     {
         try {
-            // Devolver stock
-            $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
-                ->where('ecommerce_order_id', $id)
-                ->get();
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $id)
+                    ->first();
 
-            foreach ($items as $item) {
-                if (!empty($item->product_variant_id)) {
-                    \Illuminate\Support\Facades\DB::table('product_variants')
-                        ->where('id', $item->product_variant_id)
-                        ->increment('stock', $item->quantity);
-                } else {
-                    \Illuminate\Support\Facades\DB::table('products')
-                        ->where('id', $item->product_id)
-                        ->increment('stock', $item->quantity);
+                if (!$ecommerceOrder) {
+                    throw new \Exception('La orden no fue encontrada.');
                 }
-            }
 
-            \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                ->where('id', $id)
-                ->update([
-                    'status' => 'Cancelled',
-                    'updated_at' => now()
+                // Devolver stock de los ítems
+                $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
+                    ->where('ecommerce_order_id', $id)
+                    ->get();
+
+                foreach ($items as $item) {
+                    if (!empty($item->product_variant_id)) {
+                        \Illuminate\Support\Facades\DB::table('product_variants')
+                            ->where('id', $item->product_variant_id)
+                            ->increment('stock', $item->quantity);
+                    } else {
+                        \Illuminate\Support\Facades\DB::table('products')
+                            ->where('id', $item->product_id)
+                            ->increment('stock', $item->quantity);
+                    }
+                }
+
+                // Cancelar la ecommerce_order
+                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+                    ->where('id', $id)
+                    ->update(['status' => 'Cancelled', 'updated_at' => now()]);
+
+                // Cancelar también la orden TPV vinculada
+                if (!empty($ecommerceOrder->tpv_order_id)) {
+                    \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+                        ->update(['status' => 'cancelled']);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'La orden ha sido cancelada y el stock devuelto.',
                 ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'La orden ha sido cancelada con éxito.',
-            ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -280,7 +338,8 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Marcar pedido como enviado (y consolidar venta si no se consolidó antes).
+     * Marcar pedido como enviado.
+     * La orden TPV ya existe — solo actualiza el estado.
      */
     public function shipOrder(int $id): JsonResponse
     {
@@ -291,22 +350,16 @@ class EcommerceController extends Controller
                     ->first();
 
                 if (!$ecommerceOrder) {
-                    throw new \Exception("La orden no fue encontrada.");
+                    throw new \Exception('La orden no fue encontrada.');
                 }
 
                 \Illuminate\Support\Facades\DB::table('ecommerce_orders')
                     ->where('id', $id)
-                    ->update([
-                        'status' => 'Shipped',
-                        'updated_at' => now()
-                    ]);
-
-                // Consolidar en ventas/caja
-                $this->consolidateOrder($ecommerceOrder);
+                    ->update(['status' => 'Shipped', 'updated_at' => now()]);
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'La orden ha sido marcada como enviada y consolidada en ventas.',
+                    'message' => 'La orden ha sido marcada como enviada.',
                 ]);
             });
         } catch (\Exception $e) {
@@ -318,7 +371,7 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Completar pedido y consolidarlo en el sistema de facturación/caja si no se ha hecho antes.
+     * Completar el pedido (entregado al cliente). Marca la orden TPV como cerrada.
      */
     public function completeOrder(int $id): JsonResponse
     {
@@ -329,32 +382,33 @@ class EcommerceController extends Controller
                     ->first();
 
                 if (!$ecommerceOrder) {
-                    throw new \Exception("La orden no existe.");
+                    throw new \Exception('La orden no existe.');
                 }
 
                 if ($ecommerceOrder->status === 'Completed') {
-                    throw new \Exception("La orden ya fue completada anteriormente.");
+                    throw new \Exception('La orden ya fue completada anteriormente.');
                 }
 
                 if ($ecommerceOrder->status === 'Cancelled') {
-                    throw new \Exception("Una orden cancelada no se puede completar.");
+                    throw new \Exception('Una orden cancelada no se puede completar.');
                 }
 
-                // Consolidar en ventas/caja
-                $orderId = $this->consolidateOrder($ecommerceOrder);
-
-                // Actualizar ecommerce order
+                // Actualizar ecommerce_order
                 \Illuminate\Support\Facades\DB::table('ecommerce_orders')
                     ->where('id', $id)
-                    ->update([
-                        'status' => 'Completed',
-                        'updated_at' => now()
-                    ]);
+                    ->update(['status' => 'Completed', 'updated_at' => now()]);
+
+                // Marcar la orden TPV como cerrada si aún está pendiente
+                if (!empty($ecommerceOrder->tpv_order_id)) {
+                    \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+                        ->whereNotIn('status', ['closed', 'cancelled'])
+                        ->update(['status' => 'closed']);
+                }
 
                 return response()->json([
-                    'success' => true,
-                    'message' => 'La orden ha sido completada y consolidada en ventas con éxito.',
-                    'order_id' => $orderId
+                    'success'  => true,
+                    'message'  => 'La orden ha sido completada con éxito.',
+                    'order_id' => $ecommerceOrder->tpv_order_id,
                 ]);
             });
         } catch (\Exception $e) {
@@ -366,13 +420,20 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Lógica privada para consolidar un pedido e-commerce en la tabla general orders.
+     * Consolida el pedido e-commerce en la tabla general de órdenes TPV.
+     * Se llama UNA única vez al momento del checkout (status: pending).
+     * Al aprobar/completar, solo se actualiza el status a 'closed'.
      */
     private function consolidateOrder(object $ecommerceOrder): int
     {
         $id = $ecommerceOrder->id;
 
-        // Evitar duplicar la consolidación
+        // Evitar duplicar si ya fue consolidada previamente
+        if (!empty($ecommerceOrder->tpv_order_id)) {
+            return (int) $ecommerceOrder->tpv_order_id;
+        }
+
+        // Fallback: buscar por referencia ECO- por si la columna aún no existía
         $existingOrder = \App\Models\Order::whereJsonContains('payment_methods', ['reference' => 'ECO-' . $id])->first();
         if ($existingOrder) {
             return $existingOrder->id;
@@ -380,7 +441,12 @@ class EcommerceController extends Controller
 
         // Resolver cliente
         $client = null;
-        if (!empty($ecommerceOrder->customer_phone)) {
+        if (!empty($ecommerceOrder->customer_document_number)) {
+            $client = \App\Models\Client::where('identification', $ecommerceOrder->customer_document_number)
+                ->where('identification_type', $ecommerceOrder->customer_document_type ?? 'V-')
+                ->first();
+        }
+        if (!$client && !empty($ecommerceOrder->customer_phone)) {
             $client = \App\Models\Client::where('phone', $ecommerceOrder->customer_phone)->first();
         }
         if (!$client && !empty($ecommerceOrder->customer_email)) {
@@ -391,8 +457,8 @@ class EcommerceController extends Controller
                 'name' => $ecommerceOrder->customer_name,
                 'phone' => $ecommerceOrder->customer_phone ?? 'N/A',
                 'email' => $ecommerceOrder->customer_email ?? null,
-                'identification_type' => 'V-',
-                'identification' => 'ECO-' . $id,
+                'identification_type' => $ecommerceOrder->customer_document_type ?? 'V-',
+                'identification' => $ecommerceOrder->customer_document_number ?? ('ECO-' . $id),
             ]);
         }
 
@@ -429,29 +495,68 @@ class EcommerceController extends Controller
             $totalCost += $unitCost * $item->quantity;
         }
 
+        // Usar total_in_currency si está disponible, si no calcular desde total_amount
+        $currency = strtoupper($ecommerceOrder->currency ?? 'COP');
+        $amountInPaymentCurrency = !empty($ecommerceOrder->total_in_currency)
+            ? (float) $ecommerceOrder->total_in_currency
+            : (float) $ecommerceOrder->total_amount;
+
+        // Mapear método de pago de e-commerce a método TPV
+        $mappedMethod    = 'cash_cop';
+        $methodNormalized = strtolower(str_replace([' ', '_', '-'], '', $ecommerceOrder->payment_method ?? ''));
+
+        if (in_array($methodNormalized, ['mobilepayment', 'pagomovil'])) {
+            $mappedMethod = 'mobile_payment';
+        } elseif (in_array($methodNormalized, ['banktransferbs', 'transferenciabs'])) {
+            $mappedMethod = 'bank_transfer_bs';
+        } elseif (in_array($methodNormalized, ['cashbs', 'contraentregaves'])) {
+            $mappedMethod = 'cash_bs';
+        } elseif ($methodNormalized === 'binance') {
+            $mappedMethod = 'binance';
+        } elseif ($methodNormalized === 'paypal') {
+            $mappedMethod = 'paypal';
+        } elseif (in_array($methodNormalized, ['cashusd', 'contraentregausd'])) {
+            $mappedMethod = 'cash_usd';
+        } elseif (in_array($methodNormalized, ['banktransfer', 'transferencia'])) {
+            $mappedMethod = 'bank_transfer';
+        } elseif (in_array($methodNormalized, ['cashcop', 'contraentregacop', 'contraentrega'])) {
+            $mappedMethod = 'cash_cop';
+        }
+
         $paymentMethods = [
             [
-                'method' => $ecommerceOrder->payment_method ?? 'Transferencia',
-                'amount' => (float)$ecommerceOrder->total_amount,
-                'reference' => 'ECO-' . $id
+                'method'    => $mappedMethod,
+                'amount'    => round($amountInPaymentCurrency, 2),
+                'currency'  => $currency,
+                'reference' => 'ECO-' . $id,
             ]
         ];
 
-        // Crear orden principal
+        // Tasa USD→COP para campos redundantes de la orden
+        $rateUsdToCop = 1.0;
+        $usdRateObj   = \App\Models\ExchangeRate::where('currency_code', 'USD')->latest()->first();
+        if ($usdRateObj && (float) $usdRateObj->rate > 0) {
+            $rateUsdToCop = (float) $usdRateObj->rate;
+        }
+        $totalAmountUsd = $rateUsdToCop > 0 ? (float) $ecommerceOrder->total_amount / $rateUsdToCop : 0;
+
+        // Crear orden principal en la tabla del TPV — status 'pending' hasta que admin apruebe
         $order = \App\Models\Order::create([
-            'client_id' => $client->id,
-            'seller_id' => $userId,
+            'client_id'       => $client->id,
+            'seller_id'       => $userId,
             'cash_closing_id' => $cashClosing->id,
-            'total_amount' => $ecommerceOrder->total_amount,
-            'currency' => 'COP',
-            'total_cost' => $totalCost,
-            'taxable_base' => $ecommerceOrder->total_amount,
-            'order_date' => now(),
-            'status' => 'closed',
+            'total_amount'    => $amountInPaymentCurrency,   // Monto en moneda del cliente
+            'currency'        => $currency,                  // Moneda del cliente
+            'total_cost'      => $totalCost,
+            'taxable_base'    => $amountInPaymentCurrency,
+            'order_date'      => now(),
+            'status'          => 'pending',                  // Pendiente hasta que el admin apruebe
             'payment_methods' => $paymentMethods,
+            'usd_conversion'  => round($rateUsdToCop, 2),
+            'total_amount_usd' => round($totalAmountUsd, 2),
         ]);
 
-        // Crear detalles
+        // Crear detalles de productos vinculados
         foreach ($items as $item) {
             $product = \App\Models\Product::find($item->product_id);
             $unitCost = $product ? ($product->cost ?? 0) : 0;

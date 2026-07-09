@@ -12,16 +12,8 @@ export default [
     subject: 'admin',
     children: [
       {
-        title: 'Doctores',
-        to: 'crm-doctors',
-      },
-      {
         title: 'Clientes',
         to: 'crm-clients',
-      },
-      {
-        title: 'Empresas',
-        to: 'crm-companies',
       },
       {
         title: 'Sorteo',

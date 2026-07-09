@@ -15,7 +15,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 const isAdmin = computed(() => authStore.isAdmin);
 const isOwnProfile = computed(() => authStore.user?.employee?.id === Number(route.params.id) || authStore.user?.employee_id === Number(route.params.id));
 const canEdit = computed(() => isAdmin.value || isOwnProfile.value);

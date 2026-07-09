@@ -18,7 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "update-product", "group-created"]);
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const editingProductId = ref(null);
 const editingValue = ref(null);

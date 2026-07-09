@@ -41,6 +41,9 @@ export const useBrandingStore = defineStore('branding', () => {
     try {
       const response = await axios.get('/public/general-settings')
       settings.value = { ...settings.value, ...response.data.data }
+      if (response.data?.data?.business_type) {
+        localStorage.setItem('business_type', response.data.data.business_type)
+      }
 
       // Obtener tasas de cambio desde el API público
       try {

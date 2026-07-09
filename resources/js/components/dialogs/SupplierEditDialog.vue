@@ -15,7 +15,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
 // Tipo de negocio es restaurante
-const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 // ─── Estado ────────────────────────────────────────────────────────────────
 const activeTab = ref(0);

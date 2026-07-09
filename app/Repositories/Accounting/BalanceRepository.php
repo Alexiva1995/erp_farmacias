@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Accounting;
 
 use App\Contracts\Accounting\BalanceRepositoryInterface;

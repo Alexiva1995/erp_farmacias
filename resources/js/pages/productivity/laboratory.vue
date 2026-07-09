@@ -47,7 +47,7 @@ const fetchEmployeeLaboratories = async () => {
     totalRecords.value = response.data.data.total;
   } catch (error) {
     console.error("Error al obtener las asignaciones:", error);
-    toast.error("Error al obtener las asignaciones de laboratorios.");
+    toast.error("Error al obtener las asignaciones de marcas.");
   } finally {
     loading.value = false;
   }
@@ -63,7 +63,7 @@ const fetchLaboratories = async () => {
     }));
   } catch (error) {
     console.error("Error al obtener laboratorios:", error);
-    toast.error("Error al cargar los laboratorios.");
+    toast.error("Error al cargar las marcas.");
   }
 };
 
@@ -118,7 +118,7 @@ const updateTableOptions = (options) => {
 const handleDeleteAssignment = async (employeeId, laboratoryId) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: "Se eliminará la asignación de este laboratorio al empleado",
+    text: "Se eliminará la asignación de esta marca al empleado",
     icon: "warning",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
@@ -193,7 +193,7 @@ const handleSaveAssignment = async (assignmentData) => {
 
     const isEditMode = !!currentEmployee.value.employee_id;
     toast.success(
-      `Laboratorios ${isEditMode ? "actualizados" : "asignados"} con éxito`,
+      `Marcas ${isEditMode ? "actualizadas" : "asignadas"} con éxito`,
     );
 
     isDialogVisible.value = false;

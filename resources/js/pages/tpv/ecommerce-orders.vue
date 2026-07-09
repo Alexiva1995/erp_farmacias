@@ -175,6 +175,21 @@ const getStatusLabel = (status) => {
   }
 };
 
+// Traduce la clave interna del método de pago a texto legible en español
+const getPaymentLabel = (method) => {
+  const map = {
+    mobile_payment: 'Pago Móvil',
+    bank_transfer_bs: 'Transferencia Bancaria (Bs)',
+    cash_bs: 'Efectivo Bolívares',
+    binance: 'Binance Pay',
+    paypal: 'PayPal',
+    cash_usd: 'Efectivo USD',
+    bank_transfer: 'Transferencia Bancaria',
+    cash_cop: 'Efectivo COP',
+  }
+  return map[method] || method || 'Web'
+}
+
 const statusOptions = [
   { title: "Todos", value: null },
   { title: "Pendiente", value: "Pending" },
@@ -398,7 +413,7 @@ onMounted(() => {
     <VWindow v-model="activeTab" class="orders-window">
       <!-- Helper Macro Component para renderizar tablas réplicas -->
       <VWindowItem v-for="(tabItems, tabIdx) in [ordersPending, ordersPaid, ordersShipped, ordersCompleted, ordersCancelled, ordersAll]" :key="tabIdx" :value="tabIdx">
-        <VCard variant="flat" border class="rounded-xl overflow-hidden shadow-sm bg-surface">
+        <VCard variant="flat" border class="rounded-lg overflow-hidden shadow-sm">
           <VDataTable
             :headers="headers"
             :items="tabItems"
@@ -436,7 +451,7 @@ onMounted(() => {
 
             <template #item.total_amount="{ item }">
               <span class="font-weight-black text-subtitle-2 text-primary">
-                {{ formatCurrency(item.total_amount, 'COP') }}
+                {{ Number(item.total_amount).toFixed(2) }}
               </span>
             </template>
 
@@ -467,210 +482,141 @@ onMounted(() => {
       </VWindowItem>
     </VWindow>
 
-    <!-- Modal Lateral de Detalles Premium -->
-    <VNavigationDrawer
-      v-model="isDetailOpen"
-      location="end"
-      temporary
-      width="500"
-      class="detail-drawer"
-      scrim="rgba(0,0,0,0.3)"
-    >
-      <div v-if="selectedOrder" class="d-flex flex-column h-100 bg-light">
-        <!-- Cabecera Premium -->
-        <div class="header-gradient pa-4 d-flex align-center text-white shadow-sm">
-          <VAvatar color="white" variant="flat" size="36" class="me-3 elevation-1">
-            <VIcon icon="tabler-file-invoice" size="20" color="primary" />
-          </VAvatar>
+    <!-- Modal de Detalles (diálogo centrado clásico) -->
+    <VDialog v-model="isDetailOpen" max-width="580" :scrollable="false">
+      <VCard v-if="selectedOrder" style="border-radius: 8px; overflow: hidden;">
+
+        <!-- Cabecera -->
+        <div class="header-gradient pa-3 d-flex align-center text-white">
+          <VIcon icon="tabler-file-invoice" size="18" class="me-2" />
           <div>
-            <h3 class="text-subtitle-1 font-weight-black leading-none mb-0 text-white">
-              Pedido #{{ selectedOrder.id }}
-            </h3>
-            <span class="text-super-xs text-white opacity-75 font-weight-bold uppercase mt-1 d-inline-block">
-              Detalles e Historial
-            </span>
+            <div class="text-subtitle-2 font-weight-black text-white">Pedido #{{ selectedOrder.id }}</div>
+            <div class="text-caption text-white opacity-70" style="font-size: 10px;">{{ formatDateSimple(selectedOrder.created_at) }}</div>
           </div>
           <VSpacer />
+          <VChip :color="getStatusColor(selectedOrder.status)" size="x-small" variant="flat" class="font-weight-black me-2">
+            {{ getStatusLabel(selectedOrder.status) }}
+          </VChip>
+          <VBtn icon="tabler-x" variant="tonal" color="white" size="x-small" @click="isDetailOpen = false" />
+        </div>
+
+        <VCardText class="pa-4" style="overflow: hidden;">
+
+          <!-- Datos del Cliente: grid 2 columnas -->
+          <div class="section-label mb-1">Datos del Cliente</div>
+          <div class="info-grid mb-3">
+            <div class="info-cell">
+              <span class="info-key">Nombre</span>
+              <span class="info-val font-weight-bold">{{ selectedOrder.customer_name }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-key">Documento</span>
+              <span class="info-val">{{ (selectedOrder.customer_document_type || '') + (selectedOrder.customer_document_number || '—') }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-key">Teléfono</span>
+              <span class="info-val">{{ selectedOrder.customer_phone || '—' }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-key">Correo</span>
+              <span class="info-val" style="word-break: break-all;">{{ selectedOrder.customer_email || '—' }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-key">Método de Pago</span>
+              <span class="info-val font-weight-bold text-primary">{{ getPaymentLabel(selectedOrder.payment_method) }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-key">Dirección de Entrega</span>
+              <span class="info-val">{{ selectedOrder.shipping_address || 'Retiro en local' }}</span>
+            </div>
+          </div>
+
+          <!-- Ítems del pedido -->
+          <div class="section-label mb-1">Ítems del Pedido</div>
+          <table class="items-table mb-2">
+            <thead>
+              <tr>
+                <th class="text-left">Producto</th>
+                <th class="text-center" style="width: 50px;">Cant.</th>
+                <th class="text-right" style="width: 90px;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in selectedOrder.items" :key="item.id">
+                <td>
+                  <div class="font-weight-medium" style="font-size: 12px;">{{ item.product_name }}</div>
+                  <div v-if="item.variant_value" style="font-size: 10px; color: #999;">{{ item.variant_value }}</div>
+                </td>
+                <td class="text-center" style="font-size: 12px;">{{ item.quantity }}</td>
+                <td class="text-right font-weight-bold" style="font-size: 12px;">{{ Number(item.price * item.quantity).toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Total -->
+          <div class="d-flex justify-space-between align-center px-2 py-2" style="background: rgba(var(--v-theme-primary), 0.06); border-radius: 6px;">
+            <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Total General</span>
+            <span class="text-primary font-weight-black" style="font-size: 18px;">{{ Number(selectedOrder.total_amount).toFixed(2) }}</span>
+          </div>
+
+          <!-- Notas (opcional) -->
+          <div v-if="selectedOrder.notes" class="mt-2 pa-2" style="background: #f9f9f9; border-left: 3px solid #ddd; font-size: 11px; color: #666; font-style: italic;">
+            "📋 {{ selectedOrder.notes }}"
+          </div>
+
+        </VCardText>
+
+        <!-- Acciones: botones uno al lado del otro -->
+        <VDivider />
+        <VCardActions class="pa-3 gap-2">
+          <!-- Aprobar Pago (Pending) -->
           <VBtn
-            icon="tabler-x"
-            variant="tonal"
-            color="white"
-            size="small"
-            class="rounded-lg"
+            v-if="selectedOrder.status === 'Pending'"
+            color="primary" variant="flat" height="38" class="font-weight-black flex-grow-1"
+            :loading="processingAction" @click="handleApprove(selectedOrder.id)"
+          >
+            <VIcon icon="tabler-discount-check" size="16" class="me-1" /> Aprobar
+          </VBtn>
+
+          <!-- Enviar Pedido (Paid) -->
+          <VBtn
+            v-if="selectedOrder.status === 'Paid'"
+            color="info" variant="flat" height="38" class="font-weight-black flex-grow-1"
+            :loading="processingAction" @click="handleShip(selectedOrder.id)"
+          >
+            <VIcon icon="tabler-truck" size="16" class="me-1" /> Marcar Enviado
+          </VBtn>
+
+          <!-- Completar (Shipped) -->
+          <VBtn
+            v-if="selectedOrder.status === 'Shipped'"
+            color="success" variant="flat" height="38" class="font-weight-black flex-grow-1"
+            :loading="processingAction" @click="handleComplete(selectedOrder.id)"
+          >
+            <VIcon icon="tabler-circle-check" size="16" class="me-1" /> Completar Venta
+          </VBtn>
+
+          <!-- Cancelar (siempre visible si no es terminal) -->
+          <VBtn
+            v-if="selectedOrder.status !== 'Completed' && selectedOrder.status !== 'Cancelled'"
+            color="error" variant="tonal" height="38" class="font-weight-black flex-grow-1"
+            :loading="processingAction" @click="handleCancel(selectedOrder.id)"
+          >
+            <VIcon icon="tabler-circle-x" size="16" class="me-1" /> Cancelar
+          </VBtn>
+
+          <!-- Cerrar (estados terminales) -->
+          <VBtn
+            v-if="selectedOrder.status === 'Completed' || selectedOrder.status === 'Cancelled'"
+            color="secondary" variant="tonal" height="38" class="font-weight-black flex-grow-1"
             @click="isDetailOpen = false"
-          />
-        </div>
+          >
+            Cerrar
+          </VBtn>
+        </VCardActions>
 
-        <!-- Contenido Desplazable -->
-        <div class="flex-grow-1 overflow-y-auto pa-4 d-flex flex-column gap-4">
-          <!-- Tarjeta Cliente -->
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator primary" />
-              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos del Cliente</span>
-            </div>
-            <div class="d-flex flex-column gap-2 text-subtitle-2">
-              <div class="d-flex justify-space-between border-b pb-1">
-                <span class="text-disabled">Nombre:</span>
-                <span class="font-weight-black text-high-emphasis">{{ selectedOrder.customer_name }}</span>
-              </div>
-              <div class="d-flex justify-space-between border-b pb-1">
-                <span class="text-disabled">Teléfono:</span>
-                <span class="font-weight-bold text-medium-emphasis">{{ selectedOrder.customer_phone || '—' }}</span>
-              </div>
-              <div class="d-flex justify-space-between border-b pb-1">
-                <span class="text-disabled">Correo:</span>
-                <span class="font-weight-medium text-medium-emphasis truncate" style="max-inline-size: 250px;">{{ selectedOrder.customer_email || '—' }}</span>
-              </div>
-              <div class="d-flex justify-space-between">
-                <span class="text-disabled">Método Pago:</span>
-                <span class="font-weight-black text-primary text-uppercase">{{ selectedOrder.payment_method || 'Web' }}</span>
-              </div>
-            </div>
-          </VCard>
-
-          <!-- Tarjeta Envío / Despacho -->
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator secondary" />
-              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Información de Envío</span>
-            </div>
-            <div class="d-flex flex-column gap-2">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Dirección de Entrega</span>
-                <div class="pa-3 bg-light rounded-lg border text-subtitle-2 font-weight-medium text-high-emphasis">
-                  {{ selectedOrder.shipping_address || 'Retiro en local / Sin dirección' }}
-                </div>
-              </div>
-              <div class="d-flex flex-column mt-2" v-if="selectedOrder.notes">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Notas del Pedido</span>
-                <div class="pa-3 bg-light rounded-lg border border-dashed text-caption italic text-medium-emphasis">
-                  "{{ selectedOrder.notes }}"
-                </div>
-              </div>
-            </div>
-          </VCard>
-
-          <!-- Desglose de Productos -->
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator info" />
-              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Ítems del Pedido</span>
-            </div>
-
-            <div class="d-flex flex-column gap-3">
-              <div
-                v-for="item in selectedOrder.items"
-                :key="item.id"
-                class="d-flex align-center justify-space-between border-b pb-2"
-              >
-                <div class="d-flex flex-column min-width-0">
-                  <span class="font-weight-black text-subtitle-2 text-high-emphasis truncate" style="max-inline-size: 280px;">
-                    {{ item.product_name }}
-                  </span>
-                  <span class="text-super-xs text-disabled" v-if="item.variant_value">
-                    Variante: {{ item.variant_value }}
-                  </span>
-                  <span class="text-super-xs text-primary font-weight-bold">
-                    {{ item.quantity }} unid. x {{ formatCurrency(item.price, 'COP') }}
-                  </span>
-                </div>
-                <span class="font-weight-black text-subtitle-2 text-high-emphasis ms-2">
-                  {{ formatCurrency(item.price * item.quantity, 'COP') }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Total General -->
-            <div class="d-flex justify-space-between align-center pt-3 mt-2 border-t border-dashed">
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase">Total General</span>
-              <span class="text-h5 font-weight-black text-primary">
-                {{ formatCurrency(selectedOrder.total_amount, 'COP') }}
-              </span>
-            </div>
-          </VCard>
-        </div>
-
-        <!-- Barra de Acciones del Estado -->
-        <div class="pa-4 bg-white border-t d-flex flex-column gap-2">
-          <!-- Estado Actual -->
-          <div class="d-flex align-center justify-space-between mb-2">
-            <span class="text-xs font-weight-black text-disabled uppercase">Estado Actual:</span>
-            <VChip
-              :color="getStatusColor(selectedOrder.status)"
-              size="small"
-              variant="flat"
-              class="font-weight-black uppercase px-3 shadow-sm rounded-lg"
-            >
-              {{ getStatusLabel(selectedOrder.status) }}
-            </VChip>
-          </div>
-
-          <!-- Botones de Transición -->
-          <div class="d-flex flex-column gap-2">
-            <!-- Caso Pending: Aprobar Pago -->
-            <VBtn
-              v-if="selectedOrder.status === 'Pending'"
-              color="primary"
-              variant="flat"
-              block
-              height="44"
-              class="font-weight-black rounded-lg"
-              :loading="processingAction"
-              @click="handleApprove(selectedOrder.id)"
-            >
-              <VIcon icon="tabler-discount-check" class="me-2" size="18" />
-              Aprobar Pago
-            </VBtn>
-
-            <!-- Caso Paid: Enviar pedido -->
-            <VBtn
-              v-if="selectedOrder.status === 'Paid'"
-              color="info"
-              variant="flat"
-              block
-              height="44"
-              class="font-weight-black rounded-lg"
-              :loading="processingAction"
-              @click="handleShip(selectedOrder.id)"
-            >
-              <VIcon icon="tabler-truck" class="me-2" size="18" />
-              Marcar como Enviado
-            </VBtn>
-
-            <!-- Caso Shipped: Completar entrega -->
-            <VBtn
-              v-if="selectedOrder.status === 'Shipped'"
-              color="success"
-              variant="flat"
-              block
-              height="44"
-              class="font-weight-black rounded-lg"
-              :loading="processingAction"
-              @click="handleComplete(selectedOrder.id)"
-            >
-              <VIcon icon="tabler-circle-check" class="me-2" size="18" />
-              Completar y Consolidar Venta
-            </VBtn>
-
-            <!-- Cancelar (Disponible para cualquier estado no terminal) -->
-            <VBtn
-              v-if="selectedOrder.status !== 'Completed' && selectedOrder.status !== 'Cancelled'"
-              color="error"
-              variant="tonal"
-              block
-              height="44"
-              class="font-weight-black rounded-lg"
-              :loading="processingAction"
-              @click="handleCancel(selectedOrder.id)"
-            >
-              <VIcon icon="tabler-circle-x" class="me-2" size="18" />
-              Cancelar Pedido (Devolver Stock)
-            </VBtn>
-          </div>
-        </div>
-      </div>
-    </VNavigationDrawer>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -683,48 +629,89 @@ onMounted(() => {
   );
 }
 
-.detail-drawer {
-  border-inline-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
-}
-
 .header-indicator {
   inline-size: 4px;
   block-size: 14px;
   border-radius: 10px;
 }
+.header-indicator.primary  { background-color: rgb(var(--v-theme-primary)); }
+.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
+.header-indicator.info      { background-color: rgb(var(--v-theme-info)); }
 
-.header-indicator.primary {
-  background-color: rgb(var(--v-theme-primary));
+/* Etiqueta de sección dentro del modal */
+.section-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  border-left: 3px solid rgb(var(--v-theme-primary));
+  padding-left: 8px;
 }
 
-.header-indicator.secondary {
-  background-color: rgb(var(--v-theme-secondary));
+/* Grid 2 columnas para datos del cliente */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 6px;
+  padding: 10px;
 }
 
-.header-indicator.info {
-  background-color: rgb(var(--v-theme-info));
+.info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.info-key {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-val {
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+}
+
+/* Tabla de ítems compacta */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.items-table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.15);
+}
+.items-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.07);
+  vertical-align: middle;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;
 }
+.letter-spacing-1 { letter-spacing: 1px !important; }
+.leading-none     { line-height: 1 !important; }
+.leading-tight    { line-height: 1.25 !important; }
+.uppercase        { text-transform: uppercase; }
+.truncate         { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.letter-spacing-1 {
-  letter-spacing: 1px !important;
-}
-
-.leading-none {
-  line-height: 1 !important;
-}
-
-.leading-tight {
-  line-height: 1.25 !important;
-}
-
-.orders-tabs {
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
-}
+.orders-tabs    { border-bottom: 1px solid rgba(var(--v-border-color), 0.08); }
+.orders-window  { overflow: visible; }
 
 .tab-with-badge .tab-count {
   font-size: 0.7rem;
@@ -732,22 +719,6 @@ onMounted(() => {
   font-weight: 600;
   min-inline-size: 1.5rem;
   padding-inline: 6px;
-}
-
-.orders-window {
-  overflow: visible;
-}
-
-
-
-.uppercase {
-  text-transform: uppercase;
-}
-
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .gap-2 { gap: 8px !important; }

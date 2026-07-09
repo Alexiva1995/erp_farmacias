@@ -14,7 +14,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "adjust-lots"]);
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const headers = computed(() => [
   { 

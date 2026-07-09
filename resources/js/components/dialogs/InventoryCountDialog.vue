@@ -19,7 +19,7 @@ const barcodeRequiredGlobal = computed(
 
 // Modo restaurante: se muestra el conteo dual (paquetes + destapado)
 const isRestaurantMode = computed(
-  () => brandingStore.settings?.business_type === 'restaurant'
+  () => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket')
 );
 
 const props = defineProps({

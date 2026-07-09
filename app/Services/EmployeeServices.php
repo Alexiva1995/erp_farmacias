@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Employee;
 use App\Models\Employee as MEmployee;
 use App\Models\UsersSalaryDetails;
-use App\Repository\EmployeeRepository;
+use App\Repositories\EmployeeRepository;
 use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\StreamedResponse;

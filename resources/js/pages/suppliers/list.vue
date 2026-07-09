@@ -21,7 +21,7 @@ const totalSupplier = ref(0);
 const loading = ref(false);
 
 // Tipo de negocio es restaurante
-const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -30,7 +30,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref(brandingStore.settings?.business_type === "restaurant" ? null : "drogueria");
+const typeFilter = ref((brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket') ? null : "drogueria");
 
 const stats = ref({
   total_debt: 0,

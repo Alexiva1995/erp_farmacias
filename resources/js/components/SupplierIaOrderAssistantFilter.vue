@@ -5,7 +5,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const props = defineProps({
   searchQuery:        { type: String,  default: "" },

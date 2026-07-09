@@ -25,7 +25,7 @@ const configStore = useLayoutConfigStore();
 const processedNavItems = computed(() => {
   let items = [...navItems];
   
-  const isRestaurant = brandingStore.settings.business_type === 'restaurant';
+  const isRestaurant = (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket');
   const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
   const isSimpleCyclic = brandingStore.settings.cyclic_inventory_mode === 'simple';
   const enableLots = brandingStore.settings.enable_lots ?? true;

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Retention;
 
 use App\Contracts\Retention as RetentionContract;
 use App\Models\Invoice;
 use App\Models\Retention;
-use App\Repository\RetentionRepository;
+use App\Repositories\RetentionRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class RetentionService implements RetentionContract

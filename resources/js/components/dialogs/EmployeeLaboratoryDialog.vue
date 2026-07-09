@@ -16,7 +16,7 @@ const { mobile } = useDisplay();
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const dialogTitle = computed(() =>
-  isEditMode.value ? "Editar Asignación" : "Asignar Laboratorios",
+  isEditMode.value ? "Editar Asignación" : "Asignar Marcas",
 );
 
 const formData = ref({
@@ -189,7 +189,7 @@ const getLaboratoryColor = (index) => {
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
-                {{ isEditMode ? `Gestión de ID: #${props.employee.employee_id}` : 'Asignación de laboratorios registrados' }}
+                {{ isEditMode ? `Gestión de ID: #${props.employee.employee_id}` : 'Asignación de marcas registradas' }}
               </span>
             </div>
           </div>
@@ -245,7 +245,7 @@ const getLaboratoryColor = (index) => {
             <div class="d-flex align-center justify-space-between mb-4">
               <div class="d-flex align-center gap-2">
                 <div class="header-indicator primary shadow-sm"></div>
-                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Gestión de Laboratorios</span>
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Gestión de Marcas</span>
               </div>
               <VChip v-if="formData.laboratories.length > 0" color="primary" size="x-small" variant="flat" class="font-weight-black rounded">
                 {{ formData.laboratories.length }} VINCULADOS
@@ -259,8 +259,8 @@ const getLaboratoryColor = (index) => {
                     <AppSelect
                       v-model="formData.new_laboratory_id"
                       :items="availableLaboratories"
-                      label="Vincular nuevo laboratorio"
-                      placeholder="Seleccionar laboratorio..."
+                      label="Vincular nueva marca"
+                      placeholder="Seleccionar marca..."
                       :disabled="!formData.employee_id"
                       variant="outlined"
                       density="comfortable"
@@ -288,7 +288,7 @@ const getLaboratoryColor = (index) => {
             <VCard variant="flat" class="border rounded-lg bg-white elevation-1 overflow-hidden">
               <div v-if="formData.laboratories.length === 0" class="pa-8 d-flex flex-column align-center justify-center text-center">
                 <VIcon icon="tabler-flask-off" size="40" class="text-disabled opacity-20 mb-3" />
-                <div class="text-xs font-weight-black text-disabled uppercase">No hay laboratorios asignados aún</div>
+                <div class="text-xs font-weight-black text-disabled uppercase">No hay marcas asignadas aún</div>
               </div>
 
               <VList v-else class="pa-0">

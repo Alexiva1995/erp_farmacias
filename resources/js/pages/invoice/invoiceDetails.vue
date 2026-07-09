@@ -13,7 +13,7 @@ import { useAuthStore } from "@/stores/auth";
 
 const brandingStore = useBrandingStore();
 const authStore = useAuthStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },

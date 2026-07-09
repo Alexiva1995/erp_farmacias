@@ -16,7 +16,7 @@ export default [
         to: 'productivity-my-cleaning-activities',
       },
       {
-        title: 'Laboratorios',
+        title: 'Marcas',
         to: 'productivity-laboratory',
       },
       {

@@ -16,7 +16,7 @@ const props = defineProps({
 });
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
 
 const isGroup = computed(() => props.viewType === "group");
@@ -67,6 +67,9 @@ const formatInteger = (val) => {
 const formatQuantity = (val, item) => {
   const num = parseFloat(val || 0);
   if (isNaN(num)) return '0';
+  if (isMiniMarket.value) {
+    return Math.round(num).toString();
+  }
   if (isRestaurant.value) {
     const unit = item?.unit_of_measure ? item.unit_of_measure.toLowerCase().trim() : '';
     

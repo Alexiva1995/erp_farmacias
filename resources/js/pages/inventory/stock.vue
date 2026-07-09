@@ -27,7 +27,7 @@ let debounceTimer = null;
 let skipPaginationWatch = false;
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);

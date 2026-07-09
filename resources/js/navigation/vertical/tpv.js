@@ -18,6 +18,10 @@ export default [
         to: 'tpv-order-user',
       },
        {
+        title: 'Créditos',
+        to: 'tpv-credit',
+      },
+      {
         title: 'Pedidos',
         to: 'tpv-order-general',
         action: 'manage',
@@ -30,43 +34,8 @@ export default [
         subject: 'admin',
       },
       {
-        title: 'Promociones',
-        action: 'manage',
-        subject: 'admin',
-        children: [
-          {
-            title: 'Individual',
-            to: 'tpv-individual-offer',
-          },
-          {
-            title: 'Packs',
-            to: 'tpv-pack-offer',
-          },
-          {
-            title: 'Categorías',
-            to: 'tpv-category-offer',
-          },
-          {
-            title: 'Empresas',
-            to: 'tpv-company-offer',
-          },
-          {
-            title: 'Médicos',
-            to: 'tpv-doctor-offer',
-          },
-          {
-            title: 'Recetas',
-            to: 'tpv-prescription-offer',
-          },
-          {
-            title: 'Vencimientos',
-            to: 'tpv-expiration-offer',
-          },
-          {
-            title: 'Generales',
-            to: 'tpv-general-offer',
-          },
-        ],
+        title: 'Ecommerce',
+        to: 'tova-store',
       },
     ],
   },

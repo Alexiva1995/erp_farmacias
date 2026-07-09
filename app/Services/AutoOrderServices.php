@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\AutoOrder;
 use App\Models\AutoOrder as ModelsAutoOrder;
 use App\Models\Supplier;
-use App\Repository\AutoOrderDetailsRepository;
-use App\Repository\AutoOrdersRepository;
+use App\Repositories\AutoOrderDetailsRepository;
+use App\Repositories\AutoOrdersRepository;
 use DateTime;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Request;

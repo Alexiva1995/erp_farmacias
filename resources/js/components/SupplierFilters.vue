@@ -25,7 +25,7 @@ const emit = defineEmits([
 ]);
 
 // Tipo de negocio es restaurante
-const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const sortOptions = [
   { title: "Deuda mayor", icon: "tabler-arrow-up", key: "debt", order: "desc" },

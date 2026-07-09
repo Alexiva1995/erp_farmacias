@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Payslip;
 use App\Exports\PayslipsExport;
 use App\Models\Employee;
 use App\Models\Payslip as MPayslip;
-use App\Repository\PayslipRepository;
+use App\Repositories\PayslipRepository;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 

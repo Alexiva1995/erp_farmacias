@@ -11,7 +11,7 @@ import { useDebounceFn } from '@vueuse/core';
 import Swal from 'sweetalert2';
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const props = defineProps({
   products: { type: Array, required: true },

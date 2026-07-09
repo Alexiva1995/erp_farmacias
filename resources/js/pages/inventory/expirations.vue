@@ -9,7 +9,7 @@ import { useAbility } from "@casl/vue";
 
 const { can } = useAbility();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 import PriceAdjustmentDialog from "@/components/dialogs/PriceAdjustmentDialog.vue";
 import DonationLetterDialog from "@/components/DonationLetterDialog.vue";

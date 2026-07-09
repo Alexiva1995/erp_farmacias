@@ -76,6 +76,8 @@ use App\Repositories\Eloquent\LocationRepository;
 use App\Http\Controllers\Api\Accounting\BalanceController;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -274,5 +276,15 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production') || str_starts_with(config('app.url'), 'https')) {
             URL::forceScheme('https');
         }
+
+        // Configurar rate limiter para la API (120 peticiones por minuto)
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Configurar rate limiter restrictivo para login (5 intentos por minuto por IP)
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }

@@ -38,7 +38,7 @@ const labForm = ref({ id: null, name: '', group_id: null })
 const groupForm = ref({ id: null, name: '', laboratory_ids: [] })
 
 const brandingStore = useBrandingStore()
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant' || brandingStore.settings?.business_type === 'sports_rental')
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket') || brandingStore.settings?.business_type === 'sports_rental' || brandingStore.settings?.business_type === 'minimarket')
 
 const headers = computed(() => {
   const list = [

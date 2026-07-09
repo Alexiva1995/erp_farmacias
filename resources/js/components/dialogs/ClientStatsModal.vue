@@ -12,7 +12,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const loading = ref(false);
 const clientData = ref(null);

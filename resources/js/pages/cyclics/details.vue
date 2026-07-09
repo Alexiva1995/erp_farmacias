@@ -24,7 +24,7 @@ const isLoadingFilters = ref(false);
 const isAdvancedFiltersVisible = ref(false);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 // Degradado dinámico igual que el login: secondary (inicio) → primary (fin)
 const headerGradient = computed(() => {
