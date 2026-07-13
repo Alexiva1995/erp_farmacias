@@ -27,51 +27,71 @@ class EcommerceOrderService
             throw new Exception("El carrito de compras no puede estar vacío.");
         }
 
-        return DB::transaction(function () use ($orderData, $cartItems) {
-            // 1. Calcular total en USD (precio base de los productos)
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+
+        return DB::transaction(function () use ($orderData, $cartItems, $isRestaurant) {
+            // 1. Calcular total en USD (precio base de los productos o platos)
             $totalAmount = 0;
             $itemsToInsert = [];
 
             foreach ($cartItems as $item) {
-                $product = Product::find($item['product_id']);
-                if (!$product) {
-                    throw new Exception("El producto con ID {$item['product_id']} no existe.");
-                }
-
-                $variant = null;
-                $unitPrice = (float) $product->sale_price;
-
-                if (!empty($item['variant_id'])) {
-                    $variant = ProductVariant::find($item['variant_id']);
-                    if (!$variant || $variant->product_id !== $product->id) {
-                        throw new Exception("La variante seleccionada no es válida para el producto.");
+                if ($isRestaurant) {
+                    $dish = \App\Models\Dish::find($item['product_id']);
+                    if (!$dish) {
+                        throw new Exception("El plato con ID {$item['product_id']} no existe.");
                     }
 
-                    // Ajustar precio según el modificador de la variante
-                    $unitPrice += (float) $variant->price_modifier;
+                    $unitPrice = (float) $dish->designated_price;
+                    $subtotal    = $unitPrice * $item['quantity'];
+                    $totalAmount += $subtotal;
 
-                    // Validar y descontar stock de variante
-                    if ($variant->stock < $item['quantity']) {
-                        throw new Exception("Stock insuficiente para el producto '{$product->name}' en la variante seleccionada.");
-                    }
-                    $variant->decrement('stock', $item['quantity']);
+                    $itemsToInsert[] = [
+                        'product_id'         => $dish->id,
+                        'product_variant_id' => null,
+                        'quantity'           => $item['quantity'],
+                        'price'              => $unitPrice,
+                    ];
                 } else {
-                    // Sin variante: validar y descontar stock global
-                    if ($product->stock < $item['quantity']) {
-                        throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
+                    $product = Product::find($item['product_id']);
+                    if (!$product) {
+                        throw new Exception("El producto con ID {$item['product_id']} no existe.");
                     }
-                    $product->decrement('stock', $item['quantity']);
+
+                    $variant = null;
+                    $unitPrice = (float) $product->sale_price;
+
+                    if (!empty($item['variant_id'])) {
+                        $variant = ProductVariant::find($item['variant_id']);
+                        if (!$variant || $variant->product_id !== $product->id) {
+                            throw new Exception("La variante seleccionada no es válida para el producto.");
+                        }
+
+                        // Ajustar precio según el modificador de la variante
+                        $unitPrice += (float) $variant->price_modifier;
+
+                        // Validar y descontar stock de variante
+                        if ($variant->stock < $item['quantity']) {
+                            throw new Exception("Stock insuficiente para el producto '{$product->name}' en la variante seleccionada.");
+                        }
+                        $variant->decrement('stock', $item['quantity']);
+                    } else {
+                        // Sin variante: validar y descontar stock global
+                        if ($product->stock < $item['quantity']) {
+                            throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
+                        }
+                        $product->decrement('stock', $item['quantity']);
+                    }
+
+                    $subtotal    = $unitPrice * $item['quantity'];
+                    $totalAmount += $subtotal;
+
+                    $itemsToInsert[] = [
+                        'product_id'         => $product->id,
+                        'product_variant_id' => $variant ? $variant->id : null,
+                        'quantity'           => $item['quantity'],
+                        'price'              => $unitPrice,
+                    ];
                 }
-
-                $subtotal    = $unitPrice * $item['quantity'];
-                $totalAmount += $subtotal;
-
-                $itemsToInsert[] = [
-                    'product_id'         => $product->id,
-                    'product_variant_id' => $variant ? $variant->id : null,
-                    'quantity'           => $item['quantity'],
-                    'price'              => $unitPrice,
-                ];
             }
 
             // 2. Calcular total en la moneda del cliente usando tasas de cambio actuales

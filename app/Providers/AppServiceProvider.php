@@ -278,12 +278,12 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Configurar rate limiter para la API (120 peticiones por minuto)
-        RateLimiter::for('api', function (Request $request) {
+        RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
         // Configurar rate limiter restrictivo para login (5 intentos por minuto por IP)
-        RateLimiter::for('login', function (Request $request) {
+        RateLimiter::for('login', function (\Illuminate\Http\Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
     }

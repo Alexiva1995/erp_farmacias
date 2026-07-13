@@ -24,7 +24,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/', '/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store']
+    const publicRoutes = ['/', '/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store', '/restaurant-store']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -40,7 +40,7 @@ const router = createRouter({
       })
     }
 
-    const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store')
+    const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store' && p.path !== '/restaurant-store')
     const pagesWithAuth = addAuthMeta(filteredPages)
     
     // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
@@ -83,6 +83,15 @@ const router = createRouter({
           requiresAuth: false,
           layout: 'blank'
         }
+      },
+      {
+        path: '/restaurant-store',
+        name: 'restaurant-store',
+        component: () => import('@/pages/restaurant-store.vue'),
+        meta: {
+          requiresAuth: false,
+          layout: 'blank'
+        }
       }
     ]
     
@@ -113,6 +122,17 @@ router.beforeEach(async (to, from, next) => {
   
   try {
     const authStore = useAuthStore()
+    const brandingStore = useBrandingStore()
+
+    // Cargar settings del backend para tener el business_type real antes de evaluar rutas
+    if (!brandingStore.settings.app_rif) {
+      try {
+        await brandingStore.fetchSettings()
+      } catch (brandingError) {
+        console.warn('[ROUTER] Error al cargar configuración de marca:', brandingError)
+      }
+    }
+
     console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
     
     // Solo intentar obtener el usuario si la ruta requiere autenticación y no está cargado aún
@@ -149,8 +169,16 @@ router.beforeEach(async (to, from, next) => {
     if (to.path === '/tova-store') {
       const brandingStore = useBrandingStore()
       if (brandingStore.settings.business_type === 'restaurant') {
-        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a Home')
-        return safeNext({ path: '/' })
+        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a restaurant-store')
+        return safeNext({ path: '/restaurant-store' })
+      }
+    }
+
+    if (to.path === '/restaurant-store') {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings.business_type !== 'restaurant') {
+        console.log('[ROUTER] Restaurant store no disponible, redirigiendo a tova-store')
+        return safeNext({ path: '/tova-store' })
       }
     }
 
@@ -178,6 +206,14 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     
+    if (to.path === '/' && !isAuthenticated) {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings.business_type === 'restaurant') {
+        console.log('[ROUTER] Redirigiendo cliente de restaurante a restaurant-store')
+        return safeNext({ path: '/restaurant-store' })
+      }
+    }
+
     if (to.path === '/' && isAuthenticated) {
       const brandingStore = useBrandingStore()
       const isSportsRental = brandingStore.settings?.business_type === 'sports_rental'

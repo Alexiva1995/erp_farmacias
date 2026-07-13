@@ -24,6 +24,54 @@ class EcommerceController extends Controller
      */
     public function getProducts(Request $request): JsonResponse
     {
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+
+        if ($isRestaurant) {
+            $query = \App\Models\Dish::with(['category'])
+                ->where('status', 1);
+
+            if ($request->boolean('favorites_only')) {
+                // Si no hay favoritos explícitos en platos, mostramos todos los activos
+                $dishes = $query->latest()->get();
+            } else {
+
+                if ($request->filled('category')) {
+                    $categorySlug = $request->input('category');
+                    $query->whereHas('category', function ($q) use ($categorySlug) {
+                        $q->whereRaw('LOWER(REPLACE(name, \' \', \'-\')) = ?', [$categorySlug]);
+                    });
+                }
+
+                if ($request->filled('search')) {
+                    $search = $request->input('search');
+                    $query->where('name', 'like', "%{$search}%");
+                }
+
+                $query->latest();
+                // Aumentamos a 100 para restaurantes para poder mostrar todo de forma directa
+                $dishes = $query->paginate(100);
+            }
+
+            // Transformar platos para que tengan el formato compatible con el front-end de productos
+            $transform = function ($dish) {
+                $dish->sale_price = $dish->designated_price;
+                $dish->image_url = $dish->photo_url;
+                $dish->variants = [];
+                return $dish;
+            };
+
+            if ($dishes instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                $dishes->getCollection()->transform($transform);
+            } else {
+                $dishes->transform($transform);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data'    => $dishes,
+            ]);
+        }
+
         $query = Product::with(['category', 'variants'])
             ->where('is_active', true)
             ->where('is_deleted', false);
@@ -78,6 +126,26 @@ class EcommerceController extends Controller
      */
     public function getCategories(): JsonResponse
     {
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+
+        if ($isRestaurant) {
+            $categories = Category::withCount(['dishes' => function ($q) {
+                    $q->where('status', 1);
+                }])
+                ->select('id', 'name')
+                ->get()
+                ->map(function ($cat) {
+                    $cat->slug = \Illuminate\Support\Str::slug($cat->name);
+                    $cat->products_count = $cat->dishes_count;
+                    return $cat;
+                });
+
+            return response()->json([
+                'success' => true,
+                'data'    => $categories,
+            ]);
+        }
+
         // Obtener categorías reales con conteo de productos activos
         $categories = Category::withCount(['products' => function ($q) {
                 $q->where('is_active', true)->where('is_deleted', false);
@@ -490,8 +558,13 @@ class EcommerceController extends Controller
 
         $totalCost = 0;
         foreach ($items as $item) {
-            $product = \App\Models\Product::find($item->product_id);
-            $unitCost = $product ? ($product->cost ?? 0) : 0;
+            if ($isRestaurant) {
+                $dish = \App\Models\Dish::find($item->product_id);
+                $unitCost = $dish ? ($dish->cost_price ?? 0) : 0;
+            } else {
+                $product = \App\Models\Product::find($item->product_id);
+                $unitCost = $product ? ($product->cost ?? 0) : 0;
+            }
             $totalCost += $unitCost * $item->quantity;
         }
 
@@ -558,8 +631,15 @@ class EcommerceController extends Controller
 
         // Crear detalles de productos vinculados
         foreach ($items as $item) {
-            $product = \App\Models\Product::find($item->product_id);
-            $unitCost = $product ? ($product->cost ?? 0) : 0;
+            if ($isRestaurant) {
+                $dish = \App\Models\Dish::find($item->product_id);
+                $unitCost = $dish ? ($dish->cost_price ?? 0) : 0;
+                $productType = 'App\Models\Dish';
+            } else {
+                $product = \App\Models\Product::find($item->product_id);
+                $unitCost = $product ? ($product->cost ?? 0) : 0;
+                $productType = 'App\Models\Product';
+            }
 
             \App\Models\OrderDetail::create([
                 'order_id' => $order->id,
@@ -567,7 +647,7 @@ class EcommerceController extends Controller
                 'quantity' => $item->quantity,
                 'price' => $item->price,
                 'unit_cost' => $unitCost,
-                'product_type' => 'App\Models\Product',
+                'product_type' => $productType,
             ]);
         }
 

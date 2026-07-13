@@ -106,6 +106,7 @@ declare module 'vue-router/auto-routes' {
     'public-supplier-upload': RouteRecordInfo<'public-supplier-upload', '/public/SupplierUpload', Record<never, never>, Record<never, never>>,
     'reservations': RouteRecordInfo<'reservations', '/reservations', Record<never, never>, Record<never, never>>,
     'restaurant-process-audit': RouteRecordInfo<'restaurant-process-audit', '/restaurant/process-audit', Record<never, never>, Record<never, never>>,
+    'restaurant-store': RouteRecordInfo<'restaurant-store', '/restaurant-store', Record<never, never>, Record<never, never>>,
     'rrhh-employees': RouteRecordInfo<'rrhh-employees', '/rrhh/employees', Record<never, never>, Record<never, never>>,
     'rrhh-employees-id': RouteRecordInfo<'rrhh-employees-id', '/rrhh/employees/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
     'rrhh-resignations': RouteRecordInfo<'rrhh-resignations', '/rrhh/resignations', Record<never, never>, Record<never, never>>,
