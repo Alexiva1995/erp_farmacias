@@ -14,8 +14,6 @@ use Illuminate\Support\Facades\Log;
 
 class ClientRepository implements \App\Contracts\Client
 {
-
-
     public function create(array $data): Model
     {
         $record = Client::create($data);
@@ -58,16 +56,14 @@ class ClientRepository implements \App\Contracts\Client
         return Client::query()->with("company")->get();
     }
 
-
     public function builerPaginate($filtros): Builder
     {
         $consulta = Client::query()
             ->select('clients.*')
             ->addSelect([
                 'days_since_last_purchase' => \DB::table('orders')
-                    ->selectRaw('DATEDIFF(NOW(), MAX(order_date))') // Sincronizado con stats (usa order_date)
+                    ->selectRaw('DATEDIFF(NOW(), MAX(order_date))')
                     ->whereColumn('client_id', 'clients.id')
-                    // Sin filtro de status para reflejar actividad real (intento de compra)
             ])
             ->with([
                 "company" => function ($query) {
@@ -100,7 +96,6 @@ class ClientRepository implements \App\Contracts\Client
                 $consulta->whereIn("identification_type", $filtros["tipo"]);
             }
         }
-
 
         if (array_key_exists("tipo_identificacion_filtro", $filtros)) {
             if ($filtros["tipo_identificacion_filtro"] != "") {
@@ -138,16 +133,12 @@ class ClientRepository implements \App\Contracts\Client
             }
         }
 
-        // $consulta->orderBy("name", "ASC");
-
         return $consulta;
     }
 
-    public function filterWithoutPaginate($filtros): Collection
+    public function filterWithoutPaginate(array $filtros): Collection
     {
-
         $consulta = $this->builerPaginate($filtros);
-
         return $consulta->get();
     }
 
@@ -161,11 +152,9 @@ class ClientRepository implements \App\Contracts\Client
         Client::where("id", "=", $id)->delete();
     }
 
-
     public function filtrar($filtros, $perPage = 10): LengthAwarePaginator
     {
         $consulta = $this->builerPaginate($filtros);
-
         return $consulta->paginate($perPage);
     }
 
@@ -180,6 +169,7 @@ class ClientRepository implements \App\Contracts\Client
 
         return $client;
     }
+
     public function removerAssignCompany(int $client_id): ?Model
     {
         $client = $this->consultById($client_id);
@@ -194,20 +184,42 @@ class ClientRepository implements \App\Contracts\Client
 
     public function bulkCleanupInvalid(): int
     {
-        // En lugar de borrar, limpiamos los teléfonos basura poniéndolos en NULL
-        // Esto afecta a: solo ceros, solo prefijos (0424, 04, etc), o números muy cortos
         return Client::where(function ($query) {
-                $query->where('phone', 'REGEXP', '^[0]+$')             // Solo ceros
-                    ->orWhere('phone', 'REGEXP', '^04[12][246]$')      // Solo el prefijo (0412, 0424, etc)
-                    ->orWhere('phone', 'REGEXP', '^4[12][246]$')       // Solo el prefijo sin el 0
-                    ->orWhere('phone', 'REGEXP', '^04$')               // Solo "04"
-                    ->orWhere('phone', '12345678')                     // Genérico
+                $query->where('phone', 'REGEXP', '^[0]+$')
+                    ->orWhere('phone', 'REGEXP', '^04[12][246]$')
+                    ->orWhere('phone', 'REGEXP', '^4[12][246]$')
+                    ->orWhere('phone', 'REGEXP', '^04$')
+                    ->orWhere('phone', '12345678')
                     ->orWhere(function($q) {
                         $q->whereNotNull('phone')
                           ->where('phone', '!=', '')
-                          ->whereRaw('LENGTH(phone) < 10');            // Longitud insuficiente para Vzla
+                          ->whereRaw('LENGTH(phone) < 10');
                     });
             })
             ->update(['phone' => null]);
+    }
+
+    public function pending(array $filters, int $perPage = 10): LengthAwarePaginator
+    {
+        $consulta = $this->builerPaginate($filters);
+        if (!isset($filters['status'])) {
+            $consulta->where('status', 1);
+        }
+        return $consulta->paginate($perPage);
+    }
+
+    public function exportExcel(array $filtros): \App\Exports\ClientsExport
+    {
+        $query = $this->builerPaginate($filtros);
+        return new \App\Exports\ClientsExport($query);
+    }
+
+    public function updateCompany(int $client_id, int $company_id, bool $status): ?Model
+    {
+        if ($status) {
+            return $this->assignCompany($client_id, $company_id);
+        } else {
+            return $this->removerAssignCompany($client_id);
+        }
     }
 }

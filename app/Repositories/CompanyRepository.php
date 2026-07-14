@@ -12,8 +12,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class CompanyRepository implements \App\Contracts\Company
 {
-
-
     public function create(array $data): Model
     {
         $record = Company::create($data);
@@ -61,13 +59,11 @@ class CompanyRepository implements \App\Contracts\Company
             }
         }
 
-
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
             if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
                 $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
             }
         }
-
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
@@ -78,19 +74,21 @@ class CompanyRepository implements \App\Contracts\Company
         return $consulta;
     }
 
-
     public function filtrar($filtros, $perPage = 10): LengthAwarePaginator
     {
         $consulta = $this->builerPaginate($filtros);
-
         return $consulta->paginate($perPage);
     }
 
-    public function filterWithoutPaginate($filtros): Collection
+    public function filterWithoutPaginate(array $filtros): Collection
     {
-
         $consulta = $this->builerPaginate($filtros);
-
         return $consulta->get();
+    }
+
+    public function exportExcel(array $filtros): \App\Exports\CompaniesExport
+    {
+        $query = $this->builerPaginate($filtros);
+        return new \App\Exports\CompaniesExport($query);
     }
 }
