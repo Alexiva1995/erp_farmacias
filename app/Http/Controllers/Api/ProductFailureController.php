@@ -3,26 +3,33 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreProductFailureRequest;
+use App\Http\Resources\ProductFailureResource;
+use App\Contracts\ProductFailure as ProductFailureContract;
 use Illuminate\Support\Facades\Auth;
-use App\Models\ProductFailure;
 
 class ProductFailureController extends Controller
 {
-   public function store(Request $request)
+    public function __construct(
+        protected ProductFailureContract $productFailureService
+    ) {}
+
+    /**
+     * Almacenar un nuevo reporte de falla.
+     */
+    public function store(StoreProductFailureRequest $request)
     {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-        ]);
+        $validated = $request->validated();
+        $validated['user_id'] = Auth::id();
 
-        ProductFailure::create([
-            'product_id' => $validated['product_id'],
-            'user_id' => Auth::id(), 
-        ]);
+        $failure = $this->productFailureService->store($validated);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Reporte de falla guardado correctamente.'
-        ], 201);
+        return (new ProductFailureResource($failure))
+            ->additional([
+                'status' => 'success',
+                'message' => 'Reporte de falla guardado correctamente.'
+            ])
+            ->response()
+            ->setStatusCode(201);
     }
 }

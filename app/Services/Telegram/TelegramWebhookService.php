@@ -525,6 +525,11 @@ class TelegramWebhookService
             return;
         }
 
+        if (str_starts_with($callbackData, 'falla_aprobar_')) {
+            $this->handleFallaAprobarCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
         if (str_starts_with($callbackData, 'stockout_edit_')) {
             $this->handleStockoutEditCallback($callbackData, $fromId, $callbackQueryId, $messageId, $chatId);
             return;
@@ -2828,6 +2833,115 @@ class TelegramWebhookService
             \Illuminate\Support\Facades\DB::rollBack();
             Log::error("Error procesando stockout auto callback: " . $e->getMessage());
             $this->answerCallback($callbackQueryId, '❌ Error al procesar el pedido.');
+        }
+    }
+
+    /**
+     * Procesar la aprobación de falla de producto y crear la AutoOrder.
+     */
+    protected function handleFallaAprobarCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        // Formato: falla_aprobar_{productId}_{supplierId}_{qty}_{productSupplierId}
+        $parts = explode('_', $callbackData);
+        $productId = (int)$parts[2];
+        $supplierId = (int)$parts[3];
+        $qty = (float)$parts[4];
+        $productSupplierId = isset($parts[5]) ? (int)$parts[5] : null;
+
+        $product = \App\Models\Product::find($productId);
+        $supplier = \App\Models\Supplier::find($supplierId);
+
+        if (!$product || !$supplier) {
+            $this->answerCallback($callbackQueryId, 'Producto o Proveedor no encontrado.');
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $offer = \App\Models\ProductSupplier::find($productSupplierId);
+            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+
+            // Crear o buscar la AutoOrder pendiente
+            $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                [
+                    'supplier_id' => $supplierId,
+                    'status' => \App\Enums\AutoOrderStatus::PENDING,
+                ],
+                [
+                    'order_date' => now(),
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                    'total_amount' => 0,
+                ]
+            );
+
+            // Crear o actualizar detalle
+            $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $qty;
+                $detail->unit_cost = $costoProveedor;
+                $detail->subtotal = (float)$detail->quantity * $costoProveedor;
+                if ($productSupplierId) {
+                    $detail->product_suppliers_id = $productSupplierId;
+                }
+                $detail->save();
+            } else {
+                \App\Models\AutoOrderDetail::create([
+                    'order_id' => $autoOrder->id,
+                    'product_id' => $productId,
+                    'product_suppliers_id' => $productSupplierId,
+                    'quantity' => $qty,
+                    'unit_cost' => $costoProveedor,
+                    'subtotal' => $qty * $costoProveedor,
+                ]);
+            }
+
+            // Recalcular totales de la orden
+            $details = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)->get();
+            $autoOrder->update([
+                'total_items' => $details->count(),
+                'total_quantity' => $details->sum('quantity'),
+                'total_amount' => $details->sum('subtotal'),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            $this->answerCallback($callbackQueryId, '🛒 Pedido de falla confirmado exitosamente.');
+
+            // Crear mensaje para el proveedor
+            $supplierCode = $offer->cod_supplier ?? 'N/A';
+            $copiaMensaje = "Estimado proveedor *{$supplier->name}*,\n\n";
+            $copiaMensaje .= "Deseo solicitar el siguiente producto:\n";
+            $copiaMensaje .= "• *Producto:* {$product->name}\n";
+            $copiaMensaje .= "• *Código Proveedor:* {$supplierCode}\n";
+            $copiaMensaje .= "• *Cantidad:* {$qty} unidades\n";
+            $copiaMensaje .= "• *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\n";
+            $copiaMensaje .= "Quedo atento a la confirmación de la orden.";
+
+            if ($messageId) {
+                $token = config('services.telegram.bot_token');
+                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => "✅ *[SOLICITUD DE FALLA APROBADA]*\n\n" .
+                              "📦 *Producto:* {$product->name}\n" .
+                              "🏢 *Proveedor:* {$supplier->name}\n" .
+                              "🔢 *Cantidad:* {$qty} unidades\n" .
+                              "💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\n" .
+                              "Se ha agregado exitosamente a la auto-orden de compra en el ERP.\n\n" .
+                              "-------------------------------\n" .
+                              "📋 *Mensaje para enviar al proveedor:*\n\n" .
+                              "```\n" . $copiaMensaje . "\n```",
+                    'parse_mode' => 'Markdown',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error procesando falla aprobar callback: " . $e->getMessage());
+            $this->answerCallback($callbackQueryId, '❌ Error al procesar la aprobación.');
         }
     }
 

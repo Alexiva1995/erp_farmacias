@@ -86,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->when(\App\Http\Controllers\Api\ProductFailureController::class)
+            ->needs(\App\Contracts\ProductFailure::class)
+            ->give(\App\Services\ProductFailureServices::class);
+
         $this->app->when(ProfitabilityController::class)
             ->needs(Profitability::class)
             ->give(ProfitabilityServices::class);

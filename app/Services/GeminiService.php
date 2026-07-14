@@ -166,4 +166,40 @@ class GeminiService
             return null;
         }
     }
+
+    /**
+     * Generar contenido de texto general a partir de un prompt.
+     */
+    public function generateText(string $prompt): ?string
+    {
+        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        if (empty($key)) {
+            Log::error('[GeminiService] GEMINI_API_KEY no está configurado.');
+            return null;
+        }
+
+        try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
+            $response = Http::timeout(20)->post($url, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt]
+                        ]
+                    ]
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                return $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            }
+
+            Log::error('[GeminiService] Error en generateText: ' . $response->body());
+            return null;
+        } catch (\Exception $e) {
+            Log::error('[GeminiService] Excepción en generateText: ' . $e->getMessage());
+            return null;
+        }
+    }
 }

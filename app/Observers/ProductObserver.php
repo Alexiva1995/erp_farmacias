@@ -250,10 +250,10 @@ class ProductObserver
     public static function notifyStockoutToTelegram(Product $product): void
     {
         try {
-            $adminChatId = config('services.telegram.admin_chat_id');
+            $targetChatId = config('services.telegram.failures_chat_id') ?: config('services.telegram.admin_chat_id');
             $botToken = config('services.telegram.bot_token');
 
-            if (!$adminChatId || !$botToken) {
+            if (!$targetChatId || !$botToken) {
                 return;
             }
 
@@ -332,7 +332,7 @@ class ProductObserver
             }
 
             $payload = [
-                'chat_id' => $adminChatId,
+                'chat_id' => $targetChatId,
                 'text' => $msg,
                 'parse_mode' => 'Markdown',
             ];

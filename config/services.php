@@ -46,6 +46,7 @@ return [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'chat_id'   => env('TELEGRAM_CHAT_ID'),
         'admin_chat_id' => env('TELEGRAM_ADMIN_CHAT_ID'),
+        'failures_chat_id' => env('TELEGRAM_FAILURES_CHAT_ID'),
     ],
 
 ];
