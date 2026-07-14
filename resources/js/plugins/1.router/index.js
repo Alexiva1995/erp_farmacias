@@ -211,6 +211,9 @@ router.beforeEach(async (to, from, next) => {
       if (brandingStore.settings.business_type === 'restaurant') {
         console.log('[ROUTER] Redirigiendo cliente de restaurante a restaurant-store')
         return safeNext({ path: '/restaurant-store' })
+      } else if (brandingStore.settings.business_type === 'farmacia') {
+        console.log('[ROUTER] Redirigiendo cliente de farmacia a login')
+        return safeNext({ path: '/login' })
       }
     }
 
