@@ -118,11 +118,37 @@ class ProductFailureServices implements ProductFailureContract
             }
         }
 
-        // Calcular unidades recomendadas a pedir (según promedio de ventas o por defecto 10)
-        $qtyToRecommend = 10;
-        if ($product->sales_average && $product->sales_average > 0) {
-            $qtyToRecommend = max(5, (int)round($product->sales_average * 1.5));
-        }
+        // Calcular unidades recomendadas a pedir según el método COMBINADO (por defecto de 30 días)
+        $ventas = \DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->where('order_details.product_id', $product->id)
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [now()->subDays(30)->startOfDay(), now()->endOfDay()])
+            ->sum('order_details.quantity');
+
+        $stockActual = \DB::table('product_lots')
+            ->where('product_id', $product->id)
+            ->sum('quantity');
+
+        $autoOrder = \DB::table('auto_order_details')
+            ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+            ->join('product_suppliers', 'product_suppliers.id', '=', 'auto_order_details.product_suppliers_id')
+            ->where('product_suppliers.product_id', $product->id)
+            ->whereIn('auto_orders.status', [0, 1])
+            ->where('auto_order_details.status', 0)
+            ->whereNull('auto_orders.deleted_at')
+            ->sum('auto_order_details.quantity');
+
+        $promedio = (float)($product->sales_average ?? 0);
+        $demandaPonderada = ($ventas + $promedio) / 2;
+        $resultado = $demandaPonderada - $stockActual - $autoOrder;
+        
+        // Invertir el signo (pedido = demanda - stock)
+        $solicitar = -$resultado;
+        $solicitarRedondeado = $solicitar > 0 ? (int)ceil($solicitar) : (int)floor($solicitar);
+
+        // Como es un reporte de falla, el pedido sugerido mínimo debe ser 5
+        $qtyToRecommend = max(5, $solicitarRedondeado);
 
         $buttons = [];
 
