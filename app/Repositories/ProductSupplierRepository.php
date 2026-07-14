@@ -9,7 +9,7 @@ use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-class ProductSupplierRepository implements \App\Contracts\ProductSupplier
+class ProductSupplierRepository
 {
     public function consultSupplierByProductWithBetterPrice($product_id, $conDescuento): Collection
     {
