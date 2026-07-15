@@ -158,7 +158,9 @@ class ProductFailureServices implements ProductFailureContract
                 return (float)($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd);
             })->first();
 
-            $costoProveedor = (float)($bestOffer->unit_cost_usd_with_discount > 0 ? $bestOffer->unit_cost_usd_with_discount : $bestOffer->unit_cost_usd);
+            $costoProveedorBase = (float)$bestOffer->unit_cost_usd;
+            $costoProveedorConDesc = (float)$bestOffer->unit_cost_usd_with_discount;
+            $costoProveedor = ($costoProveedorConDesc > 0) ? $costoProveedorConDesc : $costoProveedorBase;
             $costoLocal = (float)($product->unit_cost ?? 0);
 
             $diffPercent = 0;
@@ -191,7 +193,11 @@ class ProductFailureServices implements ProductFailureContract
 
             $message .= "🏢 *Proveedor:* {$bestOffer->supplier->name}\n";
             $message .= "💵 *Costo Local:* " . number_format($costoLocal, 2) . " USD\n";
-            $message .= "💵 *Costo Proveedor:* " . number_format($costoProveedor, 2) . " USD\n";
+            if ($costoProveedorConDesc > 0 && $costoProveedorConDesc != $costoProveedorBase) {
+                $message .= "💵 *Costo Proveedor:* " . number_format($costoProveedorBase, 2) . " USD (Con desc: " . number_format($costoProveedorConDesc, 2) . " USD)\n";
+            } else {
+                $message .= "💵 *Costo Proveedor:* " . number_format($costoProveedorBase, 2) . " USD\n";
+            }
             $message .= "📊 *Comparativa:* {$comparacionText}\n";
             $message .= "💡 *Cantidad Recomendada:* Pedir *{$qtyToRecommend}* unidades.\n\n";
             $message .= "¿Deseas aprobar la solicitud de este producto?";
