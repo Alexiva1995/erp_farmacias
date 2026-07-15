@@ -94,6 +94,18 @@ const onActionClick = async (item, action) => {
       emit('open-comparator', { item, quantity });
       return;
     }
+
+    if (item.best_supplier?.is_ai_matched) {
+      const { isConfirmed } = await Swal.fire({
+        title: "Coincidencia por IA",
+        html: `Por IA se sugiere que este producto corresponde a:<br><strong>${item.best_supplier.matched_name || item.best_supplier.name}</strong> del proveedor.<br><br>¿Deseas confirmar esta coincidencia y agregarlo a la orden?`,
+        icon: "info",
+        showCancelButton: true,
+        confirmButtonText: "Sí, agregar",
+        cancelButtonText: "Cancelar",
+      });
+      if (!isConfirmed) return;
+    }
     
     // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
     const nuestroBarcode = item.barcode ? String(item.barcode).trim() : '';
@@ -454,13 +466,15 @@ function rowClass(item) {
               <VBtn
                 icon
                 variant="tonal"
-                color="success"
+                :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'"
                 size="32"
                 :loading="isProcessing[item.id] === 'adding'"
                 @click.stop="onActionClick(item, 'add')"
               >
-                <VIcon icon="tabler-shopping-cart-plus" size="18" />
-                <VTooltip activator="parent" location="top">Añadir a Orden</VTooltip>
+                <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
+                <VTooltip activator="parent" location="top">
+                  {{ item.best_supplier?.is_ai_matched ? 'Coincidencia sugerida por IA' : 'Añadir a Orden' }}
+                </VTooltip>
               </VBtn>
             </div>
           </template>
@@ -517,8 +531,8 @@ function rowClass(item) {
                        <VBtn v-if="!isRestaurant" icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
                          <VIcon icon="tabler-trash-x" size="18" />
                        </VBtn>
-                       <VBtn icon variant="tonal" color="success" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
-                         <VIcon icon="tabler-shopping-cart-plus" size="18" />
+                        <VBtn icon variant="tonal" :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
+                          <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
                        </VBtn>
                     </div>
                   </div>

@@ -354,6 +354,9 @@ class IaAssistantReportService
                 if ($bestSupplier && isset($supplierData['productSupplier'])) {
                     $bestSupplier->setAttribute('product_suppliers_id', $supplierData['productSupplier']->id ?? null);
                     $bestSupplier->setAttribute('unit_cost_usd_with_discount', $supplierData['productSupplier']->unit_cost_usd_with_discount ?? 0);
+                    $bestSupplier->setAttribute('is_ai_matched', (bool)($supplierData['productSupplier']->is_ai_matched ?? false));
+                    // Pasar también el nombre de la oferta sugerida para el modal
+                    $bestSupplier->setAttribute('matched_name', $supplierData['productSupplier']->name ?? '');
                 }
                 $producto->setAttribute('best_supplier', $bestSupplier);
                 $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
