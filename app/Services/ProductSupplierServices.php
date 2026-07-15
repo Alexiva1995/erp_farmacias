@@ -141,12 +141,12 @@ class ProductSupplierServices implements ProductSupplier
             if ($replenishTheProduct["productSupplier"]) {
                 if ($conDescuento == "true") {
                     if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
-                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
+                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease((float)$replenishTheProduct["product"]->unit_cost, (float)$replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
                         $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
                     }
                 } else {
                     if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
-                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd);
+                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease((float)$replenishTheProduct["product"]->unit_cost, (float)$replenishTheProduct["productSupplier"]->unit_cost_usd);
                         $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
                     }
                 }
@@ -216,5 +216,4 @@ class ProductSupplierServices implements ProductSupplier
 
         return $productosConOportunidad;
     }
-
 }
