@@ -312,7 +312,7 @@ class DashboardController extends Controller
         $currentMonthEnd = now()->endOfMonth();
         $today = now();
 
-        $transactionRepo = new \App\Repository\TransactionRepository();
+        $transactionRepo = new \App\Repositories\TransactionRepository();
 
         // 1. Promedio de Ventas Diarias (Mes actual)
         $daysElapsed = $today->day;

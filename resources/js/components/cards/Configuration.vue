@@ -67,7 +67,7 @@ onMounted(() => {
 
 <template>
   <VCard class="mb-6">
-    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
+    <VCardItem class="py-2">
       <VCardTitle class="text-h6"> Tipo de Negocio </VCardTitle>
       <VRadioGroup
         v-model="businessType"
