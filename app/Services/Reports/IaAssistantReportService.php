@@ -532,8 +532,6 @@ class IaAssistantReportService
 
         $itemsReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($productos, $conDescuento);
         $itemsReponer = $this->productSupplierRepository->checkTolerance($itemsReponer, $conDescuento);
-
-        // Consolidar productos unificados para reponer
         $itemsReponer = $this->consolidateReplenishCollection($itemsReponer, $filtros);
 
         // 4. Clasificar y ordenar
@@ -544,6 +542,12 @@ class IaAssistantReportService
             $item['product']->solicitar = -$item['product']->solicitar;
             // Redondear lógicamente: mantener el piso/techo según el signo original (que ahora es positivo)
             $item['product']->solicitar = $item['product']->solicitar > 0 ? ceil($item['product']->solicitar) : floor($item['product']->solicitar);
+            
+            // Regla de alza: si es incremento de precio, sugerir solo 1 unidad
+            if (($item['increase'] ?? null) === true && $item['product']->solicitar > 0) {
+                $item['product']->solicitar = 1;
+            }
+            
             // Sincronizar campo raíz
             $item['solicitar'] = $item['product']->solicitar;
         });
