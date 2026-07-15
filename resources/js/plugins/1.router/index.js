@@ -132,6 +132,7 @@ router.beforeEach(async (to, from, next) => {
   try {
     const authStore = useAuthStore()
     const brandingStore = useBrandingStore()
+    const requiresAuth = to.meta?.requiresAuth
 
     // Cargar settings del backend para tener el business_type real antes de evaluar rutas
     if (!brandingStore.settings.app_rif) {
@@ -144,9 +145,8 @@ router.beforeEach(async (to, from, next) => {
 
     console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
     
-    // Solo intentar obtener el usuario si la ruta requiere autenticación y no está cargado aún
-    const requiresAuth = to.meta?.requiresAuth
-    if (requiresAuth && !authStore.isLoaded && !authStore.user && !isFetchingUser) {
+    // Intentar obtener el usuario en la carga inicial si no está cargado aún
+    if (!authStore.isLoaded && !authStore.user && !isFetchingUser) {
       console.log('[ROUTER] Intentando obtener usuario...')
       isFetchingUser = true
       
