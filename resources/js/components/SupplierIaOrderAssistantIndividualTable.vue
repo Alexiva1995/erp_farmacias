@@ -354,6 +354,20 @@ function rowClass(item) {
             </div>
           </template>
 
+          <!-- Ventas -->
+          <template #item.total_sold_completed="{ item }">
+            <span class="font-weight-medium">
+              {{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}
+            </span>
+          </template>
+
+          <!-- Stock -->
+          <template #item.lote_quantity="{ item }">
+            <span class="font-weight-medium">
+              {{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}
+            </span>
+          </template>
+
           <!-- Costo -->
           <template #item.unit_cost="{ item }">
             <span class="font-weight-medium">

@@ -402,12 +402,12 @@ function rowClass(item) {
               </template>
 
               <template #item.total_sold_completed="{ item }">
-                <span class="font-weight-bold">{{ item.total_sold_completed ?? 0 }}</span>
+                <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
               </template>
 
               <template #item.lote_quantity="{ item }">
                 <span class="font-weight-bold" :class="Number(item.lote_quantity) <= 0 ? 'text-error' : ''">
-                  {{ item.lote_quantity ?? 0 }}
+                  {{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}
                 </span>
               </template>
 
@@ -522,11 +522,11 @@ function rowClass(item) {
                     <div class="stats-grid mb-3">
                       <div class="stat-item">
                         <span class="stat-label">Ventas</span>
-                        <span class="stat-value">{{ item.total_sold_completed ?? 0 }}</span>
+                        <span class="stat-value">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
                       </div>
                       <div class="stat-item">
                         <span class="stat-label">Stock</span>
-                        <span class="stat-value">{{ item.lote_quantity ?? 0 }}</span>
+                        <span class="stat-value">{{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}</span>
                       </div>
                       <div class="stat-item">
                         <span class="stat-label">Prom.</span>
