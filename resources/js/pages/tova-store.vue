@@ -782,7 +782,7 @@ onMounted(async () => {
             <p class="split-paragraph" style="color: #2E2523; font-weight: 500;">
               {{ brandingStore.settings.section3_subtitle || 'El bronceador definitivo que aporta calidez instantánea a tu rostro con un acabado sedoso y de larga duración. Su textura mousse prensada se funde perfectamente sobre la piel sin esfuerzo.' }}
             </p>
-            <button class="editorial-btn-dark" @click="selectedCategory = 'maquillaje'; fetchProducts(1); scrollToCatalog()">
+            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'maquillaje'; fetchProducts(1); scrollToCatalog()">
               {{ brandingStore.settings.section3_button_text || 'COMPRAR BRONCEADOR' }}
             </button>
           </div>
