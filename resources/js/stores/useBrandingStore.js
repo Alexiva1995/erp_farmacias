@@ -34,35 +34,51 @@ export const useBrandingStore = defineStore('branding', () => {
   })
 
   const isLoading = ref(false)
+  const isLoaded = ref(false)
   const exchangeRates = ref([])
+  let fetchPromise = null
 
   const fetchSettings = async () => {
-    isLoading.value = true
-    try {
-      const response = await axios.get('/public/general-settings')
-      settings.value = { ...settings.value, ...response.data.data }
-      if (response.data?.data?.business_type) {
-        localStorage.setItem('business_type', response.data.data.business_type)
-      }
-
-      // Obtener tasas de cambio desde el API público
-      try {
-        const ratesResponse = await axios.get('/public/exchange-rates')
-        exchangeRates.value = ratesResponse.data
-      } catch (e) {
-        console.warn('Error fetching exchange rates in branding store:', e)
-      }
-
-      // Aplicar colores dinámicamente al DOM
-      applyThemeColors()
-    } catch (error) {
-      // Silenciamos el 401 (Unauthorized) ya que es normal en accesos públicos / antes del login
-      if (error?.response?.status !== 401) {
-        console.error('Error fetching branding settings:', error)
-      }
-    } finally {
-      isLoading.value = false
+    if (isLoaded.value && settings.value.app_rif) {
+      return
     }
+    
+    if (fetchPromise) {
+      return fetchPromise
+    }
+
+    fetchPromise = (async () => {
+      isLoading.value = true
+      try {
+        const response = await axios.get('/public/general-settings')
+        settings.value = { ...settings.value, ...response.data.data }
+        if (response.data?.data?.business_type) {
+          localStorage.setItem('business_type', response.data.data.business_type)
+        }
+
+        // Obtener tasas de cambio desde el API público
+        try {
+          const ratesResponse = await axios.get('/public/exchange-rates')
+          exchangeRates.value = ratesResponse.data
+        } catch (e) {
+          console.warn('Error fetching exchange rates in branding store:', e)
+        }
+
+        // Aplicar colores dinámicamente al DOM
+        applyThemeColors()
+        isLoaded.value = true
+      } catch (error) {
+        // Silenciamos el 401 (Unauthorized) ya que es normal en accesos públicos / antes del login
+        if (error?.response?.status !== 401) {
+          console.error('Error fetching branding settings:', error)
+        }
+      } finally {
+        isLoading.value = false
+        fetchPromise = null
+      }
+    })()
+
+    return fetchPromise
   }
 
   const applyThemeColors = () => {
@@ -113,6 +129,7 @@ export const useBrandingStore = defineStore('branding', () => {
     settings,
     exchangeRates,
     isLoading,
+    isLoaded,
     fetchSettings,
     hexToRgb,
   }
