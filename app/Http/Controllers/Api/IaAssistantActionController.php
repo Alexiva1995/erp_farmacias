@@ -87,6 +87,15 @@ class IaAssistantActionController extends Controller
                     ? $ps->unit_cost_usd_with_discount 
                     : ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : $product->unit_cost));
 
+            // Si el costo de compra tiene un incremento mayor al 20% respecto al costo local, bloquear el precio base
+            $costoProveedor = (float)$unitCost;
+            $costoLocal = (float)($product->unit_cost ?? 0);
+            if ($costoLocal > 0 && ((($costoProveedor - $costoLocal) / $costoLocal) * 100) > 20.0) {
+                if ($product->price_lock_baseline === null) {
+                    $product->update(['price_lock_baseline' => $costoLocal]);
+                }
+            }
+
             // 2. Buscar o crear una AutoOrder abierta para este proveedor
             $autoOrder = AutoOrder::firstOrCreate(
                 [
@@ -182,6 +191,15 @@ class IaAssistantActionController extends Controller
                     : ($ps->unit_cost_usd_with_discount > 0 
                         ? $ps->unit_cost_usd_with_discount 
                         : ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : $product->unit_cost));
+
+                // Si el costo de compra tiene un incremento mayor al 20% respecto al costo local, bloquear el precio base
+                $costoProveedor = (float)$unitCost;
+                $costoLocal = (float)($product->unit_cost ?? 0);
+                if ($costoLocal > 0 && ((($costoProveedor - $costoLocal) / $costoLocal) * 100) > 20.0) {
+                    if ($product->price_lock_baseline === null) {
+                        $product->update(['price_lock_baseline' => $costoLocal]);
+                    }
+                }
 
                 // Buscar o crear la AutoOrder
                 $autoOrder = AutoOrder::firstOrCreate(

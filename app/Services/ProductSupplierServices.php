@@ -138,23 +138,24 @@ class ProductSupplierServices implements ProductSupplier
             $replenishTheProduct = $replenishTheProducts[$index];
             $unitCostProductSupplier = 0;
 
-            // Obtener el costo base de comparación según análisis de promedio de lotes si hubo alza del 20% en el último lote
-            $costoBaseComparacion = $this->getBaseCostForToleranceComparison($replenishTheProduct["product"]);
-
             if ($replenishTheProduct["productSupplier"]) {
                 if ($conDescuento == "true") {
                     if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
-                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($costoBaseComparacion, (float)$replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
                         $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
                     }
                 } else {
                     if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
-                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($costoBaseComparacion, (float)$replenishTheProduct["productSupplier"]->unit_cost_usd);
                         $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
                     }
                 }
             }
 
+            // Obtener el costo base de comparación según análisis de bloqueo de alzas
+            $costoBaseComparacion = $this->getBaseCostForToleranceComparison($replenishTheProduct["product"], $unitCostProductSupplier);
+
+            if ($unitCostProductSupplier > 0) {
+                $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($costoBaseComparacion, $unitCostProductSupplier);
+            }
 
             // si el prducto tiene un rango de precion entre el 0 o 4 manejamos un 20%
             if ($unitCostProductSupplier > 0 && $unitCostProductSupplier <= 4) {
@@ -222,59 +223,26 @@ class ProductSupplierServices implements ProductSupplier
 
     /**
      * Calcula el costo base de comparación para el análisis de incrementos.
-     * Si la diferencia del último lote con el anterior es mayor al 20%, utiliza el promedio de los últimos 12 meses
-     * (o 24 meses si no hay registros). De lo contrario, evalúa con el costo local del producto.
+     * Si el producto tiene un precio de bloqueo activo (price_lock_baseline), compara contra dicho precio.
+     * Si el precio del proveedor baja de forma que iguale o sea menor que el bloqueo, el bloqueo se desactiva.
      */
-    private function getBaseCostForToleranceComparison(Product $product): float
+    private function getBaseCostForToleranceComparison(Product $product, float $supplierPrice = 0): float
     {
         $localCost = (float)($product->unit_cost ?? 0);
 
-        // 1. Obtener los últimos 2 lotes creados para este producto con unit_cost > 0
-        $latestLots = \App\Models\ProductLot::where('product_id', $product->id)
-            ->where('unit_cost', '>', 0)
-            ->orderBy('id', 'DESC')
-            ->limit(2)
-            ->get();
+        if ($product->price_lock_baseline !== null && (float)$product->price_lock_baseline > 0) {
+            $baseline = (float)$product->price_lock_baseline;
 
-        if ($latestLots->count() === 2) {
-            $lotA = $latestLots->first(); // Último lote creado
-            $lotB = $latestLots->last();  // Lote anterior a ese
-
-            $costA = (float)$lotA->unit_cost;
-            $costB = (float)$lotB->unit_cost;
-
-            $diffPercent = 0;
-            if ($costB > 0) {
-                $diffPercent = (($costA - $costB) / $costB) * 100;
+            // Si el precio del proveedor regresó a niveles originales (menor o igual a la marca de bloqueo), se desactiva el bloqueo
+            if ($supplierPrice > 0 && $supplierPrice <= $baseline) {
+                Product::where('id', $product->id)->update(['price_lock_baseline' => null]);
+                $product->price_lock_baseline = null;
+                return $localCost;
             }
 
-            // 2. Si la diferencia de compra del último lote con el anterior es superior al 20%
-            if ($diffPercent > 20.0) {
-                // Intentar obtener promedio de lotes en últimos 12 meses
-                $dateLimit12 = (new \DateTime())->modify('-12 months');
-                $avg12 = \App\Models\ProductLot::where('product_id', $product->id)
-                    ->where('unit_cost', '>', 0)
-                    ->where('created_at', '>=', $dateLimit12)
-                    ->avg('unit_cost');
-
-                if ($avg12 !== null && (float)$avg12 > 0) {
-                    return (float)$avg12;
-                }
-
-                // Intentar obtener promedio de lotes en últimos 24 meses
-                $dateLimit24 = (new \DateTime())->modify('-24 months');
-                $avg24 = \App\Models\ProductLot::where('product_id', $product->id)
-                    ->where('unit_cost', '>', 0)
-                    ->where('created_at', '>=', $dateLimit24)
-                    ->avg('unit_cost');
-
-                if ($avg24 !== null && (float)$avg24 > 0) {
-                    return (float)$avg24;
-                }
-            }
+            return $baseline;
         }
 
-        // Evaluar normalmente con costo local
         return $localCost;
     }
 }
