@@ -15,7 +15,7 @@ function recursiveLayouts(route) {
 }
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory('/'),
   scrollBehavior(to) {
     if (to.hash)
       return { el: to.hash, behavior: 'smooth', top: 60 }
@@ -24,7 +24,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/', '/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store', '/restaurant-store']
+    const publicRoutes = ['/', '/login', '/p/suppliers/upload/:token', '/p/orders/confirm/:hash', '/reservar', '/tova-store', '/restaurant-store']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -61,6 +61,15 @@ const router = createRouter({
         path: '/p/suppliers/upload/:token',
         name: 'public-supplier-upload',
         component: () => import('@/pages/public/SupplierUpload.vue'),
+        meta: { 
+          requiresAuth: false,
+          layout: 'blank'
+        }
+      },
+      {
+        path: '/p/orders/confirm/:hash',
+        name: 'public-order-confirm',
+        component: () => import('@/pages/public/OrderConfirmation.vue'),
         meta: { 
           requiresAuth: false,
           layout: 'blank'
