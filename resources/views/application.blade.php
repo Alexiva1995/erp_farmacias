@@ -28,9 +28,21 @@
   <meta property="twitter:title" content="{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}" />
   <meta property="twitter:description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
   <meta property="twitter:image" content="{{ asset('favicon-512x512.png') }}" />
+  <?php
+    $settings = \DB::table('general_settings')->first();
+    $primary = $settings->primary_color ?? '#FAFAFA';
+    $secondary = $settings->secondary_color ?? '#1E1614';
+    $tertiary = $settings->tertiary_color ?? '#E8C5C8';
+  ?>
   <style>
     html {
       touch-action: manipulation;
+    }
+    .tova-editorial-root {
+      --editorial-black: {{ $secondary }} !important;
+      --editorial-nude-dark: {{ $tertiary }} !important;
+      --editorial-terracotta-light: {{ $tertiary }} !important;
+      --editorial-grey-bg: {{ $primary }} !important;
     }
   </style>
   <link rel="stylesheet" type="text/css" href="{{ asset('loader.css') }}" />

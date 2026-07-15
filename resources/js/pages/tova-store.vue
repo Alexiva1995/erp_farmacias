@@ -17,6 +17,7 @@ const brandStyles = computed(() => {
   return {
     '--editorial-black': settings.secondary_color || '#1E1614',
     '--editorial-nude-dark': settings.tertiary_color || '#E8C5C8',
+    '--editorial-terracotta-light': settings.tertiary_color || '#E8C5C8',
     '--editorial-grey-bg': settings.primary_color || '#FAFAFA',
   }
 })
@@ -531,7 +532,7 @@ onMounted(async () => {
 
 
     <!-- 3. EXPLORAR TOVA & CATÁLOGO GENERAL EN GRILLA DE DOS FILAS (4x2) CON PAGINACIÓN -->
-    <section id="catalog" class="editorial-products-section reveal-on-scroll" style="padding: 80px 40px; background-color: var(--editorial-grey-bg); border-bottom: 1px solid var(--editorial-border);">
+    <section id="catalog" class="editorial-products-section reveal-on-scroll" style="padding: 80px 40px; background-color: #FFFFFF; border-bottom: 1px solid var(--editorial-border);">
       <div class="section-title-wrap" style="text-align: center; margin-bottom: 30px;">
         <h2 class="editorial-title-serif">EXPLORAR TOVA</h2>
         <div class="title-decor-line"></div>
@@ -615,7 +616,7 @@ onMounted(async () => {
       <!-- Estado Vacío -->
       <div v-else class="editorial-empty-state" style="text-align: center; padding: 60px 20px;">
         <p class="empty-message-serif" style="font-size: 16px; letter-spacing: 2px; color: #888; margin-bottom: 20px;">No se encontraron productos con imagen configurada en esta categoría.</p>
-        <button class="editorial-btn-dark-outline" @click="selectedCategory = null; fetchProducts(1)">
+        <button class="editorial-btn-dark" @click="selectedCategory = null; fetchProducts(1)">
           VER TODA LA TIENDA
         </button>
       </div>
@@ -781,7 +782,7 @@ onMounted(async () => {
             <p class="split-paragraph" style="color: #2E2523; font-weight: 500;">
               {{ brandingStore.settings.section3_subtitle || 'El bronceador definitivo que aporta calidez instantánea a tu rostro con un acabado sedoso y de larga duración. Su textura mousse prensada se funde perfectamente sobre la piel sin esfuerzo.' }}
             </p>
-            <button class="editorial-btn-dark-outline" @click="selectedCategory = 'maquillaje'; fetchProducts(1); scrollToCatalog()">
+            <button class="editorial-btn-dark" @click="selectedCategory = 'maquillaje'; fetchProducts(1); scrollToCatalog()">
               {{ brandingStore.settings.section3_button_text || 'COMPRAR BRONCEADOR' }}
             </button>
           </div>
