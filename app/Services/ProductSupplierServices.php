@@ -138,12 +138,8 @@ class ProductSupplierServices implements ProductSupplier
             $replenishTheProduct = $replenishTheProducts[$index];
             $unitCostProductSupplier = 0;
 
-            // Obtener el costo del lote histórico más barato para evitar que incrementos recientes queden enmascarados si el stock actual es 0
-            $lowestLot = $this->productLotsRepository->checkTheLotWithTheLowestPriceOnlyProduct($replenishTheProduct["product"]);
-            $lowestLotCost = $lowestLot ? (float)$lowestLot->unit_cost : (float)$replenishTheProduct["product"]->unit_cost;
-            $costoBaseComparacion = ($lowestLotCost > 0 && $lowestLotCost < (float)$replenishTheProduct["product"]->unit_cost) 
-                ? $lowestLotCost 
-                : (float)$replenishTheProduct["product"]->unit_cost;
+            // Obtener el costo base de comparación según análisis de promedio de lotes si hubo alza del 20% en el último lote
+            $costoBaseComparacion = $this->getBaseCostForToleranceComparison($replenishTheProduct["product"]);
 
             if ($replenishTheProduct["productSupplier"]) {
                 if ($conDescuento == "true") {
@@ -222,5 +218,63 @@ class ProductSupplierServices implements ProductSupplier
         }
 
         return $productosConOportunidad;
+    }
+
+    /**
+     * Calcula el costo base de comparación para el análisis de incrementos.
+     * Si la diferencia del último lote con el anterior es mayor al 20%, utiliza el promedio de los últimos 12 meses
+     * (o 24 meses si no hay registros). De lo contrario, evalúa con el costo local del producto.
+     */
+    private function getBaseCostForToleranceComparison(Product $product): float
+    {
+        $localCost = (float)($product->unit_cost ?? 0);
+
+        // 1. Obtener los últimos 2 lotes creados para este producto con unit_cost > 0
+        $latestLots = \App\Models\ProductLot::where('product_id', $product->id)
+            ->where('unit_cost', '>', 0)
+            ->orderBy('id', 'DESC')
+            ->limit(2)
+            ->get();
+
+        if ($latestLots->count() === 2) {
+            $lotA = $latestLots->first(); // Último lote creado
+            $lotB = $latestLots->last();  // Lote anterior a ese
+
+            $costA = (float)$lotA->unit_cost;
+            $costB = (float)$lotB->unit_cost;
+
+            $diffPercent = 0;
+            if ($costB > 0) {
+                $diffPercent = (($costA - $costB) / $costB) * 100;
+            }
+
+            // 2. Si la diferencia de compra del último lote con el anterior es superior al 20%
+            if ($diffPercent > 20.0) {
+                // Intentar obtener promedio de lotes en últimos 12 meses
+                $dateLimit12 = (new \DateTime())->modify('-12 months');
+                $avg12 = \App\Models\ProductLot::where('product_id', $product->id)
+                    ->where('unit_cost', '>', 0)
+                    ->where('created_at', '>=', $dateLimit12)
+                    ->avg('unit_cost');
+
+                if ($avg12 !== null && (float)$avg12 > 0) {
+                    return (float)$avg12;
+                }
+
+                // Intentar obtener promedio de lotes en últimos 24 meses
+                $dateLimit24 = (new \DateTime())->modify('-24 months');
+                $avg24 = \App\Models\ProductLot::where('product_id', $product->id)
+                    ->where('unit_cost', '>', 0)
+                    ->where('created_at', '>=', $dateLimit24)
+                    ->avg('unit_cost');
+
+                if ($avg24 !== null && (float)$avg24 > 0) {
+                    return (float)$avg24;
+                }
+            }
+        }
+
+        // Evaluar normalmente con costo local
+        return $localCost;
     }
 }
