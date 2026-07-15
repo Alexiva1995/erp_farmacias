@@ -12,6 +12,15 @@ import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const brandingStore = useBrandingStore()
 
+const brandStyles = computed(() => {
+  const settings = brandingStore.settings || {}
+  return {
+    '--editorial-black': settings.secondary_color || '#1E1614',
+    '--editorial-nude-dark': settings.tertiary_color || '#E8C5C8',
+    '--editorial-grey-bg': settings.primary_color || '#FAFAFA',
+  }
+})
+
 // ——— Estados de Carga de Imágenes ———
 const heroImageLoaded = ref(false)
 const section2ImageLoaded = ref(false)
@@ -413,7 +422,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="tova-editorial-root">
+  <div class="tova-editorial-root" :style="brandStyles">
     <!-- BARRA DE NAVEGACIÓN DE LUJO EDITORIAL -->
     <nav class="editorial-nav">
       <div class="editorial-nav-inner">
