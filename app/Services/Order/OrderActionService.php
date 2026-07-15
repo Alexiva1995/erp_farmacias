@@ -617,7 +617,7 @@ class OrderActionService
                 // Los platos de restaurante no tienen producto asociado (product es null)
                 if ($detail->product_type === 'dish') {
                     $dish = $detail->dish;
-                    $priceBs = $detail->price_bs ?? (float)$detail->price;
+                    $priceBs = (float)($detail->price_bs ?? $detail->price);
                     $quantity = $detail->quantity;
                     $itemSubtotal = $priceBs * $quantity;
                     $exemptAmount += $itemSubtotal;
@@ -630,7 +630,7 @@ class OrderActionService
 
                 // Usar el precio en BS mandado desde el frontend (Fijo y exacto)
                 // Si por alguna razón no existe (ventas viejas), cae de nuevo al catálogo
-                $priceBs = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)));
+                $priceBs = (float)($detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100))));
 
                 // Si el producto tiene IVA, extraer el neto
                 if ($product->iva == 1) {
