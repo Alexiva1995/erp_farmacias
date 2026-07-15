@@ -147,8 +147,8 @@ class ProductFailureServices implements ProductFailureContract
         $solicitar = -$resultado;
         $solicitarRedondeado = $solicitar > 0 ? (int)ceil($solicitar) : (int)floor($solicitar);
 
-        // Como es un reporte de falla, el pedido sugerido mínimo debe ser 5
-        $qtyToRecommend = max(5, $solicitarRedondeado);
+        // La cantidad sugerida recomendada coincide exactamente con la columna Pedido (mínimo 1)
+        $qtyToRecommend = max(1, $solicitarRedondeado);
 
         $buttons = [];
 
@@ -164,6 +164,11 @@ class ProductFailureServices implements ProductFailureContract
             $diffPercent = 0;
             if ($costoLocal > 0) {
                 $diffPercent = (($costoProveedor - $costoLocal) / $costoLocal) * 100;
+            }
+
+            // Regla del 20% de alza de costo: si se encarece en un 20% o más, sugerir solo 1 unidad de prueba
+            if ($diffPercent >= 20.0) {
+                $qtyToRecommend = 1;
             }
 
             if ($diffPercent < 0) {

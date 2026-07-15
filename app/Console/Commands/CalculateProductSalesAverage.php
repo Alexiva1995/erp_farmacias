@@ -78,8 +78,13 @@ class CalculateProductSalesAverage extends Command
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
                     } else {
-                        // Promedio mensual = ventas en ventana / meses de la ventana
-                        $salesAverage = round($totalSold / $windowMonths, 2);
+                        // Calcular meses reales de vida del producto (máximo 12 meses)
+                        $createdAt = $product->created_at ? Carbon::parse($product->created_at) : $now->copy()->subMonths(12);
+                        $monthsOfLife = (int)ceil($createdAt->diffInMonths($now));
+                        $actualMonths = max(1, min(12, $monthsOfLife));
+
+                        // Promedio mensual = ventas en ventana / meses reales transcurridos
+                        $salesAverage = round($totalSold / $actualMonths, 2);
                     }
 
                     // Actualizar el producto
