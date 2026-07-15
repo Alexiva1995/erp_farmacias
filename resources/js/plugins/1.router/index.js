@@ -166,6 +166,24 @@ router.beforeEach(async (to, from, next) => {
     
     clearTimeout(safetyTimeout)
     
+    const isFarmacia = brandingStore.settings.business_type === 'farmacia' || brandingStore.settings.business_type === 'pharmacy'
+
+    if (isFarmacia && (to.path === '/tova-store' || to.path === '/restaurant-store' || to.path === '/')) {
+      const isAuthenticated = authStore.isAuthenticated
+      if (isAuthenticated) {
+        if (authStore.isAdmin) {
+          console.log('[ROUTER] Farmacia: Redirigiendo a /dashboard')
+          return safeNext({ path: '/dashboard' })
+        } else {
+          console.log('[ROUTER] Farmacia: Redirigiendo a /tpv/orderUser')
+          return safeNext({ path: '/tpv/orderUser' })
+        }
+      } else {
+        console.log('[ROUTER] Farmacia: Redirigiendo a /login')
+        return safeNext({ path: '/login' })
+      }
+    }
+
     if (to.path === '/tova-store') {
       const brandingStore = useBrandingStore()
       if (brandingStore.settings.business_type === 'restaurant') {
