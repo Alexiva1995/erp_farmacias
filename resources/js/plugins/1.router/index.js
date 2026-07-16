@@ -237,6 +237,14 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     
+    if (to.path === '/') {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings?.business_type === 'minimarket') {
+        console.log('[ROUTER] Minimarket: Redirigiendo a /tova-store por defecto')
+        return safeNext({ path: '/tova-store' })
+      }
+    }
+
     if (to.path === '/' && !isAuthenticated) {
       const brandingStore = useBrandingStore()
       if (brandingStore.settings.business_type === 'restaurant') {
