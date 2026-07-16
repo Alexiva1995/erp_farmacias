@@ -53,7 +53,7 @@ const cartTotalPrice = computed(() =>
 // ——— Formulario de orden ———
 const binanceRate = ref(45.50) // Tasa de cambio Binance de referencia para VES
 const copRate = ref(4000.00) // Tasa de cambio COP de referencia
-const selectedCurrency = ref('') // Moneda seleccionada por el usuario (VES, USD, COP)
+const selectedCurrency = ref(localStorage.getItem('ecommerce_currency') || 'USD') // Moneda seleccionada por el usuario (VES, USD, COP)
 const paymentProof = ref(null) // Archivo de comprobante de pago (solo transferencias)
 const orderForm = ref({
   customer_name: '',
@@ -309,7 +309,6 @@ const productPrice = (product, variant = null) => {
   return (base + mod).toFixed(2)
 }
 
-const selectedCurrency = ref(localStorage.getItem('ecommerce_currency') || 'USD')
 
 const changeCurrency = (currency) => {
   selectedCurrency.value = currency
