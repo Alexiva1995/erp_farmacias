@@ -142,11 +142,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <VRow v-if="businessType === 'pharmacy'">
+  <VRow>
     <VCol cols="12">
       <VCard title="Módulo de Importación de Datos (Onboarding)">
         <VCardText>
-          Carga de forma masiva la información inicial de tu farmacia en formato de valores separados por coma (CSV).
+          Carga de forma masiva la información inicial de tu negocio en formato de valores separados por coma (CSV).
         </VCardText>
 
         <VTabs v-model="activeTab" color="primary" grow>
@@ -231,18 +231,6 @@ onMounted(() => {
               class="mt-4 w-50 rounded"
             />
           </div>
-        </VCardText>
-      </VCard>
-    </VCol>
-  </VRow>
-
-  <VRow v-else>
-    <VCol cols="12">
-      <VCard title="Acceso Denegado">
-        <VCardText>
-          <VAlert type="warning" variant="tonal">
-            Esta sección solo está disponible para el tipo de negocio de Farmacia.
-          </VAlert>
         </VCardText>
       </VCard>
     </VCol>
