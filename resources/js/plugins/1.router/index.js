@@ -174,7 +174,11 @@ router.beforeEach(async (to, from, next) => {
     }
     
     clearTimeout(safetyTimeout)
-    
+    if (to.path === '/' && brandingStore.settings.business_type === 'minimarket') {
+      console.log('[ROUTER] Minimarket: Redirigiendo raíz / a /tova-store')
+      return safeNext({ path: '/tova-store' })
+    }
+
     const isFarmacia = brandingStore.settings.business_type === 'farmacia' || brandingStore.settings.business_type === 'pharmacy'
 
     if (isFarmacia && (to.path === '/tova-store' || to.path === '/restaurant-store' || to.path === '/')) {
@@ -241,9 +245,6 @@ router.beforeEach(async (to, from, next) => {
       } else if (brandingStore.settings.business_type === 'farmacia' || brandingStore.settings.business_type === 'pharmacy') {
         console.log('[ROUTER] Redirigiendo cliente de farmacia a login')
         return safeNext({ path: '/login' })
-      } else if (brandingStore.settings.business_type === 'minimarket') {
-        console.log('[ROUTER] Redirigiendo cliente de minimarket a tova-store')
-        return safeNext({ path: '/tova-store' })
       }
     }
 

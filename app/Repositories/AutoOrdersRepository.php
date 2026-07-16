@@ -22,6 +22,7 @@ class AutoOrdersRepository
                 'auto_orders.status',
                 'auto_orders.order_date',
                 'auto_orders.tentative_delivery_date',
+                'auto_orders.hash_token',
                 'suppliers.name as supplier_name',
                 'suppliers.sales_phone as phone',
                 DB::raw('SUM(auto_order_details.quantity) as total_quantity'),
@@ -34,6 +35,7 @@ class AutoOrdersRepository
                 'auto_orders.status',
                 'auto_orders.order_date',
                 'auto_orders.tentative_delivery_date',
+                'auto_orders.hash_token',
                 'suppliers.name',
                 'suppliers.sales_phone'
             );

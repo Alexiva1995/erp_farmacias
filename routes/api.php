@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\CleaningActivityController;
+use App\Http\Controllers\Api\SupplierAiMatchController;
+use App\Http\Controllers\Api\AutoReplenishmentConfigController;
 
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeCleaningActivityController;
@@ -66,6 +68,7 @@ use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Public\SupplierPublicUploadController;
+use App\Http\Controllers\Public\SupplierOrderResponseController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
 use App\Http\Controllers\Api\IaAssistantActionController;
@@ -100,6 +103,8 @@ Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"])->mid
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
+Route::get("/public/orders/{hash}", [SupplierOrderResponseController::class, "show"]);
+Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
 Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
@@ -673,6 +678,16 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/consult-products', [SupplierIaAssistantReportController::class, 'consultProduct']);
         Route::post('/clear-ignore-until', [SupplierIaAssistantReportController::class, 'clearIgnoreUntil']);
     });
+
+    // Rutas de feedback para el sistema de matching IA
+    Route::prefix("supplier-ai-match")->group(function () {
+        Route::post('/reject', [SupplierAiMatchController::class, 'reject']);
+        Route::post('/accept', [SupplierAiMatchController::class, 'accept']);
+    });
+
+    // Rutas para configuración de automatización de pedidos (Auto-Replenishment)
+    Route::apiResource('auto-replenishment-configs', AutoReplenishmentConfigController::class);
+    Route::post('auto-replenishment-configs/{config}/run', [AutoReplenishmentConfigController::class, 'run']);
 
     Route::prefix("market-opportunities")->group(function () {
         Route::get("/", [MarketOpportunityController::class, "index"]);

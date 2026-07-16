@@ -1,5 +1,22 @@
 <script setup>
 import { useDisplay } from "vuetify";
+import { toast } from "@/plugins/sweetalert";
+
+const copyConfirmationLink = (hashToken) => {
+  if (!hashToken) {
+    toast.error("Esta orden no posee un token de confirmación válido.");
+    return;
+  }
+  const link = `${window.location.origin}/p/orders/confirm/${hashToken}`;
+  navigator.clipboard.writeText(link)
+    .then(() => {
+      toast.success("Enlace de confirmación copiado al portapapeles.");
+    })
+    .catch(err => {
+      console.error("Error al copiar enlace:", err);
+      toast.error("No se pudo copiar el enlace automáticamente.");
+    });
+};
 
 const props = defineProps({
   purchaseOrders: { type: Array, required: true },
@@ -214,6 +231,19 @@ const formatTime = (dateString) => {
             <VIcon icon="tabler-brand-whatsapp" size="18" />
             <VTooltip activator="parent" location="top">WhatsApp</VTooltip>
           </VBtn>
+
+          <!-- Botón de copiar enlace público de confirmación -->
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
+            color="info"
+            class="rounded-circle shadow-sm"
+            @click="copyConfirmationLink(item.hash_token)"
+          >
+            <VIcon icon="tabler-link" size="18" />
+            <VTooltip activator="parent" location="top">Copiar Enlace Proveedor</VTooltip>
+          </VBtn>
         </div>
       </template>
     </VDataTableServer>
@@ -308,6 +338,18 @@ const formatTime = (dateString) => {
                 target="_blank"
               >
                 <VIcon icon="tabler-brand-whatsapp" size="18" />
+              </VBtn>
+
+              <!-- Enlace proveedor móvil -->
+              <VBtn
+                icon
+                variant="tonal"
+                color="info"
+                class="rounded-lg"
+                size="32"
+                @click="copyConfirmationLink(item.hash_token)"
+              >
+                <VIcon icon="tabler-link" size="18" />
               </VBtn>
 
               <VBtn

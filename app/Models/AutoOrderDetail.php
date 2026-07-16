@@ -10,7 +10,7 @@ class AutoOrderDetail extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ["order_id", "product_id", "product_suppliers_id", "quantity", "unit_cost", "subtotal", 'received', 'status'];
+    protected $fillable = ["order_id", "product_id", "product_suppliers_id", "quantity", "unit_cost", "subtotal", 'received', 'status', 'supplier_confirmed', 'supplier_rejected_reason'];
 
     public function order()
     {

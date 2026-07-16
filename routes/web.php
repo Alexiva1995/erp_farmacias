@@ -12,6 +12,10 @@ Route::get('/p/suppliers/upload/{token}', function () {
     return view('application');
 });
 
+Route::get('/p/orders/confirm/{hash}', function () {
+    return view('application');
+});
+
 Route::get('{any?}', function ($any = null) {
     $seoTitle = 'Tova - Cerebro Operativo';
     $seoDescription = 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.';

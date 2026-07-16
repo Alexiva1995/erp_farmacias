@@ -291,7 +291,8 @@ class SuppliersIaOrderAssistantController extends Controller
             if ($filtros["tipo_filtracion"] == "average") {
                 $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
             } else {
-                $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+                // Usar ventas reales para modo sales y combinado
+                $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
             }
 
             $productos = $this->product->calcularAOProducts($productos);

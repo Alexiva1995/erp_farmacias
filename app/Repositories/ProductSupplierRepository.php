@@ -83,11 +83,10 @@ class ProductSupplierRepository
 
         $allOffers = $query->get();
 
-        // 4. Mapear de vuelta a la estructura que espera el servicio y checkTolerance
+        // 4. Mapear de vuelta a la estructura que espera el servicio
         $results = [];
-        $aiMatchesCount = 0;
         
-        // Importante: Mantener el orden de los productos entrantes
+        // Mantener el orden de los productos entrantes
         foreach ($products as $product) {
             $bestOffer = $allOffers->where('product_id', $product->id)->first();
 
@@ -105,60 +104,22 @@ class ProductSupplierRepository
                 }
             }
 
-            // Si aún no tiene y no superamos el límite de 3 llamadas por consulta, usar IA (Gemini)
-            if (!$bestOffer && $aiMatchesCount < 3) {
-                $namePart = $product->name ? substr($product->name, 0, 8) : "";
-                if ($namePart) {
-                    $candidates = ProductSupplier::whereNull('product_id')
-                        ->where('name', 'like', "%{$namePart}%")
-                        ->limit(10)
-                        ->get();
-                        
-                    if ($candidates->isNotEmpty()) {
-                        try {
-                            $gemini = app(\App\Services\GeminiService::class);
-                            $prompt = "Tengo un producto local llamado: '{$product->name}' (Laboratorio: " . ($product->laboratory->name ?? 'Genérico') . ", Ingrediente Activo: {$product->active_ingredient}).\n";
-                            $prompt .= "Compara este producto con la siguiente lista de productos de proveedores y decide si alguno es exactamente el mismo producto o una alternativa equivalente muy cercana (mismo ingrediente, concentración y forma farmacéutica).\n";
-                            $prompt .= "Devuelve tu respuesta estrictamente en formato JSON con la siguiente estructura (si no hay coincidencia clara, matched debe ser false y product_supplier_id null):\n";
-                            $prompt .= "{\n  \"matched\": true,\n  \"product_supplier_id\": ID_DEL_PRODUCTO_PROVEEDOR_EMPARETADO\n}\n\n";
-                            $prompt .= "Lista de proveedores (ID | Nombre | Laboratorio | Ingrediente Activo):\n";
-                            foreach ($candidates as $cand) {
-                                $prompt .= "- {$cand->id} | {$cand->name} | {$cand->laboratory} | {$cand->active_ingredient}\n";
-                            }
-                            $prompt .= "\nDevuelve solo el JSON estructurado, sin markdown block de tipo ```json, solo el objeto plano.";
-
-                            $aiResponse = $gemini->generateText($prompt);
-                            if ($aiResponse) {
-                                $aiResponse = preg_replace('/^```json\s*/i', '', trim($aiResponse));
-                                $aiResponse = preg_replace('/```$/', '', trim($aiResponse));
-                                $data = json_decode($aiResponse, true);
-                                if (!empty($data['matched']) && !empty($data['product_supplier_id'])) {
-                                    $matchedSupplierProduct = ProductSupplier::find($data['product_supplier_id']);
-                                    if ($matchedSupplierProduct) {
-                                        ProductSupplier::where('id', $matchedSupplierProduct->id)->update([
-                                            'product_id' => $product->id,
-                                            'is_ai_matched' => 1
-                                        ]);
-                                        $bestOffer = $matchedSupplierProduct;
-                                        $aiMatchesCount++;
-                                    }
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            \Log::error("Error al emparejar por IA en reportes: " . $e->getMessage());
-                        }
-                    }
-                }
+            // Si aún no tiene proveedor: despachar Job asíncrono de matching IA
+            // El request responde inmediatamente; el Job procesa en background sin límite de 3
+            if (!$bestOffer && !$product->no_ai_match_possible) {
+                \App\Jobs\MatchSupplierByIaJob::dispatch($product->id);
+                // Marcar para que la UI sepa que está en proceso
+                $product->ia_matching_in_progress = true;
             }
             
             $results[] = [
-                'product' => $product,
-                'supplier' => $bestOffer ? $bestOffer->supplier : null,
-                'productSupplier' => $bestOffer,
-                'precio_final_supplier' => 0, // Se hidratará en checkTolerance
-                'percentageIncrease' => 0,
-                'increase' => null,
-                'tolerance' => 0,
+                'product'              => $product,
+                'supplier'             => $bestOffer ? $bestOffer->supplier : null,
+                'productSupplier'      => $bestOffer,
+                'precio_final_supplier'=> 0,
+                'percentageIncrease'   => 0,
+                'increase'             => null,
+                'tolerance'            => 0,
             ];
         }
 

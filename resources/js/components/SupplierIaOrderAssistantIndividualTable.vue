@@ -84,6 +84,22 @@ const handleToggleScarce = async (product) => {
 // Acciones Directas
 const isProcessing = ref({});
 
+// Rechazar un match sugerido por IA para que el sistema aprenda
+const rejectAiMatch = async (item) => {
+  if (!item.best_supplier?.is_ai_matched || !item.best_supplier?.id) return;
+  try {
+    await axios.post('/api/supplier-ai-match/reject', {
+      product_id:          item.id,
+      product_supplier_id: item.best_supplier.id,
+    });
+    // Limpiar el proveedor localmente para reflejar el cambio sin reload
+    item.best_supplier = null;
+    item.best_supplier_price = null;
+  } catch (error) {
+    console.error('Error rechazando match IA:', error);
+  }
+};
+
 const onActionClick = async (item, action) => {
   if (isProcessing.value[item.id]) return;
 
@@ -325,18 +341,32 @@ function rowClass(item) {
 
           <template #item.name="{ item }">
             <div class="d-flex flex-column py-1">
-              <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
-                :class="{ 
-                  'text-primary': item.psychotropic == 1,
-                  'opacity-50': togglingScarce === item.id 
-                }"
-                :title="item.name + ' - Clic para marcar como escaso'"
-                @click="handleToggleScarce(item)"
-              >
-                <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
-                {{ item.name.toUpperCase() }}
-              </span>
+              <div class="d-flex align-center gap-1">
+                <span
+                  class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
+                  :class="{ 
+                    'text-primary': item.psychotropic == 1,
+                    'opacity-50': togglingScarce === item.id 
+                  }"
+                  :title="item.name + ' - Clic para marcar como escaso'"
+                  @click="handleToggleScarce(item)"
+                >
+                  <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
+                  {{ item.name.toUpperCase() }}
+                </span>
+                <!-- Badge: producto nuevo sin historial de ventas -->
+                <VChip
+                  v-if="item.is_new_without_history"
+                  color="secondary"
+                  size="x-small"
+                  variant="tonal"
+                  class="ml-1"
+                  title="Producto nuevo sin historial de ventas (< 90 días). Se sugiere revisar."
+                >
+                  <VIcon start size="10">tabler-sparkles</VIcon>
+                  NUEVO
+                </VChip>
+              </div>
               <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
                 <span class="text-disabled">{{ item.active_ingredient }}</span>
                 <span class="text-disabled mx-1">|</span>
@@ -347,6 +377,19 @@ function rowClass(item) {
                   </span>
                 </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+                <!-- Advertencia: promedio desactualizado (> 48h) -->
+                <VTooltip v-if="item.is_stale_average" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <VIcon
+                      v-bind="tooltipProps"
+                      icon="tabler-alert-triangle"
+                      color="warning"
+                      size="13"
+                      class="ml-1"
+                    />
+                  </template>
+                  <span>Promedio de ventas desactualizado (más de 48h). Ejecuta el cálculo para mayor precisión.</span>
+                </VTooltip>
               </div>
             </div>
           </template>
@@ -451,31 +494,51 @@ function rowClass(item) {
           <!-- Acciones -->
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-end ga-1">
-              <VBtn
-                v-if="!isRestaurant"
-                icon
-                variant="tonal"
-                color="error"
-                size="32"
-                :loading="isProcessing[item.id] === 'ignoring'"
-                @click.stop="onActionClick(item, 'ignore')"
-              >
-                <VIcon icon="tabler-trash-x" size="18" />
-                <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
-              </VBtn>
-              <VBtn
-                icon
-                variant="tonal"
-                :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'"
-                size="32"
-                :loading="isProcessing[item.id] === 'adding'"
-                @click.stop="onActionClick(item, 'add')"
-              >
-                <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
-                <VTooltip activator="parent" location="top">
-                  {{ item.best_supplier?.is_ai_matched ? 'Coincidencia sugerida por IA' : 'Añadir a Orden' }}
-                </VTooltip>
-              </VBtn>
+              <!-- Indicador de Matching en Progreso -->
+              <div v-if="item.ia_matching_in_progress" class="d-flex align-center ga-1 pr-2">
+                <VProgressCircular indeterminate size="16" width="2" color="info" />
+                <span class="text-xs font-weight-black text-info text-uppercase">Buscando Proveedor...</span>
+              </div>
+              <template v-else>
+                <VBtn
+                  v-if="!isRestaurant"
+                  icon
+                  variant="tonal"
+                  color="error"
+                  size="32"
+                  :loading="isProcessing[item.id] === 'ignoring'"
+                  @click.stop="onActionClick(item, 'ignore')"
+                >
+                  <VIcon icon="tabler-trash-x" size="18" />
+                  <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
+                </VBtn>
+                <!-- Botón rechazar match IA: solo visible si el proveedor fue sugerido por IA -->
+                <VBtn
+                  v-if="item.best_supplier?.is_ai_matched"
+                  icon
+                  variant="tonal"
+                  color="warning"
+                  size="32"
+                  title="Rechazar match IA (aprendizaje)"
+                  @click.stop="rejectAiMatch(item)"
+                >
+                  <VIcon icon="tabler-brain-off" size="18" />
+                  <VTooltip activator="parent" location="top">Rechazar sugerencia de IA</VTooltip>
+                </VBtn>
+                <VBtn
+                  icon
+                  variant="tonal"
+                  :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'"
+                  size="32"
+                  :loading="isProcessing[item.id] === 'adding'"
+                  @click.stop="onActionClick(item, 'add')"
+                >
+                  <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
+                  <VTooltip activator="parent" location="top">
+                    {{ item.best_supplier?.is_ai_matched ? 'Coincidencia sugerida por IA' : 'Añadir a Orden' }}
+                  </VTooltip>
+                </VBtn>
+              </template>
             </div>
           </template>
         </VDataTableServer>
@@ -528,12 +591,22 @@ function rowClass(item) {
                     </div>
                     <!-- Acciones Móvil -->
                     <div class="d-flex ga-1 justify-end mt-2">
-                       <VBtn v-if="!isRestaurant" icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
-                         <VIcon icon="tabler-trash-x" size="18" />
-                       </VBtn>
-                        <VBtn icon variant="tonal" :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
-                          <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
-                       </VBtn>
+                       <div v-if="item.ia_matching_in_progress" class="d-flex align-center ga-1">
+                         <VProgressCircular indeterminate size="14" width="2" color="info" />
+                         <span class="text-xs font-weight-bold text-info">Buscando Proveedor...</span>
+                       </div>
+                       <template v-else>
+                         <VBtn v-if="!isRestaurant" icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
+                           <VIcon icon="tabler-trash-x" size="18" />
+                         </VBtn>
+                         <!-- Rechazar match IA en móvil -->
+                         <VBtn v-if="item.best_supplier?.is_ai_matched" icon variant="tonal" color="warning" size="32" @click.stop="rejectAiMatch(item)">
+                           <VIcon icon="tabler-brain-off" size="18" />
+                         </VBtn>
+                          <VBtn icon variant="tonal" :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
+                            <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
+                         </VBtn>
+                       </template>
                     </div>
                   </div>
                 </div>
