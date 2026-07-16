@@ -507,7 +507,7 @@ const categoryChartSeries = computed(() => {
                   </td>
                   <td>{{ order.payment_method }}</td>
                 </tr>
-                <tr v-slot:bottom v-if="stats.recent_web_orders.length === 0">
+                <tr v-if="stats.recent_web_orders.length === 0">
                   <td colspan="5" class="text-center py-8 text-disabled">
                     Sin pedidos en la tienda virtual
                   </td>
