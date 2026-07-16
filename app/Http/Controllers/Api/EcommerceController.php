@@ -81,8 +81,7 @@ class EcommerceController extends Controller
             $query->where('is_favorite', true)->latest();
             $products = $query->get(); // Retornamos todos los favoritos para el deslizador
         } else {
-            // Catálogo general: obligatoriamente mostrar solo productos con imagen configurada
-            $query->whereNotNull('photo_url')->where('photo_url', '!=', '');
+            // Catálogo general: mostrar todos los productos del catálogo de e-commerce
 
             // Filtrar por categoría (slug generado del nombre)
             if ($request->filled('category')) {

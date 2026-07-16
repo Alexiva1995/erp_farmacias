@@ -1,6 +1,9 @@
 <template>
   <div>
-    <div v-if="brandingStore.settings.business_type === 'minimarket'">
+    <div v-if="!brandingStore.isLoaded" class="d-flex align-center justify-center py-12">
+      <VProgressCircular indeterminate color="primary" />
+    </div>
+    <div v-else-if="brandingStore.settings.business_type === 'minimarket'">
       <MinimarketDashboard />
     </div>
     <div v-else>

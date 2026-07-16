@@ -75,7 +75,9 @@ const fetchMinimarketStats = async () => {
         end_date: endDate.value
       }
     });
-    stats.value = data;
+    if (data && data.general_stats) {
+      stats.value = data;
+    }
   } catch (error) {
     console.error('Error al cargar métricas del Minimarket:', error);
   } finally {
@@ -133,7 +135,7 @@ const paymentChartOptions = computed(() => {
       parentHeightOffset: 0,
       toolbar: { show: false }
     },
-    labels: stats.value.payment_distribution.map(i => i.label),
+    labels: (stats.value?.payment_distribution || []).map(i => i.label),
     colors: ['#7367F0', '#28C76F', '#FF9F43', '#00CFE8', '#82868B'],
     stroke: {
       width: 4,
@@ -179,7 +181,7 @@ const paymentChartOptions = computed(() => {
               fontFamily: 'Public Sans',
               color: currentTheme.colors['on-surface-variant'],
               formatter: (w) => {
-                return formatUSD(stats.value.payment_distribution.reduce((acc, curr) => acc + curr.value, 0));
+                return formatUSD((stats.value?.payment_distribution || []).reduce((acc, curr) => acc + curr.value, 0));
               }
             }
           }
@@ -190,7 +192,7 @@ const paymentChartOptions = computed(() => {
 });
 
 const paymentChartSeries = computed(() => {
-  return stats.value.payment_distribution.map(i => i.value);
+  return (stats.value?.payment_distribution || []).map(i => i.value);
 });
 
 // Configuración de Gráfico de Barras (Ventas por Categoría)
@@ -198,13 +200,14 @@ const categoryChartOptions = computed(() => {
   const currentTheme = vuetifyTheme.current.value;
   return {
     chart: {
-      type: 'bar',
-      toolbar: { show: false }
+      parentHeightOffset: 0,
+      toolbar: { show: false },
+      type: 'bar'
     },
     plotOptions: {
       bar: {
         horizontal: true,
-        barHeight: '60%',
+        barHeight: '30%',
         borderRadius: 4
       }
     },
@@ -220,7 +223,7 @@ const categoryChartOptions = computed(() => {
       borderColor: currentTheme.colors['border-color']
     },
     xaxis: {
-      categories: stats.value.category_sales.map(i => i.name),
+      categories: (stats.value?.category_sales || []).map(i => i.name),
       labels: {
         style: { colors: currentTheme.colors['on-surface-variant'] },
         formatter: (val) => formatUSD(val)
@@ -237,7 +240,7 @@ const categoryChartOptions = computed(() => {
 const categoryChartSeries = computed(() => {
   return [{
     name: 'Ventas',
-    data: stats.value.category_sales.map(i => i.value)
+    data: (stats.value?.category_sales || []).map(i => i.value)
   }];
 });
 </script>

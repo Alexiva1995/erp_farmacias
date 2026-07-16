@@ -309,7 +309,37 @@ const productPrice = (product, variant = null) => {
   return (base + mod).toFixed(2)
 }
 
-const formatPrice = (n) => `$${Number(n).toFixed(2)}`
+const selectedCurrency = ref(localStorage.getItem('ecommerce_currency') || 'USD')
+
+const changeCurrency = (currency) => {
+  selectedCurrency.value = currency
+  localStorage.setItem('ecommerce_currency', currency)
+}
+
+const getRateFor = (currency) => {
+  if (currency === 'USD') return 1
+  if (currency === 'COP') {
+    const r = brandingStore.exchangeRates.find(x => x.currency_code === 'COP')
+    return r ? Number(r.rate) : 3200
+  }
+  if (currency === 'Bs' || currency === 'VES') {
+    const r = brandingStore.exchangeRates.find(x => x.currency_code === 'BINANCE')
+    return r ? Number(r.rate) : 840
+  }
+  return 1
+}
+
+const formatPrice = (n) => {
+  const rate = getRateFor(selectedCurrency.value)
+  const converted = Number(n) * rate
+  
+  if (selectedCurrency.value === 'COP') {
+    return 'COP$ ' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(converted)
+  } else if (selectedCurrency.value === 'Bs' || selectedCurrency.value === 'VES') {
+    return 'Bs. ' + new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(converted)
+  }
+  return `$${Number(n).toFixed(2)}`
+}
 
 // ——— Checkout ———
 const submitOrder = async () => {
@@ -475,6 +505,27 @@ onMounted(async () => {
             />
             <span class="search-line-effect"></span>
           </div>
+
+          <!-- Selector de Moneda -->
+          <VMenu transition="slide-y-transition" location="bottom end">
+            <template #activator="{ props }">
+              <button v-bind="props" class="d-flex align-center bg-transparent border-0 px-2 py-1 cursor-pointer mr-3" style="font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--editorial-black); text-transform: uppercase;">
+                <VIcon icon="tabler-currency" size="18" class="mr-1" />
+                <span>{{ selectedCurrency }}</span>
+              </button>
+            </template>
+            <VList density="compact">
+              <VListItem @click="changeCurrency('USD')">
+                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">USD ($)</VListItemTitle>
+              </VListItem>
+              <VListItem @click="changeCurrency('COP')">
+                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">COP (COP$)</VListItemTitle>
+              </VListItem>
+              <VListItem @click="changeCurrency('Bs')">
+                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">Bs. (BINANCE)</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
           <button class="cart-btn-editorial" @click="cartDrawer = true">
             <VIcon icon="tabler-shopping-bag" size="20" class="text-dark hover-accent" />
