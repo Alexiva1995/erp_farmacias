@@ -122,7 +122,7 @@ class ImportNotionInventory extends Command
                         'lot_number' => 'LOTE-INICIAL',
                         'expiration_date' => '2030-12-31', // Lote por defecto
                         'quantity' => $stock,
-                        'cost_price' => $costPrice,
+                        'unit_cost' => $costPrice,
                         'location' => 'Tienda',
                     ]);
                 }
