@@ -609,4 +609,205 @@ class DashboardController extends Controller
         $movements = app(\App\Services\Expirations\ExpirationQueryService::class)->getSoldExpiringLotsThisMonth();
         return SoldExpiringProductResource::collection($movements);
     }
+
+    public function getMinimarketStats(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        $cacheKey = "minimarket_stats_{$startDate}_{$endDate}";
+
+        $statsData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($startDate, $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+
+            // 1. Métricas generales
+            $posSales = (float) DB::table('orders')
+                ->where('status', 'Completed')
+                ->whereBetween('order_date', [$start, $end])
+                ->sum('total_amount_usd');
+
+            $webSales = (float) DB::table('ecommerce_orders')
+                ->whereIn('status', ['Paid', 'Shipped', 'Delivered'])
+                ->whereBetween('created_at', [$start, $end])
+                ->sum('total_amount');
+
+            $totalSales = $posSales + $webSales;
+
+            $posCost = (float) DB::table('orders')
+                ->where('status', 'Completed')
+                ->whereBetween('order_date', [$start, $end])
+                ->sum('total_cost');
+
+            // Para e-commerce, calculamos el costo a partir de los ítems de las órdenes
+            $webCost = (float) DB::table('ecommerce_order_items')
+                ->join('ecommerce_orders', 'ecommerce_orders.id', '=', 'ecommerce_order_items.ecommerce_order_id')
+                ->join('products', 'products.id', '=', 'ecommerce_order_items.product_id')
+                ->whereIn('ecommerce_orders.status', ['Paid', 'Shipped', 'Delivered'])
+                ->whereBetween('ecommerce_orders.created_at', [$start, $end])
+                ->sum(DB::raw('ecommerce_order_items.quantity * products.unit_cost'));
+
+            $totalProfit = ($posSales - $posCost) + ($webSales - $webCost);
+
+            // Cantidad de transacciones
+            $posTransactions = DB::table('orders')
+                ->where('status', 'Completed')
+                ->whereBetween('order_date', [$start, $end])
+                ->count();
+
+            $webTransactions = DB::table('ecommerce_orders')
+                ->whereIn('status', ['Paid', 'Shipped', 'Delivered'])
+                ->whereBetween('created_at', [$start, $end])
+                ->count();
+
+            // 2. Métodos de Pago
+            // Obtener pagos de POS
+            $posOrders = DB::table('orders')
+                ->where('status', 'Completed')
+                ->whereBetween('order_date', [$start, $end])
+                ->get(['payment_methods']);
+
+            $payments = [
+                'Efectivo' => 0.0,
+                'Pago Móvil' => 0.0,
+                'Zelle' => 0.0,
+                'Tarjeta / Puntos' => 0.0,
+                'Otros' => 0.0
+            ];
+
+            foreach ($posOrders as $order) {
+                $methods = json_decode($order->payment_methods, true);
+                if (is_array($methods)) {
+                    foreach ($methods as $method) {
+                        $name = mb_strtoupper($method['method'] ?? '', 'UTF-8');
+                        $amount = (float) ($method['amount_usd'] ?? $method['amount'] ?? 0);
+                        if (str_contains($name, 'EFECTIVO') || str_contains($name, 'CASH')) {
+                            $payments['Efectivo'] += $amount;
+                        } elseif (str_contains($name, 'MOVIL') || str_contains($name, 'PAGO')) {
+                            $payments['Pago Móvil'] += $amount;
+                        } elseif (str_contains($name, 'ZELLE')) {
+                            $payments['Zelle'] += $amount;
+                        } elseif (str_contains($name, 'PUNTO') || str_contains($name, 'TARJETA') || str_contains($name, 'DEBITO') || str_contains($name, 'CREDITO')) {
+                            $payments['Tarjeta / Puntos'] += $amount;
+                        } else {
+                            $payments['Otros'] += $amount;
+                        }
+                    }
+                }
+            }
+
+            // Sumar pagos de e-commerce
+            $webOrders = DB::table('ecommerce_orders')
+                ->whereIn('status', ['Paid', 'Shipped', 'Delivered'])
+                ->whereBetween('created_at', [$start, $end])
+                ->get(['payment_method', 'total_amount']);
+
+            foreach ($webOrders as $wOrder) {
+                $name = mb_strtoupper($wOrder->payment_method ?? '', 'UTF-8');
+                $amount = (float) $wOrder->total_amount;
+                if (str_contains($name, 'EFECTIVO') || str_contains($name, 'CASH')) {
+                    $payments['Efectivo'] += $amount;
+                } elseif (str_contains($name, 'MOVIL') || str_contains($name, 'PAGO')) {
+                    $payments['Pago Móvil'] += $amount;
+                } elseif (str_contains($name, 'ZELLE')) {
+                    $payments['Zelle'] += $amount;
+                } else {
+                    $payments['Tarjeta / Puntos'] += $amount;
+                }
+            }
+
+            // Convertir a estructura de gráfica
+            $paymentDistribution = [];
+            foreach ($payments as $label => $val) {
+                if ($val > 0) {
+                    $paymentDistribution[] = ['label' => $label, 'value' => round($val, 2)];
+                }
+            }
+
+            // 3. Ventas por Categoría (POS + Web)
+            $posCatSales = DB::table('order_details')
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->join('products', 'products.id', '=', 'order_details.product_id')
+                ->join('categories', 'categories.id', '=', 'products.category_id')
+                ->where('orders.status', 'Completed')
+                ->whereBetween('orders.order_date', [$start, $end])
+                ->selectRaw('categories.name as category_name, SUM(order_details.quantity * order_details.price) as sales')
+                ->groupBy('categories.name')
+                ->get();
+
+            $webCatSales = DB::table('ecommerce_order_items')
+                ->join('ecommerce_orders', 'ecommerce_orders.id', '=', 'ecommerce_order_items.ecommerce_order_id')
+                ->join('products', 'products.id', '=', 'ecommerce_order_items.product_id')
+                ->join('categories', 'categories.id', '=', 'products.category_id')
+                ->whereIn('ecommerce_orders.status', ['Paid', 'Shipped', 'Delivered'])
+                ->whereBetween('ecommerce_orders.created_at', [$start, $end])
+                ->selectRaw('categories.name as category_name, SUM(ecommerce_order_items.quantity * ecommerce_order_items.price) as sales')
+                ->groupBy('categories.name')
+                ->get();
+
+            $categoriesCombined = [];
+            foreach ($posCatSales as $cs) {
+                $categoriesCombined[$cs->category_name] = (float) $cs->sales;
+            }
+            foreach ($webCatSales as $cs) {
+                $categoriesCombined[$cs->category_name] = ($categoriesCombined[$cs->category_name] ?? 0.0) + (float) $cs->sales;
+            }
+
+            $categorySalesFormatted = [];
+            foreach ($categoriesCombined as $catName => $salesSum) {
+                $categorySalesFormatted[] = [
+                    'name' => $catName,
+                    'value' => round($salesSum, 2)
+                ];
+            }
+            usort($categorySalesFormatted, fn($a, $b) => $b['value'] <=> $a['value']);
+            $categorySalesFormatted = array_slice($categorySalesFormatted, 0, 5);
+
+            // 4. Alertas de Stock Bajo
+            $lowStock = \App\Models\Product::with('category')
+                ->where('stock', '<', 10)
+                ->orderBy('stock', 'asc')
+                ->limit(6)
+                ->get()
+                ->map(fn($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'stock' => (float)$p->stock,
+                    'category' => $p->category?->name ?? 'GENERAL',
+                    'supplier_id' => $p->supplier_id
+                ]);
+
+            // 5. Últimas órdenes del E-commerce
+            $recentWebOrders = DB::table('ecommerce_orders')
+                ->orderBy('id', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(fn($o) => [
+                    'id' => $o->id,
+                    'customer_name' => $o->customer_name,
+                    'total_amount' => (float)$o->total_amount,
+                    'status' => $o->status,
+                    'payment_method' => $o->payment_method,
+                    'created_at' => $o->created_at
+                ]);
+
+            return [
+                'general_stats' => [
+                    'total_sales' => round($totalSales, 2),
+                    'pos_sales' => round($posSales, 2),
+                    'web_sales' => round($webSales, 2),
+                    'total_profit' => round($totalProfit, 2),
+                    'pos_transactions' => $posTransactions,
+                    'web_transactions' => $webTransactions,
+                    'total_transactions' => $posTransactions + $webTransactions
+                ],
+                'payment_distribution' => $paymentDistribution,
+                'category_sales' => $categorySalesFormatted,
+                'low_stock' => $lowStock,
+                'recent_web_orders' => $recentWebOrders
+            ];
+        });
+
+        return response()->json($statsData);
+    }
 }

@@ -1,7 +1,11 @@
 <template>
   <div>
-    <!-- Fila 1: Felicitaciones y Estadísticas -->
-    <VRow class="mb-6 match-height">
+    <div v-if="brandingStore.settings.business_type === 'minimarket'">
+      <MinimarketDashboard />
+    </div>
+    <div v-else>
+      <!-- Fila 1: Felicitaciones y Estadísticas -->
+      <VRow class="mb-6 match-height">
       <!-- Tarjeta de Felicitaciones -->
       <VCol cols="12" md="4">
         <VCard class="h-100 bg-light-primary">
@@ -382,6 +386,7 @@
         </div>
       </template>
     </Suspense>
+    </div>
   </div>
 </template>
 
@@ -440,8 +445,12 @@ import customCheck from '@images/svg/Check.svg'
 import customLaptop from '@images/svg/laptop.svg'
 import customLightbulb from '@images/svg/lightbulb.svg'
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import MinimarketDashboard from "@/components/MinimarketDashboard.vue";
+
 const authStore = useAuthStore();
 const router = useRouter();
+const brandingStore = useBrandingStore();
 
 // Estado para Facturas Cargadas
 const loadedInvoices = ref([]);

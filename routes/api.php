@@ -437,6 +437,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/employee-sales-amount', [DashboardController::class, 'getEmployeeSalesByAmount']);
         Route::get('/employee-sales-units', [DashboardController::class, 'getEmployeeSalesByUnits']);
         Route::get('/expiring-sold-products', [DashboardController::class, 'getSoldExpiringProducts']);
+        Route::get('/minimarket-stats', [DashboardController::class, 'getMinimarketStats']);
     });
 
     // Rutas de Trazabilidad
