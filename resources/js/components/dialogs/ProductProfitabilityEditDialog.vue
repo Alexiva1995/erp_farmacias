@@ -1,7 +1,8 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   dialog: { type: Boolean, required: true },
@@ -11,13 +12,35 @@ const props = defineProps({
 const emit = defineEmits(["refresh", "close-modal"]);
 
 const percentage = ref(0);
+const shippingCost = ref(0);
+const packagingCost = ref(0);
+const expenseMargin = ref(0);
+const profitMargin = ref(0);
 const loading = ref(false);
+
+const brandingStore = useBrandingStore();
+const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+
+const previewSalePrice = computed(() => {
+  const cost = Number(props.product.unit_cost || 0);
+  if (isMinimarket.value) {
+    const totalMargin = (Number(expenseMargin.value) + Number(profitMargin.value)) / 100;
+    if (totalMargin >= 1) return "9999.99";
+    return ((cost + Number(shippingCost.value) + Number(packagingCost.value)) / (1 - totalMargin)).toFixed(2);
+  } else {
+    return (cost * (1 + Number(percentage.value) / 100)).toFixed(2);
+  }
+});
 
 watch(
   () => props.product,
   (val) => {
     if (val) {
       percentage.value = val.percentage || 0;
+      shippingCost.value = val.shipping_cost || 0;
+      packagingCost.value = val.packaging_cost || 0;
+      expenseMargin.value = val.expense_margin || 0;
+      profitMargin.value = val.profit_margin || 0;
     }
   },
   { immediate: true, deep: true }
@@ -30,11 +53,19 @@ async function saveProfitability() {
     ? "/finances/profitability/product/update" 
     : "/finances/profitability/product/store";
   
+  const percentageValue = isMinimarket.value 
+    ? (Number(expenseMargin.value) + Number(profitMargin.value)) 
+    : Number(percentage.value);
+
   const data = {
     id: props.product.id,
     product_id: props.product.product_id,
-    profitability_percentage: percentage.value,
+    profitability_percentage: percentageValue,
     is_locked: 1,
+    shipping_cost: shippingCost.value,
+    packaging_cost: packagingCost.value,
+    expense_margin: expenseMargin.value,
+    profit_margin: profitMargin.value,
   };
 
   try {
@@ -159,7 +190,65 @@ const checkExistenceAndSave = async () => {
           variant="flat"
           class="pa-5 bg-white rounded-xl border shadow-sm"
         >
-          <VRow dense>
+          <VRow dense v-if="isMinimarket">
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="shippingCost"
+                label="Envío por Unidad (USD)"
+                placeholder="Ej: 0.90"
+                type="number"
+                prepend-inner-icon="tabler-truck-delivery"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="packagingCost"
+                label="Embalaje por Unidad (USD)"
+                placeholder="Ej: 1.20"
+                type="number"
+                prepend-inner-icon="tabler-box"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="expenseMargin"
+                label="Margen Gasto Fijo (%)"
+                placeholder="Ej: 26"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-percentage"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="profitMargin"
+                label="Margen Ganancia Deseada (%)"
+                placeholder="Ej: 30"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-trending-up"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" class="mt-4">
+              <div class="pa-4 rounded-lg text-center" style="background-color: var(--v-theme-background); border: 1px solid rgba(var(--v-border-color), 0.12);">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Precio de Venta Sugerido</span>
+                <span class="text-h4 font-weight-950 text-success">${{ previewSalePrice }} USD</span>
+              </div>
+            </VCol>
+          </VRow>
+          <VRow dense v-else>
             <VCol cols="12">
               <div class="text-center py-4">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block letter-spacing-1">Porcentaje de Rentabilidad Objetivo</span>

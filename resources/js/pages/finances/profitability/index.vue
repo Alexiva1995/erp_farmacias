@@ -11,6 +11,7 @@ import { computed, onMounted, ref, watch } from "vue";
 const products = ref([]);
 const totalProduct = ref(0);
 const profitability = ref(0);
+const globalSettings = ref({});
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
@@ -88,6 +89,7 @@ const fetchProducts = async () => {
 const percentProfitability = async () => {
   try {
     const response = await axios.get("/finances/profitability");
+    globalSettings.value = response.data || {};
     profitability.value = response.data.default_profitability_percentage || 0;
   } catch (error) {
     console.error("Hubo un error al obtener la rentabilidad:", error);
@@ -99,18 +101,19 @@ const addProfitability = () => {
   dialog.value = true;
 };
 
-const editProductProfitability = (
-  profitability_id = null,
-  percentage = 0,
-  id_product,
-  is_locked = 1,
-) => {
+const editProductProfitability = (item) => {
   editDialog.value = true;
   productProfitability.value = {
-    id: profitability_id,
-    percentage: percentage,
-    product_id: id_product,
-    is_locked: is_locked,
+    id: item.profitability?.id,
+    percentage: item.profitability?.profitability_percentage || 0,
+    product_id: item.id,
+    is_locked: item.profitability?.is_locked || 0,
+    name: item.name,
+    unit_cost: item.unit_cost,
+    shipping_cost: item.profitability?.shipping_cost,
+    packaging_cost: item.profitability?.packaging_cost,
+    expense_margin: item.profitability?.expense_margin,
+    profit_margin: item.profitability?.profit_margin,
   };
 };
 
@@ -354,6 +357,7 @@ onMounted(() => {
         :products="products"
         :totalProduct="totalProduct"
         :profitability="profitability"
+        :settings="globalSettings"
         :page="page"
         :itemsPerPage="itemsPerPage"
         :sort-by="sortBy"
@@ -369,6 +373,7 @@ onMounted(() => {
     <!-- Diálogos -->
     <addProfitabilityDialog
       :percentage="percentage"
+      :settings="globalSettings"
       :dialog="dialog"
       @close-modal="dialog = false"
       @refresh="reloadTable"

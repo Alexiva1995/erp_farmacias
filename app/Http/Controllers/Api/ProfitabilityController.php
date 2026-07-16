@@ -39,6 +39,10 @@ class ProfitabilityController extends Controller
     {
         $crear = [
             'default_profitability_percentage' => $request->default_profitability_percentage,
+            'shipping_cost' => $request->shipping_cost,
+            'packaging_cost' => $request->packaging_cost,
+            'expense_margin' => $request->expense_margin,
+            'profit_margin' => $request->profit_margin,
         ];
         $this->profitability->store($crear);
         return response()->json("Se ha actualizado el porcentaje");

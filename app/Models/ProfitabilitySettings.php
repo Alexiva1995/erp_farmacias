@@ -14,6 +14,10 @@ class ProfitabilitySettings extends Model
      * Los atributos que son asignables masivamente.
      */
     protected $fillable = [
-        'default_profitability_percentage'
+        'default_profitability_percentage',
+        'shipping_cost',
+        'packaging_cost',
+        'expense_margin',
+        'profit_margin',
     ];
 }

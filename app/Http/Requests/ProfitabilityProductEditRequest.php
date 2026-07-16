@@ -31,6 +31,10 @@ class ProfitabilityProductEditRequest extends FormRequest
             "product_id"               =>    "required|integer",
             "profitability_percentage" =>    "required|numeric",
             "is_locked"                =>    "required|integer",
+            "shipping_cost"            =>    "nullable|numeric",
+            "packaging_cost"           =>    "nullable|numeric",
+            "expense_margin"           =>    "nullable|numeric",
+            "profit_margin"            =>    "nullable|numeric",
         ];
     }
 
@@ -63,6 +67,10 @@ class ProfitabilityProductEditRequest extends FormRequest
             "product_id"               => $this->product_id,
             "profitability_percentage" => $this->profitability_percentage,
             "is_locked"                => $this->is_locked,
+            "shipping_cost"            => $this->shipping_cost,
+            "packaging_cost"           => $this->packaging_cost,
+            "expense_margin"           => $this->expense_margin,
+            "profit_margin"            => $this->profit_margin,
         ]);
     }
 }

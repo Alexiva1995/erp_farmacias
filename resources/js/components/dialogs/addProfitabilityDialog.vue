@@ -1,16 +1,25 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   dialog: { type: Boolean, required: true },
   percentage: { type: Number, default: 0 },
+  settings: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["refresh", "close-modal", "update:dialog"]);
 
+const brandingStore = useBrandingStore();
+const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+
 const localPercentage = ref(0);
+const shippingCost = ref(0);
+const packagingCost = ref(0);
+const expenseMargin = ref(0);
+const profitMargin = ref(0);
 const loading = ref(false);
 
 watch(
@@ -21,9 +30,30 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => props.settings,
+  (val) => {
+    if (val) {
+      shippingCost.value = val.shipping_cost || 0;
+      packagingCost.value = val.packaging_cost || 0;
+      expenseMargin.value = val.expense_margin || 0;
+      profitMargin.value = val.profit_margin || 0;
+    }
+  },
+  { immediate: true, deep: true }
+);
+
 async function storeProfitability() {
+  const percentageValue = isMinimarket.value
+    ? (Number(expenseMargin.value) + Number(profitMargin.value))
+    : Number(localPercentage.value);
+
   const data = {
-    default_profitability_percentage: localPercentage.value,
+    default_profitability_percentage: percentageValue,
+    shipping_cost: shippingCost.value,
+    packaging_cost: packagingCost.value,
+    expense_margin: expenseMargin.value,
+    profit_margin: profitMargin.value,
   };
 
   loading.value = true;
@@ -134,7 +164,55 @@ async function storeProfitability() {
           variant="flat"
           class="pa-5 bg-white rounded-lg elevation-1 border"
         >
-          <VRow>
+          <VRow v-if="isMinimarket">
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="shippingCost"
+                label="Envío por Unidad (USD)"
+                placeholder="Ej: 0.90"
+                type="number"
+                prepend-inner-icon="tabler-truck-delivery"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="packagingCost"
+                label="Embalaje por Unidad (USD)"
+                placeholder="Ej: 1.20"
+                type="number"
+                prepend-inner-icon="tabler-box"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="expenseMargin"
+                label="Margen Gasto Fijo (%)"
+                placeholder="Ej: 26"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-percentage"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-model="profitMargin"
+                label="Margen Ganancia Deseada (%)"
+                placeholder="Ej: 30"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-trending-up"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+          </VRow>
+          <VRow v-else>
             <VCol cols="12">
               <AppTextField
                 v-model="localPercentage"
@@ -191,7 +269,7 @@ async function storeProfitability() {
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               @click="storeProfitability"
               :loading="loading"
-              :disabled="loading || !localPercentage"
+              :disabled="loading || (isMinimarket ? false : !localPercentage)"
             >
               <VIcon
                 start

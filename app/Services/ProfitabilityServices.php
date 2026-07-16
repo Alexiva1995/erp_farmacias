@@ -91,9 +91,29 @@ class ProfitabilityServices implements Profitability
     {
         $product = \App\Models\Product::find($productId);
         if ($product) {
-            // Formula: Price = Cost * (1 + (Percentage / 100))
-            $newPrice = $product->unit_cost * (1 + ($percentage / 100));
-            $product->sale_price = $newPrice;
+            $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
+            $isMinimarket = $generalSettings && $generalSettings->business_type === 'minimarket';
+
+            if ($isMinimarket) {
+                $settings = $this->consultOne();
+                $productProfitability = \App\Models\ProductProfitability::where('product_id', $productId)->first();
+
+                $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
+                $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
+                $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
+                $profitMargin = $productProfitability && $productProfitability->profit_margin !== null ? (float)$productProfitability->profit_margin : ($settings ? (float)$settings->profit_margin : 0.0);
+
+                $totalMargin = ($expenseMargin + $profitMargin) / 100.0;
+                if ($totalMargin >= 1.0) {
+                    $totalMargin = 0.99; // Evitar división por cero
+                }
+
+                $newPrice = ($product->unit_cost + $shippingCost + $packagingCost) / (1.0 - $totalMargin);
+            } else {
+                $newPrice = $product->unit_cost * (1 + ($percentage / 100));
+            }
+
+            $product->sale_price = round($newPrice, 2);
             $product->save();
         }
     }

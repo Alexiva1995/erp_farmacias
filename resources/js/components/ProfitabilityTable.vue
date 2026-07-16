@@ -6,9 +6,12 @@ import { faLock, faUnlock } from "@fortawesome/free-solid-svg-icons";
 
 library.add(faLock, faUnlock);
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
 const props = defineProps({
   products: { type: Array, required: true },
   profitability: { type: Number, required: true },
+  settings: { type: Object, default: () => ({}) },
   loading: { type: Boolean, default: false },
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
@@ -17,6 +20,9 @@ const props = defineProps({
   orderBy: { type: String, default: 'asc' },
 });
 
+const brandingStore = useBrandingStore();
+const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+
 const sortByModel = computed(() => {
   if (!props.sortBy) return [];
   return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
@@ -24,14 +30,29 @@ const sortByModel = computed(() => {
 
 const emit = defineEmits(["refresh", "update:options", "editProduct"]);
 
-const headers = [
-  { title: "id", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
-  { title: "% Utilidad", key: "profitability", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false },
-];
+const headers = computed(() => {
+  if (isMinimarket.value) {
+    return [
+      { title: "id", key: "id", sortable: true },
+      { title: "Producto", key: "name", sortable: true },
+      { title: "Costo Base", key: "unit_cost", sortable: true },
+      { title: "Envío", key: "shipping_cost", sortable: false },
+      { title: "Embalaje", key: "packaging_cost", sortable: false },
+      { title: "Margen Gastos", key: "expense_margin", sortable: false },
+      { title: "Margen Utilidad", key: "profit_margin", sortable: false },
+      { title: "Precio Venta", key: "sale_price", sortable: true },
+      { title: "Acciones", key: "actions", sortable: false },
+    ];
+  }
+  return [
+    { title: "id", key: "id", sortable: true },
+    { title: "Producto", key: "name", sortable: true },
+    { title: "Costo", key: "unit_cost", sortable: true },
+    { title: "Precio Venta", key: "sale_price", sortable: true },
+    { title: "% Utilidad", key: "profitability", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false },
+  ];
+});
 
 async function storeProfitability(product_id, profitability) {
   let data = {
@@ -163,13 +184,26 @@ const formatPrice = (price) => {
 
 const getCalculatedSalePrice = (item) => {
   const cost = parseFloat(item.unit_cost || 0);
-  const perc =
-    item.profitability?.is_locked == "1"
-      ? parseFloat(item.profitability.profitability_percentage || 0)
-      : parseFloat(props.profitability || 0);
+  if (isMinimarket.value) {
+    const isLocked = item.profitability?.is_locked == "1";
+    const shipping = isLocked && item.profitability?.shipping_cost !== null ? parseFloat(item.profitability.shipping_cost) : parseFloat(props.settings?.shipping_cost || 0);
+    const packaging = isLocked && item.profitability?.packaging_cost !== null ? parseFloat(item.profitability.packaging_cost) : parseFloat(props.settings?.packaging_cost || 0);
+    const expense = isLocked && item.profitability?.expense_margin !== null ? parseFloat(item.profitability.expense_margin) : parseFloat(props.settings?.expense_margin || 0);
+    const profit = isLocked && item.profitability?.profit_margin !== null ? parseFloat(item.profitability.profit_margin) : parseFloat(props.settings?.profit_margin || 0);
 
-  const salePrice = cost * (1 + perc / 100);
-  return item.iva == 1 ? salePrice * 1.16 : salePrice;
+    const totalMargin = (expense + profit) / 100;
+    if (totalMargin >= 1) return 9999.99;
+    const salePrice = (cost + shipping + packaging) / (1 - totalMargin);
+    return item.iva == 1 ? salePrice * 1.16 : salePrice;
+  } else {
+    const perc =
+      item.profitability?.is_locked == "1"
+        ? parseFloat(item.profitability.profitability_percentage || 0)
+        : parseFloat(props.profitability || 0);
+
+    const salePrice = cost * (1 + perc / 100);
+    return item.iva == 1 ? salePrice * 1.16 : salePrice;
+  }
 };
 
 const getProfitabilityPercentage = (item) => {
@@ -287,6 +321,30 @@ const getProfitabilityPercentage = (item) => {
           </div>
         </template>
 
+        <template #item.shipping_cost="{ item }">
+          <span>
+            {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.shipping_cost !== null ? item.profitability.shipping_cost : props.settings?.shipping_cost || 0) }}
+          </span>
+        </template>
+
+        <template #item.packaging_cost="{ item }">
+          <span>
+            {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.packaging_cost !== null ? item.profitability.packaging_cost : props.settings?.packaging_cost || 0) }}
+          </span>
+        </template>
+
+        <template #item.expense_margin="{ item }">
+          <span class="font-weight-bold">
+            {{ item.profitability?.is_locked == '1' && item.profitability?.expense_margin !== null ? item.profitability.expense_margin : props.settings?.expense_margin || 0 }}%
+          </span>
+        </template>
+
+        <template #item.profit_margin="{ item }">
+          <span class="font-weight-bold text-primary">
+            {{ item.profitability?.is_locked == '1' && item.profitability?.profit_margin !== null ? item.profitability.profit_margin : props.settings?.profit_margin || 0 }}%
+          </span>
+        </template>
+
         <template #item.profitability="{ item }">
           <div class="d-flex align-center gap-2">
             <VProgressCircular
@@ -323,10 +381,7 @@ const getProfitabilityPercentage = (item) => {
               @click="
                 emit(
                   'editProduct',
-                  item.profitability?.id,
-                  item.profitability?.profitability_percentage,
-                  item.id,
-                  item.profitability?.is_locked,
+                  item,
                 )
               "
             >
@@ -468,10 +523,7 @@ const getProfitabilityPercentage = (item) => {
               @click="
                 emit(
                   'editProduct',
-                  item.profitability?.id,
-                  item.profitability?.profitability_percentage,
-                  item.id,
-                  item.profitability?.is_locked,
+                  item,
                 )
               "
             >
