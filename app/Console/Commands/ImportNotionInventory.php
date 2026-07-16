@@ -39,8 +39,13 @@ class ImportNotionInventory extends Command
             ProductLot::truncate();
             Product::truncate();
             Category::truncate();
+            
+            // Establecer el inicio de los IDs en 10000
+            DB::statement('ALTER TABLE products AUTO_INCREMENT = 10000;');
+            DB::statement('ALTER TABLE categories AUTO_INCREMENT = 10000;');
+            
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-            $this->info("✅ Tablas vaciadas correctamente.");
+            $this->info("✅ Tablas vaciadas y contadores de ID reiniciados en 10000.");
         }
 
         $this->info("🚀 Iniciando importación desde {$filePath}...");
