@@ -107,7 +107,7 @@ class ImportNotionInventory extends Command
                     [
                         'name' => $productName,
                         'category_id' => $category->id,
-                        'cost_price' => $costPrice,
+                        'unit_cost' => $costPrice,
                         'sale_price' => $salePrice,
                         'iva' => false,
                         'psychotropic' => false,
