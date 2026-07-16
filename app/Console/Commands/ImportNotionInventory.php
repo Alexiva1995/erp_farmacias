@@ -14,7 +14,7 @@ class ImportNotionInventory extends Command
     /**
      * El nombre y firma del comando en consola.
      */
-    protected $signature = 'app:import-notion';
+    protected $signature = 'app:import-notion {--truncate : Vaciar catálogo e inventario antes de importar}';
 
     /**
      * La descripción del comando.
@@ -31,6 +31,16 @@ class ImportNotionInventory extends Command
         if (!file_exists($filePath)) {
             $this->error("❌ El archivo {$filePath} no existe.");
             return 1;
+        }
+
+        if ($this->option('truncate')) {
+            $this->warn("⚠️ Opción --truncate detectada. Vaciando tablas de productos, lotes y categorías...");
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            ProductLot::truncate();
+            Product::truncate();
+            Category::truncate();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            $this->info("✅ Tablas vaciadas correctamente.");
         }
 
         $this->info("🚀 Iniciando importación desde {$filePath}...");
@@ -53,6 +63,43 @@ class ImportNotionInventory extends Command
             return trim(str_replace(['"', "'"], '', $clean));
         }, $rawHeaders);
 
+        // Detectar columnas mediante comparación flexible e insensible a acentos/mayúsculas
+        $productKey = null;
+        $categoryKey = null;
+        $costKey = null;
+        $saleKey = null;
+        $stockKey = null;
+
+        foreach ($headers as $header) {
+            $upper = mb_strtoupper($header, 'UTF-8');
+            // Remover acentos
+            $normalized = strtr($upper, [
+                'Á'=>'A', 'É'=>'E', 'Í'=>'I', 'Ó'=>'O', 'Ú'=>'U',
+                'á'=>'A', 'é'=>'E', 'í'=>'I', 'ó'=>'O', 'ú'=>'U'
+            ]);
+
+            if (str_contains($normalized, 'PRODUCT')) {
+                $productKey = $header;
+            } elseif (str_contains($normalized, 'CATEG')) {
+                $categoryKey = $header;
+            } elseif (str_contains($normalized, 'COMPRA') || str_contains($normalized, 'COSTO')) {
+                $costKey = $header;
+            } elseif (str_contains($normalized, 'VENTA') || str_contains($normalized, 'PRECIO')) {
+                if (!str_contains($normalized, 'COMPRA') && !str_contains($normalized, 'COSTO')) {
+                    $saleKey = $header;
+                }
+            } elseif (str_contains($normalized, 'STOCK') && str_contains($normalized, 'ACTUAL')) {
+                $stockKey = $header;
+            }
+        }
+
+        $this->info("Columnas detectadas:");
+        $this->info("- Producto: " . ($productKey ?? 'No detectado'));
+        $this->info("- Categoría: " . ($categoryKey ?? 'No detectado'));
+        $this->info("- Costo: " . ($costKey ?? 'No detectado'));
+        $this->info("- Venta: " . ($saleKey ?? 'No detectado'));
+        $this->info("- Stock: " . ($stockKey ?? 'No detectado'));
+
         $imported = 0;
         $skipped = 0;
 
@@ -71,11 +118,11 @@ class ImportNotionInventory extends Command
 
                 $rowData = array_combine($headers, array_slice($row, 0, count($headers)));
                 
-                $productName = trim($rowData['PRODUCTOS'] ?? '');
-                $categoryName = trim($rowData['CATEGORÍA'] ?? 'GENERAL');
-                $costRaw = trim($rowData['Precio de Compra'] ?? '0');
-                $saleRaw = trim($rowData['Precio de Venta'] ?? '0');
-                $stockRaw = trim($rowData['Stock Actual'] ?? '0');
+                $productName = $productKey ? trim($rowData[$productKey] ?? '') : '';
+                $categoryName = $categoryKey ? trim($rowData[$categoryKey] ?? 'GENERAL') : 'GENERAL';
+                $costRaw = $costKey ? trim($rowData[$costKey] ?? '0') : '0';
+                $saleRaw = $saleKey ? trim($rowData[$saleKey] ?? '0') : '0';
+                $stockRaw = $stockKey ? trim($rowData[$stockKey] ?? '0') : '0';
 
                 // Si el nombre del producto está vacío, saltar
                 if (empty($productName)) {
@@ -126,6 +173,8 @@ class ImportNotionInventory extends Command
                         'location' => 'Tienda',
                     ]);
                 }
+
+                $this->info("Importado [{$rowCount}]: {$productName} | SKU: {$barcode} | Cat: {$category->name} | Costo: {$costPrice} | Venta: {$salePrice} | Stock: {$stock}");
 
                 $imported++;
             }
