@@ -144,9 +144,13 @@ class ImportNotionInventory extends Command
                 $barcode = $this->extractSku($productName, $rowCount);
 
                 // 3. Crear o buscar la categoría
-                $category = Category::firstOrCreate([
-                    'name' => mb_convert_case($categoryName, MB_CASE_UPPER, "UTF-8")
-                ]);
+                $categoryNameClean = mb_convert_case($categoryName, MB_CASE_UPPER, "UTF-8");
+                $category = Category::where('name', $categoryNameClean)->first();
+                if (!$category) {
+                    $category = Category::create([
+                        'name' => $categoryNameClean
+                    ]);
+                }
 
                 // 4. Crear o actualizar el producto
                 $product = Product::updateOrCreate(

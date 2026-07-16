@@ -259,7 +259,7 @@ const toggleFavorite = async (item) => {
           <div class="d-flex align-center gap-x-3 py-2">
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
-              v-if="!isRestaurant && !isSportsRental"
+              v-if="(!isRestaurant && !isSportsRental) || isMiniMarket"
               icon
               variant="text"
               density="compact"
@@ -294,7 +294,7 @@ const toggleFavorite = async (item) => {
                 </span>
                 <span v-if="isRestaurant && item.presentation" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
-                  {{ item.laboratory?.name || 'S/L' }}
+                  {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
                 </span>
               </div>
             </div>
@@ -423,7 +423,7 @@ const toggleFavorite = async (item) => {
             <div class="d-flex gap-3 align-start">
               <!-- Corazón interactivo de favorito para móvil -->
               <VBtn
-                v-if="!isRestaurant && !isSportsRental"
+                v-if="(!isRestaurant && !isSportsRental) || isMiniMarket"
                 icon
                 variant="text"
                 density="compact"
@@ -456,7 +456,9 @@ const toggleFavorite = async (item) => {
                     {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
                   </span>
                   <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
+                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">
+                    {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
+                  </span>
                 </div>
               </div>
             </div>
