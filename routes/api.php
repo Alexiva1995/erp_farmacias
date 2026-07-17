@@ -96,7 +96,7 @@ Route::prefix('fiscal')->group(function () {
 */
 
 // Rutas de autenticación
-Route::post("/login", [LoginController::class, "login"])->middleware('throttle:login');
+Route::post("/login", [LoginController::class, "login"])->middleware('throttle:login')->name('login');
 Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"])->middleware('throttle:login');
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)

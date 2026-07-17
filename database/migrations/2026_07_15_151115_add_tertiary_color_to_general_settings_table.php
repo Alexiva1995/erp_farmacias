@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('general_settings', function (Blueprint $table) {
-            $table->string('tertiary_color')->nullable()->default('#F5C842')->after('secondary_color');
-        });
+        if (!Schema::hasColumn('general_settings', 'tertiary_color')) {
+            Schema::table('general_settings', function (Blueprint $table) {
+                $table->string('tertiary_color')->nullable()->default('#F5C842')->after('secondary_color');
+            });
+        }
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('general_settings', function (Blueprint $table) {
-            $table->dropColumn('tertiary_color');
-        });
+        if (Schema::hasColumn('general_settings', 'tertiary_color')) {
+            Schema::table('general_settings', function (Blueprint $table) {
+                $table->dropColumn('tertiary_color');
+            });
+        }
     }
 };

@@ -484,4 +484,28 @@ class TransactionRepository implements \App\Contracts\Transaction
 
         return $map[$currency][$method] ?? null;
     }
+
+    public function getIncomeSummary(array $data): array
+    {
+        return $this->getIncomeSummaryByMethod($data);
+    }
+
+    public function createTransactionSalida(\App\Models\Expense $expense): ?\App\Models\Transaction
+    {
+        $timeZone = new \DateTimeZone(config("app.timezone"));
+        $hoy = new \DateTime("now", $timeZone);
+
+        $data = \App\Data\CreateTransactionData::from([
+            "user_id" => $expense->user_id,
+            "category_id" => $expense->category_id,
+            "description" => $expense->name,
+            "currency" => $expense->currency,
+            "type" => $expense->count,
+            "amount" => $expense->amount,
+            "movement_type" => "OUT",
+            "transaction_date" => $hoy->format("Y-m-d")
+        ]);
+
+        return $this->create($data);
+    }
 }

@@ -291,4 +291,71 @@ class ExpensesRepository implements \App\Contracts\Expenses
     {
         return ($amount === 0.0 ? 0.0 : $amount / $conversion_rate) * $rate;
     }
+
+    public function update(array $data): \App\Models\Expense
+    {
+        return $this->edit($data);
+    }
+
+    public function exportToExcel(array $filters): \App\Exports\ExpenseExport
+    {
+        $build = $this->buildFilter($filters);
+        return new \App\Exports\ExpenseExport($build);
+    }
+
+    public function executeRecurringExpensesOfToday(): void
+    {
+        $expenses = $this->getAllRecurringExpensesOfToday();
+        foreach ($expenses as $expense) {
+            $timeZone = new \DateTimeZone(config("app.timezone"));
+            $hoy = new \DateTime('now', $timeZone);
+
+            $expenseNormalData = \App\Data\CreateExpenseData::from([
+                "name" => $expense->name,
+                "category_id" => $expense->category_id,
+                "amount" => $expense->amount,
+                "amount_usd" => $expense->amount_usd,
+                "currency" => $expense->currency,
+                "has_invoice" => $expense->has_invoice,
+                "is_deductible" => $expense->is_deductible,
+                "iva" => $expense->iva,
+                "expense_date" => $hoy->format('Y-m-d'),
+                "user_id" => $expense->user_id,
+                "account" => $expense->count,
+                "type_of_expense" => \App\Enums\ExpenseStatus::PENDING->value,
+                "status" => \App\Enums\ExpenseStatus::PENDING->value,
+                "amount_bs" => $expense->amount_bs,
+            ]);
+            $expenseNormal = $this->create($expenseNormalData);
+
+            $next_expense_date = null;
+            if ($expense->recurrence === Expense::RECURRENCE_MENSUAL) {
+                $next_expense_date = (new \DateTime("now", $timeZone))->modify('+1 month')->format('Y-m-d');
+            } elseif ($expense->recurrence === Expense::RECURRENCE_ANUAL) {
+                $next_expense_date = (new \DateTime("now", $timeZone))->modify('+1 year')->format('Y-m-d');
+            } elseif ($expense->recurrence === Expense::RECURRENCE_SEMESTRAL) {
+                $next_expense_date = (new \DateTime("now", $timeZone))->modify('+6 months')->format('Y-m-d');
+            }
+
+            $expenseRecurenteData = \App\Data\EditExpenseRecurrenceData::from([
+                "id" => $expense->id,
+                "name" => $expense->name,
+                "category_id" => $expense->category_id,
+                "amount" => $expense->amount,
+                "amount_usd" => $expense->amount_usd,
+                "currency" => $expense->currency,
+                "has_invoice" => $expense->has_invoice,
+                "is_deductible" => $expense->is_deductible,
+                "iva" => $expense->iva,
+                "user_id" => $expense->user_id,
+                "count" => $expense->count,
+                "type_of_expense" => Expense::TYPE_OF_EXPENSE_RECURRENTE,
+                "recurrence" => $expense->recurrence,
+                "next_expense_date" => $next_expense_date,
+                "status" => "Pending",
+                "amount_bs" => $expense->amount_bs,
+            ]);
+            $this->editExpenseRecurring($expenseRecurenteData);
+        }
+    }
 }

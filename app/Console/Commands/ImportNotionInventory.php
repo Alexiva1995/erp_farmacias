@@ -14,7 +14,7 @@ class ImportNotionInventory extends Command
     /**
      * El nombre y firma del comando en consola.
      */
-    protected $signature = 'app:import-notion {--truncate : Vaciar catálogo e inventario antes de importar}';
+    protected $signature = 'import:notion-inventory {--truncate : Vaciar catálogo e inventario antes de importar}';
 
     /**
      * La descripción del comando.
