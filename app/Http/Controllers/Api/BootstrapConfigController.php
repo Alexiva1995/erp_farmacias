@@ -12,9 +12,9 @@ class BootstrapConfigController extends Controller
      */
     public function index(): JsonResponse
     {
-        $businessType = env('BUSINESS_TYPE', 'pharmacy');
+        $businessType = config('app.business_type', 'pharmacy');
         
-        $enabledModulesString = env('ENABLED_MODULES', 'pharmacy');
+        $enabledModulesString = config('app.enabled_modules', 'pharmacy');
         $enabledModules = array_map('trim', explode(',', strtolower($enabledModulesString)));
 
         return response()->json([
