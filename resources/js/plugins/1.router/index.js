@@ -41,6 +41,14 @@ const router = createRouter({
     }
 
     const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store' && p.path !== '/restaurant-store')
+    
+    // Cambiar la raíz '/' para usar el componente de tova-store con layout blank
+    const indexRoute = filteredPages.find(p => p.path === '/')
+    if (indexRoute) {
+      indexRoute.component = () => import('@/pages/tova-store.vue')
+      indexRoute.meta = { ...indexRoute.meta, requiresAuth: false, layout: 'blank' }
+    }
+
     const pagesWithAuth = addAuthMeta(filteredPages)
     
     // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
@@ -174,9 +182,10 @@ router.beforeEach(async (to, from, next) => {
     }
     
     clearTimeout(safetyTimeout)
+    // Para minimarket, la raíz '/' ya renderiza tova-store directamente, no redirigir a /tova-store
     if (to.path === '/' && brandingStore.settings.business_type === 'minimarket') {
-      console.log('[ROUTER] Minimarket: Redirigiendo raíz / a /tova-store')
-      return safeNext({ path: '/tova-store' })
+      console.log('[ROUTER] Minimarket: Manteniendo raíz / para renderizar la tienda')
+      return safeNext()
     }
 
     const isFarmacia = brandingStore.settings.business_type === 'farmacia' || brandingStore.settings.business_type === 'pharmacy'
@@ -237,11 +246,12 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     
+    // Para minimarket, permitir navegación en raíz / sin redirigir
     if (to.path === '/') {
       const brandingStore = useBrandingStore()
       if (brandingStore.settings?.business_type === 'minimarket') {
-        console.log('[ROUTER] Minimarket: Redirigiendo a /tova-store por defecto')
-        return safeNext({ path: '/tova-store' })
+        console.log('[ROUTER] Minimarket: Sirviendo tienda en / directamente')
+        return safeNext()
       }
     }
 
