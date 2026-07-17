@@ -114,11 +114,15 @@ class ProductActionService
         }
 
         // Crear/Guardar las variantes
-        if (!empty($variantsData)) {
+        if (request()->has('variants')) {
+            $variantsInput = request()->input('variants');
+            $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
+            $variantsData = is_array($variantsData) ? $variantsData : [];
+
             foreach ($variantsData as $v) {
                 $product->variants()->create([
                     'attribute_type' => 'shade',
-                    'attribute_value' => $v['attribute_value'],
+                    'attribute_value' => $v['attribute_value'] ?? '',
                     'color_hex' => $v['color_hex'] ?? '#E20074',
                     'price_modifier' => (float)($v['price_modifier'] ?? 0),
                     'stock' => (int)($v['stock'] ?? 0)
@@ -206,15 +210,19 @@ class ProductActionService
             }
         }
 
-        // Sincronizar las variantes
-        if (!empty($variantsData)) {
+        // Sincronizar las variantes solo si están presentes en la request
+        if (request()->has('variants')) {
+            $variantsInput = request()->input('variants');
+            $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
+            $variantsData = is_array($variantsData) ? $variantsData : [];
+
             $keepVariantIds = [];
             foreach ($variantsData as $v) {
                 if (!empty($v['id'])) {
                     $variant = $product->variants()->find($v['id']);
                     if ($variant) {
                         $variant->update([
-                            'attribute_value' => $v['attribute_value'],
+                            'attribute_value' => $v['attribute_value'] ?? '',
                             'color_hex' => $v['color_hex'] ?? '#E20074',
                             'price_modifier' => (float)($v['price_modifier'] ?? 0)
                         ]);
@@ -223,7 +231,7 @@ class ProductActionService
                 } else {
                     $newVariant = $product->variants()->create([
                         'attribute_type' => 'shade',
-                        'attribute_value' => $v['attribute_value'],
+                        'attribute_value' => $v['attribute_value'] ?? '',
                         'color_hex' => $v['color_hex'] ?? '#E20074',
                         'price_modifier' => (float)($v['price_modifier'] ?? 0),
                         'stock' => 0
@@ -233,8 +241,6 @@ class ProductActionService
             }
             // Eliminar variantes viejas que ya no se pasaron en el payload
             $product->variants()->whereNotIn('id', $keepVariantIds)->delete();
-        } else {
-            $product->variants()->delete();
         }
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);

@@ -13,6 +13,7 @@ export const useBrandingStore = defineStore('branding', () => {
     tertiary_color: '#F5C842',
     footer_text: 'Todos los derechos reservados de Tova',
     business_type: 'pharmacy',
+    enabled_modules: ['pharmacy'],
     ecommerce_menu: [],
     hero_title: 'YOUR NEW BOMB NUDES',
     hero_subtitle: 'Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.',
@@ -54,6 +55,18 @@ export const useBrandingStore = defineStore('branding', () => {
         settings.value = { ...settings.value, ...response.data.data }
         if (response.data?.data?.business_type) {
           localStorage.setItem('business_type', response.data.data.business_type)
+        }
+
+        // Obtener configuración de arranque de módulos
+        try {
+          const bootstrapResponse = await axios.get('/public/bootstrap-config')
+          if (bootstrapResponse.data?.data) {
+            settings.value.business_type = bootstrapResponse.data.data.business_type
+            settings.value.enabled_modules = bootstrapResponse.data.data.enabled_modules
+            localStorage.setItem('business_type', bootstrapResponse.data.data.business_type)
+          }
+        } catch (e) {
+          console.warn('Error fetching bootstrap config:', e)
         }
 
         // Obtener tasas de cambio desde el API público

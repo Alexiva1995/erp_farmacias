@@ -48,6 +48,9 @@ const openedQuantity = ref("");
 const productPresentation = computed(() => Number(props.product?.presentation) || 0);
 const productUnit = computed(() => props.product?.unit_of_measure || 'und');
 
+// Determina si se debe usar el modo de conteo dual (paquetes + unidades abiertas)
+const isDualCountMode = computed(() => isRestaurantMode.value && productPresentation.value > 0);
+
 // Total calculado en modo restaurante
 const dualTotalQuantity = computed(() => {
   const pkgs = Number(packagesCount.value) || 0;
@@ -56,8 +59,8 @@ const dualTotalQuantity = computed(() => {
 });
 
 const canSave = computed(() => {
-  // En modo restaurante se valida el modo dual
-  if (isRestaurantMode.value) {
+  // En modo restaurante/minimarket se valida el modo dual solo si el producto tiene presentación
+  if (isDualCountMode.value) {
     const hasValidDual = dualTotalQuantity.value >= 0 &&
       (packagesCount.value !== "" || openedQuantity.value !== "");
     if (allowWithoutBarcode.value) return hasValidDual;
@@ -173,12 +176,12 @@ const onBarcodeScanned = (scannedBarcode) => {
 const handleSave = async () => {
   if (!canSave.value) return;
 
-  // En modo restaurante el total se calcula del modo dual
-  const quantity = isRestaurantMode.value
+  // En modo restaurante el total se calcula del modo dual si el producto tiene presentación
+  const quantity = isDualCountMode.value
     ? dualTotalQuantity.value
     : Number(countedQuantity.value);
 
-  const confirmText = isRestaurantMode.value
+  const confirmText = isDualCountMode.value
     ? `${Number(packagesCount.value) || 0} paquete(s) completo(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) = ${quantity} ${productUnit.value} en total`
     : `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`;
 
@@ -321,7 +324,7 @@ const handleSave = async () => {
             </div>
 
             <!-- Modo Dual (Restaurante): Paquetes Completos + Contenido Destapado -->
-            <template v-if="isRestaurantMode && productPresentation > 0">
+            <template v-if="isDualCountMode">
               <div class="d-flex flex-column gap-2">
                 <!-- Paquetes completos sin destapar -->
                 <div class="bg-light rounded border-dashed-2 pa-1">

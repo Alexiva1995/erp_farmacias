@@ -26,6 +26,7 @@ class ProductQueryService
             'group',
             'profitability',
             'productSuppliers',
+            'variants',
             'lots' => function ($query) {
                 $query->where('quantity', '>', 0);
             },

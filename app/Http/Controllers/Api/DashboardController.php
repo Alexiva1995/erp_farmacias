@@ -617,13 +617,13 @@ class DashboardController extends Controller
 
         $cacheKey = "minimarket_stats_{$startDate}_{$endDate}";
 
-        $statsData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($startDate, $endDate) {
+        $statsData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 5, function () use ($startDate, $endDate) {
             $start = Carbon::parse($startDate)->startOfDay();
             $end = Carbon::parse($endDate)->endOfDay();
 
             // 1. Métricas generales
             $posSales = (float) DB::table('orders')
-                ->where('status', 'Completed')
+                ->whereIn('status', ['Completed', 'closed'])
                 ->whereBetween('order_date', [$start, $end])
                 ->sum('total_amount_usd');
 
@@ -635,7 +635,7 @@ class DashboardController extends Controller
             $totalSales = $posSales + $webSales;
 
             $posCost = (float) DB::table('orders')
-                ->where('status', 'Completed')
+                ->whereIn('status', ['Completed', 'closed'])
                 ->whereBetween('order_date', [$start, $end])
                 ->sum('total_cost');
 
@@ -651,7 +651,7 @@ class DashboardController extends Controller
 
             // Cantidad de transacciones
             $posTransactions = DB::table('orders')
-                ->where('status', 'Completed')
+                ->whereIn('status', ['Completed', 'closed'])
                 ->whereBetween('order_date', [$start, $end])
                 ->count();
 
@@ -663,7 +663,7 @@ class DashboardController extends Controller
             // 2. Métodos de Pago
             // Obtener pagos de POS
             $posOrders = DB::table('orders')
-                ->where('status', 'Completed')
+                ->whereIn('status', ['Completed', 'closed'])
                 ->whereBetween('order_date', [$start, $end])
                 ->get(['payment_methods']);
 
@@ -729,7 +729,7 @@ class DashboardController extends Controller
                 ->join('orders', 'orders.id', '=', 'order_details.order_id')
                 ->join('products', 'products.id', '=', 'order_details.product_id')
                 ->join('categories', 'categories.id', '=', 'products.category_id')
-                ->where('orders.status', 'Completed')
+                ->whereIn('orders.status', ['Completed', 'closed'])
                 ->whereBetween('orders.order_date', [$start, $end])
                 ->selectRaw('categories.name as category_name, SUM(order_details.quantity * order_details.price) as sales')
                 ->groupBy('categories.name')

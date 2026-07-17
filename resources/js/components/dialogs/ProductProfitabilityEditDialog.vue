@@ -157,7 +157,7 @@ const checkExistenceAndSave = async () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4">
+      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4" style="max-height: 65vh; overflow-y: auto;">
         <!-- Perfil del Producto -->
         <VCard
           variant="flat"
@@ -346,7 +346,7 @@ const checkExistenceAndSave = async () => {
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="loading"
-              :disabled="loading || !percentage"
+              :disabled="loading || (!isMinimarket && !percentage)"
               @click="checkExistenceAndSave"
             >
               <VIcon

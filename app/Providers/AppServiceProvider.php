@@ -113,25 +113,7 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Client::class)
             ->give(ClientServices::class);
 
-        $this->app->when(DoctorController::class)
-            ->needs(Doctor::class)
-            ->give(DoctorServices::class);
 
-        $this->app->when(DoctorController::class)
-            ->needs(Specialty::class)
-            ->give(SpecialtyServices::class);
-
-        $this->app->when(SpecialtyController::class)
-            ->needs(Specialty::class)
-            ->give(SpecialtyServices::class);
-
-        $this->app->when(LotteryController::class)
-            ->needs(Lottery::class)
-            ->give(LotteryServices::class);
-
-        $this->app->when(LaboratoryController::class)
-            ->needs(Laboratory::class)
-            ->give(LaboratoryServices::class);
 
         $this->app->when(OrderController::class)
             ->needs(Order::class)
@@ -237,10 +219,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
-        $this->app->bind(
-            \App\Contracts\Repositories\ReservationRepositoryInterface::class,
-            \App\Repositories\ReservationRepository::class
-        );
+
 
         $this->app->bind(
             \App\Contracts\CustomerAnalytics::class,
@@ -254,7 +233,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(Expenses::class, ExpensesServices::class);
         $this->app->bind(ExpenseCategory::class, ExpenseCategoryServices::class);
-        $this->app->bind(\App\Contracts\Dish::class, \App\Services\DishServices::class);
+
 
         $this->app->bind(
             \App\Contracts\ProductVariantRepositoryInterface::class,

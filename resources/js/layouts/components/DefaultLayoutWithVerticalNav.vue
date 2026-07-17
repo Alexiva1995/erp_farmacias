@@ -24,11 +24,29 @@ const configStore = useLayoutConfigStore();
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
 const processedNavItems = computed(() => {
   let items = [...navItems];
-  
+  const enabledModules = brandingStore.settings.enabled_modules || ['pharmacy'];
+
+  // Filtrado de alto nivel basado en módulos dinámicos configurados
+  items = items.filter(item => {
+    const title = (item.title || '').toLowerCase();
+    const to = (item.to || '').toLowerCase();
+
+    if (title === 'reservas' || to === 'reservations') {
+      return enabledModules.includes('reservation');
+    }
+    if (title === 'lotería' || to === 'lottery' || title === 'loteria') {
+      return enabledModules.includes('lottery');
+    }
+    if (title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes') {
+      return enabledModules.includes('restaurant');
+    }
+    return true;
+  });
+
   const isRestaurant = (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket');
   const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
   const isSimpleCyclic = brandingStore.settings.cyclic_inventory_mode === 'simple';
-  const enableLots = brandingStore.settings.enable_lots ?? true;
+  const enableLots = (brandingStore.settings.enable_lots ?? true) && enabledModules.includes('pharmacy');
   
   const filterRestaurantNav = (navItemsList) => {
     const isMiniMarket = brandingStore.settings.business_type === 'minimarket';

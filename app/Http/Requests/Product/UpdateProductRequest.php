@@ -49,6 +49,7 @@ class UpdateProductRequest extends FormRequest
 
         return [
             'name' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
             'active_ingredient' => 'nullable|string|max:255',
             'laboratory_id' => 'nullable|integer|exists:laboratories,id',
             'unit_cost' => 'nullable|numeric|min:0',

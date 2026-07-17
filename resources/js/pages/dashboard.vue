@@ -3,116 +3,121 @@
     <div v-if="!brandingStore.isLoaded" class="d-flex align-center justify-center py-12">
       <VProgressCircular indeterminate color="primary" />
     </div>
-    <div v-else-if="brandingStore.settings.business_type === 'minimarket'">
-      <MinimarketDashboard />
-    </div>
     <div v-else>
-      <!-- Fila 1: Felicitaciones y Estadísticas -->
-      <VRow class="mb-6 match-height">
-      <!-- Tarjeta de Felicitaciones -->
-      <VCol cols="12" md="4">
-        <VCard class="h-100 bg-light-primary">
-          <VCardText class="d-flex flex-column justify-space-between h-100">
-            <div class="d-flex align-center gap-3 mb-2">
-              <VAvatar size="50" class="leader-avatar border-2 border-white shadow-lg">
-                <VImg :src="leader?.photo || '/images/avatars/seller-avatar.png'" />
-              </VAvatar>
-              <div>
-                <h6 class="text-h6 text-primary font-weight-semibold mb-0">
-                  ¡Felicitaciones {{ leader?.name || 'Admin' }}! 🎉
-                </h6>
-                <div class="text-caption text-medium-emphasis">
-                  Líder de Ventas
+      <!-- Dashboard Consolidado de Minimarket (Sólo si es minimarket) -->
+      <div v-if="brandingStore.settings.business_type === 'minimarket'" class="mb-6">
+        <MinimarketDashboard />
+      </div>
+
+      <!-- Fila 1 & 2 Originales (Sólo si NO es minimarket) -->
+      <template v-else>
+        <!-- Fila 1: Felicitaciones y Estadísticas -->
+        <VRow class="mb-6 match-height">
+          <!-- Tarjeta de Felicitaciones -->
+          <VCol cols="12" md="4">
+            <VCard class="h-100 bg-light-primary">
+              <VCardText class="d-flex flex-column justify-space-between h-100">
+                <div class="d-flex align-center gap-3 mb-2">
+                  <VAvatar size="50" class="leader-avatar border-2 border-white shadow-lg">
+                    <VImg :src="leader?.photo || '/images/avatars/seller-avatar.png'" />
+                  </VAvatar>
+                  <div>
+                    <h6 class="text-h6 text-primary font-weight-semibold mb-0">
+                      ¡Felicitaciones {{ leader?.name || 'Admin' }}! 🎉
+                    </h6>
+                    <div class="text-caption text-medium-emphasis">
+                      Líder de Ventas
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div>
-              <div class="text-h5 text-primary font-weight-bold">
-                {{ formatCurrencyUSD(leader?.sales || 0) }}
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Tarjeta de Estadísticas -->
-      <VCol cols="12" md="8">
-        <VCard class="h-100">
-          <VCardTitle class="pt-4 px-4 d-flex justify-space-between align-center">
-            <span>Estadísticas</span>
-            <span class="text-caption text-medium-emphasis">Actualizado hace 1 mes</span>
-          </VCardTitle>
-          <VCardText class="pa-4 d-flex align-center justify-space-around flex-wrap">
-            <!-- Ventas -->
-            <div class="d-flex align-center mb-4 mr-4">
-              <VAvatar color="primary-lighten-5" size="44" class="mr-3" rounded="lg">
-                <VIcon icon="tabler-chart-bar" color="primary" size="24" />
-              </VAvatar>
-              <div>
-                <div class="text-h6 font-weight-bold">{{ stats.sales }}</div>
-                <div class="text-caption text-medium-emphasis">Ventas</div>
-              </div>
-            </div>
-            <!-- Clientes -->
-            <div class="d-flex align-center mb-4 mr-4">
-              <VAvatar color="info-lighten-5" size="44" class="mr-3" rounded="lg">
-                <VIcon icon="tabler-users" color="info" size="24" />
-              </VAvatar>
-              <div>
-                <div class="text-h6 font-weight-bold">{{ stats.clients }}</div>
-                <div class="text-caption text-medium-emphasis">Clientes Nuevos</div>
-              </div>
-            </div>
-            <!-- Productos -->
-            <div class="d-flex align-center mb-4 mr-4">
-              <VAvatar color="error-lighten-5" size="44" class="mr-3" rounded="lg">
-                <VIcon icon="tabler-box" color="error" size="24" />
-              </VAvatar>
-              <div>
-                <div class="text-h6 font-weight-bold">{{ stats.products }}</div>
-                <div class="text-caption text-medium-emphasis">Productos (Unidades)</div>
-              </div>
-            </div>
-            <!-- Ingresos -->
-            <div class="d-flex align-center mb-4">
-              <VAvatar color="success-lighten-5" size="44" class="mr-3" rounded="lg">
-                <VIcon icon="tabler-currency-dollar" color="success" size="24" />
-              </VAvatar>
-              <div>
-                <div class="text-h6 font-weight-bold">{{ stats.revenue }}</div>
-                <div class="text-caption text-medium-emphasis">Ganancia</div>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
-
-    <!-- Fila 2: Ventas, Gastos, Clientes Nuevos y Reporte de Ingresos -->
-    <VRow class="mb-6 match-height">
-      <!-- Columna Lateral de Tarjetas (Ventas, Gastos, Clientes Nuevos) -->
-      <VCol cols="12" md="4">
-        <VRow class="match-height">
-          <VCol cols="6" class="pb-4">
-            <EcommerceTotalProfitLineCharts />
+                <div>
+                  <div class="text-h5 text-primary font-weight-bold">
+                    {{ formatCurrencyUSD(leader?.sales || 0) }}
+                  </div>
+                </div>
+              </VCardText>
+            </VCard>
           </VCol>
-          <VCol cols="6" class="pb-4">
-            <EcommerceExpensesRadialBarCharts />
-          </VCol>
-          <VCol cols="12">
-            <EcommerceGeneratedLeads />
+
+          <!-- Tarjeta de Estadísticas -->
+          <VCol cols="12" md="8">
+            <VCard class="h-100">
+              <VCardTitle class="pt-4 px-4 d-flex justify-space-between align-center">
+                <span>Estadísticas</span>
+                <span class="text-caption text-medium-emphasis">Actualizado hace 1 mes</span>
+              </VCardTitle>
+              <VCardText class="pa-4 d-flex align-center justify-space-around flex-wrap">
+                <!-- Ventas -->
+                <div class="d-flex align-center mb-4 mr-4">
+                  <VAvatar color="primary-lighten-5" size="44" class="mr-3" rounded="lg">
+                    <VIcon icon="tabler-chart-bar" color="primary" size="24" />
+                  </VAvatar>
+                  <div>
+                    <div class="text-h6 font-weight-bold">{{ stats.sales }}</div>
+                    <div class="text-caption text-medium-emphasis">Ventas</div>
+                  </div>
+                </div>
+                <!-- Clientes -->
+                <div class="d-flex align-center mb-4 mr-4">
+                  <VAvatar color="info-lighten-5" size="44" class="mr-3" rounded="lg">
+                    <VIcon icon="tabler-users" color="info" size="24" />
+                  </VAvatar>
+                  <div>
+                    <div class="text-h6 font-weight-bold">{{ stats.clients }}</div>
+                    <div class="text-caption text-medium-emphasis">Clientes Nuevos</div>
+                  </div>
+                </div>
+                <!-- Productos -->
+                <div class="d-flex align-center mb-4 mr-4">
+                  <VAvatar color="error-lighten-5" size="44" class="mr-3" rounded="lg">
+                    <VIcon icon="tabler-box" color="error" size="24" />
+                  </VAvatar>
+                  <div>
+                    <div class="text-h6 font-weight-bold">{{ stats.products }}</div>
+                    <div class="text-caption text-medium-emphasis">Productos (Unidades)</div>
+                  </div>
+                </div>
+                <!-- Ingresos -->
+                <div class="d-flex align-center mb-4">
+                  <VAvatar color="success-lighten-5" size="44" class="mr-3" rounded="lg">
+                    <VIcon icon="tabler-currency-dollar" color="success" size="24" />
+                  </VAvatar>
+                  <div>
+                    <div class="text-h6 font-weight-bold">{{ stats.revenue }}</div>
+                    <div class="text-caption text-medium-emphasis">Ganancia</div>
+                  </div>
+                </div>
+              </VCardText>
+            </VCard>
           </VCol>
         </VRow>
-      </VCol>
 
-      <!-- Columna del Reporte de Ingresos Mensuales -->
-      <VCol cols="12" md="8">
-        <EcommerceRevenueReport class="h-100" />
-      </VCol>
-    </VRow>
+        <!-- Fila 2: Ventas, Gastos, Clientes Nuevos y Reporte de Ingresos -->
+        <VRow class="mb-6 match-height">
+          <!-- Columna Lateral de Tarjetas (Ventas, Gastos, Clientes Nuevos) -->
+          <VCol cols="12" md="4">
+            <VRow class="match-height">
+              <VCol cols="6" class="pb-4">
+                <EcommerceTotalProfitLineCharts />
+              </VCol>
+              <VCol cols="6" class="pb-4">
+                <EcommerceExpensesRadialBarCharts />
+              </VCol>
+              <VCol cols="12">
+                <EcommerceGeneratedLeads />
+              </VCol>
+            </VRow>
+          </VCol>
 
-    <!-- Fila 3: Reportes Detallados -->
-    <VRow class="mb-6 match-height">
+          <!-- Columna del Reporte de Ingresos Mensuales -->
+          <VCol cols="12" md="8">
+            <EcommerceRevenueReport class="h-100" />
+          </VCol>
+        </VRow>
+      </template>
+
+      <!-- Fila 3: Reportes Detallados -->
+      <VRow class="mb-6 match-height">
       <!-- Cierres Diarios Recientes -->
       <VCol cols="12" md="4">
         <VCard class="h-100">

@@ -27,6 +27,7 @@ class StoreProductRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
             'active_ingredient' => $isRestaurant ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'],
             'laboratory_id' => ['required', 'exists:laboratories,id'],
             'category_id' => ['required', 'exists:categories,id'],

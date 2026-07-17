@@ -18,7 +18,7 @@ const brandStyles = computed(() => {
     '--editorial-black': settings.secondary_color || '#1E1614',
     '--editorial-nude-dark': settings.tertiary_color || '#E8C5C8',
     '--editorial-terracotta-light': settings.tertiary_color || '#E8C5C8',
-    '--editorial-grey-bg': settings.primary_color || '#FAFAFA',
+    '--editorial-grey-bg': '#FAFAFA',
   }
 })
 

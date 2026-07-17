@@ -28,7 +28,7 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const hasActiveAdvancedFilters = computed(() => {
   return (

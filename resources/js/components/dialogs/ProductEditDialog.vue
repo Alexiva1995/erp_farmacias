@@ -169,6 +169,7 @@ watch(
     } else {
       formData.value = {
         name: "",
+        description: "",
         active_ingredient: "",
         laboratory_id: null,
         unit_cost: null,
@@ -460,6 +461,19 @@ const submitForm = () => {
                           class="rounded-lg font-weight-black"
                         />
                       </VCol>
+                      <VCol cols="12">
+                        <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Descripción</span>
+                        <AppTextarea
+                          v-model="formData.description"
+                          placeholder="DESCRIPCIÓN DEL PRODUCTO..."
+                          variant="outlined"
+                          density="comfortable"
+                          rows="2"
+                          :error-messages="formErrors.description"
+                          class="rounded-lg font-weight-black"
+                          hide-details="auto"
+                        />
+                      </VCol>
                       <VCol cols="12" :md="isRestaurant || isSportsRental ? 4 : (isMiniMarket ? 6 : 4)">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">{{ isRestaurant || isMiniMarket || isSportsRental ? 'Marca' : 'Laboratorio' }}</span>
                         <AppSelect
@@ -536,7 +550,7 @@ const submitForm = () => {
                         />
                       </VCol>
 
-                      <VCol v-if="isRestaurant" cols="12" md="6">
+                      <VCol v-if="brandingStore.settings.business_type === 'restaurant'" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Presentación</span>
                         <AppTextField
                           v-model="formData.presentation"
@@ -550,7 +564,7 @@ const submitForm = () => {
                           hide-details="auto"
                         />
                       </VCol>
-                      <VCol v-if="isRestaurant" cols="12" md="6">
+                      <VCol v-if="brandingStore.settings.business_type === 'restaurant'" cols="12" md="6">
                         <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Unidad de Medida</span>
                         <AppSelect
                           v-model="formData.unit_of_measure"
