@@ -103,7 +103,7 @@ const handleLogin = async () => {
   }
 };
 const on2FAVerified = () => {
-  window.location.href = "/";
+  window.location.href = "/dashboard";
 };
 </script>
 
