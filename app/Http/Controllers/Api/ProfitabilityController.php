@@ -43,6 +43,7 @@ class ProfitabilityController extends Controller
             'packaging_cost' => $request->packaging_cost,
             'expense_margin' => $request->expense_margin,
             'profit_margin' => $request->profit_margin,
+            'tax_usa' => $request->tax_usa,
         ];
         $this->profitability->store($crear);
         return response()->json("Se ha actualizado el porcentaje");

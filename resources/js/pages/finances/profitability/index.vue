@@ -114,6 +114,7 @@ const editProductProfitability = (item) => {
     packaging_cost: item.profitability?.packaging_cost,
     expense_margin: item.profitability?.expense_margin,
     profit_margin: item.profitability?.profit_margin,
+    tax_usa: item.profitability?.tax_usa,
   };
 };
 

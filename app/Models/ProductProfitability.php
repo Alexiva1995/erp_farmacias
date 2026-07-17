@@ -17,6 +17,7 @@ class ProductProfitability extends Model
         'packaging_cost',
         'expense_margin',
         'profit_margin',
+        'tax_usa',
     ];
 
     public function product(): BelongsTo

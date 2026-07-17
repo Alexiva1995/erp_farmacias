@@ -20,6 +20,7 @@ const shippingCost = ref(0);
 const packagingCost = ref(0);
 const expenseMargin = ref(0);
 const profitMargin = ref(0);
+const taxUsa = ref(0);
 const loading = ref(false);
 
 watch(
@@ -38,6 +39,7 @@ watch(
       packagingCost.value = val.packaging_cost || 0;
       expenseMargin.value = val.expense_margin || 0;
       profitMargin.value = val.profit_margin || 0;
+      taxUsa.value = val.tax_usa || 0;
     }
   },
   { immediate: true, deep: true }
@@ -54,6 +56,7 @@ async function storeProfitability() {
     packaging_cost: packagingCost.value,
     expense_margin: expenseMargin.value,
     profit_margin: profitMargin.value,
+    tax_usa: taxUsa.value,
   };
 
   loading.value = true;
@@ -165,6 +168,18 @@ async function storeProfitability() {
           class="pa-5 bg-white rounded-lg elevation-1 border"
         >
           <VRow v-if="isMinimarket">
+            <VCol cols="12">
+              <AppTextField
+                v-model="taxUsa"
+                label="TAX (USA) (%)"
+                placeholder="Ej: 7"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-receipt-tax"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
                 v-model="shippingCost"

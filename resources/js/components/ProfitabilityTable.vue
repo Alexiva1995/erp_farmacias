@@ -36,6 +36,7 @@ const headers = computed(() => {
       { title: "id", key: "id", sortable: true },
       { title: "Producto", key: "name", sortable: true },
       { title: "Costo Base", key: "unit_cost", sortable: true },
+      { title: "TAX (USA)", key: "tax_usa", sortable: false },
       { title: "Envío", key: "shipping_cost", sortable: false },
       { title: "Embalaje", key: "packaging_cost", sortable: false },
       { title: "Margen Gastos", key: "expense_margin", sortable: false },
@@ -190,10 +191,13 @@ const getCalculatedSalePrice = (item) => {
     const packaging = isLocked && item.profitability?.packaging_cost !== null ? parseFloat(item.profitability.packaging_cost) : parseFloat(props.settings?.packaging_cost || 0);
     const expense = isLocked && item.profitability?.expense_margin !== null ? parseFloat(item.profitability.expense_margin) : parseFloat(props.settings?.expense_margin || 0);
     const profit = isLocked && item.profitability?.profit_margin !== null ? parseFloat(item.profitability.profit_margin) : parseFloat(props.settings?.profit_margin || 0);
+    const tax = isLocked && item.profitability?.tax_usa !== null ? parseFloat(item.profitability.tax_usa) : parseFloat(props.settings?.tax_usa || 0);
 
-    const totalMargin = (expense + profit) / 100;
-    if (totalMargin >= 1) return 9999.99;
-    const salePrice = (cost + shipping + packaging) / (1 - totalMargin);
+    const costWithTax = cost * (1 + tax / 100);
+    const fixedExpenseAmount = costWithTax * (expense / 100);
+    const profitDenominator = 1 - (profit / 100);
+    if (profitDenominator <= 0) return 9999.99;
+    const salePrice = (costWithTax + shipping + packaging + fixedExpenseAmount) / profitDenominator;
     return item.iva == 1 ? salePrice * 1.16 : salePrice;
   } else {
     const perc =
@@ -319,6 +323,12 @@ const getProfitabilityPercentage = (item) => {
               >IVA INCLUIDO</span
             >
           </div>
+        </template>
+
+        <template #item.tax_usa="{ item }">
+          <span>
+            {{ item.profitability?.is_locked == '1' && item.profitability?.tax_usa !== null ? item.profitability.tax_usa : props.settings?.tax_usa || 0 }}%
+          </span>
         </template>
 
         <template #item.shipping_cost="{ item }">

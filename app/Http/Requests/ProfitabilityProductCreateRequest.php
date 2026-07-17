@@ -35,6 +35,7 @@ class ProfitabilityProductCreateRequest extends FormRequest
             "packaging_cost"           =>    "nullable|numeric",
             "expense_margin"           =>    "nullable|numeric",
             "profit_margin"            =>    "nullable|numeric",
+            "tax_usa"                  =>    "nullable|numeric",
         ];
     }
 
@@ -69,6 +70,7 @@ class ProfitabilityProductCreateRequest extends FormRequest
             "packaging_cost"           => $this->packaging_cost,
             "expense_margin"           => $this->expense_margin,
             "profit_margin"            => $this->profit_margin,
+            "tax_usa"                  => $this->tax_usa,
         ]);
     }
 }

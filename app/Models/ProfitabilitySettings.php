@@ -19,5 +19,6 @@ class ProfitabilitySettings extends Model
         'packaging_cost',
         'expense_margin',
         'profit_margin',
+        'tax_usa',
     ];
 }

@@ -17,5 +17,6 @@ class ProfitabilityEditData extends Data
         public ?float $packaging_cost = null,
         public ?float $expense_margin = null,
         public ?float $profit_margin = null,
+        public ?float $tax_usa = null,
     ) {}
 }

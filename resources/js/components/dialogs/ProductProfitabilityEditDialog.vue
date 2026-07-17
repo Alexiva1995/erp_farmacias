@@ -16,6 +16,7 @@ const shippingCost = ref(0);
 const packagingCost = ref(0);
 const expenseMargin = ref(0);
 const profitMargin = ref(0);
+const taxUsa = ref(0);
 const loading = ref(false);
 
 const brandingStore = useBrandingStore();
@@ -24,9 +25,11 @@ const isMinimarket = computed(() => brandingStore.settings?.business_type === 'm
 const previewSalePrice = computed(() => {
   const cost = Number(props.product.unit_cost || 0);
   if (isMinimarket.value) {
-    const totalMargin = (Number(expenseMargin.value) + Number(profitMargin.value)) / 100;
-    if (totalMargin >= 1) return "9999.99";
-    return ((cost + Number(shippingCost.value) + Number(packagingCost.value)) / (1 - totalMargin)).toFixed(2);
+    const costWithTax = cost * (1 + Number(taxUsa.value) / 100);
+    const fixedExpenseAmount = costWithTax * (Number(expenseMargin.value) / 100);
+    const profitDenominator = 1 - (Number(profitMargin.value) / 100);
+    if (profitDenominator <= 0) return "9999.99";
+    return ((costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount) / profitDenominator).toFixed(2);
   } else {
     return (cost * (1 + Number(percentage.value) / 100)).toFixed(2);
   }
@@ -41,6 +44,7 @@ watch(
       packagingCost.value = val.packaging_cost || 0;
       expenseMargin.value = val.expense_margin || 0;
       profitMargin.value = val.profit_margin || 0;
+      taxUsa.value = val.tax_usa || 0;
     }
   },
   { immediate: true, deep: true }
@@ -66,6 +70,7 @@ async function saveProfitability() {
     packaging_cost: packagingCost.value,
     expense_margin: expenseMargin.value,
     profit_margin: profitMargin.value,
+    tax_usa: taxUsa.value,
   };
 
   try {
@@ -191,6 +196,19 @@ const checkExistenceAndSave = async () => {
           class="pa-5 bg-white rounded-xl border shadow-sm"
         >
           <VRow dense v-if="isMinimarket">
+            <VCol cols="12">
+              <AppTextField
+                v-slot:default
+                v-model="taxUsa"
+                label="TAX (USA) (%)"
+                placeholder="Ej: 7"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-receipt-tax"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
                 v-slot:default

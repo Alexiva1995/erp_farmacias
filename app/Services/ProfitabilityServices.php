@@ -102,13 +102,16 @@ class ProfitabilityServices implements Profitability
                 $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
                 $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
                 $profitMargin = $productProfitability && $productProfitability->profit_margin !== null ? (float)$productProfitability->profit_margin : ($settings ? (float)$settings->profit_margin : 0.0);
+                $taxUsa = $productProfitability && $productProfitability->tax_usa !== null ? (float)$productProfitability->tax_usa : ($settings ? (float)$settings->tax_usa : 0.0);
 
-                $totalMargin = ($expenseMargin + $profitMargin) / 100.0;
-                if ($totalMargin >= 1.0) {
-                    $totalMargin = 0.99; // Evitar división por cero
+                $costWithTax = $product->unit_cost * (1.0 + ($taxUsa / 100.0));
+                $fixedExpenseAmount = $costWithTax * ($expenseMargin / 100.0);
+                $profitDenominator = 1.0 - ($profitMargin / 100.0);
+                if ($profitDenominator <= 0.0) {
+                    $profitDenominator = 0.01; // Evitar división por cero
                 }
 
-                $newPrice = ($product->unit_cost + $shippingCost + $packagingCost) / (1.0 - $totalMargin);
+                $newPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
             } else {
                 $newPrice = $product->unit_cost * (1 + ($percentage / 100));
             }
