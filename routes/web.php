@@ -20,10 +20,7 @@ Route::get('{any?}', function ($any = null) {
     $seoTitle = 'Tova - Cerebro Operativo';
     $seoDescription = 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.';
 
-    $settings = \DB::table('general_settings')->first();
-    $isMinimarket = $settings && $settings->business_type === 'minimarket';
-
-    if (($any && str_contains($any, 'tova-store')) || (!$any && $isMinimarket)) {
+    if (!$any || ($any && str_contains($any, 'tova-store'))) {
         $seoTitle = 'Tova Store - Tienda Online';
         $seoDescription = 'Explora nuestro catálogo exclusivo de productos, promociones y categorías directamente en nuestra tienda online oficial.';
     }

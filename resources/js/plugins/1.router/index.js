@@ -182,9 +182,9 @@ router.beforeEach(async (to, from, next) => {
     }
     
     clearTimeout(safetyTimeout)
-    // Para minimarket, la raíz '/' ya renderiza tova-store directamente, no redirigir a /tova-store
-    if (to.path === '/' && brandingStore.settings.business_type === 'minimarket') {
-      console.log('[ROUTER] Minimarket: Manteniendo raíz / para renderizar la tienda')
+    // La raíz '/' siempre renderiza la tienda directamente (tova-store.vue) sin redirecciones
+    if (to.path === '/') {
+      console.log('[ROUTER] Raíz /: Sirviendo la tienda directamente por defecto')
       return safeNext()
     }
 
