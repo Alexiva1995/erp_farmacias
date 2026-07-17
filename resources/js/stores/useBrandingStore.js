@@ -13,6 +13,7 @@ export const useBrandingStore = defineStore('branding', () => {
     tertiary_color: '#F5C842',
     footer_text: 'Todos los derechos reservados de Tova',
     business_type: localStorage.getItem('business_type') || 'pharmacy',
+    default_currency: 'USD',
     enabled_modules: ['pharmacy'],
     ecommerce_menu: [],
     hero_title: 'YOUR NEW BOMB NUDES',

@@ -4,9 +4,11 @@ import axios from '@/plugins/axios';
 import VueApexCharts from 'vue3-apexcharts';
 import { useTheme } from 'vuetify';
 import { useRouter } from 'vue-router';
+import { useBrandingStore } from '@/stores/useBrandingStore';
 
 const vuetifyTheme = useTheme();
 const router = useRouter();
+const brandingStore = useBrandingStore();
 
 const activePreset = ref('month');
 
@@ -94,8 +96,13 @@ onMounted(() => {
 });
 
 // Formateadores
-const formatUSD = (val) => {
-  return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(val);
+const formatCurrency = (val) => {
+  const currency = brandingStore.settings.default_currency || 'USD';
+  return new Intl.NumberFormat('es-CO', { 
+    style: 'currency', 
+    currency: currency,
+    minimumFractionDigits: 2
+  }).format(val);
 };
 
 const formatDate = (dateStr) => {
@@ -178,7 +185,7 @@ const paymentChartOptions = computed(() => {
               fontWeight: '500',
               color: currentTheme.colors['on-surface'],
               offsetY: 3,
-              formatter: (val) => formatUSD(val)
+              formatter: (val) => formatCurrency(val)
             },
             total: {
               show: true,
@@ -187,7 +194,7 @@ const paymentChartOptions = computed(() => {
               fontFamily: 'Outfit, sans-serif',
               color: currentTheme.colors['on-surface-variant'],
               formatter: (w) => {
-                return formatUSD((stats.value?.payment_distribution || []).reduce((acc, curr) => acc + curr.value, 0));
+                return formatCurrency((stats.value?.payment_distribution || []).reduce((acc, curr) => acc + curr.value, 0));
               }
             }
           }
@@ -220,7 +227,7 @@ const categoryChartOptions = computed(() => {
     colors: ['#89141C'],
     dataLabels: {
       enabled: true,
-      formatter: (val) => formatUSD(val),
+      formatter: (val) => formatCurrency(val),
       style: {
         fontSize: '10px',
         fontFamily: 'Outfit, sans-serif',
@@ -239,7 +246,7 @@ const categoryChartOptions = computed(() => {
           fontSize: '10px',
           fontFamily: 'Outfit, sans-serif'
         },
-        formatter: (val) => formatUSD(val)
+        formatter: (val) => formatCurrency(val)
       }
     },
     yaxis: {
@@ -342,7 +349,7 @@ const categoryChartSeries = computed(() => {
                   </VAvatar>
                 </div>
                 <h3 class="text-h5 font-weight-medium tracking-tight">
-                  {{ formatUSD(stats.general_stats.total_sales) }}
+                  {{ formatCurrency(stats.general_stats.total_sales) }}
                 </h3>
               </div>
               <div class="text-caption opacity-80 mt-2 font-weight-medium">
@@ -364,7 +371,7 @@ const categoryChartSeries = computed(() => {
               </div>
               <div>
                 <h3 class="text-h5 font-weight-medium text-high-emphasis tracking-tight">
-                  {{ formatUSD(stats.general_stats.pos_sales) }}
+                  {{ formatCurrency(stats.general_stats.pos_sales) }}
                 </h3>
                 <div class="text-caption text-medium-emphasis font-weight-medium mt-1">
                   {{ stats.general_stats.pos_transactions }} tickets facturados
@@ -386,7 +393,7 @@ const categoryChartSeries = computed(() => {
               </div>
               <div>
                 <h3 class="text-h5 font-weight-medium text-high-emphasis tracking-tight">
-                  {{ formatUSD(stats.general_stats.web_sales) }}
+                  {{ formatCurrency(stats.general_stats.web_sales) }}
                 </h3>
                 <div class="text-caption text-medium-emphasis font-weight-medium mt-1">
                   {{ stats.general_stats.web_transactions }} pedidos aprobados
@@ -408,7 +415,7 @@ const categoryChartSeries = computed(() => {
               </div>
               <div>
                 <h3 class="text-h5 font-weight-medium text-success tracking-tight">
-                  {{ formatUSD(stats.general_stats.total_profit) }}
+                  {{ formatCurrency(stats.general_stats.total_profit) }}
                 </h3>
                 <div class="text-caption text-medium-emphasis font-weight-medium mt-1">
                   Margen: {{ stats.general_stats.total_sales > 0 ? Math.round((stats.general_stats.total_profit / stats.general_stats.total_sales) * 100) : 0 }}%
@@ -545,7 +552,7 @@ const categoryChartSeries = computed(() => {
                   <tr v-for="order in stats.recent_web_orders" :key="order.id" class="table-row-hover">
                     <td class="px-4 font-weight-medium">#{{ order.id }}</td>
                     <td class="text-medium-emphasis">{{ order.customer_name }}</td>
-                    <td class="text-right font-weight-medium text-primary">{{ formatUSD(order.total_amount) }}</td>
+                    <td class="text-right font-weight-medium text-primary">{{ formatCurrency(order.total_amount) }}</td>
                     <td class="text-center">
                       <VChip
                         :color="getStatusColor(order.status)"
