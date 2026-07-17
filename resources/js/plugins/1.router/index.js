@@ -233,12 +233,6 @@ router.beforeEach(async (to, from, next) => {
     if (to.path === '/login' && isAuthenticated) {
       console.log('[ROUTER] Redirigiendo según rol')
       const brandingStore = useBrandingStore()
-
-      if (brandingStore.settings?.business_type === 'minimarket') {
-        console.log('[ROUTER] Minimarket: Redirigiendo a raíz / para usuario logueado')
-        return safeNext({ path: '/' })
-      }
-
       const isSportsRental = brandingStore.settings?.business_type === 'sports_rental'
       
       if (isSportsRental) {

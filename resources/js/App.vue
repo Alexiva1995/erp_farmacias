@@ -21,32 +21,41 @@ const brandingStore = useBrandingStore()
 const route = useRoute()
 
 onMounted(async () => {
-  // Verificar si la ruta actual es pública
-  const isPublicRoute = PUBLIC_PATHS.some(path => route.path && route.path.startsWith(path))
-  if (isPublicRoute) return
-
   try {
     await brandingStore.fetchSettings()
     
-    // Actualizar título y favicon
-    if (brandingStore.settings.app_name) {
-      document.title = brandingStore.settings.app_name
-    }
+    // Solo aplicar favicon y título del cliente si es la raíz (/) o una ruta pública
+    const isPublicRoute = route.path === '/' || PUBLIC_PATHS.some(path => route.path && route.path.startsWith(path))
     
-    if (brandingStore.settings.app_favicon) {
+    if (isPublicRoute) {
+      if (brandingStore.settings.app_name) {
+        document.title = brandingStore.settings.app_name
+      }
+      if (brandingStore.settings.app_favicon) {
+        const favicon = document.querySelector('link[rel="icon"]')
+        if (favicon) {
+          favicon.href = brandingStore.settings.app_favicon
+        }
+      }
+    } else {
+      // Forzar valores predeterminados de Tova en la administración interna
+      document.title = 'Tova - Cerebro Operativo'
       const favicon = document.querySelector('link[rel="icon"]')
       if (favicon) {
-        favicon.href = brandingStore.settings.app_favicon
+        favicon.href = '/favicon.ico'
       }
     }
   } catch (error) {
-    // Silenciar fallos de inicialización si no hay sesión
+    // Silenciar fallos
   }
 })
 
-// Observar cambios en el nombre de la app para actualizar el título
+// Observar cambios en el nombre de la app para actualizar el título únicamente en rutas públicas
 watch(() => brandingStore.settings.app_name, (newName) => {
-  if (newName) document.title = newName
+  const isPublicRoute = route.path === '/' || PUBLIC_PATHS.some(path => route.path && route.path.startsWith(path))
+  if (newName && isPublicRoute) {
+    document.title = newName
+  }
 })
 </script>
 

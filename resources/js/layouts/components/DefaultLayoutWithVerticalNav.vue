@@ -265,24 +265,17 @@ const processedNavItems = computed(() => {
           to="/"
           class="app-logo d-flex align-center justify-center w-100 px-2"
         >
-          <!-- Logo Expandido (SVG de TOVA o Logo personalizado de base de datos) -->
+          <!-- Logo Expandido (SVG de TOVA) -->
           <div class="logo-expanded-wrapper">
-            <img
-              v-if="brandingStore.settings.app_logo"
-              :src="brandingStore.settings.app_logo"
-              alt="logo"
-              class="logo-expanded"
-            >
             <div
-              v-else
               class="logo-expanded-svg text-primary"
               v-html="logoSvg"
             />
           </div>
 
-          <!-- Logo Colapsado (Favicon Isotipo mini) -->
+          <!-- Logo Colapsado (Favicon Isotipo mini de TOVA) -->
           <img
-            :src="brandingStore.settings.app_favicon || '/favicon-96x96.png'"
+            src="/favicon-96x96.png"
             alt="logo-collapsed"
             class="logo-collapsed"
             width="32"
