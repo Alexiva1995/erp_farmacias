@@ -22,19 +22,43 @@ class StoreProductRequest extends FormRequest
      */
     public function rules(): array
     {
-        $productId = $this->route('product') ? $this->route('product')->id : null;
-        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+        $productId    = $this->route('product') ? $this->route('product')->id : null;
+        $setting      = \App\Models\GeneralSetting::first();
+        $isRestaurant = $setting?->business_type === 'restaurant';
+
+        // Campos habilitados según configuración; si no hay configuración, habilitamos todos
+        $enabledFields = $setting?->product_form_fields ?? null;
+        $fieldEnabled  = fn(string $key): bool => $enabledFields === null || in_array($key, $enabledFields, true);
 
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'active_ingredient' => $isRestaurant ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'],
-            'laboratory_id' => ['required', 'exists:laboratories,id'],
-            'category_id' => ['required', 'exists:categories,id'],
-            'origin_id' => $isRestaurant ? ['nullable', 'exists:origins,id'] : ['required', 'exists:origins,id'],
+            // Nombre: siempre requerido si está habilitado
+            'name' => $fieldEnabled('name') ? ['required', 'string', 'max:255'] : ['nullable', 'string', 'max:255'],
 
-            'unit_cost' => ['nullable', 'numeric', 'min:0'],
-            'sale_price' => ['nullable', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string'],
+
+            // Principio Activo: solo required cuando no es restaurante Y está habilitado en config
+            'active_ingredient' => ($isRestaurant || !$fieldEnabled('active_ingredient'))
+                ? ['nullable', 'string', 'max:255']
+                : ['required', 'string', 'max:255'],
+
+            // Laboratorio: required si está habilitado
+            'laboratory_id' => $fieldEnabled('laboratory_id')
+                ? ['required', 'exists:laboratories,id']
+                : ['nullable', 'exists:laboratories,id'],
+
+            // Categoría: required si está habilitado
+            'category_id' => $fieldEnabled('category_id')
+                ? ['required', 'exists:categories,id']
+                : ['nullable', 'exists:categories,id'],
+
+            // Origen: required solo en farmacias y si está habilitado
+            'origin_id' => ($isRestaurant || !$fieldEnabled('origin_id'))
+                ? ['nullable', 'exists:origins,id']
+                : ['required', 'exists:origins,id'],
+
+            'unit_cost'     => ['nullable', 'numeric', 'min:0'],
+            'sale_price'    => ['nullable', 'numeric', 'min:0'],
+            'initial_stock' => ['nullable', 'numeric', 'min:0'],
 
             'barcode' => [
                 'nullable',
@@ -43,21 +67,22 @@ class StoreProductRequest extends FormRequest
                 Rule::unique('products', 'barcode')->ignore($productId)
             ],
 
-            'iva' => ['required', 'boolean'],
-            'psychotropic' => ['required', 'boolean'],
-            'is_colombian_origin' => ['required', 'boolean'],
-            'is_novaventa' => ['sometimes', 'boolean'],
-            'no_pvp' => ['sometimes', 'boolean'],
+            // Booleanos: required solo si el campo está habilitado en config
+            'iva'              => $fieldEnabled('iva')              ? ['required', 'boolean'] : ['sometimes', 'boolean'],
+            'psychotropic'     => $fieldEnabled('psychotropic')     ? ['required', 'boolean'] : ['sometimes', 'boolean'],
+            'is_colombian_origin' => $fieldEnabled('is_colombian_origin') ? ['required', 'boolean'] : ['sometimes', 'boolean'],
+            'is_novaventa'     => ['sometimes', 'boolean'],
+            'no_pvp'           => ['sometimes', 'boolean'],
 
-            'photo_url' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
-            'group_id' => 'nullable|integer|exists:groups_products,id',
-            'is_scarce' => ['sometimes', 'boolean'],
+            'photo_url'        => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'group_id'         => 'nullable|integer|exists:groups_products,id',
+            'is_scarce'        => ['sometimes', 'boolean'],
             'is_unified_group' => ['sometimes', 'boolean'],
-            'presentation' => ['nullable', 'numeric', 'min:0'],
-            'unit_of_measure' => ['nullable', 'string', 'in:g,ml,und'],
-            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
-            'supplier_ids' => ['sometimes', 'array'],
-            'supplier_ids.*' => ['integer', 'exists:suppliers,id'],
+            'presentation'     => ['nullable', 'numeric', 'min:0'],
+            'unit_of_measure'  => ['nullable', 'string', 'in:g,ml,und'],
+            'supplier_id'      => ['nullable', 'integer', 'exists:suppliers,id'],
+            'supplier_ids'     => ['sometimes', 'array'],
+            'supplier_ids.*'   => ['integer', 'exists:suppliers,id'],
         ];
     }
 

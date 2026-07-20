@@ -109,9 +109,17 @@ const getDiffColor = (val) => {
             <!-- Stock -->
             <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Stock</span>
-              <span class="text-sm font-weight-black" :class="grupo.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                {{ isMiniMarket ? formatInteger(grupo.lote_quantity) : grupo.lote_quantity }}
-              </span>
+              <div class="d-flex align-center justify-center gap-x-1">
+                <span class="text-sm font-weight-black" :class="parseFloat(grupo.lote_quantity) === 0 ? 'text-error' : (parseFloat(grupo.diferencia_product) < 0 ? 'text-warning' : 'text-success')">
+                  {{ isMiniMarket ? formatInteger(grupo.lote_quantity) : grupo.lote_quantity }}
+                </span>
+                <VIcon
+                  v-if="parseFloat(grupo.diferencia_product) < 0"
+                  :icon="parseFloat(grupo.lote_quantity) === 0 ? 'tabler-alert-octagon' : 'tabler-alert-triangle'"
+                  :color="parseFloat(grupo.lote_quantity) === 0 ? 'error' : 'warning'"
+                  size="14"
+                />
+              </div>
             </div>
             
             <VDivider vertical class="mx-0" />
@@ -187,9 +195,26 @@ const getDiffColor = (val) => {
                       {{ isMiniMarket ? formatInteger(item.total_sold_completed) : item.total_sold_completed }}
                     </td>
                     <td class="text-center text-xs">
-                      <VChip :color="item.lote_quantity > 0 ? 'success' : 'error'" size="x-small" variant="tonal" class="font-weight-black">
-                        {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
-                      </VChip>
+                      <div class="d-flex align-center justify-center gap-x-1">
+                        <VChip
+                          :color="parseFloat(item.lote_quantity) === 0 ? 'error' : (parseFloat(item.diferencia_product) < 0 ? 'warning' : 'success')"
+                          size="x-small"
+                          variant="tonal"
+                          class="font-weight-black"
+                        >
+                          {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                        </VChip>
+                        <VIcon
+                          v-if="parseFloat(item.diferencia_product) < 0"
+                          :icon="parseFloat(item.lote_quantity) === 0 ? 'tabler-alert-octagon' : 'tabler-alert-triangle'"
+                          :color="parseFloat(item.lote_quantity) === 0 ? 'error' : 'warning'"
+                          size="13"
+                        >
+                          <VTooltip activator="parent" location="top">
+                            {{ parseFloat(item.lote_quantity) === 0 ? 'Quiebre de Stock Crítico' : 'Stock insuficiente para la demanda' }}
+                          </VTooltip>
+                        </VIcon>
+                      </div>
                     </td>
                     <td class="text-center text-xs font-weight-bold text-primary">
                       {{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%
@@ -237,9 +262,17 @@ const getDiffColor = (val) => {
                 <div class="d-flex align-center justify-space-between gap-1">
                   <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
                     <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Stock</span>
-                    <span class="text-xs font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                      {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
-                    </span>
+                    <div class="d-flex align-center justify-center gap-x-1">
+                      <span class="text-xs font-weight-black" :class="parseFloat(item.lote_quantity) === 0 ? 'text-error' : (parseFloat(item.diferencia_product) < 0 ? 'text-warning' : 'text-success')">
+                        {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                      </span>
+                      <VIcon
+                        v-if="parseFloat(item.diferencia_product) < 0"
+                        :icon="parseFloat(item.lote_quantity) === 0 ? 'tabler-alert-octagon' : 'tabler-alert-triangle'"
+                        :color="parseFloat(item.lote_quantity) === 0 ? 'error' : 'warning'"
+                        size="12"
+                      />
+                    </div>
                   </div>
                   <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
                     <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Pref.</span>

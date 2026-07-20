@@ -7,7 +7,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const authStore = useAuthStore();
@@ -147,13 +147,14 @@ watch(
 );
 
 onMounted(async () => {
-  // Leer filtro de laboratorio desde query param (ej: navegando desde /inventory/laboratories)
   if (route.query.laboratoryId) {
     selectedLaboratory.value = Number(route.query.laboratoryId);
   }
   fetchSelectOptions();
   fetchProducts();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = options => {
   page.value = options.page;
@@ -405,6 +406,7 @@ const handleSort = sortOptions => {
       :sort-by="sortBy"
       :order-by="orderBy"
       :only-deleted="productTypeFilter === 'eliminados'"
+      :categories="categories"
       @update:options="updateTableOptions"
       @edit-product="handleEditProduct"
       @delete-product="handleDeleteProduct"

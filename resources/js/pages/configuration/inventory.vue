@@ -8,6 +8,7 @@ const brandingStore = useBrandingStore()
 const cyclicInventoryMode = ref('double')
 const barcodeRequired = ref(true)
 const enableLots = ref(true)
+const enableStockControl = ref(true)
 
 const cyclicInventoryOptions = [
   { label: "Doble Verificación (Con supervisión)", value: "double" },
@@ -21,6 +22,7 @@ const fetchSettings = async () => {
     cyclicInventoryMode.value = settings.cyclic_inventory_mode || 'double'
     barcodeRequired.value = settings.cyclic_inventory_barcode_required ?? true
     enableLots.value = settings.enable_lots ?? true
+    enableStockControl.value = settings.enable_stock_control ?? true
   } catch (error) {
     console.error("Error cargando configuración:", error)
     toast.error("Error al cargar la configuración")
@@ -33,6 +35,7 @@ const updateSettings = async () => {
       cyclic_inventory_mode: cyclicInventoryMode.value,
       cyclic_inventory_barcode_required: barcodeRequired.value,
       enable_lots: enableLots.value,
+      enable_stock_control: enableStockControl.value,
     })
     // Actualizar el store de branding para que refleje el cambio de inmediato en toda la app
     await brandingStore.fetchSettings()
@@ -52,104 +55,89 @@ onMounted(() => {
   <VCard class="mb-6 rounded-lg border shadow-sm">
     <VCardItem class="py-4">
       <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2">
-        <VIcon icon="tabler-package" class="text-primary" />
+        <VIcon icon="tabler-settings" class="text-primary" />
         Configuración de Inventario
       </VCardTitle>
     </VCardItem>
 
     <VDivider />
 
-    <!-- Modalidad de Inventario Cíclico -->
-    <VCardItem class="py-6">
-      <VCardTitle class="text-h6 font-weight-black text-high-emphasis mb-2">
-        Modalidad de Inventario Cíclico
-      </VCardTitle>
-      <div class="text-body-2 text-medium-emphasis mb-4">
-        Define el flujo de verificación y registro para los conteos cíclicos de inventario.
-      </div>
-
-      <VRadioGroup
-        v-model="cyclicInventoryMode"
-        @update:model-value="updateSettings"
-        class="mt-2"
-      >
-        <VRadio
-          v-for="item in cyclicInventoryOptions"
-          :key="item.value"
-          :value="item.value"
-          class="mb-3"
-        >
-          <template #label>
-            <div class="d-flex flex-column ms-2">
-              <span class="text-subtitle-2 font-weight-bold text-high-emphasis">{{ item.label }}</span>
-              <span class="text-caption text-medium-emphasis">
-                {{ item.value === 'double'
-                  ? 'El conteo del operador requiere una fase de supervisión donde el administrador valida la discrepancia y distribuye los lotes antes de impactar el stock.'
-                  : 'El operador realiza el conteo y la distribución de lotes en un solo paso. Al guardar, el inventario se aprueba y actualiza el stock automáticamente.'
-                }}
-              </span>
-            </div>
-          </template>
-        </VRadio>
-      </VRadioGroup>
-    </VCardItem>
-
-    <VDivider />
-
-    <!-- Modo Escaneo de Código de Barras -->
-    <VCardItem class="py-6">
-      <div class="d-flex align-center justify-space-between">
-        <div>
-          <VCardTitle class="text-h6 font-weight-black text-high-emphasis mb-1 pa-0">
-            Requerir Escaneo de Código de Barras
-          </VCardTitle>
-          <div class="text-body-2 text-medium-emphasis">
-            <template v-if="barcodeRequired">
-              El operador <strong>debe</strong> escanear o digitar el código de barras del producto antes de poder registrar el conteo físico.
-            </template>
-            <template v-else>
-              El campo de código de barras es <strong>opcional</strong>. El operador puede registrar la cantidad contada directamente sin escanear.
-            </template>
+    <VCardItem class="py-5">
+      <VRow>
+        <!-- Modalidad de Inventario Cíclico -->
+        <VCol cols="12" md="4">
+          <div class="d-flex flex-column gap-1">
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Modalidad de Inventario Cíclico</span>
+            <span class="text-caption text-medium-emphasis mb-2" style="min-height: 48px;">
+              Doble Verificación requiere supervisión de administrador. Simple realiza el conteo y aprueba en un solo paso.
+            </span>
+            <VSwitch
+              v-model="cyclicInventoryMode"
+              true-value="simple"
+              false-value="double"
+              :label="cyclicInventoryMode === 'simple' ? 'Verificación Simple' : 'Doble Verificación'"
+              color="primary"
+              density="compact"
+              hide-details
+              @update:model-value="updateSettings"
+            />
           </div>
-        </div>
-        <VSwitch
-          v-model="barcodeRequired"
-          color="primary"
-          hide-details
-          :label="barcodeRequired ? 'Activado' : 'Desactivado'"
-          @update:model-value="updateSettings"
-          class="ms-4 flex-shrink-0"
-        />
-      </div>
-    </VCardItem>
+        </VCol>
 
-    <VDivider />
-
-    <!-- Habilitar Lotes -->
-    <VCardItem class="py-6">
-      <div class="d-flex align-center justify-space-between">
-        <div>
-          <VCardTitle class="text-h6 font-weight-black text-high-emphasis mb-1 pa-0">
-            Habilitar Uso de Lotes de Inventario
-          </VCardTitle>
-          <div class="text-body-2 text-medium-emphasis">
-            <template v-if="enableLots">
-              El inventario se gestiona dividiéndose en múltiples lotes con fecha de vencimiento y costo individual. **(Recomendado para Farmacias)**
-            </template>
-            <template v-else>
-              El stock se gestiona en un lote único genérico. Se ocultan las secciones de lotes y vencimientos en toda la app. **(Recomendado para Alquileres o Restaurantes)**
-            </template>
+        <!-- Requerir Escaneo de Código de Barras -->
+        <VCol cols="12" md="4">
+          <div class="d-flex flex-column gap-1">
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Escaneo de Código de Barras</span>
+            <span class="text-caption text-medium-emphasis mb-2" style="min-height: 48px;">
+              Obliga al operador a escanear o digitar el código de barras del producto antes de registrar el conteo.
+            </span>
+            <VSwitch
+              v-model="barcodeRequired"
+              :label="barcodeRequired ? 'Escaneo Obligatorio' : 'Escaneo Opcional'"
+              color="primary"
+              density="compact"
+              hide-details
+              @update:model-value="updateSettings"
+            />
           </div>
-        </div>
-        <VSwitch
-          v-model="enableLots"
-          color="primary"
-          hide-details
-          :label="enableLots ? 'Activado' : 'Desactivado'"
-          @update:model-value="updateSettings"
-          class="ms-4 flex-shrink-0"
-        />
-      </div>
+        </VCol>
+
+        <!-- Habilitar Uso de Lotes de Inventario -->
+        <VCol cols="12" md="4">
+          <div class="d-flex flex-column gap-1">
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Uso de Lotes de Inventario</span>
+            <span class="text-caption text-medium-emphasis mb-2" style="min-height: 48px;">
+              Gestiona el inventario en múltiples lotes con fecha de vencimiento y costos individuales.
+            </span>
+            <VSwitch
+              v-model="enableLots"
+              :label="enableLots ? 'Lotes Habilitados' : 'Lote Único (Sin Vencimientos)'"
+              color="primary"
+              density="compact"
+              hide-details
+              @update:model-value="updateSettings"
+            />
+          </div>
+        </VCol>
+
+        <!-- Habilitar Control de Stock en Menú -->
+        <VCol cols="12" md="4">
+          <div class="d-flex flex-column gap-1">
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Control de Stock en Menú</span>
+            <span class="text-caption text-medium-emphasis mb-2" style="min-height: 48px;">
+              Muestra u oculta la opción "Control de Stock" del menú lateral del sistema de forma dinámica.
+            </span>
+            <VSwitch
+              v-model="enableStockControl"
+              :label="enableStockControl ? 'Habilitado' : 'Deshabilitado'"
+              color="primary"
+              density="compact"
+              hide-details
+              @update:model-value="updateSettings"
+            />
+          </div>
+        </VCol>
+      </VRow>
     </VCardItem>
   </VCard>
 </template>

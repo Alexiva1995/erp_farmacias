@@ -120,6 +120,44 @@ class ProductController extends Controller
         ], 200);
     }
 
+    public function bulkActions(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:products,id',
+            'action' => 'required|string|in:delete,change-category,change-laboratory',
+            'value' => 'nullable|integer'
+        ]);
+
+        $ids = $request->input('ids');
+        $action = $request->input('action');
+        $value = $request->input('value');
+
+        switch ($action) {
+            case 'delete':
+                foreach ($ids as $id) {
+                    $product = Product::find($id);
+                    if ($product) {
+                        $this->productActionService->deleteProduct($product);
+                    }
+                }
+                $message = 'Productos eliminados en lote correctamente.';
+                break;
+            case 'change-category':
+                Product::whereIn('id', $ids)->update(['category_id' => $value]);
+                $message = 'Categoría de productos actualizada en lote correctamente.';
+                break;
+            case 'change-laboratory':
+                Product::whereIn('id', $ids)->update(['laboratory_id' => $value]);
+                $message = 'Marca/Laboratorio de productos actualizada en lote correctamente.';
+                break;
+            default:
+                return response()->json(['message' => 'Acción masiva no soportada.'], 400);
+        }
+
+        return response()->json(['message' => $message]);
+    }
+
     public function destroy(Product $product)
     {
         $this->productActionService->deleteProduct($product);

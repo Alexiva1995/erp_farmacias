@@ -4,7 +4,7 @@ import TraceabilityReportTable from "@/components/TraceabilityReportTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const sales = ref([]);
@@ -20,6 +20,10 @@ const startDate = ref(null);
 const endDate = ref(null);
 const searchQuery = ref("");
 const movementType = ref(null);
+
+const route = useRoute();
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role_id === 1);
 
 const fetchSales = async () => {
   loading.value = true;
@@ -42,23 +46,6 @@ const fetchSales = async () => {
     const response = await axios.get("/sales/report", { params });
     sales.value = response.data.data;
     totalSales.value = response.data.total;
-    
-    // DEBUG: Verificar datos de facturas
-    const purchaseMovements = response.data.data.filter(item => item.movement_type === 'Compra' || item.movement_type === 'purchase');
-    if (purchaseMovements.length > 0) {
-      console.log('=== DEBUG TRAZABILIDAD - MOVIMIENTOS DE COMPRA ===');
-      purchaseMovements.forEach((item, index) => {
-        console.log(`Movimiento ${index + 1}:`, {
-          id: item.id,
-          invoice_id: item.invoice_id,
-          invoice: item.invoice,
-          invoice_number: item.invoice?.invoice_number,
-          tiene_invoice: !!item.invoice,
-          tiene_invoice_number: !!item.invoice?.invoice_number
-        });
-      });
-      console.log('=== FIN DEBUG ===');
-    }
   } catch (error) {
     console.error("Hubo un error al obtener el reporte de ventas:", error);
     toast.error("Error al obtener el reporte.");
@@ -82,12 +69,13 @@ watch([searchQuery, startDate, endDate, movementType], () => {
 });
 
 onMounted(() => {
-  const route = useRoute();
   if (route.query.q) {
     searchQuery.value = route.query.q;
   }
   fetchSales();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -96,8 +84,7 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-const authStore = useAuthStore();
-const isAdmin = computed(() => authStore.user?.role_id === 1);
+
 
 const handleClearFilters = () => {
   searchQuery.value = "";

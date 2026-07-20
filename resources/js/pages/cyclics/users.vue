@@ -8,7 +8,7 @@ import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue"
 import { useDataTable } from "@/composables/useDataTable";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, reactive, ref, computed } from "vue";
+import { onMounted, onUnmounted, reactive, ref, computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const filters = reactive({
@@ -97,11 +97,21 @@ const fetchSelectOptions = async () => {
   }
 };
 
-onMounted(() => {
-  fetchSelectOptions();
-  fetchProducts();
-  fetchInvoiceProductsToCount();
-  fetchSalesProductsToCount();
+onMounted(async () => {
+  try {
+    await Promise.all([
+      fetchSelectOptions(),
+      fetchProducts(),
+      fetchInvoiceProductsToCount(),
+      fetchSalesProductsToCount()
+    ]);
+  } catch (error) {
+    console.error("Error al inicializar la vista de usuario:", error);
+  }
+});
+
+onUnmounted(() => {
+  // Para futuras expansiones con timers
 });
 
 const handleCountProduct = (product, type) => {

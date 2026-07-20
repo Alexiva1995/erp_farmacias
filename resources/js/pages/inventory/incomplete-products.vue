@@ -3,7 +3,7 @@ import IncompleteProductsTable from "@/components/IncompleteProductsTable.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -27,8 +27,6 @@ const isStrictSearch = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
-const suppliers = ref([]);
-const categories = ref([]);
 
 const isLoadingFilters = ref(false);
 
@@ -167,6 +165,8 @@ onMounted(async () => {
   fetchSelectOptions();
   fetchProducts();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = (options) => {
   const newPage = options.page

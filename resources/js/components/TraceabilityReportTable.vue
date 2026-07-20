@@ -65,17 +65,8 @@ const getUserDisplayName = (user) => {
     return `${name} ${lastName}`.trim();
   }
   
-  // Fallback a username o email
   const fallback = user.username || user.email || "N/A";
-  return fallback.split("@")[0]; // Solo la parte del usuario si es email
-};
-
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: [],
-  });
+  return fallback.split("@")[0];
 };
 
 const headers = [
@@ -105,6 +96,16 @@ const headers = [
         class="text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <div class="py-12 d-flex flex-column align-center justify-center gap-y-2">
+            <VAvatar size="64" color="primary" variant="tonal" class="mb-2">
+              <VIcon icon="tabler-database-x" size="32" class="text-primary" />
+            </VAvatar>
+            <h4 class="text-base font-weight-black text-high-emphasis">Sin movimientos de trazabilidad</h4>
+            <p class="text-xs text-medium-emphasis">No se registraron movimientos que coincidan con los filtros aplicados.</p>
+          </div>
+        </template>
+
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.product_id"
@@ -202,11 +203,15 @@ const headers = [
     <div class="d-block d-md-none pa-2">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.sales.length === 0 && !props.loading" class="text-center py-8 text-disabled">
-        No se encontraron movimientos registrados.
+      <div v-if="props.sales.length === 0 && !props.loading" class="text-center py-10">
+        <VAvatar size="56" color="primary" variant="tonal" class="mb-3">
+          <VIcon icon="tabler-database-x" size="28" class="text-primary" />
+        </VAvatar>
+        <h4 class="text-sm font-weight-black text-high-emphasis">Sin movimientos de trazabilidad</h4>
+        <p class="text-xs text-medium-emphasis px-4 mt-1">No se encontraron registros de inventario con los criterios de búsqueda actuales.</p>
       </div>
 
-      <div class="d-flex flex-column gap-3">
+      <div v-else class="d-flex flex-column gap-3">
         <VCard
           v-for="item in props.sales"
           :key="item.id"
@@ -307,7 +312,7 @@ const headers = [
       </div>
 
       <!-- Paginación Móvil -->
-      <div class="d-flex justify-center mt-4">
+      <div v-if="props.sales.length > 0" class="d-flex justify-center mt-4">
          <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"

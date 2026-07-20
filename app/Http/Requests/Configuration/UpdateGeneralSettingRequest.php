@@ -56,6 +56,21 @@ class UpdateGeneralSettingRequest extends FormRequest
             'cyclic_inventory_barcode_required' => 'nullable|boolean',
             'enable_lots' => 'nullable|boolean',
             'tpv_mode' => 'nullable|string|in:simple,complete',
+            'enable_product_types' => 'nullable|boolean',
+            'enabled_product_types' => 'nullable|array',
+            'enable_favorites' => 'nullable|boolean',
+            'enable_variations' => 'nullable|boolean',
+            'enable_groups' => 'nullable|boolean',
+            'enable_merge' => 'nullable|boolean',
+            'product_form_fields' => 'nullable|array',
+            'enable_stock_control' => 'nullable|boolean',
+            'enable_expirations' => 'nullable|boolean',
+            'enable_brand_groups' => 'nullable|boolean',
+            'enable_donations' => 'nullable|boolean',
+            'enable_locations' => 'nullable|boolean',
+            'enable_optimization' => 'nullable|boolean',
+            'traceability_mode' => 'nullable|string|in:units,consumption',
+            'enable_dishes' => 'nullable|boolean',
         ];
     }
 }

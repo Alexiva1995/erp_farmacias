@@ -20,7 +20,6 @@ class TraceabilityController extends Controller
     public function __construct(
         private TraceabilityQueryService $salesReportQueryService
     ) {}
-
     public function index(Request $request)
     {
         $query = $this->salesReportQueryService->getFilteredQuery($request);
@@ -28,34 +27,62 @@ class TraceabilityController extends Controller
         $perPage = $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
 
-        // For purchase movements without invoice_id, try to find invoice through product_lot
-        $items = collect($paginatedResult->items())->map(function ($item) {
-            if (($item->movement_type === 'Compra' || $item->getAttributes()['movement_type'] === 'purchase') 
+        $items = collect($paginatedResult->items());
+
+        $purchaseItems = $items->filter(function ($item) {
+            return ($item->movement_type === 'Compra' || $item->getAttributes()['movement_type'] === 'purchase') 
                 && !$item->invoice_id 
                 && $item->product_lot_id 
-                && !$item->relationLoaded('invoice')) {
-                
-                // Load product lot
-                $item->load('productLot');
-                
+                && !$item->relationLoaded('invoice');
+        });
+
+        if ($purchaseItems->isNotEmpty()) {
+            $purchaseItems->load('productLot');
+
+            $queryConditions = [];
+            foreach ($purchaseItems as $item) {
                 if ($item->productLot) {
-                    // Try to find invoice through InvoiceDetail
-                    $invoiceDetail = \App\Models\InvoiceDetail::where('product_id', $item->product_id)
-                        ->where('lot_number', $item->productLot->lot_number)
-                        ->where('expiration_date', $item->productLot->expiration_date)
-                        ->with('invoice.supplier')
-                        ->first();
-                    
-                    if ($invoiceDetail && $invoiceDetail->invoice) {
-                        $item->setRelation('invoice', $invoiceDetail->invoice);
+                    $queryConditions[] = [
+                        'product_id' => $item->product_id,
+                        'lot_number' => $item->productLot->lot_number,
+                        'expiration_date' => $item->productLot->expiration_date,
+                    ];
+                }
+            }
+
+            if (!empty($queryConditions)) {
+                $invoiceDetailsQuery = \App\Models\InvoiceDetail::query()->with('invoice.supplier');
+
+                $invoiceDetailsQuery->where(function ($q) use ($queryConditions) {
+                    foreach ($queryConditions as $cond) {
+                        $q->orWhere(function ($subQ) use ($cond) {
+                            $subQ->where('product_id', $cond['product_id'])
+                                 ->where('lot_number', $cond['lot_number'])
+                                 ->where('expiration_date', $cond['expiration_date']);
+                        });
+                    }
+                });
+
+                $invoiceDetails = $invoiceDetailsQuery->get();
+
+                foreach ($purchaseItems as $item) {
+                    if ($item->productLot) {
+                        $match = $invoiceDetails->first(function ($detail) use ($item) {
+                            return $detail->product_id === $item->product_id
+                                && $detail->lot_number === $item->productLot->lot_number
+                                && $detail->expiration_date === $item->productLot->expiration_date;
+                        });
+
+                        if ($match && $match->invoice) {
+                            $item->setRelation('invoice', $match->invoice);
+                        }
                     }
                 }
             }
-            return $item;
-        })->all();
+        }
 
         return response()->json([
-            'data' => $items,
+            'data' => $items->all(),
             'total' => $paginatedResult->total(),
         ]);
     }

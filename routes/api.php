@@ -195,6 +195,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
     Route::get('/products/{product}/stats', [ProductController::class, 'getStats']);
     Route::get('/products/{product}/next-lot-number', [ProductController::class, 'getNextLotNumber']);
+    Route::post('/products/bulk-actions', [ProductController::class, 'bulkActions']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::post('/products/{id}/restore', [ProductController::class, 'restore']);

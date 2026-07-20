@@ -32,6 +32,10 @@ export default [
         to: 'configuration-tpv',
       },
       {
+        title: 'Productos',
+        to: 'configuration-products',
+      },
+      {
         title: 'Importar Datos',
         to: 'configuration-import',
       },

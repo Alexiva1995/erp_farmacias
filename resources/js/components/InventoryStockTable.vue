@@ -200,7 +200,6 @@ const formatDifference = (val, item) => {
             {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
           </span>
         </template>
-
         <template #item.total_sold_completed="{ item }">
           <span class="font-weight-black text-medium-emphasis">
             {{ formatQuantity(item.total_sold_completed, item) }}
@@ -208,15 +207,28 @@ const formatDifference = (val, item) => {
         </template>
 
         <template #item.lote_quantity="{ item }">
-          <VChip
-            :color="item.lote_quantity > 0 ? 'success' : 'error'"
-            size="x-small"
-            label
-            variant="flat"
-            class="font-weight-black"
-          >
-            {{ formatQuantity(item.lote_quantity, item) }}
-          </VChip>
+          <div class="d-flex align-center justify-center gap-x-1">
+            <VChip
+              :color="parseFloat(item.lote_quantity) === 0 ? 'error' : (parseFloat(item.diferencia_product) < 0 ? 'warning' : 'success')"
+              size="x-small"
+              label
+              variant="flat"
+              class="font-weight-black"
+            >
+              {{ formatQuantity(item.lote_quantity, item) }}
+            </VChip>
+            
+            <VIcon
+              v-if="parseFloat(item.diferencia_product) < 0"
+              :icon="parseFloat(item.lote_quantity) === 0 ? 'tabler-alert-octagon' : 'tabler-alert-triangle'"
+              :color="parseFloat(item.lote_quantity) === 0 ? 'error' : 'warning'"
+              size="15"
+            >
+              <VTooltip activator="parent" location="top">
+                {{ parseFloat(item.lote_quantity) === 0 ? 'Quiebre de Stock Crítico' : 'Stock insuficiente para la demanda' }}
+              </VTooltip>
+            </VIcon>
+          </div>
         </template>
 
         <template #item.preferencia_product="{ item }">
@@ -293,9 +305,17 @@ const formatDifference = (val, item) => {
             <div class="bg-var-theme-background-light rounded-lg pa-2 d-flex justify-space-between align-center border-dashed-thin">
               <div class="text-left flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Stock</span>
-                <span class="text-sm font-weight-black" :class="item.lote_quantity > 0 ? 'text-success' : 'text-error'">
-                   {{ formatQuantity(item.lote_quantity, item) }}
-                </span>
+                <div class="d-flex align-center gap-x-1">
+                  <span class="text-sm font-weight-black" :class="parseFloat(item.lote_quantity) === 0 ? 'text-error' : (parseFloat(item.diferencia_product) < 0 ? 'text-warning' : 'text-success')">
+                     {{ formatQuantity(item.lote_quantity, item) }}
+                  </span>
+                  <VIcon
+                    v-if="parseFloat(item.diferencia_product) < 0"
+                    :icon="parseFloat(item.lote_quantity) === 0 ? 'tabler-alert-octagon' : 'tabler-alert-triangle'"
+                    :color="parseFloat(item.lote_quantity) === 0 ? 'error' : 'warning'"
+                    size="14"
+                  />
+                </div>
               </div>
               <VDivider vertical class="mx-1" />
               <div class="text-center flex-1 px-1">

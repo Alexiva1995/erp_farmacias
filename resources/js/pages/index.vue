@@ -609,8 +609,9 @@ onMounted(async () => {
         >
           <!-- Contenedor de Imagen -->
           <div class="editorial-product-img-wrap" @click="openQuickView(product)">
-            <span v-if="product.is_favorite" class="product-badge-editorial">FAVORITO</span>
+            <span v-if="product.is_favorite && brandingStore.settings.enable_favorites" class="product-badge-editorial">FAVORITO</span>
             <button
+              v-if="brandingStore.settings.enable_favorites"
               class="favorite-toggle-btn"
               @click.stop="toggleFavorite(product)"
               :class="{ 'is-active-fav': product.is_favorite }"
@@ -714,7 +715,7 @@ onMounted(async () => {
     </section>
 
     <!-- 2. NUESTROS FAVORITOS - DESLIZADOR HORIZONTAL EXCLUSIVO (ESTILO FENTY - ORIGINALMENTE EN MEDIO DE LAS HÍBRIDAS) -->
-    <section v-if="favoriteProducts.length" class="editorial-products-section" style="padding: 80px 0; border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
+    <section v-if="favoriteProducts.length && brandingStore.settings.enable_favorites" class="editorial-products-section" style="padding: 80px 0; border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
       <div class="catalog-header-editorial" style="padding: 0 40px; margin-bottom: 35px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--editorial-border); padding-bottom: 15px;">
         <div style="display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap;">
           <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">ICONIC PICKS FOR BOMB LIPS</h2>

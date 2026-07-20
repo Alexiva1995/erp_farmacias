@@ -22,7 +22,60 @@ const emit = defineEmits([
   "delete-group",
   "show-group",
   "add-products",
+  "refresh"
 ]);
+
+const selectedGroups = ref([]);
+
+const handleUnassign = async (product, group) => {
+  const result = await Swal.fire({
+    title: "¿Desvincular producto?",
+    text: `El producto "${product.name}" será desvinculado del grupo "${group.name}".`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Desvincular",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/products/${product.id}/unassign-group`);
+      toast.success("Producto desvinculado con éxito.");
+      emit("refresh"); // refrescar el listado general
+    } catch (e) {
+      toast.error("Ocurrió un error al desvincular el producto.");
+    }
+  }
+};
+
+const handleBulkDelete = async () => {
+  const ids = selectedGroups.value;
+  if (!ids.length) return;
+
+  const result = await Swal.fire({
+    title: "¿Eliminar grupos seleccionados?",
+    text: `Se eliminarán permanentemente ${ids.length} grupos seleccionados.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Eliminar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true
+  });
+
+  if (result.isConfirmed) {
+    try {
+      for (const id of ids) {
+        await axios.delete(`/groups/${id}`);
+      }
+      toast.success("Grupos eliminados correctamente.");
+      selectedGroups.value = [];
+      emit("refresh");
+    } catch (e) {
+      toast.error("Ocurrió un error al eliminar los grupos.");
+    }
+  }
+};
 
 const expandedGroupId = ref(null);
 
@@ -86,6 +139,13 @@ const handleItemsPerPageChange = (val) => {
           @click="toggleGroup(group.id)"
         >
           <div class="d-flex align-center gap-3">
+            <!-- Checkbox de Selección Masiva (Evita expandir al hacer clic) -->
+            <VCheckboxBtn
+              v-model="selectedGroups"
+              :value="group.id"
+              class="flex-shrink-0"
+              @click.stop
+            />
             <VIcon
               :icon="isExpanded(group.id) ? 'tabler-chevron-down' : 'tabler-chevron-right'"
               size="20"
@@ -99,9 +159,15 @@ const handleItemsPerPageChange = (val) => {
               <div class="d-flex align-center gap-1 mt-1">
                 <span class="text-super-xs text-primary font-weight-bold">#{{ group.id }}</span>
                 <span class="text-super-xs text-disabled">|</span>
-                <span class="text-super-xs text-disabled uppercase font-weight-medium">
-                   {{ group.products?.length || 0 }} productos vinculados
-                </span>
+                <!-- Chip de Conteo Estilizado -->
+                <VChip
+                  size="x-small"
+                  color="primary"
+                  variant="tonal"
+                  class="font-weight-black text-super-xs rounded px-1.5"
+                >
+                  {{ group.products?.length || 0 }} PRODUCTOS
+                </VChip>
               </div>
             </div>
           </div>
@@ -165,6 +231,7 @@ const handleItemsPerPageChange = (val) => {
                   <th class="text-super-xs font-weight-black uppercase">Nombre del Producto</th>
                   <th class="text-super-xs font-weight-black uppercase">{{ isRestaurant ? 'Marca' : 'Laboratorio' }}</th>
                   <th class="text-super-xs font-weight-black uppercase text-center" style="width: 100px;">S. Actual</th>
+                  <th class="text-super-xs font-weight-black uppercase text-center" style="width: 80px;">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,9 +266,23 @@ const handleItemsPerPageChange = (val) => {
                       {{ product.stock_calculado || 0 }} UNID
                     </VChip>
                   </td>
+                  <td class="text-center">
+                    <VTooltip text="Desvincular del Grupo" location="top">
+                      <template #activator="{ props }">
+                        <VBtn
+                          v-bind="props"
+                          icon="tabler-link-off"
+                          variant="text"
+                          color="error"
+                          density="compact"
+                          @click="handleUnassign(product, group)"
+                        />
+                      </template>
+                    </VTooltip>
+                  </td>
                 </tr>
                 <tr v-if="group.products?.length === 0">
-                  <td colspan="4" class="text-center py-4 text-disabled font-weight-bold uppercase text-xs">
+                  <td colspan="5" class="text-center py-4 text-disabled font-weight-bold uppercase text-xs">
                     No hay productos vinculados a este grupo
                   </td>
                 </tr>
@@ -224,6 +305,15 @@ const handleItemsPerPageChange = (val) => {
                    </div>
                    <h4 class="text-xs font-weight-black uppercase truncate leading-none mt-1">{{ product.name }}</h4>
                 </div>
+                <!-- Botón desvincular móvil -->
+                <VBtn
+                  icon="tabler-link-off"
+                  variant="text"
+                  color="error"
+                  density="compact"
+                  class="flex-shrink-0"
+                  @click="handleUnassign(product, group)"
+                />
              </div>
              <div v-if="group.products?.length === 0" class="text-center py-4 text-disabled text-xs font-weight-bold">
                 SIN PRODUCTOS
@@ -258,10 +348,78 @@ const handleItemsPerPageChange = (val) => {
         @update:model-value="handlePageChange"
       />
     </div>
+
+    <!-- Barra de Acciones Masivas Flotante para Grupos -->
+    <Transition name="fade-slide">
+      <div v-if="selectedGroups.length > 0" class="bulk-actions-wrapper">
+        <VCard class="bulk-actions-bar px-6 py-3 d-flex align-center justify-space-between rounded-pill elevation-10">
+          <div class="d-flex align-center gap-3">
+            <VChip color="primary" class="font-weight-black">{{ selectedGroups.length }}</VChip>
+            <span class="text-subtitle-2 font-weight-black text-high-emphasis">Grupos seleccionados</span>
+          </div>
+
+          <div class="d-flex align-center gap-2">
+            <!-- Eliminar Masivo -->
+            <VBtn
+              color="error"
+              class="rounded-pill font-weight-black"
+              size="small"
+              prepend-icon="tabler-trash"
+              @click="handleBulkDelete"
+            >
+              Eliminar en Bloque
+            </VBtn>
+
+            <VDivider vertical class="mx-2 border-opacity-20" />
+
+            <!-- Deseleccionar Todo -->
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              density="compact"
+              color="secondary"
+              @click="selectedGroups = []"
+            />
+          </div>
+        </VCard>
+      </div>
+    </Transition>
   </VCard>
 </template>
 
 <style scoped>
+.bulk-actions-wrapper {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 100%;
+  max-width: 600px;
+  padding: 0 16px;
+}
+
+.bulk-actions-bar {
+  background: rgba(var(--v-theme-surface), 0.85) !important;
+  backdrop-filter: blur(12px) saturate(190%);
+  border: 1px solid rgba(var(--v-border-color), 0.24) !important;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 30px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 30px);
+}
+
 .group-accordion {
   background-color: rgb(var(--v-theme-surface));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

@@ -17,9 +17,10 @@ const barcodeRequiredGlobal = computed(
   () => brandingStore.settings?.cyclic_inventory_barcode_required ?? true
 );
 
-// Modo restaurante: se muestra el conteo dual (paquetes + destapado)
-const isRestaurantMode = computed(
-  () => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket')
+// Modo consumo: se muestra el conteo dual (paquetes completos + contenido parcial)
+// Se activa cuando la configuración de trazabilidad es 'consumption' (no depende del tipo de negocio)
+const isConsumptionMode = computed(
+  () => brandingStore.settings?.traceability_mode === 'consumption'
 );
 
 const props = defineProps({
@@ -40,7 +41,7 @@ const isScannerVisible = ref(false);
 const barcodeError = ref("");
 const allowWithoutBarcode = ref(false);
 
-// Variables para el modo de conteo dual (restaurante)
+// Variables para el modo de conteo dual (consumo)
 const packagesCount = ref("");
 const openedQuantity = ref("");
 
@@ -48,8 +49,8 @@ const openedQuantity = ref("");
 const productPresentation = computed(() => Number(props.product?.presentation) || 0);
 const productUnit = computed(() => props.product?.unit_of_measure || 'und');
 
-// Determina si se debe usar el modo de conteo dual (paquetes + unidades abiertas)
-const isDualCountMode = computed(() => isRestaurantMode.value && productPresentation.value > 0);
+// Modo dual solo cuando trazabilidad es por consumo Y el producto tiene presentación configurada
+const isDualCountMode = computed(() => isConsumptionMode.value && productPresentation.value > 0);
 
 // Total calculado en modo restaurante
 const dualTotalQuantity = computed(() => {

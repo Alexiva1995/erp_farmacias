@@ -483,34 +483,90 @@ class InventoryCycleQueryService
             ->get();
     }
 
+    public function getSalesDetailsToCountQuery(Request $request): Builder
+    {
+        $query = $this->getProductsBaseQuery();
+
+        $activeCycle = InventoryCycle::where('status', 'active')->first();
+
+        // Si no hay ciclo activo, retornar query vacía — no hay punto de referencia válido
+        if (!$activeCycle) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $activeCycleId  = $activeCycle->id;
+        $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
+
+        $query->addSelect([
+            'latest_sale_date' => DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereColumn('order_details.product_id', 'products.id')
+                ->where('orders.status', 'completed')
+                ->where('orders.order_date', '>', $afterCycleStart)
+                ->selectRaw('MAX(orders.order_date)')
+        ]);
+
+        $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
+            $sub->select(DB::raw(1))
+                ->from('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereColumn('order_details.product_id', 'products.id')
+                ->where('orders.status', 'completed')
+                ->where('orders.order_date', '>', $afterCycleStart);
+
+            // Solo mostrar si no hay un conteo posterior a esta venta en el ciclo actual
+            $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
+                $countSub->select(DB::raw(1))
+                    ->from('sales_counts')
+                    ->whereColumn('sales_counts.product_id', 'products.id')
+                    ->where('sales_counts.cycle_id', $activeCycleId)
+                    ->whereRaw('sales_counts.created_at >= orders.order_date');
+            });
+        });
+
+        $filters = [
+            'q'            => $request->q,
+            'laboratoryId' => $request->laboratoryId,
+            'originId'     => $request->originId,
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+        ];
+
+        $query = $this->applyFiltersToProducts($query, $filters);
+        $query = $this->applySortingToProducts($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+
+        return $query;
+    }
+
     public function getInvoiceDetailsToCountQuery(Request $request): Builder
     {
         $query = $this->getProductsBaseQuery();
 
         $activeCycle = InventoryCycle::where('status', 'active')->first();
-        $cycleStartDate = $activeCycle?->start_date;
 
-        $afterCycleStart = $cycleStartDate ? Carbon::parse($cycleStartDate)->addSecond() : null;
-        $query->whereHas('invoiceDetails.invoice', function ($subQuery) use ($afterCycleStart) {
-            $subQuery->where('status', 'ordered')
-                ->where('created_invoice_date', '>=', '2026-01-25');
-            if ($afterCycleStart) {
-                $subQuery->where('created_invoice_date', '>', $afterCycleStart);
-            }
-        });
-
-        $activeCycleId = $activeCycle?->id;
-        if ($activeCycleId) {
-            $query->whereDoesntHave('invoiceCounts', function (Builder $subQuery) use ($activeCycleId) {
-                $subQuery->where('cycle_id', $activeCycleId);
-            });
+        // Si no hay ciclo activo, retornar query vacía — no hay punto de referencia válido
+        if (!$activeCycle) {
+            return $query->whereRaw('1 = 0');
         }
 
+        $activeCycleId   = $activeCycle->id;
+        $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
+
+        // Solo productos con facturas ordenadas después del inicio del ciclo
+        $query->whereHas('invoiceDetails.invoice', function ($subQuery) use ($afterCycleStart) {
+            $subQuery->where('status', 'ordered')
+                     ->where('created_invoice_date', '>', $afterCycleStart);
+        });
+
+        // Excluir productos que ya tienen conteo de factura en el ciclo activo
+        $query->whereDoesntHave('invoiceCounts', function (Builder $subQuery) use ($activeCycleId) {
+            $subQuery->where('cycle_id', $activeCycleId);
+        });
+
         $filters = [
-            'q' => $request->q,
-            'laboratoryId' => $request->laboratoryId,
-            'originId' => $request->originId,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
+            'q'             => $request->q,
+            'laboratoryId'  => $request->laboratoryId,
+            'originId'      => $request->originId,
+            'isStrictSearch'=> filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
         ];
 
         $query = $this->applyFiltersToProducts($query, $filters);
@@ -882,68 +938,6 @@ class InventoryCycleQueryService
     }
 
 
-    public function getSalesDetailsToCountQuery(Request $request): Builder
-    {
-        $query = $this->getProductsBaseQuery();
-
-        $activeCycle = InventoryCycle::where('status', 'active')->first();
-        $cycleStartDate = $activeCycle?->start_date;
-
-        $afterCycleStart = $cycleStartDate ? Carbon::parse($cycleStartDate)->addSecond() : null;
-        $activeCycleId = $activeCycle?->id;
-
-        $query->addSelect([
-            'latest_sale_date' => DB::table('order_details')
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->whereColumn('order_details.product_id', 'products.id')
-                ->where('orders.status', 'completed')
-                ->where(function ($q) use ($afterCycleStart) {
-                    if ($afterCycleStart) {
-                        $q->where('orders.order_date', '>', $afterCycleStart);
-                    } else {
-                        $q->where('orders.order_date', '>=', '2026-01-25');
-                    }
-                })
-                ->selectRaw('MAX(orders.order_date)')
-        ]);
-
-        $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
-            $sub->select(DB::raw(1))
-                ->from('order_details')
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->whereColumn('order_details.product_id', 'products.id')
-                ->where('orders.status', 'completed');
-
-            if ($afterCycleStart) {
-                $sub->where('orders.order_date', '>', $afterCycleStart);
-            } else {
-                $sub->where('orders.order_date', '>=', '2026-01-25');
-            }
-
-            // Solo mostrar si no hay un conteo posterior a esta venta en el ciclo actual
-            $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
-                $countSub->select(DB::raw(1))
-                    ->from('sales_counts')
-                    ->whereColumn('sales_counts.product_id', 'products.id')
-                    ->where('sales_counts.cycle_id', $activeCycleId)
-                    ->whereRaw('sales_counts.created_at >= orders.order_date');
-            });
-        });
-
-        $filters = [
-            'q' => $request->q,
-            'laboratoryId' => $request->laboratoryId,
-            'originId' => $request->originId,
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
-        ];
-
-        $query = $this->applyFiltersToProducts($query, $filters);
-        $query = $this->applySortingToProducts($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
-
-        return $query;
-    }
-
-
     private function getSaleCountBaseQuery(): Builder
     {
         return SaleCount::query()->select('sales_counts.*')->with([
@@ -965,27 +959,23 @@ class InventoryCycleQueryService
                 });
             });
 
-        // Filtrar solo productos que estén en órdenes con fecha >= 2026-01-25
-        $query->whereHas('product.orderDetails.order', function ($subQuery) {
-            $subQuery->where('order_date', '>=', '2026-01-25');
-        });
-
-        // Solo conteos con fecha superior (al menos 1 segundo) a la fecha de apertura del ciclo
+        // Solo conteos con fecha superior (al menos 1 segundo) a la fecha de apertura del ciclo activo
         $query->whereExists(function ($sub) {
             $sub->select(DB::raw(1))
                 ->from('inventory_cycles')
                 ->whereColumn('inventory_cycles.id', 'sales_counts.cycle_id')
+                ->where('inventory_cycles.status', 'active')
                 ->whereRaw('sales_counts.created_at > DATE_ADD(inventory_cycles.start_date, INTERVAL 1 SECOND)');
         });
 
         $filters = [
-            'q' => $request->q,
-            'laboratoryId' => $request->laboratoryId,
-            'startDate' => $request->startDate,
-            'endDate' => $request->endDate,
-            'discrepancyFilter' => $request->discrepancyFilter,
-            'userId' => $request->userId,
-            'status' => 'pending',
+            'q'                => $request->q,
+            'laboratoryId'     => $request->laboratoryId,
+            'startDate'        => $request->startDate,
+            'endDate'          => $request->endDate,
+            'discrepancyFilter'=> $request->discrepancyFilter,
+            'userId'           => $request->userId,
+            'status'           => 'pending',
         ];
 
         $query = $this->applyFiltersToCount($query, $filters);

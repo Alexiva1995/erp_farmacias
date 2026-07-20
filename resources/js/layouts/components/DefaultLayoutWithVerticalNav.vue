@@ -46,7 +46,7 @@ const processedNavItems = computed(() => {
   const isRestaurant = (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket');
   const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
   const isSimpleCyclic = brandingStore.settings.cyclic_inventory_mode === 'simple';
-  const enableLots = (brandingStore.settings.enable_lots ?? true) && enabledModules.includes('pharmacy');
+  const enableLots = brandingStore.settings.enable_lots ?? true;
   
   const filterRestaurantNav = (navItemsList) => {
     const isMiniMarket = brandingStore.settings.business_type === 'minimarket';
@@ -78,26 +78,31 @@ const processedNavItems = computed(() => {
           childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
         }
         
-        if (!isRestaurant && !isMiniMarket) {
+        // Filtrar Platos / Menú usando el setting enable_dishes
+        const enableDishesSetting = brandingStore.settings.enable_dishes ?? true;
+        if (!enableDishesSetting) {
           childs = childs.filter((c) => c.to !== 'inventory-dishes');
-        } else if (isMiniMarket) {
-          // Si es minimarket, ocultar Optimización por completo, Origen, Grupo, Ubicaciones y filtrar platos de restaurante
+        }
+
+        // Renombrar Laboratorios a Marcas de forma universal
+        childs = childs.map((c) => {
+          if (c.to === 'inventory-laboratories') {
+            return { ...c, title: 'Marcas' };
+          }
+          return { ...c };
+        });
+
+        // Filtrados generales de otros módulos no relacionados con productos
+        if (isSportsRental) {
           childs = childs.filter((c) => 
-            c.title !== 'Optimización' && 
-            c.to !== 'inventory-dishes' &&
-            c.to !== 'inventory-lots-without-location' &&
-            c.to !== 'inventory-incomplete-products' &&
-            c.to !== 'inventory-products-without-group' &&
-            c.to !== 'inventory-lotificacion' &&
-            c.to !== 'inventory-locations'
+            c.to !== 'tpv-ecommerce-orders' && 
+            c.title !== 'Pedidos Eco' &&
+            c.to !== 'tpv-quotation'
           );
-          childs = childs.map((c) => {
-            if (c.to === 'inventory-laboratories') {
-              return { ...c, title: 'Marcas' };
-            }
-            return { ...c };
-          });
-        } else {
+        }
+
+        if (!isMiniMarket && !isRestaurant) {
+          // Si no es restaurante/minimarket, aplicar filtrado de recetas/médicos por defecto
           childs = childs.filter((c) => 
             c.title !== 'Devoluciones' && 
             c.title !== 'Medico' && 
@@ -107,34 +112,11 @@ const processedNavItems = computed(() => {
             c.title !== 'Laboratorios Empleados' &&
             c.to !== 'fiscal-retenciones'
           );
-          childs = childs.map((c) => {
-            if (c.to === 'inventory-laboratories') {
-              return { ...c, title: 'Marcas' };
-            }
-            return { ...c };
-          });
-        }
-        if (isSportsRental) {
-          childs = childs.filter((c) => 
-            c.to !== 'tpv-ecommerce-orders' && 
-            c.title !== 'Pedidos Eco' &&
-            c.title !== 'Optimización' &&
-            c.to !== 'inventory-group-products' &&
-            c.to !== 'inventory-locations' &&
-            c.to !== 'tpv-quotation'
-          );
-          childs = childs.map((c) => {
-            if (c.to === 'inventory-laboratories') {
-              return { ...c, title: 'Marcas' };
-            }
-            return { ...c };
-          });
         }
 
         if (!enableLots) {
           childs = childs.filter((c) => 
             c.to !== 'lot-list' &&
-            c.to !== 'inventory-expirations' &&
             c.to !== 'inventory-lotificacion' &&
             c.to !== 'inventory-lots-without-location'
           );
@@ -150,6 +132,53 @@ const processedNavItems = computed(() => {
             }
             return c;
           });
+        }
+
+        // Filtrar Caducidad si está desactivado en la configuración
+        const enableExpirations = brandingStore.settings.enable_expirations ?? true;
+        if (!enableExpirations) {
+          childs = childs.filter((c) => 
+            c.to !== 'inventory-expirations'
+          );
+        }
+
+        // Filtrar Grupos de Productos si está desactivado en la configuración
+        const enableGroups = brandingStore.settings.enable_groups ?? true;
+        if (!enableGroups) {
+          childs = childs.filter((c) => 
+            c.to !== 'inventory-group-products'
+          );
+          childs = childs.map((c) => {
+            if (c.children && Array.isArray(c.children)) {
+              return {
+                ...c,
+                children: c.children.filter((sub) => 
+                  sub.to !== 'inventory-products-without-group'
+                )
+              };
+            }
+            return c;
+          });
+        }
+
+        // Filtrar Control de Stock si está desactivado en la configuración
+        const enableStockControl = brandingStore.settings.enable_stock_control ?? true;
+        if (!enableStockControl) {
+          childs = childs.filter((c) => 
+            c.to !== 'inventory-stock'
+          );
+        }
+
+        // Filtrar Ubicaciones si está desactivado en la configuración
+        const enableLocations = brandingStore.settings.enable_locations ?? true;
+        if (!enableLocations) {
+          childs = childs.filter((c) => c.to !== 'inventory-locations');
+        }
+
+        // Filtrar Optimización si está desactivado en la configuración
+        const enableOptimization = brandingStore.settings.enable_optimization ?? true;
+        if (!enableOptimization) {
+          childs = childs.filter((c) => c.title !== 'Optimización');
         }
 
         copy.children = childs;
@@ -263,7 +292,8 @@ const processedNavItems = computed(() => {
       <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
         <RouterLink
           to="/"
-          class="app-logo d-flex align-center justify-center w-100 px-2"
+          class="app-logo d-flex align-center justify-start px-2"
+          style="gap: 8px;"
         >
           <!-- Logo Expandido (SVG de TOVA) -->
           <div class="logo-expanded-wrapper">
@@ -309,8 +339,6 @@ const processedNavItems = computed(() => {
             <VIcon size="26" icon="tabler-menu-2" />
           </IconBtn>
 
-          <NavbarThemeSwitcher />
-
           <VSpacer />
 
           <NavBarI18n
@@ -345,8 +373,8 @@ const processedNavItems = computed(() => {
 .app-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
+  justify-content: flex-start;
+  flex: 1;
 }
 
 .logo-expanded-wrapper {

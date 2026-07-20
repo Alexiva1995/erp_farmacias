@@ -76,6 +76,16 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Guardar el último error de Axios de forma global para el sistema de Toasts
+    window.lastAxiosError = error;
+    
+    // Limpiar después de 5 segundos para evitar asociaciones incorrectas
+    setTimeout(() => {
+      if (window.lastAxiosError === error) {
+        window.lastAxiosError = null;
+      }
+    }, 5000);
+
     return Promise.reject(error);
   }
 )

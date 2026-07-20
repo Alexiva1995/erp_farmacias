@@ -2,8 +2,10 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const authStore = useAuthStore()
+const brandingStore = useBrandingStore()
 const router = useRouter()
 
 const handleLogout = async () => {
@@ -43,7 +45,21 @@ const userName = computed(() => {
 })
 
 const userRole = computed(() => (authStore.isAdmin ? 'Admin' : 'Usuario'))
-const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.user?.photo || '/images/avatars/admin-avatar.png')
+
+// Avatar: foto del empleado/usuario → logo del negocio → imagen genérica interna
+const userAvatar = computed(() => {
+  const photoUrl = authStore.user?.employee?.photo || authStore.user?.photo
+  if (photoUrl) return photoUrl
+  // Usar el logo del negocio como fallback cuando no hay foto de perfil
+  const logo = brandingStore.settings.app_logo
+  if (logo) return logo
+  return null // sin imagen → mostrará las iniciales del VAvatar
+})
+
+const userInitials = computed(() => {
+  const name = userName.value || ''
+  return name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
+})
 </script>
 
 <template>
@@ -61,7 +77,8 @@ const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.u
         variant="tonal"
         size="38"
       >
-        <VImg :src="userAvatar" />
+        <VImg v-if="userAvatar" :src="userAvatar" />
+        <span v-else class="text-sm font-weight-black">{{ userInitials }}</span>
       </VAvatar>
     </VBadge>
 
@@ -93,7 +110,8 @@ const userAvatar = computed(() => authStore.user?.employee?.photo || authStore.u
                   color="primary"
                   variant="tonal"
                 >
-                  <VImg :src="userAvatar" />
+                  <VImg v-if="userAvatar" :src="userAvatar" />
+                  <span v-else class="text-sm font-weight-black">{{ userInitials }}</span>
                 </VAvatar>
               </VBadge>
             </VListItemAction>

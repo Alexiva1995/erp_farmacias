@@ -38,15 +38,16 @@ const labForm = ref({ id: null, name: '', group_id: null })
 const groupForm = ref({ id: null, name: '', laboratory_ids: [] })
 
 const brandingStore = useBrandingStore()
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket') || brandingStore.settings?.business_type === 'sports_rental' || brandingStore.settings?.business_type === 'minimarket')
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket' || brandingStore.settings.business_type === 'sports_rental')
+const enableBrandGroups = computed(() => brandingStore.settings.enable_brand_groups ?? false)
 
 const headers = computed(() => {
   const list = [
     { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
     { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true },
   ];
-  if (!isRestaurant.value) {
-    list.push({ title: "Grupo Corporativo", key: "group.name", sortable: false });
+  if (enableBrandGroups.value) {
+    list.push({ title: isRestaurant.value ? "Grupo de Marcas" : "Grupo Corporativo", key: "group.name", sortable: false });
   }
   list.push(
     { title: "Productos", key: "products_count", sortable: true, align: 'center' },
@@ -180,7 +181,17 @@ const updateTableOptions = o => {
   if (o.sortBy?.length) { sortBy.value = o.sortBy[0].key; orderBy.value = o.sortBy[0].order }
 }
 
-onMounted(() => { fetchLabs(); fetchGroups(); fetchAllLabsForSelect() })
+onMounted(async () => {
+  try {
+    await Promise.all([
+      fetchLabs(),
+      fetchGroups(),
+      fetchAllLabsForSelect()
+    ])
+  } catch (error) {
+    console.error("Error al inicializar laboratorios:", error)
+  }
+})
 watch([searchQuery], () => { page.value = 1; fetchLabs() })
 watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 </script>
@@ -192,9 +203,9 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
         <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" class="me-2" size="18" />
         {{ isRestaurant ? 'Marcas' : 'Laboratorios' }}
       </VTab>
-      <VTab v-if="!isRestaurant" value="groups">
+      <VTab v-if="enableBrandGroups" value="groups">
         <VIcon icon="tabler-layers-intersect" class="me-2" size="18" />
-        Grupos Corporativos
+        {{ isRestaurant ? 'Grupos de Marcas' : 'Grupos Corporativos' }}
         <VChip class="ms-2" size="x-small" color="primary" variant="tonal">{{ groups.length }}</VChip>
       </VTab>
     </VTabs>
@@ -243,12 +254,59 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                   </IconBtn>
                 </div>
               </template>
+
+              <template #no-data>
+                <div class="d-flex flex-column align-center justify-center pa-8 text-center">
+                  <VAvatar size="64" color="primary" variant="tonal" class="mb-4">
+                    <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="32" />
+                  </VAvatar>
+                  <h3 class="text-h6 font-weight-bold mb-1">
+                    No se encontraron {{ isRestaurant ? 'marcas' : 'laboratorios' }}
+                  </h3>
+                  <p class="text-caption text-medium-emphasis mb-4" style="max-width: 320px;">
+                    {{ isRestaurant 
+                      ? 'Registra tus marcas para clasificar tus productos y facilitar su búsqueda en el inventario.' 
+                      : 'Registra laboratorios para asociar la procedencia de tus productos farmacéuticos.' }}
+                  </p>
+                  <VBtn
+                    color="primary"
+                    variant="flat"
+                    prepend-icon="tabler-plus"
+                    @click="openLabEdit()"
+                  >
+                    Crear {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
+                  </VBtn>
+                </div>
+              </template>
             </VDataTableServer>
           </div>
 
           <!-- Mobile -->
           <div class="d-block d-md-none pa-2">
-            <div class="d-flex flex-column gap-2">
+            <!-- Mobile Loader (Skeleton) -->
+            <div v-if="loading" class="d-flex flex-column gap-2">
+              <VCard v-for="i in 3" :key="i" variant="flat" class="border mb-1 rounded-lg">
+                <div class="pa-3">
+                  <div class="d-flex justify-space-between align-start mb-2">
+                    <div class="w-75">
+                      <VSkeletonLoader type="text" width="40%" class="mb-1" />
+                      <VSkeletonLoader type="heading" width="80%" />
+                    </div>
+                    <VSkeletonLoader type="avatar" size="24" />
+                  </div>
+                  <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
+                    <VSkeletonLoader type="text" width="30%" />
+                    <div class="d-flex gap-1">
+                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
+                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
+                    </div>
+                  </div>
+                </div>
+              </VCard>
+            </div>
+
+            <!-- Mobile List (Data loaded) -->
+            <div v-else-if="laboratories.length" class="d-flex flex-column gap-2">
               <VCard v-for="item in laboratories" :key="item.id" variant="flat" class="border mb-1 rounded-lg">
                 <div class="pa-3">
                   <div class="d-flex justify-space-between align-start mb-2">
@@ -256,7 +314,7 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                       <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
                       <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
                     </div>
-                    <VChip v-if="item.group && !isRestaurant" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
+                    <VChip v-if="item.group && enableBrandGroups" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
                   </div>
                   <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
                     <span class="text-base font-weight-black text-info">{{ item.products_count }} <small>SKUS</small></span>
@@ -268,8 +326,30 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                   </div>
                 </div>
               </VCard>
+              <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalLabs" @change="updateTableOptions" />
             </div>
-            <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalLabs" @change="updateTableOptions" />
+
+            <!-- Mobile Empty State -->
+            <div v-else class="d-flex flex-column align-center justify-center pa-8 text-center">
+              <VAvatar size="56" color="primary" variant="tonal" class="mb-3">
+                <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="28" />
+              </VAvatar>
+              <h3 class="text-sm font-weight-bold mb-1">
+                No hay {{ isRestaurant ? 'marcas' : 'laboratorios' }}
+              </h3>
+              <p class="text-xs text-medium-emphasis mb-3" style="max-width: 250px;">
+                Registra tu primer elemento para comenzar.
+              </p>
+              <VBtn
+                color="primary"
+                variant="flat"
+                size="small"
+                prepend-icon="tabler-plus"
+                @click="openLabEdit()"
+              >
+                Crear {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
+              </VBtn>
+            </div>
           </div>
         </VCard>
       </VWindowItem>
@@ -373,14 +453,14 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                 persistent-placeholder
                 class="mb-4"
               />
-              <template v-if="!isRestaurant">
-                <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Asignación Corporativa</p>
+              <template v-if="enableBrandGroups">
+                <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">{{ isRestaurant ? 'Grupo de Marca' : 'Asignación Corporativa' }}</p>
                 <AppAutocomplete
                   v-model="labForm.group_id"
                   :items="groups"
                   item-title="name"
                   item-value="id"
-                  label="Grupo de Laboratorio"
+                  :label="isRestaurant ? 'Grupo de Marca' : 'Grupo de Laboratorio'"
                   placeholder="Seleccionar grupo..."
                   clearable
                   persistent-placeholder

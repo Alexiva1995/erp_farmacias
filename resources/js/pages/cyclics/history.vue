@@ -3,7 +3,7 @@ import CycleSummaryFilters from "@/components/CycleSummaryFilters.vue";
 import CycleSummaryTable from "@/components/CycleSummaryTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router/auto";
 
 const cycles = ref([]);
@@ -71,6 +71,8 @@ watch([startDate, endDate, cycleStatus], () => {
 onMounted(() => {
   fetchCycles();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = (options) => {
   page.value = options.page;

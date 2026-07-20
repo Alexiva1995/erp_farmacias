@@ -57,20 +57,26 @@ const stockOptions = [
   { title: "Con Stock", value: true  },
   { title: "Sin Stock", value: false },
 ];
-const restaurantTypeOptions = [
-  { title: "PVP", value: "pvp" },
-  { title: "Ingredientes", value: "ingredients" },
-  { title: "Mixto", value: "mixed" },
-];
-const productTypeOptions = [
-  { title: "Todos", value: null },
+const allProductTypeOptions = [
   { title: "Redundantes", value: "redundantes" },
   { title: "Origen Colombiano", value: "col" },
   { title: "Con IVA (G)", value: "iva" },
   { title: "Exento", value: "exento" },
   { title: "Novaventa", value: "novaventa" },
   { title: "Eliminados", value: "eliminados" },
+  { title: "PVP", value: "pvp" },
+  { title: "Ingredientes", value: "ingredients" },
+  { title: "Mixto", value: "mixed" }
 ];
+
+const productTypeOptions = computed(() => {
+  const enabled = brandingStore.settings.enabled_product_types || ['redundantes', 'col', 'iva', 'exento', 'novaventa', 'eliminados', 'pvp', 'ingredients', 'mixed'];
+  return [
+    { title: "Todos", value: null },
+    ...allProductTypeOptions.filter(opt => enabled.includes(opt.value))
+  ];
+});
+
 const sortOptions = [
   { title: "Precio mayor",    icon: "tabler-arrow-up",      key: "sale_price",      order: "desc" },
   { title: "Precio Menor",    icon: "tabler-arrow-down",    key: "sale_price",      order: "asc"  },
@@ -183,25 +189,11 @@ const showExport = computed(() => props.mode === 'products');
     </template>
 
     <template #advanced-filters>
-      <!-- Tipo (Restaurante) -->
-      <VCol v-if="isRestaurant" cols="12" sm="6" md="2">
-        <VSelect
-          :model-value="props.selectedRestaurantType"
-          placeholder="Tipo"
-          :items="restaurantTypeOptions"
-          clearable
-          density="compact"
-          hide-details
-          prepend-inner-icon="tabler-tags"
-          @update:model-value="emit('update:selectedRestaurantType', $event)"
-        />
-      </VCol>
-
-      <!-- Tipo (Farmacia, no Mini Market y no Sports Rental) -->
-      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" sm="6" md="2">
+      <!-- Tipo de Producto Unificado (Condicionado por la configuración de branding) -->
+      <VCol v-if="brandingStore.settings.enable_product_types" cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.productTypeFilter"
-          placeholder="Tipo de Producto"
+          placeholder="Tipo"
           :items="productTypeOptions"
           clearable
           density="compact"

@@ -3,7 +3,7 @@ import ProductFilters from "@/components/ProductFilters.vue";
 import ProductsWithoutGroupTable from "@/components/ProductsWithoutGroupTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -144,6 +144,8 @@ onMounted(async () => {
   fetchSelectOptions();
   fetchProducts();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = (options) => {
   page.value = options.page;

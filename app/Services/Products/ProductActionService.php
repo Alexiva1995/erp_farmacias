@@ -97,11 +97,31 @@ class ProductActionService
             $supplierIds[] = $singleSupplierId;
             $supplierIds = array_unique($supplierIds);
         }
+        // Eliminar supplier_id de los datos a guardar (no existe como columna directa)
+        if (isset($validatedData['supplier_id'])) {
+            unset($validatedData['supplier_id']);
+        }
 
         // Extraer variantes antes de guardar
         $variantsData = request()->input('variants') ? json_decode(request()->input('variants'), true) : [];
 
+        $initialStock = (float)($validatedData['initial_stock'] ?? 0);
+        if (isset($validatedData['initial_stock'])) {
+            unset($validatedData['initial_stock']);
+        }
+
         $product = Product::create($validatedData);
+
+        if ($initialStock > 0) {
+            $product->lots()->create([
+                'lot_number'      => 'LOTE-INICIAL',
+                'quantity'        => $initialStock,
+                'unit_cost'       => $product->unit_cost ?? 0,
+                'expiration_date' => now()->addYears(5)->format('Y-m-d'),
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+        }
 
         if (!empty($supplierIds)) {
             foreach ($supplierIds as $supplierId) {

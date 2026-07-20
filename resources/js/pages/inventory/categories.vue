@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import AppFilterBase from "@/components/AppFilterBase.vue"
@@ -26,6 +26,8 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref('name')
 const orderBy = ref('asc')
+
+let debounceTimer = null
 
 const isDialogOpen = ref(false)
 const categoryForm = ref({ id: null, name: '' })
@@ -128,13 +130,18 @@ onMounted(() => {
 })
 
 watch([searchQuery], () => {
-  page.value = 1
-  fetchCategories()
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    page.value = 1
+    fetchCategories()
+  }, 300)
 })
 
 watch([page, itemsPerPage, sortBy, orderBy], () => {
   fetchCategories()
 })
+
+onUnmounted(() => clearTimeout(debounceTimer))
 </script>
 
 <template>

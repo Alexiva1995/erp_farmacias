@@ -38,6 +38,7 @@ declare module 'vue-router/auto-routes' {
     'configuration-import': RouteRecordInfo<'configuration-import', '/configuration/import', Record<never, never>, Record<never, never>>,
     'configuration-inventory': RouteRecordInfo<'configuration-inventory', '/configuration/inventory', Record<never, never>, Record<never, never>>,
     'configuration-menu': RouteRecordInfo<'configuration-menu', '/configuration/menu', Record<never, never>, Record<never, never>>,
+    'configuration-products': RouteRecordInfo<'configuration-products', '/configuration/products', Record<never, never>, Record<never, never>>,
     'configuration-tpv': RouteRecordInfo<'configuration-tpv', '/configuration/tpv', Record<never, never>, Record<never, never>>,
     'crm-clients': RouteRecordInfo<'crm-clients', '/crm/clients', Record<never, never>, Record<never, never>>,
     'crm-companies': RouteRecordInfo<'crm-companies', '/crm/companies', Record<never, never>, Record<never, never>>,
