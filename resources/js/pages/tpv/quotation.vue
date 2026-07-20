@@ -6,7 +6,7 @@ import QuotationTable from "@/components/QuotationTable.vue";
 import QuotationTicket from "@/components/QuotationTicket.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 import { toast } from "@/plugins/sweetalert";
 
@@ -1149,6 +1149,10 @@ const handleCleanAfterSave = () => {
   selectedClient.value = null;
   clientIdentification.value = "";
 };
+
+onUnmounted(() => {
+  clearTimeout(barcodeInputTimer);
+});
 </script>
 
 <template>

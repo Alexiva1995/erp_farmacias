@@ -3619,6 +3619,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(heartbeatInterval);
+  clearTimeout(barcodeInputTimer);
 });
 </script>
 <template>

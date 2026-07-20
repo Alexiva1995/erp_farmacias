@@ -278,23 +278,46 @@ class EcommerceController extends Controller
      */
     public function getAdminOrders(Request $request): JsonResponse
     {
-        $orders = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
             ->select('ecommerce_orders.*', 'users.username as assigned_user')
-            ->leftJoin('users', 'users.id', '=', 'ecommerce_orders.user_id')
-            ->orderBy('ecommerce_orders.id', 'desc')
-            ->get();
+            ->leftJoin('users', 'users.id', '=', 'ecommerce_orders.user_id');
+
+        if ($startDate) {
+            $query->where('ecommerce_orders.created_at', '>=', $startDate . ' 00:00:00');
+        }
+        if ($endDate) {
+            $query->where('ecommerce_orders.created_at', '<=', $endDate . ' 23:59:59');
+        }
+
+        $orders = $query->orderBy('ecommerce_orders.id', 'desc')->get();
+
+        if ($orders->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data'    => [],
+            ]);
+        }
+
+        $orderIds = $orders->pluck('id')->toArray();
+
+        // Traer todos los items de golpe en una sola consulta (Evita N+1)
+        $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
+            ->join('products', 'products.id', '=', 'ecommerce_order_items.product_id')
+            ->leftJoin('product_variants', 'product_variants.id', '=', 'ecommerce_order_items.product_variant_id')
+            ->select(
+                'ecommerce_order_items.*', 
+                'products.name as product_name', 
+                'product_variants.attribute_value as variant_value'
+            )
+            ->whereIn('ecommerce_order_id', $orderIds)
+            ->get()
+            ->groupBy('ecommerce_order_id');
 
         foreach ($orders as $order) {
-            $order->items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
-                ->join('products', 'products.id', '=', 'ecommerce_order_items.product_id')
-                ->leftJoin('product_variants', 'product_variants.id', '=', 'ecommerce_order_items.product_variant_id')
-                ->select(
-                    'ecommerce_order_items.*', 
-                    'products.name as product_name', 
-                    'product_variants.attribute_value as variant_value'
-                )
-                ->where('ecommerce_order_id', $order->id)
-                ->get();
+            $order->items = $items->get($order->id) ?? [];
         }
 
         return response()->json([

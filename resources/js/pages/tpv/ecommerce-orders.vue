@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
@@ -88,7 +88,11 @@ const headers = [
 const fetchOrders = async () => {
   loading.value = true;
   try {
-    const response = await axios.get("/ecommerce/admin/orders");
+    const params = {};
+    if (globalStartDate.value) params.start_date = globalStartDate.value;
+    if (globalEndDate.value) params.end_date = globalEndDate.value;
+
+    const response = await axios.get("/ecommerce/admin/orders", { params });
     if (response.data && response.data.success) {
       orders.value = response.data.data || [];
     }
@@ -99,6 +103,10 @@ const fetchOrders = async () => {
     loading.value = false;
   }
 };
+
+watch([globalStartDate, globalEndDate], () => {
+  fetchOrders();
+});
 
 // Filtrado de las órdenes en memoria según filtros y rango de fechas
 const applyFilters = (list) => {

@@ -9,7 +9,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { useRoute } from "vue-router";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 const { isVendedor } = useAuthStore();
 const route = useRoute();
@@ -311,13 +311,18 @@ const fetchSellers = async () => {
   }
 };
 
+const fetchActiveTabData = () => {
+  const tab = activeTab.value;
+  if (tab === 0) fetchOrderCompleted();
+  else if (tab === 1) fetchOrderAll();
+  else if (tab === 2) fetchOrderCancelled();
+  else if (tab === 3) fetchOrderAbandoned();
+  else if (tab === 4) fetchQuotations();
+};
+
 onMounted(async () => {
   fetchSellers();
-  fetchOrderCompleted();
-  fetchOrderAll();
-  fetchOrderAbandoned();
-  fetchOrderCancelled();
-  fetchQuotations();
+  fetchActiveTabData();
 
   if (route.query.orderId) {
     const orderId = parseInt(route.query.orderId, 10);
@@ -325,6 +330,18 @@ onMounted(async () => {
       await handleViewOrder(orderId);
     }
   }
+});
+
+onUnmounted(() => {
+  clearTimeout(debounceTimerCompleted);
+  clearTimeout(debounceTimerAll);
+  clearTimeout(debounceTimerAbandoned);
+  clearTimeout(debounceTimerCancelled);
+  clearTimeout(debounceTimerQuotations);
+});
+
+watch(activeTab, () => {
+  fetchActiveTabData();
 });
 
 let debounceTimerCompleted;
@@ -340,6 +357,7 @@ watch(
     orderByOrdersCompleted,
   ],
   () => {
+    if (activeTab.value !== 0) return;
     clearTimeout(debounceTimerCompleted);
     debounceTimerCompleted = setTimeout(() => fetchOrderCompleted(), 300);
   },
@@ -360,6 +378,7 @@ watch(
     orderByOrdersAll,
   ],
   () => {
+    if (activeTab.value !== 1) return;
     clearTimeout(debounceTimerAll);
     debounceTimerAll = setTimeout(() => fetchOrderAll(), 300);
   },
@@ -379,6 +398,7 @@ watch(
     orderByOrdersAbandoned,
   ],
   () => {
+    if (activeTab.value !== 3) return;
     clearTimeout(debounceTimerAbandoned);
     debounceTimerAbandoned = setTimeout(() => fetchOrderAbandoned(), 300);
   },
@@ -398,6 +418,7 @@ watch(
     orderByOrdersCancelled,
   ],
   () => {
+    if (activeTab.value !== 2) return;
     clearTimeout(debounceTimerCancelled);
     debounceTimerCancelled = setTimeout(() => fetchOrderCancelled(), 300);
   },
@@ -429,6 +450,7 @@ let debounceTimerQuotations;
 watch(
   [pageQuotations, itemsPerPageQuotations, filterSearchQuery, globalStartDate, globalEndDate],
   () => {
+    if (activeTab.value !== 4) return;
     clearTimeout(debounceTimerQuotations);
     debounceTimerQuotations = setTimeout(() => fetchQuotations(), 300);
   },
@@ -449,7 +471,7 @@ watch(
 
 watch(
   [filterSearchQuery, currencyFilter, sellerFilter],
-  () => {
+  map => {
     pageOrdersAbandoned.value = 1;
     pageOrdersCancelled.value = 1;
     pageQuotations.value = 1;
@@ -463,11 +485,7 @@ watch([globalStartDate, globalEndDate], () => {
   pageOrdersAbandoned.value = 1;
   pageOrdersCancelled.value = 1;
   pageQuotations.value = 1;
-  fetchOrderCompleted();
-  fetchOrderAll();
-  fetchOrderAbandoned();
-  fetchOrderCancelled();
-  fetchQuotations();
+  fetchActiveTabData();
 }, { deep: true });
 
 const updateTableOptionsOrdersCompleted = (options) => {
