@@ -7,21 +7,32 @@ import QuotationTicket from "@/components/QuotationTicket.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-
 import { toast } from "@/plugins/sweetalert";
+import { useQuotationClient } from "@/composables/useQuotationClient";
+
+const {
+  selectedClient,
+  clientSearchQuery,
+  clientIdentification,
+  activeDoctorOffers,
+  activePrescriptionOffers,
+  activeCompanyOffers,
+  loadingDoctorOffers,
+  fetchDoctorOffers,
+  fetchPrescriptionOffers,
+  fetchCompanyOffers,
+  verifyClient: verifyClientComposable,
+  fetchSearchedClient
+} = useQuotationClient();
 
 const products = ref([]);
 const totalProduct = ref(0);
 const loading = ref(false);
 
 const selectedDiscountType = ref(null);
-const activeDoctorOffers = ref([]);
 const selectedDoctorOffer = ref(null);
-const loadingDoctorOffers = ref(false);
 
-const activePrescriptionOffers = ref([]);
 const prescriptionFile = ref(null);
-const activeCompanyOffers = ref([]);
 const selectedCompanyId = ref(null);
 const selectedCompany = ref(null);
 
@@ -54,9 +65,6 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
-const clientSearchQuery = ref("");
-const clientIdentification = ref("");
-const selectedClient = ref(null);
 const showRegisterClientModal = ref(false);
 
 // Persistencia de Cotización
@@ -293,98 +301,6 @@ const fetchSelectOptions = async () => {
   }
 };
 
-const fetchDoctorOffers = async () => {
-  loadingDoctorOffers.value = true;
-  try {
-    const response = await axios.get("/tpv/promotions/doctor-offer", {
-      params: {
-        per_page: 100,
-        sort_by: "id",
-        sort_order: "desc",
-      },
-    });
-
-    if (response.data.success) {
-      activeDoctorOffers.value = response.data.data.map((offer) => ({
-        id: offer.id,
-        title: `${offer.doctor.name} - ${offer.discount}%`,
-        value: offer.id,
-        percentage: parseFloat(offer.discount),
-        doctor_id: offer.doctor_id,
-      }));
-    }
-  } catch (error) {
-    console.error("Error fetching doctor offers:", error);
-    toast.error("Error al cargar las ofertas de médicos.");
-  } finally {
-    loadingDoctorOffers.value = false;
-  }
-};
-
-const fetchPrescriptionOffers = async () => {
-  try {
-    const response = await axios.get("/tpv/promotions/prescription-offer", {
-      params: {
-        is_active: true,
-        per_page: 1,
-        sort_by: "discount_percentage",
-        sort_order: "desc",
-      },
-    });
-    if (response.data.success) {
-      activePrescriptionOffers.value = response.data.data;
-    }
-  } catch (error) {
-    console.error("Error fetching prescription offers:", error);
-  }
-};
-
-const fetchCompanyOffers = async (companyId = null) => {
-  try {
-    const params = {
-      is_active: true,
-      per_page: 100,
-      sort_by: "id",
-      order_by: "desc", // Cambiado de sort_order a order_by para tu Laravel
-    };
-
-    if (companyId) {
-      params.search = companyId;
-    }
-
-    const response = await axios.get("/tpv/promotions/company-offer", {
-      params,
-    });
-
-    if (response.data && response.data.data) {
-      activeCompanyOffers.value = response.data.data.map((offer) => {
-        const scales = offer.scales || [];
-        // Calculate min and max percentage for display
-        let discountText = "";
-        if (scales.length > 0) {
-          const percentages = scales.map((s) =>
-            parseFloat(s.discount_percentage),
-          );
-          const minP = Math.min(...percentages);
-          const maxP = Math.max(...percentages);
-          discountText = minP === maxP ? `${minP}%` : `${minP}-${maxP}%`;
-        }
-
-        return {
-          title: `${offer.company?.name || "N/A"} ${
-            discountText ? "- " + discountText : ""
-          }`,
-          value: offer.company_id,
-          scales: scales,
-          id: offer.id,
-          current_discount: offer.company?.current_discount || 0,
-        };
-      });
-    }
-  } catch (error) {
-    console.error("Error fetching company offers:", error);
-  }
-};
 
 const fetchProducts = async () => {
   loading.value = true;
@@ -1087,57 +1003,8 @@ const fetchFailuresProducts = async (productId) => {
   }
 };
 
-const fetchSearchedClient = async () => {
-  try {
-    const { data } = await axios.get(
-      `/crm/clients/identification/${clientSearchQuery.value}`,
-    );
-
-    selectedClient.value = data.data;
-    clientSearchQuery.value = "";
-  } catch (error) {
-    if (error.response.status == 404) {
-      toast.error("No se encontró ningún cliente con esa cédula");
-    }
-  }
-};
-
 const verifyClient = async (identification) => {
-  clientIdentification.value = identification;
-
-  // La cédula es opcional en cotizaciones, si está vacía simplemente no buscamos cliente
-  if (!identification || !identification.trim()) {
-    selectedClient.value = null;
-    selectedCompanyId.value = null;
-    selectedDiscountType.value = null;
-    return;
-  }
-
-  try {
-    const response = await axios.get(`/tpv/order/client/${identification}`);
-    const responseData = response.data.data;
-
-    if (responseData.found === false) {
-      toast.info("Cliente no encontrado. Puede continuar sin cliente o registrarlo.");
-      // Opcionalmente, podemos abrir el modal de registro si el usuario quiere
-      newClientFormData.value = {
-        ...newClientFormData.value,
-        identification: identification,
-      };
-      // No abrimos automáticamente, pero dejamos la opción disponible
-      selectedClient.value = null;
-    } else {
-      const clientData = responseData.client;
-      selectedClient.value = clientData;
-      toast.success(
-        `Cliente ${clientData.name} ${clientData.last_name} encontrado.`,
-      );
-    }
-  } catch (error) {
-    console.error("Error al verificar cliente:", error);
-    toast.error("Error al verificar el cliente.");
-    selectedClient.value = null;
-  }
+  await verifyClientComposable(identification, newClientFormData, selectedDiscountType, selectedCompanyId);
 };
 
 const handleCleanAfterSave = () => {
