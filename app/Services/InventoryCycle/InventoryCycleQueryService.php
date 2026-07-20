@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 declare(strict_types=1);
 
@@ -743,8 +743,8 @@ class InventoryCycleQueryService
             ->groupBy('discrepancies.cycle_id', 'ic.start_date', 'ic.end_date', 'ic.status');
 
         $filters = [
-            'startDate' => $request->startDate,
-            'endDate' => $request->endDate,
+            'startDate'   => $request->startDate,
+            'endDate'     => $request->endDate,
             'cycleStatus' => $request->cycleStatus,
         ];
 
@@ -756,7 +756,8 @@ class InventoryCycleQueryService
 
     public function getCycleDetailedCountsQuery(Request $request)
     {
-        $cycleId = $request->input('cycleId');
+        // Castear a int: el parametro llega como string desde el query string (?cycleId=2)
+        $cycleId = (int) $request->input('cycleId');
         if (!$cycleId) {
             return DB::query()->whereRaw('1 = 0');
         }
