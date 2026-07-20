@@ -61,7 +61,8 @@ const fetchCategories = async () => {
   }
 };
 
-const handleEditOffer = (promo) => {
+const handleEditOffer = async (promo) => {
+  await fetchCategories();
   Object.assign(promoForm, {
     id: promo.id,
     type: promo.type,
@@ -82,7 +83,8 @@ const handleClearFilters = () => {
   actualizarTabla();
 };
 
-const handleAddPromotionModal = () => {
+const handleAddPromotionModal = async () => {
+  await fetchCategories();
   Object.assign(promoForm, {
     id: null,
     type: "2x1",
@@ -223,7 +225,6 @@ watch([sortBy, orderBy], () => {
 });
 
 onMounted(async () => {
-  await fetchCategories();
   await actualizarTabla();
 });
 </script>

@@ -289,7 +289,6 @@ watch(
 
 onMounted(() => {
   fetchCompaniesOffers();
-  fetchAvailableCompanies();
 });
 </script>
 
