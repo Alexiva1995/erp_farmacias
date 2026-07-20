@@ -1030,69 +1030,59 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
     </VTabs>
 
     <VWindow v-model="activeTab" class="orders-window">
-      <VWindowItem :value="0">
+      <!-- Pestañas unificadas de Órdenes (0 a 3) usando DRY -->
+      <VWindowItem v-if="activeTab >= 0 && activeTab <= 3" :value="activeTab">
         <OrderTable
-          :orders="ordersCompleted"
-          :loading="loadingOrdersCompleted"
-          :total-orders="totalOrdersCompleted"
-          :items-per-page="itemsPerPageOrdersCompleted"
-          :page="pageOrdersCompleted"
-          :headers="headers"
-          :sort-by="sortByOrdersCompleted"
-          :order-by="orderByOrdersCompleted"
+          :orders="
+            activeTab === 0 ? ordersCompleted :
+            activeTab === 1 ? ordersAll :
+            activeTab === 2 ? ordersCancelled :
+            ordersAbandoned
+          "
+          :loading="
+            activeTab === 0 ? loadingOrdersCompleted :
+            activeTab === 1 ? loadingOrdersAll :
+            activeTab === 2 ? loadingOrdersCancelled :
+            loadingOrdersAbandoned
+          "
+          :total-orders="
+            activeTab === 0 ? totalOrdersCompleted :
+            activeTab === 1 ? totalOrdersAll :
+            activeTab === 2 ? totalOrdersCancelled :
+            totalOrdersAbandoned
+          "
+          :items-per-page="
+            activeTab === 0 ? itemsPerPageOrdersCompleted :
+            activeTab === 1 ? itemsPerPageOrdersAll :
+            activeTab === 2 ? itemsPerPageOrdersCancelled :
+            itemsPerPageOrdersAbandoned
+          "
+          :page="
+            activeTab === 0 ? pageOrdersCompleted :
+            activeTab === 1 ? pageOrdersAll :
+            activeTab === 2 ? pageOrdersCancelled :
+            pageOrdersAbandoned
+          "
+          :headers="activeTab === 1 ? headersAll : headers"
+          :sort-by="
+            activeTab === 0 ? sortByOrdersCompleted :
+            activeTab === 1 ? sortByOrdersAll :
+            activeTab === 2 ? sortByOrdersCancelled :
+            sortByOrdersAbandoned
+          "
+          :order-by="
+            activeTab === 0 ? orderByOrdersCompleted :
+            activeTab === 1 ? orderByOrdersAll :
+            activeTab === 2 ? orderByOrdersCancelled :
+            orderByOrdersAbandoned
+          "
           :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersCompleted"
-          @print-order="printOrder"
-          @print-order-thermal="printOrderThermal54"
-          @view-order="handleViewOrder"
-        />
-      </VWindowItem>
-      <VWindowItem :value="1">
-        <OrderTable
-          :orders="ordersAll"
-          :loading="loadingOrdersAll"
-          :total-orders="totalOrdersAll"
-          :items-per-page="itemsPerPageOrdersAll"
-          :page="pageOrdersAll"
-          :headers="headersAll"
-          :sort-by="sortByOrdersAll"
-          :order-by="orderByOrdersAll"
-          :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersAll"
-          @print-order="printOrder"
-          @print-order-thermal="printOrderThermal54"
-          @view-order="handleViewOrder"
-        />
-      </VWindowItem>
-      <VWindowItem :value="2">
-        <OrderTable
-          :orders="ordersCancelled"
-          :loading="loadingOrdersCancelled"
-          :total-orders="totalOrdersCancelled"
-          :items-per-page="itemsPerPageOrdersCancelled"
-          :page="pageOrdersCancelled"
-          :headers="headers"
-          :sort-by="sortByOrdersCancelled"
-          :order-by="orderByOrdersCancelled"
-          :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersCancelled"
-          @print-order="printOrder"
-          @print-order-thermal="printOrderThermal54"
-          @view-order="handleViewOrder"
-        />
-      </VWindowItem>
-      <VWindowItem :value="3">
-        <OrderTable
-          :orders="ordersAbandoned"
-          :loading="loadingOrdersAbandoned"
-          :total-orders="totalOrdersAbandoned"
-          :items-per-page="itemsPerPageOrdersAbandoned"
-          :page="pageOrdersAbandoned"
-          :headers="headers"
-          :sort-by="sortByOrdersAbandoned"
-          :order-by="orderByOrdersAbandoned"
-          :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersAbandoned"
+          @update:options="
+            activeTab === 0 ? updateTableOptionsOrdersCompleted :
+            activeTab === 1 ? updateTableOptionsOrdersAll :
+            activeTab === 2 ? updateTableOptionsOrdersCancelled :
+            updateTableOptionsOrdersAbandoned
+          "
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
           @view-order="handleViewOrder"
