@@ -60,6 +60,14 @@ class TelegramWebhookService
 
         // Verificar que el mensaje venga del administrador autorizado
         $adminChatId = config('services.telegram.admin_chat_id');
+        
+        \Log::info('[TelegramWebhook] Mensaje recibido para validar remitente', [
+            'from_id' => $fromId,
+            'admin_chat_id' => $adminChatId,
+            'chat_id' => $chatId,
+            'text' => $text
+        ]);
+
         if (!$adminChatId || (string)$fromId !== (string)$adminChatId) {
             return;
         }
