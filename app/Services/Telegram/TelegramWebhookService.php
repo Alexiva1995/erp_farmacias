@@ -3085,26 +3085,27 @@ class TelegramWebhookService
                 return;
             }
 
-            // Agrupar por proveedor_id y fecha de pago
-            $grouped = $invoices->groupBy(function ($invoice) {
-                return $invoice->supplier_id . '_' . $invoice->payment_date;
-            });
+            // Agrupar por proveedor
+            $groupedBySupplier = $invoices->groupBy('supplier_id');
 
-            $msg = "⚠️ *[REPORTE DE PAGOS VENCIDOS]* ⚠️\n\n";
+            $msgBlocks = [];
+            $currentBlock = "⚠️ *[REPORTE DE PAGOS VENCIDOS]* ⚠️\n\n";
 
-            foreach ($grouped as $key => $group) {
+            foreach ($groupedBySupplier as $supplierId => $group) {
                 $firstInvoice = $group->first();
                 $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
-                $paymentDateFormatted = $firstInvoice->payment_date ? \Carbon\Carbon::parse($firstInvoice->payment_date)->format('d/m/Y') : 'Sin Fecha';
                 
-                $msg .= "🏢 *{$supplierName}*\n📅 *Fecha de Vencimiento:* `{$paymentDateFormatted}`\n";
-
-                $groupInvoicesText = "";
-                $groupTotalOriginal = 0;
+                // Obtener fecha de vencimiento más antigua
+                $earliestDate = $group->min('payment_date');
+                $earliestDateFormatted = $earliestDate ? \Carbon\Carbon::parse($earliestDate)->format('d/m/Y') : 'Sin Fecha';
+                
                 $currency = $firstInvoice->currency;
+                $supplierTotalOriginal = 0;
+                $supplierTotalUSD = 0;
+                $facturasCount = 0;
 
                 foreach ($group as $invoice) {
-                    // Calcular el saldo restante en su moneda original
+                    // Calcular saldo restante
                     $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
                         $query->where('id', $invoice->id);
                     })->get();
@@ -3151,20 +3152,42 @@ class TelegramWebhookService
                         }
                     }
 
-                    $groupInvoicesText .= "  • `{$invoice->invoice_number}`: " . number_format((float) $invoiceRemainingOriginal, 2) . " {$invoice->currency}\n";
-                    $groupTotalOriginal += (float) $invoiceRemainingOriginal;
+                    $supplierTotalOriginal += (float) $invoiceRemainingOriginal;
+                    $supplierTotalUSD += (float) $invoiceRemainingUSD;
+                    $facturasCount++;
                 }
 
-                if (empty($groupInvoicesText)) {
+                if ($facturasCount === 0) {
                     continue;
                 }
 
-                $msg .= $groupInvoicesText;
-                $msg .= "💰 *Total vencido:* `" . number_format((float) $groupTotalOriginal, 2) . " {$currency}`\n";
-                $msg .= "───────────────────\n";
+                $formattedDebt = number_format($supplierTotalOriginal, 2) . ' ' . $currency;
+                if ($currency !== 'USD') {
+                    $formattedDebt .= " (≈ " . number_format($supplierTotalUSD, 2) . " USD)";
+                }
+
+                $supplierText = "🏢 *{$supplierName}*\n" .
+                                "📅 *Vencimiento más antiguo:* `{$earliestDateFormatted}`\n" .
+                                "📄 *Facturas vencidas:* `{$facturasCount}`\n" .
+                                "💰 *Total vencido:* `{$formattedDebt}`\n" .
+                                "───────────────────\n";
+
+                // Si añadir este proveedor supera el limite de tamaño, guardar bloque anterior y empezar uno nuevo
+                if (strlen($currentBlock) + strlen($supplierText) > 3500) {
+                    $msgBlocks[] = $currentBlock;
+                    $currentBlock = "⚠️ *[REPORTE DE PAGOS VENCIDOS - CONTINUACIÓN]* ⚠️\n\n";
+                }
+                $currentBlock .= $supplierText;
             }
 
-            $this->telegramService->sendMessage($msg, $chatId);
+            if (strlen($currentBlock) > 0 && $currentBlock !== "⚠️ *[REPORTE DE PAGOS VENCIDOS - CONTINUACIÓN]* ⚠️\n\n") {
+                $msgBlocks[] = $currentBlock;
+            }
+
+            // Enviar todos los bloques secuencialmente
+            foreach ($msgBlocks as $block) {
+                $this->telegramService->sendMessage($block, $chatId);
+            }
 
         } catch (\Exception $e) {
             \Log::error('[TelegramWebhook] Error al enviar pagos vencidos: ' . $e->getMessage());
