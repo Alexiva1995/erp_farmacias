@@ -16,7 +16,7 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Support\Collection;
 
-class PayslipRepository implements \App\Contracts\Payslip
+class PayslipRepository
 {
   public function index(array $data): \Illuminate\Pagination\LengthAwarePaginator
   {
