@@ -609,7 +609,10 @@ onMounted(async () => {
         >
           <!-- Contenedor de Imagen -->
           <div class="editorial-product-img-wrap" @click="openQuickView(product)">
-            <span v-if="product.is_favorite && brandingStore.settings.enable_favorites" class="product-badge-editorial">FAVORITO</span>
+            <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
+              <span v-if="product.is_favorite && brandingStore.settings.enable_favorites" class="product-badge-editorial" style="position: static; margin-bottom: 0;">FAVORITO</span>
+              <span v-if="product.discount_percentage" style="background-color: #E20074; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">-{{ Math.round(product.discount_percentage) }}%</span>
+            </div>
             <button
               v-if="brandingStore.settings.enable_favorites"
               class="favorite-toggle-btn"
@@ -643,7 +646,8 @@ onMounted(async () => {
           <div class="editorial-product-info" style="margin-top: 15px;">
             <h3 class="editorial-product-name" @click="openQuickView(product)" style="cursor: pointer; margin-bottom: 4px;">{{ product.name.toUpperCase() }}</h3>
             <span class="editorial-product-brand" style="display: block; margin-bottom: 8px;">{{ product.brand || 'TOVA' }}</span>
-            <div class="editorial-product-footer" style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="editorial-product-footer" style="display: flex; gap: 8px; align-items: baseline;">
+              <span v-if="product.original_price" class="editorial-product-price-original" style="text-decoration: line-through; color: #888888; font-size: 13px; font-weight: 500;">{{ formatPrice(product.original_price) }}</span>
               <span class="editorial-product-price" style="font-weight: 700;">{{ formatPrice(product.sale_price) }}</span>
             </div>
             <!-- Botón de Ancho Completo Táctil y Accesible (Estilo Premium Zara/Fenty) -->
@@ -748,11 +752,12 @@ onMounted(async () => {
         >
           <!-- Contenedor de Imagen -->
           <div class="editorial-product-img-wrap" @click="openQuickView(product)" style="aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative;">
-            <!-- Badges planos apilados como la referencia -->
-            <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
-              <span style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">BESTSELLER</span>
-              <span v-if="product.is_favorite" style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">TOVA'S FAVE</span>
-            </div>
+             <!-- Badges planos apilados como la referencia -->
+             <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
+               <span style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">BESTSELLER</span>
+               <span v-if="product.is_favorite" style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">FAVORITO</span>
+               <span v-if="product.discount_percentage" style="background-color: #E20074; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">-{{ Math.round(product.discount_percentage) }}%</span>
+             </div>
             <button
               class="favorite-toggle-btn"
               @click.stop="toggleFavorite(product)"
@@ -800,10 +805,11 @@ onMounted(async () => {
               <span style="text-decoration: underline; cursor: pointer;">{{ product.variants_count || 23 }} Shades</span>
             </div>
             
-            <!-- Precio con empuje automático al fondo si es necesario -->
-            <div class="editorial-product-price" style="font-size: 16px; font-weight: 750; color: #000000; letter-spacing: 0.5px; margin-top: auto;">
-              {{ formatPrice(product.sale_price) }}
-            </div>
+             <!-- Precio con empuje automático al fondo si es necesario -->
+             <div class="editorial-product-price-container" style="display: flex; gap: 8px; align-items: baseline; margin-top: auto; margin-bottom: 4px;">
+               <span v-if="product.original_price" style="text-decoration: line-through; color: #888888; font-size: 13px; font-weight: 500;">{{ formatPrice(product.original_price) }}</span>
+               <span class="editorial-product-price" style="font-size: 16px; font-weight: 750; color: #000000; letter-spacing: 0.5px;">{{ formatPrice(product.sale_price) }}</span>
+             </div>
             <!-- Botón de Ancho Completo Táctil y Accesible (Consistencia con catálogo) -->
             <button class="editorial-add-bag-btn" @click.stop="openQuickView(product)" style="background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;">
               + VER DETALLES

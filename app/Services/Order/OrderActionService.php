@@ -1831,7 +1831,11 @@ class OrderActionService
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
 
         foreach ($products as $product) {
-            $categoryId = $product->category_id;
+            // Ignorar packs en promociones generales
+            if (isset($product->item_type) && $product->item_type === 'pack') {
+                continue;
+            }
+            $categoryId = $product->category_id ?? null;
             
             // 1. Aplicar descuento general (porcentaje)
             if ($generalPromos->isNotEmpty()) {
@@ -1858,7 +1862,7 @@ class OrderActionService
                     $product->discount_type = 'general';
                     $product->discount_source_id = $promo->id;
 
-                    if ($product->relationLoaded('variants')) {
+                    if ($product instanceof \Illuminate\Database\Eloquent\Model && $product->relationLoaded('variants')) {
                         foreach ($product->variants as $variant) {
                             if (!isset($variant->original_price)) {
                                 $variant->original_price = $variant->price;
@@ -1902,7 +1906,7 @@ class OrderActionService
                     $product->price_cop = round(((float) $promo->fixed_price) * $rateUsdToCop, 2);
                     $product->price_bs = round(((float) $promo->fixed_price) * $rateUsdToBs, 2);
 
-                    if ($product->relationLoaded('variants')) {
+                    if ($product instanceof \Illuminate\Database\Eloquent\Model && $product->relationLoaded('variants')) {
                         foreach ($product->variants as $variant) {
                             if (!isset($variant->original_price)) {
                                 $variant->original_price = $variant->price;
