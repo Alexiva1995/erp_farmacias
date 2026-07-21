@@ -1420,7 +1420,9 @@ class TelegramWebhookService
 
             // Ordenar proveedores por la fecha de pago más antigua (los que vencen antes van primero)
             usort($suppliersWithDebt, function ($a, $b) {
-                return strcmp($a['earliest_payment_date'], $b['earliest_payment_date']);
+                $dateA = $a['earliest_payment_date'] instanceof \Carbon\Carbon ? $a['earliest_payment_date'] : \Carbon\Carbon::parse($a['earliest_payment_date']);
+                $dateB = $b['earliest_payment_date'] instanceof \Carbon\Carbon ? $b['earliest_payment_date'] : \Carbon\Carbon::parse($b['earliest_payment_date']);
+                return $dateA->timestamp <=> $dateB->timestamp;
             });
 
             // Guardar en la cola y empezar
