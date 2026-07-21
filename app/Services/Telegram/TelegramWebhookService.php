@@ -1468,7 +1468,7 @@ class TelegramWebhookService
         // Construir el listado detallado de facturas
         $invoicesText = "";
         foreach ($supplier['invoices'] as $inv) {
-            $invoicesText .= "• `{$inv['invoice_number']}` - {$inv['payment_date_formatted']} - " . number_format($inv['remaining_amount'], 2) . " {$inv['currency']}\n";
+            $invoicesText .= "• `{$inv['invoice_number']}` - {$inv['payment_date_formatted']} - " . number_format((float) $inv['remaining_amount'], 2) . " {$inv['currency']}\n";
         }
 
         $msg = "💳 *[PAGO DE PROVEEDOR]*\n\n"
