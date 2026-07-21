@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
 
 class PayslipRepository implements \App\Contracts\Payslip
 {
-  public function index(array $data)
+  public function index(array $data): \Illuminate\Pagination\LengthAwarePaginator
   {
     $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
 
@@ -64,7 +64,7 @@ class PayslipRepository implements \App\Contracts\Payslip
 
       } else {
         \Log::error("Failed to fetch exchange rate");
-        throw new \Exception("No se pudo guardar la tasa del día BS");
+        throw new \Exception("No se pudo guardar la tasa del d├¡a BS");
       }
     }
 
@@ -96,7 +96,7 @@ class PayslipRepository implements \App\Contracts\Payslip
     $startOfMonth = $date->copy()->startOfMonth()->format('Y-m-d');
     $endOfMonth   = $date->copy()->endOfMonth()->format('Y-m-d');
 
-    // Si ya existe nómina este mes → es la 2da (paga conceptos variables)
+    // Si ya existe n├│mina este mes ÔåÆ es la 2da (paga conceptos variables)
     $hasPreviousInMonth = Payslip::whereBetween('payslip_date', [$startOfMonth, $endOfMonth])->exists();
     $isSecondNomina     = $hasPreviousInMonth || $date->day > 15;
 
@@ -107,49 +107,49 @@ class PayslipRepository implements \App\Contracts\Payslip
       if (!$employee->user) continue;
 
       $salaries     = $employee->user->salaries;
-      $baseSalaryRecord = $salaries->where('concept.name', 'Salario Básico Mensual')->first();
+      $baseSalaryRecord = $salaries->where('concept.name', 'Salario B├ísico Mensual')->first();
       $baseSalary = ($baseSalaryRecord && (float)$baseSalaryRecord->amount > 0) ? (float)$baseSalaryRecord->amount : 40.00;
 
-      $foodVoucherRecord = $salaries->where('concept.name', 'Bono de Alimentación')->first();
+      $foodVoucherRecord = $salaries->where('concept.name', 'Bono de Alimentaci├│n')->first();
       $foodVoucher = ($foodVoucherRecord && (float)$foodVoucherRecord->amount > 0) ? (float)$foodVoucherRecord->amount : 40.00;
       $package      = (float)($employee->total_package_usd ?? 0);
 
-      // ── 1. Salario Base (50% por quincena) ──────────────────────────────────
+      // ÔöÇÔöÇ 1. Salario Base (50% por quincena) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
       $salarioQuincena = round($baseSalary / 2, 2);
-      $details->push($this->createTempDetail($employee, 'Salario Básico Mensual', $salarioQuincena));
+      $details->push($this->createTempDetail($employee, 'Salario B├ísico Mensual', $salarioQuincena));
 
       if ($isSecondNomina) {
-        // ── 2. Deducciones Legales (solo en 2da nómina, sobre salario base completo) ─
+        // ÔöÇÔöÇ 2. Deducciones Legales (solo en 2da n├│mina, sobre salario base completo) ÔöÇ
         $details->push($this->createTempDetail($employee, 'IVSS (4%)',                  -round($baseSalary * 0.04,  2)));
         $details->push($this->createTempDetail($employee, 'RPE - Paro Forzoso (0.5%)', -round($baseSalary * 0.005, 2)));
         $details->push($this->createTempDetail($employee, 'FAOV (1%)',                  -round($baseSalary * 0.01,  2)));
       }
 
-      // ── 3. Bono de Alimentación ─────────────────────────────────────────
-      // El bono de alimentación se paga únicamente en la segunda quincena (fin de mes)
+      // ÔöÇÔöÇ 3. Bono de Alimentaci├│n ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+      // El bono de alimentaci├│n se paga ├║nicamente en la segunda quincena (fin de mes)
       if ($isSecondNomina) {
-        $details->push($this->createTempDetail($employee, 'Bono de Alimentación', round($foodVoucher, 2)));
+        $details->push($this->createTempDetail($employee, 'Bono de Alimentaci├│n', round($foodVoucher, 2)));
       }
 
       if ($isSecondNomina) {
-        // ── 4. Asistencia Social de Salud (basada en consumo real de farmacia) ─
+        // ÔöÇÔöÇ 4. Asistencia Social de Salud (basada en consumo real de farmacia) ÔöÇ
         $consumoFarmacia    = $this->getTotalConsumoFarmacia($employee, $date->month, $date->year);
         $saldoDeudaAnterior = (float)($employee->saldo_deuda ?? 0);
         $consumoTotal       = $consumoFarmacia + $saldoDeudaAnterior;
 
-        // Espacio disponible dentro del paquete (después de base + alimentación)
+        // Espacio disponible dentro del paquete (despu├®s de base + alimentaci├│n)
         $disponibleParaVariable = max(0, $package - $baseSalary - $foodVoucher);
 
         // Salud: lo que efectivamente se puede pagar sin exceder el paquete
         $saludPagado = round(min($consumoTotal, $disponibleParaVariable), 2);
         $details->push($this->createTempDetail($employee, 'Asistencia Social de Salud (Art. 105 LOTTT)', $saludPagado));
 
-        // ── 5. Bono Extraordinario (sobrante del paquete tras salud) ───────────
+        // ÔöÇÔöÇ 5. Bono Extraordinario (sobrante del paquete tras salud) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         $restanteParaBono    = $disponibleParaVariable - $saludPagado;
         $bonusExtraordinario = max(0, round($restanteParaBono, 2));
         $details->push($this->createTempDetail($employee, 'Bono Extraordinario de Rendimiento', $bonusExtraordinario));
 
-        // ── 6. Actualizar remanente (saldo_deuda) del empleado ─────────────────
+        // ÔöÇÔöÇ 6. Actualizar remanente (saldo_deuda) del empleado ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
         $nuevoSaldoDeuda = ($restanteParaBono >= 0)
           ? 0.0
           : round(abs($consumoTotal - $disponibleParaVariable), 2);
@@ -162,7 +162,7 @@ class PayslipRepository implements \App\Contracts\Payslip
   }
 
   /**
-   * Calcular consumo total del empleado en la farmacia como cliente (por cédula) en el mes dado.
+   * Calcular consumo total del empleado en la farmacia como cliente (por c├®dula) en el mes dado.
    */
   private function getTotalConsumoFarmacia(Employee $employee, int $month, int $year): float
   {
@@ -182,7 +182,7 @@ class PayslipRepository implements \App\Contracts\Payslip
       }
     }
 
-    // Sumar consumo manual/crédito si existe
+    // Sumar consumo manual/cr├®dito si existe
     $manualConsumption = (float) \DB::table('employee_health_consumption')
       ->where('employee_id', $employee->id)
       ->where('month', $month)
@@ -197,10 +197,10 @@ class PayslipRepository implements \App\Contracts\Payslip
     $concept = \App\Models\SalaryConcept::where('name', $conceptName)->first();
     
     if (!$concept) {
-        throw new \Exception("Concepto de nómina no encontrado: {$conceptName}");
+        throw new \Exception("Concepto de n├│mina no encontrado: {$conceptName}");
     }
 
-    $initialAmount = in_array($conceptName, ['Salario Básico Mensual', 'Bono de Alimentación']) ? 40.00 : 0;
+    $initialAmount = in_array($conceptName, ['Salario B├ísico Mensual', 'Bono de Alimentaci├│n']) ? 40.00 : 0;
     
     $salaryDetail = $employee->user->salaries()->firstOrCreate(
       ['salary_concept_id' => $concept->id],
@@ -273,7 +273,7 @@ class PayslipRepository implements \App\Contracts\Payslip
     $total_bs = round($payslip->total * $bs_exchange_rate->rate, 2);
 
     Expense::create([
-      'name' => 'Nómina',
+      'name' => 'N├│mina',
       'category_id' => 1,
       'amount' => $total,
       'total_usd' => $payslip->total,
@@ -289,7 +289,7 @@ class PayslipRepository implements \App\Contracts\Payslip
     $type = match ($count) {
       'Efectivo' => 'CASH',
       'Tarjeta' => 'CARD',
-      'Pago móvil' => 'MOBILE',
+      'Pago m├│vil' => 'MOBILE',
       'Transferencia' => 'TRANSFER',
       'Binance' => 'BINANCE',
       'Paypal' => 'PAYPAL'
@@ -305,7 +305,7 @@ class PayslipRepository implements \App\Contracts\Payslip
       'user_id' => auth()->user()->id,
       'category_id' => 1,
       'exchange_rate_id' => $exchange_rate_id,
-      'description' => 'Pago de nómina',
+      'description' => 'Pago de n├│mina',
       'currency' => $currency,
       'type' => $type,
       'amount' => $total,
@@ -369,17 +369,17 @@ class PayslipRepository implements \App\Contracts\Payslip
     }
 
     $add([
-      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Alimentación'        THEN pd.amount * {$currency} ELSE 0 END) AS food_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Bono de Alimentaci├│n'        THEN pd.amount * {$currency} ELSE 0 END) AS food_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono de Transporte'           THEN pd.amount * {$currency} ELSE 0 END) AS transportation_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono Extraordinario de Rendimiento' THEN pd.amount * {$currency} ELSE 0 END) AS performance_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Asistencia Social de Salud (Art. 105 LOTTT)' THEN pd.amount * {$currency} ELSE 0 END) AS health_support_voucher"),
-      DB::raw("SUM(CASE WHEN sc.name = 'Salario Básico Mensual'       THEN usd.amount * {$currency} ELSE 0 END) AS base_salary_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Salario B├ísico Mensual'       THEN usd.amount * {$currency} ELSE 0 END) AS base_salary_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono de Facturas'             THEN pd.amount * {$currency} ELSE 0 END) AS invoice_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono de Ventas'               THEN pd.amount * {$currency} ELSE 0 END) AS sales_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono de Ayuda familiar'       THEN pd.amount * {$currency} ELSE 0 END) AS family_support_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono de Productos Asignados'  THEN pd.amount * {$currency} ELSE 0 END) AS assigned_products_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Bono de Crecimiento de Ventas' THEN pd.amount * {$currency} ELSE 0 END) AS sales_growth_voucher"),
-      DB::raw("SUM(CASE WHEN sc.name = 'Salario Básico Mensual'       THEN pd.amount * {$currency} ELSE 0 END) AS salary_to_pay_voucher"),
+      DB::raw("SUM(CASE WHEN sc.name = 'Salario B├ísico Mensual'       THEN pd.amount * {$currency} ELSE 0 END) AS salary_to_pay_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'IVSS (4%)'                    THEN pd.amount * {$currency} ELSE 0 END) AS social_security_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Prestamos'                    THEN pd.amount * {$currency} ELSE 0 END) AS loans_voucher"),
       DB::raw("SUM(CASE WHEN sc.name = 'Dias no trabajados'           THEN pd.amount * {$currency} ELSE 0 END) AS days_not_worked_voucher"),
@@ -461,8 +461,8 @@ class PayslipRepository implements \App\Contracts\Payslip
       ->where('payslips.id', $payslip->id)
       ->where('employees.id', $employee->id)
       ->whereIn('sc.name', [
-        'Bono de Alimentación', 
-        'Salario Básico Mensual', 
+        'Bono de Alimentaci├│n', 
+        'Salario B├ísico Mensual', 
         'Asistencia Social de Salud (Art. 105 LOTTT)',
         'Bono Extraordinario de Rendimiento',
         'IVSS (4%)',
@@ -489,7 +489,7 @@ class PayslipRepository implements \App\Contracts\Payslip
 
     if ($exitCode !== 0) {
       \Log::error('Failed to fetch exchange rate');
-      throw new \RuntimeException('No se pudo obtener la tasa del día USD');
+      throw new \RuntimeException('No se pudo obtener la tasa del d├¡a USD');
     }
 
     $rate = ExchangeRate::where('currency_code', 'USD')
@@ -497,20 +497,20 @@ class PayslipRepository implements \App\Contracts\Payslip
       ->value('rate');
 
     if ($rate === null) {
-      throw new \RuntimeException('No se econtró una tasa para usar');
+      throw new \RuntimeException('No se econtr├│ una tasa para usar');
     }
 
     return (float) $rate;
   }
 
   /**
-   * Garantiza que los conceptos básicos de nómina existan en la base de datos.
+   * Garantiza que los conceptos b├ísicos de n├│mina existan en la base de datos.
    */
   private function ensureSalaryConceptsExist(): void
   {
     $concepts = [
-      'Salario Básico Mensual' => ['type' => 'salary', 'frequency' => 'fortnight'],
-      'Bono de Alimentación' => ['type' => 'salary', 'frequency' => 'monthly'],
+      'Salario B├ísico Mensual' => ['type' => 'salary', 'frequency' => 'fortnight'],
+      'Bono de Alimentaci├│n' => ['type' => 'salary', 'frequency' => 'monthly'],
       'Asistencia Social de Salud (Art. 105 LOTTT)' => ['type' => 'salary', 'frequency' => 'monthly'],
       'Bono Extraordinario de Rendimiento' => ['type' => 'salary', 'frequency' => 'monthly'],
       'IVSS (4%)' => ['type' => 'deduction', 'frequency' => 'fortnight'],
